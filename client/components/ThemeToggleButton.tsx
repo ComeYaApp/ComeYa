@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useTheme } from "@/hooks/useTheme";
-import { RabbitFoodColors, Spacing } from "@/constants/theme";
+import { ComeYaColors, Spacing } from "@/constants/theme";
 
 export function ThemeToggleButton() {
   const { isDark, setThemeMode } = useTheme();
@@ -27,7 +27,7 @@ export function ThemeToggleButton() {
       <Feather
         name={isDark ? "sun" : "moon"}
         size={22}
-        color={isDark ? RabbitFoodColors.warning : RabbitFoodColors.primary}
+        color={isDark ? ComeYaColors.warning : ComeYaColors.primary}
       />
     </Pressable>
   );

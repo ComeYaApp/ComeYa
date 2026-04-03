@@ -8,7 +8,7 @@ interface CacheItem<T> {
 }
 
 export class OfflineCacheService {
-  private static readonly CACHE_PREFIX = '@rabbitfood_cache_';
+  private static readonly CACHE_PREFIX = '@ComeYa_cache_';
   private static readonly BUSINESSES_KEY = 'businesses';
   private static readonly PRODUCTS_KEY = 'products';
   private static readonly CART_KEY = 'cart';

@@ -126,13 +126,12 @@ export async function validateCustomerOrderOwnership(
   try {
     const orderId = req.params.id || req.params.orderId;
     const userId = req.user!.id;
+    const role = req.user!.role;
 
-    if (req.user!.role === "admin" || req.user!.role === "super_admin") {
-      return next();
-    }
+    if (role === "admin" || role === "super_admin") return next();
 
     const [order] = await db
-      .select({ userId: orders.userId })
+      .select({ userId: orders.userId, deliveryPersonId: orders.deliveryPersonId })
       .from(orders)
       .where(eq(orders.id, orderId))
       .limit(1);
@@ -141,7 +140,8 @@ export async function validateCustomerOrderOwnership(
       return res.status(404).json({ error: "Order not found" });
     }
 
-    if (order.userId !== userId) {
+    // Allow: customer who owns it, driver assigned to it, business_owner (checked elsewhere)
+    if (order.userId !== userId && order.deliveryPersonId !== userId && role !== "business_owner") {
       return res.status(403).json({ 
         error: "You do not have permission to access this order" 
       });

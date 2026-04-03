@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { RabbitFoodColors } from "../../../constants/theme";
+import { ComeYaColors } from "../../../constants/theme";
 import { AdminOrder } from "../types/admin.types";
 
 interface OrdersTabProps {
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   orderTotal: {
     fontSize: 14,
     fontWeight: "600",
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     marginBottom: 4,
   },
   orderDate: {

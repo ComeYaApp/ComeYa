@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
-import { Spacing, BorderRadius, RabbitFoodColors } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors } from '@/constants/theme';
 
 export default function TermsScreen() {
   const insets = useSafeAreaInsets();
@@ -28,7 +28,7 @@ export default function TermsScreen() {
 
   const BulletPoint = ({ children }: { children: string }) => (
     <View style={styles.bulletContainer}>
-      <View style={[styles.bullet, { backgroundColor: RabbitFoodColors.primary }]} />
+      <View style={[styles.bullet, { backgroundColor: ComeYaColors.primary }]} />
       <ThemedText type="body" style={[styles.bulletText, { color: theme.textSecondary }]}>
         {children}
       </ThemedText>
@@ -46,16 +46,16 @@ export default function TermsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={[styles.badge, { backgroundColor: RabbitFoodColors.primary + '20' }]}>
-          <ThemedText type="small" style={{ color: RabbitFoodColors.primary, fontWeight: '600' }}>
+        <View style={[styles.badge, { backgroundColor: ComeYaColors.primary + '20' }]}>
+          <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
             Última actualización: Febrero 2025
           </ThemedText>
         </View>
 
         <Section title="1. Aceptación de los Términos">
           <Paragraph>
-            Al acceder y utilizar Rabbit Food, usted acepta estar legalmente vinculado por estos Términos y Condiciones. 
-            Rabbit Food es una plataforma tecnológica que conecta usuarios, negocios locales y repartidores en San Cristóbal, Táchira, Venezuela.
+            Al acceder y utilizar ComeYa, usted acepta estar legalmente vinculado por estos Términos y Condiciones. 
+            ComeYa es una plataforma tecnológica que conecta usuarios, negocios locales y repartidores en San Cristóbal, Táchira, Venezuela.
           </Paragraph>
         </Section>
 
@@ -91,7 +91,7 @@ export default function TermsScreen() {
           </Paragraph>
           <BulletPoint>Negocio: 100% del precio base de productos</BulletPoint>
           <BulletPoint>Repartidor: 100% de la tarifa de entrega</BulletPoint>
-          <BulletPoint>Rabbit Food: 15% de markup sobre productos</BulletPoint>
+          <BulletPoint>ComeYa: 15% de markup sobre productos</BulletPoint>
           <Paragraph>
             Los pagos se procesan de forma segura mediante Stripe. Fondos disponibles después de entrega confirmada.
           </Paragraph>
@@ -107,7 +107,7 @@ export default function TermsScreen() {
         <Section title="5. Calificaciones y Reseñas">
           <Paragraph>
             Sistema de 1 a 5 estrellas. No se permiten reseñas con contenido ofensivo, discriminatorio, 
-            falso o que contenga información personal. Rabbit Food se reserva el derecho de eliminar reseñas inapropiadas.
+            falso o que contenga información personal. ComeYa se reserva el derecho de eliminar reseñas inapropiadas.
           </Paragraph>
         </Section>
 
@@ -120,7 +120,7 @@ export default function TermsScreen() {
 
         <Section title="7. Limitación de Responsabilidad">
           <Paragraph>
-            Rabbit Food es una plataforma tecnológica intermediaria. No somos responsables de la calidad de productos 
+            ComeYa es una plataforma tecnológica intermediaria. No somos responsables de la calidad de productos 
             o acciones de negocios y repartidores. El servicio se proporciona "tal cual" sin garantías de 
             disponibilidad ininterrumpida.
           </Paragraph>
@@ -135,14 +135,14 @@ export default function TermsScreen() {
 
         <Section title="9. Modificaciones">
           <Paragraph>
-            Rabbit Food puede modificar estos términos en cualquier momento. Los cambios serán notificados 
+            ComeYa puede modificar estos términos en cualquier momento. Los cambios serán notificados 
             mediante la app y email. El uso continuado constituye aceptación.
           </Paragraph>
         </Section>
 
         <Section title="10. Contacto">
           <Paragraph>
-            Email: support@rabbitfood.app{'\n'}
+            Email: support@ComeYa.app{'\n'}
             Ubicación: San Cristóbal, Táchira, Venezuela, Venezuela{'\n'}
             Soporte disponible en la app
           </Paragraph>
@@ -153,7 +153,7 @@ export default function TermsScreen() {
             Del náhuatl "vivir" - Conectando negocios locales con la comunidad
           </ThemedText>
           <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.xs }}>
-            © 2025 Rabbit Food. Todos los derechos reservados.
+            © 2025 ComeYa. Todos los derechos reservados.
           </ThemedText>
         </View>
       </ScrollView>

@@ -18,7 +18,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -162,7 +162,7 @@ export default function ScheduleOrderScreen() {
           style={[styles.card, { backgroundColor: theme.card }, Shadows.md]}
         >
           <View style={styles.businessInfo}>
-            <Feather name="shopping-bag" size={24} color={RabbitFoodColors.primary} />
+            <Feather name="shopping-bag" size={24} color={ComeYaColors.primary} />
             <View style={{ marginLeft: Spacing.md }}>
               <ThemedText type="h4">{businessName || "Negocio"}</ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -190,10 +190,10 @@ export default function ScheduleOrderScreen() {
                 styles.toggleButton,
                 {
                   backgroundColor: !isRecurring
-                    ? RabbitFoodColors.primary
+                    ? ComeYaColors.primary
                     : theme.backgroundSecondary,
                   borderColor: !isRecurring
-                    ? RabbitFoodColors.primary
+                    ? ComeYaColors.primary
                     : "transparent",
                 },
               ]}
@@ -223,9 +223,9 @@ export default function ScheduleOrderScreen() {
                 styles.toggleButton,
                 {
                   backgroundColor: isRecurring
-                    ? RabbitFoodColors.primary
+                    ? ComeYaColors.primary
                     : theme.backgroundSecondary,
-                  borderColor: isRecurring ? RabbitFoodColors.primary : "transparent",
+                  borderColor: isRecurring ? ComeYaColors.primary : "transparent",
                 },
               ]}
             >
@@ -264,7 +264,7 @@ export default function ScheduleOrderScreen() {
                     styles.dayButton,
                     {
                       backgroundColor: recurringDays.includes(day.id)
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.backgroundSecondary,
                     },
                   ]}
@@ -299,7 +299,7 @@ export default function ScheduleOrderScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="calendar" size={20} color={RabbitFoodColors.primary} />
+              <Feather name="calendar" size={20} color={ComeYaColors.primary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
                 {scheduledDate.toLocaleDateString("es-VE", {
                   weekday: "long",
@@ -331,7 +331,7 @@ export default function ScheduleOrderScreen() {
               { backgroundColor: theme.backgroundSecondary },
             ]}
           >
-            <Feather name="clock" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="clock" size={20} color={ComeYaColors.primary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
               {scheduledDate.toLocaleTimeString("es-VE", {
                 hour: "2-digit",
@@ -381,7 +381,7 @@ export default function ScheduleOrderScreen() {
           style={[
             styles.scheduleButton,
             {
-              backgroundColor: RabbitFoodColors.primary,
+              backgroundColor: ComeYaColors.primary,
               opacity:
                 createScheduledOrderMutation.isPending ||
                 createRecurringOrderMutation.isPending

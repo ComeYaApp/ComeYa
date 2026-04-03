@@ -25,7 +25,7 @@ import * as Haptics from 'expo-haptics';
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -229,20 +229,20 @@ export default function BusinessProductsScreen() {
         >
           {item.description}
         </ThemedText>
-        <ThemedText type="h4" style={{ color: RabbitFoodColors.primary, marginTop: Spacing.xs }}>
+        <ThemedText type="h4" style={{ color: ComeYaColors.primary, marginTop: Spacing.xs }}>
           ${(item.price / 100).toFixed(2)}
         </ThemedText>
       </Pressable>
       <View style={styles.productActions}>
         <Pressable onPress={() => handleDelete(item.id)} style={{ marginBottom: Spacing.sm }}>
-          <Feather name="trash-2" size={20} color={RabbitFoodColors.error} />
+          <Feather name="trash-2" size={20} color={ComeYaColors.error} />
         </Pressable>
         <Switch
           value={item.isAvailable === 1 || item.isAvailable === true}
           onValueChange={() =>
             toggleAvailability(item.id, item.isAvailable === 1 || item.isAvailable === true)
           }
-          trackColor={{ false: "#767577", true: RabbitFoodColors.primary }}
+          trackColor={{ false: "#767577", true: ComeYaColors.primary }}
           thumbColor="#fff"
         />
       </View>
@@ -267,10 +267,10 @@ export default function BusinessProductsScreen() {
                 navigation.navigate("MyBusinesses");
               }}
             >
-              <ThemedText type="caption" style={{ color: RabbitFoodColors.primary }}>
+              <ThemedText type="caption" style={{ color: ComeYaColors.primary }}>
                 {selectedBusiness?.name || "Seleccionar negocio"}
               </ThemedText>
-              <Feather name="chevron-down" size={14} color={RabbitFoodColors.primary} />
+              <Feather name="chevron-down" size={14} color={ComeYaColors.primary} />
             </Pressable>
           ) : selectedBusiness ? (
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -280,7 +280,7 @@ export default function BusinessProductsScreen() {
         </View>
         <Pressable
           onPress={openAddModal}
-          style={[styles.addButton, { backgroundColor: RabbitFoodColors.primary }]}
+          style={[styles.addButton, { backgroundColor: ComeYaColors.primary }]}
         >
           <Feather name="plus" size={24} color="#FFF" />
         </Pressable>
@@ -295,7 +295,7 @@ export default function BusinessProductsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
         ListEmptyComponent={
@@ -373,7 +373,7 @@ export default function BusinessProductsScreen() {
               </View>
               {isUploadingImage ? (
                 <View style={[styles.previewImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.backgroundSecondary }]}>
-                  <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+                  <ActivityIndicator size="large" color={ComeYaColors.primary} />
                   <ThemedText type="small" style={{ marginTop: Spacing.sm }}>Subiendo imagen...</ThemedText>
                 </View>
               ) : form.image ? (
@@ -397,7 +397,7 @@ export default function BusinessProductsScreen() {
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                style={[styles.modalButton, { backgroundColor: RabbitFoodColors.primary }]}
+                style={[styles.modalButton, { backgroundColor: ComeYaColors.primary }]}
               >
                 <ThemedText type="body" style={{ color: "#FFF" }}>Guardar</ThemedText>
               </Pressable>

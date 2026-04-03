@@ -387,7 +387,7 @@ export default function FinTechScreen() {
     <ScrollView style={styles.tabContent}>
       <Text style={styles.sectionTitle}>Préstamos Disponibles</Text>
       <Text style={styles.sectionSubtitle}>
-        Basado en tu historial crediticio y actividad en Rabbit Food
+        Basado en tu historial crediticio y actividad en ComeYa
       </Text>
 
       {loanOffers.map((loan) => (
@@ -517,13 +517,13 @@ export default function FinTechScreen() {
 
       {/* Virtual Card */}
       <View style={styles.virtualCardContainer}>
-        <Text style={styles.sectionTitle}>Tarjeta Virtual Rabbit Food</Text>
+        <Text style={styles.sectionTitle}>Tarjeta Virtual ComeYa</Text>
         <LinearGradient
           colors={['#667eea', '#764ba2']}
           style={styles.virtualCard}
         >
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Rabbit Food Card</Text>
+            <Text style={styles.cardTitle}>ComeYa Card</Text>
             <MaterialIcons name="contactless-payment" size={24} color="white" />
           </View>
           <Text style={styles.cardNumber}>**** **** **** 1234</Text>
@@ -544,7 +544,7 @@ export default function FinTechScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Rabbit Food FinTech</Text>
+        <Text style={styles.headerTitle}>ComeYa FinTech</Text>
         <TouchableOpacity>
           <Ionicons name="notifications" size={24} color={Colors.text} />
         </TouchableOpacity>

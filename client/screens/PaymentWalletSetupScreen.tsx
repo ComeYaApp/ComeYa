@@ -13,7 +13,7 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 const VENEZUELA_BANKS = [
@@ -170,7 +170,7 @@ export default function PaymentWalletSetupScreen() {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot, justifyContent: "center", alignItems: "center" }]}>
-        <ActivityIndicator color={RabbitFoodColors.primary} />
+        <ActivityIndicator color={ComeYaColors.primary} />
       </View>
     );
   }
@@ -198,8 +198,8 @@ export default function PaymentWalletSetupScreen() {
               style={[
                 styles.tab,
                 {
-                  backgroundColor: activeMethod === m.id ? RabbitFoodColors.primary : theme.card,
-                  borderColor: activeMethod === m.id ? RabbitFoodColors.primary : theme.border,
+                  backgroundColor: activeMethod === m.id ? ComeYaColors.primary : theme.card,
+                  borderColor: activeMethod === m.id ? ComeYaColors.primary : theme.border,
                 },
               ]}
             >
@@ -208,7 +208,7 @@ export default function PaymentWalletSetupScreen() {
                 {m.label}
               </ThemedText>
               {hasAccount && (
-                <View style={[styles.dot, { backgroundColor: activeMethod === m.id ? "#FFF" : RabbitFoodColors.success }]} />
+                <View style={[styles.dot, { backgroundColor: activeMethod === m.id ? "#FFF" : ComeYaColors.success }]} />
               )}
             </Pressable>
           );
@@ -246,7 +246,7 @@ export default function PaymentWalletSetupScreen() {
                     <Pressable
                       key={b.id}
                       onPress={() => { setPagoMovilBank(b.id); Haptics.selectionAsync(); }}
-                      style={[styles.bankChip, { backgroundColor: pagoMovilBank === b.id ? RabbitFoodColors.primary : theme.backgroundSecondary, borderColor: pagoMovilBank === b.id ? RabbitFoodColors.primary : theme.border }]}
+                      style={[styles.bankChip, { backgroundColor: pagoMovilBank === b.id ? ComeYaColors.primary : theme.backgroundSecondary, borderColor: pagoMovilBank === b.id ? ComeYaColors.primary : theme.border }]}
                     >
                       <ThemedText type="small" style={{ color: pagoMovilBank === b.id ? "#FFF" : theme.text }}>{b.name}</ThemedText>
                     </Pressable>
@@ -339,18 +339,18 @@ export default function PaymentWalletSetupScreen() {
               const detail = acc.pagoMovilPhone || acc.binanceId || acc.zinliEmail || acc.zelleEmail || "—";
               return (
                 <View key={acc.id} style={[styles.accountRow, { backgroundColor: theme.card, borderColor: theme.border }, Shadows.sm]}>
-                  <Feather name={method?.icon || "credit-card"} size={20} color={RabbitFoodColors.primary} />
+                  <Feather name={method?.icon || "credit-card"} size={20} color={ComeYaColors.primary} />
                   <View style={{ flex: 1, marginLeft: Spacing.md }}>
                     <ThemedText type="body" style={{ fontWeight: "600" }}>{method?.label || acc.method}</ThemedText>
                     <ThemedText type="small" style={{ color: theme.textSecondary }}>{detail}</ThemedText>
                   </View>
                   {acc.isDefault && (
-                    <View style={[styles.defaultBadge, { backgroundColor: RabbitFoodColors.success + "20" }]}>
-                      <ThemedText type="caption" style={{ color: RabbitFoodColors.success }}>Principal</ThemedText>
+                    <View style={[styles.defaultBadge, { backgroundColor: ComeYaColors.success + "20" }]}>
+                      <ThemedText type="caption" style={{ color: ComeYaColors.success }}>Principal</ThemedText>
                     </View>
                   )}
                   <Pressable onPress={() => handleDelete(acc.id)} style={{ padding: Spacing.sm }}>
-                    <Feather name="trash-2" size={18} color={RabbitFoodColors.error} />
+                    <Feather name="trash-2" size={18} color={ComeYaColors.error} />
                   </Pressable>
                 </View>
               );

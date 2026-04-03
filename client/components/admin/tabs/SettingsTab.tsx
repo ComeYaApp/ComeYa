@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { RabbitFoodColors, Spacing, BorderRadius } from "../../../constants/theme";
+import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 interface SettingsTabProps {
@@ -67,7 +67,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ theme, showToast }) =>
   if (loading) {
     return (
       <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+        <ActivityIndicator size="large" color={ComeYaColors.primary} />
       </View>
     );
   }
@@ -79,7 +79,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ theme, showToast }) =>
         {settings.length === 0 && (
           <Pressable
             onPress={handleInitialize}
-            style={[styles.initBtn, { backgroundColor: RabbitFoodColors.primary }]}
+            style={[styles.initBtn, { backgroundColor: ComeYaColors.primary }]}
           >
             <Feather name="settings" size={16} color="#FFF" />
             <Text style={styles.initBtnText}>Inicializar</Text>
@@ -100,7 +100,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ theme, showToast }) =>
             />
             <Pressable
               onPress={() => handleSave(setting.key)}
-              style={[styles.saveBtn, { backgroundColor: RabbitFoodColors.primary }]}
+              style={[styles.saveBtn, { backgroundColor: ComeYaColors.primary }]}
             >
               <Feather name="check" size={18} color="#FFF" />
             </Pressable>

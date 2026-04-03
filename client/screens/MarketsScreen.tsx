@@ -8,7 +8,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { BusinessCard } from "@/components/BusinessCard";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { mockBusinesses } from "@/data/mockData";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 

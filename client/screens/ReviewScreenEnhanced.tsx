@@ -19,7 +19,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -212,7 +212,7 @@ export default function ReviewScreenEnhanced() {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="shopping-bag" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="shopping-bag" size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
               {businessName}
             </ThemedText>
@@ -273,13 +273,13 @@ export default function ReviewScreenEnhanced() {
                     {
                       backgroundColor: selectedTags.includes(tag.id)
                         ? tag.isPositive
-                          ? RabbitFoodColors.success + "20"
-                          : RabbitFoodColors.error + "20"
+                          ? ComeYaColors.success + "20"
+                          : ComeYaColors.error + "20"
                         : theme.backgroundSecondary,
                       borderColor: selectedTags.includes(tag.id)
                         ? tag.isPositive
-                          ? RabbitFoodColors.success
-                          : RabbitFoodColors.error
+                          ? ComeYaColors.success
+                          : ComeYaColors.error
                         : theme.border,
                     },
                   ]}
@@ -290,8 +290,8 @@ export default function ReviewScreenEnhanced() {
                     color={
                       selectedTags.includes(tag.id)
                         ? tag.isPositive
-                          ? RabbitFoodColors.success
-                          : RabbitFoodColors.error
+                          ? ComeYaColors.success
+                          : ComeYaColors.error
                         : theme.textSecondary
                     }
                   />
@@ -301,8 +301,8 @@ export default function ReviewScreenEnhanced() {
                       marginLeft: 4,
                       color: selectedTags.includes(tag.id)
                         ? tag.isPositive
-                          ? RabbitFoodColors.success
-                          : RabbitFoodColors.error
+                          ? ComeYaColors.success
+                          : ComeYaColors.error
                         : theme.text,
                     }}
                   >
@@ -375,7 +375,7 @@ export default function ReviewScreenEnhanced() {
           style={[
             styles.submitButton,
             {
-              backgroundColor: RabbitFoodColors.primary,
+              backgroundColor: ComeYaColors.primary,
               opacity: submitReviewMutation.isPending ? 0.6 : 1,
             },
           ]}
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: RabbitFoodColors.error,
+    backgroundColor: ComeYaColors.error,
     justifyContent: "center",
     alignItems: "center",
   },

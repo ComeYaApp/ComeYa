@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useCart } from "@/contexts/CartContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 
 interface CartButtonProps {
   onPress: () => void;
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: Spacing.lg,
     right: Spacing.lg,
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
     borderRadius: BorderRadius.lg,
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.xl,

@@ -3,7 +3,7 @@ import { View, StyleSheet, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useOffline } from '@/hooks/useOffline';
-import { Spacing, RabbitFoodColors } from '@/constants/theme';
+import { Spacing, ComeYaColors } from '@/constants/theme';
 
 export function OfflineIndicator() {
   const { isOffline, isConnecting } = useOffline();
@@ -36,10 +36,10 @@ export function OfflineIndicator() {
         styles.container,
         {
           backgroundColor: isConnecting
-            ? RabbitFoodColors.warning
+            ? ComeYaColors.warning
             : isOffline
-            ? RabbitFoodColors.error
-            : RabbitFoodColors.success,
+            ? ComeYaColors.error
+            : ComeYaColors.success,
           transform: [{ translateY: slideAnim }],
         },
       ]}

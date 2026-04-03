@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { mockBusinesses } from "@/data/mockData";
 
@@ -156,7 +156,7 @@ export default function CartScreen() {
           }}
           style={styles.clearButton}
         >
-          <Feather name="trash-2" size={20} color={RabbitFoodColors.error} />
+          <Feather name="trash-2" size={20} color={ComeYaColors.error} />
         </Pressable>
       </View>
 
@@ -214,11 +214,11 @@ export default function CartScreen() {
                       <Feather
                         name="file-text"
                         size={12}
-                        color={RabbitFoodColors.primary}
+                        color={ComeYaColors.primary}
                       />
                       <ThemedText
                         type="caption"
-                        style={{ color: RabbitFoodColors.primary, marginLeft: 4 }}
+                        style={{ color: ComeYaColors.primary, marginLeft: 4 }}
                       >
                         {item.note}
                       </ThemedText>
@@ -226,7 +226,7 @@ export default function CartScreen() {
                   ) : null}
                   <ThemedText
                     type="h4"
-                    style={{ color: RabbitFoodColors.primary, marginTop: Spacing.sm }}
+                    style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}
                   >
                     ${itemTotal.toFixed(2)}
                   </ThemedText>
@@ -271,7 +271,7 @@ export default function CartScreen() {
                     <Feather
                       name="trash-2"
                       size={18}
-                      color={RabbitFoodColors.error}
+                      color={ComeYaColors.error}
                     />
                   </Pressable>
                 </View>
@@ -298,7 +298,7 @@ export default function CartScreen() {
         </View>
         <View style={styles.summaryRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Comision Rabbit Food (15%)
+            Comision ComeYa (15%)
           </ThemedText>
           <ThemedText type="body">${nemyCommission.toFixed(2)}</ThemedText>
         </View>
@@ -310,7 +310,7 @@ export default function CartScreen() {
         </View>
         <View style={[styles.summaryRow, styles.totalRow]}>
           <ThemedText type="h3">Total</ThemedText>
-          <ThemedText type="h2" style={{ color: RabbitFoodColors.primary }}>
+          <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
             ${total.toFixed(2)}
           </ThemedText>
         </View>

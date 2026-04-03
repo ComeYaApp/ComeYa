@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Modal, Pressable } from "react-native";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -55,7 +55,7 @@ export function ConfirmModal({
                 styles.button,
                 {
                   backgroundColor:
-                    variant === "danger" ? RabbitFoodColors.error : RabbitFoodColors.primary,
+                    variant === "danger" ? ComeYaColors.error : ComeYaColors.primary,
                 },
               ]}
             >

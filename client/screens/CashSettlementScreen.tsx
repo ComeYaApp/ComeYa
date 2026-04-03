@@ -14,7 +14,7 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -134,7 +134,7 @@ export default function CashSettlementScreen() {
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Total a recibir
             </ThemedText>
-            <ThemedText type="h4" style={{ color: RabbitFoodColors.success }}>
+            <ThemedText type="h4" style={{ color: ComeYaColors.success }}>
               ${(totalToReceive / 100).toFixed(2)}
             </ThemedText>
           </View>
@@ -142,7 +142,7 @@ export default function CashSettlementScreen() {
 
         <Pressable
           onPress={() => handleSettle(item.id, totalToReceive)}
-          style={[styles.settleButton, { backgroundColor: RabbitFoodColors.success }]}
+          style={[styles.settleButton, { backgroundColor: ComeYaColors.success }]}
         >
           <Feather name="check-circle" size={18} color="#FFF" />
           <ThemedText type="small" style={{ color: "#FFF", marginLeft: Spacing.xs }}>
@@ -167,15 +167,15 @@ export default function CashSettlementScreen() {
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             Total pendiente de recibir
           </ThemedText>
-          <ThemedText type="h1" style={{ color: RabbitFoodColors.primary }}>
+          <ThemedText type="h1" style={{ color: ComeYaColors.primary }}>
             ${(total / 100).toFixed(2)}
           </ThemedText>
         </View>
-        <View style={[styles.countBadge, { backgroundColor: RabbitFoodColors.warning + "20" }]}>
-          <ThemedText type="h3" style={{ color: RabbitFoodColors.warning }}>
+        <View style={[styles.countBadge, { backgroundColor: ComeYaColors.warning + "20" }]}>
+          <ThemedText type="h3" style={{ color: ComeYaColors.warning }}>
             {orders.length}
           </ThemedText>
-          <ThemedText type="caption" style={{ color: RabbitFoodColors.warning }}>
+          <ThemedText type="caption" style={{ color: ComeYaColors.warning }}>
             pedidos
           </ThemedText>
         </View>
@@ -190,12 +190,12 @@ export default function CashSettlementScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Feather name="check-circle" size={64} color={RabbitFoodColors.success} />
+            <Feather name="check-circle" size={64} color={ComeYaColors.success} />
             <ThemedText
               type="h4"
               style={{ color: theme.textSecondary, marginTop: Spacing.lg }}

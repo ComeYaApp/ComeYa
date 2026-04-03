@@ -5,6 +5,22 @@ import { db } from "../db";
 
 const router = express.Router();
 
+// PUT /api/users/push-token — registrar Expo push token
+router.put("/push-token", authenticateToken, async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token || !token.startsWith("ExponentPushToken[")) {
+      return res.status(400).json({ error: "Token inválido" });
+    }
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    await db.update(users).set({ pushToken: token, updatedAt: new Date() }).where(eq(users.id, req.user!.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user profile
 router.get("/profile", authenticateToken, async (req, res) => {
   try {

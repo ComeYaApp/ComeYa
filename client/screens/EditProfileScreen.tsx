@@ -14,7 +14,7 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 function resolveProfileImageUrl(profileImage: string): string {
@@ -203,11 +203,11 @@ export default function EditProfileScreen() {
             <View
               style={[
                 styles.avatar,
-                { backgroundColor: RabbitFoodColors.primary + "20" },
+                { backgroundColor: ComeYaColors.primary + "20" },
               ]}
             >
               {isUploadingImage ? (
-                <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+                <ActivityIndicator size="large" color={ComeYaColors.primary} />
               ) : user?.profileImage ? (
                 <Image
                   source={{ uri: resolveProfileImageUrl(user.profileImage) }}
@@ -215,10 +215,10 @@ export default function EditProfileScreen() {
                   contentFit="cover"
                 />
               ) : (
-                <Feather name="user" size={40} color={RabbitFoodColors.primary} />
+                <Feather name="user" size={40} color={ComeYaColors.primary} />
               )}
             </View>
-            <View style={[styles.cameraButton, { backgroundColor: RabbitFoodColors.primary }]}>
+            <View style={[styles.cameraButton, { backgroundColor: ComeYaColors.primary }]}>
               <Feather name="camera" size={16} color="#fff" />
             </View>
           </Pressable>
@@ -278,7 +278,7 @@ export default function EditProfileScreen() {
             { backgroundColor: theme.backgroundSecondary },
           ]}
         >
-          <Feather name="info" size={20} color={RabbitFoodColors.primary} />
+          <Feather name="info" size={20} color={ComeYaColors.primary} />
           <ThemedText
             type="caption"
             style={{

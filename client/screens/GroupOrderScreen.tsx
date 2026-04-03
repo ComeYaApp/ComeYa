@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -78,13 +78,13 @@ export default function GroupOrderScreen() {
   const handleShare = async () => {
     if (!group) return;
 
-    const shareLink = `rabbitfood://group-order/${group.shareToken}`;
+    const shareLink = `ComeYa://group-order/${group.shareToken}`;
     const message = `¡Únete a mi pedido grupal en ${group.businessName}!\n\nLink: ${shareLink}\n\nExpira: ${new Date(group.expiresAt).toLocaleString('es-VE')}`;
 
     try {
       await Share.share({
         message,
-        title: 'Pedido Grupal - Rabbit Food',
+        title: 'Pedido Grupal - ComeYa',
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
@@ -94,7 +94,7 @@ export default function GroupOrderScreen() {
 
   const handleCopyLink = () => {
     if (!group) return;
-    const shareLink = `rabbitfood://group-order/${group.shareToken}`;
+    const shareLink = `ComeYa://group-order/${group.shareToken}`;
     Clipboard.setString(shareLink);
     showToast('Link copiado!', 'success');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -157,7 +157,7 @@ export default function GroupOrderScreen() {
             <Feather
               name={isOpen ? 'unlock' : 'lock'}
               size={24}
-              color={isOpen ? RabbitFoodColors.success : RabbitFoodColors.warning}
+              color={isOpen ? ComeYaColors.success : ComeYaColors.warning}
             />
             <ThemedText type="h3" style={{ marginLeft: Spacing.sm }}>
               {group.businessName}
@@ -170,7 +170,7 @@ export default function GroupOrderScreen() {
             <ThemedText
               type="body"
               style={{
-                color: isOpen ? RabbitFoodColors.success : RabbitFoodColors.warning,
+                color: isOpen ? ComeYaColors.success : ComeYaColors.warning,
                 fontWeight: '600',
               }}
             >
@@ -201,7 +201,7 @@ export default function GroupOrderScreen() {
             <View style={styles.shareButtons}>
               <Pressable
                 onPress={handleShare}
-                style={[styles.shareButton, { backgroundColor: RabbitFoodColors.primary }]}
+                style={[styles.shareButton, { backgroundColor: ComeYaColors.primary }]}
               >
                 <Feather name="share-2" size={18} color="#FFFFFF" />
                 <ThemedText type="body" style={{ color: '#FFFFFF', marginLeft: 8 }}>
@@ -225,7 +225,7 @@ export default function GroupOrderScreen() {
         <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
           <View style={styles.sectionHeader}>
             <ThemedText type="h4">Participantes ({totalParticipants})</ThemedText>
-            <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+            <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
               Bs.{totalAmount.toFixed(2)}
             </ThemedText>
           </View>
@@ -236,10 +236,10 @@ export default function GroupOrderScreen() {
                 <View
                   style={[
                     styles.participantAvatar,
-                    { backgroundColor: RabbitFoodColors.primary + '20' },
+                    { backgroundColor: ComeYaColors.primary + '20' },
                   ]}
                 >
-                  <Feather name="user" size={20} color={RabbitFoodColors.primary} />
+                  <Feather name="user" size={20} color={ComeYaColors.primary} />
                 </View>
                 <View style={styles.participantInfo}>
                   <ThemedText type="body" numberOfLines={1}>
@@ -256,7 +256,7 @@ export default function GroupOrderScreen() {
                   Bs.{(participant.subtotal / 100).toFixed(2)}
                 </ThemedText>
                 {participant.paymentStatus === 'paid' && (
-                  <Feather name="check-circle" size={16} color={RabbitFoodColors.success} />
+                  <Feather name="check-circle" size={16} color={ComeYaColors.success} />
                 )}
               </View>
             </View>
@@ -270,7 +270,7 @@ export default function GroupOrderScreen() {
             disabled={lockMutation.isPending}
             style={[
               styles.lockButton,
-              { backgroundColor: RabbitFoodColors.primary },
+              { backgroundColor: ComeYaColors.primary },
               Shadows.md,
             ]}
           >

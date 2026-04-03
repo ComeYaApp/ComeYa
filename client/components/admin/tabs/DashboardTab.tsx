@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { RabbitFoodColors, Spacing } from "../../../constants/theme";
+import { ComeYaColors, Spacing } from "../../../constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { DashboardMetrics, ActiveOrder, OnlineDriver, AdminStats } from "../types/admin.types";
 
@@ -30,22 +30,22 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     switch (status?.toLowerCase()) {
       case "pending":
       case "pendiente":
-        return RabbitFoodColors.warning;
+        return ComeYaColors.warning;
       case "confirmed":
       case "confirmado":
         return "#3498DB";
       case "preparing":
       case "preparando":
-        return RabbitFoodColors.primary;
+        return ComeYaColors.primary;
       case "ready":
       case "listo":
-        return RabbitFoodColors.success;
+        return ComeYaColors.success;
       case "in_transit":
       case "en camino":
         return "#9B59B6";
       case "delivered":
       case "entregado":
-        return RabbitFoodColors.success;
+        return ComeYaColors.success;
       default:
         return "#666";
     }
@@ -77,7 +77,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Pedidos hoy</Text>
         </View>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
-          <Text style={[styles.metricValue, { color: RabbitFoodColors.error }]}>
+          <Text style={[styles.metricValue, { color: ComeYaColors.error }]}>
             {metrics?.cancelledToday || 0}
           </Text>
           <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Cancelados</Text>
@@ -87,7 +87,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Tiempo prom.</Text>
         </View>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
-          <Text style={[styles.metricValue, { color: RabbitFoodColors.success }]}>
+          <Text style={[styles.metricValue, { color: ComeYaColors.success }]}>
             {metrics?.driversOnline || 0}/{metrics?.totalDrivers || 1}
           </Text>
           <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Repartidores</Text>
@@ -96,12 +96,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
       <View style={styles.secondaryMetricsGrid}>
         <View style={[styles.metricCard, styles.secondaryMetric, { backgroundColor: theme.card }]}>
-          <Feather name="package" size={20} color={RabbitFoodColors.primary} />
+          <Feather name="package" size={20} color={ComeYaColors.primary} />
           <Text style={[styles.secondaryValue, { color: theme.text }]}>{activeOrders.length}</Text>
           <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Pedidos activos</Text>
         </View>
         <View style={[styles.metricCard, styles.secondaryMetric, { backgroundColor: theme.card }]}>
-          <Feather name="pause-circle" size={20} color={RabbitFoodColors.warning} />
+          <Feather name="pause-circle" size={20} color={ComeYaColors.warning} />
           <Text style={[styles.secondaryValue, { color: theme.text }]}>{metrics?.pausedBusinesses || 0}</Text>
           <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Pausados</Text>
         </View>
@@ -114,7 +114,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           onPress={() => navigation?.navigate?.("MapView")}
           activeOpacity={0.7}
         >
-          <Feather name="map" size={48} color={RabbitFoodColors.primary} />
+          <Feather name="map" size={48} color={ComeYaColors.primary} />
           <Text style={[styles.mapText, { color: theme.text, fontWeight: "600" }]}>
             Ver mapa de negocios
           </Text>
@@ -129,7 +129,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Resumen General</Text>
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
-              <Feather name="users" size={24} color={RabbitFoodColors.primary} />
+              <Feather name="users" size={24} color={ComeYaColors.primary} />
               <Text style={[styles.statValue, { color: theme.text }]}>{stats.totalUsers}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Usuarios</Text>
             </View>
@@ -139,12 +139,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pedidos</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
-              <Feather name="dollar-sign" size={24} color={RabbitFoodColors.success} />
+              <Feather name="dollar-sign" size={24} color={ComeYaColors.success} />
               <Text style={[styles.statValue, { color: theme.text }]}>${(stats.totalRevenue / 100).toFixed(0)}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Ingresos</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
-              <Feather name="clock" size={24} color={RabbitFoodColors.warning} />
+              <Feather name="clock" size={24} color={ComeYaColors.warning} />
               <Text style={[styles.statValue, { color: theme.text }]}>{stats.pendingOrders}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>
             </View>
@@ -232,22 +232,22 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               onPress={() => onDriverPress?.(driver)}
             >
               <View style={styles.driverInfo}>
-                <View style={[styles.driverAvatar, { backgroundColor: RabbitFoodColors.primaryLight }]}>
-                  <Feather name="user" size={16} color={RabbitFoodColors.primary} />
+                <View style={[styles.driverAvatar, { backgroundColor: ComeYaColors.primaryLight }]}>
+                  <Feather name="user" size={16} color={ComeYaColors.primary} />
                 </View>
                 <Text style={[styles.driverName, { color: theme.text }]}>{driver.name}</Text>
               </View>
               <View style={[
                 styles.availabilityBadge, 
-                { backgroundColor: isDriverAvailable(driver) ? RabbitFoodColors.success + "20" : RabbitFoodColors.warning + "20" }
+                { backgroundColor: isDriverAvailable(driver) ? ComeYaColors.success + "20" : ComeYaColors.warning + "20" }
               ]}>
                 <View style={[
                   styles.availabilityDot,
-                  { backgroundColor: isDriverAvailable(driver) ? RabbitFoodColors.success : RabbitFoodColors.warning }
+                  { backgroundColor: isDriverAvailable(driver) ? ComeYaColors.success : ComeYaColors.warning }
                 ]} />
                 <Text style={[
                   styles.availabilityText,
-                  { color: isDriverAvailable(driver) ? RabbitFoodColors.success : RabbitFoodColors.warning }
+                  { color: isDriverAvailable(driver) ? ComeYaColors.success : ComeYaColors.warning }
                 ]}>
                   {isDriverAvailable(driver) ? "Disponible" : "Ocupado"}
                 </Text>
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   linkText: {
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     fontWeight: "600",
     fontSize: 13,
   },
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   metricValue: {
     fontSize: 24,
     fontWeight: "bold",
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     marginBottom: 2,
   },
   metricLabel: {
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   roleValue: {
     fontSize: 20,
     fontWeight: "bold",
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
   },
   section: {
     marginBottom: 16,
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   orderTotal: {
     fontSize: 15,
     fontWeight: "700",
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
   },
   orderAddress: {
     fontSize: 12,
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   },
   orderDriver: {
     fontSize: 12,
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     fontWeight: "500",
   },
   driverCard: {

@@ -20,7 +20,7 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
@@ -259,7 +259,7 @@ export default function CheckoutScreen({ route }: any) {
                 orderId: order.orderId || order.id,
                 reference: pmData.reference,
                 amount: total,
-                rabbitfood: pmData.rabbitfood,
+                ComeYa: pmData.ComeYa,
               },
             },
           ],
@@ -394,7 +394,7 @@ export default function CheckoutScreen({ route }: any) {
                       styles.modalAddress,
                       {
                         borderColor: isSelected
-                          ? RabbitFoodColors.primary
+                          ? ComeYaColors.primary
                           : theme.border,
                         backgroundColor: theme.backgroundSecondary,
                       },
@@ -415,7 +415,7 @@ export default function CheckoutScreen({ route }: any) {
                       <Feather
                         name="check-circle"
                         size={18}
-                        color={RabbitFoodColors.primary}
+                        color={ComeYaColors.primary}
                       />
                     ) : null}
                   </Pressable>
@@ -433,10 +433,10 @@ export default function CheckoutScreen({ route }: any) {
                   { backgroundColor: theme.backgroundSecondary },
                 ]}
               >
-                <Feather name="plus" size={16} color={RabbitFoodColors.primary} />
+                <Feather name="plus" size={16} color={ComeYaColors.primary} />
                 <ThemedText
                   type="small"
-                  style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}
+                  style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
                 >
                   Nueva dirección
                 </ThemedText>
@@ -451,10 +451,10 @@ export default function CheckoutScreen({ route }: any) {
                   { backgroundColor: theme.backgroundSecondary },
                 ]}
               >
-                <Feather name="map" size={16} color={RabbitFoodColors.primary} />
+                <Feather name="map" size={16} color={ComeYaColors.primary} />
                 <ThemedText
                   type="small"
-                  style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}
+                  style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
                 >
                   Ver todas
                 </ThemedText>
@@ -485,7 +485,7 @@ export default function CheckoutScreen({ route }: any) {
         >
           <View style={styles.sectionHeader}>
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-              <Feather name="map-pin" size={20} color={RabbitFoodColors.primary} />
+              <Feather name="map-pin" size={20} color={ComeYaColors.primary} />
               <ThemedText type="h4" style={styles.sectionTitle}>
                 Dirección de entrega
               </ThemedText>
@@ -497,8 +497,8 @@ export default function CheckoutScreen({ route }: any) {
               }}
               style={styles.inlineLink}
             >
-              <Feather name="edit-3" size={16} color={RabbitFoodColors.primary} />
-              <ThemedText type="small" style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}>
+              <Feather name="edit-3" size={16} color={ComeYaColors.primary} />
+              <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
                 Cambiar
               </ThemedText>
             </Pressable>
@@ -510,16 +510,16 @@ export default function CheckoutScreen({ route }: any) {
                 styles.addressCard,
                 {
                   backgroundColor: theme.backgroundSecondary,
-                  borderColor: RabbitFoodColors.primary,
+                  borderColor: ComeYaColors.primary,
                   borderStyle: "dashed",
                 },
               ]}
             >
               <View style={styles.addressContent}>
-                <Feather name="plus" size={20} color={RabbitFoodColors.primary} />
+                <Feather name="plus" size={20} color={ComeYaColors.primary} />
                 <ThemedText
                   type="body"
-                  style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.sm }}
+                  style={{ color: ComeYaColors.primary, marginLeft: Spacing.sm }}
                 >
                   Agregar dirección
                 </ThemedText>
@@ -539,7 +539,7 @@ export default function CheckoutScreen({ route }: any) {
                     backgroundColor: theme.backgroundSecondary,
                     borderColor:
                       selectedAddress?.id === addr.id
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : "transparent",
                   },
                 ]}
@@ -560,7 +560,7 @@ export default function CheckoutScreen({ route }: any) {
                   <Feather
                     name="check-circle"
                     size={20}
-                    color={RabbitFoodColors.primary}
+                    color={ComeYaColors.primary}
                   />
                 ) : null}
               </Pressable>
@@ -573,8 +573,8 @@ export default function CheckoutScreen({ route }: any) {
                 onPress={() => navigation.navigate("AddAddress", { address: selectedAddress, fromCheckout: true } as never)}
                 style={[styles.manageAddressButton, { backgroundColor: theme.backgroundSecondary }]}
               >
-                <Feather name="edit-2" size={16} color={RabbitFoodColors.primary} />
-                <ThemedText type="small" style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}>
+                <Feather name="edit-2" size={16} color={ComeYaColors.primary} />
+                <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
                   Editar esta
                 </ThemedText>
               </Pressable>
@@ -582,8 +582,8 @@ export default function CheckoutScreen({ route }: any) {
                 onPress={() => navigation.navigate("SavedAddresses" as never)}
                 style={[styles.manageAddressButton, { backgroundColor: theme.backgroundSecondary }]}
               >
-                <Feather name="map" size={16} color={RabbitFoodColors.primary} />
-                <ThemedText type="small" style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}>
+                <Feather name="map" size={16} color={ComeYaColors.primary} />
+                <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
                   Gestionar direcciones
                 </ThemedText>
               </Pressable>
@@ -595,7 +595,7 @@ export default function CheckoutScreen({ route }: any) {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="credit-card" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="credit-card" size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={styles.sectionTitle}>
               Método de pago
             </ThemedText>
@@ -608,8 +608,8 @@ export default function CheckoutScreen({ route }: any) {
               }}
               style={styles.inlineLink}
             >
-              <Feather name="edit-3" size={16} color={RabbitFoodColors.primary} />
-              <ThemedText type="small" style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}>
+              <Feather name="edit-3" size={16} color={ComeYaColors.primary} />
+              <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
                 Cambiar
               </ThemedText>
             </Pressable>
@@ -619,8 +619,8 @@ export default function CheckoutScreen({ route }: any) {
             style={[
               styles.paymentOption,
               {
-                backgroundColor: RabbitFoodColors.primaryLight,
-                borderColor: RabbitFoodColors.primary,
+                backgroundColor: ComeYaColors.primaryLight,
+                borderColor: ComeYaColors.primary,
               },
             ]}
           >
@@ -643,7 +643,7 @@ export default function CheckoutScreen({ route }: any) {
                 </ThemedText>
               </View>
             </View>
-            <Feather name="check-circle" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="check-circle" size={20} color={ComeYaColors.primary} />
           </Pressable>
         </View>
 
@@ -652,16 +652,16 @@ export default function CheckoutScreen({ route }: any) {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="tag" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="tag" size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={styles.sectionTitle}>
               Cupón de descuento
             </ThemedText>
           </View>
           
           {appliedCoupon ? (
-            <View style={[styles.appliedCouponBox, { backgroundColor: RabbitFoodColors.success + "15", borderColor: RabbitFoodColors.success }]}>
+            <View style={[styles.appliedCouponBox, { backgroundColor: ComeYaColors.success + "15", borderColor: ComeYaColors.success }]}>
               <View style={{ flex: 1 }}>
-                <ThemedText type="body" style={{ fontWeight: "600", color: RabbitFoodColors.success }}>
+                <ThemedText type="body" style={{ fontWeight: "600", color: ComeYaColors.success }}>
                   {couponCode.toUpperCase()}
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
@@ -669,7 +669,7 @@ export default function CheckoutScreen({ route }: any) {
                 </ThemedText>
               </View>
               <Pressable onPress={handleRemoveCoupon} style={styles.removeCouponButton}>
-                <Feather name="x" size={20} color={RabbitFoodColors.error} />
+                <Feather name="x" size={20} color={ComeYaColors.error} />
               </Pressable>
             </View>
           ) : (
@@ -686,7 +686,7 @@ export default function CheckoutScreen({ route }: any) {
               <Pressable
                 onPress={handleApplyCoupon}
                 disabled={couponLoading || !couponCode.trim()}
-                style={[styles.applyCouponButton, { backgroundColor: couponLoading || !couponCode.trim() ? theme.textSecondary : RabbitFoodColors.primary }]}
+                style={[styles.applyCouponButton, { backgroundColor: couponLoading || !couponCode.trim() ? theme.textSecondary : ComeYaColors.primary }]}
               >
                 {couponLoading ? (
                   <ActivityIndicator size="small" color="#FFF" />
@@ -705,7 +705,7 @@ export default function CheckoutScreen({ route }: any) {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="refresh-cw" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="refresh-cw" size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={styles.sectionTitle}>
               Si algo no está disponible...
             </ThemedText>
@@ -734,10 +734,10 @@ export default function CheckoutScreen({ route }: any) {
                       styles.substitutionOption,
                       {
                         backgroundColor: isSelected
-                          ? RabbitFoodColors.primary + "15"
+                          ? ComeYaColors.primary + "15"
                           : theme.backgroundSecondary,
                         borderColor: isSelected
-                          ? RabbitFoodColors.primary
+                          ? ComeYaColors.primary
                           : "transparent",
                       },
                     ]}
@@ -747,13 +747,13 @@ export default function CheckoutScreen({ route }: any) {
                       name={info.icon}
                       size={20}
                       color={
-                        isSelected ? RabbitFoodColors.primary : theme.textSecondary
+                        isSelected ? ComeYaColors.primary : theme.textSecondary
                       }
                     />
                     <ThemedText
                       type="small"
                       style={{
-                        color: isSelected ? RabbitFoodColors.primary : theme.text,
+                        color: isSelected ? ComeYaColors.primary : theme.text,
                         marginTop: Spacing.xs,
                         fontWeight: isSelected ? "600" : "400",
                       }}
@@ -774,7 +774,7 @@ export default function CheckoutScreen({ route }: any) {
             }}
             style={styles.itemSubstitutionToggle}
           >
-            <ThemedText type="small" style={{ color: RabbitFoodColors.primary }}>
+            <ThemedText type="small" style={{ color: ComeYaColors.primary }}>
               {showItemSubstitutions
                 ? "Usar misma opción para todos"
                 : "Elegir por producto"}
@@ -782,7 +782,7 @@ export default function CheckoutScreen({ route }: any) {
             <Feather
               name={showItemSubstitutions ? "chevron-up" : "chevron-down"}
               size={16}
-              color={RabbitFoodColors.primary}
+              color={ComeYaColors.primary}
             />
           </Pressable>
 
@@ -826,7 +826,7 @@ export default function CheckoutScreen({ route }: any) {
                             styles.itemSubstitutionButton,
                             {
                               backgroundColor: isSelected
-                                ? RabbitFoodColors.primary
+                                ? ComeYaColors.primary
                                 : theme.backgroundSecondary,
                             },
                           ]}
@@ -849,7 +849,7 @@ export default function CheckoutScreen({ route }: any) {
         {/* Propina al repartidor */}
         <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
           <View style={styles.sectionHeader}>
-            <Feather name="heart" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="heart" size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={styles.sectionTitle}>Propina al repartidor</ThemedText>
           </View>
           <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
@@ -861,8 +861,8 @@ export default function CheckoutScreen({ route }: any) {
                 key={t}
                 onPress={() => { setTip(t); Haptics.selectionAsync(); }}
                 style={[styles.tipChip, {
-                  backgroundColor: tip === t ? RabbitFoodColors.primary : theme.backgroundSecondary,
-                  borderColor: tip === t ? RabbitFoodColors.primary : theme.border,
+                  backgroundColor: tip === t ? ComeYaColors.primary : theme.backgroundSecondary,
+                  borderColor: tip === t ? ComeYaColors.primary : theme.border,
                 }]}
               >
                 <ThemedText type="small" style={{ color: tip === t ? "#FFF" : theme.text, fontWeight: "600" }}>
@@ -877,7 +877,7 @@ export default function CheckoutScreen({ route }: any) {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="shopping-bag" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="shopping-bag" size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={styles.sectionTitle}>
               Resumen del pedido
             </ThemedText>
@@ -919,7 +919,7 @@ export default function CheckoutScreen({ route }: any) {
         </View>
         <View style={styles.totalRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Comision Rabbit Food (15%)
+            Comision ComeYa (15%)
           </ThemedText>
           <ThemedText type="body">Bs. {nemyCommission.toFixed(2)}</ThemedText>
         </View>
@@ -931,10 +931,10 @@ export default function CheckoutScreen({ route }: any) {
         </View>
         {couponDiscount > 0 && (
           <View style={styles.totalRow}>
-            <ThemedText type="body" style={{ color: RabbitFoodColors.success }}>
+            <ThemedText type="body" style={{ color: ComeYaColors.success }}>
               Cupón ({couponCode})
             </ThemedText>
-            <ThemedText type="body" style={{ color: RabbitFoodColors.success }}>
+            <ThemedText type="body" style={{ color: ComeYaColors.success }}>
               -Bs. {couponDiscount.toFixed(2)}
             </ThemedText>
           </View>
@@ -947,7 +947,7 @@ export default function CheckoutScreen({ route }: any) {
         )}
         <View style={[styles.totalRow, styles.grandTotal]}>
           <ThemedText type="h3">Total</ThemedText>
-          <ThemedText type="h2" style={{ color: RabbitFoodColors.primary }}>
+          <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
             Bs. {total.toFixed(2)}
           </ThemedText>
         </View>

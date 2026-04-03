@@ -24,7 +24,7 @@ import { apiRequest } from '@/lib/query-client';
 import { isInCoverageArea, AUTLAN_CENTER } from '@/utils/coverage';
 import { checkDuplicateAddress, suggestSimilarAddresses, Address } from '@/utils/addressValidation';
 import { useDebounce, usePerformanceMonitor } from '@/hooks/usePerformance';
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import * as Location from 'expo-location';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddAddress'>;
@@ -167,9 +167,9 @@ export default function AddAddressScreen() {
       >
         {/* Error banner */}
         {error && (
-          <View style={[styles.banner, { backgroundColor: RabbitFoodColors.error + '15', borderColor: RabbitFoodColors.error + '40' }]}>
-            <Feather name="alert-circle" size={16} color={RabbitFoodColors.error} />
-            <ThemedText type="small" style={{ color: RabbitFoodColors.error, flex: 1, marginLeft: Spacing.sm }}>
+          <View style={[styles.banner, { backgroundColor: ComeYaColors.error + '15', borderColor: ComeYaColors.error + '40' }]}>
+            <Feather name="alert-circle" size={16} color={ComeYaColors.error} />
+            <ThemedText type="small" style={{ color: ComeYaColors.error, flex: 1, marginLeft: Spacing.sm }}>
               {error}
             </ThemedText>
           </View>
@@ -177,9 +177,9 @@ export default function AddAddressScreen() {
 
         {/* Success banner */}
         {success && (
-          <View style={[styles.banner, { backgroundColor: RabbitFoodColors.success + '15', borderColor: RabbitFoodColors.success + '40' }]}>
-            <Feather name="check-circle" size={16} color={RabbitFoodColors.success} />
-            <ThemedText type="small" style={{ color: RabbitFoodColors.success, flex: 1, marginLeft: Spacing.sm }}>
+          <View style={[styles.banner, { backgroundColor: ComeYaColors.success + '15', borderColor: ComeYaColors.success + '40' }]}>
+            <Feather name="check-circle" size={16} color={ComeYaColors.success} />
+            <ThemedText type="small" style={{ color: ComeYaColors.success, flex: 1, marginLeft: Spacing.sm }}>
               {existingAddress?.id ? 'Dirección actualizada' : 'Dirección guardada correctamente'}
             </ThemedText>
           </View>
@@ -189,7 +189,7 @@ export default function AddAddressScreen() {
         <Pressable
           style={[
             styles.gpsButton,
-            { backgroundColor: RabbitFoodColors.primary, opacity: locating ? 0.7 : 1 },
+            { backgroundColor: ComeYaColors.primary, opacity: locating ? 0.7 : 1 },
             Shadows.sm,
           ]}
           onPress={async () => {
@@ -251,7 +251,7 @@ export default function AddAddressScreen() {
                   style={[styles.suggestionItem, { backgroundColor: theme.card, borderColor: theme.border }]}
                   onPress={() => handleSuggestionSelect(addr)}
                 >
-                  <ThemedText type="small" style={{ color: RabbitFoodColors.primary, fontWeight: '600' }}>
+                  <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
                     {addr.label}
                   </ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
@@ -264,13 +264,13 @@ export default function AddAddressScreen() {
 
           {/* Duplicate warning */}
           {duplicateWarning && (
-            <View style={[styles.banner, { backgroundColor: RabbitFoodColors.warning + '15', borderColor: RabbitFoodColors.warning + '40' }]}>
-              <Feather name="alert-triangle" size={16} color={RabbitFoodColors.warning} />
+            <View style={[styles.banner, { backgroundColor: ComeYaColors.warning + '15', borderColor: ComeYaColors.warning + '40' }]}>
+              <Feather name="alert-triangle" size={16} color={ComeYaColors.warning} />
               <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                <ThemedText type="small" style={{ color: RabbitFoodColors.warning, fontWeight: '600' }}>
+                <ThemedText type="small" style={{ color: ComeYaColors.warning, fontWeight: '600' }}>
                   Similar a "{duplicateWarning.label}"
                 </ThemedText>
-                <ThemedText type="caption" style={{ color: RabbitFoodColors.warning }}>
+                <ThemedText type="caption" style={{ color: ComeYaColors.warning }}>
                   {duplicateWarning.street}
                 </ThemedText>
               </View>
@@ -317,8 +317,8 @@ export default function AddAddressScreen() {
             style={[
               styles.mapButton,
               {
-                backgroundColor: coordinates ? RabbitFoodColors.primary + '15' : theme.card,
-                borderColor: coordinates ? RabbitFoodColors.primary : theme.border,
+                backgroundColor: coordinates ? ComeYaColors.primary + '15' : theme.card,
+                borderColor: coordinates ? ComeYaColors.primary : theme.border,
               },
               Shadows.sm,
             ]}
@@ -334,13 +334,13 @@ export default function AddAddressScreen() {
             <Feather
               name={coordinates ? 'check-circle' : 'map-pin'}
               size={20}
-              color={coordinates ? RabbitFoodColors.primary : theme.textSecondary}
+              color={coordinates ? ComeYaColors.primary : theme.textSecondary}
             />
             <ThemedText
               type="body"
               style={{
                 marginLeft: Spacing.sm,
-                color: coordinates ? RabbitFoodColors.primary : theme.textSecondary,
+                color: coordinates ? ComeYaColors.primary : theme.textSecondary,
                 fontWeight: '600',
               }}
             >
@@ -348,9 +348,9 @@ export default function AddAddressScreen() {
             </ThemedText>
           </Pressable>
         ) : (
-          <View style={[styles.banner, { backgroundColor: RabbitFoodColors.primary + '10', borderColor: RabbitFoodColors.primary + '30' }]}>
-            <Feather name="globe" size={16} color={RabbitFoodColors.primary} />
-            <ThemedText type="small" style={{ color: RabbitFoodColors.primary, flex: 1, marginLeft: Spacing.sm }}>
+          <View style={[styles.banner, { backgroundColor: ComeYaColors.primary + '10', borderColor: ComeYaColors.primary + '30' }]}>
+            <Feather name="globe" size={16} color={ComeYaColors.primary} />
+            <ThemedText type="small" style={{ color: ComeYaColors.primary, flex: 1, marginLeft: Spacing.sm }}>
               En la versión web se usará la ubicación del centro de San Cristóbal por defecto.
             </ThemedText>
           </View>

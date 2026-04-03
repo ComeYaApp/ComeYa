@@ -31,7 +31,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { ConfettiAnimation } from "@/components/ConfettiAnimation";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useToast } from "@/contexts/ToastContext";
 import {
@@ -51,7 +51,7 @@ type CarnivalScreenNavigationProp = NativeStackNavigationProp<
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const REMINDERS_KEY = "@rabbitfood_carnival_reminders";
+const REMINDERS_KEY = "@ComeYa_carnival_reminders";
 
 type ReminderResult = { success: boolean; message?: string };
 
@@ -335,8 +335,8 @@ function EventCard({
               styles.reminderButton,
               {
                 backgroundColor: hasReminder
-                  ? RabbitFoodColors.carnival.pink
-                  : RabbitFoodColors.primary,
+                  ? ComeYaColors.carnival.pink
+                  : ComeYaColors.primary,
                 opacity: isSettingReminder ? 0.6 : 1,
               },
             ]}
@@ -378,12 +378,12 @@ function DayHeader({ date, day }: { date: string; day: string }) {
       style={[styles.dayHeader, { backgroundColor: theme.backgroundSecondary }]}
     >
       <View style={styles.dayHeaderIcon}>
-        <Feather name="calendar" size={18} color={RabbitFoodColors.carnival.pink} />
+        <Feather name="calendar" size={18} color={ComeYaColors.carnival.pink} />
       </View>
       <ThemedText
         type="h3"
         style={{
-          color: RabbitFoodColors.primary,
+          color: ComeYaColors.primary,
           textTransform: "capitalize",
           flex: 1,
         }}
@@ -476,7 +476,7 @@ export default function CarnivalScreen() {
       />
 
       <LinearGradient
-        colors={[RabbitFoodColors.carnival.pink, "#9C27B0", "#6A1B9A"]}
+        colors={[ComeYaColors.carnival.pink, "#9C27B0", "#6A1B9A"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + Spacing.md }]}
@@ -517,7 +517,7 @@ export default function CarnivalScreen() {
               styles.dayChip,
               {
                 backgroundColor:
-                  selectedDay === null ? RabbitFoodColors.primary : theme.card,
+                  selectedDay === null ? ComeYaColors.primary : theme.card,
                 ...Shadows.sm,
               },
             ]}
@@ -546,7 +546,7 @@ export default function CarnivalScreen() {
                 styles.dayChip,
                 {
                   backgroundColor:
-                    selectedDay === day.date ? RabbitFoodColors.primary : theme.card,
+                    selectedDay === day.date ? ComeYaColors.primary : theme.card,
                   ...Shadows.sm,
                 },
               ]}
@@ -572,7 +572,7 @@ export default function CarnivalScreen() {
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat;
             const catColor =
-              cat === "Todos" ? RabbitFoodColors.primary : getCategoryColor(cat);
+              cat === "Todos" ? ComeYaColors.primary : getCategoryColor(cat);
 
             return (
               <Pressable
@@ -607,12 +607,12 @@ export default function CarnivalScreen() {
           <View
             style={[
               styles.countBadge,
-              { backgroundColor: RabbitFoodColors.primary + "20" },
+              { backgroundColor: ComeYaColors.primary + "20" },
             ]}
           >
             <ThemedText
               type="body"
-              style={{ color: RabbitFoodColors.primary, fontWeight: "700" }}
+              style={{ color: ComeYaColors.primary, fontWeight: "700" }}
             >
               {filteredEvents.length}
             </ThemedText>
@@ -682,14 +682,14 @@ export default function CarnivalScreen() {
           entering={FadeInDown.delay(500)}
           style={[
             styles.infoCard,
-            { backgroundColor: RabbitFoodColors.carnival.pink + "15" },
+            { backgroundColor: ComeYaColors.carnival.pink + "15" },
           ]}
         >
           <View style={styles.infoRow}>
             <View
               style={[
                 styles.infoIcon,
-                { backgroundColor: RabbitFoodColors.carnival.pink },
+                { backgroundColor: ComeYaColors.carnival.pink },
               ]}
             >
               <Feather name="info" size={16} color="#FFFFFF" />
@@ -923,7 +923,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   headerYear: {
-    color: RabbitFoodColors.carnival.gold,
+    color: ComeYaColors.carnival.gold,
     fontSize: 48,
     fontWeight: "800",
     textShadow: "0px 2px 4px rgba(0,0,0,0.3)",
@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: RabbitFoodColors.carnival.pink + "20",
+    backgroundColor: ComeYaColors.carnival.pink + "20",
     justifyContent: "center",
     alignItems: "center",
     marginRight: Spacing.md,

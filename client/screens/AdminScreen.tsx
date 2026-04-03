@@ -20,7 +20,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import {
   DashboardTab,
@@ -57,7 +57,7 @@ const menuItems: MenuItem[] = [
     subtitle: "Métricas y pedidos activos",
     icon: "bar-chart-2",
     tab: "dashboard",
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
   },
   {
     title: "Pedidos",
@@ -363,7 +363,7 @@ export default function AdminMenuScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={RabbitFoodColors.primary}
+              tintColor={ComeYaColors.primary}
             />
           }
         >
@@ -439,8 +439,8 @@ export default function AdminMenuScreen() {
               {selectedUser ? (
                 <>
                   <View style={[styles.userDetailCard, { backgroundColor: theme.backgroundSecondary }]}>
-                    <View style={[styles.avatar, { backgroundColor: RabbitFoodColors.primaryLight, width: 60, height: 60 }]}>
-                      <ThemedText type="h2" style={{ color: RabbitFoodColors.primaryDark }}>
+                    <View style={[styles.avatar, { backgroundColor: ComeYaColors.primaryLight, width: 60, height: 60 }]}>
+                      <ThemedText type="h2" style={{ color: ComeYaColors.primaryDark }}>
                         {selectedUser.name.charAt(0).toUpperCase()}
                       </ThemedText>
                     </View>
@@ -465,14 +465,14 @@ export default function AdminMenuScreen() {
                           style={[
                             styles.tab,
                             {
-                              backgroundColor: userRoleEdit === role ? RabbitFoodColors.primary : "transparent",
-                              borderColor: RabbitFoodColors.primary,
+                              backgroundColor: userRoleEdit === role ? ComeYaColors.primary : "transparent",
+                              borderColor: ComeYaColors.primary,
                             },
                           ]}
                         >
                           <ThemedText
                             type="small"
-                            style={{ color: userRoleEdit === role ? "#FFFFFF" : RabbitFoodColors.primary }}
+                            style={{ color: userRoleEdit === role ? "#FFFFFF" : ComeYaColors.primary }}
                           >
                             {role === "customer" ? "Cliente" : role === "business" ? "Negocio" : role === "driver" ? "Repartidor" : "Admin"}
                           </ThemedText>
@@ -489,7 +489,7 @@ export default function AdminMenuScreen() {
             </ScrollView>
             <Pressable
               onPress={handleUpdateUserRole}
-              style={[styles.saveButton, { backgroundColor: RabbitFoodColors.primary }]}
+              style={[styles.saveButton, { backgroundColor: ComeYaColors.primary }]}
             >
               <ThemedText type="body" style={{ color: "#FFFFFF", fontWeight: "600" }}>
                 Guardar Cambios

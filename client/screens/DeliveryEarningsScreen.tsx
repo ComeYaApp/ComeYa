@@ -21,7 +21,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 
 interface EarningsData {
   earnings: {
@@ -66,7 +66,7 @@ function StatCard({
   icon,
   label,
   value,
-  color = RabbitFoodColors.primary,
+  color = ComeYaColors.primary,
   delay = 0,
 }: {
   icon: string;
@@ -241,7 +241,7 @@ export default function DeliveryEarningsScreen() {
         return "briefcase";
       case "cash_debt_business":
         return "home";
-      case "cash_debt_rabbitfood":
+      case "cash_debt_ComeYa":
       case "cash_debt":
         return "alert-circle";
       case "cash_income":
@@ -262,16 +262,16 @@ export default function DeliveryEarningsScreen() {
       case "delivery_income":
       case "cash_income":
       case "cash_delivery":
-        return RabbitFoodColors.success;
+        return ComeYaColors.success;
       case "cash_collected":
         return "#2196F3";
       case "cash_debt_business":
         return "#FF9800";
-      case "cash_debt_rabbitfood":
+      case "cash_debt_ComeYa":
       case "cash_debt":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       case "withdrawal":
-        return RabbitFoodColors.warning;
+        return ComeYaColors.warning;
       case "tip":
         return "#9C27B0";
       default:
@@ -298,14 +298,14 @@ export default function DeliveryEarningsScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       >
         <>
             <Animated.View
               entering={FadeInDown.springify()}
-              style={[styles.walletCard, { backgroundColor: wallet.cashOwed > 0 ? RabbitFoodColors.error : RabbitFoodColors.success }, Shadows.lg]}
+              style={[styles.walletCard, { backgroundColor: wallet.cashOwed > 0 ? ComeYaColors.error : ComeYaColors.success }, Shadows.lg]}
             >
               <ThemedText type="body" style={{ color: "rgba(255,255,255,0.8)" }}>
                 {wallet.cashOwed > 0 ? "🚨 Debes Depositar" : "✅ Disponible para Retirar"}
@@ -336,7 +336,7 @@ export default function DeliveryEarningsScreen() {
                   <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>${(transactions.filter(t => t.type === 'delivery_income').reduce((sum, t) => sum + t.amount, 0) / 100).toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.breakdownRow}>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>🏦 Debes depositar a Rabbit Food:</ThemedText>
+                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>🏦 Debes depositar a ComeYa:</ThemedText>
                   <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>-${wallet.cashOwed.toFixed(2)}</ThemedText>
                 </View>
                 {wallet.canWithdraw > 0 ? (
@@ -351,8 +351,8 @@ export default function DeliveryEarningsScreen() {
                 onPress={() => wallet.canWithdraw > 0 ? setWithdrawModalVisible(true) : setDepositInfoModalVisible(true)}
                 style={[styles.withdrawButton]}
               >
-                <Feather name={wallet.canWithdraw > 0 ? "arrow-up-circle" : "info"} size={20} color={wallet.cashOwed > 0 ? "#FFF" : RabbitFoodColors.success} />
-                <ThemedText type="body" style={{ color: wallet.cashOwed > 0 ? "#FFF" : RabbitFoodColors.success, marginLeft: Spacing.xs, fontWeight: "600" }}>
+                <Feather name={wallet.canWithdraw > 0 ? "arrow-up-circle" : "info"} size={20} color={wallet.cashOwed > 0 ? "#FFF" : ComeYaColors.success} />
+                <ThemedText type="body" style={{ color: wallet.cashOwed > 0 ? "#FFF" : ComeYaColors.success, marginLeft: Spacing.xs, fontWeight: "600" }}>
                   {wallet.canWithdraw > 0 ? "Solicitar Retiro" : "Ver datos de depósito"}
                 </ThemedText>
               </Pressable>
@@ -366,7 +366,7 @@ export default function DeliveryEarningsScreen() {
                   Balance digital = pagos con tarjeta listos para retiro. Efectivo cobrado = dinero que tienes en mano.
                 </ThemedText>
                 <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                  Si cobraste en efectivo, la comisión de Rabbit Food aparece como "Debes depositar". Hasta saldarla, los retiros quedan retenidos.
+                  Si cobraste en efectivo, la comisión de ComeYa aparece como "Debes depositar". Hasta saldarla, los retiros quedan retenidos.
                 </ThemedText>
               </View>
             </View>
@@ -377,12 +377,12 @@ export default function DeliveryEarningsScreen() {
                   <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                     Total ganado histórico
                   </ThemedText>
-                  <ThemedText type="h2" style={{ color: RabbitFoodColors.primary }}>
+                  <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
                     ${wallet.totalEarned.toFixed(2)}
                   </ThemedText>
                 </View>
-                <View style={[styles.iconCircle, { backgroundColor: RabbitFoodColors.primary + "20" }]}>
-                  <Feather name="award" size={24} color={RabbitFoodColors.primary} />
+                <View style={[styles.iconCircle, { backgroundColor: ComeYaColors.primary + "20" }]}>
+                  <Feather name="award" size={24} color={ComeYaColors.primary} />
                 </View>
               </View>
             </View>
@@ -393,11 +393,11 @@ export default function DeliveryEarningsScreen() {
             
             {wallet.cashOwed > 0 ? (
               <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, marginBottom: Spacing.md }]}>
-                <Feather name="info" size={20} color={RabbitFoodColors.primary} />
+                <Feather name="info" size={20} color={ComeYaColors.primary} />
                 <View style={{ flex: 1, marginLeft: Spacing.md }}>
                   <ThemedText type="body" style={{ fontWeight: "600" }}>¿Por qué debo depositar?</ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                    Cobraste efectivo al cliente. Los ${wallet.cashOwed.toFixed(2)} son la comisión de Rabbit Food (15% de productos) que debes entregar. Hasta que deposites, tus retiros quedan retenidos.
+                    Cobraste efectivo al cliente. Los ${wallet.cashOwed.toFixed(2)} son la comisión de ComeYa (15% de productos) que debes entregar. Hasta que deposites, tus retiros quedan retenidos.
                   </ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
                     Deposita antes del viernes y sube tu comprobante: al aprobarlo liberamos tu saldo digital y desaparece esta deuda.
@@ -425,7 +425,7 @@ export default function DeliveryEarningsScreen() {
                   <ThemedText
                     type="body"
                     style={{
-                      color: tx.amount < 0 ? RabbitFoodColors.error : RabbitFoodColors.success,
+                      color: tx.amount < 0 ? ComeYaColors.error : ComeYaColors.success,
                       fontWeight: "600",
                     }}
                   >
@@ -450,7 +450,7 @@ export default function DeliveryEarningsScreen() {
               entering={FadeInDown.delay(100).springify()}
               style={[
                 styles.earningsCard,
-                { backgroundColor: RabbitFoodColors.primary },
+                { backgroundColor: ComeYaColors.primary },
                 Shadows.lg,
               ]}
             >
@@ -500,7 +500,7 @@ export default function DeliveryEarningsScreen() {
                       style={{
                         color:
                           selectedPeriod === period
-                            ? RabbitFoodColors.primary
+                            ? ComeYaColors.primary
                             : "#FFFFFF",
                         fontWeight: "600",
                       }}
@@ -590,7 +590,7 @@ export default function DeliveryEarningsScreen() {
             <Pressable
               onPress={handleWithdraw}
               disabled={withdrawMutation.isPending}
-              style={[styles.confirmButton, { backgroundColor: RabbitFoodColors.primary, opacity: withdrawMutation.isPending ? 0.5 : 1 }]}
+              style={[styles.confirmButton, { backgroundColor: ComeYaColors.primary, opacity: withdrawMutation.isPending ? 0.5 : 1 }]}
             >
               <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
                 {withdrawMutation.isPending ? "Procesando..." : "Confirmar Retiro"}
@@ -649,7 +649,7 @@ export default function DeliveryEarningsScreen() {
                   submitProofMutation.mutate({ proofUrl: proofUrl.trim() });
                 }}
                 disabled={submitProofMutation.isPending}
-                style={[styles.confirmButton, { backgroundColor: RabbitFoodColors.success, opacity: submitProofMutation.isPending ? 0.5 : 1 }]}
+                style={[styles.confirmButton, { backgroundColor: ComeYaColors.success, opacity: submitProofMutation.isPending ? 0.5 : 1 }]}
               >
                 <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
                   {submitProofMutation.isPending ? "Enviando..." : "Enviar Comprobante"}

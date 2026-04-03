@@ -1,4 +1,4 @@
-package com.rabbitfood.app
+package com.comeya.app
 
 import android.app.Application
 import android.content.res.Configuration

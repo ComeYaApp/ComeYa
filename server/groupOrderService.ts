@@ -44,7 +44,7 @@ export class GroupOrderService {
       success: true,
       groupOrderId,
       shareToken,
-      shareLink: `rabbitfood://group-order/${shareToken}`,
+      shareLink: `comeya://group-order/${shareToken}`,
     };
   }
 

@@ -1,28 +1,28 @@
 {
   "expo": {
-    "name": "Rabbit Food",
-    "slug": "rabbitfood",
+    "name": "ComeYa",
+    "slug": "comeya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rabbitfood",
+    "scheme": "comeya",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rabbitfood.app",
+      "bundleIdentifier": "com.comeya.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicacion para asignarte pedidos y mostrar tu posicion en tiempo real."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E8B4A8",
+        "backgroundColor": "#FF6B35",
         "foregroundImage": "./assets/images/icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.rabbitfood.app",
+      "package": "com.comeya.app",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDLejpcrNJNHzQIduWuot5QAoepitVk2zY"
@@ -40,21 +40,16 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#E8B4A8",
+          "backgroundColor": "#FF6B35",
           "dark": {
-            "backgroundColor": "#1A1A1A",
+            "backgroundColor": "#121212",
             "image": "./assets/images/splash-icon.png"
           }
         }
       ],
       "expo-web-browser",
       "expo-secure-store",
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "AIzaSyDLejpcrNJNHzQIduWuot5QAoepitVk2zY"
-        }
-      ]
+      "expo-location"
     ],
     "experiments": {
       "reactCompiler": true

@@ -8,7 +8,7 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -152,7 +152,7 @@ export default function AdminBankAccountScreen() {
           <Pressable
             onPress={handleSave}
             disabled={saveMutation.isPending}
-            style={[styles.saveButton, { backgroundColor: RabbitFoodColors.primary, opacity: saveMutation.isPending ? 0.5 : 1 }]}
+            style={[styles.saveButton, { backgroundColor: ComeYaColors.primary, opacity: saveMutation.isPending ? 0.5 : 1 }]}
           >
             <Feather name="save" size={20} color="#FFF" />
             <ThemedText type="body" style={{ color: "#FFF", marginLeft: 8, fontWeight: "600" }}>
@@ -162,8 +162,8 @@ export default function AdminBankAccountScreen() {
         </View>
 
         {data?.bankAccount && (
-          <View style={[styles.previewCard, { backgroundColor: RabbitFoodColors.success + "20" }]}>
-            <Feather name="check-circle" size={24} color={RabbitFoodColors.success} />
+          <View style={[styles.previewCard, { backgroundColor: ComeYaColors.success + "20" }]}>
+            <Feather name="check-circle" size={24} color={ComeYaColors.success} />
             <View style={{ flex: 1, marginLeft: Spacing.md }}>
               <ThemedText type="body" style={{ fontWeight: "600", marginBottom: 4 }}>
                 Cuenta activa

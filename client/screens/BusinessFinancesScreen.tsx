@@ -16,7 +16,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 type Period = "week" | "month" | "all";
@@ -24,11 +24,35 @@ type Period = "week" | "month" | "all";
 interface Transaction {
   id: string;
   orderId: string;
-  amount: number;
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
   status: string;
+  paymentMethod: string | null;
+  deliveryAddress: { street?: string; reference?: string } | null;
+  notes: string | null;
   createdAt: string;
   customerName?: string;
+  customerPhone?: string;
 }
+
+interface Payout {
+  id: string;
+  orderId: string;
+  amount: number;
+  method: string | null;
+  status: "pending" | "paid";
+  createdAt: string;
+  paidAt?: string;
+}
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  pago_movil: "📱 Pago Móvil",
+  binance_pay: "🟡 Binance Pay",
+  zinli: "💜 Zinli",
+  zelle: "💙 Zelle",
+  cash: "💵 Efectivo",
+};
 
 export default function BusinessFinancesScreen() {
   const insets = useSafeAreaInsets();
@@ -44,25 +68,29 @@ export default function BusinessFinancesScreen() {
     completedAmount: 0,
     transactionCount: 0,
   });
+  const [payouts, setPayouts] = useState<Payout[]>([]);
 
   const loadFinances = async () => {
     try {
-      const url = selectedBusiness
-        ? `/api/business/finances?businessId=${selectedBusiness.id}&period=${selectedPeriod}`
+      const bId = selectedBusiness?.id;
+      const url = bId
+        ? `/api/business/finances?businessId=${bId}&period=${selectedPeriod}`
         : `/api/business/finances?period=${selectedPeriod}`;
-      
-      const response = await apiRequest("GET", url);
-      const data = await response.json();
-      
-      if (data.success) {
-        setTransactions(data.transactions || []);
-        setSummary(data.summary || {
-          totalEarnings: 0,
-          pendingAmount: 0,
-          completedAmount: 0,
-          transactionCount: 0,
-        });
+      const payoutsUrl = bId
+        ? `/api/business/payouts?businessId=${bId}`
+        : `/api/business/payouts`;
+
+      const [finRes, payRes] = await Promise.all([
+        apiRequest("GET", url),
+        apiRequest("GET", payoutsUrl),
+      ]);
+      const [finData, payData] = await Promise.all([finRes.json(), payRes.json()]);
+
+      if (finData.success) {
+        setTransactions(finData.transactions || []);
+        setSummary(finData.summary || { totalEarnings: 0, pendingAmount: 0, completedAmount: 0, transactionCount: 0 });
       }
+      if (payData.success) setPayouts(payData.payouts || []);
     } catch (error) {
       console.error("Error loading finances:", error);
     } finally {
@@ -89,14 +117,14 @@ export default function BusinessFinancesScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
-        return RabbitFoodColors.success;
+        return ComeYaColors.success;
       case "pending":
       case "accepted":
       case "preparing":
       case "on_the_way":
-        return RabbitFoodColors.warning;
+        return ComeYaColors.warning;
       case "cancelled":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       default:
         return theme.textSecondary;
     }
@@ -114,6 +142,12 @@ export default function BusinessFinancesScreen() {
     return labels[status] || status;
   };
 
+  const formatAddress = (addr: Transaction["deliveryAddress"]) => {
+    if (!addr) return null;
+    const parts = [addr.street, addr.reference].filter(Boolean);
+    return parts.join(" · ") || null;
+  };
+
   if (loading) {
     return (
       <LinearGradient
@@ -121,7 +155,7 @@ export default function BusinessFinancesScreen() {
         style={styles.container}
       >
         <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
-          <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+          <ActivityIndicator size="large" color={ComeYaColors.primary} />
           <ThemedText style={{ marginTop: Spacing.md }}>Cargando finanzas...</ThemedText>
         </View>
       </LinearGradient>
@@ -143,7 +177,7 @@ export default function BusinessFinancesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       >
@@ -166,7 +200,7 @@ export default function BusinessFinancesScreen() {
             type="h1"
             style={{ color: "#FFFFFF", fontSize: 38, marginVertical: Spacing.sm }}
           >
-            ${(summary.totalEarnings / 100).toFixed(2)}
+            Bs. {summary.totalEarnings.toFixed(2)}
           </ThemedText>
 
           <View style={styles.periodSelector}>
@@ -201,7 +235,7 @@ export default function BusinessFinancesScreen() {
                 Completados
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                ${(summary.completedAmount / 100).toFixed(2)}
+                Bs. {summary.completedAmount.toFixed(2)}
               </ThemedText>
             </View>
             <View style={styles.summaryItem}>
@@ -209,47 +243,73 @@ export default function BusinessFinancesScreen() {
                 Pendientes
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                ${(summary.pendingAmount / 100).toFixed(2)}
+                Bs. {summary.pendingAmount.toFixed(2)}
               </ThemedText>
             </View>
           </View>
         </Animated.View>
 
-        {/* Información de Stripe */}
+        {/* Sistema de Pagos */}
         <View style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}>
           <View style={styles.infoHeader}>
-            <Feather name="info" size={20} color={RabbitFoodColors.primary} />
-            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
-              Sistema de Pagos
-            </ThemedText>
+            <Feather name="info" size={20} color={ComeYaColors.primary} />
+            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Sistema de Pagos</ThemedText>
           </View>
           <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
             • Recibes el 100% del precio base de tus productos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • Rabbit Food agrega un 15% de markup al precio final
+            • ComeYa agrega un 15% de markup al precio final del cliente
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • Pagos procesados con Stripe de forma segura
+            • Métodos: Pago Móvil, Binance Pay, Zinli, Zelle, Efectivo
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • Liquidación automática al completar pedido
+            • El admin transfiere tus ganancias al confirmar la entrega
           </ThemedText>
-          
-          <Pressable
-            style={[styles.stripeButton, { backgroundColor: "#635BFF" }]}
-            onPress={() => {
-              if (typeof window !== "undefined") {
-                window.open("https://dashboard.stripe.com/dashboard", "_blank");
-              }
-            }}
-          >
-            <Feather name="external-link" size={16} color="#FFFFFF" />
-            <ThemedText type="small" style={{ color: "#FFFFFF", marginLeft: Spacing.xs }}>
-              Ver en Stripe Dashboard
-            </ThemedText>
-          </Pressable>
         </View>
+
+        {/* Payouts Pendientes */}
+        {payouts.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="h3">Pagos Pendientes</ThemedText>
+              <Badge text={`${payouts.filter(p => p.status === "pending").length}`} variant="warning" />
+            </View>
+            {payouts.map((payout, index) => (
+              <Animated.View
+                key={payout.id}
+                entering={FadeInDown.delay(index * 40).springify()}
+                style={[styles.transactionCard, { backgroundColor: theme.card }, Shadows.sm]}
+              >
+                <View style={styles.transactionHeader}>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="body" style={{ fontWeight: "600" }}>
+                      Pedido #{payout.orderId.slice(-6)}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {PAYMENT_METHOD_LABELS[payout.method || ""] || "Sin método registrado"}
+                    </ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {new Date(payout.createdAt).toLocaleDateString("es-VE", {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
+                    </ThemedText>
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <ThemedText type="h4" style={{ color: payout.status === "paid" ? ComeYaColors.success : ComeYaColors.warning }}>
+                      Bs. {payout.amount.toFixed(2)}
+                    </ThemedText>
+                    <Badge
+                      text={payout.status === "paid" ? "Pagado" : "Pendiente"}
+                      variant={payout.status === "paid" ? "success" : "warning"}
+                    />
+                  </View>
+                </View>
+              </Animated.View>
+            ))}
+          </>
+        )}
 
         {/* Historial de Transacciones */}
         <View style={styles.sectionHeader}>
@@ -274,42 +334,79 @@ export default function BusinessFinancesScreen() {
               entering={FadeInDown.delay(index * 50).springify()}
               style={[styles.transactionCard, { backgroundColor: theme.card }, Shadows.sm]}
             >
+              {/* Fila superior: pedido + monto */}
               <View style={styles.transactionHeader}>
                 <View style={{ flex: 1 }}>
                   <ThemedText type="body" style={{ fontWeight: "600" }}>
                     Pedido #{transaction.orderId.slice(-6)}
                   </ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    {transaction.customerName || "Cliente"}
-                  </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                     {new Date(transaction.createdAt).toLocaleDateString("es-VE", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
+                      day: "numeric", month: "short", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
                     })}
                   </ThemedText>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <ThemedText
-                    type="h4"
-                    style={{ color: getStatusColor(transaction.status) }}
-                  >
-                    ${(transaction.amount / 100).toFixed(2)}
+                  <ThemedText type="h4" style={{ color: getStatusColor(transaction.status) }}>
+                    Bs. {transaction.subtotal.toFixed(2)}
                   </ThemedText>
                   <Badge
                     text={getStatusLabel(transaction.status)}
                     variant={
-                      transaction.status === "delivered"
-                        ? "success"
-                        : transaction.status === "cancelled"
-                        ? "error"
-                        : "warning"
+                      transaction.status === "delivered" ? "success"
+                      : transaction.status === "cancelled" ? "error"
+                      : "warning"
                     }
                   />
                 </View>
+              </View>
+
+              {/* Detalles adicionales */}
+              <View style={styles.transactionDetails}>
+                {transaction.customerName ? (
+                  <View style={styles.detailRow}>
+                    <Feather name="user" size={12} color={theme.textSecondary} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                      {transaction.customerName}
+                      {transaction.customerPhone ? ` · ${transaction.customerPhone}` : ""}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {transaction.paymentMethod ? (
+                  <View style={styles.detailRow}>
+                    <Feather name="credit-card" size={12} color={theme.textSecondary} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                      {PAYMENT_METHOD_LABELS[transaction.paymentMethod] || transaction.paymentMethod}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {formatAddress(transaction.deliveryAddress) ? (
+                  <View style={styles.detailRow}>
+                    <Feather name="map-pin" size={12} color={theme.textSecondary} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }} numberOfLines={1}>
+                      {formatAddress(transaction.deliveryAddress)}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {transaction.deliveryFee > 0 ? (
+                  <View style={styles.detailRow}>
+                    <Feather name="truck" size={12} color={theme.textSecondary} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                      Envío: Bs. {transaction.deliveryFee.toFixed(2)}
+                      {" · "}
+                      Total: Bs. {transaction.total.toFixed(2)}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                {transaction.notes ? (
+                  <View style={styles.detailRow}>
+                    <Feather name="message-square" size={12} color={theme.textSecondary} />
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }} numberOfLines={2}>
+                      {transaction.notes}
+                    </ThemedText>
+                  </View>
+                ) : null}
               </View>
             </Animated.View>
           ))
@@ -367,14 +464,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  stripeButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing.md,
-  },
+
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -394,5 +484,16 @@ const styles = StyleSheet.create({
   transactionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  transactionDetails: {
+    marginTop: Spacing.sm,
+    gap: 4,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(0,0,0,0.06)",
+    paddingTop: Spacing.sm,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });

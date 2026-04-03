@@ -17,7 +17,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 
 interface StatsData {
   revenue: {
@@ -46,7 +46,7 @@ function StatCard({
   label,
   value,
   subtext,
-  color = RabbitFoodColors.primary,
+  color = ComeYaColors.primary,
   delay = 0,
 }: {
   icon: string;
@@ -96,10 +96,10 @@ function TopProductRow({
       <View
         style={[
           styles.rankBadge,
-          { backgroundColor: RabbitFoodColors.primary + "20" },
+          { backgroundColor: ComeYaColors.primary + "20" },
         ]}
       >
-        <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+        <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
           {index + 1}
         </ThemedText>
       </View>
@@ -185,7 +185,7 @@ export default function BusinessStatsScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       >
@@ -277,7 +277,7 @@ export default function BusinessStatsScreen() {
             icon="dollar-sign"
             label="Ticket promedio"
             value={`$${(orders.avgValue / 100).toFixed(0)}`}
-            color={RabbitFoodColors.primary}
+            color={ComeYaColors.primary}
             delay={250}
           />
         </View>

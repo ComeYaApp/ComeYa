@@ -20,10 +20,11 @@ import { EmptyState } from "@/components/EmptyState";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { useTheme } from "@/hooks/useTheme";
 import { useReorder } from "@/hooks/useReorder";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { Order, OrderStatus } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 type OrdersScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -73,6 +74,8 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [pendingConfirmId, setPendingConfirmId] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
     try {
@@ -114,6 +117,28 @@ export default function OrdersScreen() {
     setIsRefreshing(false);
   };
 
+  const confirmDelivery = (orderId: string) => {
+    setPendingConfirmId(orderId);
+  };
+
+  const handleConfirmDelivery = async () => {
+    if (!pendingConfirmId) return;
+    const orderId = pendingConfirmId;
+    setPendingConfirmId(null);
+    setConfirmingOrderId(orderId);
+    try {
+      const res = await apiRequest("POST", `/api/fund-release/confirm-delivery`, { orderId });
+      const data = await res.json();
+      if (data.success) {
+        loadOrders();
+      }
+    } catch (e: any) {
+      console.error("Error confirming delivery:", e);
+    } finally {
+      setConfirmingOrderId(null);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -134,15 +159,17 @@ export default function OrdersScreen() {
     }
   };
 
+  // delivered sin confirmar = activo (cliente debe confirmar)
   const activeOrders = orders.filter(
-    (o) => !["delivered", "cancelled"].includes(o.status),
+    (o) => !(o.status === "cancelled" || (o.status === "delivered" && (o as any).confirmedByCustomer))
   );
   const pastOrders = orders.filter((o) =>
-    ["delivered", "cancelled"].includes(o.status),
+    o.status === "cancelled" || (o.status === "delivered" && (o as any).confirmedByCustomer)
   );
 
   const renderOrder = ({ item }: { item: Order }) => {
-    const isActive = !["delivered", "cancelled"].includes(item.status);
+    const needsConfirm = item.status === "delivered" && !(item as any).confirmedByCustomer;
+    const isActive = !(item.status === "cancelled" || (item.status === "delivered" && (item as any).confirmedByCustomer));
 
     return (
       <Pressable
@@ -175,45 +202,47 @@ export default function OrdersScreen() {
           />
         </View>
 
-        {isActive ? (
+        {isActive && (
           <View style={styles.statusSection}>
             <OrderProgressBar status={item.status} />
           </View>
-        ) : null}
+        )}
 
         <View style={styles.orderFooter}>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
             {item.items.length}{" "}
             {item.items.length === 1 ? "producto" : "productos"}
           </ThemedText>
-          <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
-            ${((item.total || 0) / 100).toFixed(2)}
+          <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
+            Bs. {(item.total || 0).toFixed(2)}
           </ThemedText>
         </View>
 
-        {isActive ? (
+        {needsConfirm ? (
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); confirmDelivery(item.id); }}
+            disabled={confirmingOrderId === item.id}
+            style={[styles.confirmButton, { backgroundColor: ComeYaColors.success }]}
+          >
+            <Feather name="check-circle" size={16} color="#FFF" />
+            <ThemedText type="small" style={{ color: "#FFF", marginLeft: Spacing.xs, fontWeight: "600" }}>
+              {confirmingOrderId === item.id ? "Confirmando..." : "✅ Confirmar que recibí mi pedido"}
+            </ThemedText>
+          </Pressable>
+        ) : isActive ? (
           <View style={[styles.trackButton, { borderTopColor: theme.border }]}>
-            <Feather name="map-pin" size={16} color={RabbitFoodColors.primary} />
-            <ThemedText
-              type="small"
-              style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}
-            >
+            <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
+            <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
               Ver seguimiento
             </ThemedText>
           </View>
         ) : (
           <Pressable
             onPress={() => reorder(item)}
-            style={[
-              styles.reorderButton,
-              { backgroundColor: theme.backgroundSecondary },
-            ]}
+            style={[styles.reorderButton, { backgroundColor: theme.backgroundSecondary }]}
           >
-            <Feather name="refresh-cw" size={16} color={RabbitFoodColors.primary} />
-            <ThemedText
-              type="small"
-              style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}
-            >
+            <Feather name="refresh-cw" size={16} color={ComeYaColors.primary} />
+            <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
               Pedir de nuevo
             </ThemedText>
           </Pressable>
@@ -283,10 +312,19 @@ export default function OrdersScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
         showsVerticalScrollIndicator={false}
+      />
+      <ConfirmModal
+        visible={pendingConfirmId !== null}
+        title="Confirmar recepción"
+        message="¿Recibiste tu pedido correctamente? Al confirmar, los fondos serán liberados al negocio y repartidor."
+        confirmText="Sí, lo recibí"
+        cancelText="Cancelar"
+        onConfirm={handleConfirmDelivery}
+        onCancel={() => setPendingConfirmId(null)}
       />
     </LinearGradient>
   );
@@ -343,6 +381,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  confirmButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     marginTop: Spacing.md,
   },

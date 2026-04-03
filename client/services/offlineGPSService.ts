@@ -21,9 +21,9 @@ interface CachedMapData {
   cachedAt: number;
 }
 
-const LOCATION_QUEUE_KEY = '@rabbitfood_location_queue';
-const CACHED_MAPS_KEY = '@rabbitfood_cached_maps';
-const LAST_LOCATION_KEY = '@rabbitfood_last_location';
+const LOCATION_QUEUE_KEY = '@ComeYa_location_queue';
+const CACHED_MAPS_KEY = '@ComeYa_cached_maps';
+const LAST_LOCATION_KEY = '@ComeYa_last_location';
 
 class OfflineGPSService {
   private isOnline: boolean = true;

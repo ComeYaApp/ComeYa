@@ -23,7 +23,7 @@ import { CartButton } from "@/components/CartButton";
 import { ProductCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { mockBusinesses, mockProducts } from "@/data/mockData";
 import { Business, Product } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -195,7 +195,7 @@ export default function BusinessDetailScreen() {
               <View style={styles.businessInfo}>
                 <ThemedText type="h2">{business.name}</ThemedText>
                 <View style={styles.ratingRow}>
-                  <Feather name="star" size={16} color={RabbitFoodColors.warning} />
+                  <Feather name="star" size={16} color={ComeYaColors.warning} />
                   <ThemedText type="body" style={styles.rating}>
                     {business.rating}
                   </ThemedText>
@@ -256,11 +256,11 @@ export default function BusinessDetailScreen() {
                     { backgroundColor: theme.backgroundSecondary },
                   ]}
                 >
-                  <Feather name="phone" size={18} color={RabbitFoodColors.primary} />
+                  <Feather name="phone" size={18} color={ComeYaColors.primary} />
                   <ThemedText
                     type="small"
                     style={{
-                      color: RabbitFoodColors.primary,
+                      color: ComeYaColors.primary,
                       marginLeft: Spacing.xs,
                     }}
                   >
@@ -298,7 +298,7 @@ export default function BusinessDetailScreen() {
                     styles.categoryChip,
                     {
                       backgroundColor: !selectedCategory
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.backgroundSecondary,
                     },
                   ]}
@@ -325,7 +325,7 @@ export default function BusinessDetailScreen() {
                       {
                         backgroundColor:
                           selectedCategory === cat
-                            ? RabbitFoodColors.primary
+                            ? ComeYaColors.primary
                             : theme.backgroundSecondary,
                       },
                     ]}

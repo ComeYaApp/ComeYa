@@ -330,16 +330,8 @@ router.get("/drivers", authenticateToken, requireRole("admin"), async (req, res)
 });
 
 // Finance
-router.get("/finance", authenticateToken, requireRole("admin"), async (req, res) => {
-  try {
-    const { db } = await import("../db");
-    const transactions = await db.execute(sql`SELECT o.id, o.total as amount, o.status, o.paymentMethod as type, o.created_at as createdAt, u.name as userName, 'order' as description FROM orders o LEFT JOIN users u ON o.user_id = u.id ORDER BY o.created_at DESC LIMIT 100`);
-    res.json({ success: true, transactions });
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
-});
-
 // Coupons
-router.get("/coupons", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/coupons", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   res.json({ success: true, coupons: [] });
 });
 
@@ -403,7 +395,7 @@ router.post("/settings/initialize", authenticateToken, requireRole("admin"), asy
     const { db } = await import("../db");
     
     const defaultSettings = [
-      { key: "rabbit_food_commission", value: "15", type: "number", category: "commissions", description: "Comisión Rabbit Food (%)", isPublic: false },
+      { key: "comeya_commission", value: "15", type: "number", category: "commissions", description: "Comisión ComeYa (%)", isPublic: false },
       { key: "business_commission", value: "100", type: "number", category: "commissions", description: "Comisión Negocio (%)", isPublic: false },
       { key: "driver_commission", value: "100", type: "number", category: "commissions", description: "Comisión Repartidor (%)", isPublic: false },
       { key: "regret_period_seconds", value: "60", type: "number", category: "operations", description: "Período de arrepentimiento (segundos)", isPublic: true },

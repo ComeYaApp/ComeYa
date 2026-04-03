@@ -11,7 +11,7 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { Business } from "@/types";
 
 interface BusinessCardProps {
@@ -67,7 +67,7 @@ export function BusinessCard({
             {business.name}
           </ThemedText>
           <View style={styles.ratingRow}>
-            <Feather name="star" size={12} color={RabbitFoodColors.warning} />
+            <Feather name="star" size={12} color={ComeYaColors.warning} />
             <ThemedText type="caption" style={styles.ratingText}>
               {business.rating}
             </ThemedText>
@@ -113,7 +113,7 @@ export function BusinessCard({
             {business.name}
           </ThemedText>
           <View style={styles.ratingContainer}>
-            <Feather name="star" size={14} color={RabbitFoodColors.warning} />
+            <Feather name="star" size={14} color={ComeYaColors.warning} />
             <ThemedText type="small" style={styles.rating}>
               {business.rating}
             </ThemedText>

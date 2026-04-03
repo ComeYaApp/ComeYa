@@ -41,7 +41,7 @@ interface BusinessContextType {
 
 const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
 
-const SELECTED_BUSINESS_KEY = "@rabbitfood_selected_business";
+const SELECTED_BUSINESS_KEY = "@ComeYa_selected_business";
 
 export function BusinessProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();

@@ -354,7 +354,7 @@ export default function SocialFeaturesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Comunidad Rabbit Food</Text>
+      <Text style={styles.title}>Comunidad ComeYa</Text>
       
       <View style={styles.tabContainer}>
         {[

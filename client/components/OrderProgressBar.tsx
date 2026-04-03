@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { ThemedText } from './ThemedText';
-import { RabbitFoodColors, Spacing } from '@/constants/theme';
+import { ComeYaColors, Spacing } from '@/constants/theme';
 import { Feather } from '@expo/vector-icons';
 
 interface OrderProgressBarProps {
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
     borderRadius: 2,
   },
   stepsContainer: {
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   stepCircleCompleted: {
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
   },
   stepLabel: {
     fontSize: 10,
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   stepLabelCompleted: {
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     fontWeight: '600',
   },
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { ThemedText } from './ThemedText';
-import { Spacing, BorderRadius, RabbitFoodColors } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors } from '@/constants/theme';
 import { Feather } from '@expo/vector-icons';
 
 interface OrderTransparencyInfoProps {
@@ -47,7 +47,7 @@ export function OrderTransparencyInfo({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Feather name="info" size={20} color={RabbitFoodColors.primary} />
+        <Feather name="info" size={20} color={ComeYaColors.primary} />
         <View style={styles.textContainer}>
           <ThemedText type="small" style={styles.label}>
             Estado actual
@@ -60,7 +60,7 @@ export function OrderTransparencyInfo({
 
       {estimatedTime && (
         <View style={styles.row}>
-          <Feather name="clock" size={20} color={RabbitFoodColors.primary} />
+          <Feather name="clock" size={20} color={ComeYaColors.primary} />
           <View style={styles.textContainer}>
             <ThemedText type="small" style={styles.label}>
               Tiempo estimado
@@ -74,7 +74,7 @@ export function OrderTransparencyInfo({
 
       {driverName && (
         <View style={styles.row}>
-          <Feather name="user" size={20} color={RabbitFoodColors.primary} />
+          <Feather name="user" size={20} color={ComeYaColors.primary} />
           <View style={styles.textContainer}>
             <ThemedText type="small" style={styles.label}>
               Repartidor
@@ -85,7 +85,7 @@ export function OrderTransparencyInfo({
               </ThemedText>
               {driverRating && (
                 <View style={styles.rating}>
-                  <Feather name="star" size={14} color={RabbitFoodColors.warning} />
+                  <Feather name="star" size={14} color={ComeYaColors.warning} />
                   <ThemedText type="small" style={styles.ratingText}>
                     {driverRating.toFixed(1)}
                   </ThemedText>
@@ -98,7 +98,7 @@ export function OrderTransparencyInfo({
 
       {distance && (
         <View style={styles.row}>
-          <Feather name="map-pin" size={20} color={RabbitFoodColors.primary} />
+          <Feather name="map-pin" size={20} color={ComeYaColors.primary} />
           <View style={styles.textContainer}>
             <ThemedText type="small" style={styles.label}>
               Distancia

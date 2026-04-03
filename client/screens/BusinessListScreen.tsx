@@ -19,7 +19,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { BusinessCard } from "@/components/BusinessCard";
 import { BusinessCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { Business } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
@@ -235,7 +235,7 @@ export default function BusinessListScreen() {
                   style={({ pressed }) => [
                     styles.tab,
                     activeTab === tab.id
-                      ? { backgroundColor: RabbitFoodColors.primary }
+                      ? { backgroundColor: ComeYaColors.primary }
                       : { backgroundColor: theme.card },
                     { opacity: pressed ? 0.8 : 1 },
                     Shadows.sm,
@@ -269,15 +269,15 @@ export default function BusinessListScreen() {
                     {
                       backgroundColor: theme.card,
                       borderWidth: 1,
-                      borderColor: RabbitFoodColors.error,
+                      borderColor: ComeYaColors.error,
                       opacity: pressed ? 0.8 : 1,
                     },
                   ]}
                 >
-                  <Feather name="x" size={14} color={RabbitFoodColors.error} />
+                  <Feather name="x" size={14} color={ComeYaColors.error} />
                   <ThemedText
                     type="caption"
-                    style={{ color: RabbitFoodColors.error, marginLeft: 4 }}
+                    style={{ color: ComeYaColors.error, marginLeft: 4 }}
                   >
                     Limpiar
                   </ThemedText>
@@ -290,7 +290,7 @@ export default function BusinessListScreen() {
                   style={({ pressed }) => [
                     styles.filterChip,
                     activeFilters.includes(filter.id)
-                      ? { backgroundColor: RabbitFoodColors.primaryLight, borderWidth: 1, borderColor: RabbitFoodColors.primary }
+                      ? { backgroundColor: ComeYaColors.primaryLight, borderWidth: 1, borderColor: ComeYaColors.primary }
                       : { backgroundColor: theme.card },
                     { opacity: pressed ? 0.8 : 1 },
                   ]}
@@ -300,7 +300,7 @@ export default function BusinessListScreen() {
                     size={14}
                     color={
                       activeFilters.includes(filter.id)
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.textSecondary
                     }
                   />
@@ -308,7 +308,7 @@ export default function BusinessListScreen() {
                     type="caption"
                     style={{
                       color: activeFilters.includes(filter.id)
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.text,
                       marginLeft: 4,
                       fontWeight: activeFilters.includes(filter.id) ? "600" : "400",
@@ -366,7 +366,7 @@ export default function BusinessListScreen() {
                   onPress={clearFilters}
                   style={[
                     styles.emptyButton,
-                    { backgroundColor: RabbitFoodColors.primary },
+                    { backgroundColor: ComeYaColors.primary },
                   ]}
                 >
                   <Feather name="x" size={16} color="#FFFFFF" />
@@ -397,7 +397,7 @@ export default function BusinessListScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
         showsVerticalScrollIndicator={false}

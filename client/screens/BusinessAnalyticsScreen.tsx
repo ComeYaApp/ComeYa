@@ -17,7 +17,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 
 const { width } = Dimensions.get('window');
@@ -109,7 +109,7 @@ export default function BusinessAnalyticsScreen() {
             style={[
               styles.periodButton,
               {
-                backgroundColor: period === p ? RabbitFoodColors.primary : theme.backgroundSecondary,
+                backgroundColor: period === p ? ComeYaColors.primary : theme.backgroundSecondary,
               },
             ]}
           >
@@ -134,7 +134,7 @@ export default function BusinessAnalyticsScreen() {
         {/* Métricas principales */}
         <View style={styles.metricsGrid}>
           <View style={[styles.metricCard, { backgroundColor: theme.card }, Shadows.sm]}>
-            <Feather name="shopping-bag" size={24} color={RabbitFoodColors.primary} />
+            <Feather name="shopping-bag" size={24} color={ComeYaColors.primary} />
             <ThemedText type="h3" style={{ marginTop: Spacing.sm }}>
               {dashboard?.totalOrders || 0}
             </ThemedText>
@@ -145,7 +145,7 @@ export default function BusinessAnalyticsScreen() {
               <ThemedText
                 type="caption"
                 style={{
-                  color: dashboard.ordersChange >= 0 ? RabbitFoodColors.success : RabbitFoodColors.error,
+                  color: dashboard.ordersChange >= 0 ? ComeYaColors.success : ComeYaColors.error,
                   marginTop: 4,
                 }}
               >
@@ -156,7 +156,7 @@ export default function BusinessAnalyticsScreen() {
           </View>
 
           <View style={[styles.metricCard, { backgroundColor: theme.card }, Shadows.sm]}>
-            <Feather name="dollar-sign" size={24} color={RabbitFoodColors.success} />
+            <Feather name="dollar-sign" size={24} color={ComeYaColors.success} />
             <ThemedText type="h3" style={{ marginTop: Spacing.sm }}>
               Bs.{dashboard?.totalRevenue?.toFixed(2) || '0.00'}
             </ThemedText>
@@ -167,7 +167,7 @@ export default function BusinessAnalyticsScreen() {
               <ThemedText
                 type="caption"
                 style={{
-                  color: dashboard.revenueChange >= 0 ? RabbitFoodColors.success : RabbitFoodColors.error,
+                  color: dashboard.revenueChange >= 0 ? ComeYaColors.success : ComeYaColors.error,
                   marginTop: 4,
                 }}
               >
@@ -178,7 +178,7 @@ export default function BusinessAnalyticsScreen() {
           </View>
 
           <View style={[styles.metricCard, { backgroundColor: theme.card }, Shadows.sm]}>
-            <Feather name="trending-up" size={24} color={RabbitFoodColors.warning} />
+            <Feather name="trending-up" size={24} color={ComeYaColors.warning} />
             <ThemedText type="h3" style={{ marginTop: Spacing.sm }}>
               Bs.{dashboard?.avgOrderValue?.toFixed(2) || '0.00'}
             </ThemedText>
@@ -209,7 +209,7 @@ export default function BusinessAnalyticsScreen() {
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                   Esta Semana
                 </ThemedText>
-                <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+                <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
                   {comparison.thisWeek.orders} pedidos
                 </ThemedText>
                 <ThemedText type="body">Bs.{comparison.thisWeek.revenue.toFixed(2)}</ThemedText>
@@ -246,7 +246,7 @@ export default function BusinessAnalyticsScreen() {
                 color: (opacity = 1) => `rgba(232, 180, 168, ${opacity})`,
                 labelColor: (opacity = 1) => theme.text,
                 style: { borderRadius: BorderRadius.lg },
-                propsForDots: { r: '4', strokeWidth: '2', stroke: RabbitFoodColors.primary },
+                propsForDots: { r: '4', strokeWidth: '2', stroke: ComeYaColors.primary },
               }}
               bezier
               style={{ borderRadius: BorderRadius.lg }}
@@ -262,8 +262,8 @@ export default function BusinessAnalyticsScreen() {
             </ThemedText>
             {topProducts.map((product: any, index: number) => (
               <View key={product.productId} style={styles.productRow}>
-                <View style={[styles.productRank, { backgroundColor: RabbitFoodColors.primary + '20' }]}>
-                  <ThemedText type="caption" style={{ color: RabbitFoodColors.primary, fontWeight: '600' }}>
+                <View style={[styles.productRank, { backgroundColor: ComeYaColors.primary + '20' }]}>
+                  <ThemedText type="caption" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
                     {index + 1}
                   </ThemedText>
                 </View>

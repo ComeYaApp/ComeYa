@@ -20,7 +20,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 
@@ -81,7 +81,7 @@ function FavoriteCard({
           {isBusiness && favorite.business ? (
             <View style={styles.businessMeta}>
               <View style={styles.ratingRow}>
-                <Feather name="star" size={14} color={RabbitFoodColors.primary} />
+                <Feather name="star" size={14} color={ComeYaColors.primary} />
                 <ThemedText type="caption" style={{ marginLeft: 4 }}>
                   {parseFloat(favorite.business.rating).toFixed(1)}
                 </ThemedText>
@@ -95,7 +95,7 @@ function FavoriteCard({
           ) : favorite.product ? (
             <ThemedText
               type="body"
-              style={{ color: RabbitFoodColors.primary, fontWeight: "600" }}
+              style={{ color: ComeYaColors.primary, fontWeight: "600" }}
             >
               ${(favorite.product.price / 100).toFixed(2)}
             </ThemedText>
@@ -249,7 +249,7 @@ export default function FavoritesScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       />

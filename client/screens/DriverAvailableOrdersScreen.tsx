@@ -18,7 +18,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { gpsService } from '@/services/gpsService';
 import { GPS_CONFIG } from '@/constants/api';
@@ -160,7 +160,7 @@ export default function DriverAvailableOrdersScreen() {
     setOrders((prev: any[]) => prev.filter((o) => o.id !== orderId));
 
     try {
-      const response = await apiRequest("POST", `/api/delivery/accept-order/${orderId}`, {});
+      const response = await apiRequest("POST", `/api/delivery/accept/${orderId}`, {});
       const data = await response.json();
       
       if (data.success) {
@@ -243,7 +243,11 @@ export default function DriverAvailableOrdersScreen() {
               color={theme.textSecondary}
             />
             <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
-              {item.paymentMethod === "cash" ? "Efectivo" : "Tarjeta"}
+              {item.paymentMethod === "cash" ? "💵 Efectivo" :
+               item.paymentMethod === "pago_movil" ? "📱 Pago Móvil" :
+               item.paymentMethod === "binance_pay" ? "🟡 Binance" :
+               item.paymentMethod === "zinli" ? "💜 Zinli" :
+               item.paymentMethod === "zelle" ? "💙 Zelle" : "💳 Digital"}
             </ThemedText>
           </View>
         </View>
@@ -253,8 +257,8 @@ export default function DriverAvailableOrdersScreen() {
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Ganancia estimada
             </ThemedText>
-            <ThemedText type="h3" style={{ color: RabbitFoodColors.success }}>
-              ${((item.deliveryFee || 0) / 100).toFixed(2)}
+            <ThemedText type="h3" style={{ color: ComeYaColors.success }}>
+              Bs. {(item.deliveryFee || 0).toFixed(2)}
             </ThemedText>
           </View>
           <Pressable
@@ -266,7 +270,7 @@ export default function DriverAvailableOrdersScreen() {
             style={[
               styles.acceptButton,
               {
-                backgroundColor: RabbitFoodColors.primary,
+                backgroundColor: ComeYaColors.primary,
                 opacity: acceptingOrderId === item.id ? 0.7 : 1,
               },
             ]}
@@ -297,12 +301,12 @@ export default function DriverAvailableOrdersScreen() {
             <View
               style={[
                 styles.statusIndicator,
-                { backgroundColor: isOnline ? RabbitFoodColors.success : theme.textSecondary },
+                { backgroundColor: isOnline ? ComeYaColors.success : theme.textSecondary },
               ]}
             />
             <ThemedText
               type="small"
-              style={{ marginHorizontal: Spacing.xs, color: isOnline ? RabbitFoodColors.success : theme.textSecondary }}
+              style={{ marginHorizontal: Spacing.xs, color: isOnline ? ComeYaColors.success : theme.textSecondary }}
             >
               {isOnline ? "En línea" : "Desconectado"}
             </ThemedText>
@@ -310,15 +314,15 @@ export default function DriverAvailableOrdersScreen() {
               value={isOnline}
               onValueChange={handleToggleStatus}
               disabled={isTogglingStatus}
-              trackColor={{ false: theme.border, true: RabbitFoodColors.success + "60" }}
-              thumbColor={isOnline ? RabbitFoodColors.success : theme.textSecondary}
+              trackColor={{ false: theme.border, true: ComeYaColors.success + "60" }}
+              thumbColor={isOnline ? ComeYaColors.success : theme.textSecondary}
             />
           </View>
         </View>
         {!isOnline && (
-          <View style={[styles.offlineWarning, { backgroundColor: RabbitFoodColors.warning + "20" }]}>
-            <Feather name="alert-circle" size={16} color={RabbitFoodColors.warning} />
-            <ThemedText type="small" style={{ color: RabbitFoodColors.warning, marginLeft: Spacing.xs, flex: 1 }}>
+          <View style={[styles.offlineWarning, { backgroundColor: ComeYaColors.warning + "20" }]}>
+            <Feather name="alert-circle" size={16} color={ComeYaColors.warning} />
+            <ThemedText type="small" style={{ color: ComeYaColors.warning, marginLeft: Spacing.xs, flex: 1 }}>
               Activa tu estado para recibir pedidos
             </ThemedText>
           </View>
@@ -334,13 +338,13 @@ export default function DriverAvailableOrdersScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             {loadingOrders ? (
-              <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+              <ActivityIndicator size="large" color={ComeYaColors.primary} />
             ) : (
               <>
                 <Feather name="inbox" size={64} color={theme.textSecondary} />

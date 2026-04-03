@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { ThemedText } from './ThemedText';
-import { RabbitFoodColors, Spacing, BorderRadius } from '@/constants/theme';
+import { ComeYaColors, Spacing, BorderRadius } from '@/constants/theme';
 import { Feather } from '@expo/vector-icons';
 
 interface CountdownTimerProps {
@@ -92,7 +92,7 @@ export function CountdownTimer({ estimatedArrival, status, prepTime, deliveryTim
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.iconContainer}>
-          <Feather name={getStatusIcon()} size={24} color={RabbitFoodColors.primary} />
+          <Feather name={getStatusIcon()} size={24} color={ComeYaColors.primary} />
         </View>
         <View style={styles.textContainer}>
           <ThemedText type="caption" style={styles.statusText}>
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: RabbitFoodColors.primary + '20',
+    backgroundColor: ComeYaColors.primary + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   timeText: {
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     fontWeight: '700',
   },
   progressBarContainer: {
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
     borderRadius: 4,
   },
   timeline: {
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.xs,
   },
   timelineDotActive: {
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
   },
   timelineLine: {
     flex: 0.3,

@@ -118,7 +118,7 @@ export default function AdminPaymentAccountsScreen() {
             style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
             value={accounts.binance_pay?.email || ''}
             onChangeText={(val) => updateAccount('binance_pay', 'email', val)}
-            placeholder="payments@rabbitfood.ve"
+            placeholder="payments@ComeYa.ve"
             placeholderTextColor={theme.textSecondary}
             keyboardType="email-address"
           />
@@ -144,7 +144,7 @@ export default function AdminPaymentAccountsScreen() {
             style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
             value={accounts.zinli?.email || ''}
             onChangeText={(val) => updateAccount('zinli', 'email', val)}
-            placeholder="payments@rabbitfood.ve"
+            placeholder="payments@ComeYa.ve"
             placeholderTextColor={theme.textSecondary}
             keyboardType="email-address"
           />
@@ -170,7 +170,7 @@ export default function AdminPaymentAccountsScreen() {
             style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
             value={accounts.zelle?.email || ''}
             onChangeText={(val) => updateAccount('zelle', 'email', val)}
-            placeholder="payments@rabbitfood.ve"
+            placeholder="payments@ComeYa.ve"
             placeholderTextColor={theme.textSecondary}
             keyboardType="email-address"
           />
@@ -206,7 +206,7 @@ export default function AdminPaymentAccountsScreen() {
             style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
             value={accounts.paypal?.email || ''}
             onChangeText={(val) => updateAccount('paypal', 'email', val)}
-            placeholder="payments@rabbitfood.ve"
+            placeholder="payments@ComeYa.ve"
             placeholderTextColor={theme.textSecondary}
             keyboardType="email-address"
           />

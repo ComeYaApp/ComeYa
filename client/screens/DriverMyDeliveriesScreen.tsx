@@ -23,16 +23,18 @@ import { Badge } from "@/components/Badge";
 import { SmartOrderButton } from "@/components/SmartOrderButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const statusLabels: Record<string, string> = {
+  ready: "Listo para recoger",
+  picked_up: "Recogido",
   preparing: "Preparando",
   on_the_way: "En camino",
-  delivered: "Entregado",
+  delivered: "Esperando confirmación",
   pending: "Pendiente",
   accepted: "Aceptado",
   cancelled: "Cancelado",
@@ -50,6 +52,8 @@ export default function DriverMyDeliveriesScreen() {
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [pickupOrderId, setPickupOrderId] = useState<string | null>(null);
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
+  const [proximityError, setProximityError] = useState<{ distanceMeters: number; maxDistanceMeters: number } | null>(null);
+  const [gpsError, setGpsError] = useState(false);
 
   const loadOrders = async () => {
     try {
@@ -174,33 +178,7 @@ export default function DriverMyDeliveriesScreen() {
         setActionOrderId(pendingOrderId);
         
         // Intentar obtener ubicación
-        const location = await gpsService.getLocationForDelivery();
-        
-        if (!location) {
-          Alert.alert(
-            "GPS Requerido",
-            "No se pudo obtener tu ubicación. Asegúrate de tener el GPS activado.",
-            [
-              { text: "Cancelar", style: "cancel" },
-              { 
-                text: "Reintentar", 
-                onPress: async () => {
-                  const retryLocation = await gpsService.getCurrentLocation();
-                  if (retryLocation) {
-                    await completeDeliveryWithLocation(pendingOrderId, retryLocation, previousOrders);
-                  } else {
-                    Alert.alert("Error", "No se pudo obtener la ubicación. Verifica tus permisos de GPS.");
-                  }
-                }
-              }
-            ]
-          );
-          setActionOrderId(null);
-          setShowConfirmModal(false);
-          setPendingOrderId(null);
-          return;
-        }
-        
+        const location = await gpsService.getCurrentLocation();
         await completeDeliveryWithLocation(pendingOrderId, location, previousOrders);
       } catch (error) {
         console.error('Error in confirmDelivery:', error);
@@ -214,7 +192,7 @@ export default function DriverMyDeliveriesScreen() {
   
   const completeDeliveryWithLocation = async (
     orderId: string, 
-    location: { latitude: number; longitude: number },
+    location: { latitude: number; longitude: number } | null,
     previousOrders: any[]
   ) => {
     setOrders((prev: any[]) =>
@@ -225,15 +203,33 @@ export default function DriverMyDeliveriesScreen() {
 
     try {
       await apiRequest('POST', `/api/orders/${orderId}/complete-delivery`, {
-        latitude: location.latitude,
-        longitude: location.longitude
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("¡Entregado!", "El pedido ha sido marcado como entregado.");
+      Alert.alert("¡Entregado!", "El pedido ha sido marcado como entregado. Esperando confirmación del cliente.");
       loadOrders();
     } catch (error: any) {
       console.error('Error confirming delivery:', error);
-      Alert.alert("Error", error.message || "No se pudo confirmar la entrega");
+      let msg = error.message || "No se pudo confirmar la entrega";
+      let distanceMeters: number | null = null;
+      let maxDistanceMeters: number | null = null;
+      try {
+        const jsonStart = msg.indexOf('{');
+        if (jsonStart !== -1) {
+          const parsed = JSON.parse(msg.slice(jsonStart));
+          msg = parsed.error || msg;
+          distanceMeters = parsed.distanceMeters ?? null;
+          maxDistanceMeters = parsed.maxDistanceMeters ?? null;
+        }
+      } catch {}
+      if (distanceMeters !== null && maxDistanceMeters !== null) {
+        setProximityError({ distanceMeters, maxDistanceMeters });
+      } else if (msg.toLowerCase().includes("ubicación")) {
+        setGpsError(true);
+      } else {
+        Alert.alert("Error", msg);
+      }
       setOrders(previousOrders);
     } finally {
       setActionOrderId(null);
@@ -376,7 +372,7 @@ export default function DriverMyDeliveriesScreen() {
                 : item.status === "on_the_way"
                 ? "warning"
                 : item.status === "delivered"
-                ? "success"
+                ? "info"
                 : "secondary"
             }
           />
@@ -394,8 +390,8 @@ export default function DriverMyDeliveriesScreen() {
         </View>
 
         <View style={styles.orderFooter}>
-          <ThemedText type="h4" style={{ color: RabbitFoodColors.success }}>
-            +${((item.deliveryEarnings || item.deliveryFee || 0) / 100).toFixed(2)}
+          <ThemedText type="h4" style={{ color: ComeYaColors.success }}>
+            +Bs. {(item.deliveryEarnings || item.deliveryFee || 0).toFixed(2)}
           </ThemedText>
           <View style={styles.mapButtons}>
             <Pressable
@@ -405,10 +401,10 @@ export default function DriverMyDeliveriesScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="map" size={16} color={RabbitFoodColors.primary} />
+              <Feather name="map" size={16} color={ComeYaColors.primary} />
               <ThemedText
                 type="small"
-                style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}
+                style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
               >
                 Ver
               </ThemedText>
@@ -417,7 +413,7 @@ export default function DriverMyDeliveriesScreen() {
               onPress={() => showNavigationOptions(item)}
               style={[
                 styles.trackButton,
-                { backgroundColor: RabbitFoodColors.primary, marginLeft: Spacing.sm },
+                { backgroundColor: ComeYaColors.primary, marginLeft: Spacing.sm },
               ]}
             >
               <Feather name="navigation" size={16} color="#FFF" />
@@ -439,22 +435,19 @@ export default function DriverMyDeliveriesScreen() {
             loading={actionOrderId === item.id}
             onPress={(canProceed, buttonInfo) => {
               if (canProceed) {
-                // Ejecutar la acción real según el estado
                 switch (item.status) {
-                  case 'preparing':
-                    console.log('Calling handlePickedUp for order:', item.id);
+                  case 'ready':
                     handlePickedUp(item.id);
                     break;
+                  case 'picked_up':
+                  case 'preparing':
+                    handleOnTheWay(item.id);
+                    break;
                   case 'on_the_way':
-                    console.log('Intentando marcar como entregado:', item.id, item.status);
                     handleDelivered(item.id);
                     break;
                   default:
-                    Alert.alert(
-                      "Información",
-                      `Estado: ${buttonInfo.message}\n\n${buttonInfo.nextAction}`,
-                      [{ text: "OK" }]
-                    );
+                    Alert.alert("Información", `${buttonInfo.message}\n\n${buttonInfo.nextAction}`, [{ text: "OK" }]);
                 }
               } else {
                 Alert.alert(
@@ -472,9 +465,9 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   const activeOrders = orders.filter((o: any) =>
-    ["preparing", "on_the_way"].includes(o.status)
+    ["ready", "picked_up", "preparing", "on_the_way", "delivered"].includes(o.status)
   );
-  const completedOrders = orders.filter((o: any) => o.status === "delivered");
+  const completedOrders = orders.filter((o: any) => o.status === "completed");
 
   const renderCompletedOrder = ({ item }: { item: any }) => {
     const displayAddress = parseDeliveryAddress(item.deliveryAddress);
@@ -505,8 +498,8 @@ export default function DriverMyDeliveriesScreen() {
         </View>
 
         <View style={styles.orderFooter}>
-          <ThemedText type="h4" style={{ color: RabbitFoodColors.success }}>
-            +${((item.deliveryEarnings || item.deliveryFee || 0) / 100).toFixed(2)}
+          <ThemedText type="h4" style={{ color: ComeYaColors.success }}>
+            +Bs. {(item.deliveryEarnings || item.deliveryFee || 0).toFixed(2)}
           </ThemedText>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             Completado
@@ -529,7 +522,7 @@ export default function DriverMyDeliveriesScreen() {
           {isTracking ? (
             <View style={styles.trackingIndicator}>
               <View style={styles.trackingDot} />
-              <ThemedText type="small" style={{ color: RabbitFoodColors.success, marginLeft: Spacing.xs }}>
+              <ThemedText type="small" style={{ color: ComeYaColors.success, marginLeft: Spacing.xs }}>
                 GPS Activo
               </ThemedText>
             </View>
@@ -543,7 +536,7 @@ export default function DriverMyDeliveriesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       >
@@ -595,6 +588,28 @@ export default function DriverMyDeliveriesScreen() {
         onConfirm={confirmPickup}
         onCancel={() => { setShowPickupModal(false); setPickupOrderId(null); }}
       />
+
+      <ConfirmModal
+        visible={proximityError !== null}
+        title="📍 Muy lejos del cliente"
+        message={proximityError ? `Estás a ${proximityError.distanceMeters}m del cliente.\n\nDebes estar a menos de ${proximityError.maxDistanceMeters}m para marcar el pedido como entregado.` : ""}
+        confirmText="Entendido"
+        cancelText=""
+        onConfirm={() => setProximityError(null)}
+        onCancel={() => setProximityError(null)}
+        variant="danger"
+      />
+
+      <ConfirmModal
+        visible={gpsError}
+        title="🛠️ GPS no disponible"
+        message="No se pudo obtener tu ubicación GPS.\n\nActiva el GPS en los ajustes de tu dispositivo e inténtalo de nuevo."
+        confirmText="Entendido"
+        cancelText=""
+        onConfirm={() => setGpsError(false)}
+        onCancel={() => setGpsError(false)}
+        variant="danger"
+      />
     </LinearGradient>
   );
 }
@@ -624,7 +639,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: RabbitFoodColors.success,
+    backgroundColor: ComeYaColors.success,
   },
   listContent: {
     padding: Spacing.lg,

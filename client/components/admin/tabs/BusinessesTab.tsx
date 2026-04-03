@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
 import * as Haptics from "expo-haptics";
-import { RabbitFoodColors } from "../../../constants/theme";
+import { ComeYaColors } from "../../../constants/theme";
 import { Business } from "../types/admin.types";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -31,7 +31,7 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
             <Text style={[styles.businessName, { color: theme.text }]}>{business.name}</Text>
             <View style={[
               styles.statusBadge,
-              { backgroundColor: business.isActive ? RabbitFoodColors.success : RabbitFoodColors.error }
+              { backgroundColor: business.isActive ? ComeYaColors.success : ComeYaColors.error }
             ]}>
               <Text style={styles.statusText}>
                 {business.isActive ? 'Activo' : 'Inactivo'}

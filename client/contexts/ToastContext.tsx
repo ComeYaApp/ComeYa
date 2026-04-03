@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius, RabbitFoodColors } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
 type ToastType = "success" | "error" | "info" | "warning";
 
@@ -54,11 +54,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       case "success":
         return "#4CAF50";
       case "error":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       case "warning":
         return "#FF9800";
       default:
-        return RabbitFoodColors.primary;
+        return ComeYaColors.primary;
     }
   };
 

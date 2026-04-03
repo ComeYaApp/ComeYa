@@ -170,7 +170,7 @@ export default function EnhancedWalletScreen() {
       const mockInvestments: Investment[] = [
         {
           id: '1',
-          name: 'Ahorro Rabbit Food',
+          name: 'Ahorro ComeYa',
           type: 'savings',
           amount: 50000,
           interestRate: 8.5,
@@ -323,7 +323,7 @@ export default function EnhancedWalletScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.balanceHeader}>
-          <Text style={styles.balanceTitle}>Rabbit Food Wallet</Text>
+          <Text style={styles.balanceTitle}>ComeYa Wallet</Text>
           <TouchableOpacity onPress={() => setShowQRModal(true)}>
             <Text style={styles.qrIcon}>📱</Text>
           </TouchableOpacity>
@@ -561,7 +561,7 @@ export default function EnhancedWalletScreen() {
         <TouchableOpacity style={styles.investmentOption}>
           <Text style={styles.investmentOptionIcon}>💰</Text>
           <View style={styles.investmentOptionInfo}>
-            <Text style={styles.investmentOptionTitle}>Ahorro Rabbit Food</Text>
+            <Text style={styles.investmentOptionTitle}>Ahorro ComeYa</Text>
             <Text style={styles.investmentOptionDescription}>
               8.5% anual • Sin riesgo • Retiro flexible
             </Text>
@@ -634,7 +634,7 @@ export default function EnhancedWalletScreen() {
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>Rabbit Food Card</Text>
+          <Text style={styles.cardTitle}>ComeYa Card</Text>
           <Text style={styles.cardType}>Virtual</Text>
         </View>
         
@@ -705,7 +705,7 @@ export default function EnhancedWalletScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Rabbit Food Wallet</Text>
+      <Text style={styles.title}>ComeYa Wallet</Text>
       
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
@@ -754,7 +754,7 @@ export default function EnhancedWalletScreen() {
 
           <View style={styles.qrContainer}>
             <QRCode
-              value={`rabbitfood://pay/${user?.id}`}
+              value={`ComeYa://pay/${user?.id}`}
               size={200}
               backgroundColor="white"
               color="black"

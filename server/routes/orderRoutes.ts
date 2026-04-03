@@ -292,32 +292,32 @@ router.post(
       const hasDriverCoords =
         typeof driverLat === "number" && typeof driverLng === "number";
 
-      if (!hasDriverCoords) {
-        return res.status(400).json({ error: "Ubicación requerida para marcar entregado" });
-      }
+      if (process.env.NODE_ENV === "production") {
+        if (!hasDriverCoords) {
+          return res.status(400).json({ error: "Ubicación requerida para marcar entregado" });
+        }
 
-      const deliveryLat = order.deliveryLatitude ?? order.deliveryLat ?? order.latitude;
-      const deliveryLng = order.deliveryLongitude ?? order.deliveryLng ?? order.longitude;
-      const hasDeliveryCoords =
-        typeof deliveryLat === "number" && typeof deliveryLng === "number";
+        const deliveryLat = order.deliveryLatitude ?? order.deliveryLat ?? order.latitude;
+        const deliveryLng = order.deliveryLongitude ?? order.deliveryLng ?? order.longitude;
+        const hasDeliveryCoords =
+          typeof deliveryLat === "number" && typeof deliveryLng === "number";
 
-      if (!hasDeliveryCoords) {
-        return res.status(400).json({ error: "Pedido sin coordenadas de entrega" });
-      }
-
-      const distanceKm = calculateDistance(
-        Number(driverLat),
-        Number(driverLng),
-        Number(deliveryLat),
-        Number(deliveryLng),
-      );
-
-      const maxDistanceMeters = 100;
-      if (distanceKm * 1000 > maxDistanceMeters) {
-        return res.status(400).json({
-          error: "Debes estar cerca del destino para marcar entregado",
-          distanceMeters: Math.round(distanceKm * 1000),
-        });
+        if (hasDeliveryCoords) {
+          const distanceKm = calculateDistance(
+            Number(driverLat),
+            Number(driverLng),
+            Number(deliveryLat),
+            Number(deliveryLng),
+          );
+          const maxDistanceMeters = 200;
+          if (distanceKm * 1000 > maxDistanceMeters) {
+            return res.status(400).json({
+              error: "Debes estar más cerca del cliente para marcar entregado",
+              distanceMeters: Math.round(distanceKm * 1000),
+              maxDistanceMeters,
+            });
+          }
+        }
       }
 
       // Mark as delivered (waiting for customer confirmation)
@@ -352,158 +352,76 @@ router.post(
   validateOrderCompletion,
   async (req, res) => {
     try {
-      const { orders, wallets, transactions, businesses } = await import("@shared/schema-mysql");
+      const { orders, businesses, payouts } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
       const { eq } = await import("drizzle-orm");
       const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
-      const [order] = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, orderId))
-        .limit(1);
+      const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
 
-      if (!order) {
-        return res.status(404).json({ error: "Order not found" });
-      }
-
-      if (order.status !== "delivered") {
-        return res.status(400).json({ error: "El pedido debe estar entregado primero" });
-      }
-
-      if (order.confirmedByCustomer) {
-        return res.status(400).json({ error: "Ya confirmaste este pedido" });
-      }
+      if (!order) return res.status(404).json({ error: "Order not found" });
+      if (order.status !== "delivered") return res.status(400).json({ error: "El pedido debe estar entregado primero" });
+      if (order.confirmedByCustomer) return res.status(400).json({ error: "Ya confirmaste este pedido" });
 
       // Award loyalty points
       try {
         await LoyaltyService.awardPointsForOrder(order.userId, order.id, order.total);
-        console.log(`✅ Puntos de lealtad otorgados para pedido ${order.id}`);
-      } catch (error) {
-        console.error('Error awarding loyalty points:', error);
+      } catch (e) {
+        console.error("Error awarding loyalty points:", e);
       }
 
-      // Calculate commissions using centralized service
-      const { financialService } = await import("../unifiedFinancialService");
-      const commissions = await financialService.calculateCommissions(
-        order.total,
-        order.deliveryFee,
-        order.productosBase || order.subtotal,
-        order.nemyCommission || undefined
-      );
+      // Calcular ganancias en Bs. directos
+      const productosBase = order.productosBase && order.productosBase > 0
+        ? order.productosBase
+        : Math.round((order.subtotal || order.total) / 1.15);
+      const businessAmount = productosBase;
+      const driverAmount = order.deliveryFee || 0;
+      const platformAmount = order.nemyCommission || Math.round(productosBase * 0.15);
 
-      // Update order with commission breakdown and confirmation
-      await db
-        .update(orders)
-        .set({
-          confirmedByCustomer: true,
-          confirmedByCustomerAt: new Date(),
-          platformFee: commissions.platform,
-          businessEarnings: commissions.business,
-          deliveryEarnings: commissions.driver,
-        })
-        .where(eq(orders.id, orderId));
+      // Marcar pedido como confirmado
+      await db.update(orders).set({
+        confirmedByCustomer: true,
+        confirmedByCustomerAt: new Date(),
+        fundsReleased: true,
+        fundsReleasedAt: new Date(),
+        platformFee: platformAmount,
+        businessEarnings: businessAmount,
+        deliveryEarnings: driverAmount,
+      }).where(eq(orders.id, orderId));
 
-      const [business] = await db
-        .select({ ownerId: businesses.ownerId })
-        .from(businesses)
-        .where(eq(businesses.id, order.businessId))
-        .limit(1);
-
+      // Crear payouts
+      const [business] = await db.select({ ownerId: businesses.ownerId })
+        .from(businesses).where(eq(businesses.id, order.businessId)).limit(1);
       const businessOwnerId = business?.ownerId || order.businessId;
 
-      if (order.paymentMethod === "cash") {
-        // Efectivo eliminado - todos los pagos son digitales
-        return res.status(400).json({ error: "Efectivo no disponible. Usa Pago Móvil, Binance, Zinli o Zelle." });
-      } else {
-        // Update business wallet (card only)
-        const [businessWallet] = await db
-          .select()
-          .from(wallets)
-          .where(eq(wallets.userId, businessOwnerId))
-          .limit(1);
-
-        if (businessWallet) {
-          await db
-            .update(wallets)
-            .set({ 
-              balance: businessWallet.balance + commissions.business,
-              totalEarned: businessWallet.totalEarned + commissions.business,
-            })
-            .where(eq(wallets.userId, businessOwnerId));
-        } else {
-          await db.insert(wallets).values({
-            userId: businessOwnerId,
-            balance: commissions.business,
-            pendingBalance: 0,
-            totalEarned: commissions.business,
-            totalWithdrawn: 0,
-          });
-        }
-
-        // Update driver wallet (card only)
-        const [driverWallet] = await db
-          .select()
-          .from(wallets)
-          .where(eq(wallets.userId, order.deliveryPersonId))
-          .limit(1);
-
-        if (driverWallet) {
-          await db
-            .update(wallets)
-            .set({ 
-              balance: driverWallet.balance + commissions.driver,
-              totalEarned: driverWallet.totalEarned + commissions.driver,
-            })
-            .where(eq(wallets.userId, order.deliveryPersonId));
-        } else {
-          await db.insert(wallets).values({
-            userId: order.deliveryPersonId,
-            balance: commissions.driver,
-            pendingBalance: 0,
-            totalEarned: commissions.driver,
-            totalWithdrawn: 0,
-          });
-        }
-
-        // Create transaction records (card only)
-        await db.insert(transactions).values([
-          {
-            userId: businessOwnerId,
-            type: "order_payment",
-            amount: commissions.business,
-            status: "completed",
-            description: `Pago por pedido #${order.id.slice(-8)}`,
-            orderId: order.id,
-          },
-          {
-            userId: order.deliveryPersonId,
-            type: "delivery_payment",
-            amount: commissions.driver,
-            status: "completed",
-            description: `Entrega de pedido #${order.id.slice(-8)}`,
-            orderId: order.id,
-          },
-        ]);
+      const payoutInserts: any[] = [];
+      if (businessAmount > 0) {
+        payoutInserts.push({
+          orderId: order.id,
+          recipientId: businessOwnerId,
+          recipientType: "business" as const,
+          amount: businessAmount,
+          status: "pending" as const,
+        });
+      }
+      if (order.deliveryPersonId && driverAmount > 0) {
+        payoutInserts.push({
+          orderId: order.id,
+          recipientId: order.deliveryPersonId,
+          recipientType: "driver" as const,
+          amount: driverAmount,
+          status: "pending" as const,
+        });
+      }
+      if (payoutInserts.length > 0) {
+        await db.insert(payouts).values(payoutInserts);
       }
 
-      res.json({
-        success: true,
-        message: "Pedido confirmado y fondos liberados",
-        distribution: {
-          platform: commissions.platform / 100,
-          business: commissions.business / 100,
-          driver: commissions.driver / 100,
-        },
-      });
+      res.json({ success: true, message: "Pedido confirmado. Payouts creados para negocio y repartidor." });
 
-      // Notificar al negocio y repartidor que los fondos fueron liberados
-      const [biz] = await db.select({ ownerId: (await import("@shared/schema-mysql")).businesses.ownerId })
-        .from((await import("@shared/schema-mysql")).businesses)
-        .where(eq((await import("@shared/schema-mysql")).businesses.id, order.businessId))
-        .limit(1);
-      if (biz?.ownerId) {
-        await sendPushToUser(biz.ownerId, {
+      // Notificaciones push
+      if (businessOwnerId) {
+        await sendPushToUser(businessOwnerId, {
           title: "💰 Pago liberado",
           body: `El cliente confirmó la entrega del pedido #${order.id.slice(-6)}`,
           data: { orderId: order.id, screen: "BusinessEarnings" },
@@ -546,8 +464,8 @@ router.post(
         return res.status(404).json({ error: "Pedido no encontrado" });
       }
 
-      // Validar que el pedido está en preparing
-      if (order.status !== "preparing") {
+      // Validar que el pedido está listo para recoger
+      if (![ "ready", "picked_up", "preparing" ].includes(order.status)) {
         return res.status(400).json({ 
           error: `No puedes recoger este pedido. Estado actual: ${order.status}` 
         });

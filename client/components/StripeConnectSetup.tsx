@@ -13,7 +13,7 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { API_CONFIG } from "@/constants/api";
 
 interface ConnectStatus {
@@ -141,7 +141,7 @@ export function StripeConnectSetup() {
   if (statusLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.card }, Shadows.sm]}>
-        <ActivityIndicator color={RabbitFoodColors.primary} />
+        <ActivityIndicator color={ComeYaColors.primary} />
       </View>
     );
   }
@@ -152,10 +152,10 @@ export function StripeConnectSetup() {
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: RabbitFoodColors.primary + "20" },
+            { backgroundColor: ComeYaColors.primary + "20" },
           ]}
         >
-          <Feather name="credit-card" size={24} color={RabbitFoodColors.primary} />
+          <Feather name="credit-card" size={24} color={ComeYaColors.primary} />
         </View>
         <View style={{ flex: 1 }}>
           <ThemedText type="h4">Pagos Automáticos</ThemedText>
@@ -171,16 +171,16 @@ export function StripeConnectSetup() {
             <View
               style={[
                 styles.statusDot,
-                { backgroundColor: RabbitFoodColors.success },
+                { backgroundColor: ComeYaColors.success },
               ]}
             />
-            <ThemedText type="body" style={{ color: RabbitFoodColors.success }}>
+            <ThemedText type="body" style={{ color: ComeYaColors.success }}>
               Cuenta verificada y activa
             </ThemedText>
           </View>
 
           <View style={styles.infoBox}>
-            <Feather name="check-circle" size={16} color={RabbitFoodColors.success} />
+            <Feather name="check-circle" size={16} color={ComeYaColors.success} />
             <ThemedText
               type="caption"
               style={{ color: theme.textSecondary, marginLeft: 8, flex: 1 }}
@@ -220,16 +220,16 @@ export function StripeConnectSetup() {
             <View
               style={[
                 styles.statusDot,
-                { backgroundColor: RabbitFoodColors.warning },
+                { backgroundColor: ComeYaColors.warning },
               ]}
             />
-            <ThemedText type="body" style={{ color: RabbitFoodColors.warning }}>
+            <ThemedText type="body" style={{ color: ComeYaColors.warning }}>
               Configuración incompleta
             </ThemedText>
           </View>
 
           <View style={styles.infoBox}>
-            <Feather name="alert-circle" size={16} color={RabbitFoodColors.warning} />
+            <Feather name="alert-circle" size={16} color={ComeYaColors.warning} />
             <ThemedText
               type="caption"
               style={{ color: theme.textSecondary, marginLeft: 8, flex: 1 }}
@@ -244,7 +244,7 @@ export function StripeConnectSetup() {
             style={[
               styles.button,
               styles.primaryButton,
-              { backgroundColor: RabbitFoodColors.warning },
+              { backgroundColor: ComeYaColors.warning },
             ]}
           >
             {loading ? (
@@ -269,7 +269,7 @@ export function StripeConnectSetup() {
       ) : (
         <>
           <View style={styles.infoBox}>
-            <Feather name="info" size={16} color={RabbitFoodColors.primary} />
+            <Feather name="info" size={16} color={ComeYaColors.primary} />
             <ThemedText
               type="caption"
               style={{ color: theme.textSecondary, marginLeft: 8, flex: 1 }}
@@ -286,7 +286,7 @@ export function StripeConnectSetup() {
             style={[
               styles.button,
               styles.primaryButton,
-              { backgroundColor: RabbitFoodColors.primary },
+              { backgroundColor: ComeYaColors.primary },
             ]}
           >
             {loading ? (

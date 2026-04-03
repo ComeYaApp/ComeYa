@@ -197,7 +197,7 @@ export default function LoyaltyScreen() {
   const subscriptions: Subscription[] = [
     {
       id: 'basic',
-      name: 'Rabbit Food Plus',
+      name: 'ComeYa Plus',
       price: 99,
       benefits: [
         'Entrega gratis ilimitada',
@@ -209,10 +209,10 @@ export default function LoyaltyScreen() {
     },
     {
       id: 'premium',
-      name: 'Rabbit Food Premium',
+      name: 'ComeYa Premium',
       price: 199,
       benefits: [
-        'Todo de Rabbit Food Plus',
+        'Todo de ComeYa Plus',
         '15% descuento en todos los pedidos',
         'Entrega express gratis',
         'Cashback del 5%',

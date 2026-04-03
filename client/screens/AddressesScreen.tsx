@@ -22,7 +22,7 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 interface Address {
@@ -179,7 +179,7 @@ export default function AddressesScreen() {
         styles.addressCard,
         { backgroundColor: theme.card },
         address.isDefault && {
-          borderColor: RabbitFoodColors.primary,
+          borderColor: ComeYaColors.primary,
           borderWidth: 2,
         },
         Shadows.sm,
@@ -189,14 +189,14 @@ export default function AddressesScreen() {
         <View
           style={[
             styles.labelBadge,
-            { backgroundColor: RabbitFoodColors.primary + "20" },
+            { backgroundColor: ComeYaColors.primary + "20" },
           ]}
         >
-          <Feather name="map-pin" size={14} color={RabbitFoodColors.primary} />
+          <Feather name="map-pin" size={14} color={ComeYaColors.primary} />
           <ThemedText
             type="caption"
             style={{
-              color: RabbitFoodColors.primary,
+              color: ComeYaColors.primary,
               marginLeft: 4,
               fontWeight: "600",
             }}
@@ -208,10 +208,10 @@ export default function AddressesScreen() {
           <View
             style={[
               styles.defaultBadge,
-              { backgroundColor: RabbitFoodColors.success + "20" },
+              { backgroundColor: ComeYaColors.success + "20" },
             ]}
           >
-            <ThemedText type="caption" style={{ color: RabbitFoodColors.success }}>
+            <ThemedText type="caption" style={{ color: ComeYaColors.success }}>
               Predeterminada
             </ThemedText>
           </View>
@@ -232,10 +232,10 @@ export default function AddressesScreen() {
             onPress={() => setDefaultMutation.mutate(address.id)}
             style={[styles.actionButton, { borderColor: theme.border }]}
           >
-            <Feather name="check-circle" size={16} color={RabbitFoodColors.primary} />
+            <Feather name="check-circle" size={16} color={ComeYaColors.primary} />
             <ThemedText
               type="caption"
-              style={{ color: RabbitFoodColors.primary, marginLeft: 4 }}
+              style={{ color: ComeYaColors.primary, marginLeft: 4 }}
             >
               Predeterminada
             </ThemedText>
@@ -245,13 +245,13 @@ export default function AddressesScreen() {
           onPress={() => handleDeletePress(address)}
           style={[
             styles.actionButton,
-            { borderColor: RabbitFoodColors.error + "40" },
+            { borderColor: ComeYaColors.error + "40" },
           ]}
         >
-          <Feather name="trash-2" size={16} color={RabbitFoodColors.error} />
+          <Feather name="trash-2" size={16} color={ComeYaColors.error} />
           <ThemedText
             type="caption"
-            style={{ color: RabbitFoodColors.error, marginLeft: 4 }}
+            style={{ color: ComeYaColors.error, marginLeft: 4 }}
           >
             Eliminar
           </ThemedText>
@@ -263,7 +263,7 @@ export default function AddressesScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+        <ActivityIndicator size="large" color={ComeYaColors.primary} />
       </ThemedView>
     );
   }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
+import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { apiRequest } from "@/lib/query-client";
 import { User, UserRole } from "@/types";
@@ -38,9 +39,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = "@rabbitfood_user";
-const PENDING_PHONE_KEY = "@rabbitfood_pending_phone";
-const BIOMETRIC_PHONE_KEY = "@rabbitfood_biometric_phone";
+const STORAGE_KEY = "@ComeYa_user";
+const PENDING_PHONE_KEY = "@ComeYa_pending_phone";
+const BIOMETRIC_PHONE_KEY = "@ComeYa_biometric_phone";
 
 const normalizePhone = (phone: string) => {
   const digits = phone.replace(/\D/g, "");
@@ -92,6 +93,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.log("Biometric check error:", error);
       setBiometricAvailable(false);
+    }
+  };
+
+  const registerPushToken = async () => {
+    if (Platform.OS === "web") return;
+    try {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== "granted") return;
+      const { data: token } = await Notifications.getExpoPushTokenAsync();
+      await apiRequest("PUT", "/api/users/push-token", { token });
+    } catch {
+      // silent — no bloquear login si falla
     }
   };
 
@@ -174,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
       await AsyncStorage.setItem("token", data.token);
       setUser(newUser);
+      registerPushToken();
       return { success: true };
     }
 
@@ -242,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(PENDING_PHONE_KEY);
     setUser(newUser);
     setPendingVerificationPhone(null);
+    registerPushToken();
     return newUser;
   };
 
@@ -299,6 +314,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
       await AsyncStorage.setItem("token", data.token);
       setUser(newUser);
+      registerPushToken();
       return true;
     } catch (error) {
       console.error("Biometric login error:", error);

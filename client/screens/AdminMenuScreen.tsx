@@ -15,7 +15,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 
 interface MenuSection {
   title: string;
@@ -41,7 +41,7 @@ const menuSections: MenuSection[] = [
         subtitle: "Métricas y pedidos activos",
         icon: "bar-chart-2",
         route: "/admin/dashboard",
-        color: RabbitFoodColors.primary,
+        color: ComeYaColors.primary,
       },
       {
         title: "Pedidos",
@@ -173,13 +173,13 @@ export default function AdminMenuScreen() {
                 <View
                   style={[
                     styles.sectionIcon,
-                    { backgroundColor: RabbitFoodColors.primaryLight },
+                    { backgroundColor: ComeYaColors.primaryLight },
                   ]}
                 >
                   <Feather
                     name={section.icon as any}
                     size={20}
-                    color={RabbitFoodColors.primary}
+                    color={ComeYaColors.primary}
                   />
                 </View>
                 <ThemedText type="h4" style={styles.sectionTitle}>

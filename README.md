@@ -1,6 +1,6 @@
-# 🐰 Rabbit Food - Plataforma de Delivery
+# 🐰 ComeYa - Plataforma de Delivery
 
-> Conectando negocios locales con la comunidad de San Cristóbal, Venezuela
+> Conectando negocios locales con la comunidad de Soria, España
 
 [![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
@@ -23,11 +23,11 @@
 
 ## 🎯 Acerca del Proyecto
 
-Rabbit Food es una plataforma de delivery moderna diseñada específicamente para el mercado venezolano, con enfoque en San Cristóbal, Táchira. La aplicación conecta restaurantes locales, repartidores y clientes en un ecosistema completo de pedidos en línea.
+ComeYa es una plataforma de delivery moderna diseñada específicamente para Soria, España. La aplicación conecta restaurantes y negocios locales, repartidores y clientes en un ecosistema completo de pedidos en línea.
 
-### ¿Por qué Rabbit Food?
+### ¿Por qué ComeYa?
 
-- **🇻🇪 Adaptado a Venezuela**: Sistema de pagos compatible con métodos locales (Pago Móvil, Binance, Zinli, Zelle)
+- **🇪🇸 Hecho para Soria**: Pensado para el comercio local soriano, apoyando la economía de proximidad
 - **🚀 Tecnología Moderna**: React Native + Expo para experiencia nativa en iOS y Android
 - **💰 Transparente**: Comisiones claras y sistema de payouts automatizado
 - **🔒 Seguro**: Anti-fraude con IA, verificación de comprobantes con OCR
@@ -129,7 +129,7 @@ Rabbit Food es una plataforma de delivery moderna diseñada específicamente par
 
 - **Colores**: Paleta crema cálida (#E8B4A8, #D4A89C, #F5F1EB)
 - **Modo Oscuro**: Automático con soporte completo
-- **Tema**: Cálido y acogedor, inspirado en comida casera venezolana
+- **Tema**: Cálido y acogedor, inspirado en la gastronomía tradicional soriana
 - **Iconos**: Feather Icons
 - **Fuentes**: Sistema nativo optimizado
 
@@ -145,8 +145,8 @@ Rabbit Food es una plataforma de delivery moderna diseñada específicamente par
 
 ```bash
 # Clonar repositorio
-git clone https://github.com/Caskiuz/mouzo.git
-cd mouzo
+git clone https://github.com/ComeYaApp/ComeYa.git
+cd ComeYa
 
 # Instalar dependencias
 npm install
@@ -194,13 +194,12 @@ TWILIO_AUTH_TOKEN=tu_auth_token
 TWILIO_PHONE_NUMBER=+1234567890
 TWILIO_VERIFY_SERVICE_SID=tu_verify_service_sid
 
-# Pago Móvil Rabbit Food (cuenta receptora)
-MOUZO_PAGO_MOVIL_PHONE=04121234567
-MOUZO_PAGO_MOVIL_BANK=0102
-MOUZO_PAGO_MOVIL_CEDULA=V12345678
+# Cuenta receptora ComeYa
+COMEYA_BIZUM_PHONE=600000000
+COMEYA_IBAN=ES00 0000 0000 0000 0000 0000
 
 # Comisiones (%)
-NEMY_COMMISSION=15
+COMEYA_COMMISSION=15
 BUSINESS_COMMISSION=100
 DRIVER_COMMISSION=100
 
@@ -246,8 +245,8 @@ mysql -u root -p defaultdb < backup.sql
 
 ```bash
 # Ejecutar contra Aiven MySQL
-mysql --host=mouzodb-goicoecheaalexandra33-081e.b.aivencloud.com \
-      --port=16857 \
+mysql --host=comeya-comeya.d.aivencloud.com \
+      --port=28942 \
       --user=avnadmin \
       --password=<password> \
       --ssl-mode=REQUIRED \
@@ -257,7 +256,7 @@ mysql --host=mouzodb-goicoecheaalexandra33-081e.b.aivencloud.com \
 ## 🏗️ Estructura del Proyecto
 
 ```
-MOUZO/
+ComeYa/
 ├── client/                        # Frontend React Native
 │   ├── components/                # Componentes reutilizables
 │   │   ├── CollapsibleMap.tsx     # Mapa con tracking
@@ -524,17 +523,16 @@ MOUZO/
 
 ## 💳 Sistema de Pagos
 
-Rabbit Food opera en Venezuela donde Stripe no está disponible. El sistema de pagos es 100% manual coordinado por el admin.
+ComeYa opera en España con los métodos de pago habituales del mercado español.
 
 ### Métodos Soportados
-- **Pago Móvil** (método principal) - Transferencias bancarias instantáneas
-- **Binance Pay** - Pagos con criptomonedas
-- **Zinli** - Billetera digital
-- **Zelle** - Transferencias internacionales
+- **Bizum** (método principal) - Pagos instantáneos entre móviles
+- **Transferencia bancaria** - SEPA / IBAN
+- **Tarjeta** - Crédito y débito (Stripe)
 - **Efectivo** - Pago contra entrega
 
 ### Comisiones
-- **Rabbit Food**: 15% de markup sobre precio base de productos
+- **ComeYa**: 15% de markup sobre precio base de productos
 - **Negocio**: 100% del precio base de sus productos
 - **Repartidor**: 100% de la tarifa de entrega
 
@@ -542,7 +540,7 @@ Rabbit Food opera en Venezuela donde Stripe no está disponible. El sistema de p
 
 1. **Cliente realiza pedido**
    - Selecciona productos y método de pago
-   - Realiza transferencia a cuenta de Rabbit Food
+   - Realiza transferencia a cuenta de ComeYa
    
 2. **Cliente sube comprobante**
    - Toma foto del comprobante
@@ -577,10 +575,9 @@ Rabbit Food opera en Venezuela donde Stripe no está disponible. El sistema de p
 ### Cuentas de Pago (`payment_accounts`)
 
 Cada usuario (negocio/repartidor) registra sus cuentas destino en `PaymentWalletSetupScreen`:
-- Pago Móvil: teléfono, banco, cédula
-- Binance: ID o email
-- Zinli: email
-- Zelle: email o teléfono
+- Bizum: número de teléfono
+- Transferencia: IBAN y titular
+- Tarjeta: gestionado vía Stripe Connect
 
 El admin usa estas cuentas para saber a dónde transferir los payouts.
 
@@ -678,8 +675,8 @@ El admin usa estas cuentas para saber a dónde transferir los payouts.
 #### Sistema de Niveles
 - **Bronze**: Nivel inicial
 - **Silver**: 50+ pedidos completados
-- **Gold**: 200+ pedidos + Bs.500,000 generados
-- **Platinum**: 500+ pedidos + Bs.2,000,000 generados
+- **Gold**: 200+ pedidos + €5,000 generados
+- **Platinum**: 500+ pedidos + €20,000 generados
 
 Beneficios por nivel:
 - Comisión reducida
@@ -883,7 +880,7 @@ npm run server:build
 - [x] Integración social
 
 ### 🔜 Próximamente (v1.1)
-- [ ] Pagos automáticos con Stripe (cuando esté disponible en VE)
+- [ ] Pagos automáticos con Stripe
 - [ ] Chat en vivo con soporte humano
 - [ ] Programa de referidos con recompensas
 - [ ] Suscripciones premium activas
@@ -896,7 +893,7 @@ npm run server:build
 - [ ] Integración con POS de negocios
 - [ ] API pública para terceros
 - [ ] Programa de afiliados
-- [ ] Expansión a otras ciudades
+- [ ] Expansión a otras provincias de Castilla y León
 
 ## 🤝 Contribuir
 
@@ -924,9 +921,9 @@ chore: Mantenimiento
 
 ## 📞 Soporte
 
-- **Email**: support@rabbitfood.ve
-- **WhatsApp**: +58 414 XXX XXXX
-- **Documentación**: [docs.rabbitfood.ve](https://docs.rabbitfood.ve)
+- **Email**: support@comeya.es
+- **Teléfono**: +34 900 XXX XXX
+- **Documentación**: [docs.comeya.es](https://docs.comeya.es)
 - **Issues**: GitHub Issues (privado)
 
 ## 👥 Equipo
@@ -939,9 +936,9 @@ chore: Mantenimiento
 
 ## 📄 Licencia
 
-Propietario — Rabbit Food © 2026
+Propietario — ComeYa © 2026
 
-Todos los derechos reservados. Este software es propiedad de Rabbit Food y está protegido por leyes de derechos de autor. No se permite la reproducción, distribución o uso comercial sin autorización expresa.
+Todos los derechos reservados. Este software es propiedad de ComeYa y está protegido por leyes de derechos de autor. No se permite la reproducción, distribución o uso comercial sin autorización expresa.
 
 ---
 
@@ -956,6 +953,6 @@ Todos los derechos reservados. Este software es propiedad de Rabbit Food y está
 
 ---
 
-**Hecho con ❤️ en San Cristóbal, Venezuela**
+**Hecho con ❤️ en Soria, España**
 
-*Rabbit Food - Conectando sabores, construyendo comunidad* 🐰🍔
+*ComeYa - Conectando sabores, apoyando el comercio local* 🐰🍔

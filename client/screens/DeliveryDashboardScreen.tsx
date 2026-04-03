@@ -22,7 +22,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -134,7 +134,7 @@ function DeliveryOrderCard({
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
             Total: ${(order.total / 100).toFixed(2)}
           </ThemedText>
-          <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+          <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
             Ganas: ${((order.deliveryFee || 0) / 100).toFixed(2)}
           </ThemedText>
         </View>
@@ -142,7 +142,7 @@ function DeliveryOrderCard({
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Feather name="shopping-bag" size={16} color={RabbitFoodColors.primary} />
+          <Feather name="shopping-bag" size={16} color={ComeYaColors.primary} />
           <ThemedText type="body" style={{ fontWeight: "600", marginLeft: 8 }}>
             {order.businessName}
           </ThemedText>
@@ -158,7 +158,7 @@ function DeliveryOrderCard({
             >
               {order.businessAddress}
             </ThemedText>
-            <Feather name="navigation" size={16} color={RabbitFoodColors.primary} />
+            <Feather name="navigation" size={16} color={ComeYaColors.primary} />
           </Pressable>
         ) : null}
       </View>
@@ -180,7 +180,7 @@ function DeliveryOrderCard({
           >
             {order.deliveryAddress}
           </ThemedText>
-          <Feather name="navigation" size={16} color={RabbitFoodColors.primary} />
+          <Feather name="navigation" size={16} color={ComeYaColors.primary} />
         </Pressable>
         {order.customerPhone ? (
           <Pressable onPress={callCustomer} style={styles.phoneRow}>
@@ -218,10 +218,10 @@ function DeliveryOrderCard({
         <View
           style={[
             styles.notesSection,
-            { backgroundColor: RabbitFoodColors.primary + "10" },
+            { backgroundColor: ComeYaColors.primary + "10" },
           ]}
         >
-          <Feather name="message-circle" size={14} color={RabbitFoodColors.primary} />
+          <Feather name="message-circle" size={14} color={ComeYaColors.primary} />
           <ThemedText type="small" style={{ marginLeft: 8, flex: 1 }}>
             {order.notes}
           </ThemedText>
@@ -576,7 +576,7 @@ export default function DeliveryDashboardScreen() {
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <View>
-          <ThemedText type="h2">Rabbit Food Delivery</ThemedText>
+          <ThemedText type="h2">ComeYa Delivery</ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             {user?.name || "Repartidor"}
           </ThemedText>
@@ -627,20 +627,20 @@ export default function DeliveryDashboardScreen() {
         <Pressable
           style={[
             styles.statCard,
-            { backgroundColor: RabbitFoodColors.primary + "15" },
+            { backgroundColor: ComeYaColors.primary + "15" },
           ]}
           onPress={() => navigation.navigate("DeliveryEarnings")}
         >
-          <ThemedText type="h2" style={{ color: RabbitFoodColors.primary }}>
+          <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
             ${(todayEarnings / 100).toFixed(0)}
           </ThemedText>
-          <ThemedText type="small" style={{ color: RabbitFoodColors.primary }}>
+          <ThemedText type="small" style={{ color: ComeYaColors.primary }}>
             Ganado hoy
           </ThemedText>
           <Feather
             name="chevron-right"
             size={16}
-            color={RabbitFoodColors.primary}
+            color={ComeYaColors.primary}
             style={{ marginTop: 4 }}
           />
         </Pressable>
@@ -660,7 +660,7 @@ export default function DeliveryDashboardScreen() {
           style={[
             styles.tab,
             activeTab === "available" && {
-              backgroundColor: RabbitFoodColors.primary,
+              backgroundColor: ComeYaColors.primary,
             },
           ]}
         >
@@ -677,7 +677,7 @@ export default function DeliveryDashboardScreen() {
           onPress={() => setActiveTab("active")}
           style={[
             styles.tab,
-            activeTab === "active" && { backgroundColor: RabbitFoodColors.primary },
+            activeTab === "active" && { backgroundColor: ComeYaColors.primary },
           ]}
         >
           <ThemedText
@@ -691,7 +691,7 @@ export default function DeliveryDashboardScreen() {
           onPress={() => setActiveTab("history")}
           style={[
             styles.tab,
-            activeTab === "history" && { backgroundColor: RabbitFoodColors.primary },
+            activeTab === "history" && { backgroundColor: ComeYaColors.primary },
           ]}
         >
           <ThemedText
@@ -710,7 +710,7 @@ export default function DeliveryDashboardScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={refetch}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       >
@@ -750,7 +750,7 @@ export default function DeliveryDashboardScreen() {
               >
                 <View style={styles.availableHeader}>
                   <ThemedText type="h4">{order.businessName}</ThemedText>
-                  <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+                  <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
                     ${(order.total / 100).toFixed(2)}
                   </ThemedText>
                 </View>

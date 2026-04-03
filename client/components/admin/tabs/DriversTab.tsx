@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ActivityIndicator, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
-import { Spacing, BorderRadius, RabbitFoodColors } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import type { Driver, TabProps } from "../types/admin.types";
 

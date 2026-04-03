@@ -63,7 +63,7 @@ export default function SubscriptionScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Rabbit Food Premium</Text>
+      <Text style={styles.title}>ComeYa Premium</Text>
 
       <ScrollView style={styles.content}>
         {/* Plan actual */}

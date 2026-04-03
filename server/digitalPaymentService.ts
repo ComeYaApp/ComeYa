@@ -1,6 +1,6 @@
 // Digital Payment Service - Integrado con UnifiedFinancialService
 import { db } from "./db";
-import { orders, paymentMethods, paymentProofs, systemSettings, users } from "@shared/schema-mysql";
+import { orders, paymentMethods, paymentProofs, systemSettings, users, businesses } from "@shared/schema-mysql";
 import { eq, and, count, sum, gte } from "drizzle-orm";
 import { financialService } from "./unifiedFinancialService";
 import { autoVerificationService } from "./autoVerificationService";
@@ -231,7 +231,7 @@ export class DigitalPaymentService {
             })
             .where(eq(paymentProofs.id, proofId));
 
-          // Update order to confirmed (accepted by system, waiting for business)
+          // Update order to accepted (ready for business to prepare)
           await tx
             .update(orders)
             .set({
@@ -240,97 +240,29 @@ export class DigitalPaymentService {
               updatedAt: new Date(),
             })
             .where(eq(orders.id, proof.orderId));
-
-          // Calculate and distribute commissions using UnifiedFinancialService
-          const commissions = await financialService.calculateCommissions(
-            order.totalAmount,
-            order.deliveryFee || 0
-          );
-
-          logger.info(`✅ Payment verified and commissions calculated: Order ${order.id}`, {
-            orderId: order.id,
-            provider: proof.paymentProvider,
-            total: order.totalAmount,
-            commissions,
-          });
-
-          // Push notification al cliente
-          await notifyPagoMovilStatus(proof.userId, 'verified', order.id);
-
-          // Push notification al negocio para que empiece a preparar
-          const { businesses } = await import("@shared/schema-mysql");
-          const [biz] = await tx.select({ ownerId: businesses.ownerId }).from(businesses).where(eq(businesses.id, order.businessId)).limit(1);
-          if (biz?.ownerId) {
-            await sendPushToUser(biz.ownerId, {
-              title: "💳 Pago confirmado — ¡A preparar!",
-              body: `Pedido #${order.id.slice(-6)} pagado. Empieza la preparación.`,
-              data: { orderId: order.id, screen: "BusinessOrders" },
-            });
-          }
-          // Payouts se crean cuando el CLIENTE confirma la entrega, no aquí
-
-          // Distribute funds to PENDING BALANCE (not available yet)
-          await financialService.updateWalletBalance(
-            order.businessId,
-            commissions.business,
-            "order_payment_pending",
-            order.id,
-            `Pago pendiente de pedido #${order.id.slice(-6)} - ${proof.paymentProvider}`,
-            true // usePendingBalance = true
-          );
-
-          if (order.driverId) {
-            await financialService.updateWalletBalance(
-              order.driverId,
-              commissions.driver,
-              "delivery_payment_pending",
-              order.id,
-              `Entrega pendiente de pedido #${order.id.slice(-6)}`,
-              true // usePendingBalance = true
-            );
-          }
-
-          // Platform commission goes immediately (Rabbit Food assumes risk)
-          const [adminUser] = await tx
-            .select()
-            .from(await import("@shared/schema-mysql").then(m => m.users))
-            .where(eq((await import("@shared/schema-mysql").then(m => m.users)).role, "admin"))
-            .limit(1);
-
-          if (adminUser) {
-            await financialService.updateWalletBalance(
-              adminUser.id,
-              commissions.platform,
-              "platform_commission",
-              order.id,
-              `Comisión Rabbit Food - Pedido #${order.id.slice(-6)}`
-            );
-          }
-
-          // Set auto-release timer (24 hours for Level 2 - default)
-          const autoReleaseAt = new Date();
-          autoReleaseAt.setHours(autoReleaseAt.getHours() + 24);
-
-          // Set dispute window (3 days for Level 2 - default)
-          const disputeWindowEndsAt = new Date();
-          disputeWindowEndsAt.setDate(disputeWindowEndsAt.getDate() + 3);
-
-          // Update order with fund release info
-          await tx
-            .update(orders)
-            .set({
-              fundsReleased: false,
-              // TODO: Add these fields to orders table:
-              // autoReleaseAt,
-              // disputeWindowEndsAt,
-              // partnerLevel: 2, // Default to Level 2
-            })
-            .where(eq(orders.id, order.id));
         });
+
+        logger.info(`✅ Payment verified: Order ${order.id}`, {
+          orderId: order.id,
+          provider: proof.paymentProvider,
+        });
+
+        // Push notification al cliente
+        await notifyPagoMovilStatus(proof.userId, 'verified', order.id);
+
+        // Push notification al negocio para que empiece a preparar
+        const [biz] = await db.select({ ownerId: businesses.ownerId }).from(businesses).where(eq(businesses.id, order.businessId)).limit(1);
+        if (biz?.ownerId) {
+          await sendPushToUser(biz.ownerId, {
+            title: "💳 Pago confirmado — ¡A preparar!",
+            body: `Pedido #${order.id.slice(-6)} pagado. Empieza la preparación.`,
+            data: { orderId: order.id, screen: "BusinessOrders" },
+          });
+        }
 
         return {
           success: true,
-          message: "Pago verificado y fondos distribuidos",
+          message: "Pago verificado y pedido activado",
           orderId: order.id,
         };
       } else {
@@ -433,9 +365,16 @@ export class DigitalPaymentService {
 
         const paypalFee = paypalMethod ? Math.round(order.totalAmount * (paypalMethod.commissionPercentage / 100)) : 0;
 
+        // Get business owner ID
+        const [business] = await tx.select({ ownerId: businesses.ownerId }).from(businesses).where(eq(businesses.id, order.businessId)).limit(1);
+        
+        if (!business?.ownerId) {
+          throw new Error(`Business owner not found for business ${order.businessId}`);
+        }
+
         // Distribute funds (deducting PayPal fee from business)
         await financialService.updateWalletBalance(
-          order.businessId,
+          business.ownerId,
           commissions.business - paypalFee,
           "order_payment",
           order.id,
@@ -465,7 +404,7 @@ export class DigitalPaymentService {
             commissions.platform + paypalFee,
             "platform_commission",
             order.id,
-            `Comisión Rabbit Food + PayPal fee - Pedido #${order.id.slice(-6)}`
+            `Comisión ComeYa + PayPal fee - Pedido #${order.id.slice(-6)}`
           );
         }
 
@@ -490,11 +429,20 @@ export class DigitalPaymentService {
 
   // Get pending payment proofs (Admin)
   async getPendingPaymentProofs() {
-    return await db
+    const proofs = await db
       .select()
       .from(paymentProofs)
       .where(eq(paymentProofs.status, "pending"))
       .orderBy(paymentProofs.submittedAt);
+
+    // Convert relative URLs to absolute
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    return proofs.map(proof => ({
+      ...proof,
+      proofImageUrl: proof.proofImageUrl?.startsWith('http') 
+        ? proof.proofImageUrl 
+        : `${backendUrl}${proof.proofImageUrl}`,
+    }));
   }
 
   // Métricas genéricas de pagos (todos los métodos)
@@ -502,12 +450,13 @@ export class DigitalPaymentService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [all, pending, approved, rejected, todayApproved] = await Promise.all([
+    const [all, pending, approved, rejected, todayApproved, todayRejected] = await Promise.all([
       db.select({ count: count() }).from(paymentProofs),
       db.select({ count: count() }).from(paymentProofs).where(eq(paymentProofs.status, 'pending')),
       db.select({ count: count(), total: sum(paymentProofs.amount) }).from(paymentProofs).where(eq(paymentProofs.status, 'approved')),
       db.select({ count: count() }).from(paymentProofs).where(eq(paymentProofs.status, 'rejected')),
       db.select({ count: count(), total: sum(paymentProofs.amount) }).from(paymentProofs).where(and(eq(paymentProofs.status, 'approved'), gte(paymentProofs.verifiedAt, today))),
+      db.select({ count: count() }).from(paymentProofs).where(and(eq(paymentProofs.status, 'rejected'), gte(paymentProofs.verifiedAt, today))),
     ]);
 
     // Agrupar por proveedor
@@ -517,16 +466,21 @@ export class DigitalPaymentService {
       .where(eq(paymentProofs.status, 'approved'))
       .groupBy(paymentProofs.paymentProvider);
 
+    // Convertir array a Record<string, {count, amount}>
+    const totalByMethod: Record<string, { count: number; amount: number }> = {};
+    byProvider.forEach(item => {
+      totalByMethod[item.provider] = {
+        count: item.count,
+        amount: item.total || 0,
+      };
+    });
+
     return {
-      total: all[0].count,
-      pending: pending[0].count,
-      approved: approved[0].count,
-      rejected: rejected[0].count,
-      totalAmountApproved: approved[0].total || 0,
-      todayApproved: todayApproved[0].count,
-      todayAmount: todayApproved[0].total || 0,
-      approvalRate: all[0].count > 0 ? Math.round((approved[0].count / all[0].count) * 100) : 0,
-      byProvider,
+      totalByMethod,
+      pendingProofs: pending[0].count,
+      approvedToday: todayApproved[0].count,
+      rejectedToday: todayRejected[0].count,
+      totalRevenue: approved[0].total || 0,
     };
   }
 

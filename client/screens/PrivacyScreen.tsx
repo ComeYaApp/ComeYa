@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
-import { Spacing, BorderRadius, RabbitFoodColors } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors } from '@/constants/theme';
 
 export default function PrivacyScreen() {
   const insets = useSafeAreaInsets();
@@ -28,7 +28,7 @@ export default function PrivacyScreen() {
 
   const BulletPoint = ({ children }: { children: string }) => (
     <View style={styles.bulletContainer}>
-      <View style={[styles.bullet, { backgroundColor: RabbitFoodColors.primary }]} />
+      <View style={[styles.bullet, { backgroundColor: ComeYaColors.primary }]} />
       <ThemedText type="body" style={[styles.bulletText, { color: theme.textSecondary }]}>
         {children}
       </ThemedText>
@@ -36,10 +36,10 @@ export default function PrivacyScreen() {
   );
 
   const InfoBox = ({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) => (
-    <View style={[styles.infoBox, { backgroundColor: RabbitFoodColors.primary + '10' }]}>
+    <View style={[styles.infoBox, { backgroundColor: ComeYaColors.primary + '10' }]}>
       <View style={styles.infoHeader}>
-        <Feather name={icon as any} size={20} color={RabbitFoodColors.primary} />
-        <ThemedText type="body" style={[styles.infoTitle, { color: RabbitFoodColors.primary }]}>
+        <Feather name={icon as any} size={20} color={ComeYaColors.primary} />
+        <ThemedText type="body" style={[styles.infoTitle, { color: ComeYaColors.primary }]}>
           {title}
         </ThemedText>
       </View>
@@ -58,16 +58,16 @@ export default function PrivacyScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={[styles.badge, { backgroundColor: RabbitFoodColors.success + '20' }]}>
-          <Feather name="shield" size={16} color={RabbitFoodColors.success} />
-          <ThemedText type="small" style={{ color: RabbitFoodColors.success, fontWeight: '600', marginLeft: Spacing.xs }}>
+        <View style={[styles.badge, { backgroundColor: ComeYaColors.success + '20' }]}>
+          <Feather name="shield" size={16} color={ComeYaColors.success} />
+          <ThemedText type="small" style={{ color: ComeYaColors.success, fontWeight: '600', marginLeft: Spacing.xs }}>
             Última actualización: Febrero 2025
           </ThemedText>
         </View>
 
         <Section title="Nuestro Compromiso">
           <Paragraph>
-            En Rabbit Food nos comprometemos a proteger su privacidad y datos personales. Esta política explica 
+            En ComeYa nos comprometemos a proteger su privacidad y datos personales. Esta política explica 
             cómo recopilamos, usamos y protegemos su información.
           </Paragraph>
         </Section>
@@ -142,13 +142,13 @@ export default function PrivacyScreen() {
           <BulletPoint>Oposición: Oponerse a ciertos usos</BulletPoint>
 
           <View style={[styles.contactBox, { backgroundColor: theme.card }]}>
-            <Feather name="mail" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="mail" size={20} color={ComeYaColors.primary} />
             <View style={{ marginLeft: Spacing.md, flex: 1 }}>
               <ThemedText type="body" style={{ fontWeight: '600' }}>
                 Ejercer sus derechos:
               </ThemedText>
               <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
-                privacy@rabbitfood.app
+                privacy@ComeYa.app
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
                 Respuesta en 20 días hábiles
@@ -191,30 +191,30 @@ export default function PrivacyScreen() {
         <Section title="Contacto">
           <View style={[styles.contactGrid, { backgroundColor: theme.card }]}>
             <View style={styles.contactItem}>
-              <Feather name="shield" size={24} color={RabbitFoodColors.primary} />
+              <Feather name="shield" size={24} color={ComeYaColors.primary} />
               <ThemedText type="small" style={{ marginTop: Spacing.xs, fontWeight: '600' }}>
                 Privacidad
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                privacy@rabbitfood.app
+                privacy@ComeYa.app
               </ThemedText>
             </View>
             <View style={styles.contactItem}>
-              <Feather name="lock" size={24} color={RabbitFoodColors.primary} />
+              <Feather name="lock" size={24} color={ComeYaColors.primary} />
               <ThemedText type="small" style={{ marginTop: Spacing.xs, fontWeight: '600' }}>
                 Seguridad
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                security@rabbitfood.app
+                security@ComeYa.app
               </ThemedText>
             </View>
             <View style={styles.contactItem}>
-              <Feather name="help-circle" size={24} color={RabbitFoodColors.primary} />
+              <Feather name="help-circle" size={24} color={ComeYaColors.primary} />
               <ThemedText type="small" style={{ marginTop: Spacing.xs, fontWeight: '600' }}>
                 Soporte
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                support@rabbitfood.app
+                support@ComeYa.app
               </ThemedText>
             </View>
           </View>
@@ -225,7 +225,7 @@ export default function PrivacyScreen() {
             Del náhuatl "vivir" - Conectando negocios locales con la comunidad
           </ThemedText>
           <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: 'center', marginTop: Spacing.xs }}>
-            © 2025 Rabbit Food. Todos los derechos reservados.
+            © 2025 ComeYa. Todos los derechos reservados.
           </ThemedText>
         </View>
       </ScrollView>

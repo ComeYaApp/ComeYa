@@ -6,7 +6,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 interface BusinessHour {
@@ -127,7 +127,7 @@ export default function BusinessHoursScreen() {
               <Switch
                 value={hour.isOpen}
                 onValueChange={() => toggleDay(index)}
-                trackColor={{ false: "#767577", true: RabbitFoodColors.primary }}
+                trackColor={{ false: "#767577", true: ComeYaColors.primary }}
                 thumbColor="#fff"
               />
             </View>
@@ -141,7 +141,7 @@ export default function BusinessHoursScreen() {
                   <Pressable
                     style={[styles.timeButton, { backgroundColor: theme.background }]}
                   >
-                    <Feather name="clock" size={16} color={RabbitFoodColors.primary} />
+                    <Feather name="clock" size={16} color={ComeYaColors.primary} />
                     <ThemedText type="body" style={{ marginLeft: Spacing.xs }}>
                       {hour.openTime}
                     </ThemedText>
@@ -155,7 +155,7 @@ export default function BusinessHoursScreen() {
                   <Pressable
                     style={[styles.timeButton, { backgroundColor: theme.background }]}
                   >
-                    <Feather name="clock" size={16} color={RabbitFoodColors.primary} />
+                    <Feather name="clock" size={16} color={ComeYaColors.primary} />
                     <ThemedText type="body" style={{ marginLeft: Spacing.xs }}>
                       {hour.closeTime}
                     </ThemedText>
@@ -168,7 +168,7 @@ export default function BusinessHoursScreen() {
 
         <Pressable
           onPress={() => setShowConfirmModal(true)}
-          style={[styles.saveButton, { backgroundColor: RabbitFoodColors.primary }]}
+          style={[styles.saveButton, { backgroundColor: ComeYaColors.primary }]}
         >
           <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
             Guardar Horarios
@@ -188,7 +188,7 @@ export default function BusinessHoursScreen() {
         >
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={[styles.modalIcon, { backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name="clock" size={28} color={RabbitFoodColors.primary} />
+              <Feather name="clock" size={28} color={ComeYaColors.primary} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               Guardar horarios
@@ -213,7 +213,7 @@ export default function BusinessHoursScreen() {
                 </ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.modalButton, { backgroundColor: RabbitFoodColors.primary }]}
+                style={[styles.modalButton, { backgroundColor: ComeYaColors.primary }]}
                 onPress={saveHours}
                 disabled={saving}
               >
@@ -245,7 +245,7 @@ export default function BusinessHoursScreen() {
         >
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={[styles.modalIcon, { backgroundColor: "#E8F5E9" }]}>
-              <Feather name="check-circle" size={28} color={RabbitFoodColors.success} />
+              <Feather name="check-circle" size={28} color={ComeYaColors.success} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               ¡Horarios guardados!
@@ -257,7 +257,7 @@ export default function BusinessHoursScreen() {
               Tus horarios de atención se han actualizado correctamente.
             </ThemedText>
             <Pressable
-              style={[styles.modalButtonFull, { backgroundColor: RabbitFoodColors.primary }]}
+              style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]}
               onPress={handleSuccessClose}
             >
               <ThemedText

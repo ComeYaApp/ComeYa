@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticateToken } from './authMiddleware';
-import { requireRole } from './rbacMiddleware';
+import { requireRole } from './authMiddleware';
 import { cashSecurityService } from './cashSecurityService';
 import { db } from './db';
 import { orders, wallets } from '../shared/schema-mysql';

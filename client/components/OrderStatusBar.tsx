@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, RabbitFoodColors } from "@/constants/theme";
+import { Spacing, ComeYaColors } from "@/constants/theme";
 import { OrderStatus } from "@/types";
 
 interface OrderStatusBarProps {
@@ -70,9 +70,9 @@ function StatusDot({
   }));
 
   const backgroundColor = isCompleted
-    ? RabbitFoodColors.primary
+    ? ComeYaColors.primary
     : isActive
-      ? RabbitFoodColors.primary
+      ? ComeYaColors.primary
       : theme.border;
 
   return (
@@ -89,10 +89,10 @@ export function OrderStatusBar({ status }: OrderStatusBarProps) {
   if (status === "cancelled") {
     return (
       <View style={styles.cancelledContainer}>
-        <Feather name="x-circle" size={24} color={RabbitFoodColors.error} />
+        <Feather name="x-circle" size={24} color={ComeYaColors.error} />
         <ThemedText
           type="h4"
-          style={{ color: RabbitFoodColors.error, marginLeft: Spacing.sm }}
+          style={{ color: ComeYaColors.error, marginLeft: Spacing.sm }}
         >
           Pedido cancelado
         </ThemedText>
@@ -137,7 +137,7 @@ export function OrderStatusBar({ status }: OrderStatusBarProps) {
                     styles.line,
                     {
                       backgroundColor: isCompleted
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.border,
                     },
                   ]}

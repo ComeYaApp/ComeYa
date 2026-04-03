@@ -1,4 +1,4 @@
-// API Configuration for Rabbit Food Frontend
+// API Configuration for ComeYa Frontend
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
@@ -42,8 +42,8 @@ export const getApiBaseUrl = (): string => {
   }
 
   // Production fallback
-  console.log('🔧 Using fallback URL: https://rabbitfood-backend.onrender.com');
-  return "https://rabbitfood-backend.onrender.com";
+  console.log('🔧 Using fallback URL: https://ComeYa-backend.onrender.com');
+  return "https://ComeYa-backend.onrender.com";
 };
 
 export const API_CONFIG = {

@@ -1,7 +1,7 @@
 import React from "react";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { StyleSheet } from "react-native";
-import { RabbitFoodColors } from "@/constants/theme";
+import { ComeYaColors } from "@/constants/theme";
 
 interface Driver {
   id: string;
@@ -66,7 +66,7 @@ export function NativeMap({ activeOrders, onlineDrivers }: MapProps) {
             }}
             title={`Pedido ${order.id.slice(0, 8)}`}
             description={`${order.customer.name} - ${order.status}`}
-            pinColor={RabbitFoodColors.primary}
+            pinColor={ComeYaColors.primary}
           />
         ) : null,
       )}

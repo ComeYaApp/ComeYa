@@ -20,7 +20,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/contexts/ToastContext';
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 
 interface ExchangeRateData {
@@ -179,7 +179,7 @@ export default function AdminExchangeRateScreen() {
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+          <ActivityIndicator size="large" color={ComeYaColors.primary} />
         </View>
       </ThemedView>
     );
@@ -200,20 +200,20 @@ export default function AdminExchangeRateScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={RabbitFoodColors.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={ComeYaColors.primary} />
         }
       >
         {/* Current Rate Card */}
         <View style={[styles.card, { backgroundColor: theme.card }, Shadows.md]}>
           <View style={styles.cardHeader}>
-            <View style={[styles.iconCircle, { backgroundColor: RabbitFoodColors.primaryLight }]}>
-              <Feather name="dollar-sign" size={28} color={RabbitFoodColors.primary} />
+            <View style={[styles.iconCircle, { backgroundColor: ComeYaColors.primaryLight }]}>
+              <Feather name="dollar-sign" size={28} color={ComeYaColors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                 Tasa Actual
               </ThemedText>
-              <ThemedText type="h1" style={{ color: RabbitFoodColors.primary }}>
+              <ThemedText type="h1" style={{ color: ComeYaColors.primary }}>
                 {currentRate?.rate.toFixed(2)} Bs
               </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -246,8 +246,8 @@ export default function AdminExchangeRateScreen() {
             <Switch
               value={autoUpdateEnabled}
               onValueChange={handleToggleAutoUpdate}
-              trackColor={{ false: theme.border, true: RabbitFoodColors.primary + '80' }}
-              thumbColor={autoUpdateEnabled ? RabbitFoodColors.primary : theme.textSecondary}
+              trackColor={{ false: theme.border, true: ComeYaColors.primary + '80' }}
+              thumbColor={autoUpdateEnabled ? ComeYaColors.primary : theme.textSecondary}
             />
           </View>
 
@@ -259,11 +259,11 @@ export default function AdminExchangeRateScreen() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 {updating ? (
-                  <ActivityIndicator size="small" color={RabbitFoodColors.primary} />
+                  <ActivityIndicator size="small" color={ComeYaColors.primary} />
                 ) : (
-                  <Feather name="refresh-cw" size={18} color={RabbitFoodColors.primary} />
+                  <Feather name="refresh-cw" size={18} color={ComeYaColors.primary} />
                 )}
-                <ThemedText type="body" style={{ color: RabbitFoodColors.primary, fontWeight: '600' }}>
+                <ThemedText type="body" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
                   Actualizar Ahora
                 </ThemedText>
               </View>

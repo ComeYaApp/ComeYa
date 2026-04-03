@@ -3,7 +3,7 @@ import { View, Pressable, StyleSheet, Alert, ActivityIndicator } from 'react-nat
 import { Feather } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useTheme } from '@/hooks/useTheme';
-import { Spacing, BorderRadius, RabbitFoodColors } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors } from '@/constants/theme';
 
 // Función local para evitar problemas de importación
 const getButtonInfo = (status: string) => {
@@ -46,6 +46,15 @@ const getButtonInfo = (status: string) => {
         color: "#10B981",
         disabled: false
       };
+    case "delivered":
+      return {
+        canProceed: false,
+        message: "Pedido entregado",
+        nextAction: "Esperando confirmación del cliente",
+        icon: "clock",
+        color: "#10B981",
+        disabled: true
+      };
     default:
       return {
         canProceed: false,
@@ -82,10 +91,10 @@ export const SmartOrderButton: React.FC<SmartOrderButtonProps> = ({
   // Mapear colores del sistema a los colores del tema
   const getThemeColor = (color: string) => {
     switch (color) {
-      case "#3B82F6": return RabbitFoodColors.primary;
-      case "#F59E0B": return RabbitFoodColors.warning;
-      case "#10B981": return RabbitFoodColors.success;
-      case "#EF4444": return RabbitFoodColors.error;
+      case "#3B82F6": return ComeYaColors.primary;
+      case "#F59E0B": return ComeYaColors.warning;
+      case "#10B981": return ComeYaColors.success;
+      case "#EF4444": return ComeYaColors.error;
       default: return theme.textSecondary;
     }
   };
@@ -154,7 +163,7 @@ export const SmartOrderButton: React.FC<SmartOrderButtonProps> = ({
           {buttonInfo.requiresBusinessAction && (
             <ThemedText
               type="caption"
-              style={{ color: RabbitFoodColors.warning, marginTop: Spacing.xs, fontStyle: 'italic' }}
+              style={{ color: ComeYaColors.warning, marginTop: Spacing.xs, fontStyle: 'italic' }}
             >
               ⚠️ Requiere acción del negocio
             </ThemedText>
@@ -196,7 +205,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.md,
     borderLeftWidth: 3,
-    borderLeftColor: RabbitFoodColors.primary,
+    borderLeftColor: ComeYaColors.primary,
   },
   statusRow: {
     flexDirection: "row",

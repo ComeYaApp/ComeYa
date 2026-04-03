@@ -16,7 +16,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
 import { useOffline } from '@/hooks/useOffline';
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { OfflineCacheService } from '@/services/OfflineCacheService';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -107,7 +107,7 @@ export default function OfflineSettingsScreen() {
             <View
               style={[
                 styles.statusDot,
-                { backgroundColor: isOnline ? RabbitFoodColors.success : RabbitFoodColors.error },
+                { backgroundColor: isOnline ? ComeYaColors.success : ComeYaColors.error },
               ]}
             />
             <View style={styles.statusInfo}>
@@ -121,7 +121,7 @@ export default function OfflineSettingsScreen() {
             <Feather
               name={isOnline ? 'wifi' : 'wifi-off'}
               size={24}
-              color={isOnline ? RabbitFoodColors.success : RabbitFoodColors.error}
+              color={isOnline ? ComeYaColors.success : ComeYaColors.error}
             />
           </View>
         </View>
@@ -154,7 +154,7 @@ export default function OfflineSettingsScreen() {
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Acciones pendientes
             </ThemedText>
-            <ThemedText type="body" style={{ fontWeight: '600', color: RabbitFoodColors.warning }}>
+            <ThemedText type="body" style={{ fontWeight: '600', color: ComeYaColors.warning }}>
               {syncQueueCount}
             </ThemedText>
           </View>
@@ -179,7 +179,7 @@ export default function OfflineSettingsScreen() {
                 setAutoSync(value);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
-              trackColor={{ false: theme.border, true: RabbitFoodColors.primary }}
+              trackColor={{ false: theme.border, true: ComeYaColors.primary }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -194,7 +194,7 @@ export default function OfflineSettingsScreen() {
               style={[
                 styles.actionButton,
                 {
-                  backgroundColor: RabbitFoodColors.primary,
+                  backgroundColor: ComeYaColors.primary,
                   opacity: isOffline || loading ? 0.5 : 1,
                 },
                 Shadows.sm,
@@ -216,10 +216,10 @@ export default function OfflineSettingsScreen() {
               Shadows.sm,
             ]}
           >
-            <Feather name="trash-2" size={18} color={RabbitFoodColors.error} />
+            <Feather name="trash-2" size={18} color={ComeYaColors.error} />
             <ThemedText
               type="body"
-              style={{ color: RabbitFoodColors.error, marginLeft: 8, fontWeight: '600' }}
+              style={{ color: ComeYaColors.error, marginLeft: 8, fontWeight: '600' }}
             >
               Limpiar caché
             </ThemedText>
@@ -227,8 +227,8 @@ export default function OfflineSettingsScreen() {
         </View>
 
         {/* Info */}
-        <View style={[styles.infoCard, { backgroundColor: RabbitFoodColors.primary + '10' }]}>
-          <Feather name="info" size={20} color={RabbitFoodColors.primary} />
+        <View style={[styles.infoCard, { backgroundColor: ComeYaColors.primary + '10' }]}>
+          <Feather name="info" size={20} color={ComeYaColors.primary} />
           <ThemedText type="caption" style={{ flex: 1, marginLeft: Spacing.sm }}>
             El modo offline te permite navegar y agregar al carrito sin conexión. Los cambios se
             sincronizarán automáticamente cuando vuelvas a conectarte.

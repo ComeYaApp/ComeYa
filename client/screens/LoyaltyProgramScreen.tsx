@@ -374,7 +374,7 @@ export default function LoyaltyProgramScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.subscriptionTitle}>Rabbit Food Premium</Text>
+            <Text style={styles.subscriptionTitle}>ComeYa Premium</Text>
             <Text style={styles.subscriptionPrice}>
               {formatCurrency(loyaltyData?.subscription.monthlyFee || 0)}/mes
             </Text>
@@ -478,7 +478,7 @@ export default function LoyaltyProgramScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.premiumTitle}>Rabbit Food Premium</Text>
+              <Text style={styles.premiumTitle}>ComeYa Premium</Text>
               <Text style={styles.premiumPrice}>
                 {formatCurrency(loyaltyData?.subscription.monthlyFee || 0)}/mes
               </Text>

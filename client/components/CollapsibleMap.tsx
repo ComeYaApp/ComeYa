@@ -18,7 +18,7 @@ let PROVIDER_GOOGLE: any = null;
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 
 interface Location {
   latitude: number;
@@ -170,7 +170,7 @@ export function CollapsibleMap({
             {isValidLocation(businessLocation) && (
               <Marker coordinate={businessLocation} title="Negocio" anchor={{ x: 0.5, y: 0.5 }}>
                 <View style={[styles.markerOuter, { backgroundColor: "#FFFFFF" }]}>
-                  <View style={[styles.markerInner, { backgroundColor: RabbitFoodColors.primary }]}>
+                  <View style={[styles.markerInner, { backgroundColor: ComeYaColors.primary }]}>
                     <Feather name="shopping-bag" size={14} color="#FFFFFF" />
                   </View>
                 </View>
@@ -180,7 +180,7 @@ export function CollapsibleMap({
             {/* Driver marker — pulsing */}
             {isValidLocation(deliveryPersonLocation) && (
               <Marker coordinate={deliveryPersonLocation} title="Repartidor" anchor={{ x: 0.5, y: 0.5 }}>
-                <DriverMarker color={RabbitFoodColors.success} />
+                <DriverMarker color={ComeYaColors.success} />
               </Marker>
             )}
 
@@ -199,7 +199,7 @@ export function CollapsibleMap({
             {routeCoords.length >= 2 && (
               <Polyline
                 coordinates={routeCoords}
-                strokeColor={RabbitFoodColors.primary}
+                strokeColor={ComeYaColors.primary}
                 strokeWidth={4}
               />
             )}
@@ -224,8 +224,8 @@ export function CollapsibleMap({
         {/* ETA pill — top right */}
         {eta && (
           <View style={[styles.etaPill, { backgroundColor: theme.card }]}>
-            <Feather name="clock" size={13} color={RabbitFoodColors.primary} />
-            <ThemedText type="caption" style={[styles.etaPillText, { color: RabbitFoodColors.primary }]}>
+            <Feather name="clock" size={13} color={ComeYaColors.primary} />
+            <ThemedText type="caption" style={[styles.etaPillText, { color: ComeYaColors.primary }]}>
               {eta}
             </ThemedText>
           </View>
@@ -243,15 +243,15 @@ export function CollapsibleMap({
                 contentFit="cover"
               />
             ) : (
-              <View style={[styles.driverAvatar, { backgroundColor: RabbitFoodColors.primary + "20" }]}>
-                <Feather name="user" size={22} color={RabbitFoodColors.primary} />
+              <View style={[styles.driverAvatar, { backgroundColor: ComeYaColors.primary + "20" }]}>
+                <Feather name="user" size={22} color={ComeYaColors.primary} />
               </View>
             )}
             <View style={styles.driverInfo}>
               <ThemedText type="h4" numberOfLines={1}>{driverName ?? "Repartidor"}</ThemedText>
               <View style={styles.driverBadge}>
-                <View style={[styles.onlineDot, { backgroundColor: RabbitFoodColors.success }]} />
-                <ThemedText type="caption" style={{ color: RabbitFoodColors.success }}>
+                <View style={[styles.onlineDot, { backgroundColor: ComeYaColors.success }]} />
+                <ThemedText type="caption" style={{ color: ComeYaColors.success }}>
                   En camino
                 </ThemedText>
               </View>
@@ -263,13 +263,13 @@ export function CollapsibleMap({
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCallDriver(); }}
                 style={[styles.actionBtn, { backgroundColor: theme.backgroundSecondary }]}
               >
-                <Feather name="phone" size={18} color={RabbitFoodColors.primary} />
+                <Feather name="phone" size={18} color={ComeYaColors.primary} />
               </Pressable>
             )}
             {onChatDriver && (
               <Pressable
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChatDriver(); }}
-                style={[styles.actionBtn, { backgroundColor: RabbitFoodColors.primary }]}
+                style={[styles.actionBtn, { backgroundColor: ComeYaColors.primary }]}
               >
                 <Feather name="message-circle" size={18} color="#FFFFFF" />
               </Pressable>

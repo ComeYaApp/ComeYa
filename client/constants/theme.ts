@@ -1,30 +1,30 @@
-// Unified Design System for Rabbit Food App
+// Unified Design System for ComeYa App
 export const theme = {
   colors: {
-    primary: '#E8B4A8',
-    primaryDark: '#D4A89C',
-    primaryLight: '#F5D5CC',
-    secondary: '#C9A882',
-    background: '#FAF8F5',
-    backgroundSecondary: '#F5F1EB',
-    surface: '#FFFCF7',
-    error: '#D84A4A',
-    warning: '#E8A84E',
-    success: '#6BAF6B',
-    info: '#5BA3D4',
+    primary: '#FF6B35',
+    primaryDark: '#E55A25',
+    primaryLight: '#FF8C5A',
+    secondary: '#2D2D2D',
+    background: '#F7F7F7',
+    backgroundSecondary: '#EFEFEF',
+    surface: '#FFFFFF',
+    error: '#E53935',
+    warning: '#F59E0B',
+    success: '#22C55E',
+    info: '#3B82F6',
     text: {
-      primary: '#3D3226',
-      secondary: '#6B5D4F',
-      disabled: '#B5A89A',
-      inverse: '#FFFCF7',
+      primary: '#1A1A1A',
+      secondary: '#555555',
+      disabled: '#AAAAAA',
+      inverse: '#FFFFFF',
     },
-    border: '#E5DDD1',
-    divider: '#F0E9DD',
-    overlay: 'rgba(61, 50, 38, 0.5)',
+    border: '#E0E0E0',
+    divider: '#EBEBEB',
+    overlay: 'rgba(0, 0, 0, 0.5)',
     carnival: {
-      pink: '#E8B4A8',
-      purple: '#D4A89C',
-      gold: '#F5D5CC',
+      pink: '#FF6B35',
+      purple: '#E55A25',
+      gold: '#F59E0B',
     },
   },
   spacing: {
@@ -83,7 +83,8 @@ export const theme = {
 export type Theme = typeof theme;
 
 // Export individual objects for easier imports
-export const RabbitFoodColors = theme.colors;
+export const ComeYaColors = theme.colors;
+export const RabbitFoodColors = theme.colors; // Legacy alias
 export const MouzoColors = theme.colors; // Legacy alias
 export const Spacing = theme.spacing;
 export const BorderRadius = theme.borderRadius;

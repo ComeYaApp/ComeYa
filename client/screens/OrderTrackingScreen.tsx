@@ -23,7 +23,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { CollapsibleMap } from "@/components/CollapsibleMap";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { Order } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { mockOrders } from "@/data/mockData";
@@ -35,7 +35,7 @@ type OrderTrackingNavigationProp = NativeStackNavigationProp<
   "OrderTracking"
 >;
 
-const ORDERS_KEY = "@rabbitfood_orders";
+const ORDERS_KEY = "@ComeYa_orders";
 const { width } = Dimensions.get("window");
 
 const parseDeliveryAddress = (address: string | null): string => {
@@ -378,8 +378,8 @@ export default function OrderTrackingScreen() {
         {dynamicETA && (
           <View style={[styles.statusCard, { backgroundColor: theme.card }, Shadows.md]}>
             <View style={styles.businessRow}>
-              <View style={[styles.iconContainer, { backgroundColor: RabbitFoodColors.primary + '20' }]}>
-                <Feather name="clock" size={24} color={RabbitFoodColors.primary} />
+              <View style={[styles.iconContainer, { backgroundColor: ComeYaColors.primary + '20' }]}>
+                <Feather name="clock" size={24} color={ComeYaColors.primary} />
               </View>
               <View style={styles.businessInfo}>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -388,7 +388,7 @@ export default function OrderTrackingScreen() {
                    order.status === 'preparing' ? 'Preparando tu pedido' :
                    order.status === 'on_the_way' ? 'En camino' : 'Procesando'}
                 </ThemedText>
-                <ThemedText type="h3" style={{ color: RabbitFoodColors.primary }}>
+                <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
                   {dynamicETA.minutes} min
                 </ThemedText>
               </View>
@@ -398,11 +398,11 @@ export default function OrderTrackingScreen() {
 
         {/* Buscando repartidor */}
         {(order as any).searchingDriver && (
-          <View style={[styles.statusCard, { backgroundColor: RabbitFoodColors.warning + '15', borderWidth: 1, borderColor: RabbitFoodColors.warning }, Shadows.md]}>
+          <View style={[styles.statusCard, { backgroundColor: ComeYaColors.warning + '15', borderWidth: 1, borderColor: ComeYaColors.warning }, Shadows.md]}>
             <View style={styles.businessRow}>
-              <ActivityIndicator size="small" color={RabbitFoodColors.warning} />
+              <ActivityIndicator size="small" color={ComeYaColors.warning} />
               <View style={[styles.businessInfo, { marginLeft: Spacing.md }]}>
-                <ThemedText type="h4" style={{ color: RabbitFoodColors.warning }}>
+                <ThemedText type="h4" style={{ color: ComeYaColors.warning }}>
                   Buscando repartidor disponible...
                 </ThemedText>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -447,7 +447,7 @@ export default function OrderTrackingScreen() {
                 >
                   ETA
                 </ThemedText>
-                <ThemedText type="h3" style={{ color: RabbitFoodColors.primary }}>
+                <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
                   {etaRange}
                 </ThemedText>
               </View>
@@ -489,7 +489,7 @@ export default function OrderTrackingScreen() {
           ]}
         >
           <View style={styles.addressHeader}>
-            <Feather name="map-pin" size={20} color={RabbitFoodColors.primary} />
+            <Feather name="map-pin" size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
               Dirección de entrega
             </ThemedText>
@@ -541,7 +541,7 @@ export default function OrderTrackingScreen() {
             </View>
             <View style={styles.itemRow}>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Comision Rabbit Food (15%)
+                Comision ComeYa (15%)
               </ThemedText>
               <ThemedText type="small">${nemyCommission.toFixed(2)}</ThemedText>
             </View>
@@ -555,7 +555,7 @@ export default function OrderTrackingScreen() {
             </View>
             <View style={styles.itemRow}>
               <ThemedText type="h4">Total</ThemedText>
-              <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+              <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
                 ${order.total.toFixed(2)}
               </ThemedText>
             </View>
@@ -583,7 +583,7 @@ export default function OrderTrackingScreen() {
             ]}
           >
             <View style={styles.tipHeader}>
-              <Feather name="heart" size={20} color={RabbitFoodColors.primary} />
+              <Feather name="heart" size={20} color={ComeYaColors.primary} />
               <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
                 Agregar propina
               </ThemedText>
@@ -607,10 +607,10 @@ export default function OrderTrackingScreen() {
                     {
                       backgroundColor:
                         selectedTip === tip
-                          ? RabbitFoodColors.primary
+                          ? ComeYaColors.primary
                           : theme.backgroundSecondary,
                       borderColor:
-                        selectedTip === tip ? RabbitFoodColors.primary : theme.border,
+                        selectedTip === tip ? ComeYaColors.primary : theme.border,
                     },
                   ]}
                 >
@@ -633,7 +633,7 @@ export default function OrderTrackingScreen() {
                 styles.tipButton,
                 {
                   backgroundColor: selectedTip
-                    ? RabbitFoodColors.primary
+                    ? ComeYaColors.primary
                     : theme.backgroundSecondary,
                   opacity: selectedTip && !sendingTip ? 1 : 0.5,
                 },
@@ -654,50 +654,62 @@ export default function OrderTrackingScreen() {
           </View>
         ) : null}
 
-        {/* Confirm delivery button */}
         {order.status === "delivered" && !(order as any).confirmedByCustomer ? (
           <Pressable
             onPress={async () => {
-              try {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                const response = await apiRequest("POST", `/api/fund-release/confirm-delivery`, {
-                  orderId: order.id
-                });
-                if (response.success) {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  // Navegar automáticamente a la pantalla de reseña
-                  navigation.replace("Review", {
-                    orderId: order.id,
-                    businessId: order.businessId,
-                    businessName: order.businessName,
-                    deliveryPersonId: order.deliveryPersonId,
-                  });
-                } else {
-                  throw new Error(response.message || "Error al confirmar");
-                }
-              } catch (error: any) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                Alert.alert("Error", error.message || "No se pudo confirmar la entrega");
-              }
+              Alert.alert(
+                "✅ Confirmar entrega",
+                "¿Recibiste tu pedido correctamente?",
+                [
+                  { text: "Cancelar", style: "cancel" },
+                  {
+                    text: "Sí, lo recibí",
+                    onPress: async () => {
+                      try {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        const res = await apiRequest("POST", `/api/fund-release/confirm-delivery`, { orderId: order.id });
+                        const data = await res.json();
+                        if (data.success) {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          navigation.replace("Review", {
+                            orderId: order.id,
+                            businessId: order.businessId,
+                            businessName: order.businessName,
+                            deliveryPersonId: order.deliveryPersonId,
+                          });
+                        } else {
+                          Alert.alert("Error", data.error || "No se pudo confirmar la entrega");
+                        }
+                      } catch (error: any) {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        Alert.alert("Error", error.message || "No se pudo confirmar la entrega");
+                      }
+                    },
+                  },
+                ]
+              );
             }}
             style={[
               styles.confirmButton,
-              { backgroundColor: RabbitFoodColors.success },
+              { backgroundColor: ComeYaColors.success },
               Shadows.md,
             ]}
           >
             <Feather name="check-circle" size={20} color="#FFFFFF" />
             <ThemedText
               type="body"
-              style={{
-                color: "#FFFFFF",
-                marginLeft: Spacing.sm,
-                fontWeight: "600",
-              }}
+              style={{ color: "#FFFFFF", marginLeft: Spacing.sm, fontWeight: "600" }}
             >
               Confirmar que recibí mi pedido
             </ThemedText>
           </Pressable>
+        ) : order.status === "delivered" && (order as any).confirmedByCustomer ? (
+          <View style={[styles.confirmButton, { backgroundColor: "#E8F5E9" }]}>
+            <Feather name="check-circle" size={20} color="#4CAF50" />
+            <ThemedText type="body" style={{ color: "#4CAF50", marginLeft: Spacing.sm, fontWeight: "600" }}>
+              Entrega confirmada ✔
+            </ThemedText>
+          </View>
         ) : null}
 
         {tipSent ? (
@@ -730,7 +742,7 @@ export default function OrderTrackingScreen() {
             }}
             style={[styles.reportButton, { borderColor: theme.border }]}
           >
-            <Feather name="alert-circle" size={18} color={RabbitFoodColors.warning} />
+            <Feather name="alert-circle" size={18} color={ComeYaColors.warning} />
             <ThemedText
               type="body"
               style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}

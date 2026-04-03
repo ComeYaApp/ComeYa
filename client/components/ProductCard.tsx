@@ -12,7 +12,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { Product } from "@/types";
 
 interface ProductCardProps {
@@ -77,7 +77,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
         ) : null}
         {inCart && cartItem ? (
           <View
-            style={[styles.cartBadge, { backgroundColor: RabbitFoodColors.primary }]}
+            style={[styles.cartBadge, { backgroundColor: ComeYaColors.primary }]}
           >
             <ThemedText type="caption" style={styles.cartBadgeText}>
               {cartItem.quantity}
@@ -97,7 +97,7 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           {product.description}
         </ThemedText>
         <View style={styles.footer}>
-          <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+          <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
             {formatPrice()}
           </ThemedText>
           {product.requiresNote ? (

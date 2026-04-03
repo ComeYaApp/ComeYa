@@ -20,7 +20,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import {
   DashboardTab,
@@ -57,7 +57,7 @@ const menuItems: MenuItem[] = [
     subtitle: "Métricas y pedidos activos",
     icon: "bar-chart-2",
     tab: "dashboard",
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
   },
   {
     title: "Pedidos",
@@ -866,7 +866,7 @@ export default function AdminMenuScreen() {
 
                   <ScrollView showsVerticalScrollIndicator={false}>
                     <View style={styles.modalHero}>
-                      <View style={[styles.modalAvatar, { backgroundColor: RabbitFoodColors.warning }]}>
+                      <View style={[styles.modalAvatar, { backgroundColor: ComeYaColors.warning }]}>
                         <ThemedText style={{ color: "white", fontSize: 24, fontWeight: "bold" }}>
                           #
                         </ThemedText>
@@ -967,7 +967,7 @@ export default function AdminMenuScreen() {
                   <Pressable
                     style={{
                       padding: 16,
-                      backgroundColor: RabbitFoodColors.primary,
+                      backgroundColor: ComeYaColors.primary,
                       borderRadius: 10,
                       alignItems: "center",
                       marginTop: 10,
@@ -1313,12 +1313,12 @@ export default function AdminMenuScreen() {
                         paddingVertical: 8,
                         paddingHorizontal: 16,
                         borderRadius: 20,
-                        backgroundColor: selectedBusinessId === b.id ? RabbitFoodColors.primary : 'transparent',
+                        backgroundColor: selectedBusinessId === b.id ? ComeYaColors.primary : 'transparent',
                         borderWidth: 1,
-                        borderColor: RabbitFoodColors.primary,
+                        borderColor: ComeYaColors.primary,
                       }}
                     >
-                      <ThemedText style={{ color: selectedBusinessId === b.id ? '#fff' : RabbitFoodColors.primary, fontSize: 14 }}>
+                      <ThemedText style={{ color: selectedBusinessId === b.id ? '#fff' : ComeYaColors.primary, fontSize: 14 }}>
                         {b.name}
                       </ThemedText>
                     </Pressable>
@@ -1347,8 +1347,8 @@ export default function AdminMenuScreen() {
                             />
                           </View>
                         ) : (
-                          <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: p.isAvailable ? RabbitFoodColors.success + '20' : theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
-                            <Feather name="box" size={20} color={p.isAvailable ? RabbitFoodColors.success : theme.textSecondary} />
+                          <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: p.isAvailable ? ComeYaColors.success + '20' : theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                            <Feather name="box" size={20} color={p.isAvailable ? ComeYaColors.success : theme.textSecondary} />
                           </View>
                         )}
                         <View style={{ flex: 1 }}>
@@ -1360,18 +1360,18 @@ export default function AdminMenuScreen() {
                             </ThemedText>
                           )}
                         </View>
-                        <ThemedText style={{ color: RabbitFoodColors.primary, fontWeight: 'bold' }}>
+                        <ThemedText style={{ color: ComeYaColors.primary, fontWeight: 'bold' }}>
                           ${(p.price / 100).toFixed(2)}
                         </ThemedText>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 }}>
                         {p.isWeightBased && (
-                          <View style={{ backgroundColor: RabbitFoodColors.warning + '20', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6 }}>
-                            <ThemedText style={{ color: RabbitFoodColors.warning, fontSize: 12 }}>Por peso</ThemedText>
+                          <View style={{ backgroundColor: ComeYaColors.warning + '20', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6 }}>
+                            <ThemedText style={{ color: ComeYaColors.warning, fontSize: 12 }}>Por peso</ThemedText>
                           </View>
                         )}
-                        <View style={{ backgroundColor: p.isAvailable ? RabbitFoodColors.success + '20' : RabbitFoodColors.error + '20', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6 }}>
-                          <ThemedText style={{ color: p.isAvailable ? RabbitFoodColors.success : RabbitFoodColors.error, fontSize: 12 }}>
+                        <View style={{ backgroundColor: p.isAvailable ? ComeYaColors.success + '20' : ComeYaColors.error + '20', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6 }}>
+                          <ThemedText style={{ color: p.isAvailable ? ComeYaColors.success : ComeYaColors.error, fontSize: 12 }}>
                             {p.isAvailable ? 'Disponible' : 'Agotado'}
                           </ThemedText>
                         </View>
@@ -1434,16 +1434,16 @@ export default function AdminMenuScreen() {
   const getLogActionColor = (action: string) => {
     switch (action) {
       case "LOGIN_SUCCESS":
-        return RabbitFoodColors.success;
+        return ComeYaColors.success;
       case "LOGIN_FAILED":
       case "RATE_LIMIT_BLOCKED":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       case "CREATE":
         return "#2196F3";
       case "UPDATE":
-        return RabbitFoodColors.warning;
+        return ComeYaColors.warning;
       case "DELETE":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       default:
         return theme.textSecondary;
     }
@@ -1519,7 +1519,7 @@ export default function AdminMenuScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={RabbitFoodColors.primary}
+              tintColor={ComeYaColors.primary}
             />
           }
         >

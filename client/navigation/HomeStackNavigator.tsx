@@ -7,7 +7,7 @@ import HomeScreen from "@/screens/HomeScreen";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
-import { Spacing, RabbitFoodColors } from "@/constants/theme";
+import { Spacing, ComeYaColors } from "@/constants/theme";
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -23,8 +23,8 @@ function HeaderTitle() {
         style={styles.headerIcon}
         contentFit="contain"
       />
-      <ThemedText type="h3" style={{ color: RabbitFoodColors.primary }}>
-        Rabbit Food
+      <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
+        ComeYa
       </ThemedText>
     </View>
   );

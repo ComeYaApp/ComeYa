@@ -41,7 +41,7 @@ import { BusinessCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { Business } from "@/types";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -253,7 +253,7 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -270,7 +270,7 @@ export default function HomeScreen() {
           />
           <View style={styles.logoTextContainer}>
             <ThemedText type="h2" style={styles.logoTitle}>
-              Rabbit Food
+              ComeYa
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Tu app de comida y delivery en Venezuela
@@ -370,7 +370,7 @@ export default function HomeScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {searchLoading && <ActivityIndicator size="small" color={RabbitFoodColors.primary} />}
+          {searchLoading && <ActivityIndicator size="small" color={ComeYaColors.primary} />}
         </View>
 
         {/* Resultados de búsqueda de productos */}
@@ -394,7 +394,7 @@ export default function HomeScreen() {
                     <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
                       {product.business.name}
                     </ThemedText>
-                    <ThemedText type="small" style={{ color: RabbitFoodColors.primary, marginTop: 2 }}>
+                    <ThemedText type="small" style={{ color: ComeYaColors.primary, marginTop: 2 }}>
                       Bs. {(product.price / 100).toFixed(2)}
                     </ThemedText>
                   </View>
@@ -448,7 +448,7 @@ export default function HomeScreen() {
               style={({ pressed }) => [
                 styles.filterChip,
                 activeFilter === filter.id
-                  ? { backgroundColor: RabbitFoodColors.primary }
+                  ? { backgroundColor: ComeYaColors.primary }
                   : { backgroundColor: theme.backgroundSecondary },
                 {
                   opacity: pressed ? 0.8 : 1,
@@ -460,7 +460,7 @@ export default function HomeScreen() {
                 name={filter.icon as any}
                 size={14}
                 color={
-                  activeFilter === filter.id ? "#FFFFFF" : RabbitFoodColors.primary
+                  activeFilter === filter.id ? "#FFFFFF" : ComeYaColors.primary
                 }
               />
               <ThemedText
@@ -490,7 +490,7 @@ export default function HomeScreen() {
               ]}
             >
               <LinearGradient
-                colors={[RabbitFoodColors.carnival.pink, "#7B1FA2", "#6A1B9A"]}
+                colors={[ComeYaColors.carnival.pink, "#7B1FA2", "#6A1B9A"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.carnivalGradient}
@@ -507,7 +507,7 @@ export default function HomeScreen() {
                       <Feather
                         name="star"
                         size={10}
-                        color={RabbitFoodColors.carnival.gold}
+                        color={ComeYaColors.carnival.gold}
                       />
                       <ThemedText
                         type="caption"
@@ -581,7 +581,7 @@ export default function HomeScreen() {
               }}
               style={[
                 styles.emptyStateClearButton,
-                { backgroundColor: RabbitFoodColors.primary },
+                { backgroundColor: ComeYaColors.primary },
               ]}
             >
               <Feather name="x" size={16} color="#FFFFFF" />
@@ -674,14 +674,14 @@ export default function HomeScreen() {
                     styles.marketsBanner,
                     styles.bannerHalf,
                     {
-                      backgroundColor: RabbitFoodColors.primary,
+                      backgroundColor: ComeYaColors.primary,
                       transform: [{ scale: pressed ? 0.97 : 1 }],
                     },
                     Shadows.md,
                   ]}
                 >
                   <LinearGradient
-                    colors={[RabbitFoodColors.primary, "#E65100", "#D84315"]}
+                    colors={[ComeYaColors.primary, "#E65100", "#D84315"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.marketsGradient}
@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
   },
   logoTitle: {
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     fontWeight: "700",
   },
   questionContainer: {
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   carnivalBadgeText: {
-    color: RabbitFoodColors.carnival.gold,
+    color: ComeYaColors.carnival.gold,
     fontWeight: "600",
     marginLeft: 4,
     fontSize: 10,
@@ -997,7 +997,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: Spacing.md,
     right: Spacing.md,
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.sm,
@@ -1044,7 +1044,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: Spacing.xs,
     right: Spacing.xs,
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
     width: 20,
     height: 20,
     borderRadius: 10,

@@ -23,10 +23,10 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
-import { RabbitFoodColors, Spacing, BorderRadius } from "@/constants/theme";
+import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 
 const { width, height } = Dimensions.get("window");
-const ONBOARDING_KEY = "@rabbitfood_onboarding_completed";
+const ONBOARDING_KEY = "@ComeYa_onboarding_completed";
 
 interface OnboardingSlide {
   id: number;
@@ -40,16 +40,16 @@ interface OnboardingSlide {
 const slides: OnboardingSlide[] = [
   {
     id: 1,
-    title: "Rabbit Food",
+    title: "ComeYa",
     subtitle: "Tu app de entregas local",
     description:
       "Conecta con restaurantes y mercados de Autlan. Pedidos frescos directo a tu puerta.",
     icon: "heart",
-    gradient: [RabbitFoodColors.primary, "#E65100"],
+    gradient: [ComeYaColors.primary, "#E65100"],
   },
   {
     id: 2,
-    title: "Rabbit Food",
+    title: "ComeYa",
     subtitle: 'En Nahuatl significa "vivir"',
     description:
       '"Vivir es conectar"\n\nConectamos a la comunidad con los sabores locales que amamos.',
@@ -58,7 +58,7 @@ const slides: OnboardingSlide[] = [
   },
   {
     id: 3,
-    title: "Cómo usar Rabbit Food",
+    title: "Cómo usar ComeYa",
     subtitle: "Es muy fácil",
     description:
       "1. Explora restaurantes y mercados\n2. Agrega productos al carrito\n3. Paga con tarjeta o efectivo\n4. Recibe en tu puerta",

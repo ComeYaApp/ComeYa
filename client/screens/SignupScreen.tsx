@@ -22,13 +22,13 @@ import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { UserRole } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 
 const foodBgImage = require("../../assets/images/food-ingredients-bg.png");
-const PENDING_BUSINESS_DRAFT_KEY = "@rabbitfood_pending_business_draft";
+const PENDING_BUSINESS_DRAFT_KEY = "@ComeYa_pending_business_draft";
 
 type SignupScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Signup">;
@@ -208,8 +208,8 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     try {
       await Share.share({
         message:
-          "Descubre Rabbit Food - Tu delivery local de confianza en San Cristóbal. Pide comida y productos del mercado con un toque. Descarga ahora: https://rabbitfood.app",
-        title: "Rabbit Food - Delivery Local",
+          "Descubre ComeYa - Tu delivery local de confianza en San Cristóbal. Pide comida y productos del mercado con un toque. Descarga ahora: https://ComeYa.app",
+        title: "ComeYa - Delivery Local",
       });
     } catch (error) {
       console.log("Error sharing:", error);
@@ -305,7 +305,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                   secureTextEntry={!showPassword}
                   placeholderTextColor="#999999"
                   style={styles.textInput}
-                  selectionColor={RabbitFoodColors.primary}
+                  selectionColor={ComeYaColors.primary}
                   testID="input-password"
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)}>
@@ -349,7 +349,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                   secureTextEntry={!showPassword}
                   placeholderTextColor="#999999"
                   style={styles.textInput}
-                  selectionColor={RabbitFoodColors.primary}
+                  selectionColor={ComeYaColors.primary}
                   testID="input-confirm-password"
                 />
               </View>
@@ -390,7 +390,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                     autoComplete="tel"
                     placeholderTextColor="#999999"
                     style={styles.textInput}
-                    selectionColor={RabbitFoodColors.primary}
+                    selectionColor={ComeYaColors.primary}
                     maxLength={13}
                   />
                 </View>
@@ -441,7 +441,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                       }}
                       placeholderTextColor="#999999"
                       style={styles.textInput}
-                      selectionColor={RabbitFoodColors.primary}
+                      selectionColor={ComeYaColors.primary}
                     />
                   </View>
                   {errors.businessName ? (
@@ -518,7 +518,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                       }}
                       placeholderTextColor="#999999"
                       style={styles.textInput}
-                      selectionColor={RabbitFoodColors.primary}
+                      selectionColor={ComeYaColors.primary}
                     />
                   </View>
                   {errors.businessAddress ? (
@@ -546,7 +546,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                       keyboardType="phone-pad"
                       placeholderTextColor="#999999"
                       style={styles.textInput}
-                      selectionColor={RabbitFoodColors.primary}
+                      selectionColor={ComeYaColors.primary}
                       maxLength={13}
                     />
                   </View>
@@ -555,7 +555,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
             ) : null}
 
             <ThemedText type="small" style={styles.roleLabel}>
-              ¿Cómo quieres usar Rabbit Food?
+              ¿Cómo quieres usar ComeYa?
             </ThemedText>
             <View style={styles.rolesContainer}>
               {ROLES.map((r) => (
@@ -569,9 +569,9 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                     styles.roleCard,
                     {
                       backgroundColor:
-                        role === r.value ? RabbitFoodColors.primaryLight : "#F5F5F5",
+                        role === r.value ? ComeYaColors.primaryLight : "#F5F5F5",
                       borderColor:
-                        role === r.value ? RabbitFoodColors.primary : "#E0E0E0",
+                        role === r.value ? ComeYaColors.primary : "#E0E0E0",
                       borderWidth: role === r.value ? 2 : 1,
                     },
                   ]}
@@ -582,7 +582,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                       styles.roleIcon,
                       {
                         backgroundColor:
-                          role === r.value ? RabbitFoodColors.primary : "#E0E0E0",
+                          role === r.value ? ComeYaColors.primary : "#E0E0E0",
                       },
                     ]}
                   >
@@ -656,7 +656,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
           <Pressable onPress={handleShare} style={styles.shareButton}>
             <Feather name="share-2" size={18} color="#FFFFFF" />
             <ThemedText type="small" style={styles.shareText}>
-              Compartir Rabbit Food
+              Compartir ComeYa
             </ThemedText>
           </Pressable>
 
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
     height: 52,
   },
   inputBoxError: {
-    borderColor: RabbitFoodColors.error,
+    borderColor: ComeYaColors.error,
   },
   inputBoxIcon: {
     marginRight: Spacing.sm,
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   inputError: {
-    color: RabbitFoodColors.error,
+    color: ComeYaColors.error,
     marginTop: Spacing.xs,
   },
   phoneHint: {
@@ -824,15 +824,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   businessTypeChipActive: {
-    borderColor: RabbitFoodColors.primary,
-    backgroundColor: RabbitFoodColors.primaryLight,
+    borderColor: ComeYaColors.primary,
+    backgroundColor: ComeYaColors.primaryLight,
   },
   businessTypeChipText: {
     color: "#5D5A78",
     fontWeight: "600",
   },
   businessTypeChipTextActive: {
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     fontWeight: "700",
   },
   signupButton: {
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
   },
   loginLinkText: {
-    color: RabbitFoodColors.primary,
+    color: ComeYaColors.primary,
     fontWeight: "600",
   },
 });

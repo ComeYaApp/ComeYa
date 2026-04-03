@@ -18,7 +18,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -129,16 +129,16 @@ export default function TicketDetailScreen() {
                     isFromUser ? styles.userMessage : styles.adminMessage,
                     {
                       backgroundColor: isFromUser
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.card,
                     },
                   ]}
                 >
                   {!isFromUser && (
                     <View style={styles.adminBadge}>
-                      <Feather name="shield" size={12} color={RabbitFoodColors.primary} />
-                      <ThemedText type="small" style={{ color: RabbitFoodColors.primary, fontWeight: "600", marginLeft: 4 }}>
-                        Soporte Rabbit Food
+                      <Feather name="shield" size={12} color={ComeYaColors.primary} />
+                      <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: "600", marginLeft: 4 }}>
+                        Soporte ComeYa
                       </ThemedText>
                     </View>
                   )}
@@ -186,7 +186,7 @@ export default function TicketDetailScreen() {
             style={[
               styles.sendButton,
               {
-                backgroundColor: RabbitFoodColors.primary,
+                backgroundColor: ComeYaColors.primary,
                 opacity: sendReplyMutation.isPending || !replyText.trim() ? 0.5 : 1,
               },
             ]}

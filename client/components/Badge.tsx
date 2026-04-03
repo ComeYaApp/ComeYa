@@ -4,7 +4,7 @@ import { View, StyleSheet, ViewStyle } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { theme } from "@/constants/theme";
-import { RabbitFoodColors } from "@/constants/theme";
+import { ComeYaColors } from "@/constants/theme";
 
 type BadgeVariant = "primary" | "secondary" | "success" | "warning" | "error";
 
@@ -21,8 +21,8 @@ export function Badge({ text, variant = "primary", style }: BadgeProps) {
     switch (variant) {
       case "primary":
         return {
-          bg: RabbitFoodColors.primaryLight,
-          text: RabbitFoodColors.primaryDark,
+          bg: ComeYaColors.primaryLight,
+          text: ComeYaColors.primaryDark,
         };
       case "secondary":
         return {
@@ -32,7 +32,7 @@ export function Badge({ text, variant = "primary", style }: BadgeProps) {
       case "success":
         return {
           bg: "#E8F5E9",
-          text: RabbitFoodColors.success,
+          text: ComeYaColors.success,
         };
       case "warning":
         return {
@@ -42,12 +42,12 @@ export function Badge({ text, variant = "primary", style }: BadgeProps) {
       case "error":
         return {
           bg: "#FFEBEE",
-          text: RabbitFoodColors.error,
+          text: ComeYaColors.error,
         };
       default:
         return {
-          bg: RabbitFoodColors.primaryLight,
-          text: RabbitFoodColors.primaryDark,
+          bg: ComeYaColors.primaryLight,
+          text: ComeYaColors.primaryDark,
         };
     }
   };

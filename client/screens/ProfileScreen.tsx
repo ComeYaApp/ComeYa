@@ -29,7 +29,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp, ThemeMode } from "@/contexts/AppContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
@@ -72,13 +72,13 @@ function SettingsItem({
         <Feather
           name={icon}
           size={20}
-          color={danger ? RabbitFoodColors.error : RabbitFoodColors.primary}
+          color={danger ? ComeYaColors.error : ComeYaColors.primary}
         />
       </View>
       <View style={styles.settingsContent}>
         <ThemedText
           type="body"
-          style={{ color: danger ? RabbitFoodColors.error : theme.text }}
+          style={{ color: danger ? ComeYaColors.error : theme.text }}
         >
           {label}
         </ThemedText>
@@ -311,8 +311,8 @@ export default function ProfileScreen() {
     try {
       await Share.share({
         message:
-          "Descubre Rabbit Food - Tu delivery local de confianza en Autlan. Pide comida y productos del mercado con un toque. https://rabbitfood.replit.app",
-        title: "Rabbit Food - Delivery Local",
+          "Descubre ComeYa - Tu delivery local de confianza en Autlan. Pide comida y productos del mercado con un toque. https://ComeYa.replit.app",
+        title: "ComeYa - Delivery Local",
       });
     } catch (error) {
       console.error("Error sharing:", error);
@@ -322,9 +322,9 @@ export default function ProfileScreen() {
   const shareToSocialMedia = (platform: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const message = encodeURIComponent(
-      "Descubre Rabbit Food - Tu delivery local de confianza en Autlan. Pide comida y productos del mercado con un toque.",
+      "Descubre ComeYa - Tu delivery local de confianza en Autlan. Pide comida y productos del mercado con un toque.",
     );
-    const url = encodeURIComponent("https://rabbitfood.replit.app");
+    const url = encodeURIComponent("https://ComeYa.replit.app");
 
     let shareUrl = "";
     switch (platform) {
@@ -461,14 +461,14 @@ export default function ProfileScreen() {
               contentFit="cover"
             />
             {isUploadingImage ? (
-              <View style={[styles.editBadge, { backgroundColor: RabbitFoodColors.primary }]}>
+              <View style={[styles.editBadge, { backgroundColor: ComeYaColors.primary }]}>
                 <ActivityIndicator size="small" color="#FFFFFF" />
               </View>
             ) : (
               <View
                 style={[
                   styles.editBadge,
-                  { backgroundColor: RabbitFoodColors.primary },
+                  { backgroundColor: ComeYaColors.primary },
                 ]}
               >
                 <Feather name="camera" size={14} color="#FFFFFF" />
@@ -593,7 +593,7 @@ export default function ProfileScreen() {
                   <Feather 
                     name="alert-triangle" 
                     size={24} 
-                    color={driverStrikes > 0 ? RabbitFoodColors.warning : RabbitFoodColors.success} 
+                    color={driverStrikes > 0 ? ComeYaColors.warning : ComeYaColors.success} 
                   />
                 </View>
                 <View style={styles.strikesInfo}>
@@ -616,15 +616,15 @@ export default function ProfileScreen() {
                     style={[
                       styles.strikeIndicator,
                       {
-                        backgroundColor: index < driverStrikes ? RabbitFoodColors.error : theme.backgroundSecondary,
-                        borderColor: index < driverStrikes ? RabbitFoodColors.error : theme.border,
+                        backgroundColor: index < driverStrikes ? ComeYaColors.error : theme.backgroundSecondary,
+                        borderColor: index < driverStrikes ? ComeYaColors.error : theme.border,
                       },
                     ]}
                   >
                     {index < driverStrikes ? (
                       <Feather name="x" size={16} color="#FFF" />
                     ) : (
-                      <Feather name="check" size={16} color={RabbitFoodColors.success} />
+                      <Feather name="check" size={16} color={ComeYaColors.success} />
                     )}
                   </View>
                 ))}
@@ -682,7 +682,7 @@ export default function ProfileScreen() {
           </ThemedText>
           <SettingsItem
             icon="share-2"
-            label="Compartir Rabbit Food"
+            label="Compartir ComeYa"
             onPress={handleShare}
           />
           <View style={styles.socialButtons}>
@@ -752,7 +752,7 @@ export default function ProfileScreen() {
           type="caption"
           style={[styles.version, { color: theme.textSecondary }]}
         >
-          Rabbit Food v1.0.0
+          ComeYa v1.0.0
         </ThemedText>
       </ScrollView>
 
@@ -768,7 +768,7 @@ export default function ProfileScreen() {
         >
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={[styles.modalIcon, { backgroundColor: "#FFEBEE" }]}>
-              <Feather name="log-out" size={28} color={RabbitFoodColors.error} />
+              <Feather name="log-out" size={28} color={ComeYaColors.error} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               Cerrar sesión
@@ -825,7 +825,7 @@ export default function ProfileScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="moon" size={28} color={RabbitFoodColors.primary} />
+              <Feather name="moon" size={28} color={ComeYaColors.primary} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               Seleccionar tema
@@ -839,11 +839,11 @@ export default function ProfileScreen() {
                     {
                       backgroundColor:
                         themeMode === option.value
-                          ? RabbitFoodColors.primaryLight
+                          ? ComeYaColors.primaryLight
                           : theme.backgroundSecondary,
                       borderColor:
                         themeMode === option.value
-                          ? RabbitFoodColors.primary
+                          ? ComeYaColors.primary
                           : "transparent",
                     },
                   ]}
@@ -860,7 +860,7 @@ export default function ProfileScreen() {
                     size={20}
                     color={
                       themeMode === option.value
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.textSecondary
                     }
                   />
@@ -869,7 +869,7 @@ export default function ProfileScreen() {
                     style={{
                       color:
                         themeMode === option.value
-                          ? RabbitFoodColors.primary
+                          ? ComeYaColors.primary
                           : theme.text,
                       marginLeft: Spacing.sm,
                       fontWeight: themeMode === option.value ? "600" : "400",
@@ -881,7 +881,7 @@ export default function ProfileScreen() {
                     <Feather
                       name="check"
                       size={20}
-                      color={RabbitFoodColors.primary}
+                      color={ComeYaColors.primary}
                       style={{ marginLeft: "auto" }}
                     />
                   ) : null}
@@ -920,7 +920,7 @@ export default function ProfileScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="bell" size={28} color={RabbitFoodColors.primary} />
+              <Feather name="bell" size={28} color={ComeYaColors.primary} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               Notificaciones
@@ -946,10 +946,10 @@ export default function ProfileScreen() {
                 onValueChange={handleNotificationsToggle}
                 trackColor={{
                   false: theme.border,
-                  true: RabbitFoodColors.primaryLight,
+                  true: ComeYaColors.primaryLight,
                 }}
                 thumbColor={
-                  settings.notificationsEnabled ? RabbitFoodColors.primary : "#f4f3f4"
+                  settings.notificationsEnabled ? ComeYaColors.primary : "#f4f3f4"
                 }
               />
             </View>
@@ -966,7 +966,7 @@ export default function ProfileScreen() {
             <Pressable
               style={[
                 styles.modalButtonFull,
-                { backgroundColor: RabbitFoodColors.primary },
+                { backgroundColor: ComeYaColors.primary },
               ]}
               onPress={() => setShowNotificationsModal(false)}
             >
@@ -998,7 +998,7 @@ export default function ProfileScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="globe" size={28} color={RabbitFoodColors.primary} />
+              <Feather name="globe" size={28} color={ComeYaColors.primary} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               Idioma
@@ -1008,21 +1008,21 @@ export default function ProfileScreen() {
                 style={[
                   styles.themeOption,
                   {
-                    backgroundColor: RabbitFoodColors.primaryLight,
-                    borderColor: RabbitFoodColors.primary,
+                    backgroundColor: ComeYaColors.primaryLight,
+                    borderColor: ComeYaColors.primary,
                   },
                 ]}
               >
                 <ThemedText
                   type="body"
-                  style={{ color: RabbitFoodColors.primary, fontWeight: "600" }}
+                  style={{ color: ComeYaColors.primary, fontWeight: "600" }}
                 >
                   Español
                 </ThemedText>
                 <Feather
                   name="check"
                   size={20}
-                  color={RabbitFoodColors.primary}
+                  color={ComeYaColors.primary}
                   style={{ marginLeft: "auto" }}
                 />
               </View>
@@ -1088,28 +1088,28 @@ export default function ProfileScreen() {
             </ThemedText>
             
             <ThemedText type="body" style={styles.legalText}>
-              Bienvenido a Rabbit Food. Al utilizar nuestra aplicacion, aceptas estos terminos y condiciones. Por favor, leelos cuidadosamente.
+              Bienvenido a ComeYa. Al utilizar nuestra aplicacion, aceptas estos terminos y condiciones. Por favor, leelos cuidadosamente.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               1. Aceptacion de Terminos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Al descargar, instalar o usar la aplicacion Rabbit Food, confirmas que has leido, entendido y aceptas estar sujeto a estos Terminos y Condiciones. Si no estas de acuerdo, no uses la aplicacion.
+              Al descargar, instalar o usar la aplicacion ComeYa, confirmas que has leido, entendido y aceptas estar sujeto a estos Terminos y Condiciones. Si no estas de acuerdo, no uses la aplicacion.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               2. Descripcion del Servicio
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Rabbit Food es una plataforma de delivery local que conecta a clientes con negocios locales y repartidores en Autlan de Navarro, Venezuela, Venezuela. Facilitamos la compra y entrega de alimentos, productos de mercado y otros articulos de negocios participantes.
+              ComeYa es una plataforma de delivery local que conecta a clientes con negocios locales y repartidores en Autlan de Navarro, Venezuela, Venezuela. Facilitamos la compra y entrega de alimentos, productos de mercado y otros articulos de negocios participantes.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               3. Registro y Cuenta
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para usar Rabbit Food debes registrarte con un numero de telefono valido. Eres responsable de mantener la confidencialidad de tu cuenta y de todas las actividades que ocurran bajo ella. Debes proporcionar informacion veraz y actualizada.
+              Para usar ComeYa debes registrarte con un numero de telefono valido. Eres responsable de mantener la confidencialidad de tu cuenta y de todas las actividades que ocurran bajo ella. Debes proporcionar informacion veraz y actualizada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
@@ -1123,7 +1123,7 @@ export default function ProfileScreen() {
               5. Entregas
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Los tiempos de entrega son estimados y pueden variar segun la demanda, condiciones climaticas y trafico. Rabbit Food no se hace responsable por retrasos fuera de nuestro control. Debes estar disponible para recibir tu pedido en la direccion indicada.
+              Los tiempos de entrega son estimados y pueden variar segun la demanda, condiciones climaticas y trafico. ComeYa no se hace responsable por retrasos fuera de nuestro control. Debes estar disponible para recibir tu pedido en la direccion indicada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
@@ -1137,28 +1137,28 @@ export default function ProfileScreen() {
               7. Conducta del Usuario
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Te comprometes a usar Rabbit Food de manera responsable y respetuosa. Esta prohibido el uso fraudulento, el acoso a repartidores o negocios, y cualquier actividad ilegal. Rabbit Food se reserva el derecho de suspender cuentas que violen estas normas.
+              Te comprometes a usar ComeYa de manera responsable y respetuosa. Esta prohibido el uso fraudulento, el acoso a repartidores o negocios, y cualquier actividad ilegal. ComeYa se reserva el derecho de suspender cuentas que violen estas normas.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               8. Limitacion de Responsabilidad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Rabbit Food actua como intermediario entre clientes, negocios y repartidores. No somos responsables por la calidad de los productos, alergenos no declarados, o problemas de salud derivados del consumo. Los negocios son responsables de la preparacion y calidad de sus productos.
+              ComeYa actua como intermediario entre clientes, negocios y repartidores. No somos responsables por la calidad de los productos, alergenos no declarados, o problemas de salud derivados del consumo. Los negocios son responsables de la preparacion y calidad de sus productos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               9. Modificaciones
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Rabbit Food puede modificar estos terminos en cualquier momento. Te notificaremos de cambios significativos. El uso continuado de la aplicacion constituye aceptacion de los nuevos terminos.
+              ComeYa puede modificar estos terminos en cualquier momento. Te notificaremos de cambios significativos. El uso continuado de la aplicacion constituye aceptacion de los nuevos terminos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               10. Contacto
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para dudas o comentarios sobre estos terminos, contactanos a traves de la seccion de Ayuda y Soporte en la aplicacion o al correo soporte@rabbitfood.mx
+              Para dudas o comentarios sobre estos terminos, contactanos a traves de la seccion de Ayuda y Soporte en la aplicacion o al correo soporte@ComeYa.mx
             </ThemedText>
           </ScrollView>
         </View>
@@ -1204,7 +1204,7 @@ export default function ProfileScreen() {
             </ThemedText>
 
             <ThemedText type="body" style={styles.legalText}>
-              En Rabbit Food, tu privacidad es nuestra prioridad. Esta politica describe como recopilamos, usamos y protegemos tu informacion personal.
+              En ComeYa, tu privacidad es nuestra prioridad. Esta politica describe como recopilamos, usamos y protegemos tu informacion personal.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
@@ -1260,7 +1260,7 @@ export default function ProfileScreen() {
               8. Menores de Edad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Rabbit Food no esta dirigido a menores de 18 anios. No recopilamos intencionalmente informacion de menores. Si eres padre y crees que tu hijo ha proporcionado informacion, contactanos.
+              ComeYa no esta dirigido a menores de 18 anios. No recopilamos intencionalmente informacion de menores. Si eres padre y crees que tu hijo ha proporcionado informacion, contactanos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
@@ -1274,7 +1274,7 @@ export default function ProfileScreen() {
               10. Contacto
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para ejercer tus derechos o resolver dudas sobre privacidad, contactanos a traves de Ayuda y Soporte o al correo privacidad@rabbitfood.mx
+              Para ejercer tus derechos o resolver dudas sobre privacidad, contactanos a traves de Ayuda y Soporte o al correo privacidad@ComeYa.mx
             </ThemedText>
           </ScrollView>
         </View>
@@ -1297,7 +1297,7 @@ export default function ProfileScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="user" size={28} color={RabbitFoodColors.primary} />
+              <Feather name="user" size={28} color={ComeYaColors.primary} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               Editar perfil
@@ -1312,7 +1312,7 @@ export default function ProfileScreen() {
             <Pressable
               style={[
                 styles.modalButtonFull,
-                { backgroundColor: RabbitFoodColors.primary },
+                { backgroundColor: ComeYaColors.primary },
               ]}
               onPress={() => setShowEditProfileModal(false)}
             >
@@ -1344,7 +1344,7 @@ export default function ProfileScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="map-pin" size={28} color={RabbitFoodColors.primary} />
+              <Feather name="map-pin" size={28} color={ComeYaColors.primary} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
               Direcciones guardadas
@@ -1359,7 +1359,7 @@ export default function ProfileScreen() {
             <Pressable
               style={[
                 styles.modalButtonFull,
-                { backgroundColor: RabbitFoodColors.primary },
+                { backgroundColor: ComeYaColors.primary },
               ]}
               onPress={() => setShowAddressesModal(false)}
             >
@@ -1516,7 +1516,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   logoutButton: {
-    backgroundColor: RabbitFoodColors.error,
+    backgroundColor: ComeYaColors.error,
   },
   themeOptions: {
     width: "100%",

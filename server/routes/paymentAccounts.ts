@@ -1,4 +1,4 @@
-// Payment Accounts Routes - Get Rabbit Food receiving accounts
+// Payment Accounts Routes - Get ComeYa receiving accounts
 import { Router } from "express";
 import { authenticateToken, requireAdmin } from "../authMiddleware";
 import { db } from "../db";

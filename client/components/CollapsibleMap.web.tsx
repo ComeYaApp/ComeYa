@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
 interface Location {
   latitude: number;
@@ -34,7 +34,7 @@ export function CollapsibleMap({
         { backgroundColor: theme.backgroundSecondary },
       ]}
     >
-      <Feather name="map-pin" size={24} color={RabbitFoodColors.primary} />
+      <Feather name="map-pin" size={24} color={ComeYaColors.primary} />
       <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
         Mapa disponible en la app
       </ThemedText>

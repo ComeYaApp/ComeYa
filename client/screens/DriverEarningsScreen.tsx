@@ -16,7 +16,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 
 interface EarningsData {
   stats: {
@@ -46,7 +46,7 @@ function StatCard({
   icon,
   label,
   value,
-  color = RabbitFoodColors.primary,
+  color = ComeYaColors.primary,
   delay = 0,
 }: {
   icon: string;
@@ -171,7 +171,7 @@ export default function DriverEarningsScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       >
@@ -180,7 +180,7 @@ export default function DriverEarningsScreen() {
           entering={FadeInDown.delay(100).springify()}
           style={[
             styles.earningsCard,
-            { backgroundColor: RabbitFoodColors.primary },
+            { backgroundColor: ComeYaColors.primary },
             Shadows.lg,
           ]}
         >
@@ -233,7 +233,7 @@ export default function DriverEarningsScreen() {
                   style={{
                     color:
                       selectedPeriod === period
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : "#FFFFFF",
                     fontWeight: "600",
                   }}
@@ -252,7 +252,7 @@ export default function DriverEarningsScreen() {
             { backgroundColor: theme.backgroundSecondary },
           ]}
         >
-          <Feather name="info" size={20} color={RabbitFoodColors.primary} />
+          <Feather name="info" size={20} color={ComeYaColors.primary} />
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
             <ThemedText type="body" style={{ fontWeight: "600" }}>
               Pagos automáticos
@@ -275,17 +275,17 @@ export default function DriverEarningsScreen() {
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                 Total ganado histórico
               </ThemedText>
-              <ThemedText type="h2" style={{ color: RabbitFoodColors.primary }}>
+              <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
                 ${earnings.total.toFixed(2)}
               </ThemedText>
             </View>
             <View
               style={[
                 styles.iconCircle,
-                { backgroundColor: RabbitFoodColors.primary + "20" },
+                { backgroundColor: ComeYaColors.primary + "20" },
               ]}
             >
-              <Feather name="award" size={24} color={RabbitFoodColors.primary} />
+              <Feather name="award" size={24} color={ComeYaColors.primary} />
             </View>
           </View>
         </View>
@@ -347,10 +347,10 @@ export default function DriverEarningsScreen() {
               <View
                 style={[
                   styles.deliveryIcon,
-                  { backgroundColor: RabbitFoodColors.success + "20" },
+                  { backgroundColor: ComeYaColors.success + "20" },
                 ]}
               >
-                <Feather name="check-circle" size={20} color={RabbitFoodColors.success} />
+                <Feather name="check-circle" size={20} color={ComeYaColors.success} />
               </View>
               <View style={styles.deliveryInfo}>
                 <ThemedText type="body">{tx.description}</ThemedText>
@@ -361,7 +361,7 @@ export default function DriverEarningsScreen() {
               <ThemedText
                 type="body"
                 style={{
-                  color: RabbitFoodColors.success,
+                  color: ComeYaColors.success,
                   fontWeight: "600",
                 }}
               >

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
-import { RabbitFoodColors, BorderRadius } from '@/constants/theme';
+import { ComeYaColors, BorderRadius } from '@/constants/theme';
 
 interface PlaceholderImageProps {
   width?: number;
@@ -30,7 +30,7 @@ export function PlaceholderImage({
       <Feather 
         name={icon} 
         size={Math.min(width, height) * 0.3} 
-        color={RabbitFoodColors.textSecondary} 
+        color={ComeYaColors.textSecondary} 
       />
       {text && (
         <ThemedText type="caption" style={styles.text}>
@@ -53,6 +53,6 @@ const styles = StyleSheet.create({
   text: {
     marginTop: 4,
     textAlign: 'center',
-    color: RabbitFoodColors.textSecondary,
+    color: ComeYaColors.textSecondary,
   },
 });

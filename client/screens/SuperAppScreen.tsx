@@ -716,7 +716,7 @@ export default function SuperAppScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Rabbit Food Super App</Text>
+      <Text style={styles.title}>ComeYa Super App</Text>
       
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>

@@ -293,7 +293,7 @@ router.post("/export-csv", authenticateToken, requireRole("admin", "super_admin"
 // GET /api/admin/payouts/pending — payouts pendientes de pago
 router.get("/payouts/pending", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    const { payouts, users, businesses } = await import("@shared/schema-mysql");
+    const { payouts, users, businesses, orders, paymentAccounts } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
@@ -301,17 +301,132 @@ router.get("/payouts/pending", authenticateToken, requireRole("admin", "super_ad
 
     const enriched = await Promise.all(pending.map(async (p) => {
       let recipientName = "";
+      let recipientUserId = p.recipientId;
+
       if (p.recipientType === "business") {
-        const [biz] = await db.select({ name: businesses.name }).from(businesses).where(eq(businesses.id, p.recipientId)).limit(1);
+        const [biz] = await db.select({ name: businesses.name, ownerId: businesses.ownerId })
+          .from(businesses).where(eq(businesses.id, p.recipientId)).limit(1);
         recipientName = biz?.name ?? "";
+        if (biz?.ownerId) recipientUserId = biz.ownerId;
       } else {
         const [usr] = await db.select({ name: users.name }).from(users).where(eq(users.id, p.recipientId)).limit(1);
         recipientName = usr?.name ?? "";
       }
-      return { ...p, recipientName };
+
+      // Cuentas de pago del recipiente
+      const accounts = await db.select().from(paymentAccounts)
+        .where(eq(paymentAccounts.userId, recipientUserId));
+
+      // Datos del pedido
+      const [order] = await db.select({
+        paymentMethod: orders.paymentMethod,
+        assignedAt: orders.assignedAt,
+        deliveredAt: orders.deliveredAt,
+        total: orders.total,
+        businessName: orders.businessName,
+      }).from(orders).where(eq(orders.id, p.orderId)).limit(1);
+
+      let deliveryMinutes: number | null = null;
+      if (order?.assignedAt && order?.deliveredAt) {
+        deliveryMinutes = Math.round(
+          (new Date(order.deliveredAt).getTime() - new Date(order.assignedAt).getTime()) / 60000
+        );
+      }
+
+      return {
+        ...p,
+        recipientName,
+        paymentAccounts: accounts,
+        paymentMethod: order?.paymentMethod ?? null,
+        deliveryMinutes,
+        orderTotal: order?.total ?? null,
+        businessName: order?.businessName ?? null,
+      };
     }));
 
     res.json({ success: true, payouts: enriched });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/payouts/fix-amounts — corregir payouts con montos en centavos (legacy)
+router.post("/payouts/fix-amounts", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { payouts } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const all = await db.select().from(payouts);
+    let fixed = 0;
+
+    for (const p of all) {
+      // Si el monto es > 1000 Bs. asumimos que está en centavos (pedidos reales no superan Bs. 1000 en pruebas)
+      // Umbral: > 500 para negocios (delivery fee max ~Bs. 50, productos base max ~Bs. 500 en pruebas)
+      if (p.amount > 500) {
+        await db.update(payouts).set({ amount: Math.round(p.amount / 100) }).where(eq(payouts.id, p.id));
+        fixed++;
+      }
+    }
+
+    res.json({ success: true, fixed, total: all.length });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/payouts/backfill — crear payouts para pedidos entregados sin payouts
+router.post("/payouts/backfill", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { orders, payouts, businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq, and } = await import("drizzle-orm");
+
+    const deliveredOrders = await db.select().from(orders)
+      .where(and(eq(orders.status, "delivered"), eq(orders.confirmedByCustomer, true)));
+
+    const existingPayouts = await db.select({ orderId: payouts.orderId }).from(payouts);
+    const existingOrderIds = new Set(existingPayouts.map(p => p.orderId));
+
+    const toProcess = deliveredOrders.filter(o => !existingOrderIds.has(o.id));
+    let created = 0;
+
+    for (const order of toProcess) {
+      const inserts: any[] = [];
+
+      const [biz] = await db.select({ ownerId: businesses.ownerId })
+        .from(businesses).where(eq(businesses.id, order.businessId)).limit(1);
+      const businessOwnerId = biz?.ownerId || order.businessId;
+
+      const businessAmount = order.businessEarnings || order.subtotal || 0;
+      if (businessAmount > 0) {
+        inserts.push({
+          orderId: order.id,
+          recipientId: businessOwnerId,
+          recipientType: "business" as const,
+          amount: businessAmount,
+          status: "pending" as const,
+        });
+      }
+
+      const driverAmount = order.deliveryEarnings || order.deliveryFee || 0;
+      if (order.deliveryPersonId && driverAmount > 0) {
+        inserts.push({
+          orderId: order.id,
+          recipientId: order.deliveryPersonId,
+          recipientType: "driver" as const,
+          amount: driverAmount,
+          status: "pending" as const,
+        });
+      }
+
+      if (inserts.length > 0) {
+        await db.insert(payouts).values(inserts);
+        created += inserts.length;
+      }
+    }
+
+    res.json({ success: true, processed: toProcess.length, created });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -323,11 +438,15 @@ router.post("/payouts/:id/mark-paid", authenticateToken, requireRole("admin", "s
     const { payouts } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
+    const { notes, proofUrl, method } = req.body;
 
     await db.update(payouts).set({
       status: "paid",
       paidBy: req.user!.id,
       paidAt: new Date(),
+      ...(notes ? { notes } : {}),
+      ...(method ? { method } : {}),
+      ...(proofUrl ? { accountSnapshot: JSON.stringify({ proofUrl }) } : {}),
     }).where(eq(payouts.id, req.params.id));
 
     res.json({ success: true });

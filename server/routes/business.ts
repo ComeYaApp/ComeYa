@@ -313,6 +313,32 @@ router.get("/products", authenticateToken, requireRole("business_owner", "admin"
   }
 });
 
+// GET /api/business/payouts
+router.get("/payouts", authenticateToken, requireRole("business_owner", "admin", "super_admin"), async (req, res) => {
+  try {
+    const { businessId } = req.query;
+    const { businesses, payouts } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { desc } = await import("drizzle-orm");
+
+    const [business] = businessId
+      ? await db.select().from(businesses).where(and(eq(businesses.id, businessId as string), eq(businesses.ownerId, req.user!.id))).limit(1)
+      : await db.select().from(businesses).where(eq(businesses.ownerId, req.user!.id)).limit(1);
+
+    if (!business) return res.status(404).json({ error: "Negocio no encontrado" });
+
+    const businessPayouts = await db
+      .select()
+      .from(payouts)
+      .where(eq(payouts.recipientId, business.id))
+      .orderBy(desc(payouts.createdAt));
+
+    res.json({ success: true, payouts: businessPayouts });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/business/finances
 router.get("/finances", authenticateToken, requireRole("business_owner", "admin", "super_admin"), async (req, res) => {
   try {
@@ -348,11 +374,16 @@ router.get("/finances", authenticateToken, requireRole("business_owner", "admin"
     const [transactionRows] = await db.execute(sql`
       SELECT 
         o.id,
-        o.id as order_id,
-        o.subtotal as amount,
+        o.subtotal,
+        o.delivery_fee,
+        o.total,
         o.status,
+        o.payment_method,
+        o.delivery_address,
+        o.notes,
         o.created_at,
-        u.name as customer_name
+        u.name as customer_name,
+        u.phone as customer_phone
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       WHERE o.business_id = ${business.id}
@@ -360,23 +391,35 @@ router.get("/finances", authenticateToken, requireRole("business_owner", "admin"
       ORDER BY o.created_at DESC
     `) as any;
 
-    const transactions = transactionRows.map((row: any) => ({
-      id: row.id,
-      orderId: row.order_id,
-      amount: row.amount,
-      status: row.status,
-      createdAt: row.created_at,
-      customerName: row.customer_name,
-    }));
+    const transactions = transactionRows.map((row: any) => {
+      let address = null;
+      if (row.delivery_address) {
+        try { address = JSON.parse(row.delivery_address); } catch { address = { street: row.delivery_address }; }
+      }
+      return {
+        id: row.id,
+        orderId: row.id,
+        subtotal: row.subtotal || 0,
+        deliveryFee: row.delivery_fee || 0,
+        total: row.total || 0,
+        status: row.status,
+        paymentMethod: row.payment_method,
+        deliveryAddress: address,
+        notes: row.notes,
+        createdAt: row.created_at,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone,
+      };
+    });
 
     // Calcular resumen
     const completedOrders = transactions.filter((t: any) => t.status === "delivered");
-    const pendingOrders = transactions.filter((t: any) => 
+    const pendingOrders = transactions.filter((t: any) =>
       ["pending", "accepted", "preparing", "on_the_way"].includes(t.status)
     );
 
-    const completedAmount = completedOrders.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
-    const pendingAmount = pendingOrders.reduce((sum: number, t: any) => sum + (t.amount || 0), 0);
+    const completedAmount = completedOrders.reduce((sum: number, t: any) => sum + (t.subtotal || 0), 0);
+    const pendingAmount = pendingOrders.reduce((sum: number, t: any) => sum + (t.subtotal || 0), 0);
 
     res.json({
       success: true,

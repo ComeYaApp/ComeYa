@@ -9,6 +9,9 @@ import OrdersStackNavigator from "@/navigation/OrdersStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import BusinessMapScreen from "@/screens/BusinessMapScreen";
 import AdminScreenNew from "@/screens/AdminScreenNew";
+import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
+import AdminFinanceScreen from "@/screens/AdminFinanceScreen";
+import AdminMapScreen from "@/screens/AdminMapScreen";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import DeliveryDashboardScreen from "@/screens/DeliveryDashboardScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -24,14 +27,16 @@ function MapStackNavigator() {
 }
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { RabbitFoodColors, Spacing } from "@/constants/theme";
+import { ComeYaColors, Spacing } from "@/constants/theme";
 
 export type MainTabParamList = {
   HomeTab: undefined;
   OrdersTab: undefined;
+  DashboardTab: undefined;
+  FinanceTab: undefined;
   MapTab: undefined;
-  ProfileTab: undefined;
   AdminTab: undefined;
+  ProfileTab: undefined;
   BusinessTab: undefined;
   DeliveryTab: undefined;
 };
@@ -55,9 +60,9 @@ const tabBarHeight = Platform.select({
 
   return (
     <Tab.Navigator
-      initialRouteName="HomeTab"
+      initialRouteName={isAdmin ? "DashboardTab" : isDelivery ? "DeliveryTab" : isBusiness ? "BusinessTab" : "HomeTab"}
       screenOptions={{
-        tabBarActiveTintColor: RabbitFoodColors.primary,
+        tabBarActiveTintColor: ComeYaColors.primary,
         tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
           backgroundColor: theme.background,
@@ -80,26 +85,30 @@ const tabBarHeight = Platform.select({
         headerShown: false,
       }}
     >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeStackNavigator}
-        options={{
-          title: "Inicio",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="OrdersTab"
-        component={OrdersStackNavigator}
-        options={{
-          title: "Pedidos",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="shopping-bag" size={size} color={color} />
-          ),
-        }}
-      />
+      {isCustomer ? (
+        <>
+          <Tab.Screen
+            name="HomeTab"
+            component={HomeStackNavigator}
+            options={{
+              title: "Inicio",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="home" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="OrdersTab"
+            component={OrdersStackNavigator}
+            options={{
+              title: "Pedidos",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="shopping-bag" size={size} color={color} />
+              ),
+            }}
+          />
+        </>
+      ) : null}
       {isCustomer ? (
         <Tab.Screen
           name="MapTab"
@@ -113,16 +122,48 @@ const tabBarHeight = Platform.select({
         />
       ) : null}
       {isAdmin ? (
-        <Tab.Screen
-          name="AdminTab"
-          component={AdminScreenNew}
-          options={{
-            title: "Admin",
-            tabBarIcon: ({ color, size }) => (
-              <Feather name="settings" size={size} color={color} />
-            ),
-          }}
-        />
+        <>
+          <Tab.Screen
+            name="DashboardTab"
+            component={AdminDashboardScreen}
+            options={{
+              title: "Dashboard",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="bar-chart-2" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="FinanceTab"
+            component={AdminFinanceScreen}
+            options={{
+              title: "Finanzas",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="dollar-sign" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={AdminMapScreen}
+            options={{
+              title: "Mapa GPS",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="AdminTab"
+            component={AdminScreenNew}
+            options={{
+              title: "Admin",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="settings" size={size} color={color} />
+              ),
+            }}
+          />
+        </>
       ) : null}
       {isBusiness ? (
         <Tab.Screen

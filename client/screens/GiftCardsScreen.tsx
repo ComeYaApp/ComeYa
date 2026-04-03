@@ -19,7 +19,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -115,7 +115,7 @@ export default function GiftCardsScreen() {
             style={[
               styles.tab,
               {
-                backgroundColor: activeTab === tab ? RabbitFoodColors.primary : theme.backgroundSecondary,
+                backgroundColor: activeTab === tab ? ComeYaColors.primary : theme.backgroundSecondary,
               },
             ]}
           >
@@ -153,10 +153,10 @@ export default function GiftCardsScreen() {
                       {
                         backgroundColor:
                           amount === preset.toString()
-                            ? RabbitFoodColors.primary
+                            ? ComeYaColors.primary
                             : theme.backgroundSecondary,
                         borderColor:
-                          amount === preset.toString() ? RabbitFoodColors.primary : theme.border,
+                          amount === preset.toString() ? ComeYaColors.primary : theme.border,
                       },
                     ]}
                   >
@@ -245,7 +245,7 @@ export default function GiftCardsScreen() {
                           styles.designCard,
                           {
                             borderColor:
-                              selectedDesign === design.name ? RabbitFoodColors.primary : theme.border,
+                              selectedDesign === design.name ? ComeYaColors.primary : theme.border,
                             borderWidth: selectedDesign === design.name ? 3 : 1,
                           },
                         ]}
@@ -268,7 +268,7 @@ export default function GiftCardsScreen() {
               style={[
                 styles.purchaseButton,
                 {
-                  backgroundColor: RabbitFoodColors.primary,
+                  backgroundColor: ComeYaColors.primary,
                   opacity: amount && parseFloat(amount) >= 10 && !purchaseMutation.isPending ? 1 : 0.5,
                 },
                 Shadows.md,
@@ -289,8 +289,8 @@ export default function GiftCardsScreen() {
             {myCards.purchased.map((card: any) => (
               <View key={card.id} style={[styles.cardItem, { backgroundColor: theme.card }, Shadows.sm]}>
                 <View style={styles.cardLeft}>
-                  <View style={[styles.cardIcon, { backgroundColor: RabbitFoodColors.primary + '20' }]}>
-                    <Feather name="gift" size={24} color={RabbitFoodColors.primary} />
+                  <View style={[styles.cardIcon, { backgroundColor: ComeYaColors.primary + '20' }]}>
+                    <Feather name="gift" size={24} color={ComeYaColors.primary} />
                   </View>
                   <View style={styles.cardInfo}>
                     <ThemedText type="body" style={{ fontWeight: '600' }}>
@@ -301,7 +301,7 @@ export default function GiftCardsScreen() {
                     </ThemedText>
                   </View>
                 </View>
-                <ThemedText type="body" style={{ color: RabbitFoodColors.primary, fontWeight: '600' }}>
+                <ThemedText type="body" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
                   Bs.{card.amount.toFixed(2)}
                 </ThemedText>
               </View>

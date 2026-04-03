@@ -19,7 +19,7 @@ import * as Location from "expo-location";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { RabbitFoodColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -169,7 +169,7 @@ export default function BusinessMapScreen() {
   if (isLoading || !MapView) {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: theme.backgroundRoot }]}>
-        <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+        <ActivityIndicator size="large" color={ComeYaColors.primary} />
         <ThemedText type="body" style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
           Cargando mapa...
         </ThemedText>
@@ -195,15 +195,15 @@ export default function BusinessMapScreen() {
             onPress={() => handlePinPress(b)}
           >
             {/* Pin personalizado */}
-            <View style={[styles.pin, { borderColor: b.isOpen ? RabbitFoodColors.primary : "#9E9E9E" }]}>
-              <View style={[styles.pinInner, { backgroundColor: b.isOpen ? RabbitFoodColors.primary : "#9E9E9E" }]}>
+            <View style={[styles.pin, { borderColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
+              <View style={[styles.pinInner, { backgroundColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
                 <Feather
                   name={b.type === "market" ? "shopping-bag" : "coffee"}
                   size={16}
                   color="#FFFFFF"
                 />
               </View>
-              <View style={[styles.pinTail, { borderTopColor: b.isOpen ? RabbitFoodColors.primary : "#9E9E9E" }]} />
+              <View style={[styles.pinTail, { borderTopColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]} />
             </View>
           </Marker>
         ))}
@@ -218,7 +218,7 @@ export default function BusinessMapScreen() {
           <Feather name="arrow-left" size={22} color={theme.text} />
         </Pressable>
         <View style={[styles.headerTitle, { backgroundColor: theme.card }]}>
-          <Feather name="map-pin" size={16} color={RabbitFoodColors.primary} />
+          <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
           <ThemedText type="body" style={{ fontWeight: "700", marginLeft: Spacing.xs }}>
             {businesses.length} negocios
           </ThemedText>
@@ -227,14 +227,14 @@ export default function BusinessMapScreen() {
           onPress={handleCenterUser}
           style={[styles.floatBtn, { backgroundColor: theme.card }]}
         >
-          <Feather name="navigation" size={22} color={RabbitFoodColors.primary} />
+          <Feather name="navigation" size={22} color={ComeYaColors.primary} />
         </Pressable>
       </View>
 
       {/* Leyenda */}
       <View style={[styles.legend, { backgroundColor: theme.card, bottom: selected ? 280 : insets.bottom + Spacing.lg }]}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: RabbitFoodColors.primary }]} />
+          <View style={[styles.legendDot, { backgroundColor: ComeYaColors.primary }]} />
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>Abierto</ThemedText>
         </View>
         <View style={styles.legendItem}>
@@ -266,8 +266,8 @@ export default function BusinessMapScreen() {
                 <ThemedText type="h4" numberOfLines={1} style={{ flex: 1 }}>
                   {selected.name}
                 </ThemedText>
-                <View style={[styles.statusBadge, { backgroundColor: selected.isOpen ? RabbitFoodColors.primary + "20" : "#9E9E9E20" }]}>
-                  <ThemedText type="caption" style={{ color: selected.isOpen ? RabbitFoodColors.primary : "#9E9E9E", fontWeight: "700" }}>
+                <View style={[styles.statusBadge, { backgroundColor: selected.isOpen ? ComeYaColors.primary + "20" : "#9E9E9E20" }]}>
+                  <ThemedText type="caption" style={{ color: selected.isOpen ? ComeYaColors.primary : "#9E9E9E", fontWeight: "700" }}>
                     {selected.isOpen ? "Abierto" : "Cerrado"}
                   </ThemedText>
                 </View>
@@ -298,10 +298,10 @@ export default function BusinessMapScreen() {
           <View style={styles.cardButtons}>
             <Pressable
               onPress={() => handleDirections(selected)}
-              style={[styles.btnDirections, { borderColor: RabbitFoodColors.primary }]}
+              style={[styles.btnDirections, { borderColor: ComeYaColors.primary }]}
             >
-              <Feather name="navigation" size={16} color={RabbitFoodColors.primary} />
-              <ThemedText type="small" style={{ color: RabbitFoodColors.primary, fontWeight: "700", marginLeft: Spacing.xs }}>
+              <Feather name="navigation" size={16} color={ComeYaColors.primary} />
+              <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: "700", marginLeft: Spacing.xs }}>
                 Cómo llegar
               </ThemedText>
             </Pressable>
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: 20,
     backgroundColor: "transparent",
-    borderColor: RabbitFoodColors.primary,
+    borderColor: ComeYaColors.primary,
   },
   pinInner: {
     width: 36,
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 8,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderTopColor: RabbitFoodColors.primary,
+    borderTopColor: ComeYaColors.primary,
     marginTop: -1,
   },
 
@@ -466,6 +466,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
   },
 });

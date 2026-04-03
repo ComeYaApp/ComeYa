@@ -28,7 +28,7 @@ async function getAuthToken(): Promise<string | null> {
     
     // Fallback to user object
     if (!token) {
-      const stored = await AsyncStorage.getItem('@rabbitfood_user');
+      const stored = await AsyncStorage.getItem('@ComeYa_user');
       if (stored) {
         const user = JSON.parse(stored);
         token = user.token;

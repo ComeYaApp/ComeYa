@@ -52,11 +52,7 @@ import AdminPaymentVerificationScreen from "@/screens/AdminPaymentVerificationSc
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Conditional import for LocationPickerScreen
-let LocationPickerScreen: any = null;
-if (Platform.OS !== 'web') {
-  LocationPickerScreen = require("@/screens/LocationPickerScreen").default;
-}
+import LocationPickerScreen from "@/screens/LocationPickerScreen";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -112,7 +108,7 @@ export type RootStackParamList = {
   Wallet: undefined;
   ReportIssue: { orderId: string; orderNumber?: string };
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
-  PagoMovilPayment: { orderId: string; reference: string; amount: number; rabbitfood: { phone: string; bank: string; cedula: string; bankName: string } };
+  PagoMovilPayment: { orderId: string; reference: string; amount: number; ComeYa: { phone: string; bank: string; cedula: string; bankName: string } };
   DigitalPaymentMethod: { orderTotal: number };
   PaymentProofUpload: { orderId: string; orderTotal: number; paymentMethod: any };
   PaymentVerificationTracking: { orderId: string };
@@ -276,13 +272,11 @@ export default function RootStackNavigator() {
             component={AddAddressScreen}
             options={{ headerTitle: "Agregar dirección" }}
           />
-          {Platform.OS !== 'web' && LocationPickerScreen && (
-            <Stack.Screen
-              name="LocationPicker"
-              component={LocationPickerScreen}
-              options={{ headerTitle: "Seleccionar ubicación" }}
-            />
-          )}
+          <Stack.Screen
+            name="LocationPicker"
+            component={LocationPickerScreen}
+            options={{ headerTitle: "Seleccionar ubicación" }}
+          />
           <Stack.Screen
             name="SupportChat"
             component={SupportChatScreen}

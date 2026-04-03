@@ -7,7 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
 type LegalScreenRouteProp = RouteProp<
   {
@@ -24,12 +24,12 @@ const legalContent = {
       {
         title: "1. Aceptacion de Terminos",
         content:
-          "Al utilizar la aplicacion Rabbit Food, aceptas estos terminos y condiciones. Rabbit Food es un servicio de entrega de comida y productos de mercado en Autlan de Navarro, Venezuela, Venezuela.",
+          "Al utilizar la aplicacion ComeYa, aceptas estos terminos y condiciones. ComeYa es un servicio de entrega de comida y productos de mercado en Autlan de Navarro, Venezuela, Venezuela.",
       },
       {
         title: "2. Uso del Servicio",
         content:
-          "Rabbit Food proporciona una plataforma para conectar clientes con restaurantes, mercados y repartidores locales. Los usuarios deben tener al menos 18 anos para utilizar el servicio.",
+          "ComeYa proporciona una plataforma para conectar clientes con restaurantes, mercados y repartidores locales. Los usuarios deben tener al menos 18 anos para utilizar el servicio.",
       },
       {
         title: "3. Pedidos y Pagos",
@@ -44,12 +44,12 @@ const legalContent = {
       {
         title: "5. Responsabilidad",
         content:
-          "Rabbit Food actua como intermediario entre clientes y negocios. No somos responsables de la calidad de los productos o servicios proporcionados por terceros.",
+          "ComeYa actua como intermediario entre clientes y negocios. No somos responsables de la calidad de los productos o servicios proporcionados por terceros.",
       },
       {
         title: "6. Propiedad Intelectual",
         content:
-          "El nombre Rabbit Food, logotipos y contenido de la aplicacion son propiedad de Rabbit Food. Esta prohibida su reproduccion sin autorizacion.",
+          "El nombre ComeYa, logotipos y contenido de la aplicacion son propiedad de ComeYa. Esta prohibida su reproduccion sin autorizacion.",
       },
     ],
   },
@@ -80,7 +80,7 @@ const legalContent = {
       {
         title: "5. Tus Derechos",
         content:
-          "Puedes solicitar acceso, correccion o eliminacion de tus datos personales contactando a soporte@rabbitfood.mx.",
+          "Puedes solicitar acceso, correccion o eliminacion de tus datos personales contactando a soporte@ComeYa.mx.",
       },
       {
         title: "6. Cookies y Analisis",
@@ -146,7 +146,7 @@ export default function LegalScreen() {
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
         <View style={styles.headerTitle}>
-          <Feather name={content.icon} size={20} color={RabbitFoodColors.primary} />
+          <Feather name={content.icon} size={20} color={ComeYaColors.primary} />
           <ThemedText type="h3" style={{ marginLeft: 8 }}>
             {content.title}
           </ThemedText>
@@ -161,14 +161,14 @@ export default function LegalScreen() {
         <View
           style={[
             styles.brandBadge,
-            { backgroundColor: RabbitFoodColors.primary + "15" },
+            { backgroundColor: ComeYaColors.primary + "15" },
           ]}
         >
           <ThemedText
             type="body"
-            style={{ color: RabbitFoodColors.primary, fontWeight: "600" }}
+            style={{ color: ComeYaColors.primary, fontWeight: "600" }}
           >
-            Rabbit Food - Autlan de Navarro
+            ComeYa - Autlan de Navarro
           </ThemedText>
           <ThemedText
             type="small"
@@ -196,13 +196,13 @@ export default function LegalScreen() {
         ))}
 
         <View style={[styles.contactSection, { backgroundColor: theme.card }]}>
-          <Feather name="mail" size={20} color={RabbitFoodColors.primary} />
+          <Feather name="mail" size={20} color={ComeYaColors.primary} />
           <View style={{ marginLeft: Spacing.md }}>
             <ThemedText type="body" style={{ fontWeight: "600" }}>
               Preguntas?
             </ThemedText>
             <ThemedText type="small" style={{ color: theme.textSecondary }}>
-              Contactanos: soporte@rabbitfood.mx
+              Contactanos: soporte@ComeYa.mx
             </ThemedText>
           </View>
         </View>

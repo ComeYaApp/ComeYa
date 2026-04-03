@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { digitalPaymentService } from "../digitalPaymentService";
 import { authenticateToken } from "../authMiddleware";
-import { requireRole } from "../rbacMiddleware";
+import { requireRole } from "../authMiddleware";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -15,7 +15,7 @@ const upload = multer({
 });
 
 // GET /api/digital-payments/metrics — admin: métricas de todos los métodos de pago
-router.get("/metrics", authenticateToken, requireRole(["admin"]), async (req, res) => {
+router.get("/metrics", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const metrics = await digitalPaymentService.getPaymentMetrics();
     res.json({ success: true, ...metrics });
@@ -107,8 +107,9 @@ router.post("/proof/submit", authenticateToken, upload.single("proof"), async (r
       });
     }
 
-    // Save file path as proof URL
-    const proofImageUrl = `/uploads/comprobantes/${req.file.filename}`;
+    // Save file path as proof URL (full URL for React Native)
+    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const proofImageUrl = `${backendUrl}/uploads/comprobantes/${req.file.filename}`;
 
     const result = await digitalPaymentService.submitPaymentProof({
       orderId,
@@ -177,7 +178,7 @@ router.get("/proof/order/:orderId", authenticateToken, async (req, res) => {
 });
 
 // Get pending payment proofs (Admin only)
-router.get("/proof/pending", authenticateToken, requireRole(["admin"]), async (req, res) => {
+router.get("/proof/pending", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const proofs = await digitalPaymentService.getPendingPaymentProofs();
     res.json({ success: true, proofs });
@@ -187,7 +188,7 @@ router.get("/proof/pending", authenticateToken, requireRole(["admin"]), async (r
 });
 
 // Verify payment proof (Admin only)
-router.post("/proof/verify", authenticateToken, requireRole(["admin"]), async (req, res) => {
+router.post("/proof/verify", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { proofId, approved, notes } = req.body;
 

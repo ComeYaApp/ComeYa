@@ -22,7 +22,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 
@@ -62,7 +62,7 @@ function MessageBubble({
         styles.messageBubble,
         isOwn ? styles.ownMessage : styles.otherMessage,
         {
-          backgroundColor: isOwn ? RabbitFoodColors.primary : theme.card,
+          backgroundColor: isOwn ? ComeYaColors.primary : theme.card,
           ...Shadows.sm,
         },
       ]}
@@ -308,7 +308,7 @@ export default function OrderChatScreen() {
                 styles.sendButton,
                 {
                   backgroundColor: messageText.trim()
-                    ? RabbitFoodColors.primary
+                    ? ComeYaColors.primary
                     : theme.backgroundSecondary,
                   opacity: sendMessageMutation.isPending ? 0.6 : 1,
                 },

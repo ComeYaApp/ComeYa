@@ -20,7 +20,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -37,9 +37,9 @@ const ISSUE_TYPES = [
 ];
 
 const PRIORITY_OPTIONS = [
-  { id: "low", label: "Bajo", color: RabbitFoodColors.success },
-  { id: "medium", label: "Medio", color: RabbitFoodColors.warning },
-  { id: "high", label: "Alto", color: RabbitFoodColors.error },
+  { id: "low", label: "Bajo", color: ComeYaColors.success },
+  { id: "medium", label: "Medio", color: ComeYaColors.warning },
+  { id: "high", label: "Alto", color: ComeYaColors.error },
 ];
 
 export default function ReportIssueScreen() {
@@ -173,7 +173,7 @@ export default function ReportIssueScreen() {
                     backgroundColor: theme.card,
                     borderColor:
                       selectedType === type.id
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : "transparent",
                     borderWidth: 2,
                   },
@@ -185,7 +185,7 @@ export default function ReportIssueScreen() {
                     {
                       backgroundColor:
                         selectedType === type.id
-                          ? RabbitFoodColors.primary + "20"
+                          ? ComeYaColors.primary + "20"
                           : theme.border,
                     },
                   ]}
@@ -195,7 +195,7 @@ export default function ReportIssueScreen() {
                     size={24}
                     color={
                       selectedType === type.id
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.textSecondary
                     }
                   />
@@ -206,7 +206,7 @@ export default function ReportIssueScreen() {
                     textAlign: "center",
                     color:
                       selectedType === type.id
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : theme.text,
                     fontWeight: selectedType === type.id ? "600" : "400",
                   }}
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: RabbitFoodColors.error,
+    backgroundColor: ComeYaColors.error,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   submitButton: {
-    backgroundColor: RabbitFoodColors.primary,
+    backgroundColor: ComeYaColors.primary,
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     alignItems: "center",

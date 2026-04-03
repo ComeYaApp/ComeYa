@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { fundReleaseService } from "../fundReleaseService";
 import { authenticateToken } from "../authMiddleware";
-import { requireRole } from "../rbacMiddleware";
+import { requireRole } from "../authMiddleware";
 import { createPayoutsForOrder } from "../payoutService";
 
 const router = Router();
@@ -66,7 +66,7 @@ router.post("/dispute", authenticateToken, async (req, res) => {
 });
 
 // Get orders pending fund release (Admin)
-router.get("/pending", authenticateToken, requireRole(["admin"]), async (req, res) => {
+router.get("/pending", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const orders = await fundReleaseService.getPendingReleaseOrders();
     res.json({ success: true, orders });
@@ -76,7 +76,7 @@ router.get("/pending", authenticateToken, requireRole(["admin"]), async (req, re
 });
 
 // Manually trigger auto-release (Admin/Cron)
-router.post("/auto-release", authenticateToken, requireRole(["admin"]), async (req, res) => {
+router.post("/auto-release", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const result = await fundReleaseService.autoReleaseFunds();
     res.json({

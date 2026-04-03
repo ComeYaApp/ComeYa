@@ -9,7 +9,7 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -22,7 +22,7 @@ const BANCOS = [
 ];
 
 export default function PagoMovilPaymentScreen({ route }: any) {
-  const { orderId, reference, amount, rabbitfood } = route.params;
+  const { orderId, reference, amount, ComeYa } = route.params;
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
@@ -177,7 +177,7 @@ export default function PagoMovilPaymentScreen({ route }: any) {
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Monto a pagar
             </ThemedText>
-            <ThemedText type="hero" style={{ color: RabbitFoodColors.primary }}>
+            <ThemedText type="hero" style={{ color: ComeYaColors.primary }}>
               Bs. {amount.toFixed(2)}
             </ThemedText>
           </View>
@@ -189,19 +189,19 @@ export default function PagoMovilPaymentScreen({ route }: any) {
           </ThemedText>
           <View style={styles.infoRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>Teléfono:</ThemedText>
-            <ThemedText type="body" style={{ fontWeight: "600" }}>{rabbitfood?.phone || 'N/A'}</ThemedText>
+            <ThemedText type="body" style={{ fontWeight: "600" }}>{ComeYa?.phone || 'N/A'}</ThemedText>
           </View>
           <View style={styles.infoRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>Banco:</ThemedText>
-            <ThemedText type="body" style={{ fontWeight: "600" }}>{rabbitfood?.bankName || 'N/A'}</ThemedText>
+            <ThemedText type="body" style={{ fontWeight: "600" }}>{ComeYa?.bankName || 'N/A'}</ThemedText>
           </View>
           <View style={styles.infoRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>Cédula:</ThemedText>
-            <ThemedText type="body" style={{ fontWeight: "600" }}>{rabbitfood?.cedula || 'N/A'}</ThemedText>
+            <ThemedText type="body" style={{ fontWeight: "600" }}>{ComeYa?.cedula || 'N/A'}</ThemedText>
           </View>
           <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>Referencia:</ThemedText>
-            <ThemedText type="body" style={{ fontWeight: "700", color: RabbitFoodColors.primary }}>
+            <ThemedText type="body" style={{ fontWeight: "700", color: ComeYaColors.primary }}>
               {reference}
             </ThemedText>
           </View>
@@ -239,8 +239,8 @@ export default function PagoMovilPaymentScreen({ route }: any) {
                 style={[
                   styles.bankChip,
                   {
-                    backgroundColor: clientBank === banco.id ? RabbitFoodColors.primary : theme.backgroundSecondary,
-                    borderColor: clientBank === banco.id ? RabbitFoodColors.primary : theme.border,
+                    backgroundColor: clientBank === banco.id ? ComeYaColors.primary : theme.backgroundSecondary,
+                    borderColor: clientBank === banco.id ? ComeYaColors.primary : theme.border,
                   },
                 ]}
               >
@@ -275,8 +275,8 @@ export default function PagoMovilPaymentScreen({ route }: any) {
             </View>
           ) : (
             <Pressable onPress={handlePickImage} style={[styles.uploadButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-              <Feather name="camera" size={24} color={RabbitFoodColors.primary} />
-              <ThemedText type="body" style={{ color: RabbitFoodColors.primary, marginTop: Spacing.xs }}>
+              <Feather name="camera" size={24} color={ComeYaColors.primary} />
+              <ThemedText type="body" style={{ color: ComeYaColors.primary, marginTop: Spacing.xs }}>
                 Subir foto del comprobante
               </ThemedText>
             </Pressable>

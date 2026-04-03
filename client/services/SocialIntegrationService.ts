@@ -12,7 +12,7 @@ export class SocialIntegrationService {
     
     const itemsList = items.map((item) => `• ${item.quantity}x ${item.product?.name || item.name}`).join('\n');
     
-    const message = `🍔 ¡Acabo de pedir en ${businessName}!\n\n${itemsList}\n\nTotal: Bs.${total.toFixed(2)}\n\n📱 Descarga Rabbit Food y pide tú también:\nrabbitfood://download`;
+    const message = `🍔 ¡Acabo de pedir en ${businessName}!\n\n${itemsList}\n\nTotal: Bs.${total.toFixed(2)}\n\n📱 Descarga ComeYa y pide tú también:\nComeYa://download`;
 
     const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
 
@@ -42,12 +42,12 @@ export class SocialIntegrationService {
   }) {
     const { businessId, businessName, rating } = data;
 
-    const message = `🍽️ ¡Descubre ${businessName}!\n\n⭐ ${rating.toFixed(1)} estrellas\n\n📱 Pide ahora en Rabbit Food:\nrabbitfood://business/${businessId}`;
+    const message = `🍽️ ¡Descubre ${businessName}!\n\n⭐ ${rating.toFixed(1)} estrellas\n\n📱 Pide ahora en ComeYa:\nComeYa://business/${businessId}`;
 
     try {
       await Share.share({
         message,
-        title: `Descubre ${businessName} en Rabbit Food`,
+        title: `Descubre ${businessName} en ComeYa`,
       });
       return { success: true };
     } catch (error) {
@@ -58,12 +58,12 @@ export class SocialIntegrationService {
 
   // Compartir código de referido
   static async shareReferralCode(referralCode: string, userName: string) {
-    const message = `🎁 ${userName} te invita a Rabbit Food!\n\nUsa mi código: ${referralCode}\n\n✨ Obtén Bs.10 de descuento en tu primer pedido\n\n📱 Descarga la app:\nrabbitfood://referral/${referralCode}`;
+    const message = `🎁 ${userName} te invita a ComeYa!\n\nUsa mi código: ${referralCode}\n\n✨ Obtén Bs.10 de descuento en tu primer pedido\n\n📱 Descarga la app:\nComeYa://referral/${referralCode}`;
 
     try {
       await Share.share({
         message,
-        title: 'Únete a Rabbit Food',
+        title: 'Únete a ComeYa',
       });
       return { success: true };
     } catch (error) {
@@ -121,12 +121,12 @@ export class SocialIntegrationService {
   }) {
     const { achievementName, achievementDescription, userName } = data;
 
-    const message = `🏆 ¡${userName} desbloqueó un logro!\n\n${achievementName}\n${achievementDescription}\n\n📱 Únete a Rabbit Food y desbloquea logros tú también!`;
+    const message = `🏆 ¡${userName} desbloqueó un logro!\n\n${achievementName}\n${achievementDescription}\n\n📱 Únete a ComeYa y desbloquea logros tú también!`;
 
     try {
       await Share.share({
         message,
-        title: 'Logro desbloqueado en Rabbit Food',
+        title: 'Logro desbloqueado en ComeYa',
       });
       return { success: true };
     } catch (error) {
@@ -145,12 +145,12 @@ export class SocialIntegrationService {
 
     const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : '🏅';
 
-    const message = `${medal} ¡${userName} está en el puesto #${position}!\n\n⭐ ${points} puntos\n\n📱 Compite tú también en Rabbit Food!`;
+    const message = `${medal} ¡${userName} está en el puesto #${position}!\n\n⭐ ${points} puntos\n\n📱 Compite tú también en ComeYa!`;
 
     try {
       await Share.share({
         message,
-        title: 'Ranking en Rabbit Food',
+        title: 'Ranking en ComeYa',
       });
       return { success: true };
     } catch (error) {

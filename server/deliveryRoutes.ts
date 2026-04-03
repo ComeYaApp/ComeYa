@@ -138,11 +138,7 @@ router.get(
       .where(eq(deliveryDrivers.userId, userId))
       .limit(1);
 
-    if (!driver) {
-      throw new NotFoundError("Driver not found");
-    }
-
-    res.json({ success: true, isOnline: driver.isAvailable });
+    res.json({ success: true, isOnline: driver?.isAvailable ?? false });
   }),
 );
 
@@ -159,7 +155,14 @@ router.get(
       .limit(1);
 
     if (!driver) {
-      throw new NotFoundError("Driver not found");
+      return res.json({
+        success: true,
+        stats: {
+          totalDeliveries: 0, rating: 0, totalRatings: 0, completionRate: 100,
+          todayEarnings: 0, weekEarnings: 0, monthEarnings: 0, totalEarnings: 0,
+          balance: 0, avgDeliveryTime: 0, cashOwed: 0, availableToWithdraw: 0, pendingCashOrders: [],
+        },
+      });
     }
 
     const [wallet] = await db
@@ -254,14 +257,25 @@ router.post(
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
 
-    const [driver] = await db
+    let [driver] = await db
       .select()
       .from(deliveryDrivers)
       .where(eq(deliveryDrivers.userId, userId))
       .limit(1);
 
     if (!driver) {
-      throw new NotFoundError("Driver not found");
+      await db.insert(deliveryDrivers).values({
+        userId,
+        vehicleType: "motorcycle",
+        vehiclePlate: "PENDIENTE",
+        isAvailable: false,
+        totalDeliveries: 0,
+        rating: 0,
+        totalRatings: 0,
+        strikes: 0,
+        isBlocked: false,
+      });
+      [driver] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, userId)).limit(1);
     }
 
     const newStatus = !driver.isAvailable;
@@ -296,13 +310,14 @@ router.get(
         ),
       );
 
+    const { isNull: isNullOp } = await import("drizzle-orm");
     const availableOrders = await db
       .select()
       .from(orders)
       .where(
         and(
           eq(orders.status, "ready"),
-          eq(orders.deliveryPersonId, null as any),
+          isNullOp(orders.deliveryPersonId),
         ),
       )
       .limit(10);
@@ -335,27 +350,39 @@ router.get(
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
 
-    const [driver] = await db
+    let [driver] = await db
       .select()
       .from(deliveryDrivers)
       .where(eq(deliveryDrivers.userId, userId))
       .limit(1);
 
     if (!driver) {
-      return res.json({ success: false, error: "Driver not found", orders: [] });
+      await db.insert(deliveryDrivers).values({
+        userId,
+        vehicleType: "motorcycle",
+        vehiclePlate: "PENDIENTE",
+        isAvailable: false,
+        totalDeliveries: 0,
+        rating: 0,
+        totalRatings: 0,
+        strikes: 0,
+        isBlocked: false,
+      });
+      [driver] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, userId)).limit(1);
     }
 
     // SIN RESTRICCIÓN DE DISTANCIA - Muestra TODOS los pedidos disponibles
+    const { isNull } = await import("drizzle-orm");
     const availableOrders = await db
       .select()
       .from(orders)
       .where(
         and(
           eq(orders.status, "ready"),
-          eq(orders.deliveryPersonId, null as any),
+          isNull(orders.deliveryPersonId),
         ),
       )
-      .limit(100); // Aumentado a 100 pedidos
+      .limit(100);
 
     res.json({ success: true, orders: availableOrders });
   }),
@@ -398,7 +425,8 @@ router.post(
       .update(orders)
       .set({
         deliveryPersonId: userId,
-        status: "ready",
+        status: "picked_up",
+        assignedAt: new Date(),
       })
       .where(eq(orders.id, orderId));
 

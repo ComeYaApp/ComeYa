@@ -21,7 +21,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import { NativeMap } from "@/components/NativeMap";
@@ -525,17 +525,17 @@ export default function AdminScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return RabbitFoodColors.warning;
+        return ComeYaColors.warning;
       case "confirmed":
         return "#2196F3";
       case "preparing":
-        return RabbitFoodColors.primary;
+        return ComeYaColors.primary;
       case "on_the_way":
         return "#9C27B0";
       case "delivered":
-        return RabbitFoodColors.success;
+        return ComeYaColors.success;
       case "cancelled":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       default:
         return theme.textSecondary;
     }
@@ -578,17 +578,17 @@ export default function AdminScreen() {
   const getLogActionColor = (action: string) => {
     switch (action) {
       case "LOGIN_SUCCESS":
-        return RabbitFoodColors.success;
+        return ComeYaColors.success;
       case "LOGIN_FAILED":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       case "RATE_LIMIT_BLOCKED":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       case "CREATE":
         return "#2196F3";
       case "UPDATE":
-        return RabbitFoodColors.warning;
+        return ComeYaColors.warning;
       case "DELETE":
-        return RabbitFoodColors.error;
+        return ComeYaColors.error;
       default:
         return theme.textSecondary;
     }
@@ -597,7 +597,7 @@ export default function AdminScreen() {
   if (isLoading) {
     return (
       <ThemedView style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={RabbitFoodColors.primary} />
+        <ActivityIndicator size="large" color={ComeYaColors.primary} />
       </ThemedView>
     );
   }
@@ -657,20 +657,20 @@ export default function AdminScreen() {
                 styles.tab,
                 {
                   backgroundColor:
-                    activeTab === tab ? RabbitFoodColors.primary : "transparent",
-                  borderColor: RabbitFoodColors.primary,
+                    activeTab === tab ? ComeYaColors.primary : "transparent",
+                  borderColor: ComeYaColors.primary,
                 },
               ]}
             >
               <Feather
                 name={config.icon as any}
                 size={18}
-                color={activeTab === tab ? "#FFFFFF" : RabbitFoodColors.primary}
+                color={activeTab === tab ? "#FFFFFF" : ComeYaColors.primary}
               />
               <ThemedText
                 type="small"
                 style={{
-                  color: activeTab === tab ? "#FFFFFF" : RabbitFoodColors.primary,
+                  color: activeTab === tab ? "#FFFFFF" : ComeYaColors.primary,
                   marginLeft: Spacing.xs,
                 }}
               >
@@ -689,7 +689,7 @@ export default function AdminScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
       >
@@ -757,9 +757,9 @@ export default function AdminScreen() {
                         {
                           backgroundColor:
                             selectedBusinessId === b.id
-                              ? RabbitFoodColors.primary
+                              ? ComeYaColors.primary
                               : "transparent",
-                          borderColor: RabbitFoodColors.primary,
+                          borderColor: ComeYaColors.primary,
                         },
                       ]}
                     >
@@ -769,7 +769,7 @@ export default function AdminScreen() {
                           color:
                             selectedBusinessId === b.id
                               ? "#FFFFFF"
-                              : RabbitFoodColors.primary,
+                              : ComeYaColors.primary,
                         }}
                       >
                         {b.name}
@@ -799,7 +799,7 @@ export default function AdminScreen() {
                   }}
                   style={[
                     styles.addButton,
-                    { backgroundColor: RabbitFoodColors.primary },
+                    { backgroundColor: ComeYaColors.primary },
                   ]}
                 >
                   <Feather name="plus" size={20} color="#FFFFFF" />
@@ -848,7 +848,7 @@ export default function AdminScreen() {
                               styles.orderIcon,
                               {
                                 backgroundColor: p.isAvailable
-                                  ? RabbitFoodColors.primaryLight
+                                  ? ComeYaColors.primaryLight
                                   : theme.backgroundSecondary,
                               },
                             ]}
@@ -858,7 +858,7 @@ export default function AdminScreen() {
                               size={20}
                               color={
                                 p.isAvailable
-                                  ? RabbitFoodColors.primary
+                                  ? ComeYaColors.primary
                                   : theme.textSecondary
                               }
                             />
@@ -877,7 +877,7 @@ export default function AdminScreen() {
                         </View>
                         <ThemedText
                           type="h4"
-                          style={{ color: RabbitFoodColors.primary }}
+                          style={{ color: ComeYaColors.primary }}
                         >
                           ${(p.price / 100).toFixed(2)}
                         </ThemedText>
@@ -894,12 +894,12 @@ export default function AdminScreen() {
                             <View
                               style={[
                                 styles.badge,
-                                { backgroundColor: RabbitFoodColors.warning + "20" },
+                                { backgroundColor: ComeYaColors.warning + "20" },
                               ]}
                             >
                               <ThemedText
                                 type="caption"
-                                style={{ color: RabbitFoodColors.warning }}
+                                style={{ color: ComeYaColors.warning }}
                               >
                                 Por peso
                               </ThemedText>
@@ -910,8 +910,8 @@ export default function AdminScreen() {
                               styles.badge,
                               {
                                 backgroundColor: p.isAvailable
-                                  ? RabbitFoodColors.success + "20"
-                                  : RabbitFoodColors.error + "20",
+                                  ? ComeYaColors.success + "20"
+                                  : ComeYaColors.error + "20",
                               },
                             ]}
                           >
@@ -919,8 +919,8 @@ export default function AdminScreen() {
                               type="caption"
                               style={{
                                 color: p.isAvailable
-                                  ? RabbitFoodColors.success
-                                  : RabbitFoodColors.error,
+                                  ? ComeYaColors.success
+                                  : ComeYaColors.error,
                               }}
                             >
                               {p.isAvailable ? "Disponible" : "Agotado"}
@@ -932,14 +932,14 @@ export default function AdminScreen() {
                             <Feather
                               name="edit-2"
                               size={18}
-                              color={RabbitFoodColors.primary}
+                              color={ComeYaColors.primary}
                             />
                           </Pressable>
                           <Pressable onPress={() => handleDeleteProduct(p.id)}>
                             <Feather
                               name="trash-2"
                               size={18}
-                              color={RabbitFoodColors.error}
+                              color={ComeYaColors.error}
                             />
                           </Pressable>
                         </View>
@@ -1127,9 +1127,9 @@ export default function AdminScreen() {
                       {
                         backgroundColor:
                           businessForm.type === t
-                            ? RabbitFoodColors.primary
+                            ? ComeYaColors.primary
                             : "transparent",
-                        borderColor: RabbitFoodColors.primary,
+                        borderColor: ComeYaColors.primary,
                       },
                     ]}
                   >
@@ -1139,7 +1139,7 @@ export default function AdminScreen() {
                         color:
                           businessForm.type === t
                             ? "#FFFFFF"
-                            : RabbitFoodColors.primary,
+                            : ComeYaColors.primary,
                       }}
                     >
                       {t === "restaurant" ? "Restaurante" : "Mercado"}
@@ -1293,9 +1293,9 @@ export default function AdminScreen() {
                   style={[
                     styles.checkbox,
                     {
-                      borderColor: RabbitFoodColors.primary,
+                      borderColor: ComeYaColors.primary,
                       backgroundColor: businessForm.isActive
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : "transparent",
                     },
                   ]}
@@ -1313,7 +1313,7 @@ export default function AdminScreen() {
               onPress={handleSaveBusiness}
               style={[
                 styles.saveButton,
-                { backgroundColor: RabbitFoodColors.primary },
+                { backgroundColor: ComeYaColors.primary },
               ]}
             >
               <ThemedText
@@ -1468,9 +1468,9 @@ export default function AdminScreen() {
                   style={[
                     styles.checkbox,
                     {
-                      borderColor: RabbitFoodColors.primary,
+                      borderColor: ComeYaColors.primary,
                       backgroundColor: productForm.isWeightBased
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : "transparent",
                     },
                   ]}
@@ -1507,9 +1507,9 @@ export default function AdminScreen() {
                             {
                               backgroundColor:
                                 productForm.weightUnit === u
-                                  ? RabbitFoodColors.primary
+                                  ? ComeYaColors.primary
                                   : "transparent",
-                              borderColor: RabbitFoodColors.primary,
+                              borderColor: ComeYaColors.primary,
                               paddingHorizontal: Spacing.sm,
                             },
                           ]}
@@ -1520,7 +1520,7 @@ export default function AdminScreen() {
                               color:
                                 productForm.weightUnit === u
                                   ? "#FFFFFF"
-                                  : RabbitFoodColors.primary,
+                                  : ComeYaColors.primary,
                             }}
                           >
                             {u}
@@ -1563,9 +1563,9 @@ export default function AdminScreen() {
                   style={[
                     styles.checkbox,
                     {
-                      borderColor: RabbitFoodColors.primary,
+                      borderColor: ComeYaColors.primary,
                       backgroundColor: productForm.isAvailable
-                        ? RabbitFoodColors.primary
+                        ? ComeYaColors.primary
                         : "transparent",
                     },
                   ]}
@@ -1583,7 +1583,7 @@ export default function AdminScreen() {
               onPress={handleSaveProduct}
               style={[
                 styles.saveButton,
-                { backgroundColor: RabbitFoodColors.primary },
+                { backgroundColor: ComeYaColors.primary },
               ]}
             >
               <ThemedText
@@ -1610,8 +1610,8 @@ export default function AdminScreen() {
               {selectedUser ? (
                 <>
                   <View style={[styles.userDetailCard, { backgroundColor: theme.backgroundSecondary }]}>
-                    <View style={[styles.avatar, { backgroundColor: RabbitFoodColors.primaryLight, width: 60, height: 60 }]}>
-                      <ThemedText type="h2" style={{ color: RabbitFoodColors.primaryDark }}>
+                    <View style={[styles.avatar, { backgroundColor: ComeYaColors.primaryLight, width: 60, height: 60 }]}>
+                      <ThemedText type="h2" style={{ color: ComeYaColors.primaryDark }}>
                         {selectedUser.name.charAt(0).toUpperCase()}
                       </ThemedText>
                     </View>
@@ -1632,7 +1632,7 @@ export default function AdminScreen() {
                         <Feather
                           name={selectedUser.emailVerified ? "check-circle" : "x-circle"}
                           size={14}
-                          color={selectedUser.emailVerified ? RabbitFoodColors.success : RabbitFoodColors.error}
+                          color={selectedUser.emailVerified ? ComeYaColors.success : ComeYaColors.error}
                         />
                         <ThemedText type="caption" style={{ marginLeft: 4 }}>
                           Email {selectedUser.emailVerified ? "verificado" : "sin verificar"}
@@ -1642,7 +1642,7 @@ export default function AdminScreen() {
                         <Feather
                           name={(selectedUser as any).phoneVerified ? "check-circle" : "x-circle"}
                           size={14}
-                          color={(selectedUser as any).phoneVerified ? RabbitFoodColors.success : RabbitFoodColors.error}
+                          color={(selectedUser as any).phoneVerified ? ComeYaColors.success : ComeYaColors.error}
                         />
                         <ThemedText type="caption" style={{ marginLeft: 4 }}>
                           Tel {(selectedUser as any).phoneVerified ? "verificado" : "sin verificar"}
@@ -1662,14 +1662,14 @@ export default function AdminScreen() {
                           style={[
                             styles.tab,
                             {
-                              backgroundColor: userRoleEdit === role ? RabbitFoodColors.primary : "transparent",
-                              borderColor: RabbitFoodColors.primary,
+                              backgroundColor: userRoleEdit === role ? ComeYaColors.primary : "transparent",
+                              borderColor: ComeYaColors.primary,
                             },
                           ]}
                         >
                           <ThemedText
                             type="small"
-                            style={{ color: userRoleEdit === role ? "#FFFFFF" : RabbitFoodColors.primary }}
+                            style={{ color: userRoleEdit === role ? "#FFFFFF" : ComeYaColors.primary }}
                           >
                             {getRoleLabel(role)}
                           </ThemedText>
@@ -1685,7 +1685,7 @@ export default function AdminScreen() {
             </ScrollView>
             <Pressable
               onPress={handleUpdateUserRole}
-              style={[styles.saveButton, { backgroundColor: RabbitFoodColors.primary }]}
+              style={[styles.saveButton, { backgroundColor: ComeYaColors.primary }]}
             >
               <ThemedText type="body" style={{ color: "#FFFFFF", fontWeight: "600" }}>
                 Guardar Cambios
@@ -1708,8 +1708,8 @@ export default function AdminScreen() {
               {selectedOrder ? (
                 <>
                   <View style={[styles.userDetailCard, { backgroundColor: theme.backgroundSecondary }]}>
-                    <View style={[styles.orderIcon, { backgroundColor: RabbitFoodColors.primaryLight, width: 50, height: 50 }]}>
-                      <Feather name="package" size={24} color={RabbitFoodColors.primary} />
+                    <View style={[styles.orderIcon, { backgroundColor: ComeYaColors.primaryLight, width: 50, height: 50 }]}>
+                      <Feather name="package" size={24} color={ComeYaColors.primary} />
                     </View>
                     <ThemedText type="h3" style={{ marginTop: Spacing.md }}>
                       #{selectedOrder.id.slice(0, 8)}
@@ -1759,7 +1759,7 @@ export default function AdminScreen() {
                           const url = `https://www.google.com/maps?q=${selectedOrder.deliveryLatitude},${selectedOrder.deliveryLongitude}`;
                           Linking.openURL(url);
                         }}
-                        style={[styles.mapButton, { backgroundColor: RabbitFoodColors.primary }]}
+                        style={[styles.mapButton, { backgroundColor: ComeYaColors.primary }]}
                       >
                         <Feather name="map" size={16} color="#FFFFFF" />
                         <ThemedText type="small" style={{ color: "#FFFFFF", marginLeft: Spacing.xs }}>
@@ -1801,7 +1801,7 @@ export default function AdminScreen() {
                     </View>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: theme.border }}>
                       <ThemedText type="h4">Total</ThemedText>
-                      <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+                      <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
                         ${(selectedOrder.total / 100).toFixed(2)}
                       </ThemedText>
                     </View>

@@ -19,7 +19,7 @@ import { Badge } from "@/components/Badge";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from "@/constants/theme";
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 export default function BusinessOrdersScreen() {
@@ -163,7 +163,7 @@ export default function BusinessOrdersScreen() {
   const filteredOrders = orders.filter((order: any) => {
     if (filter === "pending") return order.status === "pending";
     if (filter === "active")
-      return ["accepted", "preparing"].includes(order.status);
+      return ["accepted", "preparing", "ready", "on_the_way"].includes(order.status);
     return true;
   });
 
@@ -172,11 +172,26 @@ export default function BusinessOrdersScreen() {
       pending: "Pendiente",
       accepted: "Aceptado",
       preparing: "Preparando",
+      ready: "Listo ✓",
       on_the_way: "En camino",
       delivered: "Entregado",
       cancelled: "Cancelado",
     };
     return labels[status] || status;
+  };
+
+  const getPaymentLabel = (method: string) => {
+    const map: Record<string, string> = {
+      pago_movil:   "📱 Pago Móvil",
+      pagomovil:    "📱 Pago Móvil",
+      binance:      "🟡 Binance Pay",
+      binance_pay:  "🟡 Binance Pay",
+      zinli:        "💜 Zinli",
+      zelle:        "💵 Zelle",
+      cash:         "💵 Efectivo",
+      efectivo:     "💵 Efectivo",
+    };
+    return map[method?.toLowerCase()] ?? "💳 " + (method ?? "Pago digital");
   };
 
   const renderOrder = ({ item }: { item: any }) => {
@@ -196,7 +211,7 @@ export default function BusinessOrdersScreen() {
               })} - {new Date(item.createdAt).toLocaleDateString("es-VE")}
             </ThemedText>
             {item.businessName ? (
-              <ThemedText type="small" style={{ color: RabbitFoodColors.primary, marginTop: 2 }}>
+              <ThemedText type="small" style={{ color: ComeYaColors.primary, marginTop: 2 }}>
                 {item.businessName}
               </ThemedText>
             ) : null}
@@ -208,6 +223,8 @@ export default function BusinessOrdersScreen() {
                 ? "warning"
                 : item.status === "preparing"
                 ? "info"
+                : item.status === "ready"
+                ? "success"
                 : item.status === "cancelled"
                 ? "error"
                 : "primary"
@@ -248,15 +265,15 @@ export default function BusinessOrdersScreen() {
 
         <View style={styles.orderFooter}>
           <View>
-            <ThemedText type="h4" style={{ color: RabbitFoodColors.primary }}>
+            <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
               ${(item.subtotal / 100).toFixed(2)}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              💳 Pagado con Stripe
+              {getPaymentLabel(item.paymentMethod)}
             </ThemedText>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <ThemedText type="small" style={{ color: RabbitFoodColors.success, fontWeight: "600" }}>
+            <ThemedText type="small" style={{ color: ComeYaColors.success, fontWeight: "600" }}>
               Recibes: ${(item.subtotal / 100).toFixed(2)}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -281,10 +298,10 @@ export default function BusinessOrdersScreen() {
                   },
                 ]}
               >
-                <Feather name="x" size={18} color={RabbitFoodColors.error} />
+                <Feather name="x" size={18} color={ComeYaColors.error} />
                 <ThemedText
                   type="small"
-                  style={{ color: RabbitFoodColors.error, marginLeft: Spacing.xs }}
+                  style={{ color: ComeYaColors.error, marginLeft: Spacing.xs }}
                 >
                   Rechazar
                 </ThemedText>
@@ -297,7 +314,7 @@ export default function BusinessOrdersScreen() {
                 style={({ pressed }) => [
                   styles.actionButton,
                   { 
-                    backgroundColor: RabbitFoodColors.primary,
+                    backgroundColor: ComeYaColors.primary,
                     opacity: pressed ? 0.8 : 1,
                   },
                 ]}
@@ -318,7 +335,7 @@ export default function BusinessOrdersScreen() {
               onPress={() => handleStartPreparing(item.id)}
               style={[
                 styles.actionButton,
-                { backgroundColor: RabbitFoodColors.primary, flex: 1 },
+                { backgroundColor: ComeYaColors.primary, flex: 1 },
               ]}
             >
               <Feather name="clock" size={18} color="#FFF" />
@@ -332,33 +349,34 @@ export default function BusinessOrdersScreen() {
           )}
 
           {item.status === "preparing" && (
-            <View
+            <Pressable
+              onPress={() => updateOrderStatus(item.id, "ready")}
               style={[
                 styles.actionButton,
-                { backgroundColor: RabbitFoodColors.primary + "20", flex: 1 },
+                { backgroundColor: ComeYaColors.success, flex: 1 },
               ]}
             >
-              <Feather name="package" size={18} color={RabbitFoodColors.primary} />
+              <Feather name="check-circle" size={18} color="#FFF" />
               <ThemedText
                 type="small"
-                style={{ color: RabbitFoodColors.primary, marginLeft: Spacing.xs }}
+                style={{ color: "#FFF", marginLeft: Spacing.xs }}
               >
-                Esperando Repartidor
+                Listo para Recoger
               </ThemedText>
-            </View>
+            </Pressable>
           )}
 
           {item.status === "on_the_way" && (
             <View
               style={[
                 styles.actionButton,
-                { backgroundColor: RabbitFoodColors.success + "20", flex: 1 },
+                { backgroundColor: ComeYaColors.success + "20", flex: 1 },
               ]}
             >
-              <Feather name="truck" size={18} color={RabbitFoodColors.success} />
+              <Feather name="truck" size={18} color={ComeYaColors.success} />
               <ThemedText
                 type="small"
-                style={{ color: RabbitFoodColors.success, marginLeft: Spacing.xs }}
+                style={{ color: ComeYaColors.success, marginLeft: Spacing.xs }}
               >
                 En Camino al Cliente
               </ThemedText>
@@ -395,7 +413,7 @@ export default function BusinessOrdersScreen() {
             styles.filterButton,
             {
               backgroundColor:
-                filter === "pending" ? RabbitFoodColors.primary : theme.card,
+                filter === "pending" ? ComeYaColors.primary : theme.card,
             },
           ]}
         >
@@ -412,7 +430,7 @@ export default function BusinessOrdersScreen() {
             styles.filterButton,
             {
               backgroundColor:
-                filter === "active" ? RabbitFoodColors.primary : theme.card,
+                filter === "active" ? ComeYaColors.primary : theme.card,
             },
           ]}
         >
@@ -428,7 +446,7 @@ export default function BusinessOrdersScreen() {
           style={[
             styles.filterButton,
             {
-              backgroundColor: filter === "all" ? RabbitFoodColors.primary : theme.card,
+              backgroundColor: filter === "all" ? ComeYaColors.primary : theme.card,
             },
           ]}
         >
@@ -450,7 +468,7 @@ export default function BusinessOrdersScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={RabbitFoodColors.primary}
+            tintColor={ComeYaColors.primary}
           />
         }
         ListEmptyComponent={

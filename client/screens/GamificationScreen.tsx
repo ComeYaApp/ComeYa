@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { Spacing, BorderRadius, RabbitFoodColors, Shadows } from '@/constants/theme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -168,7 +168,7 @@ export default function GamificationScreen() {
             style={[
               styles.tab,
               {
-                backgroundColor: activeTab === tab ? RabbitFoodColors.primary : theme.backgroundSecondary,
+                backgroundColor: activeTab === tab ? ComeYaColors.primary : theme.backgroundSecondary,
               },
             ]}
           >
@@ -202,7 +202,7 @@ export default function GamificationScreen() {
                   </ThemedText>
                   <View style={styles.rewardMeta}>
                     <View style={styles.pointsBadge}>
-                      <Feather name="star" size={14} color={RabbitFoodColors.warning} />
+                      <Feather name="star" size={14} color={ComeYaColors.warning} />
                       <ThemedText type="caption" style={{ marginLeft: 4 }}>
                         {reward.pointsCost} pts
                       </ThemedText>
@@ -215,7 +215,7 @@ export default function GamificationScreen() {
                   style={[
                     styles.redeemButton,
                     {
-                      backgroundColor: reward.canAfford ? RabbitFoodColors.primary : theme.backgroundSecondary,
+                      backgroundColor: reward.canAfford ? ComeYaColors.primary : theme.backgroundSecondary,
                       opacity: reward.canAfford && !redeemMutation.isPending ? 1 : 0.5,
                     },
                   ]}
@@ -240,8 +240,8 @@ export default function GamificationScreen() {
             </ThemedText>
             {achievements.unlocked.map((achievement: any) => (
               <View key={achievement.id} style={[styles.achievementCard, { backgroundColor: theme.card }, Shadows.sm]}>
-                <View style={[styles.achievementIcon, { backgroundColor: RabbitFoodColors.success + '20' }]}>
-                  <Feather name="award" size={24} color={RabbitFoodColors.success} />
+                <View style={[styles.achievementIcon, { backgroundColor: ComeYaColors.success + '20' }]}>
+                  <Feather name="award" size={24} color={ComeYaColors.success} />
                 </View>
                 <View style={styles.achievementInfo}>
                   <ThemedText type="body" style={{ fontWeight: '600' }}>
@@ -251,7 +251,7 @@ export default function GamificationScreen() {
                     {achievement.description}
                   </ThemedText>
                 </View>
-                <Feather name="check-circle" size={20} color={RabbitFoodColors.success} />
+                <Feather name="check-circle" size={20} color={ComeYaColors.success} />
               </View>
             ))}
 
@@ -319,7 +319,7 @@ export default function GamificationScreen() {
                     </ThemedText>
                   </View>
                 </View>
-                <ThemedText type="body" style={{ fontWeight: '600', color: RabbitFoodColors.primary }}>
+                <ThemedText type="body" style={{ fontWeight: '600', color: ComeYaColors.primary }}>
                   {entry.totalEarned} pts
                 </ThemedText>
               </View>
