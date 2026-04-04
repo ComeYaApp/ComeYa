@@ -9,26 +9,17 @@ const DISABLE_GPS_IN_DEV = true;
 export const getApiBaseUrl = (): string => {
   // Check expo config first (from app.config.js)
   const expoBackendUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL;
-  if (expoBackendUrl) {
-    console.log('🔧 Using Expo config URL:', expoBackendUrl);
+  if (expoBackendUrl && expoBackendUrl !== 'http://localhost:5000') {
     return expoBackendUrl;
   }
 
   // Check for environment variable
   const envBackendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-  if (envBackendUrl) {
-    console.log('🔧 Using env URL:', envBackendUrl);
+  if (envBackendUrl && envBackendUrl !== 'http://localhost:5000') {
     return envBackendUrl.trim();
   }
 
-  // For web in production, use current origin
-  if (Platform.OS === "web" && typeof window !== "undefined" && window.location) {
-    console.log('🔧 Using window origin:', window.location.origin);
-    return window.location.origin;
-  }
-
-  // Production fallback
-  console.log('🔧 Using fallback URL: https://comeya-backend.onrender.com');
+  // Always use Render in production
   return "https://comeya-backend.onrender.com";
 };
 
