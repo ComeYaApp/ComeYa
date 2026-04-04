@@ -25,7 +25,6 @@ const METHOD_CONFIG: Record<string, { icon: any; color: string; subtitle: string
   stripe_card:  { icon: 'credit-card', color: '#635BFF', subtitle: 'Visa, Mastercard, Amex' },
   stripe_bizum: { icon: 'smartphone',  color: '#00ADEF', subtitle: 'Pago instantáneo desde tu móvil' },
   paypal:       { icon: 'dollar-sign', color: '#003087', subtitle: 'Paga con tu cuenta PayPal' },
-  binance:      { icon: 'zap',         color: '#F3BA2F', subtitle: 'Paga con criptomonedas' },
 };
 
 export default function DigitalPaymentMethodScreen({ route }: Props) {
@@ -51,7 +50,6 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
           { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Pago seguro con tarjeta via Stripe' },
           { id: '2', name: 'bizum',        provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo con Bizum via Stripe' },
           { id: '3', name: 'paypal',       provider: 'paypal',       displayName: 'PayPal',      isActive: true, requiresManualVerification: false, instructions: 'Serás redirigido a PayPal' },
-          { id: '4', name: 'binance_pay',  provider: 'binance',      displayName: 'Binance Pay', isActive: true, requiresManualVerification: false, instructions: 'Paga con criptomonedas desde Binance' },
         ]);
       }
     } catch {
@@ -59,7 +57,6 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
         { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Pago seguro con tarjeta via Stripe' },
         { id: '2', name: 'bizum',        provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo con Bizum via Stripe' },
         { id: '3', name: 'paypal',       provider: 'paypal',       displayName: 'PayPal',      isActive: true, requiresManualVerification: false, instructions: 'Serás redirigido a PayPal' },
-        { id: '4', name: 'binance_pay',  provider: 'binance',      displayName: 'Binance Pay', isActive: true, requiresManualVerification: false, instructions: 'Paga con criptomonedas desde Binance' },
       ]);
     } finally {
       setLoading(false);
