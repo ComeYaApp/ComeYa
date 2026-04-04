@@ -306,7 +306,7 @@ export default function CheckoutScreen({ route }: any) {
 
         setAppliedCoupon(data.coupon);
         setCouponDiscount(finalDiscount);
-        showToast(`¡Cupón aplicado! Ahorras Bs. ${finalDiscount.toFixed(2)}`, "success");
+        showToast(`¡Cupón aplicado! Ahorras €${finalDiscount.toFixed(2)}`, "success");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         showToast(data.error || "Cupón inválido", "error");
@@ -641,7 +641,7 @@ export default function CheckoutScreen({ route }: any) {
                   {couponCode.toUpperCase()}
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                  Ahorras Bs. {couponDiscount.toFixed(2)}
+                  Ahorras €{couponDiscount.toFixed(2)}
                 </ThemedText>
               </View>
               <Pressable onPress={handleRemoveCoupon} style={styles.removeCouponButton}>

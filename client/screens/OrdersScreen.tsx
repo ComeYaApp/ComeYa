@@ -214,7 +214,7 @@ export default function OrdersScreen() {
             {item.items.length === 1 ? "producto" : "productos"}
           </ThemedText>
           <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-            Bs. {(item.total || 0).toFixed(2)}
+            €{((item.total || 0) / 100).toFixed(2)}
           </ThemedText>
         </View>
 

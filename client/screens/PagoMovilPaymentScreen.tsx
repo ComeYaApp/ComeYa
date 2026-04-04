@@ -178,7 +178,7 @@ export default function PagoMovilPaymentScreen({ route }: any) {
               Monto a pagar
             </ThemedText>
             <ThemedText type="hero" style={{ color: ComeYaColors.primary }}>
-              Bs. {amount.toFixed(2)}
+              €{amount.toFixed(2)}
             </ThemedText>
           </View>
         </View>

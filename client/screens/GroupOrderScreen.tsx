@@ -226,7 +226,7 @@ export default function GroupOrderScreen() {
           <View style={styles.sectionHeader}>
             <ThemedText type="h4">Participantes ({totalParticipants})</ThemedText>
             <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-              Bs.{totalAmount.toFixed(2)}
+              €{totalAmount.toFixed(2)}
             </ThemedText>
           </View>
 
@@ -253,7 +253,7 @@ export default function GroupOrderScreen() {
               </View>
               <View style={styles.participantRight}>
                 <ThemedText type="body" style={{ fontWeight: '600' }}>
-                  Bs.{(participant.subtotal / 100).toFixed(2)}
+                  €{(participant.subtotal / 100).toFixed(2)}
                 </ThemedText>
                 {participant.paymentStatus === 'paid' && (
                   <Feather name="check-circle" size={16} color={ComeYaColors.success} />

@@ -200,7 +200,7 @@ export default function BusinessFinancesScreen() {
             type="h1"
             style={{ color: "#FFFFFF", fontSize: 38, marginVertical: Spacing.sm }}
           >
-            Bs. {summary.totalEarnings.toFixed(2)}
+            €{summary.totalEarnings.toFixed(2)}
           </ThemedText>
 
           <View style={styles.periodSelector}>
@@ -235,7 +235,7 @@ export default function BusinessFinancesScreen() {
                 Completados
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                Bs. {summary.completedAmount.toFixed(2)}
+                €{summary.completedAmount.toFixed(2)}
               </ThemedText>
             </View>
             <View style={styles.summaryItem}>
@@ -243,7 +243,7 @@ export default function BusinessFinancesScreen() {
                 Pendientes
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                Bs. {summary.pendingAmount.toFixed(2)}
+                €{summary.pendingAmount.toFixed(2)}
               </ThemedText>
             </View>
           </View>
@@ -298,7 +298,7 @@ export default function BusinessFinancesScreen() {
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
                     <ThemedText type="h4" style={{ color: payout.status === "paid" ? ComeYaColors.success : ComeYaColors.warning }}>
-                      Bs. {payout.amount.toFixed(2)}
+                      €{payout.amount.toFixed(2)}
                     </ThemedText>
                     <Badge
                       text={payout.status === "paid" ? "Pagado" : "Pendiente"}
@@ -349,7 +349,7 @@ export default function BusinessFinancesScreen() {
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
                   <ThemedText type="h4" style={{ color: getStatusColor(transaction.status) }}>
-                    Bs. {transaction.subtotal.toFixed(2)}
+                    €{transaction.subtotal.toFixed(2)}
                   </ThemedText>
                   <Badge
                     text={getStatusLabel(transaction.status)}
@@ -393,9 +393,9 @@ export default function BusinessFinancesScreen() {
                   <View style={styles.detailRow}>
                     <Feather name="truck" size={12} color={theme.textSecondary} />
                     <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-                      Envío: Bs. {transaction.deliveryFee.toFixed(2)}
+                      Envío: €{transaction.deliveryFee.toFixed(2)}
                       {" · "}
-                      Total: Bs. {transaction.total.toFixed(2)}
+                      Total: €{transaction.total.toFixed(2)}
                     </ThemedText>
                   </View>
                 ) : null}

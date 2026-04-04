@@ -167,7 +167,7 @@ export default function GiftCardsScreen() {
                         fontWeight: '600',
                       }}
                     >
-                      Bs.{preset}
+                      €{preset}
                     </ThemedText>
                   </Pressable>
                 ))}
@@ -276,7 +276,7 @@ export default function GiftCardsScreen() {
             >
               <Feather name="gift" size={20} color="#FFFFFF" />
               <ThemedText type="body" style={{ color: '#FFFFFF', marginLeft: 8, fontWeight: '600' }}>
-                {purchaseMutation.isPending ? 'Creando...' : `Comprar Bs.${amount}`}
+                {purchaseMutation.isPending ? 'Creando...' : `Comprar €${amount}`}
               </ThemedText>
             </Pressable>
           </View>
@@ -297,12 +297,12 @@ export default function GiftCardsScreen() {
                       {card.code}
                     </ThemedText>
                     <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      Saldo: Bs.{card.balance.toFixed(2)}
+                      Saldo: €{card.balance.toFixed(2)}
                     </ThemedText>
                   </View>
                 </View>
                 <ThemedText type="body" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
-                  Bs.{card.amount.toFixed(2)}
+                  €{card.amount.toFixed(2)}
                 </ThemedText>
               </View>
             ))}

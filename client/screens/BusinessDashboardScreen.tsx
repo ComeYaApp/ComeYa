@@ -340,7 +340,7 @@ export default function BusinessDashboardScreen() {
             Ingresos - {periodLabels[selectedPeriod]}
           </ThemedText>
           <ThemedText type="h1" style={{ color: "#FFFFFF", fontSize: 38, marginVertical: Spacing.sm }}>
-            Bs. {getRevenueForPeriod().toFixed(2)}
+            €{getRevenueForPeriod().toFixed(2)}
           </ThemedText>
 
           <View style={styles.periodSelector}>
@@ -368,7 +368,7 @@ export default function BusinessDashboardScreen() {
 
           <View style={styles.totalRevenue}>
             <ThemedText type="small" style={{ color: "rgba(255,255,255,0.7)" }}>
-              Ingresos totales: Bs. {stats.revenue.total.toFixed(2)}
+              Ingresos totales: €{stats.revenue.total.toFixed(2)}
             </ThemedText>
           </View>
         </Animated.View>
@@ -406,7 +406,7 @@ export default function BusinessDashboardScreen() {
           <Feather name="trending-up" size={20} color={ComeYaColors.primary} />
           <View style={{ marginLeft: Spacing.md, flex: 1 }}>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>Ticket promedio</ThemedText>
-            <ThemedText type="h3">Bs. {stats.orders.avgValue.toFixed(2)}</ThemedText>
+            <ThemedText type="h3">€{stats.orders.avgValue.toFixed(2)}</ThemedText>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>Pedidos hoy</ThemedText>
@@ -453,7 +453,7 @@ export default function BusinessDashboardScreen() {
                     {order.customerName || "Cliente"}
                   </ThemedText>
                   <ThemedText type="body" style={{ fontWeight: "600", color: ComeYaColors.primary }}>
-                    Bs. {(order.subtotal || 0).toFixed(2)}
+                    €{(order.subtotal || 0).toFixed(2)}
                   </ThemedText>
                 </View>
               </Animated.View>

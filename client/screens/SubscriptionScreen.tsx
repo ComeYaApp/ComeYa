@@ -72,7 +72,7 @@ export default function SubscriptionScreen() {
             <Text style={styles.currentPlanTitle}>Tu Plan Actual</Text>
             <Text style={styles.currentPlanName}>{currentPlan === 'premium' ? 'Premium' : 'Business'}</Text>
             <Text style={styles.currentPlanPrice}>
-              Bs. {plansData?.[currentPlan]?.price / 100}/mes
+              €{plansData?.[currentPlan]?.price / 100}/mes
             </Text>
             <TouchableOpacity
               style={styles.cancelButton}
@@ -104,7 +104,7 @@ export default function SubscriptionScreen() {
             end={{ x: 1, y: 1 }}
           >
             <Text style={styles.planName}>Premium</Text>
-            <Text style={styles.planPrice}>Bs. 15/mes</Text>
+            <Text style={styles.planPrice}>€15/mes</Text>
           </LinearGradient>
 
           <View style={styles.planBenefits}>
@@ -148,7 +148,7 @@ export default function SubscriptionScreen() {
             end={{ x: 1, y: 1 }}
           >
             <Text style={styles.planName}>Business</Text>
-            <Text style={styles.planPrice}>Bs. 30/mes</Text>
+            <Text style={styles.planPrice}>€30/mes</Text>
           </LinearGradient>
 
           <View style={styles.planBenefits}>
@@ -184,7 +184,7 @@ export default function SubscriptionScreen() {
         <View style={styles.comparisonCard}>
           <Text style={styles.comparisonTitle}>¿Por qué Premium?</Text>
           <Text style={styles.comparisonText}>
-            Ahorra hasta Bs. 150 al mes en envíos y descuentos
+            Ahorra hasta €150 al mes en envíos y descuentos
           </Text>
           <Text style={styles.comparisonText}>
             Con solo 2 pedidos al mes, ya recuperas tu inversión

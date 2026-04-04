@@ -19,9 +19,9 @@ import { Platform } from "react-native";
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function fmt(cents: number) {
-  if (cents >= 100_000_00) return `Bs.${(cents / 100 / 1_000_000).toFixed(1)}M`;
-  if (cents >= 1_000_00) return `Bs.${(cents / 100 / 1_000).toFixed(1)}K`;
-  return `Bs.${(cents / 100).toFixed(0)}`;
+  if (cents >= 100_000_00) return `€${(cents / 100 / 1_000_000).toFixed(1)}M`;
+  if (cents >= 1_000_00) return `€${(cents / 100 / 1_000).toFixed(1)}K`;
+  return `€${(cents / 100).toFixed(0)}`;
 }
 
 function pct(val: number, prev: number) {
@@ -274,7 +274,7 @@ export default function AdminDashboardScreen() {
               {salesChart.chartData.map((d: any) => (
                 <View key={d.date} style={[s.row2, { justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }]}>
                   <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{d.date.slice(5)}</Text>
-                  <Text style={{ color: theme.text, fontWeight: "600", fontSize: 13 }}>Bs. {(d.amount / 100).toFixed(0)}</Text>
+                  <Text style={{ color: theme.text, fontWeight: "600", fontSize: 13 }}>€{(d.amount / 100).toFixed(0)}</Text>
                 </View>
               ))}
             </View>

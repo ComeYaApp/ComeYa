@@ -258,7 +258,7 @@ export default function DriverAvailableOrdersScreen() {
               Ganancia estimada
             </ThemedText>
             <ThemedText type="h3" style={{ color: ComeYaColors.success }}>
-              Bs. {(item.deliveryFee || 0).toFixed(2)}
+              €{(item.deliveryFee || 0).toFixed(2)}
             </ThemedText>
           </View>
           <Pressable

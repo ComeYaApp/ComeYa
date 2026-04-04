@@ -158,7 +158,7 @@ export default function BusinessAnalyticsScreen() {
           <View style={[styles.metricCard, { backgroundColor: theme.card }, Shadows.sm]}>
             <Feather name="dollar-sign" size={24} color={ComeYaColors.success} />
             <ThemedText type="h3" style={{ marginTop: Spacing.sm }}>
-              Bs.{dashboard?.totalRevenue?.toFixed(2) || '0.00'}
+              €{dashboard?.totalRevenue?.toFixed(2) || '0.00'}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Ingresos
@@ -180,7 +180,7 @@ export default function BusinessAnalyticsScreen() {
           <View style={[styles.metricCard, { backgroundColor: theme.card }, Shadows.sm]}>
             <Feather name="trending-up" size={24} color={ComeYaColors.warning} />
             <ThemedText type="h3" style={{ marginTop: Spacing.sm }}>
-              Bs.{dashboard?.avgOrderValue?.toFixed(2) || '0.00'}
+              €{dashboard?.avgOrderValue?.toFixed(2) || '0.00'}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Ticket Promedio
@@ -212,14 +212,14 @@ export default function BusinessAnalyticsScreen() {
                 <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
                   {comparison.thisWeek.orders} pedidos
                 </ThemedText>
-                <ThemedText type="body">Bs.{comparison.thisWeek.revenue.toFixed(2)}</ThemedText>
+                <ThemedText type="body">€{comparison.thisWeek.revenue.toFixed(2)}</ThemedText>
               </View>
               <View style={styles.comparisonCol}>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                   Semana Anterior
                 </ThemedText>
                 <ThemedText type="h4">{comparison.lastWeek.orders} pedidos</ThemedText>
-                <ThemedText type="body">Bs.{comparison.lastWeek.revenue.toFixed(2)}</ThemedText>
+                <ThemedText type="body">€{comparison.lastWeek.revenue.toFixed(2)}</ThemedText>
               </View>
             </View>
           </View>
@@ -272,7 +272,7 @@ export default function BusinessAnalyticsScreen() {
                     {product.name}
                   </ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    {product.unitsSold} unidades • Bs.{product.revenue.toFixed(2)}
+                    {product.unitsSold} unidades • €{product.revenue.toFixed(2)}
                   </ThemedText>
                 </View>
               </View>

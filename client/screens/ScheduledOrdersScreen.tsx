@@ -40,7 +40,7 @@ export default function ScheduledOrdersScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `Bs. ${(amount / 100).toFixed(2)}`;
+    return `€${(amount / 100).toFixed(2)}`;
   };
 
   const upcomingOrders = scheduledOrders.filter((o: any) => o.status === 'pending');
