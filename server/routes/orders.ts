@@ -154,7 +154,7 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? 2500;
+    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? 199;
     const finalSubtotal = clientSubtotal ?? subtotal;
     const total = clientTotal ?? (finalSubtotal + deliveryFee);
 

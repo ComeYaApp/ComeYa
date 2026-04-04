@@ -186,7 +186,7 @@ router.get("/limits", authenticateToken, requireRole("business_owner", "admin", 
       maxImages: 10,
       maxOrdersPerHour: 50,
       maxDeliveryRadius: 10,
-      minOrderAmount: 5000,
+      minOrderAmount: 1000,
       maxOrderAmount: 100000,
     },
   });
@@ -669,8 +669,8 @@ router.post("/", authenticateToken, requireRole("business_owner"), async (req, r
       rating: 0,
       totalRatings: 0,
       deliveryTime: "30-45 min",
-      deliveryFee: 2500,
-      minOrder: 5000,
+      deliveryFee: 199,
+      minOrder: 1000,
       createdAt: new Date(),
     };
 
@@ -793,7 +793,7 @@ router.post("/stripe/connect", authenticateToken, requireRole("business_owner"),
     // Crear nueva cuenta de Stripe Connect
     const account = await stripe.accounts.create({
       type: "express",
-      country: "VE",
+      country: "ES",
       email: req.user!.email || undefined,
       capabilities: {
         card_payments: { requested: true },
