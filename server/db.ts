@@ -38,26 +38,23 @@ function createConnectionConfig() {
       config.ssl = false;
       console.log('🏠 SSL disabled for localhost connection');
     } else {
-      // Add SSL for remote connections
+      // 1. Variable de entorno (Render)
+      // 2. Archivo ca.pem local (desarrollo)
+      // 3. Fallback sin CA
+      const caEnv = process.env.AIVEN_CA_CERT;
       const caPath = path.join(process.cwd(), 'ca.pem');
-      if (fs.existsSync(caPath)) {
-        config.ssl = {
-          ca: fs.readFileSync(caPath),
-          rejectUnauthorized: true,
-        };
+      const ca = caEnv
+        ? Buffer.from(caEnv, 'base64').toString('utf-8')
+        : fs.existsSync(caPath)
+          ? fs.readFileSync(caPath, 'utf-8')
+          : null;
+
+      if (ca) {
+        config.ssl = { ca, rejectUnauthorized: true };
         console.log('📜 Using SSL certificate for MySQL connection');
-      } else if (url.searchParams.get('ssl-mode') === 'REQUIRED') {
-        // Use default SSL without custom CA - Aiven requires this
-        config.ssl = {
-          rejectUnauthorized: true,
-        };
-        console.log('🔒 Using SSL with certificate validation (Aiven)');
       } else {
-        // For remote connections, disable SSL verification for self-signed certificates
-        config.ssl = {
-          rejectUnauthorized: false,
-        };
-        console.log('🔒 Using SSL with disabled certificate verification');
+        config.ssl = { rejectUnauthorized: false };
+        console.log('🔒 Using SSL without CA certificate');
       }
     }
     
