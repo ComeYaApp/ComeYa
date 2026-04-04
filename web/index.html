@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1.00001, viewport-fit=cover" />
   <title>ComeYa - Delivery en Soria</title>
   <meta name="description" content="ComeYa - Plataforma de delivery que conecta negocios locales con la comunidad de Soria, España." />
-  <meta name="theme-color" content="#E8B4A8" />
+  <meta name="theme-color" content="#FF6B35" />
   <meta property="og:title" content="ComeYa - Delivery en Soria" />
   <meta property="og:description" content="Conectando negocios locales con la comunidad de Soria" />
   <meta property="og:type" content="website" />
@@ -20,33 +20,50 @@
       justify-content: center;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #E8B4A8 0%, #D4A89C 100%);
+      background: linear-gradient(135deg, #FF6B35 0%, #E55A25 100%);
     }
     .loading-logo-svg {
-      width: 120px;
-      height: 120px;
+      width: 110px;
+      height: 110px;
       margin-bottom: 24px;
       animation: pulse 2s ease-in-out infinite;
+      border-radius: 50%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     }
     .loading-logo {
-      font-size: 32px;
+      font-size: 36px;
       font-weight: 800;
       color: white;
       margin-bottom: 8px;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    .loading-text {
-      color: rgba(255,255,255,0.9);
-      font-size: 14px;
-      animation: blink 1.5s ease-in-out infinite;
+    .loading-tagline {
+      color: rgba(255,255,255,0.85);
+      font-size: 13px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      margin-bottom: 40px;
     }
+    .loading-dots {
+      display: flex;
+      gap: 8px;
+    }
+    .loading-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.7);
+      animation: bounce 1.4s ease-in-out infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
+      50% { transform: scale(1.06); }
     }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.7; }
+      40% { transform: translateY(-10px); opacity: 1; }
     }
   </style>
 </head>
@@ -54,49 +71,31 @@
   <noscript>Necesitas habilitar JavaScript para usar ComeYa.</noscript>
   <div id="root">
     <div class="loading-container">
-      <!-- Rabbit Food Logo SVG -->
       <svg class="loading-logo-svg" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="100" cy="100" r="95" fill="#F5F1EB"/>
-        <circle cx="100" cy="100" r="85" fill="#FFFCF7"/>
-        <ellipse cx="100" cy="110" rx="35" ry="40" fill="#E8B4A8"/>
-        <ellipse cx="85" cy="65" rx="12" ry="35" fill="#E8B4A8" transform="rotate(-15 85 65)"/>
-        <ellipse cx="85" cy="65" rx="7" ry="28" fill="#F5D5CC" transform="rotate(-15 85 65)"/>
-        <ellipse cx="115" cy="65" rx="12" ry="35" fill="#E8B4A8" transform="rotate(15 115 65)"/>
-        <ellipse cx="115" cy="65" rx="7" ry="28" fill="#F5D5CC" transform="rotate(15 115 65)"/>
-        <circle cx="90" cy="105" r="4" fill="#3D3226"/>
-        <circle cx="110" cy="105" r="4" fill="#3D3226"/>
-        <circle cx="91" cy="104" r="1.5" fill="#FFFCF7"/>
-        <circle cx="111" cy="104" r="1.5" fill="#FFFCF7"/>
-        <ellipse cx="100" cy="115" rx="3" ry="4" fill="#D4A89C"/>
-        <path d="M 100 115 Q 95 120 92 118" stroke="#3D3226" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        <path d="M 100 115 Q 105 120 108 118" stroke="#3D3226" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        <line x1="70" y1="110" x2="85" y2="108" stroke="#3D3226" stroke-width="1" stroke-linecap="round"/>
-        <line x1="70" y1="115" x2="85" y2="115" stroke="#3D3226" stroke-width="1" stroke-linecap="round"/>
-        <line x1="130" y1="110" x2="115" y2="108" stroke="#3D3226" stroke-width="1" stroke-linecap="round"/>
-        <line x1="130" y1="115" x2="115" y2="115" stroke="#3D3226" stroke-width="1" stroke-linecap="round"/>
-        <path d="M 70 145 L 75 165 L 125 165 L 130 145 Z" fill="#F5D5CC" stroke="#D4A89C" stroke-width="2"/>
-        <ellipse cx="100" cy="145" rx="30" ry="8" fill="#E8B4A8"/>
-        <path d="M 85 150 L 82 160 L 88 160 Z" fill="#E8A84E"/>
-        <line x1="85" y1="150" x2="85" y2="147" stroke="#6BAF6B" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="100" cy="155" r="5" fill="#6BAF6B" opacity="0.8"/>
-        <circle cx="103" cy="153" r="4" fill="#7BC47B" opacity="0.8"/>
-        <circle cx="115" cy="155" r="4" fill="#D84A4A"/>
-        <path d="M 115 152 L 113 150 L 117 150 Z" fill="#6BAF6B"/>
-        <circle cx="145" cy="75" r="22" fill="#E8B4A8"/>
-        <circle cx="145" cy="75" r="18" fill="#FFFCF7"/>
-        <path d="M 138 75 L 145 70 L 145 80 Z" fill="#E8B4A8"/>
-        <path d="M 145 75 L 152 70 L 152 80 Z" fill="#E8B4A8"/>
-        <line x1="132" y1="70" x2="136" y2="70" stroke="#D4A89C" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="132" y1="75" x2="136" y2="75" stroke="#D4A89C" stroke-width="1.5" stroke-linecap="round"/>
-        <line x1="132" y1="80" x2="136" y2="80" stroke="#D4A89C" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="55" cy="75" r="22" fill="#E8B4A8"/>
-        <circle cx="55" cy="75" r="18" fill="#FFFCF7"/>
-        <ellipse cx="55" cy="78" rx="8" ry="3" fill="#E8B4A8"/>
-        <path d="M 47 78 Q 47 68 55 68 Q 63 68 63 78 Z" fill="#E8B4A8"/>
-        <ellipse cx="55" cy="68" rx="4" ry="4" fill="#F5D5CC"/>
+        <circle cx="100" cy="100" r="100" fill="#FF6B35"/>
+        <circle cx="100" cy="100" r="100" fill="url(#grad2)"/>
+        <defs>
+          <radialGradient id="grad2" cx="40%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#FF8C5A"/>
+            <stop offset="100%" stop-color="#E55A25"/>
+          </radialGradient>
+        </defs>
+        <rect x="62" y="48" width="5" height="28" rx="2.5" fill="white"/>
+        <rect x="55" y="48" width="5" height="18" rx="2.5" fill="white"/>
+        <rect x="69" y="48" width="5" height="18" rx="2.5" fill="white"/>
+        <rect x="55" y="64" width="19" height="4" rx="2" fill="white"/>
+        <rect x="62" y="68" width="5" height="36" rx="2.5" fill="white"/>
+        <rect x="133" y="48" width="5" height="56" rx="2.5" fill="white"/>
+        <path d="M138 48 Q150 56 138 72 Z" fill="white"/>
+        <circle cx="100" cy="108" r="38" fill="white" opacity="0.12"/>
+        <circle cx="100" cy="108" r="30" fill="white" opacity="0.15"/>
+        <text x="100" y="120" font-family="Arial Black, Arial, sans-serif" font-size="34" font-weight="900" fill="white" text-anchor="middle">CY</text>
       </svg>
       <div class="loading-logo">ComeYa</div>
-      <div class="loading-text">Cargando...</div>
+      <div class="loading-tagline">Delivery en Soria 🍊</div>
+      <div class="loading-dots">
+        <span></span><span></span><span></span>
+      </div>
     </div>
   </div>
 </body>
