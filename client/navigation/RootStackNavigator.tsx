@@ -46,6 +46,7 @@ import TermsScreen from "@/screens/TermsScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
 import DigitalPaymentMethodScreen from "@/screens/DigitalPaymentMethodScreen";
 import PaymentProofUploadScreen from "@/screens/PaymentProofUploadScreen";
+import PaymentWebViewScreen from "@/screens/PaymentWebViewScreen";
 import PaymentVerificationTrackingScreen from "@/screens/PaymentVerificationTrackingScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import AdminPaymentVerificationScreen from "@/screens/AdminPaymentVerificationScreen";
@@ -110,6 +111,7 @@ export type RootStackParamList = {
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
   PagoMovilPayment: { orderId: string; reference: string; amount: number; ComeYa: { phone: string; bank: string; cedula: string; bankName: string } };
   DigitalPaymentMethod: { orderTotal: number };
+  PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
   PaymentProofUpload: { orderId: string; orderTotal: number; paymentMethod: any };
   PaymentVerificationTracking: { orderId: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };
@@ -340,6 +342,11 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="DigitalPaymentMethod"
             component={DigitalPaymentMethodScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="PaymentWebView"
+            component={PaymentWebViewScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
