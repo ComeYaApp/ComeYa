@@ -47,9 +47,9 @@ export function ProductCard({ product, onPress, businessIsOpen = true }: Product
 
   const formatPrice = () => {
     if (product.isWeightBased) {
-      return `€${(product.price / 100).toFixed(2)}/${product.unit}`;
+      return `€${(product.price).toFixed(2)}/${product.unit}`;
     }
-    return `€${(product.price / 100).toFixed(2)}`;
+    return `€${(product.price).toFixed(2)}`;
   };
 
   return (
