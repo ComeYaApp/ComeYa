@@ -18,11 +18,12 @@ import { Product } from "@/types";
 interface ProductCardProps {
   product: Product;
   onPress: () => void;
+  businessIsOpen?: boolean;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ProductCard({ product, onPress }: ProductCardProps) {
+export function ProductCard({ product, onPress, businessIsOpen = true }: ProductCardProps) {
   const { theme } = useTheme();
   const { isProductInCart, getCartItem } = useCart();
   const scale = useSharedValue(1);
@@ -42,24 +43,26 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
     scale.value = withSpring(1, { damping: 15, stiffness: 150 });
   };
 
+  const isDisabled = !product.available || !businessIsOpen;
+
   const formatPrice = () => {
     if (product.isWeightBased) {
-      return `$${product.price}/${product.unit}`;
+      return `€${(product.price / 100).toFixed(2)}/${product.unit}`;
     }
-    return `$${product.price}`;
+    return `€${(product.price / 100).toFixed(2)}`;
   };
 
   return (
     <AnimatedPressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      onPress={isDisabled ? undefined : onPress}
+      onPressIn={isDisabled ? undefined : handlePressIn}
+      onPressOut={isDisabled ? undefined : handlePressOut}
       style={[
         styles.card,
         { backgroundColor: theme.card },
         Shadows.sm,
         animatedStyle,
-        !product.available && styles.unavailable,
+        isDisabled && styles.unavailable,
       ]}
     >
       <View style={styles.imageContainer}>
@@ -72,6 +75,12 @@ export function ProductCard({ product, onPress }: ProductCardProps) {
           <View style={styles.unavailableOverlay}>
             <ThemedText type="caption" style={styles.unavailableText}>
               No disponible
+            </ThemedText>
+          </View>
+        ) : !businessIsOpen ? (
+          <View style={styles.unavailableOverlay}>
+            <ThemedText type="caption" style={styles.unavailableText}>
+              Negocio cerrado
             </ThemedText>
           </View>
         ) : null}

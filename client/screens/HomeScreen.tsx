@@ -101,11 +101,11 @@ export default function HomeScreen() {
         rating: (b.rating || 0) / 100, // Convertir de centavos a decimal
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || '30-45 min',
-        deliveryFee: (b.delivery_fee || 2500) / 100, // Convertir de centavos a pesos
-        minimumOrder: (b.min_order || 5000) / 100, // Convertir de centavos a pesos
-        isOpen: b.isOpen ?? b.is_open ?? false,
+        deliveryFee: (b.delivery_fee || 199) / 100,
+        minimumOrder: (b.min_order || 1000) / 100,
+        isOpen: b.isOpen === true || b.isOpen === 1 || b.is_open === true || b.is_open === 1,
         openingHours: [],
-        address: b.address || 'San Cristóbal, Táchira, Venezuela',
+        address: b.address || 'Soria, España',
         phone: b.phone || '',
         categories: b.categories ? b.categories.split(',') : [],
         featured: b.is_featured || false,
@@ -273,7 +273,7 @@ export default function HomeScreen() {
               ComeYa
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Tu app de comida y delivery en Venezuela
+              Tu app de delivery en Soria
             </ThemedText>
           </View>
         </Animated.View>
@@ -395,7 +395,7 @@ export default function HomeScreen() {
                       {product.business.name}
                     </ThemedText>
                     <ThemedText type="small" style={{ color: ComeYaColors.primary, marginTop: 2 }}>
-                      Bs. {(product.price / 100).toFixed(2)}
+            Bs. {(product.price / 100).toFixed(2)}
                     </ThemedText>
                   </View>
                 </Pressable>
