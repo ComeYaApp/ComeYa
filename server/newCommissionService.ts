@@ -1,34 +1,34 @@
 // Nuevo sistema de comisiones simplificado
 export class NewCommissionService {
-  
-  /**
-   * Calcula las comisiones con el nuevo sistema:
-   * - Productos: 100% al negocio
-   * - Delivery: 100% al repartidor
-   * - Comisión MOUZO: 15% sobre productos
-   */
-  static calculateCommissions(subtotal: number, deliveryFee: number) {
-    const productAmount = subtotal; // Precio base de productos
-    const nemyCommission = Math.round(productAmount * 0.15); // 15% sobre productos
-    
+
+  private static async getCommissionRate(): Promise<number> {
+    try {
+      const { db } = await import("./db");
+      const { systemSettings } = await import("../shared/schema-mysql");
+      const { eq } = await import("drizzle-orm");
+      const [row] = await db.select().from(systemSettings).where(eq(systemSettings.key, "comeya_commission")).limit(1);
+      if (row?.value) return parseFloat(row.value) / 100;
+    } catch {}
+    return 0.15; // fallback
+  }
+
+  static async calculateCommissions(subtotal: number, deliveryFee: number) {
+    const rate = await this.getCommissionRate();
+    const productAmount = subtotal;
+    const comeyaCommission = Math.round(productAmount * rate);
+
     return {
-      // Lo que recibe cada parte
-      business: productAmount, // 100% de productos
-      driver: deliveryFee, // 100% de delivery
-      mouzo: nemyCommission, // 15% sobre productos
-      
-      // Totales para verificación
-      total: productAmount + deliveryFee + nemyCommission,
+      business: productAmount,
+      driver: deliveryFee,
+      comeya: comeyaCommission,
+      total: productAmount + deliveryFee + comeyaCommission,
       productBase: productAmount,
-      deliveryBase: deliveryFee
+      deliveryBase: deliveryFee,
     };
   }
-  
-  /**
-   * Calcula el total que debe pagar el cliente
-   */
-  static calculateCustomerTotal(subtotal: number, deliveryFee: number) {
-    const commissions = this.calculateCommissions(subtotal, deliveryFee);
+
+  static async calculateCustomerTotal(subtotal: number, deliveryFee: number) {
+    const commissions = await this.calculateCommissions(subtotal, deliveryFee);
     return commissions.total;
   }
 }
