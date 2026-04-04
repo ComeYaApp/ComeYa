@@ -157,8 +157,8 @@ export default function CheckoutScreen({ route }: any) {
     if (!business || !selectedAddress) return;
     
     const distance = calculateDistance(
-      business.latitude || 7.7669,
-      business.longitude || -72.2251,
+      business.latitude || 41.7636,
+      business.longitude || -2.4677,
       selectedAddress.latitude,
       selectedAddress.longitude
     );

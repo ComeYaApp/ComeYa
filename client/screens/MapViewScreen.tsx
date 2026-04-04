@@ -359,7 +359,7 @@ export default function MapViewScreen({ navigation }: any) {
   }
 
   const initialRegion = (() => {
-    // Prioridad: GPS usuario > primer negocio con coords válidas > San Cristóbal Venezuela
+    // Prioridad: GPS usuario > primer negocio con coords válidas > Soria España
     if (userLocation) {
       return { ...userLocation, latitudeDelta: 0.05, longitudeDelta: 0.05 };
     }
@@ -367,7 +367,7 @@ export default function MapViewScreen({ navigation }: any) {
     if (firstValid) {
       return { latitude: firstValid.business.latitude, longitude: firstValid.business.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 };
     }
-    return { latitude: 7.7708, longitude: -72.2251, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+    return { latitude: 41.7636, longitude: -2.4677, latitudeDelta: 0.1, longitudeDelta: 0.1 };
   })();
 
   return (

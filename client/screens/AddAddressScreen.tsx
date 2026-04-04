@@ -48,8 +48,8 @@ export default function AddAddressScreen() {
 
   const [label, setLabel] = useState(existingAddress?.label || '');
   const [street, setStreet] = useState(existingAddress?.street || '');
-  const [city, setCity] = useState(existingAddress?.city || 'San Cristóbal');
-  const [state, setState] = useState(existingAddress?.state || 'Venezuela');
+  const [city, setCity] = useState(existingAddress?.city || 'Soria');
+  const [state, setState] = useState(existingAddress?.state || 'España');
   const [zipCode, setZipCode] = useState(existingAddress?.zipCode || '');
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -351,7 +351,7 @@ export default function AddAddressScreen() {
           <View style={[styles.banner, { backgroundColor: ComeYaColors.primary + '10', borderColor: ComeYaColors.primary + '30' }]}>
             <Feather name="globe" size={16} color={ComeYaColors.primary} />
             <ThemedText type="small" style={{ color: ComeYaColors.primary, flex: 1, marginLeft: Spacing.sm }}>
-              En la versión web se usará la ubicación del centro de San Cristóbal por defecto.
+              En la versión web se usará la ubicación del centro de Soria por defecto.
             </ThemedText>
           </View>
         )}

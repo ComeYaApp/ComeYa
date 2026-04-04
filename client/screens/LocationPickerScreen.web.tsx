@@ -42,7 +42,7 @@ export default function LocationPickerScreen() {
   const handleConfirm = () => {
     if (!location) { Alert.alert('Error', 'Por favor selecciona una ubicación'); return; }
     if (!isInCoverageArea(location.latitude, location.longitude)) {
-      Alert.alert('Fuera de cobertura', 'Esta ubicación está fuera de nuestra zona de servicio en San Cristóbal.');
+      Alert.alert('Fuera de cobertura', 'Esta ubicación está fuera de nuestra zona de servicio en Soria.');
       return;
     }
     if (route.params?.onLocationSelected) route.params.onLocationSelected(location, address);

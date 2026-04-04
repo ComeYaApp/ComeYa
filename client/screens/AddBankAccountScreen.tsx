@@ -16,7 +16,7 @@ import { API_CONFIG } from '../constants/config';
 
 const MEXICAN_BANKS = [
   { code: '002', name: 'Banamex' },
-  { code: '012', name: 'BBVA Venezuela' },
+  { code: '012', name: 'BBVA España' },
   { code: '014', name: 'Santander' },
   { code: '019', name: 'Banca Mifel' },
   { code: '021', name: 'HSBC' },

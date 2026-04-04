@@ -208,7 +208,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     try {
       await Share.share({
         message:
-          "Descubre ComeYa - Tu delivery local de confianza en San Cristóbal. Pide comida y productos del mercado con un toque. Descarga ahora: https://ComeYa.app",
+          "Descubre ComeYa - Tu delivery local de confianza en Soria. Pide comida y productos del mercado con un toque. Descarga ahora: https://ComeYa.app",
         title: "ComeYa - Delivery Local",
       });
     } catch (error) {

@@ -1107,7 +1107,7 @@ export default function ProfileScreen() {
               2. Descripcion del Servicio
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa es una plataforma de delivery local que conecta a clientes con negocios locales y repartidores en Autlan de Navarro, Venezuela, Venezuela. Facilitamos la compra y entrega de alimentos, productos de mercado y otros articulos de negocios participantes.
+              ComeYa es una plataforma de delivery local que conecta a clientes con negocios locales y repartidores en Soria, España, España. Facilitamos la compra y entrega de alimentos, productos de mercado y otros articulos de negocios participantes.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>

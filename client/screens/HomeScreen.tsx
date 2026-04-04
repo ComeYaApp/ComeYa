@@ -517,7 +517,7 @@ export default function HomeScreen() {
                       </ThemedText>
                     </View>
                     <ThemedText type="h3" style={styles.carnivalTitle}>
-                      Carnaval San Cristóbal 2026
+                      Carnaval Soria 2026
                     </ThemedText>
                     <View style={styles.carnivalCTA}>
                       <ThemedText type="small" style={styles.carnivalSubtitle}>

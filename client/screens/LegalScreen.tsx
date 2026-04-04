@@ -24,7 +24,7 @@ const legalContent = {
       {
         title: "1. Aceptacion de Terminos",
         content:
-          "Al utilizar la aplicacion ComeYa, aceptas estos terminos y condiciones. ComeYa es un servicio de entrega de comida y productos de mercado en Autlan de Navarro, Venezuela, Venezuela.",
+          "Al utilizar la aplicacion ComeYa, aceptas estos terminos y condiciones. ComeYa es un servicio de entrega de comida y productos de mercado en Soria, España, España.",
       },
       {
         title: "2. Uso del Servicio",
@@ -168,7 +168,7 @@ export default function LegalScreen() {
             type="body"
             style={{ color: ComeYaColors.primary, fontWeight: "600" }}
           >
-            ComeYa - Autlan de Navarro
+            ComeYa - Soria
           </ThemedText>
           <ThemedText
             type="small"

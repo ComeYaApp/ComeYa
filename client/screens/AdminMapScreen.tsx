@@ -60,8 +60,8 @@ export default function AdminMapScreen() {
         provider={PROVIDER_GOOGLE}
         style={{ flex: 1 }}
         initialRegion={{
-          latitude: 7.7695,
-          longitude: -72.2254,
+          latitude: 41.7636,
+          longitude: -2.4677,
           latitudeDelta: 0.1,
           longitudeDelta: 0.1,
         }}

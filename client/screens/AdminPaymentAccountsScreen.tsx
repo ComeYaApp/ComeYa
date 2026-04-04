@@ -252,7 +252,7 @@ export default function AdminPaymentAccountsScreen() {
             style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
             value={accounts.pago_movil?.bankName || ''}
             onChangeText={(val) => updateAccount('pago_movil', 'bankName', val)}
-            placeholder="Banco de Venezuela"
+            placeholder="Banco de España"
             placeholderTextColor={theme.textSecondary}
           />
 

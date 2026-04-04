@@ -106,7 +106,7 @@ export default function LocationPickerScreen() {
     if (!isInCoverageArea(location.latitude, location.longitude)) {
       Alert.alert(
         'Fuera de cobertura',
-        'Esta ubicación está fuera de nuestra zona de servicio en San Cristóbal. Por favor selecciona una dirección dentro de la ciudad.',
+        'Esta ubicación está fuera de nuestra zona de servicio en Soria. Por favor selecciona una dirección dentro de la ciudad.',
         [{ text: 'OK' }]
       );
       return;

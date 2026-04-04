@@ -55,7 +55,7 @@ export default function TermsScreen() {
         <Section title="1. Aceptación de los Términos">
           <Paragraph>
             Al acceder y utilizar ComeYa, usted acepta estar legalmente vinculado por estos Términos y Condiciones. 
-            ComeYa es una plataforma tecnológica que conecta usuarios, negocios locales y repartidores en San Cristóbal, Táchira, Venezuela.
+            ComeYa es una plataforma tecnológica que conecta usuarios, negocios locales y repartidores en Soria, España.
           </Paragraph>
         </Section>
 
@@ -143,7 +143,7 @@ export default function TermsScreen() {
         <Section title="10. Contacto">
           <Paragraph>
             Email: support@ComeYa.app{'\n'}
-            Ubicación: San Cristóbal, Táchira, Venezuela, Venezuela{'\n'}
+            Ubicación: Soria, España, España{'\n'}
             Soporte disponible en la app
           </Paragraph>
         </Section>

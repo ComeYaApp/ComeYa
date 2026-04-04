@@ -326,7 +326,7 @@ export default function SocialFeaturesScreen() {
         <TouchableOpacity style={styles.interestGroup}>
           <Text style={styles.interestIcon}>🍕</Text>
           <View style={styles.interestInfo}>
-            <Text style={styles.interestTitle}>Pizza Lovers San Cristóbal</Text>
+            <Text style={styles.interestTitle}>Pizza Lovers Soria</Text>
             <Text style={styles.interestMembers}>856 miembros</Text>
           </View>
           <Text style={styles.joinText}>Unirse</Text>

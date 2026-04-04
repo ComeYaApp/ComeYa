@@ -73,7 +73,7 @@ export default function DeliveryConfigScreen() {
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: ComeYaColors.primary }]}>
         <Text style={styles.title}>Configuración de Tarifas de Delivery</Text>
-        <Text style={styles.subtitle}>San Cristóbal, Táchira, Venezuela</Text>
+        <Text style={styles.subtitle}>Soria, España</Text>
       </View>
 
       <View style={styles.form}>
@@ -126,7 +126,7 @@ export default function DeliveryConfigScreen() {
             placeholder="40"
             placeholderTextColor={theme.textSecondary}
           />
-          <Text style={[styles.help, { color: theme.textSecondary }]}>Tope máximo (San Cristóbal es pequeño)</Text>
+          <Text style={[styles.help, { color: theme.textSecondary }]}>Tope máximo (Soria es pequeño)</Text>
         </View>
 
         <View style={[styles.preview, { backgroundColor: theme.card, borderColor: theme.border }]}>

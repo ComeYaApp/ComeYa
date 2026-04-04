@@ -260,7 +260,7 @@ export default function OrderTrackingScreen() {
             deliveryFee: 25.0,
             total: 55.0,
             paymentMethod: "card",
-            deliveryAddress: "Calle Ejemplo 123, San Cristóbal, Táchira, Venezuela",
+            deliveryAddress: "Calle Ejemplo 123, Soria, España",
             createdAt: new Date().toISOString(),
             estimatedDelivery: new Date(
               Date.now() + 30 * 60 * 1000,

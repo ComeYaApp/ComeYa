@@ -15,7 +15,7 @@ import { useToast } from "@/contexts/ToastContext";
 
 const BANCOS = [
   { id: "banesco", name: "Banesco" },
-  { id: "bdv", name: "Banco de Venezuela" },
+  { id: "bdv", name: "Banco de España" },
   { id: "mercantil", name: "Mercantil" },
   { id: "provincial", name: "BBVA Provincial" },
   { id: "bicentenario", name: "Bicentenario" },

@@ -25,10 +25,10 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-// San Cristóbal, Táchira, Venezuela
+// Soria, España
 const DEFAULT_REGION = {
-  latitude: 7.7708,
-  longitude: -72.2251,
+  latitude: 41.7636,
+  longitude: -2.4677,
   latitudeDelta: 0.04,
   longitudeDelta: 0.04,
 };
@@ -106,7 +106,7 @@ export default function BusinessMapScreen() {
             isOpen: b.isOpen ?? b.is_open ?? false,
             latitude: parseFloat(b.latitude),
             longitude: parseFloat(b.longitude),
-            address: b.address || "San Cristóbal, Táchira, Venezuela",
+            address: b.address || "Soria, España",
             categories: b.categories ? b.categories.split(",") : [],
           }));
         setBusinesses(pins);
