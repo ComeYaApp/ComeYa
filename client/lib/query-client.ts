@@ -58,6 +58,36 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+async function tryRefreshToken(): Promise<string | null> {
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const stored = await AsyncStorage.getItem('@ComeYa_user');
+    if (!stored) return null;
+    const user = JSON.parse(stored);
+    if (!user.refreshToken) return null;
+
+    const baseUrl = (await import('@/constants/api')).getApiBaseUrl();
+    const res = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: user.refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.token) return null;
+
+    // Guardar nuevo token
+    user.token = data.token;
+    await AsyncStorage.setItem('@ComeYa_user', JSON.stringify(user));
+    await AsyncStorage.setItem('token', data.token);
+    tokenCache = data.token;
+    tokenCacheTime = Date.now();
+    return data.token;
+  } catch {
+    return null;
+  }
+}
+
 export async function apiRequest(
   method: string,
   route: string,
@@ -91,6 +121,29 @@ export async function apiRequest(
     });
 
     console.log(`✅ Response status: ${res.status}`);
+
+    // Si es 401, intentar refresh y reintentar
+    if (res.status === 401) {
+      const newToken = await tryRefreshToken();
+      if (newToken) {
+        headers['Authorization'] = `Bearer ${newToken}`;
+        const retryRes = await fetch(url, {
+          method,
+          headers,
+          body: data ? JSON.stringify(data) : undefined,
+          credentials: "include",
+        });
+        await throwIfResNotOk(retryRes);
+        return retryRes;
+      }
+      // Si no se pudo refrescar, limpiar sesión
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.removeItem('@ComeYa_user');
+      await AsyncStorage.removeItem('token');
+      tokenCache = null;
+      tokenCacheTime = 0;
+    }
+
     await throwIfResNotOk(res);
     return res;
   } catch (error) {
