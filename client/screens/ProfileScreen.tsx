@@ -100,6 +100,11 @@ const themeOptions: { value: ThemeMode; label: string }[] = [
 ];
 
 function resolveProfileImageUrl(profileImage: string): string {
+  // Base64 - devolver directamente
+  if (profileImage.startsWith('data:image/')) {
+    return profileImage;
+  }
+
   const apiBase = getApiUrl().replace(/\/+$/, "");
 
   if (/^https?:\/\//i.test(profileImage)) {
