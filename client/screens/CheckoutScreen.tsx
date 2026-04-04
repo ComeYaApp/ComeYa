@@ -28,7 +28,7 @@ import { calculateDistance, calculateDeliveryFee, estimateDeliveryTime } from "@
 
 type SubstitutionOption = "refund" | "call" | "substitute";
 
-type PaymentMethod = "pago_movil" | "binance_pay" | "zinli" | "zelle";
+type PaymentMethod = "stripe_card" | "stripe_bizum" | "paypal" | "binance";
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -52,7 +52,7 @@ export default function CheckoutScreen({ route }: any) {
   const [isLoading, setIsLoading] = useState(false);
   const [dynamicDeliveryFee, setDynamicDeliveryFee] = useState<number | null>(null);
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pago_movil");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe_card");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
 
   // Preferencias de sustitución
@@ -143,8 +143,8 @@ export default function CheckoutScreen({ route }: any) {
   const deliveryFee = route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? business.deliveryFee / 100 : 0));
   
   const [tip, setTip] = useState(0);
-  const nemyCommission = subtotal * 0.15;
-  const total = subtotal + nemyCommission + deliveryFee - couponDiscount + tip;
+  const comeyaCommission = subtotal * 0.15;
+  const total = subtotal + comeyaCommission + deliveryFee - couponDiscount + tip;
 
   // Calcular delivery fee dinámico cuando cambia la dirección
   useEffect(() => {
@@ -184,23 +184,22 @@ export default function CheckoutScreen({ route }: any) {
 
     try {
       const finalItemSubstitutions = showItemSubstitutions ? itemSubstitutions : {};
-      const productosBase = Math.round(subtotal * 100);
-      const nemyCommissionCents = Math.round(subtotal * 0.15 * 100);
+      const subtotalCents = Math.round(subtotal * 100);
+      const commissionCents = Math.round(subtotal * 0.15 * 100);
       const totalAmount = Math.round(total * 100);
-      
+
       const orderResponse = await apiRequest("POST", "/api/orders", {
         businessId: cart.businessId,
         businessName: cart.businessName,
         businessImage: business?.image || business?.profileImage || "",
         items: JSON.stringify(cart.items),
         status: "pending",
-        productosBase: productosBase,
-        nemyCommission: nemyCommissionCents,
-        subtotal: productosBase,
+        subtotal: subtotalCents,
+        comeyaCommission: commissionCents,
         deliveryFee: Math.round(deliveryFee * 100),
         total: totalAmount,
         tip: Math.round(tip * 100),
-        paymentMethod: paymentMethod,
+        paymentMethod,
         deliveryAddressId: selectedAddress.id,
         deliveryAddress: `${selectedAddress.street}, ${selectedAddress.city}`,
         deliveryLatitude: selectedAddress.latitude,
@@ -212,59 +211,34 @@ export default function CheckoutScreen({ route }: any) {
       });
 
       const order = await orderResponse.json();
+      const orderId = order.orderId || order.id;
 
-      // Navegar según el método de pago seleccionado
-      console.log('💳 Selected payment method:', selectedPaymentMethod);
-      console.log('💳 Payment method provider:', paymentMethod);
-      console.log('💳 Requires manual verification:', selectedPaymentMethod?.requiresManualVerification);
-      
-      if (selectedPaymentMethod?.requiresManualVerification && selectedPaymentMethod) {
-        // Métodos que requieren comprobante manual
-        await clearCart();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setIsLoading(false);
+      // Iniciar sesión de pago según el provider
+      const paymentRes = await apiRequest("POST", "/api/payments/create-session", {
+        orderId,
+        amount: totalAmount,
+        provider: paymentMethod,
+      });
+      const paymentData = await paymentRes.json();
 
-        navigation.reset({
-          index: 0,
-          routes: [
-            { name: "Main" },
-            {
-              name: "PaymentProofUpload",
-              params: {
-                orderId: order.orderId || order.id,
-                orderTotal: total,
-                paymentMethod: selectedPaymentMethod,
-              },
+      await clearCart();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setIsLoading(false);
+
+      navigation.reset({
+        index: 0,
+        routes: [
+          { name: "Main" },
+          {
+            name: "PaymentWebView",
+            params: {
+              orderId,
+              paymentUrl: paymentData.url,
+              provider: paymentMethod,
             },
-          ],
-        });
-      } else if (paymentMethod === "pago_movil" || !selectedPaymentMethod) {
-        // Flujo original de Pago Móvil
-        const pmResponse = await apiRequest("POST", `/api/pago-movil/init/${order.orderId || order.id}`, {
-          amount: totalAmount,
-        });
-        const pmData = await pmResponse.json();
-        
-        await clearCart();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setIsLoading(false);
-
-        navigation.reset({
-          index: 0,
-          routes: [
-            { name: "Main" },
-            {
-              name: "PagoMovilPayment",
-              params: {
-                orderId: order.orderId || order.id,
-                reference: pmData.reference,
-                amount: total,
-                ComeYa: pmData.ComeYa,
-              },
-            },
-          ],
-        });
-      }
+          },
+        ],
+      });
     } catch (error: any) {
       console.error("Error placing order:", error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -626,20 +600,22 @@ export default function CheckoutScreen({ route }: any) {
           >
             <View style={styles.paymentContent}>
               <Feather 
-                name={selectedPaymentMethod?.provider === "binance_pay" ? "dollar-sign" :
-                      selectedPaymentMethod?.provider === "paypal" ? "credit-card" :
-                      selectedPaymentMethod?.provider === "zinli" ? "credit-card" :
-                      selectedPaymentMethod?.provider === "zelle" ? "dollar-sign" :
-                      "smartphone"} 
+                name={paymentMethod === "stripe_card" ? "credit-card" :
+                      paymentMethod === "stripe_bizum" ? "smartphone" :
+                      paymentMethod === "paypal" ? "dollar-sign" :
+                      "zap"} 
                 size={24} 
                 color={theme.text} 
               />
               <View style={styles.paymentText}>
                 <ThemedText type="body" style={{ fontWeight: "600" }}>
-                  {selectedPaymentMethod?.displayName || "Pago Móvil"}
+                  {selectedPaymentMethod?.displayName ||
+                    (paymentMethod === "stripe_card" ? "Tarjeta" :
+                     paymentMethod === "stripe_bizum" ? "Bizum" :
+                     paymentMethod === "paypal" ? "PayPal" : "Binance Pay")}
                 </ThemedText>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                  {selectedPaymentMethod?.instructions || "Transferencia bancaria instantánea"}
+                  {selectedPaymentMethod?.instructions || "Pago seguro y automático"}
                 </ThemedText>
               </View>
             </View>
@@ -866,7 +842,7 @@ export default function CheckoutScreen({ route }: any) {
                 }]}
               >
                 <ThemedText type="small" style={{ color: tip === t ? "#FFF" : theme.text, fontWeight: "600" }}>
-                  {t === 0 ? "Sin propina" : `Bs. ${t}`}
+                  {t === 0 ? "Sin propina" : `€${t}`}
                 </ThemedText>
               </Pressable>
             ))}
@@ -894,7 +870,7 @@ export default function CheckoutScreen({ route }: any) {
                 {item.quantity}x {item.product.name}
               </ThemedText>
               <ThemedText type="small">
-                Bs. {(item.product.price * item.quantity).toFixed(2)}
+                €{(item.product.price * item.quantity).toFixed(2)}
               </ThemedText>
             </View>
           ))}
@@ -915,19 +891,19 @@ export default function CheckoutScreen({ route }: any) {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Subtotal
           </ThemedText>
-          <ThemedText type="body">Bs. {subtotal.toFixed(2)}</ThemedText>
+          <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
         </View>
         <View style={styles.totalRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Comision ComeYa (15%)
+            Comisión ComeYa (15%)
           </ThemedText>
-          <ThemedText type="body">Bs. {nemyCommission.toFixed(2)}</ThemedText>
+          <ThemedText type="body">€{comeyaCommission.toFixed(2)}</ThemedText>
         </View>
         <View style={styles.totalRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Envío {estimatedTime ? `(~${estimatedTime} min)` : ''}
           </ThemedText>
-          <ThemedText type="body">Bs. {deliveryFee.toFixed(2)}</ThemedText>
+          <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
         </View>
         {couponDiscount > 0 && (
           <View style={styles.totalRow}>
@@ -935,20 +911,20 @@ export default function CheckoutScreen({ route }: any) {
               Cupón ({couponCode})
             </ThemedText>
             <ThemedText type="body" style={{ color: ComeYaColors.success }}>
-              -Bs. {couponDiscount.toFixed(2)}
+              -€{couponDiscount.toFixed(2)}
             </ThemedText>
           </View>
         )}
         {tip > 0 && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>Propina</ThemedText>
-            <ThemedText type="body">Bs. {tip.toFixed(2)}</ThemedText>
+            <ThemedText type="body">€{tip.toFixed(2)}</ThemedText>
           </View>
         )}
         <View style={[styles.totalRow, styles.grandTotal]}>
           <ThemedText type="h3">Total</ThemedText>
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            Bs. {total.toFixed(2)}
+            €{total.toFixed(2)}
           </ThemedText>
         </View>
         <Button

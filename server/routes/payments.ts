@@ -4,300 +4,233 @@ import { eq } from "drizzle-orm";
 
 const router = express.Router();
 
-// Create payment intent
-router.post("/create-intent", authenticateToken, async (req, res) => {
+// POST /api/payments/create-session
+// Crea una sesión de pago según el provider
+router.post("/create-session", authenticateToken, async (req, res) => {
   try {
-    const { amount, orderId } = req.body;
-    
-    if (!amount || !orderId) {
-      return res.status(400).json({ error: "Monto y ID de pedido requeridos" });
+    const { orderId, amount, provider } = req.body;
+    if (!orderId || !amount || !provider) {
+      return res.status(400).json({ error: "orderId, amount y provider son requeridos" });
     }
 
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(503).json({ error: "Stripe no configurado" });
+    const { db } = await import("../db");
+    const { orders } = await import("../../shared/schema-mysql");
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const amountEur = amount / 100; // amount viene en céntimos
+
+    switch (provider) {
+      case "stripe_card":
+      case "stripe_bizum": {
+        const stripe = (await import("stripe")).default;
+        const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
+
+        const paymentMethods = provider === "stripe_bizum" ? ["bizum"] : ["card"];
+
+        const session = await stripeClient.checkout.sessions.create({
+          payment_method_types: paymentMethods as any,
+          line_items: [{
+            price_data: {
+              currency: "eur",
+              product_data: { name: `Pedido ComeYa #${orderId.slice(-6)}` },
+              unit_amount: amount,
+            },
+            quantity: 1,
+          }],
+          mode: "payment",
+          success_url: `${process.env.BACKEND_URL}/api/payments/success?orderId=${orderId}&provider=${provider}`,
+          cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel?orderId=${orderId}`,
+          metadata: { orderId, provider },
+        });
+
+        return res.json({ url: session.url, sessionId: session.id });
+      }
+
+      case "paypal": {
+        const base = process.env.PAYPAL_MODE === "live"
+          ? "https://api-m.paypal.com"
+          : "https://api-m.sandbox.paypal.com";
+
+        // Obtener token
+        const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString("base64")}`,
+          },
+          body: "grant_type=client_credentials",
+        });
+        const tokenData = await tokenRes.json() as any;
+
+        // Crear orden PayPal
+        const orderRes = await fetch(`${base}/v2/checkout/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${tokenData.access_token}`,
+          },
+          body: JSON.stringify({
+            intent: "CAPTURE",
+            purchase_units: [{
+              reference_id: orderId,
+              amount: { currency_code: "EUR", value: amountEur.toFixed(2) },
+            }],
+            application_context: {
+              return_url: `${process.env.BACKEND_URL}/api/payments/success?orderId=${orderId}&provider=paypal`,
+              cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel?orderId=${orderId}`,
+            },
+          }),
+        });
+        const paypalOrder = await orderRes.json() as any;
+        const approveLink = paypalOrder.links?.find((l: any) => l.rel === "approve")?.href;
+
+        return res.json({ url: approveLink, paypalOrderId: paypalOrder.id });
+      }
+
+      case "binance": {
+        const crypto = await import("crypto");
+        const nonce = crypto.randomBytes(16).toString("hex");
+        const timestamp = Date.now();
+        const merchantId = process.env.BINANCE_MERCHANT_ID!;
+        const apiKey = process.env.BINANCE_API_KEY!;
+        const secretKey = process.env.BINANCE_SECRET_KEY!;
+
+        const body = JSON.stringify({
+          env: { terminalType: "APP" },
+          merchantTradeNo: orderId.replace(/-/g, "").slice(0, 32),
+          orderAmount: amountEur.toFixed(2),
+          currency: "EUR",
+          goods: {
+            goodsType: "01",
+            goodsCategory: "Z000",
+            referenceGoodsId: orderId,
+            goodsName: `Pedido ComeYa #${orderId.slice(-6)}`,
+          },
+          returnUrl: `${process.env.BACKEND_URL}/api/payments/success?orderId=${orderId}&provider=binance`,
+          cancelUrl: `${process.env.BACKEND_URL}/api/payments/cancel?orderId=${orderId}`,
+        });
+
+        const payload = `${timestamp}\n${nonce}\n${body}\n`;
+        const signature = crypto
+          .createHmac("sha512", secretKey)
+          .update(payload)
+          .digest("hex")
+          .toUpperCase();
+
+        const binanceRes = await fetch("https://bpay.binanceapi.com/binancepay/openapi/v2/order", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "BinancePay-Timestamp": String(timestamp),
+            "BinancePay-Nonce": nonce,
+            "BinancePay-Certificate-SN": apiKey,
+            "BinancePay-Signature": signature,
+          },
+          body,
+        });
+        const binanceData = await binanceRes.json() as any;
+
+        return res.json({ url: binanceData.data?.checkoutUrl, binanceOrderId: binanceData.data?.prepayId });
+      }
+
+      default:
+        return res.status(400).json({ error: "Provider no soportado" });
     }
-
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2024-06-20",
-    });
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount), // Amount in centavos
-      currency: "mxn",
-      metadata: {
-        orderId,
-        userId: req.user!.id,
-      },
-    });
-
-    res.json({
-      success: true,
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
-    });
   } catch (error: any) {
-    console.error("Create payment intent error:", error);
+    console.error("Create payment session error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Confirm payment
-router.post("/confirm", authenticateToken, async (req, res) => {
+// GET /api/payments/success — callback tras pago exitoso
+router.get("/success", async (req, res) => {
   try {
-    const { paymentIntentId, orderId } = req.body;
-    
-    if (!paymentIntentId || !orderId) {
-      return res.status(400).json({ error: "Datos de pago incompletos" });
-    }
-
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(503).json({ error: "Stripe no configurado" });
-    }
-
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2024-06-20",
-    });
-
-    // Retrieve payment intent
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    
-    if (paymentIntent.status !== "succeeded") {
-      return res.status(400).json({ error: "Pago no completado" });
-    }
-
-    // Update order payment status
-    const { orders, payments } = await import("@shared/schema-mysql");
+    const { orderId, provider, token } = req.query as any;
     const { db } = await import("../db");
-    
-    // Create payment record
-    const paymentRecord = {
-      id: crypto.randomUUID(),
-      orderId,
-      userId: req.user!.id,
-      amount: paymentIntent.amount,
-      method: "card",
-      status: "completed",
-      stripePaymentIntentId: paymentIntentId,
-      createdAt: new Date(),
-    };
+    const { orders } = await import("../../shared/schema-mysql");
 
-    await db.insert(payments).values(paymentRecord);
+    // Para PayPal hay que capturar el pago
+    if (provider === "paypal" && token) {
+      const base = process.env.PAYPAL_MODE === "live"
+        ? "https://api-m.paypal.com"
+        : "https://api-m.sandbox.paypal.com";
 
-    // Update order status
-    await db
-      .update(orders)
-      .set({ 
-        status: "confirmed",
-        paymentStatus: "paid",
-        updatedAt: new Date()
-      })
+      const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString("base64")}`,
+        },
+        body: "grant_type=client_credentials",
+      });
+      const tokenData = await tokenRes.json() as any;
+
+      await fetch(`${base}/v2/checkout/orders/${token}/capture`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokenData.access_token}`,
+        },
+      });
+    }
+
+    // Confirmar pedido
+    await db.update(orders)
+      .set({ status: "confirmed", updatedAt: new Date() })
       .where(eq(orders.id, orderId));
 
-    res.json({ 
-      success: true, 
-      message: "Pago confirmado",
-      payment: paymentRecord
-    });
+    // Redirigir a la app
+    res.redirect(`${process.env.FRONTEND_URL}/order-confirmed?orderId=${orderId}`);
   } catch (error: any) {
-    console.error("Confirm payment error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Payment success error:", error);
+    res.redirect(`${process.env.FRONTEND_URL}/payment-error`);
   }
 });
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-async function getOrCreateStripeCustomer(userId: string) {
-  const Stripe = (await import("stripe")).default;
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
-  const { users } = await import("@shared/schema-mysql");
-  const { db } = await import("../db");
-
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user) throw new Error("Usuario no encontrado");
-
-  if (user.stripeCustomerId) return { stripe, customerId: user.stripeCustomerId };
-
-  const customer = await stripe.customers.create({
-    name: user.name,
-    phone: user.phone ?? undefined,
-    metadata: { userId },
-  });
-
-  await db.update(users).set({ stripeCustomerId: customer.id, updatedAt: new Date() }).where(eq(users.id, userId));
-  return { stripe, customerId: customer.id };
-}
-
-// GET /payments/cards — list saved cards
-router.get("/cards", authenticateToken, async (req, res) => {
-  try {
-    // Si Stripe no está configurado, retornar array vacío
-    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY.includes('placeholder') || process.env.STRIPE_SECRET_KEY.length < 50) {
-      return res.json({ success: true, cards: [] });
-    }
-    
-    const { stripe, customerId } = await getOrCreateStripeCustomer(req.user!.id);
-    const pms = await stripe.paymentMethods.list({ customer: customerId, type: "card" });
-    const customer = await stripe.customers.retrieve(customerId) as any;
-    const defaultPmId = customer.invoice_settings?.default_payment_method;
-    const cards = pms.data.map((pm) => ({
-      id: pm.id,
-      brand: pm.card!.brand,
-      last4: pm.card!.last4,
-      expMonth: pm.card!.exp_month,
-      expYear: pm.card!.exp_year,
-      isDefault: pm.id === defaultPmId,
-    }));
-    res.json({ success: true, cards });
-  } catch (error: any) {
-    console.error('Error loading cards:', error.message);
-    // En caso de error, retornar array vacío en lugar de error 500
-    res.json({ success: true, cards: [] });
-  }
+// GET /api/payments/cancel
+router.get("/cancel", async (req, res) => {
+  const { orderId } = req.query as any;
+  res.redirect(`${process.env.FRONTEND_URL}/order-cancelled?orderId=${orderId}`);
 });
 
-// POST /payments/cards/setup-intent — get SetupIntent clientSecret to add a card
-router.post("/cards/setup-intent", authenticateToken, async (req, res) => {
+// POST /api/payments/webhook/stripe
+router.post("/webhook/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: "Stripe no configurado" });
-    const { stripe, customerId } = await getOrCreateStripeCustomer(req.user!.id);
-    const si = await stripe.setupIntents.create({ customer: customerId, payment_method_types: ["card"] });
-    res.json({ success: true, clientSecret: si.client_secret });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DELETE /payments/cards/:pmId — remove a saved card
-router.delete("/cards/:pmId", authenticateToken, async (req, res) => {
-  try {
-    if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: "Stripe no configurado" });
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
-    await stripe.paymentMethods.detach(req.params.pmId);
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// PUT /payments/cards/:pmId/default — set default card
-router.put("/cards/:pmId/default", authenticateToken, async (req, res) => {
-  try {
-    if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: "Stripe no configurado" });
-    const { stripe, customerId } = await getOrCreateStripeCustomer(req.user!.id);
-    await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: req.params.pmId } });
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /payments/methods — legacy (kept for checkout compatibility)
-router.get("/methods", authenticateToken, async (req, res) => {
-  res.json({ success: true, methods: [
-    { id: "cash", name: "Efectivo", type: "cash", isDefault: true, isActive: true },
-    { id: "card", name: "Tarjeta", type: "card", isDefault: false, isActive: !!process.env.STRIPE_SECRET_KEY },
-  ]});
-});
-
-// Get payment history
-router.get("/history", authenticateToken, async (req, res) => {
-  try {
-    const { payments, orders } = await import("@shared/schema-mysql");
-    const { db } = await import("../db");
-    
-    const userPayments = await db
-      .select({
-        payment: payments,
-        order: {
-          id: orders.id,
-          total: orders.total,
-          status: orders.status,
-        }
-      })
-      .from(payments)
-      .leftJoin(orders, eq(payments.orderId, orders.id))
-      .where(eq(payments.customerId, req.user!.id));
-
-    res.json({ success: true, payments: userPayments });
-  } catch (error: any) {
-    console.error("Get payment history error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Stripe webhook
-router.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-  try {
-    if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-      return res.status(503).json({ error: "Stripe no configurado" });
-    }
-
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2024-06-20",
-    });
-
+    const stripe = (await import("stripe")).default;
+    const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
     const sig = req.headers["stripe-signature"] as string;
-    let event;
+    const event = stripeClient.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
 
-    try {
-      event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
-    } catch (err: any) {
-      console.error("Webhook signature verification failed:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    // Handle the event
-    switch (event.type) {
-      case "payment_intent.succeeded":
-        const paymentIntent = event.data.object;
-        console.log("Payment succeeded:", paymentIntent.id);
-        
-        // Update payment status in database
-        const { payments } = await import("@shared/schema-mysql");
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as any;
+      const orderId = session.metadata?.orderId;
+      if (orderId) {
         const { db } = await import("../db");
-        
-        await db
-          .update(payments)
-          .set({ 
-            status: "completed",
-            updatedAt: new Date()
-          })
-          .where(eq(payments.stripePaymentIntentId, paymentIntent.id));
-        
-        break;
-      
-      case "payment_intent.payment_failed":
-        const failedPayment = event.data.object;
-        console.log("Payment failed:", failedPayment.id);
-        
-        // Update payment status to failed
-        const { payments: paymentsTable } = await import("@shared/schema-mysql");
-        const { db: database } = await import("../db");
-        
-        await database
-          .update(paymentsTable)
-          .set({ 
-            status: "failed",
-            updatedAt: new Date()
-          })
-          .where(eq(paymentsTable.stripePaymentIntentId, failedPayment.id));
-        
-        break;
-      
-      default:
-        console.log(`Unhandled event type ${event.type}`);
+        const { orders } = await import("../../shared/schema-mysql");
+        await db.update(orders).set({ status: "confirmed", updatedAt: new Date() }).where(eq(orders.id, orderId));
+      }
     }
 
     res.json({ received: true });
   } catch (error: any) {
-    console.error("Webhook error:", error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// POST /api/payments/webhook/binance
+router.post("/webhook/binance", async (req, res) => {
+  try {
+    const { bizType, data } = req.body;
+    if (bizType === "PAY" && data?.merchantTradeNo) {
+      const orderId = data.merchantTradeNo;
+      const { db } = await import("../db");
+      const { orders } = await import("../../shared/schema-mysql");
+      await db.update(orders).set({ status: "confirmed", updatedAt: new Date() }).where(eq(orders.id, orderId));
+    }
+    res.json({ returnCode: "SUCCESS", returnMessage: null });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
