@@ -7,43 +7,29 @@ const DISABLE_GPS_IN_DEV = true;
 
 // Get API base URL dynamically at runtime
 export const getApiBaseUrl = (): string => {
-  // HARDCODED FOR DEVELOPMENT - Change back before production
-  console.log('🔧 Using HARDCODED localhost URL');
-  return "http://localhost:5000";
-
-  // Check expo config first (from app.config.js) - works in both dev and prod
+  // Check expo config first (from app.config.js)
   const expoBackendUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL;
   if (expoBackendUrl) {
     console.log('🔧 Using Expo config URL:', expoBackendUrl);
     return expoBackendUrl;
   }
 
-  // Check for environment variable (development)
+  // Check for environment variable
   const envBackendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
   if (envBackendUrl) {
     console.log('🔧 Using env URL:', envBackendUrl);
     return envBackendUrl.trim();
   }
 
-  // HARDCODED FOR DEVELOPMENT - Change back before production
-  console.log('🔧 Using HARDCODED localhost URL');
-  return "http://localhost:5000";
-
-  // Development mode - use localhost backend
-  // if (__DEV__) {
-  //   console.log('🔧 Using DEV URL: http://localhost:5000');
-  //   return "http://localhost:5000";
-  // }
-
-  // For web in production, use current origin (same domain)
+  // For web in production, use current origin
   if (Platform.OS === "web" && typeof window !== "undefined" && window.location) {
     console.log('🔧 Using window origin:', window.location.origin);
     return window.location.origin;
   }
 
   // Production fallback
-  console.log('🔧 Using fallback URL: https://ComeYa-backend.onrender.com');
-  return "https://ComeYa-backend.onrender.com";
+  console.log('🔧 Using fallback URL: https://comeya-backend.onrender.com');
+  return "https://comeya-backend.onrender.com";
 };
 
 export const API_CONFIG = {
