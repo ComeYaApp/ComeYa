@@ -31,31 +31,30 @@ function toRad(deg: number): number {
 
 /**
  * Calcula el delivery fee basado en la distancia.
- * Lee los valores desde system_settings (configurables por el admin).
+ * Tarifas por tramos:
+ *   < 1 km  = 2.50€
+ *   1-2 km  = 2.50€
+ *   2-3 km  = 4.00€
+ *   3-4 km  = 5.00€
+ *   > 4 km  = 5.00€ + 1€ por km adicional
+ * Devuelve centavos de euro.
  */
 export async function calculateDeliveryFee(distance: number): Promise<number> {
-  const baseFee  = await getSettingValue("delivery_base_fee",  300);
-  const perKm    = await getSettingValue("delivery_fee_per_km", 50);
-  const minFee   = await getSettingValue("delivery_min_fee",   300);
-  const maxFee   = await getSettingValue("delivery_max_fee",   500);
-
-  const fee = baseFee + distance * perKm;
-  return Math.max(minFee, Math.min(fee, maxFee));
+  return calculateDeliveryFeeSync(distance);
 }
 
-/**
- * Versión síncrona con valores por defecto (para cuando no se puede await).
- * Usar calculateDeliveryFee() siempre que sea posible.
- */
-export function calculateDeliveryFeeSync(
-  distance: number,
-  baseFee = 300,
-  perKm = 50,
-  minFee = 300,
-  maxFee = 500
-): number {
-  const fee = baseFee + distance * perKm;
-  return Math.max(minFee, Math.min(fee, maxFee));
+export function calculateDeliveryFeeSync(distance: number): number {
+  let euros: number;
+  if (distance <= 2) {
+    euros = 2.5;
+  } else if (distance <= 3) {
+    euros = 4.0;
+  } else if (distance <= 4) {
+    euros = 5.0;
+  } else {
+    euros = 5.0 + Math.ceil(distance - 4);
+  }
+  return Math.round(euros * 100); // centavos
 }
 
 /**

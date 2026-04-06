@@ -25,39 +25,20 @@ export const calculateDistance = (
 
 const toRad = (deg: number) => deg * (Math.PI / 180);
 
-let cachedConfig: any = null;
-let lastFetch = 0;
-
-async function getConfig() {
-  const now = Date.now();
-  if (cachedConfig && (now - lastFetch) < 60000) {
-    return cachedConfig;
-  }
-
-  try {
-    const { apiRequest } = await import('@/lib/query-client');
-    const response = await apiRequest('GET', '/api/delivery/config');
-    const data = await response.json();
-    if (data.success) {
-      cachedConfig = data.config;
-      lastFetch = now;
-      return data.config;
-    }
-  } catch (error) {
-    console.error('Error loading delivery config:', error);
-  }
-
-  return { baseFee: 15, perKm: 8, minFee: 15, maxFee: 40 };
-}
-
 /**
- * Calcula el delivery fee basado en la distancia
- * Tarifas ajustadas para San Cristóbal, Táchira, Venezuela
+ * Calcula el delivery fee basado en la distancia.
+ * Tarifas por tramos (Soria, España):
+ *   <= 2 km = 2.50€
+ *   2-3 km  = 4.00€
+ *   3-4 km  = 5.00€
+ *   > 4 km  = 5.00€ + 1€ por km adicional
+ * @returns Euros (no centavos)
  */
 export const calculateDeliveryFee = async (distance: number): Promise<number> => {
-  const config = await getConfig();
-  const fee = config.baseFee + (distance * config.perKm);
-  return Math.max(config.minFee, Math.min(fee, config.maxFee));
+  if (distance <= 2) return 2.5;
+  if (distance <= 3) return 4.0;
+  if (distance <= 4) return 5.0;
+  return 5.0 + Math.ceil(distance - 4);
 };
 
 /**

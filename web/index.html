@@ -20,7 +20,12 @@
       justify-content: center;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #FF6B35 0%, #E55A25 100%);
+      background-color: #FFFFFF;
+    }
+    @media (prefers-color-scheme: dark) {
+      .loading-container { background-color: #121212; }
+      .loading-tagline { color: rgba(255,255,255,0.6); }
+      .loading-dots span { background: rgba(255,255,255,0.4); }
     }
     .loading-logo-img {
       width: 140px;
@@ -32,13 +37,13 @@
     .loading-logo {
       font-size: 36px;
       font-weight: 800;
-      color: white;
+      color: #FF6B35;
       margin-bottom: 8px;
       letter-spacing: 1px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
     .loading-tagline {
-      color: rgba(255,255,255,0.85);
+      color: rgba(0,0,0,0.5);
       font-size: 13px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       margin-bottom: 40px;
@@ -51,7 +56,7 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.7);
+      background: #CCCCCC;
       animation: bounce 1.4s ease-in-out infinite;
     }
     .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
