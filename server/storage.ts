@@ -1285,12 +1285,15 @@ export class DatabaseStorage implements IStorage {
     return R * c;
   }
 
-  calculateDeliveryFee(
+  async calculateDeliveryFee(
     distanceKm: number,
-    baseFee: number,
-    feePerKm: number,
-  ): number {
-    return baseFee + Math.ceil(distanceKm) * feePerKm;
+    baseFee?: number,
+    feePerKm?: number,
+  ): Promise<number> {
+    const { getSettingValue } = await import("./systemSettingsService");
+    const actualBaseFee = baseFee ?? await getSettingValue("delivery_base_fee", 300);
+    const actualFeePerKm = feePerKm ?? await getSettingValue("delivery_fee_per_km", 50);
+    return actualBaseFee + Math.ceil(distanceKm) * actualFeePerKm;
   }
 
   // ============ MÓDULO FINANZAS: RETENCIÓN DE FONDOS ============

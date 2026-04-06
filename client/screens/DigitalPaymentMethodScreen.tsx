@@ -34,7 +34,7 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<PaymentMethod | null>(null);
-  const orderTotal = (route?.params?.orderTotal || 0) / 100;
+  const orderTotal = route?.params?.orderTotal || 0;
 
   useEffect(() => { loadMethods(); }, []);
 

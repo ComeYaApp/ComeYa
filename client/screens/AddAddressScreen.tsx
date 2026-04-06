@@ -21,7 +21,7 @@ import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest } from '@/lib/query-client';
-import { isInCoverageArea, AUTLAN_CENTER } from '@/utils/coverage';
+import { isInCoverageArea, SORIA_CENTER } from '@/utils/coverage';
 import { checkDuplicateAddress, suggestSimilarAddresses, Address } from '@/utils/addressValidation';
 import { useDebounce, usePerformanceMonitor } from '@/hooks/usePerformance';
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
@@ -57,7 +57,8 @@ export default function AddAddressScreen() {
   const [success, setSuccess] = useState(false);
   const [touched, setTouched] = useState(false);
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
-    existingAddress?.latitude && existingAddress?.longitude
+    existingAddress?.latitude && existingAddress?.longitude &&
+    isInCoverageArea(existingAddress.latitude, existingAddress.longitude)
       ? { latitude: existingAddress.latitude, longitude: existingAddress.longitude }
       : null,
   );
@@ -103,14 +104,16 @@ export default function AddAddressScreen() {
       return;
     }
 
-    const finalCoordinates = coordinates || (Platform.OS === 'web' ? AUTLAN_CENTER : null);
+    const finalCoordinates = coordinates || (Platform.OS === 'web' ? SORIA_CENTER : null);
 
     if (!finalCoordinates) {
       setError('Por favor selecciona la ubicación en el mapa');
       return;
     }
 
-    if (!isInCoverageArea(finalCoordinates.latitude, finalCoordinates.longitude)) {
+    // En web sin GPS, siempre usar centro de Soria — no validar cobertura
+    const coordsToValidate = (Platform.OS === 'web' && !coordinates) ? SORIA_CENTER : finalCoordinates;
+    if (!isInCoverageArea(coordsToValidate.latitude, coordsToValidate.longitude)) {
       setError('La ubicación está fuera de nuestra zona de cobertura');
       return;
     }
@@ -208,9 +211,11 @@ export default function AddAddressScreen() {
               if (place) {
                 const streetParts = [place.street, place.streetNumber].filter(Boolean);
                 if (streetParts.length > 0) setStreet(streetParts.join(' '));
+                if (place.postalCode) setZipCode(place.postalCode);
+                // Solo sobreescribir ciudad/provincia si el GPS devuelve valores
+                // (en producción en Soria serán correctos)
                 if (place.city) setCity(place.city);
                 if (place.region) setState(place.region);
-                if (place.postalCode) setZipCode(place.postalCode);
               }
             } catch {
               setError('No se pudo obtener la ubicación. Intenta de nuevo.');
@@ -234,7 +239,7 @@ export default function AddAddressScreen() {
             leftIcon="map-pin"
             value={street}
             onChangeText={(t) => { setStreet(t); setError(null); }}
-            placeholder="Ej: Calle Allende #123"
+            placeholder="Ej: Calle Mayor 12"
             autoCapitalize="words"
             onBlur={() => setTouched(true)}
           />
@@ -295,7 +300,7 @@ export default function AddAddressScreen() {
           />
 
           <Input
-            label="Estado"
+            label="Provincia"
             leftIcon="flag"
             value={state}
             onChangeText={setState}
@@ -306,7 +311,7 @@ export default function AddAddressScreen() {
             leftIcon="hash"
             value={zipCode}
             onChangeText={setZipCode}
-            placeholder="48900"
+            placeholder="42001"
             keyboardType="numeric"
           />
         </View>

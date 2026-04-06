@@ -292,7 +292,7 @@ function DeliveryOrderCard({
             type="body"
             style={{ color: "#FFFFFF", fontWeight: "600", marginLeft: 8 }}
           >
-            Confirmar entrega
+            Marcar como entregado
           </ThemedText>
         </Pressable>
       ) : null}
@@ -854,9 +854,9 @@ export default function DeliveryDashboardScreen() {
 
       <ConfirmModal
         visible={deliveryConfirmModalVisible}
-        title="Confirmar entrega"
-        message="¿El pedido fue entregado correctamente?"
-        confirmText="Confirmar entrega"
+        title="Marcar como entregado"
+        message="¿Ya entregaste el pedido al cliente? El cliente recibirá una notificación para confirmar la recepción y liberar tu pago."
+        confirmText="Sí, lo entregué"
         cancelText="Cancelar"
         confirmColor="#4CAF50"
         icon="check-circle"

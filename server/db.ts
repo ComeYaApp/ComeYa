@@ -3,6 +3,11 @@ import { drizzle } from 'drizzle-orm/mysql2';
 import mysql from 'mysql2/promise';
 import fs from 'fs';
 import path from 'path';
+import { config } from 'dotenv';
+
+// Cargar .env.local con override para asegurar que las variables de BD estén disponibles
+config({ path: '.env.local', override: true });
+config({ path: '.env', override: false });
 
 // Parse MYSQL_DATABASE_URL or use individual env vars
 function createConnectionConfig() {

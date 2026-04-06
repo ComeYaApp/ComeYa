@@ -101,7 +101,7 @@ export default function HomeScreen() {
         rating: (b.rating || 0) / 100, // Convertir de centavos a decimal
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || '30-45 min',
-        deliveryFee: (b.delivery_fee || 199) / 100,
+        deliveryFee: (b.delivery_fee || 300) / 100,
         minimumOrder: (b.min_order || 1000) / 100,
         isOpen: b.isOpen === true || b.isOpen === 1 || b.is_open === true || b.is_open === 1,
         openingHours: [],

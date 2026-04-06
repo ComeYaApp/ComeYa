@@ -71,7 +71,7 @@ export default function BusinessListScreen() {
         rating: (b.rating || 0) / 100,
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || "30-45 min",
-        deliveryFee: (b.delivery_fee || 199) / 100,
+        deliveryFee: (b.delivery_fee || 300) / 100,
         minimumOrder: (b.min_order || 1000) / 100,
         isOpen: b.isOpen ?? b.is_open ?? false,
         openingHours: [],

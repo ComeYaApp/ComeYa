@@ -172,13 +172,27 @@ export default function OrderChatScreen() {
   const resolvedReceiverId = useMemo(() => {
     if (receiverId) return receiverId;
     if (!orderMeta || !user) return undefined;
+    
+    // Lógica mejorada para resolver el destinatario
     if (user.role === "delivery_driver") {
+      // Repartidor envía al cliente
       return orderMeta.userId || orderMeta.customerId;
     }
+    
+    if (user.role === "customer") {
+      // Cliente puede enviar al repartidor o al negocio
+      if (orderMeta.deliveryPersonId) {
+        return orderMeta.deliveryPersonId; // Preferencia: repartidor
+      }
+      return orderMeta.businessId; // Fallback: negocio
+    }
+    
     if (user.role === "business_owner") {
+      // Negocio envía al cliente
       return orderMeta.userId || orderMeta.customerId;
     }
-    return orderMeta.deliveryPersonId || orderMeta.businessId || orderMeta.userId || orderMeta.customerId;
+    
+    return undefined;
   }, [receiverId, orderMeta, user]);
 
   const sendMessageMutation = useMutation({

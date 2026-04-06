@@ -142,6 +142,7 @@ export const orders = mysqlTable("orders", {
   // Compartir tracking
   trackingToken: varchar("tracking_token", { length: 255 }), // Token para compartir tracking
   trackingTokenExpires: timestamp("tracking_token_expires"),
+  chatMessages: text("chat_messages"), // JSON array con mensajes del chat
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
@@ -162,8 +163,8 @@ export const businesses = mysqlTable("businesses", {
   rating: int("rating").default(0), // stored as 0-50 (for 0.0-5.0)
   totalRatings: int("total_ratings").default(0),
   deliveryTime: text("delivery_time").default("30-45 min"),
-  deliveryFee: int("delivery_fee").default(2500), // in cents
-  minOrder: int("min_order").default(5000), // in cents
+  deliveryFee: int("delivery_fee").default(300), // en centavos de euro (3€)
+  minOrder: int("min_order").default(1000), // en centavos de euro (10€ mínimo)
   isActive: boolean("is_active").notNull().default(true),
   isOpen: boolean("is_open").notNull().default(true),
   openingHours: text("opening_hours"), // JSON string

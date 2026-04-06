@@ -10,6 +10,11 @@ const router = Router();
 // Customer confirms delivery and releases funds
 router.post("/confirm-delivery", authenticateToken, async (req, res) => {
   try {
+    // Solo el cliente puede confirmar la entrega
+    if (req.user!.role !== "customer" && req.user!.role !== "admin" && req.user!.role !== "super_admin") {
+      return res.status(403).json({ success: false, error: "Solo el cliente puede confirmar la entrega" });
+    }
+
     const { orderId } = req.body;
 
     if (!orderId) {

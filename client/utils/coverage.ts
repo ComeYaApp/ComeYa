@@ -1,11 +1,12 @@
 /**
  * Coordenadas de cobertura de Soria, España
+ * Radio amplio (~15km desde el centro) para cubrir toda la ciudad y alrededores
  */
 export const SORIA_BOUNDS = {
-  minLat: 41.73,
-  maxLat: 41.80,
-  minLng: -2.50,
-  maxLng: -2.43,
+  minLat: 41.70,
+  maxLat: 41.83,
+  minLng: -2.55,
+  maxLng: -2.38,
 };
 
 /**

@@ -22,13 +22,12 @@
       height: 100%;
       background: linear-gradient(135deg, #FF6B35 0%, #E55A25 100%);
     }
-    .loading-logo-svg {
-      width: 110px;
-      height: 110px;
+    .loading-logo-img {
+      width: 140px;
+      height: 140px;
       margin-bottom: 24px;
       animation: pulse 2s ease-in-out infinite;
-      border-radius: 50%;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      object-fit: contain;
     }
     .loading-logo {
       font-size: 36px;
@@ -71,27 +70,7 @@
   <noscript>Necesitas habilitar JavaScript para usar ComeYa.</noscript>
   <div id="root">
     <div class="loading-container">
-      <svg class="loading-logo-svg" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="100" cy="100" r="100" fill="#FF6B35"/>
-        <circle cx="100" cy="100" r="100" fill="url(#grad2)"/>
-        <defs>
-          <radialGradient id="grad2" cx="40%" cy="35%" r="65%">
-            <stop offset="0%" stop-color="#FF8C5A"/>
-            <stop offset="100%" stop-color="#E55A25"/>
-          </radialGradient>
-        </defs>
-        <rect x="62" y="48" width="5" height="28" rx="2.5" fill="white"/>
-        <rect x="55" y="48" width="5" height="18" rx="2.5" fill="white"/>
-        <rect x="69" y="48" width="5" height="18" rx="2.5" fill="white"/>
-        <rect x="55" y="64" width="19" height="4" rx="2" fill="white"/>
-        <rect x="62" y="68" width="5" height="36" rx="2.5" fill="white"/>
-        <rect x="133" y="48" width="5" height="56" rx="2.5" fill="white"/>
-        <path d="M138 48 Q150 56 138 72 Z" fill="white"/>
-        <circle cx="100" cy="108" r="38" fill="white" opacity="0.12"/>
-        <circle cx="100" cy="108" r="30" fill="white" opacity="0.15"/>
-        <text x="100" y="120" font-family="Arial Black, Arial, sans-serif" font-size="34" font-weight="900" fill="white" text-anchor="middle">CY</text>
-      </svg>
-      <div class="loading-logo">ComeYa</div>
+      <img class="loading-logo-img" src="/comeya-logo.png" alt="ComeYa" />
       <div class="loading-tagline">Delivery en Soria 🍊</div>
       <div class="loading-dots">
         <span></span><span></span><span></span>

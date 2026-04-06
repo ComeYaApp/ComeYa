@@ -44,6 +44,7 @@ import businessAnalyticsRoutes from "./routes/businessAnalytics";
 import groupOrdersRoutes from "./routes/groupOrders";
 import gamificationRoutes from "./routes/gamification";
 import giftCardsRoutes from "./routes/giftCards";
+import orderChatRoutes from "./routes/orderChat";
 
 const router = express.Router();
 
@@ -91,10 +92,10 @@ router.get("/delivery-zones", async (_req, res) => {
   res.json({
     success: true,
     zones: [
-      { id: "zone-centro", name: "Centro",        deliveryFee: 2500, maxDeliveryTime: 30, isActive: true, centerLatitude: "7.7669",  centerLongitude: "-72.2251", radiusKm: 3 },
-      { id: "zone-norte",  name: "Norte",          deliveryFee: 3000, maxDeliveryTime: 35, isActive: true, centerLatitude: "7.7730",  centerLongitude: "-72.2251", radiusKm: 4 },
-      { id: "zone-sur",    name: "Sur",            deliveryFee: 3000, maxDeliveryTime: 35, isActive: true, centerLatitude: "7.7600",  centerLongitude: "-72.2251", radiusKm: 4 },
-      { id: "zone-este",   name: "Este",           deliveryFee: 3500, maxDeliveryTime: 40, isActive: true, centerLatitude: "7.7669",  centerLongitude: "-72.2100", radiusKm: 4 },
+      { id: "zone-centro", name: "Centro",        deliveryFee: 300, maxDeliveryTime: 20, isActive: true, centerLatitude: "41.7636",  centerLongitude: "-2.4677", radiusKm: 2 },
+      { id: "zone-norte",  name: "Norte",          deliveryFee: 350, maxDeliveryTime: 25, isActive: true, centerLatitude: "41.7750",  centerLongitude: "-2.4677", radiusKm: 3 },
+      { id: "zone-sur",    name: "Sur",            deliveryFee: 350, maxDeliveryTime: 25, isActive: true, centerLatitude: "41.7500",  centerLongitude: "-2.4677", radiusKm: 3 },
+      { id: "zone-este",   name: "Este",           deliveryFee: 400, maxDeliveryTime: 30, isActive: true, centerLatitude: "41.7636",  centerLongitude: "-2.4400", radiusKm: 3 },
     ],
   });
 });
@@ -153,5 +154,6 @@ router.use("/analytics",            businessAnalyticsRoutes);
 router.use("/group-orders",         groupOrdersRoutes);
 router.use("/gamification",         gamificationRoutes);
 router.use("/gift-cards",           giftCardsRoutes);
+router.use("/orders",               orderChatRoutes);
 
 export default router;

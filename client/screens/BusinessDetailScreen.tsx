@@ -68,7 +68,7 @@ export default function BusinessDetailScreen() {
             rating: (data.business.rating || 0) / 100,
             reviewCount: data.business.totalRatings || 0,
             deliveryTime: data.business.deliveryTime || '30-45 min',
-            deliveryFee: (data.business.deliveryFee || 199) / 100,
+            deliveryFee: (data.business.deliveryFee || 300) / 100,
             minimumOrder: (data.business.minOrder || 1000) / 100,
             isOpen: data.business.isOpen === true || data.business.isOpen === 1 || data.business.is_open === true || data.business.is_open === 1,
             openingHours: [],

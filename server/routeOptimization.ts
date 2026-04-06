@@ -72,6 +72,8 @@ export async function optimizeMultipleDeliveries(
   driverId: number,
   orderIds: number[]
 ): Promise<OptimizedRoute | null> {
+  const { getSettingValue } = await import('./systemSettingsService');
+  
   // Obtener ubicación actual del repartidor
   const [driver] = await db
     .select()
@@ -98,6 +100,10 @@ export async function optimizeMultipleDeliveries(
     return null;
   }
 
+  // Obtener configuraciones
+  const averageSpeed = await getSettingValue('delivery_average_speed_kmh', 20);
+  const stopTime = await getSettingValue('delivery_stop_time_minutes', 10);
+
   // Crear stops con prioridad basada en tiempo de espera
   const stops: DeliveryStop[] = ordersList.map(order => {
     const waitTime = Date.now() - new Date(order.createdAt).getTime();
@@ -117,7 +123,7 @@ export async function optimizeMultipleDeliveries(
         longitude: order.deliveryLongitude || 0,
       },
       address: order.deliveryAddress || '',
-      estimatedTime: 10, // 10 minutos por entrega
+      estimatedTime: stopTime,
       priority,
     };
   });
@@ -137,8 +143,8 @@ export async function optimizeMultipleDeliveries(
     const distance = calculateDistance(currentLocation, nextStop.location);
     totalDistance += distance;
     
-    // Tiempo = distancia / velocidad promedio (20 km/h) + tiempo de entrega
-    const travelTime = (distance / 20) * 60; // minutos
+    // Tiempo = distancia / velocidad promedio + tiempo de entrega
+    const travelTime = (distance / averageSpeed) * 60; // minutos
     totalTime += travelTime + nextStop.estimatedTime;
 
     optimizedStops.push(nextStop);
@@ -178,11 +184,12 @@ export async function estimateDeliveryTime(
   driverLocation: Location,
   deliveryLocation: Location
 ): Promise<number> {
+  const { getSettingValue } = await import('./systemSettingsService');
   const distance = calculateDistance(driverLocation, deliveryLocation);
-  const averageSpeed = 20; // km/h
-  const travelTime = (distance / averageSpeed) * 60; // minutos
-  const deliveryTime = 10; // minutos para entrega
+  const averageSpeed = await getSettingValue('delivery_average_speed_kmh', 20); // km/h
+  const deliveryTime = await getSettingValue('delivery_stop_time_minutes', 10); // minutos para entrega
   
+  const travelTime = (distance / averageSpeed) * 60; // minutos
   return Math.round(travelTime + deliveryTime);
 }
 

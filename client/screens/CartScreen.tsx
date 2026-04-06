@@ -16,7 +16,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { mockBusinesses } from "@/data/mockData";
 
 type CartScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -34,9 +33,19 @@ export default function CartScreen() {
   const [selectedAddress, setSelectedAddress] = React.useState<any>(null);
   const [calculatedDeliveryFee, setCalculatedDeliveryFee] = React.useState<number | null>(null);
 
-  const business = cart
-    ? mockBusinesses.find((b) => b.id === cart.businessId)
-    : null;
+  const [businessData, setBusinessData] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    if (!cart?.businessId) return;
+    import('@/lib/query-client').then(({ apiRequest }) => {
+      apiRequest('GET', `/api/businesses/${cart.businessId}`)
+        .then(r => r.json())
+        .then(data => { if (data.success) setBusinessData(data.business); })
+        .catch(() => {});
+    });
+  }, [cart?.businessId]);
+
+  const business = businessData;
   
   // Cargar direcciones del usuario
   const loadAddresses = React.useCallback(async () => {
@@ -69,7 +78,7 @@ export default function CartScreen() {
   React.useEffect(() => {
     const calculateFee = async () => {
       if (!selectedAddress || !business || !selectedAddress.latitude || !selectedAddress.longitude || !business.latitude || !business.longitude) {
-        setCalculatedDeliveryFee(25); // Fallback si no hay coordenadas
+        setCalculatedDeliveryFee((business?.deliveryFee || 300) / 100);
         return;
       }
       
@@ -83,19 +92,19 @@ export default function CartScreen() {
         });
         const data = await response.json();
         if (data.success) {
-          setCalculatedDeliveryFee(data.deliveryFee / 100); // Convertir centavos a pesos
+          setCalculatedDeliveryFee(data.deliveryFee / 100);
         } else {
-          setCalculatedDeliveryFee(25);
+          setCalculatedDeliveryFee((business.deliveryFee || 300) / 100);
         }
       } catch (error) {
         console.error('Error calculating delivery fee:', error);
-        setCalculatedDeliveryFee(25); // Fallback
+        setCalculatedDeliveryFee((business?.deliveryFee || 300) / 100);
       }
     };
     calculateFee();
   }, [selectedAddress, business]);
 
-  const deliveryFee = calculatedDeliveryFee ?? 25; // Precio REAL, no estimado
+  const deliveryFee = calculatedDeliveryFee ?? (businessData?.deliveryFee ? businessData.deliveryFee / 100 : 3);
   const minimumOrder = business?.minimumOrder || 0;
   
   // Precio base de productos (sin comision)

@@ -25,7 +25,7 @@ router.post("/calculate-delivery", authenticateToken, async (req, res) => {
     }
 
     const distance = calculateDistance(businessLat, businessLng, deliveryLat, deliveryLng);
-    const deliveryFee = calculateDeliveryFee(distance);
+    const deliveryFee = await calculateDeliveryFee(distance);
     const estimatedTime = estimateDeliveryTime(distance);
 
     res.json({
@@ -61,7 +61,7 @@ router.post("/", authenticateToken, validateOrderFinancials, async (req, res) =>
           address.latitude,
           address.longitude
         );
-        deliveryFee = calculateDeliveryFee(distance);
+        deliveryFee = await calculateDeliveryFee(distance);
         estimatedDeliveryTime = estimateDeliveryTime(distance, business.prepTime || 20);
       }
     }
@@ -137,8 +137,8 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Get order by ID
-router.get("/:id", authenticateToken, validateCustomerOrderOwnership, async (req, res) => {
+// Get order by ID — accesible por cliente, repartidor asignado y admin
+router.get("/:id", authenticateToken, async (req, res) => {
   try {
     const { orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -153,6 +153,15 @@ router.get("/:id", authenticateToken, validateCustomerOrderOwnership, async (req
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
+    }
+
+    const { id: userId, role } = req.user!;
+    const isCustomer = order.userId === userId;
+    const isDriver = order.deliveryPersonId === userId;
+    const isAdmin = role === "admin" || role === "super_admin";
+
+    if (!isCustomer && !isDriver && !isAdmin) {
+      return res.status(403).json({ error: "No autorizado" });
     }
 
     res.json({ success: true, order });
@@ -344,7 +353,7 @@ router.post(
   }
 );
 
-// Customer confirms receipt and releases funds
+// Customer confirms receipt and releases funds — SOLO el cliente
 router.post(
   "/:id/confirm-receipt",
   authenticateToken,
@@ -352,6 +361,10 @@ router.post(
   validateOrderCompletion,
   async (req, res) => {
     try {
+      // Bloqueo explícito: solo el rol customer puede confirmar recepción
+      if (req.user!.role !== "customer" && req.user!.role !== "admin" && req.user!.role !== "super_admin") {
+        return res.status(403).json({ error: "Solo el cliente puede confirmar la recepción del pedido" });
+      }
       const { orders, businesses, payouts } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
       const { eq } = await import("drizzle-orm");

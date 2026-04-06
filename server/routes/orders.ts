@@ -154,7 +154,7 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? 199;
+    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? 300;
     const finalSubtotal = clientSubtotal ?? subtotal;
     const total = clientTotal ?? (finalSubtotal + deliveryFee);
 
@@ -302,10 +302,11 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
     }
 
     // Check permissions
+    // El repartidor NO puede poner "delivered" directamente — debe usar /complete-delivery
     const canUpdate = 
       req.user!.role === "admin" ||
       (req.user!.role === "business_owner" && order.business?.ownerId === req.user!.id) ||
-      (req.user!.role === "delivery_driver" && ["picked_up", "on_the_way", "in_transit", "arriving", "delivered"].includes(status));
+      (req.user!.role === "delivery_driver" && ["picked_up", "on_the_way", "in_transit", "arriving"].includes(status));
 
     if (!canUpdate) {
       return res.status(403).json({ error: "No autorizado" });
@@ -356,6 +357,53 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
     res.json({ success: true, message: "Estado actualizado" });
   } catch (error: any) {
     console.error("Update order status error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Tip — solo el cliente del pedido puede enviar propina al repartidor
+router.post("/:id/tip", authenticateToken, async (req, res) => {
+  try {
+    if (req.user!.role !== "customer") {
+      return res.status(403).json({ error: "Solo el cliente puede enviar propinas" });
+    }
+
+    const { orders, wallets, transactions } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { amount, deliveryPersonId } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Monto de propina inválido" });
+    }
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, req.params.id)).limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (order.userId !== req.user!.id) return res.status(403).json({ error: "No autorizado" });
+    if (order.status !== "delivered") return res.status(400).json({ error: "El pedido debe estar entregado" });
+
+    const driverId = deliveryPersonId || order.deliveryPersonId;
+    if (!driverId) return res.status(400).json({ error: "No hay repartidor asignado" });
+
+    // Agregar propina a la wallet del repartidor
+    const [driverWallet] = await db.select().from(wallets).where(eq(wallets.userId, driverId)).limit(1);
+    if (driverWallet) {
+      await db.update(wallets).set({
+        balance: driverWallet.balance + amount,
+        totalEarned: driverWallet.totalEarned + amount,
+      }).where(eq(wallets.userId, driverId));
+    }
+
+    await db.insert(transactions).values({
+      userId: driverId,
+      orderId: order.id,
+      type: "tip",
+      amount,
+      description: `Propina del cliente por pedido #${order.id.slice(-6)}`,
+      status: "completed",
+    });
+
+    res.json({ success: true, message: "Propina enviada" });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

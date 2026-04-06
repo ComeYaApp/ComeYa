@@ -180,11 +180,17 @@ export default function ProfileScreen() {
         const data = await response.json();
         if (data.success && data.user) {
           if (data.user.profileImage) {
-            const version = Date.now();
-            setProfileImageVersion(version);
-            const baseUrl = resolveProfileImageUrl(data.user.profileImage);
-            setProfileImage(`${baseUrl}?v=${version}`);
-            await updateUser({ profileImage: data.user.profileImage });
+            const img = data.user.profileImage;
+            // Si es base64, usarla directamente sin añadir ?v=
+            if (img.startsWith('data:image/')) {
+              setProfileImage(img);
+            } else {
+              const version = Date.now();
+              setProfileImageVersion(version);
+              const baseUrl = resolveProfileImageUrl(img);
+              setProfileImage(`${baseUrl}?v=${version}`);
+            }
+            await updateUser({ profileImage: img });
           }
         }
       } catch (error) {
@@ -199,9 +205,14 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (user?.profileImage) {
-      const version = profileImageVersion || Date.now();
-      const baseUrl = resolveProfileImageUrl(user.profileImage);
-      setProfileImage(`${baseUrl}?v=${version}`);
+      const img = user.profileImage;
+      if (img.startsWith('data:image/')) {
+        setProfileImage(img);
+      } else {
+        const version = profileImageVersion || Date.now();
+        const baseUrl = resolveProfileImageUrl(img);
+        setProfileImage(`${baseUrl}?v=${version}`);
+      }
     }
   }, [user?.profileImage]);
 
@@ -281,9 +292,17 @@ export default function ProfileScreen() {
       const data = await apiResponse.json();
 
       if (data.success && data.profileImage) {
-        const version = Date.now();
-        setProfileImageVersion(version);
-        const fullUrl = `${resolveProfileImageUrl(data.profileImage)}?v=${version}`;
+        const img = data.profileImage;
+        let fullUrl: string;
+        
+        if (img.startsWith('data:image/')) {
+          // Base64: usar directamente, sin ?v=
+          fullUrl = img;
+        } else {
+          const version = Date.now();
+          setProfileImageVersion(version);
+          fullUrl = `${resolveProfileImageUrl(img)}?v=${version}`;
+        }
         
         // Force image cache clear
         setProfileImage(null);
@@ -291,7 +310,7 @@ export default function ProfileScreen() {
           setProfileImage(fullUrl);
         }, 100);
         
-        await updateUser({ profileImage: data.profileImage });
+        await updateUser({ profileImage: img });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showToast("Imagen actualizada", "success");
       } else {

@@ -28,6 +28,7 @@ import { Order } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { mockOrders } from "@/data/mockData";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
 
 type OrderTrackingRouteProp = RouteProp<RootStackParamList, "OrderTracking">;
 type OrderTrackingNavigationProp = NativeStackNavigationProp<
@@ -57,6 +58,7 @@ export default function OrderTrackingScreen() {
   const route = useRoute<OrderTrackingRouteProp>();
   const navigation = useNavigation<OrderTrackingNavigationProp>();
   const { theme } = useTheme();
+  const { user } = useAuth();
 
   const { orderId } = route.params;
   const [order, setOrder] = useState<Order | null>(null);
@@ -574,7 +576,7 @@ export default function OrderTrackingScreen() {
           </View>
         </View>
 
-        {order.status === "delivered" && order.deliveryPersonId && !tipSent ? (
+        {order.status === "delivered" && order.deliveryPersonId && !tipSent && user?.role === "customer" ? (
           <View
             style={[
               styles.tipCard,
@@ -654,7 +656,7 @@ export default function OrderTrackingScreen() {
           </View>
         ) : null}
 
-        {order.status === "delivered" && !(order as any).confirmedByCustomer ? (
+        {order.status === "delivered" && !(order as any).confirmedByCustomer && user?.role === "customer" ? (
           <Pressable
             onPress={async () => {
               Alert.alert(
@@ -703,7 +705,7 @@ export default function OrderTrackingScreen() {
               Confirmar que recibí mi pedido
             </ThemedText>
           </Pressable>
-        ) : order.status === "delivered" && (order as any).confirmedByCustomer ? (
+        ) : order.status === "delivered" && (order as any).confirmedByCustomer && user?.role === "customer" ? (
           <View style={[styles.confirmButton, { backgroundColor: "#E8F5E9" }]}>
             <Feather name="check-circle" size={20} color="#4CAF50" />
             <ThemedText type="body" style={{ color: "#4CAF50", marginLeft: Spacing.sm, fontWeight: "600" }}>
@@ -735,10 +737,15 @@ export default function OrderTrackingScreen() {
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("ReportIssue", {
-                orderId: order.id,
-                orderNumber: order.id.slice(-6),
-              });
+              if (user?.role === "delivery_driver") {
+                // El repartidor va a soporte general, no al reporte de pedido de cliente
+                navigation.navigate("Support");
+              } else {
+                navigation.navigate("ReportIssue", {
+                  orderId: order.id,
+                  orderNumber: order.id.slice(-6),
+                });
+              }
             }}
             style={[styles.reportButton, { borderColor: theme.border }]}
           >

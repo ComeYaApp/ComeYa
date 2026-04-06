@@ -575,8 +575,9 @@ export default function DriverMyDeliveriesScreen() {
       
       <ConfirmModal
         visible={showConfirmModal}
-        title="Confirmar Entrega"
-        message="¿El pedido fue entregado?"
+        title="Marcar como entregado"
+        message="¿Ya entregaste el pedido al cliente? El cliente recibirá una notificación para confirmar la recepción y liberar tu pago."
+        confirmText="Sí, lo entregué"
         onConfirm={confirmDelivery}
         onCancel={cancelDelivery}
       />

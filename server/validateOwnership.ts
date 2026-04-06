@@ -140,10 +140,11 @@ export async function validateCustomerOrderOwnership(
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Allow: customer who owns it, driver assigned to it, business_owner (checked elsewhere)
-    if (order.userId !== userId && order.deliveryPersonId !== userId && role !== "business_owner") {
+    // Allow: customer who owns it, business_owner (checked elsewhere)
+    // El repartidor NO puede confirmar recepción — eso es exclusivo del cliente
+    if (order.userId !== userId && role !== "business_owner") {
       return res.status(403).json({ 
-        error: "You do not have permission to access this order" 
+        error: "Solo el cliente puede realizar esta acción" 
       });
     }
 
