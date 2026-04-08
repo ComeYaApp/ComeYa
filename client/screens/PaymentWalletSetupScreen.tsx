@@ -16,22 +16,10 @@ import { useToast } from "@/contexts/ToastContext";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
-const VENEZUELA_BANKS = [
-  { id: "banesco", name: "Banesco" },
-  { id: "bdv", name: "Banco de España" },
-  { id: "mercantil", name: "Mercantil" },
-  { id: "provincial", name: "BBVA Provincial" },
-  { id: "bicentenario", name: "Bicentenario" },
-  { id: "bnc", name: "BNC" },
-  { id: "exterior", name: "Banco Exterior" },
-  { id: "sofitasa", name: "Sofitasa" },
-];
-
 const METHODS = [
-  { id: "pago_movil", label: "Pago Móvil", icon: "smartphone" as const },
-  { id: "binance",    label: "Binance Pay", icon: "zap" as const },
-  { id: "zinli",      label: "Zinli",       icon: "credit-card" as const },
-  { id: "zelle",      label: "Zelle",       icon: "dollar-sign" as const },
+  { id: "bizum",        label: "Bizum",        icon: "smartphone" as const },
+  { id: "transferencia", label: "Transferencia", icon: "credit-card" as const },
+  { id: "tarjeta",      label: "Tarjeta",       icon: "credit-card" as const },
 ];
 
 interface Account {
@@ -62,14 +50,11 @@ export default function PaymentWalletSetupScreen() {
   const [activeMethod, setActiveMethod] = useState("pago_movil");
 
   // Form state
-  const [pagoMovilPhone, setPagoMovilPhone] = useState("");
-  const [pagoMovilBank, setPagoMovilBank] = useState("banesco");
-  const [pagoMovilCedula, setPagoMovilCedula] = useState("");
-  const [binanceId, setBinanceId] = useState("");
-  const [binanceEmail, setBinanceEmail] = useState("");
-  const [zinliEmail, setZinliEmail] = useState("");
-  const [zelleEmail, setZelleEmail] = useState("");
-  const [zellePhone, setZellePhone] = useState("");
+  const [bizumPhone, setBizumPhone] = useState("");
+  const [ibanHolder, setIbanHolder] = useState("");
+  const [ibanNumber, setIbanNumber] = useState("");
+  const [cardHolder, setCardHolder] = useState("");
+  const [cardLast4, setCardLast4] = useState("");
 
   const isCustomer = user?.role === "customer";
 
@@ -104,14 +89,11 @@ export default function PaymentWalletSetupScreen() {
   const prefillForm = (accs: Account[], method: string) => {
     const acc = accs.find(a => a.method === method);
     if (!acc) return;
-    setPagoMovilPhone(acc.pagoMovilPhone || "");
-    setPagoMovilBank(acc.pagoMovilBank || "banesco");
-    setPagoMovilCedula(acc.pagoMovilCedula || "");
-    setBinanceId(acc.binanceId || "");
-    setBinanceEmail(acc.binanceEmail || "");
-    setZinliEmail(acc.zinliEmail || "");
-    setZelleEmail(acc.zelleEmail || "");
-    setZellePhone(acc.zellePhone || "");
+    setBizumPhone(acc.pagoMovilPhone || "");
+    setIbanHolder(acc.zelleEmail || "");  // reutilizamos zelleEmail para titular
+    setIbanNumber(acc.binanceId || "");   // reutilizamos binanceId para IBAN
+    setCardHolder(acc.zinliEmail || "");  // reutilizamos zinliEmail para titular tarjeta
+    setCardLast4(acc.zellePhone || "");   // reutilizamos zellePhone para últimos 4
   };
 
   const handleMethodChange = (method: string) => {
@@ -133,14 +115,11 @@ export default function PaymentWalletSetupScreen() {
       await apiRequest("POST", "/api/payouts/accounts", {
         method: activeMethod,
         isDefault: true,
-        pagoMovilPhone: pagoMovilPhone || undefined,
-        pagoMovilBank: pagoMovilBank || undefined,
-        pagoMovilCedula: pagoMovilCedula || undefined,
-        binanceId: binanceId || undefined,
-        binanceEmail: binanceEmail || undefined,
-        zinliEmail: zinliEmail || undefined,
-        zelleEmail: zelleEmail || undefined,
-        zellePhone: zellePhone || undefined,
+        pagoMovilPhone: activeMethod === "bizum" ? bizumPhone : undefined,
+        binanceId: activeMethod === "transferencia" ? ibanNumber : undefined,
+        zelleEmail: activeMethod === "transferencia" ? ibanHolder : undefined,
+        zinliEmail: activeMethod === "tarjeta" ? cardHolder : undefined,
+        zellePhone: activeMethod === "tarjeta" ? cardLast4 : undefined,
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -218,109 +197,69 @@ export default function PaymentWalletSetupScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg, paddingBottom: insets.bottom + 100 }}>
         <View style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}>
 
-          {/* Pago Móvil */}
-          {activeMethod === "pago_movil" && (
+          {/* Bizum */}
+          {activeMethod === "bizum" && (
             <>
-              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>📱 Pago Móvil</ThemedText>
-              <ThemedText type="small" style={styles.label}>Teléfono</ThemedText>
+              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>📱 Bizum</ThemedText>
+              <ThemedText type="small" style={styles.label}>Número de teléfono</ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={pagoMovilPhone}
-                onChangeText={setPagoMovilPhone}
-                placeholder="04XX-XXX-XXXX"
+                value={bizumPhone}
+                onChangeText={setBizumPhone}
+                placeholder="+34 6XX XXX XXX"
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="phone-pad"
               />
-              <ThemedText type="small" style={styles.label}>Cédula</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={pagoMovilCedula}
-                onChangeText={setPagoMovilCedula}
-                placeholder="V-00000000"
-                placeholderTextColor={theme.textSecondary}
-              />
-              <ThemedText type="small" style={styles.label}>Banco</ThemedText>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
-                <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-                  {VENEZUELA_BANKS.map(b => (
-                    <Pressable
-                      key={b.id}
-                      onPress={() => { setPagoMovilBank(b.id); Haptics.selectionAsync(); }}
-                      style={[styles.bankChip, { backgroundColor: pagoMovilBank === b.id ? ComeYaColors.primary : theme.backgroundSecondary, borderColor: pagoMovilBank === b.id ? ComeYaColors.primary : theme.border }]}
-                    >
-                      <ThemedText type="small" style={{ color: pagoMovilBank === b.id ? "#FFF" : theme.text }}>{b.name}</ThemedText>
-                    </Pressable>
-                  ))}
-                </View>
-              </ScrollView>
             </>
           )}
 
-          {/* Binance */}
-          {activeMethod === "binance" && (
+          {/* Transferencia bancaria */}
+          {activeMethod === "transferencia" && (
             <>
-              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>⚡ Binance Pay</ThemedText>
-              <ThemedText type="small" style={styles.label}>Binance ID / Pay ID</ThemedText>
+              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>🏦 Transferencia bancaria</ThemedText>
+              <ThemedText type="small" style={styles.label}>Titular de la cuenta</ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={binanceId}
-                onChangeText={setBinanceId}
-                placeholder="123456789"
+                value={ibanHolder}
+                onChangeText={setIbanHolder}
+                placeholder="Nombre Apellido"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="words"
+              />
+              <ThemedText type="small" style={styles.label}>IBAN</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                value={ibanNumber}
+                onChangeText={setIbanNumber}
+                placeholder="ES00 0000 0000 0000 0000 0000"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="characters"
+              />
+            </>
+          )}
+
+          {/* Tarjeta */}
+          {activeMethod === "tarjeta" && (
+            <>
+              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>💳 Tarjeta</ThemedText>
+              <ThemedText type="small" style={styles.label}>Titular</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                value={cardHolder}
+                onChangeText={setCardHolder}
+                placeholder="Nombre en la tarjeta"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="words"
+              />
+              <ThemedText type="small" style={styles.label}>Últimos 4 dígitos</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                value={cardLast4}
+                onChangeText={setCardLast4}
+                placeholder="1234"
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="numeric"
-              />
-              <ThemedText type="small" style={styles.label}>Email de Binance (opcional)</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={binanceEmail}
-                onChangeText={setBinanceEmail}
-                placeholder="correo@ejemplo.com"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </>
-          )}
-
-          {/* Zinli */}
-          {activeMethod === "zinli" && (
-            <>
-              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>💳 Zinli</ThemedText>
-              <ThemedText type="small" style={styles.label}>Email de Zinli</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={zinliEmail}
-                onChangeText={setZinliEmail}
-                placeholder="correo@ejemplo.com"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </>
-          )}
-
-          {/* Zelle */}
-          {activeMethod === "zelle" && (
-            <>
-              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>💵 Zelle</ThemedText>
-              <ThemedText type="small" style={styles.label}>Email de Zelle</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={zelleEmail}
-                onChangeText={setZelleEmail}
-                placeholder="correo@ejemplo.com"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <ThemedText type="small" style={styles.label}>Teléfono de Zelle (opcional)</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={zellePhone}
-                onChangeText={setZellePhone}
-                placeholder="+1 (555) 000-0000"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="phone-pad"
+                maxLength={4}
               />
             </>
           )}
@@ -336,7 +275,10 @@ export default function PaymentWalletSetupScreen() {
             <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Cuentas guardadas</ThemedText>
             {accounts.map(acc => {
               const method = METHODS.find(m => m.id === acc.method);
-              const detail = acc.pagoMovilPhone || acc.binanceId || acc.zinliEmail || acc.zelleEmail || "—";
+              const detail = acc.method === "bizum" ? acc.pagoMovilPhone
+                : acc.method === "transferencia" ? acc.binanceId
+                : acc.method === "tarjeta" ? `**** ${acc.zellePhone}`
+                : "—";
               return (
                 <View key={acc.id} style={[styles.accountRow, { backgroundColor: theme.card, borderColor: theme.border }, Shadows.sm]}>
                   <Feather name={method?.icon || "credit-card"} size={20} color={ComeYaColors.primary} />

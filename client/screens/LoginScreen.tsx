@@ -102,14 +102,14 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
   const formatPhoneDisplay = (value: string) => {
     const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 4) return numbers;
-    if (numbers.length <= 7)
-      return `${numbers.slice(0, 4)} ${numbers.slice(4)}`;
-    return `${numbers.slice(0, 4)} ${numbers.slice(4, 7)} ${numbers.slice(7, 11)}`;
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6)
+      return `${numbers.slice(0, 3)} ${numbers.slice(3)}`;
+    return `${numbers.slice(0, 3)} ${numbers.slice(3, 6)} ${numbers.slice(6, 9)}`;
   };
 
   const handlePhoneChange = (text: string) => {
-    const numbers = text.replace(/\D/g, "").slice(0, 10);
+    const numbers = text.replace(/\D/g, "").slice(0, 9);
     setPhone(numbers);
     if (errors.phone) setErrors({});
   };
@@ -120,8 +120,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     if (loginMode === "sms") {
       if (!phone) {
         newErrors.phone = "El teléfono es requerido";
-      } else if (phone.length < 11) {
-        newErrors.phone = "Ingresa 11 dígitos";
+      } else if (phone.length < 9) {
+        newErrors.phone = "Ingresa 9 dígitos";
       }
     } else {
       if (!identifier) {
@@ -144,8 +144,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
     try {
       const digits = identifier.replace(/\D/g, "");
-      const normalizedPhone = digits.length === 11
-        ? `+58${digits}`
+      const normalizedPhone = digits.length === 9
+        ? `+34${digits}`
         : identifier.replace(/\s+/g, "");
       const result = await loginWithPassword(identifier, password);
 
@@ -169,7 +169,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
     try {
       const digits = phone.replace(/\D/g, "");
-      const normalizedPhone = digits.length === 11 ? `+58${digits}` : `+${digits}`;
+      const normalizedPhone = digits.length === 9 ? `+34${digits}` : `+${digits}`;
       const result = await requestPhoneLogin(normalizedPhone);
 
       if (result?.userNotFound) {
@@ -289,7 +289,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                       style={styles.inputBoxIcon}
                     />
                     <TextInput
-                      placeholder="correo@ejemplo.com o +58..."
+                      placeholder="correo@ejemplo.com o +34..."
                       value={identifier}
                       onChangeText={(text) => {
                         setIdentifier(text);
@@ -358,7 +358,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                 <View style={styles.phoneInputContainer}>
                   <View style={styles.countryCode}>
                     <ThemedText type="body" style={styles.countryCodeText}>
-                      +58
+                      🇪🇸 +34
                     </ThemedText>
                   </View>
                   <View style={styles.inputBox}>
@@ -369,7 +369,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                       style={styles.inputBoxIcon}
                     />
                     <TextInput
-                      placeholder="0414 123 4567"
+                      placeholder="612 345 678"
                       value={formatPhoneDisplay(phone)}
                       onChangeText={handlePhoneChange}
                       keyboardType="phone-pad"
@@ -377,7 +377,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                       placeholderTextColor="#999999"
                       style={styles.textInput}
                       selectionColor={ComeYaColors.primary}
-                      maxLength={13}
+                      maxLength={11}
                       testID="input-phone"
                     />
                   </View>

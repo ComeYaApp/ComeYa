@@ -95,14 +95,14 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
 
   const formatPhoneDisplay = (value: string) => {
     const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 4) return numbers;
-    if (numbers.length <= 7)
-      return `${numbers.slice(0, 4)} ${numbers.slice(4)}`;
-    return `${numbers.slice(0, 4)} ${numbers.slice(4, 7)} ${numbers.slice(7, 11)}`;
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6)
+      return `${numbers.slice(0, 3)} ${numbers.slice(3)}`;
+    return `${numbers.slice(0, 3)} ${numbers.slice(3, 6)} ${numbers.slice(6, 9)}`;
   };
 
   const handlePhoneChange = (text: string) => {
-    const numbers = text.replace(/\D/g, "").slice(0, 11);
+    const numbers = text.replace(/\D/g, "").slice(0, 9);
     setPhone(numbers);
     if (role === "business_owner" && !businessPhone) {
       setBusinessPhone(numbers);
@@ -140,8 +140,8 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
 
     if (!phone) {
       newErrors.phone = "El teléfono es requerido";
-    } else if (phone.length < 11) {
-      newErrors.phone = "Ingresa 11 dígitos";
+    } else if (phone.replace(/\D/g, "").length < 9) {
+      newErrors.phone = "Ingresa 9 dígitos";
     }
 
     if (role === "business_owner") {
@@ -167,7 +167,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const formattedPhone = phone.startsWith('+') ? phone : `+58${phone}`;
+      const formattedPhone = phone.startsWith('+') ? phone : `+34${phone.replace(/\D/g, '')}`;
       const result = await signup(
         name,
         role,
@@ -367,7 +367,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
               <View style={styles.phoneInputContainer}>
                 <View style={styles.countryCode}>
                   <ThemedText type="body" style={styles.countryCodeText}>
-                    +58
+                    🇪🇸 +34
                   </ThemedText>
                 </View>
                 <View
@@ -383,7 +383,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                     style={styles.inputBoxIcon}
                   />
                   <TextInput
-                    placeholder="0414 123 4567"
+                    placeholder="612 345 678"
                     value={formatPhoneDisplay(phone)}
                     onChangeText={handlePhoneChange}
                     keyboardType="phone-pad"
@@ -391,7 +391,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                     placeholderTextColor="#999999"
                     style={styles.textInput}
                     selectionColor={ComeYaColors.primary}
-                    maxLength={13}
+                    maxLength={11}
                   />
                 </View>
               </View>
@@ -431,7 +431,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                       style={styles.inputBoxIcon}
                     />
                     <TextInput
-                      placeholder="Ej: Taqueria El Centro"
+                      placeholder="Ej: Restaurante El Olivo"
                       value={businessName}
                       onChangeText={(text) => {
                         setBusinessName(text);
@@ -508,7 +508,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                       style={styles.inputBoxIcon}
                     />
                     <TextInput
-                      placeholder="Calle y numero"
+                      placeholder="Calle Mayor 12, Soria"
                       value={businessAddress}
                       onChangeText={(text) => {
                         setBusinessAddress(text);
@@ -540,14 +540,14 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                       style={styles.inputBoxIcon}
                     />
                     <TextInput
-                      placeholder="Ej: 317 123 4567"
+                      placeholder="Ej: 612 345 678"
                       value={formatPhoneDisplay(businessPhone)}
-                      onChangeText={(text) => setBusinessPhone(text.replace(/\D/g, "").slice(0, 11))}
+                      onChangeText={(text) => setBusinessPhone(text.replace(/\D/g, "").slice(0, 9))}
                       keyboardType="phone-pad"
                       placeholderTextColor="#999999"
                       style={styles.textInput}
                       selectionColor={ComeYaColors.primary}
-                      maxLength={13}
+                      maxLength={11}
                     />
                   </View>
                 </View>
@@ -618,7 +618,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
 
             {role === "delivery_driver" ? (
               <ThemedText type="caption" style={styles.roleInlineNote}>
-                Repartidor: INE, selfie, licencia, vehiculo, placas, CLABE y contacto de emergencia.
+                Repartidor: DNI, selfie, carnet de conducir, vehículo y contacto de emergencia.
               </ThemedText>
             ) : null}
 

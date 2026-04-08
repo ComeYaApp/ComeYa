@@ -186,7 +186,12 @@ export default function CheckoutScreen({ route }: any) {
       const finalItemSubstitutions = showItemSubstitutions ? itemSubstitutions : {};
       const subtotalCents = Math.round(subtotal * 100);
       const commissionCents = Math.round(subtotal * 0.15 * 100);
-      const totalAmount = Math.round(total * 100);
+      const deliveryFeeCents = Math.round(deliveryFee * 100);
+      const discountCents = appliedCoupon ? Math.round(couponDiscount * 100) : 0;
+      const tipCents = Math.round(tip * 100);
+      // El total que valida el servidor NO incluye propina
+      const orderTotal = subtotalCents + commissionCents + deliveryFeeCents - discountCents;
+      const totalAmount = orderTotal + tipCents;
 
       const orderResponse = await apiRequest("POST", "/api/orders", {
         businessId: cart.businessId,
@@ -195,10 +200,11 @@ export default function CheckoutScreen({ route }: any) {
         items: JSON.stringify(cart.items),
         status: "pending",
         subtotal: subtotalCents,
-        comeyaCommission: commissionCents,
-        deliveryFee: Math.round(deliveryFee * 100),
-        total: totalAmount,
-        tip: Math.round(tip * 100),
+        productosBase: subtotalCents,
+        nemyCommission: commissionCents,
+        deliveryFee: deliveryFeeCents,
+        total: orderTotal,
+        tip: tipCents,
         paymentMethod,
         deliveryAddressId: selectedAddress.id,
         deliveryAddress: `${selectedAddress.street}, ${selectedAddress.city}`,
@@ -207,7 +213,7 @@ export default function CheckoutScreen({ route }: any) {
         substitutionPreference: globalSubstitution,
         itemSubstitutionPreferences: Object.keys(finalItemSubstitutions).length > 0 ? JSON.stringify(finalItemSubstitutions) : null,
         couponCode: appliedCoupon ? couponCode.toUpperCase() : null,
-        couponDiscount: appliedCoupon ? Math.round(couponDiscount * 100) : null,
+        couponDiscount: discountCents || null,
       });
 
       const order = await orderResponse.json();
