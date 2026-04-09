@@ -15,24 +15,33 @@ export const users = mysqlTable("users", {
   id: varchar("id", { length: 255 })
     .primaryKey()
     .default(sql`(UUID())`),
-  email: text("email"), // Optional - can be null for phone-only auth
-  password: text("password"), // Optional - can be null for phone-only auth
+  email: text("email"),
+  password: text("password"),
   name: text("name").notNull(),
-  phone: text("phone").notNull(), // Required and unique for phone-only auth
+  phone: text("phone").notNull(),
   role: text("role").notNull().default("customer"),
   emailVerified: boolean("email_verified").notNull().default(false),
   phoneVerified: boolean("phone_verified").notNull().default(false),
-  biometricEnabled: boolean("biometric_enabled").notNull().default(false), // For biometric authentication
+  biometricEnabled: boolean("biometric_enabled").notNull().default(false),
   verificationCode: text("verification_code"),
   verificationExpires: timestamp("verification_expires"),
+  // Datos personales España
+  dni: varchar("dni", { length: 20 }), // DNI/NIE
+  address: text("address"), // Dirección completa
+  // Verificación de identidad
+  idDocumentUrl: text("id_document_url"), // Foto DNI/NIE
+  autonomoDocumentUrl: text("autonomo_document_url"), // Cert. autónomo/empresa
+  verificationStatus: varchar("verification_status", { length: 20 }).default("pending"), // pending, verified, rejected
+  verificationNotes: text("verification_notes"),
+  // Legacy Venezuela (mantener para no romper)
   pagoMovilPhone: text("pago_movil_phone"),
   pagoMovilBank: text("pago_movil_bank"),
   pagoMovilCedula: text("pago_movil_cedula"),
   bankAccount: text("bank_account"),
-  isActive: boolean("is_active").notNull().default(true), // Para desactivar cuentas
-  isOnline: boolean("is_online").notNull().default(false), // Para repartidores online/offline
-  lastActiveAt: timestamp("last_active_at"), // Última actividad
-  profileImage: text("profile_image"), // URL de imagen de perfil
+  isActive: boolean("is_active").notNull().default(true),
+  isOnline: boolean("is_online").notNull().default(false),
+  lastActiveAt: timestamp("last_active_at"),
+  profileImage: text("profile_image"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -250,9 +259,9 @@ export const payments = mysqlTable("payments", {
   businessId: varchar("business_id", { length: 255 }).notNull(),
   driverId: varchar("driver_id", { length: 255 }),
   amount: int("amount").notNull(), // en centavos
-  currency: text("currency").notNull().default("VES"),
+  currency: text("currency").notNull().default("EUR"),
   status: text("status").notNull().default("pending"),
-  paymentMethod: text("payment_method").notNull().default("pago_movil"),
+  paymentMethod: text("payment_method").notNull().default("stripe_bizum"),
   pagoMovilReference: text("pago_movil_reference"),
   processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),

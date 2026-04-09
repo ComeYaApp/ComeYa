@@ -791,7 +791,7 @@ export default function AdminMenuScreen() {
                         { key: 'customer', label: 'Cliente', color: '#6B7280' },
                         { key: 'business', label: 'Negocio', color: '#3B82F6' },
                         { key: 'driver', label: 'Repartidor', color: '#10B981' },
-                        { key: 'admin', label: 'Administrador', color: '#9333EA' }
+                        { key: 'admin', label: 'ComeYa', color: '#9333EA' }
                       ].map((role) => (
                         <Pressable
                           key={role.key}
@@ -881,7 +881,7 @@ export default function AdminMenuScreen() {
                         👤 {selectedOrder.customerName}
                       </ThemedText>
                       <ThemedText style={{ color: theme.textSecondary }}>
-                        💰 ${(selectedOrder.total / 100).toFixed(2)}
+                        💰 €{(selectedOrder.total / 100).toFixed(2)}
                       </ThemedText>
                     </View>
 
@@ -1361,7 +1361,7 @@ export default function AdminMenuScreen() {
                           )}
                         </View>
                         <ThemedText style={{ color: ComeYaColors.primary, fontWeight: 'bold' }}>
-                          ${(p.price / 100).toFixed(2)}
+                          €{(p.price / 100).toFixed(2)}
                         </ThemedText>
                       </View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 }}>
@@ -1532,7 +1532,7 @@ export default function AdminMenuScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <ThemedText type="h1">Panel Admin</ThemedText>
+        <ThemedText type="h1">Panel ComeYa</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
           Bienvenido, {user?.name}
         </ThemedText>
@@ -1605,7 +1605,7 @@ export default function AdminMenuScreen() {
                   👤 {selectedOrder.customerName}
                 </ThemedText>
                 <ThemedText style={{ marginBottom: 15, color: theme.textSecondary }}>
-                  💰 ${(selectedOrder.total / 100).toFixed(2)} | {selectedOrder.status}
+                  💰 €{(selectedOrder.total / 100).toFixed(2)} | {selectedOrder.status}
                 </ThemedText>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   <Pressable 

@@ -376,7 +376,7 @@ export default function AdminMenuScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <ThemedText type="h1">🔧 Panel Admin - EDITADO</ThemedText>
+        <ThemedText type="h1">🔧 Panel ComeYa</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
           Bienvenido, {user?.name} - ARCHIVO CORRECTO
         </ThemedText>
@@ -474,7 +474,7 @@ export default function AdminMenuScreen() {
                             type="small"
                             style={{ color: userRoleEdit === role ? "#FFFFFF" : ComeYaColors.primary }}
                           >
-                            {role === "customer" ? "Cliente" : role === "business" ? "Negocio" : role === "driver" ? "Repartidor" : "Admin"}
+                            {role === "customer" ? "Cliente" : role === "business" ? "Negocio" : role === "driver" ? "Repartidor" : "ComeYa"}
                           </ThemedText>
                         </Pressable>
                       ))}
@@ -518,7 +518,7 @@ export default function AdminMenuScreen() {
               <ThemedText type="h3">#{selectedOrder.id.slice(0, 8)}</ThemedText>
               <ThemedText style={{ marginTop: 8 }}>Negocio: {selectedOrder.businessName}</ThemedText>
               <ThemedText>Cliente: {selectedOrder.customerName}</ThemedText>
-              <ThemedText>Total: ${(selectedOrder.total / 100).toFixed(2)}</ThemedText>
+              <ThemedText>Total: €{(selectedOrder.total / 100).toFixed(2)}</ThemedText>
               <ThemedText>Estado: {selectedOrder.status}</ThemedText>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
                 <Pressable 

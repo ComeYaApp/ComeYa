@@ -179,8 +179,8 @@ const postAddress = async (req: any, res: any) => {
       userId,
       label,
       street,
-      city: city || "San Cristóbal",
-      state: state || "Táchira",
+      city: city || "Soria",
+      state: state || "Castilla y León",
       zipCode: zipCode || null,
       latitude: latitude ? String(latitude) : null,
       longitude: longitude ? String(longitude) : null,
@@ -276,6 +276,39 @@ router.get("/stats", authenticateToken, requireRole("admin"), async (req, res) =
     });
   } catch (error: any) {
     console.error("Get user stats error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /:userId/verification-documents — guardar URLs de documentos de identidad
+router.post("/:id/verification-documents", authenticateToken, async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const userId = req.params.id;
+
+    const { idDocumentUrl, autonomoDocumentUrl } = req.body;
+    const updates: any = { verificationStatus: "pending" };
+    if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
+    if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
+
+    await db.update(users).set(updates).where(eq(users.id, userId));
+    res.json({ success: true, message: "Documentos recibidos. Tu cuenta está en revisión." });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/users/:id/verification-status
+router.get("/:id/verification-status", authenticateToken, async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const [user] = await db.select({ verificationStatus: users.verificationStatus, verificationNotes: users.verificationNotes })
+      .from(users).where(eq(users.id, req.params.id)).limit(1);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    res.json({ success: true, ...user });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

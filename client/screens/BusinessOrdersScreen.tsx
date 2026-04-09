@@ -257,7 +257,7 @@ export default function BusinessOrdersScreen() {
                 {orderItem.quantity}x {orderItem.name || orderItem.product?.name || "Producto"}
               </ThemedText>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                ${((orderItem.price || orderItem.product?.price || 0) / 100).toFixed(2)}
+                €{((orderItem.price || orderItem.product?.price || 0) / 100).toFixed(2)}
               </ThemedText>
             </View>
           ))}
@@ -266,7 +266,7 @@ export default function BusinessOrdersScreen() {
         <View style={styles.orderFooter}>
           <View>
             <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-              ${(item.subtotal / 100).toFixed(2)}
+              €{(item.subtotal / 100).toFixed(2)}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {getPaymentLabel(item.paymentMethod)}
@@ -274,7 +274,7 @@ export default function BusinessOrdersScreen() {
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <ThemedText type="small" style={{ color: ComeYaColors.success, fontWeight: "600" }}>
-              Recibes: ${(item.subtotal / 100).toFixed(2)}
+              Recibes: €{(item.subtotal / 100).toFixed(2)}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {item.status === "delivered" ? "✅ Liquidado" : "⏳ Pendiente"}

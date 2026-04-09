@@ -314,7 +314,7 @@ export default function DeliveryEarningsScreen() {
                 type="h1"
                 style={{ color: "#FFFFFF", fontSize: 42, marginVertical: Spacing.sm }}
               >
-                ${wallet.cashOwed > 0 ? wallet.cashOwed.toFixed(2) : wallet.canWithdraw.toFixed(2)}
+                €{wallet.cashOwed > 0 ? wallet.cashOwed.toFixed(2) : wallet.canWithdraw.toFixed(2)}
               </ThemedText>
               
               {wallet.cashOwed > 0 ? (
@@ -329,20 +329,20 @@ export default function DeliveryEarningsScreen() {
               <View style={styles.balanceBreakdown}>
                 <View style={styles.breakdownRow}>
                   <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>📱 Balance digital (tarjeta):</ThemedText>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>${wallet.balance.toFixed(2)}</ThemedText>
+                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>€{wallet.balance.toFixed(2)}</ThemedText>
                 </View>
                 <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.3)", paddingTop: 8, marginTop: 8 }]}>
                   <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>💵 Efectivo cobrado (en tu bolsillo):</ThemedText>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>${(transactions.filter(t => t.type === 'delivery_income').reduce((sum, t) => sum + t.amount, 0) / 100).toFixed(2)}</ThemedText>
+                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>€{(transactions.filter(t => t.type === 'delivery_income').reduce((sum, t) => sum + t.amount, 0) / 100).toFixed(2)}</ThemedText>
                 </View>
                 <View style={styles.breakdownRow}>
                   <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>🏦 Debes depositar a ComeYa:</ThemedText>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>-${wallet.cashOwed.toFixed(2)}</ThemedText>
+                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>-€{wallet.cashOwed.toFixed(2)}</ThemedText>
                 </View>
                 {wallet.canWithdraw > 0 ? (
                   <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.3)", paddingTop: 8, marginTop: 8 }]}>
                     <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.7)" }}>Disponible para retirar:</ThemedText>
-                    <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>${wallet.canWithdraw.toFixed(2)}</ThemedText>
+                    <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>€{wallet.canWithdraw.toFixed(2)}</ThemedText>
                   </View>
                 ) : null}
               </View>
@@ -378,7 +378,7 @@ export default function DeliveryEarningsScreen() {
                     Total ganado histórico
                   </ThemedText>
                   <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-                    ${wallet.totalEarned.toFixed(2)}
+                    €{wallet.totalEarned.toFixed(2)}
                   </ThemedText>
                 </View>
                 <View style={[styles.iconCircle, { backgroundColor: ComeYaColors.primary + "20" }]}>
@@ -397,7 +397,7 @@ export default function DeliveryEarningsScreen() {
                 <View style={{ flex: 1, marginLeft: Spacing.md }}>
                   <ThemedText type="body" style={{ fontWeight: "600" }}>¿Por qué debo depositar?</ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                    Cobraste efectivo al cliente. Los ${wallet.cashOwed.toFixed(2)} son la comisión de ComeYa (15% de productos) que debes entregar. Hasta que deposites, tus retiros quedan retenidos.
+                    Cobraste efectivo al cliente. Los €{wallet.cashOwed.toFixed(2)} son la comisión de ComeYa (15% de productos) que debes entregar. Hasta que deposites, tus retiros quedan retenidos.
                   </ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
                     Deposita antes del viernes y sube tu comprobante: al aprobarlo liberamos tu saldo digital y desaparece esta deuda.
@@ -429,7 +429,7 @@ export default function DeliveryEarningsScreen() {
                       fontWeight: "600",
                     }}
                   >
-                    {tx.amount < 0 ? "-" : "+"}${(Math.abs(tx.amount) / 100).toFixed(2)}
+                    {tx.amount < 0 ? "-" : "+"}€{(Math.abs(tx.amount) / 100).toFixed(2)}
                   </ThemedText>
                 </Animated.View>
               ))
@@ -465,7 +465,7 @@ export default function DeliveryEarningsScreen() {
                   marginVertical: Spacing.sm,
                 }}
               >
-                ${getEarningsForPeriod().toFixed(2)}
+                €{getEarningsForPeriod().toFixed(2)}
               </ThemedText>
               <View style={styles.tipsRow}>
                 <Feather name="gift" size={16} color="rgba(255,255,255,0.8)" />
@@ -473,7 +473,7 @@ export default function DeliveryEarningsScreen() {
                   type="caption"
                   style={{ color: "rgba(255,255,255,0.8)", marginLeft: 4 }}
                 >
-                  +${earnings.tips.toFixed(2)} en propinas
+                  +€{earnings.tips.toFixed(2)} en propinas
                 </ThemedText>
               </View>
 
@@ -568,7 +568,7 @@ export default function DeliveryEarningsScreen() {
             </View>
 
             <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-              Disponible para retirar: ${wallet.canWithdraw.toFixed(2)}
+              Disponible para retirar: €{wallet.canWithdraw.toFixed(2)}
             </ThemedText>
 
             <View style={[styles.inputContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
@@ -616,7 +616,7 @@ export default function DeliveryEarningsScreen() {
             </View>
 
             <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
-              Deposita ${wallet.cashOwed.toFixed(2)} a la siguiente cuenta:
+              Deposita €{wallet.cashOwed.toFixed(2)} a la siguiente cuenta:
             </ThemedText>
 
             {/* Datos bancarios removidos - usar sección wallet */}

@@ -155,7 +155,7 @@ export default function AdminMenuScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <ThemedText type="h1">Panel Admin</ThemedText>
+        <ThemedText type="h1">Panel ComeYa</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
           Bienvenido, {user?.name}
         </ThemedText>

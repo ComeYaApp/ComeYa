@@ -78,7 +78,7 @@ export default function DeliveryConfigScreen() {
 
       <View style={styles.form}>
         <View style={styles.field}>
-          <Text style={[styles.label, { color: theme.text }]}>Tarifa Base (MXN)</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Tarifa Base (€)</Text>
           <TextInput
             style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
             value={config.baseFee}
@@ -91,7 +91,7 @@ export default function DeliveryConfigScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: theme.text }]}>Costo por Kilómetro (MXN)</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Costo por Kilómetro (€)</Text>
           <TextInput
             style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
             value={config.perKm}
@@ -104,7 +104,7 @@ export default function DeliveryConfigScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: theme.text }]}>Tarifa Mínima (MXN)</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Tarifa Mínima (€)</Text>
           <TextInput
             style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
             value={config.minFee}
@@ -117,7 +117,7 @@ export default function DeliveryConfigScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: theme.text }]}>Tarifa Máxima (MXN)</Text>
+          <Text style={[styles.label, { color: theme.text }]}>Tarifa Máxima (€)</Text>
           <TextInput
             style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
             value={config.maxFee}
@@ -131,10 +131,10 @@ export default function DeliveryConfigScreen() {
 
         <View style={[styles.preview, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.previewTitle, { color: ComeYaColors.primary }]}>Vista Previa de Tarifas:</Text>
-          <Text style={[styles.previewItem, { color: theme.text }]}>• 1 km = ${(parseFloat(config.baseFee) + parseFloat(config.perKm) * 1).toFixed(2)} MXN</Text>
-          <Text style={[styles.previewItem, { color: theme.text }]}>• 2 km = ${(parseFloat(config.baseFee) + parseFloat(config.perKm) * 2).toFixed(2)} MXN</Text>
-          <Text style={[styles.previewItem, { color: theme.text }]}>• 3 km = ${Math.min(parseFloat(config.baseFee) + parseFloat(config.perKm) * 3, parseFloat(config.maxFee)).toFixed(2)} MXN</Text>
-          <Text style={[styles.previewItem, { color: theme.text }]}>• 5+ km = ${config.maxFee} MXN (máximo)</Text>
+          <Text style={[styles.previewItem, { color: theme.text }]}>• 1 km = €{(parseFloat(config.baseFee) + parseFloat(config.perKm) * 1).toFixed(2)}</Text>
+          <Text style={[styles.previewItem, { color: theme.text }]}>• 2 km = €{(parseFloat(config.baseFee) + parseFloat(config.perKm) * 2).toFixed(2)}</Text>
+          <Text style={[styles.previewItem, { color: theme.text }]}>• 3 km = €{Math.min(parseFloat(config.baseFee) + parseFloat(config.perKm) * 3, parseFloat(config.maxFee)).toFixed(2)}</Text>
+          <Text style={[styles.previewItem, { color: theme.text }]}>• 5+ km = €{config.maxFee} (máximo)</Text>
         </View>
 
         <TouchableOpacity

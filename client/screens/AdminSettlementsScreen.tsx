@@ -76,7 +76,7 @@ export default function AdminSettlementsScreen() {
             Monto a liquidar:
           </ThemedText>
           <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
-            ${(item.amount_owed / 100).toFixed(2)}
+            €{(item.amount_owed / 100).toFixed(2)}
           </ThemedText>
         </View>
 
@@ -99,7 +99,7 @@ export default function AdminSettlementsScreen() {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 Alert.alert(
                   "Aprobar liquidación",
-                  `¿Confirmar que ${item.driver_name} depositó $${(item.amount_owed / 100).toFixed(2)}?`,
+                  `¿Confirmar que ${item.driver_name} depositó €${(item.amount_owed / 100).toFixed(2)}?`,
                   [
                     { text: "Cancelar", style: "cancel" },
                     { text: "Aprobar", onPress: () => approveMutation.mutate(item.id) },

@@ -63,7 +63,7 @@ export default function AdminScreenMobile() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <ThemedText type="h1">Panel Admin</ThemedText>
+        <ThemedText type="h1">Panel ComeYa</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
           Bienvenido, {user?.name}
         </ThemedText>
@@ -106,7 +106,7 @@ export default function AdminScreenMobile() {
             <View style={[styles.statCard, { backgroundColor: theme.card }, Shadows.sm]}>
               <Feather name="dollar-sign" size={24} color={ComeYaColors.success} />
               <ThemedText type="h2" style={{ marginTop: Spacing.sm }}>
-                ${stats.totalRevenue.toFixed(0)}
+                €{stats.totalRevenue.toFixed(0)}
               </ThemedText>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
                 Ingresos

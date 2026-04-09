@@ -173,7 +173,7 @@ export default function DeliveryConfirmationScreen({
               Total Pagado
             </Text>
             <Text style={[styles.orderValue, { color: colors.primary }]}>
-              {orderDetails.total.toFixed(2)} Bs
+              €{orderDetails.total.toFixed(2)}
             </Text>
           </View>
 

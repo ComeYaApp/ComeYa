@@ -516,7 +516,7 @@ export default function MapViewScreen({ navigation }: any) {
                     </Text>
                   </View>
                   <Text style={[styles.orderTotal, { color: order.color }]}>
-                    ${(order.total / 100).toFixed(0)}
+                    €{(order.total / 100).toFixed(0)}
                   </Text>
                 </View>
 

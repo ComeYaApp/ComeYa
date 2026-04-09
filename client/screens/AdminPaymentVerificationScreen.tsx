@@ -18,7 +18,7 @@ import { useTheme } from '../hooks/useTheme';
 import { apiRequest } from '../lib/query-client';
 
 export default function AdminPaymentVerificationScreen() {
-  const { colors } = useTheme();
+  const { theme: colors } = useTheme();
   const [proofs, setProofs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -187,7 +187,7 @@ export default function AdminPaymentVerificationScreen() {
                 </View>
                 <View style={styles.proofAmount}>
                   <Text style={[styles.amountValue, { color: colors.primary }]}>
-                    {(proof.amount / 100).toFixed(2)} Bs
+                    {(proof.amount / 100).toFixed(2)} €
                   </Text>
                 </View>
               </View>
@@ -270,7 +270,7 @@ export default function AdminPaymentVerificationScreen() {
                       Monto
                     </Text>
                     <Text style={[styles.detailValue, { color: colors.primary }]}>
-                      {(selectedProof.amount / 100).toFixed(2)} Bs
+                      {(selectedProof.amount / 100).toFixed(2)} €
                     </Text>
                   </View>
 

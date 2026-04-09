@@ -230,7 +230,7 @@ export default function BusinessProductsScreen() {
           {item.description}
         </ThemedText>
         <ThemedText type="h4" style={{ color: ComeYaColors.primary, marginTop: Spacing.xs }}>
-          ${(item.price / 100).toFixed(2)}
+          €{(item.price / 100).toFixed(2)}
         </ThemedText>
       </Pressable>
       <View style={styles.productActions}>

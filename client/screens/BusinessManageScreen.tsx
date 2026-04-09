@@ -67,7 +67,7 @@ function ProductRow({
             {product.name}
           </ThemedText>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            ${(product.price / 100).toFixed(2)}
+            €{(product.price / 100).toFixed(2)}
           </ThemedText>
         </View>
         <View style={styles.availabilityToggle}>

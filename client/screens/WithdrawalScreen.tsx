@@ -394,14 +394,14 @@ export default function WithdrawalScreen() {
       {/* Balance Card con saldo disponible y retenido */}
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Saldo disponible para retiro</Text>
-        <Text style={styles.balanceAmount}>${availableBalance.toFixed(2)} MXN</Text>
+        <Text style={styles.balanceAmount}>€{availableBalance.toFixed(2)}</Text>
         <View style={styles.retainRow}>
           <Ionicons name="lock-closed-outline" size={16} color="#F59E0B" style={{marginRight: 6}} />
-          <Text style={styles.cashOwed}>Saldo retenido (deuda de efectivo): ${retainedCash.toFixed(2)}</Text>
+          <Text style={styles.cashOwed}>Saldo retenido (deuda de efectivo): €{retainedCash.toFixed(2)}</Text>
         </View>
         <View style={{marginTop: 10}}>
           <Text style={{color: '#fff', fontSize: 12}}>
-            Ganado: ${(wallet?.totalEarned ? wallet.totalEarned / 100 : 0).toFixed(2)} | Retirado: ${(wallet?.totalWithdrawn ? wallet.totalWithdrawn / 100 : 0).toFixed(2)} | Pendiente: ${(wallet?.pendingBalance ? wallet.pendingBalance / 100 : 0).toFixed(2)}
+            Ganado: €{(wallet?.totalEarned ? wallet.totalEarned / 100 : 0).toFixed(2)} | Retirado: €{(wallet?.totalWithdrawn ? wallet.totalWithdrawn / 100 : 0).toFixed(2)} | Pendiente: €{(wallet?.pendingBalance ? wallet.pendingBalance / 100 : 0).toFixed(2)}
           </Text>
         </View>
       </View>
@@ -413,7 +413,7 @@ export default function WithdrawalScreen() {
           <View style={{flex: 1}}>
             <Text style={{color: '#92400E', fontWeight: 'bold'}}>Tienes deuda de efectivo pendiente</Text>
             <Text style={{color: '#92400E', fontSize: 13}}>
-              Entrega ${retainedCash.toFixed(2)} al negocio para habilitar retiros. Mientras haya deuda, no podrás retirar.
+              Entrega €{retainedCash.toFixed(2)} al negocio para habilitar retiros. Mientras haya deuda, no podrás retirar.
             </Text>
           </View>
         </View>
@@ -432,7 +432,7 @@ export default function WithdrawalScreen() {
           onChangeText={setAmount}
         />
         <Text style={styles.hint}>
-          Máximo: ${availableBalance.toFixed(2)} MXN
+          Máximo: €{availableBalance.toFixed(2)}
         </Text>
 
         <Text style={styles.label}>Método de Retiro</Text>
@@ -566,7 +566,7 @@ export default function WithdrawalScreen() {
             <View key={tx.id} style={styles.historyItem}>
               <View style={styles.historyLeft}>
                 <Text style={styles.historyAmount}>
-                  {tx.amount > 0 ? '+' : ''}${(tx.amount / 100).toFixed(2)} MXN
+                  {tx.amount > 0 ? '+' : ''}€{(tx.amount / 100).toFixed(2)}
                 </Text>
                 <Text style={styles.historyMethod}>
                   {tx.type === 'income' ? 'Ingreso' : 

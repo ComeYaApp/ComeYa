@@ -132,10 +132,10 @@ function DeliveryOrderCard({
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            Total: ${(order.total / 100).toFixed(2)}
+            Total: €{(order.total / 100).toFixed(2)}
           </ThemedText>
           <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-            Ganas: ${((order.deliveryFee || 0) / 100).toFixed(2)}
+            Ganas: €{((order.deliveryFee || 0) / 100).toFixed(2)}
           </ThemedText>
         </View>
       </View>
@@ -256,7 +256,7 @@ function DeliveryOrderCard({
           >
             {order.paymentMethod === "card"
               ? "Pagado con tarjeta"
-              : `Cobrar $${(order.total / 100).toFixed(2)} en efectivo`}
+              : `Cobrar €${(order.total / 100).toFixed(2)} en efectivo`}
           </ThemedText>
         </View>
       </View>
@@ -632,7 +632,7 @@ export default function DeliveryDashboardScreen() {
           onPress={() => navigation.navigate("DeliveryEarnings")}
         >
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            ${(todayEarnings / 100).toFixed(0)}
+            €{(todayEarnings / 100).toFixed(0)}
           </ThemedText>
           <ThemedText type="small" style={{ color: ComeYaColors.primary }}>
             Ganado hoy
@@ -751,7 +751,7 @@ export default function DeliveryDashboardScreen() {
                 <View style={styles.availableHeader}>
                   <ThemedText type="h4">{order.businessName}</ThemedText>
                   <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-                    ${(order.total / 100).toFixed(2)}
+                    €{(order.total / 100).toFixed(2)}
                   </ThemedText>
                 </View>
                 <View style={styles.availableInfo}>
@@ -836,7 +836,7 @@ export default function DeliveryDashboardScreen() {
                   {order.businessName}
                 </ThemedText>
                 <ThemedText type="body" style={{ color: "#4CAF50" }}>
-                  ${(order.total / 100).toFixed(2)}
+                  €{(order.total / 100).toFixed(2)}
                 </ThemedText>
               </View>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>

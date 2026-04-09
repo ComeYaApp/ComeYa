@@ -122,20 +122,20 @@ export default function CashSettlementScreen() {
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Subtotal productos
             </ThemedText>
-            <ThemedText type="body">${(item.subtotal / 100).toFixed(2)}</ThemedText>
+            <ThemedText type="body">€{(item.subtotal / 100).toFixed(2)}</ThemedText>
           </View>
           <View>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Comisión plataforma (15%)
             </ThemedText>
-            <ThemedText type="body">${(platformFee / 100).toFixed(2)}</ThemedText>
+            <ThemedText type="body">€{(platformFee / 100).toFixed(2)}</ThemedText>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Total a recibir
             </ThemedText>
             <ThemedText type="h4" style={{ color: ComeYaColors.success }}>
-              ${(totalToReceive / 100).toFixed(2)}
+              €{(totalToReceive / 100).toFixed(2)}
             </ThemedText>
           </View>
         </View>
@@ -168,7 +168,7 @@ export default function CashSettlementScreen() {
             Total pendiente de recibir
           </ThemedText>
           <ThemedText type="h1" style={{ color: ComeYaColors.primary }}>
-            ${(total / 100).toFixed(2)}
+            €{(total / 100).toFixed(2)}
           </ThemedText>
         </View>
         <View style={[styles.countBadge, { backgroundColor: ComeYaColors.warning + "20" }]}>

@@ -569,7 +569,7 @@ export default function AdminScreen() {
       case "delivery":
         return "Repartidor";
       case "admin":
-        return "Admin";
+        return "ComeYa";
       default:
         return role;
     }
@@ -605,7 +605,7 @@ export default function AdminScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <ThemedText type="h1">Panel Admin</ThemedText>
+        <ThemedText type="h1">Panel ComeYa</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
           Bienvenido, {user?.name}
         </ThemedText>
@@ -879,7 +879,7 @@ export default function AdminScreen() {
                           type="h4"
                           style={{ color: ComeYaColors.primary }}
                         >
-                          ${(p.price / 100).toFixed(2)}
+                          €{(p.price / 100).toFixed(2)}
                         </ThemedText>
                       </View>
                       <View style={styles.listItemFooter}>
@@ -1780,7 +1780,7 @@ export default function AdminScreen() {
                           return items.map((item: any, index: number) => (
                             <View key={index} style={[styles.detailRow, { borderBottomWidth: index < items.length - 1 ? 1 : 0, borderBottomColor: theme.border }]}>
                               <ThemedText type="body" style={{ flex: 1 }}>{item.quantity}x {item.name}</ThemedText>
-                              <ThemedText type="body">${((item.price * item.quantity) / 100).toFixed(2)}</ThemedText>
+                              <ThemedText type="body">€{((item.price * item.quantity) / 100).toFixed(2)}</ThemedText>
                             </View>
                           ));
                         } catch {
@@ -1793,16 +1793,16 @@ export default function AdminScreen() {
                   <View style={{ marginTop: Spacing.lg }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.xs }}>
                       <ThemedText type="body" style={{ color: theme.textSecondary }}>Subtotal</ThemedText>
-                      <ThemedText type="body">${(selectedOrder.subtotal / 100).toFixed(2)}</ThemedText>
+                      <ThemedText type="body">€{(selectedOrder.subtotal / 100).toFixed(2)}</ThemedText>
                     </View>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.xs }}>
                       <ThemedText type="body" style={{ color: theme.textSecondary }}>Envío</ThemedText>
-                      <ThemedText type="body">${(selectedOrder.deliveryFee / 100).toFixed(2)}</ThemedText>
+                      <ThemedText type="body">€{(selectedOrder.deliveryFee / 100).toFixed(2)}</ThemedText>
                     </View>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: theme.border }}>
                       <ThemedText type="h4">Total</ThemedText>
                       <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-                        ${(selectedOrder.total / 100).toFixed(2)}
+                        €{(selectedOrder.total / 100).toFixed(2)}
                       </ThemedText>
                     </View>
                     <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -1820,19 +1820,19 @@ export default function AdminScreen() {
                         {selectedOrder.platformFee ? (
                           <View style={styles.detailRow}>
                             <ThemedText type="body" style={{ color: theme.textSecondary }}>Plataforma (15% productos)</ThemedText>
-                            <ThemedText type="body">${(selectedOrder.platformFee / 100).toFixed(2)}</ThemedText>
+                            <ThemedText type="body">€{(selectedOrder.platformFee / 100).toFixed(2)}</ThemedText>
                           </View>
                         ) : null}
                         {selectedOrder.businessEarnings ? (
                           <View style={styles.detailRow}>
                             <ThemedText type="body" style={{ color: theme.textSecondary }}>Negocio (100% productos)</ThemedText>
-                            <ThemedText type="body">${(selectedOrder.businessEarnings / 100).toFixed(2)}</ThemedText>
+                            <ThemedText type="body">€{(selectedOrder.businessEarnings / 100).toFixed(2)}</ThemedText>
                           </View>
                         ) : null}
                         {selectedOrder.deliveryEarnings ? (
                           <View style={styles.detailRow}>
                             <ThemedText type="body" style={{ color: theme.textSecondary }}>Repartidor (100% delivery)</ThemedText>
-                            <ThemedText type="body">${(selectedOrder.deliveryEarnings / 100).toFixed(2)}</ThemedText>
+                            <ThemedText type="body">€{(selectedOrder.deliveryEarnings / 100).toFixed(2)}</ThemedText>
                           </View>
                         ) : null}
                       </View>

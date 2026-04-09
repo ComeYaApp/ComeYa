@@ -184,7 +184,7 @@ export default function CartScreen() {
           <ThemedText type="h4">{cart.businessName}</ThemedText>
           {!canProceed ? (
             <Badge
-              text={`Mín. $${minimumOrder} (faltan $${(minimumOrder - subtotal).toFixed(0)})`}
+              text={`Mín. €${minimumOrder} (faltan €${(minimumOrder - subtotal).toFixed(0)})`}
               variant="warning"
             />
           ) : null}
@@ -237,7 +237,7 @@ export default function CartScreen() {
                     type="h4"
                     style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}
                   >
-                    ${itemTotal.toFixed(2)}
+                    €{itemTotal.toFixed(2)}
                   </ThemedText>
                 </View>
                 <View style={styles.itemActions}>
@@ -303,24 +303,24 @@ export default function CartScreen() {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Productos
           </ThemedText>
-          <ThemedText type="body">${productosBase.toFixed(2)}</ThemedText>
+          <ThemedText type="body">€{productosBase.toFixed(2)}</ThemedText>
         </View>
         <View style={styles.summaryRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Comision ComeYa (15%)
           </ThemedText>
-          <ThemedText type="body">${nemyCommission.toFixed(2)}</ThemedText>
+          <ThemedText type="body">€{nemyCommission.toFixed(2)}</ThemedText>
         </View>
         <View style={styles.summaryRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Envío
           </ThemedText>
-          <ThemedText type="body">${deliveryFee.toFixed(2)}</ThemedText>
+          <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
         </View>
         <View style={[styles.summaryRow, styles.totalRow]}>
           <ThemedText type="h3">Total</ThemedText>
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            ${total.toFixed(2)}
+            €{total.toFixed(2)}
           </ThemedText>
         </View>
         <Button

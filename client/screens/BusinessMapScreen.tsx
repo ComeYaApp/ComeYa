@@ -288,7 +288,7 @@ export default function BusinessMapScreen() {
                 </View>
                 <View style={styles.metaItem}>
                   <Feather name="truck" size={12} color={theme.textSecondary} />
-                  <ThemedText type="caption" style={{ marginLeft: 3, color: theme.textSecondary }}>${selected.deliveryFee.toFixed(0)}</ThemedText>
+                  <ThemedText type="caption" style={{ marginLeft: 3, color: theme.textSecondary }}>€{selected.deliveryFee.toFixed(0)}</ThemedText>
                 </View>
               </View>
             </View>

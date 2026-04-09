@@ -438,7 +438,7 @@ export default function ProfileScreen() {
         return "Repartidor";
       case "admin":
       case "super_admin":
-        return "Administrador";
+        return "ComeYa";
       default:
         return user?.role || "Usuario";
     }

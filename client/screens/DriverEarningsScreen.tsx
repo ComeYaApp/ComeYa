@@ -195,7 +195,7 @@ export default function DriverEarningsScreen() {
               marginVertical: Spacing.sm,
             }}
           >
-            ${getEarningsForPeriod().toFixed(2)}
+            €{getEarningsForPeriod().toFixed(2)}
           </ThemedText>
           
           {getEarningsForPeriod() === 0 && earnings.total > 0 && (
@@ -276,7 +276,7 @@ export default function DriverEarningsScreen() {
                 Total ganado histórico
               </ThemedText>
               <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-                ${earnings.total.toFixed(2)}
+                €{earnings.total.toFixed(2)}
               </ThemedText>
             </View>
             <View
@@ -365,7 +365,7 @@ export default function DriverEarningsScreen() {
                   fontWeight: "600",
                 }}
               >
-                +${(Math.abs(tx.amount) / 100).toFixed(2)}
+                +€{(Math.abs(tx.amount) / 100).toFixed(2)}
               </ThemedText>
             </Animated.View>
           ))
