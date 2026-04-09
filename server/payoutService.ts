@@ -109,24 +109,23 @@ async function getDefaultAccount(userId: string) {
   return account || null;
 }
 
-// Guardar/actualizar cuenta de pago
+// Guardar/actualizar cuenta de pago (España: Bizum, IBAN, Tarjeta, PayPal)
 export async function savePaymentAccount(
   userId: string,
   data: {
-    method: string;
+    method: string;       // bizum | transferencia | tarjeta | paypal
     isDefault?: boolean;
     label?: string;
-    pagoMovilPhone?: string;
-    pagoMovilBank?: string;
-    pagoMovilCedula?: string;
-    binanceId?: string;
-    binanceEmail?: string;
-    zinliEmail?: string;
-    zelleEmail?: string;
-    zellePhone?: string;
+    // Bizum
+    pagoMovilPhone?: string;  // reutilizado para teléfono Bizum
+    // Transferencia IBAN
+    binanceId?: string;       // reutilizado para IBAN
+    zelleEmail?: string;      // reutilizado para titular IBAN / email PayPal
+    // Tarjeta
+    zinliEmail?: string;      // reutilizado para titular tarjeta
+    zellePhone?: string;      // reutilizado para últimos 4 dígitos
   }
 ) {
-  // Si es default, quitar default de las otras
   if (data.isDefault) {
     await db.update(paymentAccounts)
       .set({ isDefault: false })
@@ -139,13 +138,14 @@ export async function savePaymentAccount(
     isDefault: data.isDefault ?? false,
     label: data.label || null,
     pagoMovilPhone: data.pagoMovilPhone || null,
-    pagoMovilBank: data.pagoMovilBank || null,
-    pagoMovilCedula: data.pagoMovilCedula || null,
-    binanceId: data.binanceId || null,
-    binanceEmail: data.binanceEmail || null,
-    zinliEmail: data.zinliEmail || null,
-    zelleEmail: data.zelleEmail || null,
-    zellePhone: data.zellePhone || null,
+    binanceId:      data.binanceId      || null,
+    zelleEmail:     data.zelleEmail     || null,
+    zinliEmail:     data.zinliEmail     || null,
+    zellePhone:     data.zellePhone     || null,
+    // No usados en España
+    pagoMovilBank:   null,
+    pagoMovilCedula: null,
+    binanceEmail:    null,
   });
 }
 

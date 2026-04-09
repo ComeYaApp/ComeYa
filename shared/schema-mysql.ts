@@ -34,6 +34,7 @@ export const users = mysqlTable("users", {
   verificationStatus: varchar("verification_status", { length: 20 }).default("pending"), // pending, verified, rejected
   verificationNotes: text("verification_notes"),
   // Legacy Venezuela (mantener para no romper)
+  // Legacy — mantener columnas para no romper BD existente
   pagoMovilPhone: text("pago_movil_phone"),
   pagoMovilBank: text("pago_movil_bank"),
   pagoMovilCedula: text("pago_movil_cedula"),
@@ -77,15 +78,10 @@ export const orders = mysqlTable("orders", {
   deliveryFee: int("delivery_fee").notNull(),
   total: int("total").notNull(),
   paymentMethod: text("payment_method").notNull(),
-  paymentProvider: varchar("payment_provider", { length: 50 }).default("pago_movil"),
-  pagoMovilReference: text("pago_movil_reference"),
-  pagoMovilProofUrl: text("pago_movil_proof_url"),
-  pagoMovilPhone: text("pago_movil_phone"),
-  pagoMovilBank: text("pago_movil_bank"),
-  pagoMovilStatus: text("pago_movil_status").default("pending"),
-  pagoMovilVerifiedBy: varchar("pago_movil_verified_by", { length: 255 }),
-  pagoMovilVerifiedAt: timestamp("pago_movil_verified_at"),
-  pagoMovilRejectedReason: text("pago_movil_rejected_reason"),
+  paymentProvider: varchar("payment_provider", { length: 50 }).default("stripe_bizum"),
+  // Referencia de pago (Stripe/PayPal)
+  paymentReference: text("pago_movil_reference"),
+  paymentProofUrl: text("pago_movil_proof_url"),
   deliveryAddress: text("delivery_address").notNull(),
   deliveryPersonId: text("delivery_person_id"),
   notes: text("notes"),

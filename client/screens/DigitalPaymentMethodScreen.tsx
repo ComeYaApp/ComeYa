@@ -34,9 +34,26 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<PaymentMethod | null>(null);
+  const [savedAccounts, setSavedAccounts] = useState<Record<string, string>>({}); // method -> detail
   const orderTotal = route?.params?.orderTotal || 0;
 
-  useEffect(() => { loadMethods(); }, []);
+  useEffect(() => { loadMethods(); loadSavedAccounts(); }, []);
+
+  const loadSavedAccounts = async () => {
+    try {
+      const res = await apiRequest('GET', '/api/payouts/accounts');
+      const data = await res.json();
+      if (data.success && data.accounts) {
+        const map: Record<string, string> = {};
+        for (const acc of data.accounts) {
+          if (acc.method === 'bizum')   map['stripe_bizum'] = acc.pagoMovilPhone || '';
+          if (acc.method === 'tarjeta') map['stripe_card']  = acc.zinliEmail ? `${acc.zinliEmail} **** ${acc.zellePhone}` : '';
+          if (acc.method === 'paypal')  map['paypal']       = acc.zelleEmail || '';
+        }
+        setSavedAccounts(map);
+      }
+    } catch { /* silencioso */ }
+  };
 
   const loadMethods = async () => {
     try {
@@ -119,7 +136,12 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
               </View>
               <View style={styles.cardInfo}>
                 <Text style={[styles.cardName, { color: theme.text }]}>{method.displayName}</Text>
-                <Text style={[styles.cardSub, { color: theme.textSecondary }]}>{config.subtitle}</Text>
+                <Text style={[styles.cardSub, { color: theme.textSecondary }]}>
+                  {savedAccounts[method.provider] || config.subtitle}
+                </Text>
+                {savedAccounts[method.provider] && (
+                  <Text style={[styles.cardSaved, { color: ComeYaColors.success }]}>✓ Cuenta guardada</Text>
+                )}
               </View>
               <View style={[styles.radio, { borderColor: isSelected ? config.color : theme.border, backgroundColor: isSelected ? config.color : 'transparent' }]}>
                 {isSelected && <Feather name="check" size={14} color="#FFF" />}
@@ -177,6 +199,7 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1 },
   cardName: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
   cardSub: { fontSize: 13 },
+  cardSaved: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   radio: {
     width: 24, height: 24, borderRadius: 12, borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
