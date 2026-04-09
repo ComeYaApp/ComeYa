@@ -565,6 +565,7 @@ export default function ProfileScreen() {
             <SettingsItem
               icon="credit-card"
               label="Cuentas para recibir pagos"
+              value="Bizum · Transferencia IBAN"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 navigation.navigate("PaymentWalletSetup" as any);
@@ -575,6 +576,7 @@ export default function ProfileScreen() {
             <SettingsItem
               icon="credit-card"
               label="Métodos de pago"
+              value="Bizum · Tarjeta · PayPal"
               onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
             />
           )}
@@ -582,6 +584,7 @@ export default function ProfileScreen() {
             <SettingsItem
               icon="credit-card"
               label="Cuentas para recibir pagos"
+              value="Bizum · Transferencia IBAN"
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 navigation.navigate("PaymentWalletSetup" as any);
