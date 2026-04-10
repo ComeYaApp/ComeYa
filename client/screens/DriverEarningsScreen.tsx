@@ -262,7 +262,7 @@ export default function DriverEarningsScreen() {
               style={{ color: theme.textSecondary, marginTop: 4 }}
             >
               Cuando confirmes la entrega, tu pago se libera automáticamente y
-              Stripe lo transfiere a tu cuenta bancaria en 1-2 días hábiles.
+              Cuando confirmes una entrega, tu pago se libera instantáneamente. ComeYa lo transfiere automáticamente a tu cuenta Bizum, Stripe o PayPal configurada en Perfil → Métodos de pago.
               Configura tu cuenta en Perfil → Pagos y Cuenta Bancaria.
             </ThemedText>
           </View>

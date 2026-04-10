@@ -39,15 +39,12 @@ import SupportChatScreen from "@/screens/SupportChatScreen";
 import WalletScreen from "@/screens/WalletScreen";
 import ReportIssueScreen from "@/screens/ReportIssueScreen";
 import OrderConfirmationScreen from "@/screens/OrderConfirmationScreen";
-import PagoMovilPaymentScreen from "@/screens/PagoMovilPaymentScreen";
 import BusinessMapScreen from "@/screens/BusinessMapScreen";
 import BecomeDriverScreen from "@/screens/BecomeDriverScreen";
 import TermsScreen from "@/screens/TermsScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
 import DigitalPaymentMethodScreen from "@/screens/DigitalPaymentMethodScreen";
-import PaymentProofUploadScreen from "@/screens/PaymentProofUploadScreen";
 import PaymentWebViewScreen from "@/screens/PaymentWebViewScreen";
-import PaymentVerificationTrackingScreen from "@/screens/PaymentVerificationTrackingScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import AdminPaymentVerificationScreen from "@/screens/AdminPaymentVerificationScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
@@ -109,11 +106,8 @@ export type RootStackParamList = {
   Wallet: undefined;
   ReportIssue: { orderId: string; orderNumber?: string };
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
-  PagoMovilPayment: { orderId: string; reference: string; amount: number; ComeYa: { phone: string; bank: string; cedula: string; bankName: string } };
   DigitalPaymentMethod: { orderTotal: number };
   PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
-  PaymentProofUpload: { orderId: string; orderTotal: number; paymentMethod: any };
-  PaymentVerificationTracking: { orderId: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };
   AdminPaymentVerification: undefined;
   BusinessMap: undefined;
@@ -300,11 +294,6 @@ export default function RootStackNavigator() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
-            name="PagoMovilPayment"
-            component={PagoMovilPaymentScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
             name="BusinessMap"
             component={BusinessMapScreen}
             options={{ headerShown: false }}
@@ -347,16 +336,6 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="PaymentWebView"
             component={PaymentWebViewScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="PaymentProofUpload"
-            component={PaymentProofUploadScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="PaymentVerificationTracking"
-            component={PaymentVerificationTrackingScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

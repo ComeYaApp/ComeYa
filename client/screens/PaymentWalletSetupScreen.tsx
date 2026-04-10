@@ -38,6 +38,7 @@ const CUSTOMER_METHODS = [
 const BUSINESS_METHODS = [
   { id: "bizum",         label: "Bizum",         icon: "smartphone" as const, color: "#00ADEF", desc: "Recibe pagos instantáneos" },
   { id: "transferencia", label: "Transferencia",  icon: "credit-card" as const, color: "#2E7D32", desc: "SEPA / IBAN" },
+  { id: "paypal",        label: "PayPal",         icon: "dollar-sign" as const, color: "#003087", desc: "Recibe en tu cuenta PayPal" },
 ];
 
 interface Account {
@@ -333,10 +334,12 @@ export default function PaymentWalletSetupScreen() {
             </>
           )}
 
-          {/* ── PAYPAL (solo cliente) ── */}
+          {/* ── PAYPAL (cliente Y negocio/repartidor) ── */}
           {activeMethod === "paypal" && (
             <>
-              <ThemedText type="small" style={styles.label}>Email de PayPal</ThemedText>
+              <ThemedText type="small" style={styles.label}>
+                {isCustomer ? "Email de PayPal" : "Email de PayPal para recibir pagos"}
+              </ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                 value={paypalEmail}
@@ -347,7 +350,9 @@ export default function PaymentWalletSetupScreen() {
                 autoCapitalize="none"
               />
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                Serás redirigido a PayPal para completar el pago
+                {isCustomer
+                  ? "Serás redirigido a PayPal para completar el pago"
+                  : "ComeYa te enviará tus ganancias a esta cuenta PayPal"}
               </ThemedText>
             </>
           )}
