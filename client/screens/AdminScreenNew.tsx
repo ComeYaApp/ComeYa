@@ -470,7 +470,7 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600', color: theme.text }}>Nombre:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedDriver.name}
                           onChangeText={(text) => setSelectedDriver({...selectedDriver, name: text})}
                           placeholder="Nombre del repartidor"
@@ -481,7 +481,7 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600', color: theme.text }}>Email:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedDriver.email || ''}
                           onChangeText={(text) => setSelectedDriver({...selectedDriver, email: text})}
                           placeholder="Email"
@@ -493,7 +493,7 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600', color: theme.text }}>Teléfono:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedDriver.phone || ''}
                           onChangeText={(text) => setSelectedDriver({...selectedDriver, phone: text})}
                           placeholder="Teléfono"
@@ -503,12 +503,12 @@ export default function AdminMenuScreen() {
                       </View>
                     </View>
                     
-                    <View style={{ backgroundColor: '#f8f9fa', padding: 15, borderRadius: 10, marginBottom: 20 }}>
-                      <ThemedText style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Estadísticas:</ThemedText>
+                    <View style={{ backgroundColor: theme.backgroundSecondary, padding: 15, borderRadius: 10, marginBottom: 20 }}>
+                      <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 8 }}>Estadísticas:</ThemedText>
                       <ThemedText style={{ marginBottom: 5, color: theme.text }}>Entregas totales: <ThemedText style={{ fontWeight: 'bold', color: theme.text }}>{selectedDriver.totalDeliveries || 0}</ThemedText></ThemedText>
                       <ThemedText style={{ marginBottom: 5, color: theme.text }}>Rating: <ThemedText style={{ fontWeight: 'bold', color: theme.text }}>{selectedDriver.rating?.toFixed(1) || 'N/A'}</ThemedText></ThemedText>
                       <ThemedText style={{ marginBottom: 5, color: theme.text }}>Strikes: <ThemedText style={{ fontWeight: 'bold', color: selectedDriver.strikes > 0 ? '#EF4444' : '#10B981' }}>{selectedDriver.strikes || 0}</ThemedText></ThemedText>
-                      <ThemedText style={{ color: theme.text }}>Estado: <ThemedText style={{ fontWeight: 'bold', color: selectedDriver.isOnline ? '#10B981' : '#6B7280' }}>{selectedDriver.isOnline ? 'En Línea' : 'Desconectado'}</ThemedText></ThemedText>
+                      <ThemedText style={{ color: theme.text }}>Estado: <ThemedText style={{ fontWeight: 'bold', color: selectedDriver.isOnline ? '#10B981' : theme.textSecondary }}>{selectedDriver.isOnline ? 'En Línea' : 'Desconectado'}</ThemedText></ThemedText>
                     </View>
                     
                     <ThemedText style={{ fontWeight: 'bold', marginBottom: 15, fontSize: 16 }}>Estado del Repartidor:</ThemedText>
@@ -519,15 +519,15 @@ export default function AdminMenuScreen() {
                           paddingVertical: 12,
                           paddingHorizontal: 20,
                           borderRadius: 25,
-                          backgroundColor: selectedDriver.isApproved ? '#10B981' : '#f5f5f5',
+                          backgroundColor: selectedDriver.isApproved ? '#10B981' : theme.backgroundSecondary,
                           borderWidth: 1,
-                          borderColor: selectedDriver.isApproved ? '#10B981' : '#ddd',
+                          borderColor: selectedDriver.isApproved ? '#10B981' : theme.border,
                           flex: 1,
                           alignItems: 'center'
                         }}
                       >
                         <ThemedText style={{ 
-                          color: selectedDriver.isApproved ? 'white' : '#333',
+                          color: selectedDriver.isApproved ? 'white' : theme.text,
                           fontWeight: selectedDriver.isApproved ? 'bold' : 'normal'
                         }}>
                           Aprobado
@@ -539,15 +539,15 @@ export default function AdminMenuScreen() {
                           paddingVertical: 12,
                           paddingHorizontal: 20,
                           borderRadius: 25,
-                          backgroundColor: !selectedDriver.isApproved ? '#EF4444' : '#f5f5f5',
+                          backgroundColor: !selectedDriver.isApproved ? '#EF4444' : theme.backgroundSecondary,
                           borderWidth: 1,
-                          borderColor: !selectedDriver.isApproved ? '#EF4444' : '#ddd',
+                          borderColor: !selectedDriver.isApproved ? '#EF4444' : theme.border,
                           flex: 1,
                           alignItems: 'center'
                         }}
                       >
                         <ThemedText style={{ 
-                          color: !selectedDriver.isApproved ? 'white' : '#333',
+                          color: !selectedDriver.isApproved ? 'white' : theme.text,
                           fontWeight: !selectedDriver.isApproved ? 'bold' : 'normal'
                         }}>
                           Suspendido
@@ -606,30 +606,33 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Nombre:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedBusiness.name}
                           onChangeText={(text) => setSelectedBusiness({...selectedBusiness, name: text})}
                           placeholder="Nombre del negocio"
+                          placeholderTextColor={theme.textSecondary}
                         />
                       </View>
                       
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Dirección:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedBusiness.address || ''}
                           onChangeText={(text) => setSelectedBusiness({...selectedBusiness, address: text})}
                           placeholder="Dirección"
+                          placeholderTextColor={theme.textSecondary}
                         />
                       </View>
                       
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Teléfono:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedBusiness.phone || ''}
                           onChangeText={(text) => setSelectedBusiness({...selectedBusiness, phone: text})}
                           placeholder="Teléfono"
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="phone-pad"
                         />
                       </View>
@@ -665,32 +668,32 @@ export default function AdminMenuScreen() {
                       ))}
                     </View>
                     
-                    <View style={{ backgroundColor: '#f8f9fa', padding: 15, borderRadius: 10, marginBottom: 20 }}>
-                      <ThemedText style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Estado:</ThemedText>
+                    <View style={{ backgroundColor: theme.backgroundSecondary, padding: 15, borderRadius: 10, marginBottom: 20 }}>
+                      <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 8 }}>Estado:</ThemedText>
                       <View style={{ flexDirection: 'row', gap: 10 }}>
                         <Pressable
                           onPress={() => setSelectedBusiness({...selectedBusiness, isActive: true})}
                           style={{
                             padding: 12,
                             borderRadius: 8,
-                            backgroundColor: selectedBusiness.isActive ? '#10B981' : '#f0f0f0',
+                            backgroundColor: selectedBusiness.isActive ? '#10B981' : theme.backgroundSecondary,
                             flex: 1,
                             alignItems: 'center'
                           }}
                         >
-                          <ThemedText style={{ color: selectedBusiness.isActive ? 'white' : '#333' }}>Activo</ThemedText>
+                          <ThemedText style={{ color: selectedBusiness.isActive ? 'white' : theme.text }}>Activo</ThemedText>
                         </Pressable>
                         <Pressable
                           onPress={() => setSelectedBusiness({...selectedBusiness, isActive: false})}
                           style={{
                             padding: 12,
                             borderRadius: 8,
-                            backgroundColor: !selectedBusiness.isActive ? '#EF4444' : '#f0f0f0',
+                            backgroundColor: !selectedBusiness.isActive ? '#EF4444' : theme.backgroundSecondary,
                             flex: 1,
                             alignItems: 'center'
                           }}
                         >
-                          <ThemedText style={{ color: !selectedBusiness.isActive ? 'white' : '#333' }}>Inactivo</ThemedText>
+                          <ThemedText style={{ color: !selectedBusiness.isActive ? 'white' : theme.text }}>Inactivo</ThemedText>
                         </Pressable>
                       </View>
                     </View>
@@ -755,20 +758,22 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Nombre:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedUser.name}
                           onChangeText={(text) => setSelectedUser({...selectedUser, name: text})}
                           placeholder="Nombre del usuario"
+                          placeholderTextColor={theme.textSecondary}
                         />
                       </View>
                       
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Email:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedUser.email || ''}
                           onChangeText={(text) => setSelectedUser({...selectedUser, email: text})}
                           placeholder="Email"
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="email-address"
                         />
                       </View>
@@ -776,10 +781,11 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Teléfono:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedUser.phone || ''}
                           onChangeText={(text) => setSelectedUser({...selectedUser, phone: text})}
                           placeholder="Teléfono"
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="phone-pad"
                         />
                       </View>
@@ -800,15 +806,15 @@ export default function AdminMenuScreen() {
                             paddingVertical: 12,
                             paddingHorizontal: 18,
                             borderRadius: 25,
-                            backgroundColor: userRoleEdit === role.key ? role.color : '#f5f5f5',
+                            backgroundColor: userRoleEdit === role.key ? role.color : theme.backgroundSecondary,
                             borderWidth: 1,
-                            borderColor: userRoleEdit === role.key ? role.color : '#ddd',
+                            borderColor: userRoleEdit === role.key ? role.color : theme.border,
                             minWidth: 85,
                             alignItems: 'center'
                           }}
                         >
                           <ThemedText style={{ 
-                            color: userRoleEdit === role.key ? 'white' : '#333',
+                            color: userRoleEdit === role.key ? 'white' : theme.text,
                             fontWeight: userRoleEdit === role.key ? 'bold' : 'normal',
                             fontSize: 14
                           }}>
@@ -818,10 +824,10 @@ export default function AdminMenuScreen() {
                       ))}
                     </View>
                     
-                    <View style={{ backgroundColor: '#f8f9fa', padding: 15, borderRadius: 10, marginBottom: 20 }}>
-                      <ThemedText style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Información actual:</ThemedText>
-                      <ThemedText style={{ marginBottom: 5 }}>Rol actual: <ThemedText style={{ fontWeight: 'bold' }}>{selectedUser.role}</ThemedText></ThemedText>
-                      <ThemedText>Registrado: <ThemedText style={{ fontWeight: 'bold' }}>{new Date(selectedUser.createdAt).toLocaleDateString('es-VE')}</ThemedText></ThemedText>
+                    <View style={{ backgroundColor: theme.backgroundSecondary, padding: 15, borderRadius: 10, marginBottom: 20 }}>
+                      <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 8 }}>Información actual:</ThemedText>
+                      <ThemedText style={{ marginBottom: 5, color: theme.text }}>Rol actual: <ThemedText style={{ fontWeight: 'bold', color: theme.text }}>{selectedUser.role}</ThemedText></ThemedText>
+                      <ThemedText>Registrado: <ThemedText style={{ fontWeight: 'bold' }}>{new Date(selectedUser.createdAt).toLocaleDateString('es-ES')}</ThemedText></ThemedText>
                     </View>
                   </ScrollView>
                   
@@ -951,7 +957,7 @@ export default function AdminMenuScreen() {
                       </ThemedText>
                       <ThemedText style={{ color: theme.text }}>
                         Creado: <ThemedText style={{ fontWeight: "bold", color: theme.text }}>
-                          {new Date(selectedOrder.createdAt).toLocaleString("es-VE")}
+                          {new Date(selectedOrder.createdAt).toLocaleString("es-ES")}
                         </ThemedText>
                       </ThemedText>
                       {selectedOrder.notes ? (
@@ -1026,20 +1032,22 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Código:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedCoupon.code}
                           onChangeText={(text) => setSelectedCoupon({...selectedCoupon, code: text})}
                           placeholder="Código del cupón"
+                          placeholderTextColor={theme.textSecondary}
                         />
                       </View>
                       
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Valor de descuento:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedCoupon.discountValue?.toString() || ''}
                           onChangeText={(text) => setSelectedCoupon({...selectedCoupon, discountValue: parseFloat(text) || 0})}
                           placeholder="20"
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="numeric"
                         />
                       </View>
@@ -1047,20 +1055,21 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Monto mínimo:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedCoupon.minOrderAmount ? (selectedCoupon.minOrderAmount / 100).toString() : ''}
                           onChangeText={(text) => setSelectedCoupon({...selectedCoupon, minOrderAmount: parseFloat(text) * 100 || null})}
                           placeholder="100"
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="numeric"
                         />
                       </View>
                     </View>
                     
-                    <View style={{ backgroundColor: '#f8f9fa', padding: 15, borderRadius: 10, marginBottom: 20 }}>
-                      <ThemedText style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Información del cupón:</ThemedText>
-                      <ThemedText style={{ marginBottom: 5 }}>Tipo: <ThemedText style={{ fontWeight: 'bold' }}>{selectedCoupon.discountType === 'percentage' ? 'Porcentaje' : 'Fijo'}</ThemedText></ThemedText>
-                      <ThemedText style={{ marginBottom: 5 }}>Usos: <ThemedText style={{ fontWeight: 'bold' }}>{selectedCoupon.usedCount}/{selectedCoupon.maxUses || '∞'}</ThemedText></ThemedText>
-                      <ThemedText>Creado: <ThemedText style={{ fontWeight: 'bold' }}>{new Date(selectedCoupon.createdAt).toLocaleDateString('es-VE')}</ThemedText></ThemedText>
+                    <View style={{ backgroundColor: theme.backgroundSecondary, padding: 15, borderRadius: 10, marginBottom: 20 }}>
+                      <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 8 }}>Información del cupón:</ThemedText>
+                      <ThemedText style={{ marginBottom: 5, color: theme.text }}>Tipo: <ThemedText style={{ fontWeight: 'bold', color: theme.text }}>{selectedCoupon.discountType === 'percentage' ? 'Porcentaje' : 'Fijo'}</ThemedText></ThemedText>
+                      <ThemedText style={{ marginBottom: 5, color: theme.text }}>Usos: <ThemedText style={{ fontWeight: 'bold', color: theme.text }}>{selectedCoupon.usedCount}/{selectedCoupon.maxUses || '∞'}</ThemedText></ThemedText>
+                      <ThemedText>Creado: <ThemedText style={{ fontWeight: 'bold' }}>{new Date(selectedCoupon.createdAt).toLocaleDateString('es-ES')}</ThemedText></ThemedText>
                     </View>
                     
                     <ThemedText style={{ fontWeight: 'bold', marginBottom: 15, fontSize: 16 }}>Estado del Cupón:</ThemedText>
@@ -1071,15 +1080,15 @@ export default function AdminMenuScreen() {
                           paddingVertical: 12,
                           paddingHorizontal: 20,
                           borderRadius: 25,
-                          backgroundColor: selectedCoupon.isActive ? '#10B981' : '#f5f5f5',
+                          backgroundColor: selectedCoupon.isActive ? '#10B981' : theme.backgroundSecondary,
                           borderWidth: 1,
-                          borderColor: selectedCoupon.isActive ? '#10B981' : '#ddd',
+                          borderColor: selectedCoupon.isActive ? '#10B981' : theme.border,
                           flex: 1,
                           alignItems: 'center'
                         }}
                       >
                         <ThemedText style={{ 
-                          color: selectedCoupon.isActive ? 'white' : '#333',
+                          color: selectedCoupon.isActive ? 'white' : theme.text,
                           fontWeight: selectedCoupon.isActive ? 'bold' : 'normal'
                         }}>
                           Activo
@@ -1091,15 +1100,15 @@ export default function AdminMenuScreen() {
                           paddingVertical: 12,
                           paddingHorizontal: 20,
                           borderRadius: 25,
-                          backgroundColor: !selectedCoupon.isActive ? '#EF4444' : '#f5f5f5',
+                          backgroundColor: !selectedCoupon.isActive ? '#EF4444' : theme.backgroundSecondary,
                           borderWidth: 1,
-                          borderColor: !selectedCoupon.isActive ? '#EF4444' : '#ddd',
+                          borderColor: !selectedCoupon.isActive ? '#EF4444' : theme.border,
                           flex: 1,
                           alignItems: 'center'
                         }}
                       >
                         <ThemedText style={{ 
-                          color: !selectedCoupon.isActive ? 'white' : '#333',
+                          color: !selectedCoupon.isActive ? 'white' : theme.text,
                           fontWeight: !selectedCoupon.isActive ? 'bold' : 'normal'
                         }}>
                           Inactivo
@@ -1170,30 +1179,33 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Nombre:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedZone.name}
                           onChangeText={(text) => setSelectedZone({...selectedZone, name: text})}
                           placeholder="Nombre de la zona"
+                          placeholderTextColor={theme.textSecondary}
                         />
                       </View>
                       
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Descripción:</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedZone.description || ''}
                           onChangeText={(text) => setSelectedZone({...selectedZone, description: text})}
                           placeholder="Descripción de la zona"
+                          placeholderTextColor={theme.textSecondary}
                         />
                       </View>
                       
                       <View style={{ width: '100%', marginBottom: 15 }}>
-                        <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Tarifa de entrega ($):</ThemedText>
+                        <ThemedText style={{ marginBottom: 5, fontWeight: '600', color: theme.text }}>Tarifa de entrega (€):</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedZone.deliveryFee ? (selectedZone.deliveryFee / 100).toString() : ''}
                           onChangeText={(text) => setSelectedZone({...selectedZone, deliveryFee: parseFloat(text) * 100 || 0})}
-                          placeholder="25.00"
+                          placeholder="3.00"
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="numeric"
                         />
                       </View>
@@ -1201,20 +1213,21 @@ export default function AdminMenuScreen() {
                       <View style={{ width: '100%', marginBottom: 15 }}>
                         <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Tiempo máximo (min):</ThemedText>
                         <TextInput
-                          style={{ borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, fontSize: 16 }}
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedZone.maxDeliveryTime?.toString() || ''}
                           onChangeText={(text) => setSelectedZone({...selectedZone, maxDeliveryTime: parseInt(text) || 0})}
                           placeholder="30"
+                          placeholderTextColor={theme.textSecondary}
                           keyboardType="numeric"
                         />
                       </View>
                     </View>
                     
-                    <View style={{ backgroundColor: '#f8f9fa', padding: 15, borderRadius: 10, marginBottom: 20 }}>
-                      <ThemedText style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>Información de la zona:</ThemedText>
+                    <View style={{ backgroundColor: theme.backgroundSecondary, padding: 15, borderRadius: 10, marginBottom: 20 }}>
+                      <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 8 }}>Información de la zona:</ThemedText>
                       <ThemedText style={{ marginBottom: 5 }}>Radio: <ThemedText style={{ fontWeight: 'bold' }}>{selectedZone.radiusKm || 0} km</ThemedText></ThemedText>
                       <ThemedText style={{ marginBottom: 5 }}>Coordenadas: <ThemedText style={{ fontWeight: 'bold' }}>{selectedZone.centerLatitude || 'N/A'}, {selectedZone.centerLongitude || 'N/A'}</ThemedText></ThemedText>
-                      <ThemedText>Creada: <ThemedText style={{ fontWeight: 'bold' }}>{selectedZone.createdAt ? new Date(selectedZone.createdAt).toLocaleDateString('es-VE') : 'N/A'}</ThemedText></ThemedText>
+                      <ThemedText>Creada: <ThemedText style={{ fontWeight: 'bold' }}>{selectedZone.createdAt ? new Date(selectedZone.createdAt).toLocaleDateString('es-ES') : 'N/A'}</ThemedText></ThemedText>
                     </View>
                     
                     <ThemedText style={{ fontWeight: 'bold', marginBottom: 15, fontSize: 16 }}>Estado de la Zona:</ThemedText>
@@ -1225,15 +1238,15 @@ export default function AdminMenuScreen() {
                           paddingVertical: 12,
                           paddingHorizontal: 20,
                           borderRadius: 25,
-                          backgroundColor: selectedZone.isActive ? '#10B981' : '#f5f5f5',
+                          backgroundColor: selectedZone.isActive ? '#10B981' : theme.backgroundSecondary,
                           borderWidth: 1,
-                          borderColor: selectedZone.isActive ? '#10B981' : '#ddd',
+                          borderColor: selectedZone.isActive ? '#10B981' : theme.border,
                           flex: 1,
                           alignItems: 'center'
                         }}
                       >
                         <ThemedText style={{ 
-                          color: selectedZone.isActive ? 'white' : '#333',
+                          color: selectedZone.isActive ? 'white' : theme.text,
                           fontWeight: selectedZone.isActive ? 'bold' : 'normal'
                         }}>
                           Activa
@@ -1245,15 +1258,15 @@ export default function AdminMenuScreen() {
                           paddingVertical: 12,
                           paddingHorizontal: 20,
                           borderRadius: 25,
-                          backgroundColor: !selectedZone.isActive ? '#EF4444' : '#f5f5f5',
+                          backgroundColor: !selectedZone.isActive ? '#EF4444' : theme.backgroundSecondary,
                           borderWidth: 1,
-                          borderColor: !selectedZone.isActive ? '#EF4444' : '#ddd',
+                          borderColor: !selectedZone.isActive ? '#EF4444' : theme.border,
                           flex: 1,
                           alignItems: 'center'
                         }}
                       >
                         <ThemedText style={{ 
-                          color: !selectedZone.isActive ? 'white' : '#333',
+                          color: !selectedZone.isActive ? 'white' : theme.text,
                           fontWeight: !selectedZone.isActive ? 'bold' : 'normal'
                         }}>
                           Inactiva
@@ -1408,7 +1421,7 @@ export default function AdminMenuScreen() {
                         </ThemedText>
                       </View>
                       <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>
-                        {new Date(log.createdAt).toLocaleString('es-VE')}
+                        {new Date(log.createdAt).toLocaleString('es-ES')}
                       </ThemedText>
                     </View>
                     <ThemedText style={{ marginBottom: 4 }}>
