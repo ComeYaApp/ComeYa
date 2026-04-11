@@ -395,24 +395,15 @@ router.post("/settings/initialize", authenticateToken, requireRole("admin"), asy
     const { db } = await import("../db");
     
     const defaultSettings = [
-      // Comisiones
-      { key: "comeya_commission",           value: "15",    type: "number", category: "commissions", description: "Comision ComeYa (%)",              isPublic: false },
-      { key: "business_commission",         value: "100",   type: "number", category: "commissions", description: "Comision Negocio (%)",             isPublic: false },
-      { key: "driver_commission",           value: "100",   type: "number", category: "commissions", description: "Comision Repartidor (%)",          isPublic: false },
-      // Operaciones
-      { key: "regret_period_seconds",       value: "60",    type: "number", category: "operations",  description: "Periodo arrepentimiento (seg)",   isPublic: true  },
-      { key: "business_call_delay_minutes", value: "3",     type: "number", category: "operations",  description: "Retraso llamada negocio (min)",   isPublic: false },
-      { key: "fund_hold_hours",             value: "1",     type: "number", category: "operations",  description: "Retencion de fondos (horas)",    isPublic: false },
-      // Pagos Espana
-      { key: "bizum_phone",                 value: "",      type: "string", category: "payments",    description: "Telefono Bizum ComeYa",          isPublic: true  },
-      { key: "comeya_iban",                 value: "",      type: "string", category: "payments",    description: "IBAN ComeYa",                    isPublic: true  },
-      { key: "stripe_public_key",           value: "",      type: "string", category: "payments",    description: "Stripe Public Key",              isPublic: false },
-      { key: "stripe_secret_key",           value: "",      type: "string", category: "payments",    description: "Stripe Secret Key",              isPublic: false },
-      // Servicios externos
-      { key: "gemini_api_key",              value: "",      type: "string", category: "services",    description: "Gemini API Key (OCR)",           isPublic: false },
-      { key: "twilio_verify_sid",           value: "",      type: "string", category: "services",    description: "Twilio Verify SID",              isPublic: false },
-      { key: "resend_api_key",              value: "",      type: "string", category: "services",    description: "Resend API Key (emails)",        isPublic: false },
-      { key: "google_maps_key",             value: "",      type: "string", category: "services",    description: "Google Maps API Key",            isPublic: false },
+      { key: "comeya_commission",           value: "15",  type: "number", category: "commissions", description: "Comision ComeYa (%)",          isPublic: false },
+      { key: "business_commission",         value: "100", type: "number", category: "commissions", description: "Comision Negocio (%)",         isPublic: false },
+      { key: "driver_commission",           value: "100", type: "number", category: "commissions", description: "Comision Repartidor (%)",      isPublic: false },
+      { key: "regret_period_seconds",       value: "60",  type: "number", category: "operations",  description: "Periodo arrepentimiento (seg)",isPublic: true  },
+      { key: "business_call_delay_minutes", value: "3",   type: "number", category: "operations",  description: "Retraso llamada negocio (min)",isPublic: false },
+      { key: "fund_hold_hours",             value: "1",   type: "number", category: "operations",  description: "Retencion de fondos (horas)", isPublic: false },
+      { key: "bizum_phone",                 value: "",    type: "string", category: "payments",    description: "Telefono Bizum ComeYa",       isPublic: true  },
+      { key: "comeya_iban",                 value: "",    type: "string", category: "payments",    description: "IBAN ComeYa",                 isPublic: true  },
+      { key: "paypal_email",                value: "",    type: "string", category: "payments",    description: "Email PayPal ComeYa",         isPublic: true  },
     ];
 
     for (const setting of defaultSettings) {
