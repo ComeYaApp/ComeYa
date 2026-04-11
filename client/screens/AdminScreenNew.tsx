@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -1427,8 +1428,8 @@ export default function AdminMenuScreen() {
     const isSelfScrolling = selfScrollingTabs.includes(activeTab);
 
     return (
-      <ThemedView style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundRoot }]} edges={['top']}>
+        <View style={[styles.header]}>
           <View style={styles.headerContent}>
             <Pressable onPress={handleBack} style={styles.backButton}>
               <Feather name="arrow-left" size={24} color={theme.text} />
@@ -1457,13 +1458,13 @@ export default function AdminMenuScreen() {
             {renderTabContent()}
           </ScrollView>
         )}
-      </ThemedView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundRoot }]} edges={['top']}>
+      <View style={[styles.header]}>
         <ThemedText type="h1">Panel ComeYa</ThemedText>
         <ThemedText type="small" style={{ color: theme.textSecondary }}>
           Bienvenido, {user?.name}
@@ -1558,7 +1559,7 @@ export default function AdminMenuScreen() {
           </Pressable>
         </Pressable>
       )}
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -1568,6 +1569,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
     paddingBottom: Spacing.lg,
   },
   headerContent: {
