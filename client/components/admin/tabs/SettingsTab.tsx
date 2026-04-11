@@ -21,9 +21,10 @@ const SETTINGS: { key: string; label: string; category: string; placeholder: str
   { key: "business_call_delay_minutes", label: "Retraso llamada negocio (min)",  category: "Operaciones", placeholder: "3",    hint: "Minutos antes de llamar al negocio si no acepta" },
   { key: "fund_hold_hours",             label: "Retencion de fondos (horas)",    category: "Operaciones", placeholder: "1",    hint: "Horas hasta liberar fondos al confirmar entrega" },
   // Pagos - cuentas receptoras ComeYa (Espana)
-  { key: "bizum_phone",                 label: "Telefono Bizum ComeYa",          category: "Pagos",       placeholder: "600000000" },
-  { key: "comeya_iban",                 label: "IBAN ComeYa",                    category: "Pagos",       placeholder: "ES00 0000 0000 0000 0000 0000" },
-  { key: "paypal_email",                label: "Email PayPal ComeYa",            category: "Pagos",       placeholder: "pagos@comeya.es" },
+  { key: "bizum_phone",    label: "Telefono Bizum ComeYa",       category: "Pagos", placeholder: "600000000" },
+  { key: "comeya_iban",    label: "IBAN ComeYa",                 category: "Pagos", placeholder: "ES00 0000 0000 0000 0000 0000" },
+  { key: "paypal_email",   label: "Email PayPal ComeYa",         category: "Pagos", placeholder: "pagos@comeya.es" },
+  { key: "stripe_enabled", label: "Stripe habilitado",           category: "Pagos", placeholder: "true", hint: "true o false. La API key va en variables de entorno de Render" },
 ];
 
 const CATEGORIES = ["Comisiones", "Operaciones", "Pagos"];

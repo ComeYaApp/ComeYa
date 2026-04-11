@@ -401,9 +401,10 @@ router.post("/settings/initialize", authenticateToken, requireRole("admin"), asy
       { key: "regret_period_seconds",       value: "60",  type: "number", category: "operations",  description: "Periodo arrepentimiento (seg)",isPublic: true  },
       { key: "business_call_delay_minutes", value: "3",   type: "number", category: "operations",  description: "Retraso llamada negocio (min)",isPublic: false },
       { key: "fund_hold_hours",             value: "1",   type: "number", category: "operations",  description: "Retencion de fondos (horas)", isPublic: false },
-      { key: "bizum_phone",                 value: "",    type: "string", category: "payments",    description: "Telefono Bizum ComeYa",       isPublic: true  },
-      { key: "comeya_iban",                 value: "",    type: "string", category: "payments",    description: "IBAN ComeYa",                 isPublic: true  },
-      { key: "paypal_email",                value: "",    type: "string", category: "payments",    description: "Email PayPal ComeYa",         isPublic: true  },
+      { key: "bizum_phone",    value: "",     type: "string",  category: "payments",    description: "Telefono Bizum ComeYa",        isPublic: true  },
+      { key: "comeya_iban",    value: "",     type: "string",  category: "payments",    description: "IBAN ComeYa",                  isPublic: true  },
+      { key: "paypal_email",   value: "",     type: "string",  category: "payments",    description: "Email PayPal ComeYa",          isPublic: true  },
+      { key: "stripe_enabled", value: "true", type: "boolean", category: "payments",    description: "Stripe habilitado",            isPublic: false },
     ];
 
     for (const setting of defaultSettings) {
