@@ -18,60 +18,19 @@
       padding: 0;
       overflow: hidden;
     }
-    #root {
-      display: flex;
-      flex: 1;
-    }
+    #root { display: flex; flex: 1; }
     .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       width: 100%;
       height: 100%;
-      background: linear-gradient(135deg, #FF6B35 0%, #E55A25 100%);
+      position: relative;
     }
     .loading-logo-img {
-      width: 140px;
-      height: 140px;
-      margin-bottom: 24px;
-      animation: pulse 2s ease-in-out infinite;
-      object-fit: contain;
-    }
-    .loading-logo {
-      font-size: 36px;
-      font-weight: 800;
-      color: white;
-      margin-bottom: 8px;
-      letter-spacing: 1px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    .loading-tagline {
-      color: rgba(255,255,255,0.85);
-      font-size: 13px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      margin-bottom: 40px;
-    }
-    .loading-dots {
-      display: flex;
-      gap: 8px;
-    }
-    .loading-dots span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.7);
-      animation: bounce 1.4s ease-in-out infinite;
-    }
-    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.06); }
-    }
-    @keyframes bounce {
-      0%, 80%, 100% { transform: translateY(0); opacity: 0.7; }
-      40% { transform: translateY(-10px); opacity: 1; }
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
   </style>
 </head>
@@ -79,12 +38,7 @@
   <noscript>Necesitas habilitar JavaScript para usar ComeYa.</noscript>
   <div id="root">
     <div class="loading-container">
-      <img class="loading-logo-img" src="/comeya-logo.png" alt="ComeYa" />
-
-      <div class="loading-tagline">Delivery en Soria 🍊</div>
-      <div class="loading-dots">
-        <span></span><span></span><span></span>
-      </div>
+      <img class="loading-logo-img" src="/assets/splash.png" alt="ComeYa" />
     </div>
   </div>
 </body>
