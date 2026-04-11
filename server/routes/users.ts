@@ -94,12 +94,14 @@ router.put("/profile", authenticateToken, async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     
-    const { name, email, profileImage } = req.body;
+    const { name, email, profileImage, dni, address } = req.body;
     
     const updates: any = {};
     if (name) updates.name = name;
     if (email !== undefined) updates.email = email || null;
     if (profileImage) updates.profileImage = profileImage;
+    if (dni !== undefined) updates.dni = dni || null;
+    if (address !== undefined) updates.address = address || null;
     
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: "No hay datos para actualizar" });

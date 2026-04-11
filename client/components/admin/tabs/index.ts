@@ -8,3 +8,4 @@ export { CouponsTab } from "./CouponsTab";
 export { SupportTab } from "./SupportTab";
 export { ZonesTab } from "./ZonesTab";
 export { SettingsTab } from "./SettingsTab";
+export { VerificationsTab } from "./VerificationsTab";

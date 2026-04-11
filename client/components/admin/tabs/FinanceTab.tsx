@@ -1,31 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Image, RefreshControl, TextInput,
+  ActivityIndicator, RefreshControl, TextInput,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import { ComeYaColors } from "../../../constants/theme";
+import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
-interface FinanceTabProps {
+interface Props {
   theme: any;
-  showToast: (message: string, type?: "success" | "error" | "info") => void;
-}
-
-interface PaymentAccount {
-  id: string;
-  method: string;
-  isDefault: boolean;
-  pagoMovilPhone?: string | null;
-  pagoMovilBank?: string | null;
-  pagoMovilCedula?: string | null;
-  binanceId?: string | null;
-  binanceEmail?: string | null;
-  zinliEmail?: string | null;
-  zelleEmail?: string | null;
-  zellePhone?: string | null;
-  label?: string | null;
+  showToast: (msg: string, type?: "success" | "error" | "info") => void;
 }
 
 interface Payout {
@@ -42,89 +26,43 @@ interface Payout {
   notes: string | null;
   createdAt: string;
   recipientName?: string;
-  paymentAccounts?: PaymentAccount[];
-  paymentMethod?: string | null;
-  deliveryMinutes?: number | null;
-  orderTotal?: number | null;
+  paymentAccounts?: any[];
   businessName?: string | null;
 }
 
-interface PaymentProof {
-  id: string;
-  orderId: string;
-  userId: string;
-  paymentProvider: string;
-  proofImageUrl: string | null;
-  referenceNumber: string | null;
-  amount: number;
-  status: "pending" | "approved" | "rejected";
-  submittedAt: string;
-  customerName?: string;
-}
-
-interface Metrics {
-  totalByMethod: Record<string, { count: number; amount: number }>;
-  pendingProofs: number;
-  approvedToday: number;
-  rejectedToday: number;
-  totalRevenue: number;
-}
-
+// Métodos de pago España
 const METHOD_LABELS: Record<string, string> = {
-  pago_movil: "Pago Móvil",
-  binance: "Binance Pay",
-  zinli: "Zinli",
-  zelle: "Zelle",
-  cash: "Efectivo",
-  paypal: "PayPal",
+  bizum:         "Bizum",
+  transferencia: "Transferencia IBAN",
+  paypal:        "PayPal",
+  stripe_card:   "Tarjeta (Stripe)",
+  stripe_bizum:  "Bizum (Stripe)",
+  cash:          "Efectivo",
 };
 
-export const FinanceTab: React.FC<FinanceTabProps> = ({ theme, showToast }) => {
-  const [tab, setTab] = useState<"payouts" | "proofs" | "metrics">("payouts");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [pendingPayouts, setPendingPayouts] = useState<Payout[]>([]);
-  const [pendingProofs, setPendingProofs] = useState<PaymentProof[]>([]);
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [selectedProof, setSelectedProof] = useState<PaymentProof | null>(null);
-  const [selectedPayout, setSelectedPayout] = useState<Payout | null>(null);
-  const [payoutNotes, setPayoutNotes] = useState("");
-  const [payoutProofBase64, setPayoutProofBase64] = useState<string | null>(null);
-  const [processingId, setProcessingId] = useState<string | null>(null);
+const fmt = (cents: number) => `€${(cents / 100).toFixed(2)}`;
 
-  const pickProofImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      base64: true,
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0].base64) {
-      setPayoutProofBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
-    }
-  };
+export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
+  const [tab, setTab]                   = useState<"payouts" | "metrics">("payouts");
+  const [loading, setLoading]           = useState(true);
+  const [refreshing, setRefreshing]     = useState(false);
+  const [pendingPayouts, setPendingPayouts] = useState<Payout[]>([]);
+  const [metrics, setMetrics]           = useState<any>(null);
+  const [selected, setSelected]         = useState<Payout | null>(null);
+  const [notes, setNotes]               = useState("");
+  const [processing, setProcessing]     = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      // Auto-sincronizar y corregir montos silenciosamente al cargar
-      await Promise.allSettled([
-        apiRequest("POST", "/api/admin/finance/payouts/backfill", {}),
-        apiRequest("POST", "/api/admin/finance/payouts/fix-amounts", {}),
-      ]);
-
-      const [payoutsRes, proofsRes, metricsRes] = await Promise.all([
+      const [payoutsRes, metricsRes] = await Promise.all([
         apiRequest("GET", "/api/admin/finance/payouts/pending"),
-        apiRequest("GET", "/api/digital-payments/proof/pending"),
         apiRequest("GET", "/api/digital-payments/metrics"),
       ]);
-
-      const [payoutsData, proofsData, metricsData] = await Promise.all([
+      const [payoutsData, metricsData] = await Promise.all([
         payoutsRes.json(),
-        proofsRes.json(),
         metricsRes.json(),
       ]);
-
       if (payoutsData.success) setPendingPayouts(payoutsData.payouts ?? []);
-      if (proofsData.success) setPendingProofs(proofsData.proofs ?? []);
       if (metricsData.success) setMetrics(metricsData);
     } catch {
       showToast("Error al cargar datos financieros", "error");
@@ -136,207 +74,151 @@ export const FinanceTab: React.FC<FinanceTabProps> = ({ theme, showToast }) => {
 
   useEffect(() => { load(); }, []);
 
-  const markPayoutPaid = async (payout: Payout) => {
-    setProcessingId(payout.id);
+  const markPaid = async (payout: Payout) => {
+    setProcessing(payout.id);
     try {
-      const res = await apiRequest("POST", `/api/admin/finance/payouts/${payout.id}/mark-paid`, {
-        notes: payoutNotes || undefined,
-        proofUrl: payoutProofBase64 || undefined,
-      });
+      const res  = await apiRequest("POST", `/api/admin/finance/payouts/${payout.id}/mark-paid`, { notes: notes || undefined });
       const data = await res.json();
       if (data.success) {
         setPendingPayouts(prev => prev.filter(p => p.id !== payout.id));
-        setSelectedPayout(null);
-        setPayoutNotes("");
-        setPayoutProofBase64(null);
-        showToast("Pago registrado correctamente", "success");
+        setSelected(null);
+        setNotes("");
+        showToast("Pago registrado correctamente ✓", "success");
       } else {
         showToast(data.error ?? "Error al procesar", "error");
       }
     } catch {
       showToast("Error de conexión", "error");
     } finally {
-      setProcessingId(null);
+      setProcessing(null);
     }
   };
 
-  const verifyProof = async (proofId: string, approved: boolean) => {
-    setProcessingId(proofId);
-    try {
-      const res = await apiRequest("POST", "/api/digital-payments/proof/verify", { proofId, approved });
-      const data = await res.json();
-      if (data.success) {
-        setPendingProofs(prev => prev.filter(p => p.id !== proofId));
-        setSelectedProof(null);
-        showToast(approved ? "Comprobante aprobado" : "Comprobante rechazado", approved ? "success" : "info");
-      } else {
-        showToast(data.error ?? "Error al verificar", "error");
-      }
-    } catch {
-      showToast("Error de conexión", "error");
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const s = styles(theme);
+  const s = st(theme);
 
   if (loading) {
     return (
-      <View style={[s.centered, { backgroundColor: theme.background, flex: 1 }]}>
+      <View style={[s.centered, { flex: 1 }]}>
         <ActivityIndicator size="large" color={ComeYaColors.primary} />
       </View>
     );
   }
 
-  // ── DETALLE DE PAYOUT ──
-  if (selectedPayout) {
+  // ── Detalle de payout ──────────────────────────────────────────────────────
+  if (selected) {
+    const accounts: any[] = selected.paymentAccounts || [];
+    const snap = selected.accountSnapshot ? (() => { try { return JSON.parse(selected.accountSnapshot!); } catch { return null; } })() : null;
+
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-        <TouchableOpacity
-          style={s.backBtn}
-          onPress={() => { setSelectedPayout(null); setPayoutNotes(""); setPayoutProofBase64(null); }}
-        >
+      <ScrollView style={{ flex: 1, backgroundColor: theme.backgroundRoot }} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+        <TouchableOpacity style={s.backBtn} onPress={() => { setSelected(null); setNotes(""); }}>
           <Feather name="arrow-left" size={18} color={theme.text} />
-          <Text style={[s.backText, { color: theme.text }]}>{"Volver a la lista"}</Text>
+          <Text style={[s.backText, { color: theme.text }]}>Volver a la lista</Text>
         </TouchableOpacity>
 
-        {/* Resumen del payout */}
+        {/* Resumen */}
         <View style={s.card}>
           <View style={s.row}>
-            <View style={[s.badge, { backgroundColor: selectedPayout.recipientType === "business" ? ComeYaColors.primary + "20" : ComeYaColors.warning + "20" }]}>
-              <Text style={[s.badgeText, { color: selectedPayout.recipientType === "business" ? ComeYaColors.primary : ComeYaColors.warning }]}>
-                {selectedPayout.recipientType === "business" ? "Negocio" : "Repartidor"}
+            <View style={[s.badge, { backgroundColor: selected.recipientType === "business" ? ComeYaColors.primary + "20" : ComeYaColors.warning + "20" }]}>
+              <Text style={[s.badgeText, { color: selected.recipientType === "business" ? ComeYaColors.primary : ComeYaColors.warning }]}>
+                {selected.recipientType === "business" ? "Negocio" : "Repartidor"}
               </Text>
             </View>
-            <Text style={[s.amount, { color: ComeYaColors.success }]}>
-              {"Bs. " + selectedPayout.amount.toFixed(2)}
-            </Text>
+            <Text style={[s.amount, { color: ComeYaColors.success }]}>{fmt(selected.amount)}</Text>
           </View>
-          <Text style={[s.name, { color: theme.text }]}>{selectedPayout.recipientName ?? ""}</Text>
-          {selectedPayout.businessName && selectedPayout.recipientType === "driver" && (
-            <Text style={[s.sub, { color: theme.textSecondary }]}>{"Negocio: " + selectedPayout.businessName}</Text>
+          <Text style={[s.name, { color: theme.text }]}>{selected.recipientName ?? "—"}</Text>
+          {selected.businessName && selected.recipientType === "driver" && (
+            <Text style={[s.sub, { color: theme.textSecondary }]}>Negocio: {selected.businessName}</Text>
           )}
           <Text style={[s.sub, { color: theme.textSecondary }]}>
-            {"Pedido #" + selectedPayout.orderId.slice(0, 8) + " · " + new Date(selectedPayout.createdAt).toLocaleDateString("es-VE")}
+            Pedido #{selected.orderId.slice(0, 8)} · {new Date(selected.createdAt).toLocaleDateString("es-ES")}
           </Text>
-          {selectedPayout.paymentMethod ? (
-            <Text style={[s.sub, { color: theme.textSecondary }]}>
-              {"Método del cliente: " + (METHOD_LABELS[selectedPayout.paymentMethod] ?? selectedPayout.paymentMethod) +
-                (selectedPayout.orderTotal ? "  ·  Total pedido: Bs. " + selectedPayout.orderTotal.toFixed(2) : "")}
-            </Text>
-          ) : null}
-          {selectedPayout.deliveryMinutes != null ? (
-            <Text style={[s.sub, { color: theme.textSecondary }]}>{"Tiempo de entrega: " + selectedPayout.deliveryMinutes + " min"}</Text>
-          ) : null}
         </View>
 
-        {/* Cuentas de pago del recipiente */}
+        {/* Cuentas de pago registradas */}
         <View style={s.card}>
-          <Text style={[s.cardTitle, { color: theme.text, marginBottom: 10 }]}>{"Cuentas de pago registradas"}</Text>
-          {selectedPayout.paymentAccounts && selectedPayout.paymentAccounts.length > 0 ? (
-            selectedPayout.paymentAccounts.map(acc => (
-              <View key={acc.id} style={[s.accountBox, { backgroundColor: theme.background }]}>
-                <Text style={[s.accountValue, { color: theme.text, fontWeight: "700" }]}>
-                  {(METHOD_LABELS[acc.method] ?? acc.method) + (acc.isDefault ? " ✓ (principal)" : "") + (acc.label ? " · " + acc.label : "")}
-                </Text>
-                {acc.pagoMovilPhone ? (
-                  <Text style={[s.accountValue, { color: theme.text }]}>
-                    {"Tel: " + acc.pagoMovilPhone + "  ·  Banco: " + (acc.pagoMovilBank ?? "") + "  ·  CI: " + (acc.pagoMovilCedula ?? "")}
+          <Text style={[s.cardTitle, { color: theme.text }]}>Cuenta para recibir el pago</Text>
+
+          {/* Snapshot de la cuenta usada al crear el payout */}
+          {snap && (
+            <View style={[s.accountBox, { backgroundColor: theme.backgroundSecondary }]}>
+              <Text style={[s.accountLabel, { color: ComeYaColors.primary }]}>
+                {METHOD_LABELS[snap.method] ?? snap.method} {snap.isDefault ? "✓ (principal)" : ""}
+              </Text>
+              {snap.pagoMovilPhone && <Text style={[s.accountValue, { color: theme.text }]}>Bizum: {snap.pagoMovilPhone}</Text>}
+              {snap.binanceId      && <Text style={[s.accountValue, { color: theme.text }]}>IBAN: {snap.binanceId}</Text>}
+              {snap.zelleEmail     && <Text style={[s.accountValue, { color: theme.text }]}>Titular: {snap.zelleEmail}</Text>}
+              {snap.zinliEmail     && <Text style={[s.accountValue, { color: theme.text }]}>Titular tarjeta: {snap.zinliEmail}</Text>}
+              {snap.zellePhone     && <Text style={[s.accountValue, { color: theme.text }]}>Últimos 4: **** {snap.zellePhone}</Text>}
+            </View>
+          )}
+
+          {/* Todas las cuentas del usuario */}
+          {accounts.length > 0 && (
+            <>
+              <Text style={[s.sub, { color: theme.textSecondary, marginTop: 8, marginBottom: 4 }]}>Todas sus cuentas:</Text>
+              {accounts.map((acc: any) => (
+                <View key={acc.id} style={[s.accountBox, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Text style={[s.accountLabel, { color: theme.text }]}>
+                    {METHOD_LABELS[acc.method] ?? acc.method}{acc.isDefault ? " ✓" : ""}
                   </Text>
-                ) : null}
-                {acc.binanceId ? (
-                  <Text style={[s.accountValue, { color: theme.text }]}>{"Binance ID: " + acc.binanceId}</Text>
-                ) : null}
-                {acc.binanceEmail ? (
-                  <Text style={[s.accountValue, { color: theme.text }]}>{"Binance email: " + acc.binanceEmail}</Text>
-                ) : null}
-                {acc.zinliEmail ? (
-                  <Text style={[s.accountValue, { color: theme.text }]}>{"Zinli: " + acc.zinliEmail}</Text>
-                ) : null}
-                {acc.zelleEmail ? (
-                  <Text style={[s.accountValue, { color: theme.text }]}>{"Zelle email: " + acc.zelleEmail}</Text>
-                ) : null}
-                {acc.zellePhone ? (
-                  <Text style={[s.accountValue, { color: theme.text }]}>{"Zelle tel: " + acc.zellePhone}</Text>
-                ) : null}
-              </View>
-            ))
-          ) : (
-            <Text style={[s.sub, { color: ComeYaColors.warning }]}>{"⚠️ Sin cuentas de pago registradas"}</Text>
+                  {acc.pagoMovilPhone && <Text style={[s.accountValue, { color: theme.text }]}>Bizum: {acc.pagoMovilPhone}</Text>}
+                  {acc.binanceId      && <Text style={[s.accountValue, { color: theme.text }]}>IBAN: {acc.binanceId}</Text>}
+                  {acc.zelleEmail     && <Text style={[s.accountValue, { color: theme.text }]}>Titular / PayPal: {acc.zelleEmail}</Text>}
+                  {acc.zinliEmail     && <Text style={[s.accountValue, { color: theme.text }]}>Titular tarjeta: {acc.zinliEmail}</Text>}
+                  {acc.zellePhone     && <Text style={[s.accountValue, { color: theme.text }]}>Últimos 4: **** {acc.zellePhone}</Text>}
+                </View>
+              ))}
+            </>
+          )}
+
+          {!snap && accounts.length === 0 && (
+            <Text style={[s.sub, { color: ComeYaColors.warning }]}>⚠️ Sin cuentas de pago registradas</Text>
           )}
         </View>
 
-        {/* Registrar la transferencia */}
+        {/* Registrar transferencia */}
         <View style={s.card}>
-          <Text style={[s.cardTitle, { color: theme.text, marginBottom: 10 }]}>{"Registrar transferencia realizada"}</Text>
-          <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 4 }]}>{"Notas / referencia de la transferencia:"}</Text>
+          <Text style={[s.cardTitle, { color: theme.text }]}>Registrar transferencia realizada</Text>
+          <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 6 }]}>
+            Referencia de la transferencia (opcional):
+          </Text>
           <TextInput
-            style={[s.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.background }]}
-            placeholder={"Ej: Pago Móvil ref. 123456 · Banesco"}
+            style={[s.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
+            placeholder="Ej: Bizum ref. 123456 · o IBAN transferencia"
             placeholderTextColor={theme.textSecondary}
-            value={payoutNotes}
-            onChangeText={setPayoutNotes}
+            value={notes}
+            onChangeText={setNotes}
             multiline
             numberOfLines={3}
           />
-          <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 4, marginTop: 12 }]}>{"Capture de la transferencia (opcional):"}</Text>
-          {payoutProofBase64 ? (
-            <View>
-              <Image source={{ uri: payoutProofBase64 }} style={s.proofImage} resizeMode="contain" />
-              <TouchableOpacity
-                style={[s.btn, { backgroundColor: theme.border, marginTop: 4 }]}
-                onPress={() => setPayoutProofBase64(null)}
-              >
-                <Feather name="trash-2" size={14} color={theme.text} />
-                <Text style={[s.btnText, { color: theme.text }]}>{"Quitar imagen"}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[s.btn, { backgroundColor: theme.border }]}
-              onPress={pickProofImage}
-            >
-              <Feather name="camera" size={16} color={theme.text} />
-              <Text style={[s.btnText, { color: theme.text }]}>{"Subir capture de transferencia"}</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
-        {/* Botón confirmar */}
         <TouchableOpacity
           style={[s.btn, { backgroundColor: ComeYaColors.success }]}
-          onPress={() => markPayoutPaid(selectedPayout)}
-          disabled={processingId === selectedPayout.id}
+          onPress={() => markPaid(selected)}
+          disabled={processing === selected.id}
         >
-          {processingId === selectedPayout.id
+          {processing === selected.id
             ? <ActivityIndicator size="small" color="#FFF" />
-            : (
-              <>
-                <Feather name="check-circle" size={16} color="#FFF" />
-                <Text style={s.btnText}>{"Confirmar pago realizado"}</Text>
-              </>
-            )
+            : <><Feather name="check-circle" size={16} color="#FFF" /><Text style={s.btnText}>Confirmar pago realizado</Text></>
           }
         </TouchableOpacity>
       </ScrollView>
     );
   }
 
+  // ── Lista principal ────────────────────────────────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
       {/* Tabs */}
       <View style={s.tabBar}>
-        {(["payouts", "proofs", "metrics"] as const).map(t => (
-          <TouchableOpacity
-            key={t}
-            style={[s.tabBtn, tab === t && s.tabBtnActive]}
-            onPress={() => setTab(t)}
-          >
+        {(["payouts", "metrics"] as const).map(t => (
+          <TouchableOpacity key={t} style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => setTab(t)}>
             <Text style={[s.tabLabel, tab === t && s.tabLabelActive]}>
-              {t === "payouts" ? ("Payouts" + (pendingPayouts.length ? " (" + pendingPayouts.length + ")" : "")) :
-               t === "proofs" ? ("Comprobantes" + (pendingProofs.length ? " (" + pendingProofs.length + ")" : "")) :
-               "Métricas"}
+              {t === "payouts"
+                ? `Pagos pendientes${pendingPayouts.length ? ` (${pendingPayouts.length})` : ""}`
+                : "Métricas"}
             </Text>
           </TouchableOpacity>
         ))}
@@ -345,176 +227,82 @@ export const FinanceTab: React.FC<FinanceTabProps> = ({ theme, showToast }) => {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={ComeYaColors.primary} />}
       >
         {/* ── PAYOUTS ── */}
         {tab === "payouts" && (
-          <>
-            {pendingPayouts.length === 0 ? (
-              <View style={s.empty}>
-                <Feather name="check-circle" size={48} color={ComeYaColors.success} />
-                <Text style={[s.emptyText, { color: theme.textSecondary }]}>{"Sin payouts pendientes"}</Text>
-              </View>
-            ) : (
-              pendingPayouts.map(payout => (
-                <TouchableOpacity
-                  key={payout.id}
-                  style={s.card}
-                  onPress={() => { setSelectedPayout(payout); setPayoutNotes(""); setPayoutProofBase64(null); }}
-                >
-                  <View style={s.row}>
-                    <View style={[s.badge, { backgroundColor: payout.recipientType === "business" ? ComeYaColors.primary + "20" : ComeYaColors.warning + "20" }]}>
-                      <Text style={[s.badgeText, { color: payout.recipientType === "business" ? ComeYaColors.primary : ComeYaColors.warning }]}>
-                        {payout.recipientType === "business" ? "Negocio" : "Repartidor"}
-                      </Text>
-                    </View>
-                    <Text style={[s.amount, { color: ComeYaColors.success }]}>
-                      {"Bs. " + payout.amount.toFixed(2)}
-                    </Text>
-                  </View>
-                  <Text style={[s.name, { color: theme.text }]}>{payout.recipientName ?? ""}</Text>
-                  {payout.businessName && payout.recipientType === "driver" ? (
-                    <Text style={[s.sub, { color: theme.textSecondary }]}>{"Negocio: " + payout.businessName}</Text>
-                  ) : null}
-                  <Text style={[s.sub, { color: theme.textSecondary }]}>
-                    {"Pedido #" + payout.orderId.slice(0, 8) + " · " + new Date(payout.createdAt).toLocaleDateString("es-VE")}
-                  </Text>
-                  <View style={s.tapHint}>
-                    <Feather name="eye" size={14} color={ComeYaColors.primary} />
-                    <Text style={[s.tapHintText, { color: ComeYaColors.primary }]}>{"Ver datos y registrar pago"}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </>
-        )}
-
-        {/* ── COMPROBANTES ── */}
-        {tab === "proofs" && (
-          <>
-            {selectedProof ? (
-              <View style={s.card}>
-                <TouchableOpacity onPress={() => setSelectedProof(null)} style={s.backBtn}>
-                  <Feather name="arrow-left" size={18} color={theme.text} />
-                  <Text style={[s.backText, { color: theme.text }]}>{"Volver"}</Text>
-                </TouchableOpacity>
-                <Text style={[s.name, { color: theme.text }]}>
-                  {METHOD_LABELS[selectedProof.paymentProvider] ?? selectedProof.paymentProvider}
-                </Text>
-                <Text style={[s.sub, { color: theme.textSecondary }]}>
-                  {"Pedido #" + selectedProof.orderId.slice(0, 8)}
-                </Text>
-                <Text style={[s.amount, { color: ComeYaColors.success }]}>
-                  {"Bs. " + selectedProof.amount.toFixed(2)}
-                </Text>
-                {selectedProof.referenceNumber ? (
-                  <Text style={[s.sub, { color: theme.textSecondary }]}>{"Ref: " + selectedProof.referenceNumber}</Text>
-                ) : null}
-                {selectedProof.proofImageUrl ? (
-                  <Image source={{ uri: selectedProof.proofImageUrl }} style={s.proofImage} resizeMode="contain" />
-                ) : null}
+          pendingPayouts.length === 0 ? (
+            <View style={s.empty}>
+              <Feather name="check-circle" size={48} color={ComeYaColors.success} />
+              <Text style={[s.emptyText, { color: theme.textSecondary }]}>Sin pagos pendientes</Text>
+              <Text style={[s.sub, { color: theme.textSecondary, textAlign: "center" }]}>
+                Los pagos se generan automáticamente cuando el cliente confirma la entrega
+              </Text>
+            </View>
+          ) : (
+            pendingPayouts.map(payout => (
+              <TouchableOpacity
+                key={payout.id}
+                style={s.card}
+                onPress={() => { setSelected(payout); setNotes(""); }}
+              >
                 <View style={s.row}>
-                  <TouchableOpacity
-                    style={[s.btn, { flex: 1, backgroundColor: ComeYaColors.error }]}
-                    onPress={() => verifyProof(selectedProof.id, false)}
-                    disabled={!!processingId}
-                  >
-                    {processingId === selectedProof.id
-                      ? <ActivityIndicator size="small" color="#FFF" />
-                      : <><Feather name="x" size={16} color="#FFF" /><Text style={s.btnText}>{"Rechazar"}</Text></>
-                    }
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.btn, { flex: 1, backgroundColor: ComeYaColors.success }]}
-                    onPress={() => verifyProof(selectedProof.id, true)}
-                    disabled={!!processingId}
-                  >
-                    {processingId === selectedProof.id
-                      ? <ActivityIndicator size="small" color="#FFF" />
-                      : <><Feather name="check" size={16} color="#FFF" /><Text style={s.btnText}>{"Aprobar"}</Text></>
-                    }
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : pendingProofs.length === 0 ? (
-              <View style={s.empty}>
-                <Feather name="check-circle" size={48} color={ComeYaColors.success} />
-                <Text style={[s.emptyText, { color: theme.textSecondary }]}>{"Sin comprobantes pendientes"}</Text>
-              </View>
-            ) : (
-              pendingProofs.map(proof => (
-                <TouchableOpacity key={proof.id} style={s.card} onPress={() => setSelectedProof(proof)}>
-                  <View style={s.row}>
-                    <View style={[s.badge, { backgroundColor: ComeYaColors.warning + "20" }]}>
-                      <Text style={[s.badgeText, { color: ComeYaColors.warning }]}>{"Pendiente"}</Text>
-                    </View>
-                    <Text style={[s.amount, { color: ComeYaColors.success }]}>
-                      {"Bs. " + proof.amount.toFixed(2)}
+                  <View style={[s.badge, { backgroundColor: payout.recipientType === "business" ? ComeYaColors.primary + "20" : ComeYaColors.warning + "20" }]}>
+                    <Text style={[s.badgeText, { color: payout.recipientType === "business" ? ComeYaColors.primary : ComeYaColors.warning }]}>
+                      {payout.recipientType === "business" ? "Negocio" : "Repartidor"}
                     </Text>
                   </View>
-                  <Text style={[s.name, { color: theme.text }]}>
-                    {METHOD_LABELS[proof.paymentProvider] ?? proof.paymentProvider}
-                  </Text>
-                  <Text style={[s.sub, { color: theme.textSecondary }]}>
-                    {"Pedido #" + proof.orderId.slice(0, 8) + " · " + (proof.referenceNumber ? "Ref: " + proof.referenceNumber : "Sin referencia")}
-                  </Text>
-                  <Text style={[s.sub, { color: theme.textSecondary }]}>
-                    {new Date(proof.submittedAt).toLocaleString("es-VE")}
-                  </Text>
-                  <View style={s.tapHint}>
-                    <Feather name="eye" size={14} color={ComeYaColors.primary} />
-                    <Text style={[s.tapHintText, { color: ComeYaColors.primary }]}>{"Ver comprobante"}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </>
+                  <Text style={[s.amount, { color: ComeYaColors.success }]}>{fmt(payout.amount)}</Text>
+                </View>
+                <Text style={[s.name, { color: theme.text }]}>{payout.recipientName ?? "—"}</Text>
+                {payout.businessName && payout.recipientType === "driver" && (
+                  <Text style={[s.sub, { color: theme.textSecondary }]}>Negocio: {payout.businessName}</Text>
+                )}
+                <Text style={[s.sub, { color: theme.textSecondary }]}>
+                  Pedido #{payout.orderId.slice(0, 8)} · {new Date(payout.createdAt).toLocaleDateString("es-ES")}
+                </Text>
+                <View style={s.tapHint}>
+                  <Feather name="send" size={13} color={ComeYaColors.primary} />
+                  <Text style={[s.tapHintText, { color: ComeYaColors.primary }]}>Ver cuenta y registrar pago</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )
         )}
 
         {/* ── MÉTRICAS ── */}
-        {tab === "metrics" && metrics && (
+        {tab === "metrics" && (
           <>
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <Feather name="bar-chart-2" size={20} color={ComeYaColors.primary} />
-                <Text style={[s.cardTitle, { color: theme.text }]}>{"Resumen de pagos"}</Text>
-              </View>
-              <View style={s.metricsGrid}>
-                <View style={s.metricItem}>
-                  <Text style={[s.metricValue, { color: ComeYaColors.warning }]}>{metrics.pendingProofs}</Text>
-                  <Text style={[s.metricLabel, { color: theme.textSecondary }]}>{"Pendientes"}</Text>
-                </View>
-                <View style={s.metricItem}>
-                  <Text style={[s.metricValue, { color: ComeYaColors.success }]}>{metrics.approvedToday}</Text>
-                  <Text style={[s.metricLabel, { color: theme.textSecondary }]}>{"Aprobados hoy"}</Text>
-                </View>
-                <View style={s.metricItem}>
-                  <Text style={[s.metricValue, { color: ComeYaColors.error }]}>{metrics.rejectedToday}</Text>
-                  <Text style={[s.metricLabel, { color: theme.textSecondary }]}>{"Rechazados hoy"}</Text>
-                </View>
-              </View>
+            {/* KPIs */}
+            <View style={[s.card, { flexDirection: "row", justifyContent: "space-around" }]}>
+              <KPI label="Pendientes"   value={pendingPayouts.length}                                  color={ComeYaColors.warning} theme={theme} />
+              <KPI label="Total €"      value={fmt(pendingPayouts.reduce((s, p) => s + p.amount, 0))} color={ComeYaColors.success} theme={theme} />
+              <KPI label="Negocios"     value={pendingPayouts.filter(p => p.recipientType === "business").length} color={ComeYaColors.primary} theme={theme} />
+              <KPI label="Repartidores" value={pendingPayouts.filter(p => p.recipientType === "driver").length}   color="#9C27B0" theme={theme} />
             </View>
-            <View style={s.card}>
-              <View style={s.cardHeader}>
-                <Feather name="pie-chart" size={20} color={ComeYaColors.primary} />
-                <Text style={[s.cardTitle, { color: theme.text }]}>{"Por método de pago"}</Text>
-              </View>
-              {metrics.totalByMethod && Object.entries(metrics.totalByMethod).map(([method, data]) => (
-                <View key={method} style={[s.methodRow, { borderBottomColor: theme.border }]}>
-                  <Text style={[s.methodName, { color: theme.text }]}>
-                    {METHOD_LABELS[method] ?? method}
-                  </Text>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <Text style={[s.methodAmount, { color: ComeYaColors.success }]}>
-                      {"Bs. " + data.amount.toFixed(2)}
-                    </Text>
-                    <Text style={[s.sub, { color: theme.textSecondary }]}>{data.count + " pagos"}</Text>
+
+            {/* Por método de pago */}
+            {metrics?.totalByMethod && Object.keys(metrics.totalByMethod).length > 0 && (
+              <View style={s.card}>
+                <Text style={[s.cardTitle, { color: theme.text, marginBottom: 12 }]}>Por método de pago</Text>
+                {Object.entries(metrics.totalByMethod).map(([method, data]: any) => (
+                  <View key={method} style={[s.methodRow, { borderBottomColor: theme.border }]}>
+                    <Text style={[s.methodName, { color: theme.text }]}>{METHOD_LABELS[method] ?? method}</Text>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={[s.methodAmount, { color: ComeYaColors.success }]}>€{(data.amount / 100).toFixed(2)}</Text>
+                      <Text style={[s.sub, { color: theme.textSecondary }]}>{data.count} pagos</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-              {(!metrics.totalByMethod || Object.keys(metrics.totalByMethod).length === 0) && (
-                <Text style={[s.sub, { color: theme.textSecondary }]}>{"Sin datos aún"}</Text>
-              )}
+                ))}
+              </View>
+            )}
+
+            {/* Info */}
+            <View style={[s.card, { backgroundColor: ComeYaColors.primary + "10", borderColor: ComeYaColors.primary + "30", borderWidth: 1 }]}>
+              <Feather name="info" size={16} color={ComeYaColors.primary} />
+              <Text style={[s.sub, { color: ComeYaColors.primary, marginTop: 6 }]}>
+                Los pagos a negocios y repartidores se realizan manualmente via Bizum, Transferencia IBAN o PayPal según la cuenta que hayan configurado en su perfil.
+              </Text>
             </View>
           </>
         )}
@@ -523,50 +311,43 @@ export const FinanceTab: React.FC<FinanceTabProps> = ({ theme, showToast }) => {
   );
 };
 
-const styles = (theme: any) => StyleSheet.create({
-  centered: { justifyContent: "center", alignItems: "center" },
-  tabBar: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: theme.border },
-  tabBtn: { flex: 1, paddingVertical: 12, alignItems: "center" },
-  tabBtnActive: { borderBottomWidth: 2, borderBottomColor: ComeYaColors.primary },
-  tabLabel: { fontSize: 13, color: theme.textSecondary, fontWeight: "500" },
-  tabLabelActive: { color: ComeYaColors.primary, fontWeight: "700" },
-  card: {
-    backgroundColor: theme.card, borderRadius: 12, padding: 16,
-    marginBottom: 12, elevation: 2,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3,
-  },
-  cardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  cardTitle: { fontSize: 16, fontWeight: "700" },
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  badgeText: { fontSize: 12, fontWeight: "600" },
-  amount: { fontSize: 20, fontWeight: "700" },
-  name: { fontSize: 15, fontWeight: "600", marginBottom: 2 },
-  sub: { fontSize: 12, marginBottom: 2 },
-  accountBox: { borderRadius: 8, padding: 10, marginBottom: 8 },
-  accountLabel: { fontSize: 11, fontWeight: "600", marginBottom: 4 },
-  accountValue: { fontSize: 13, marginBottom: 2 },
-  input: {
-    borderWidth: 1, borderRadius: 8, padding: 10,
-    fontSize: 14, minHeight: 44,
-  },
-  btn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, padding: 12, borderRadius: 8, marginTop: 8,
-  },
-  btnText: { color: "#FFF", fontSize: 14, fontWeight: "600" },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
-  backText: { fontSize: 14 },
-  proofImage: { width: "100%", height: 250, borderRadius: 8, marginVertical: 12, backgroundColor: theme.background },
-  tapHint: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
-  tapHintText: { fontSize: 12 },
-  empty: { alignItems: "center", paddingVertical: 60, gap: 12 },
-  emptyText: { fontSize: 14 },
-  metricsGrid: { flexDirection: "row", justifyContent: "space-around" },
-  metricItem: { alignItems: "center" },
-  metricValue: { fontSize: 28, fontWeight: "700" },
-  metricLabel: { fontSize: 11, marginTop: 2 },
-  methodRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1 },
-  methodName: { fontSize: 14, fontWeight: "500" },
-  methodAmount: { fontSize: 15, fontWeight: "700" },
+function KPI({ label, value, color, theme }: any) {
+  return (
+    <View style={{ alignItems: "center" }}>
+      <Text style={{ fontSize: 22, fontWeight: "700", color }}>{value}</Text>
+      <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{label}</Text>
+    </View>
+  );
+}
+
+const st = (theme: any) => StyleSheet.create({
+  centered:      { justifyContent: "center", alignItems: "center" },
+  tabBar:        { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: theme.border },
+  tabBtn:        { flex: 1, paddingVertical: 12, alignItems: "center" },
+  tabBtnActive:  { borderBottomWidth: 2, borderBottomColor: ComeYaColors.primary },
+  tabLabel:      { fontSize: 13, color: theme.textSecondary, fontWeight: "500" },
+  tabLabelActive:{ color: ComeYaColors.primary, fontWeight: "700" },
+  card:          { backgroundColor: theme.card, borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.07, shadowRadius: 3 },
+  cardTitle:     { fontSize: 15, fontWeight: "700" },
+  row:           { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+  badge:         { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  badgeText:     { fontSize: 12, fontWeight: "600" },
+  amount:        { fontSize: 20, fontWeight: "700" },
+  name:          { fontSize: 15, fontWeight: "600", marginBottom: 2 },
+  sub:           { fontSize: 12, marginBottom: 2 },
+  accountBox:    { borderRadius: 8, padding: 10, marginBottom: 8 },
+  accountLabel:  { fontSize: 12, fontWeight: "700", marginBottom: 4 },
+  accountValue:  { fontSize: 13, marginBottom: 2 },
+  input:         { borderWidth: 1, borderRadius: 8, padding: 10, fontSize: 14, minHeight: 44 },
+  btn:           { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, padding: 14, borderRadius: 10, marginTop: 8 },
+  btnText:       { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  backBtn:       { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
+  backText:      { fontSize: 14 },
+  tapHint:       { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
+  tapHintText:   { fontSize: 12 },
+  empty:         { alignItems: "center", paddingVertical: 60, gap: 12 },
+  emptyText:     { fontSize: 15, fontWeight: "600" },
+  methodRow:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1 },
+  methodName:    { fontSize: 14, fontWeight: "500" },
+  methodAmount:  { fontSize: 15, fontWeight: "700" },
 });

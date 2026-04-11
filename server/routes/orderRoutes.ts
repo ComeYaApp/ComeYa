@@ -63,6 +63,9 @@ router.post("/", authenticateToken, validateOrderFinancials, async (req, res) =>
         );
         deliveryFee = await calculateDeliveryFee(distance);
         estimatedDeliveryTime = estimateDeliveryTime(distance, business.prepTime || 20);
+      } else {
+        // Sin coordenadas — usar tarifa mínima (250 centavos = €2.50)
+        deliveryFee = Math.max(deliveryFee || 0, 250);
       }
     }
 

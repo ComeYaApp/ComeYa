@@ -140,7 +140,7 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
-  const deliveryFee = route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? business.deliveryFee / 100 : 0));
+  const deliveryFee = route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5));
   
   const [tip, setTip] = useState(0);
   const comeyaCommission = subtotal * 0.15;

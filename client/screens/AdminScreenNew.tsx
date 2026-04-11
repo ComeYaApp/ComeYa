@@ -33,6 +33,7 @@ import {
   SupportTab,
   ZonesTab,
   SettingsTab,
+  VerificationsTab,
 } from "@/components/admin/tabs";
 import type {
   DashboardMetrics,
@@ -53,7 +54,13 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   {
-    title: "Dashboard",
+    title: "Verificaciones",
+    subtitle: "Aprobar repartidores y negocios",
+    icon: "user-check",
+    tab: "verifications",
+    color: "#10B981",
+  },
+  {
     subtitle: "Métricas y pedidos activos",
     icon: "bar-chart-2",
     tab: "dashboard",
@@ -430,6 +437,8 @@ export default function AdminMenuScreen() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case "verifications":
+        return <VerificationsTab theme={theme} showToast={showToast} />;
       case "dashboard":
         return (
           <DashboardTab

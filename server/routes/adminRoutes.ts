@@ -573,6 +573,75 @@ router.put("/settings", authenticateToken, requireRole("admin", "super_admin"), 
 
 export default router;
 
+// ── Verificación de repartidores y negocios ─────────────────────────────────
+
+// GET /api/admin/verifications/pending — lista pendientes de aprobación
+router.get("/verifications/pending", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { inArray } = await import("drizzle-orm");
+
+    const pending = await db.select().from(users).where(
+      inArray(users.role, ["delivery_driver", "business_owner"])
+    );
+
+    res.json({ success: true, users: pending });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/admin/verifications/:userId — aprobar o rechazar
+router.put("/verifications/:userId", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users, auditLogs } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const { action, notes } = req.body; // action: "approve" | "reject"
+    const userId = req.params.userId;
+
+    if (!action || !["approve", "reject"].includes(action)) {
+      return res.status(400).json({ error: "action debe ser 'approve' o 'reject'" });
+    }
+
+    const verificationStatus = action === "approve" ? "verified" : "rejected";
+    const isActive = action === "approve";
+
+    await db.update(users).set({
+      verificationStatus,
+      verificationNotes: notes || null,
+      isActive,
+    }).where(eq(users.id, userId));
+
+    // Audit log
+    await db.insert(auditLogs).values({
+      userId: req.user!.id,
+      action: action === "approve" ? "verify_user_approved" : "verify_user_rejected",
+      entityType: "user",
+      entityId: userId,
+      changes: JSON.stringify({ verificationStatus, notes }),
+    });
+
+    // Push notification al usuario
+    try {
+      const { sendPushToUser } = await import("../enhancedPushService");
+      await sendPushToUser(userId, {
+        title: action === "approve" ? "✅ Cuenta verificada" : "❌ Verificación rechazada",
+        body: action === "approve"
+          ? "Tu cuenta ha sido verificada. Ya puedes usar ComeYa."
+          : `Tu verificación fue rechazada. ${notes || "Contacta con soporte para más información."}`,
+        data: { screen: "Profile" },
+      });
+    } catch {}
+
+    res.json({ success: true, verificationStatus });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Bank account (placeholder)
 router.get("/bank-account", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
