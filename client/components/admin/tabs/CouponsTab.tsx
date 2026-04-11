@@ -29,7 +29,7 @@ interface Coupon {
 interface CouponsTabProps {
   theme: any;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
-  onSelectCoupon: (coupon: Coupon) => void;
+  onSelectCoupon?: (coupon: Coupon) => void;
 }
 
 export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSelectCoupon }) => {
@@ -145,7 +145,7 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
             <Pressable 
               key={coupon.id} 
               style={[styles.card, { backgroundColor: theme.card }]}
-              onPress={() => onSelectCoupon(coupon)}
+              onPress={() => onSelectCoupon?.(coupon)}
             >
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
@@ -155,7 +155,7 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
                   <Text style={[styles.couponDiscount, { color: theme.textSecondary }]}>
                     {coupon.discountType === "percentage"
                       ? `${coupon.discountValue}% descuento`
-                      : `$${(coupon.discountValue / 100).toFixed(0)} descuento`}
+                      : `€${(coupon.discountValue / 100).toFixed(2)} descuento`}
                   </Text>
                 </View>
                 <View
@@ -183,14 +183,14 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
                 <View style={styles.stat}>
                   <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Usos</Text>
                   <Text style={[styles.statValue, { color: theme.text }]}>
-                    {coupon.usedCount}/{coupon.maxUses || "∞"}
-                  </Text>
-                </View>
-                {coupon.minOrderAmount ? (
+                      {coupon.usedCount}/{coupon.maxUses || "∞"}
+                    </Text>
+                  </View>
+                  {coupon.minOrderAmount ? (
                   <View style={styles.stat}>
                     <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Mínimo</Text>
                     <Text style={[styles.statValue, { color: theme.text }]}>
-                      ${(coupon.minOrderAmount / 100).toFixed(0)}
+                      €{(coupon.minOrderAmount / 100).toFixed(2)}
                     </Text>
                   </View>
                 ) : null}
@@ -198,7 +198,7 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
                   <View style={styles.stat}>
                     <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Expira</Text>
                     <Text style={[styles.statValue, { color: theme.text }]}>
-                      {new Date(coupon.expiresAt).toLocaleDateString("es-VE")}
+                      {new Date(coupon.expiresAt).toLocaleDateString("es-ES")}
                     </Text>
                   </View>
                 ) : null}

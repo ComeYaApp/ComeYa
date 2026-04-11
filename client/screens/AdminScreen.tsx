@@ -314,9 +314,7 @@ export default function AdminMenuScreen() {
         return (
           <BusinessesTab
             businesses={businesses}
-            onAddBusiness={() => {}}
-            onEditBusiness={() => {}}
-            onManageProducts={() => {}}
+            onBusinessPress={() => {}}
           />
         );
       case "users":

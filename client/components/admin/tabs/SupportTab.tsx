@@ -147,7 +147,7 @@ export function SupportTab({ theme, showToast }: TabProps) {
                   {ticket.subject}
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  {ticket.userName} - {new Date(ticket.createdAt).toLocaleDateString("es-VE")}
+                  {ticket.userName} - {new Date(ticket.createdAt).toLocaleDateString("es-ES")}
                 </ThemedText>
               </View>
               <View style={[tabStyles.priorityBadge, {
@@ -231,7 +231,7 @@ export function SupportTab({ theme, showToast }: TabProps) {
                         </ThemedText>
                         <ThemedText type="body">{msg.message}</ThemedText>
                         <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                          {new Date(msg.createdAt).toLocaleString("es-VE")}
+                          {new Date(msg.createdAt).toLocaleString("es-ES")}
                         </ThemedText>
                       </View>
                     </View>

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-nati
 import * as Haptics from "expo-haptics";
 import { ComeYaColors } from "../../../constants/theme";
 import { AdminUser } from "../types/admin.types";
+import { useTheme } from "@/hooks/useTheme";
 
 interface UsersTabProps {
   users: AdminUser[];
@@ -10,6 +11,7 @@ interface UsersTabProps {
 }
 
 export const UsersTab: React.FC<UsersTabProps> = ({ users, onUserPress }) => {
+  const { theme } = useTheme();
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "admin":
@@ -46,14 +48,14 @@ export const UsersTab: React.FC<UsersTabProps> = ({ users, onUserPress }) => {
       {users.map((user) => (
         <TouchableOpacity
           key={user.id}
-          style={styles.card}
+          style={[styles.card, { backgroundColor: theme.card }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onUserPress(user);
           }}
         >
           <View style={styles.userHeader}>
-            <Text style={styles.userName}>{user.name}</Text>
+            <Text style={[styles.userName, { color: theme.text }]}>{user.name}</Text>
             <View
               style={[
                 styles.roleBadge,
@@ -63,8 +65,8 @@ export const UsersTab: React.FC<UsersTabProps> = ({ users, onUserPress }) => {
               <Text style={styles.roleBadgeText}>{getRoleLabel(user.role)}</Text>
             </View>
           </View>
-          <Text style={styles.userPhone}>{user.phone}</Text>
-          <Text style={styles.userEmail}>{user.email || "Sin email"}</Text>
+          <Text style={[styles.userPhone, { color: theme.textSecondary }]}>{user.phone}</Text>
+          <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{user.email || "Sin email"}</Text>
         </TouchableOpacity>
       ))}
     </ScrollView>
@@ -76,10 +78,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 3,
   },
   userHeader: {
     flexDirection: "row",
@@ -90,7 +96,6 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000000",
     flex: 1,
   },
   roleBadge: {
@@ -105,11 +110,9 @@ const styles = StyleSheet.create({
   },
   userPhone: {
     fontSize: 14,
-    color: "#666666",
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 12,
-    color: "#666666",
   },
 });

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-nati
 import * as Haptics from "expo-haptics";
 import { ComeYaColors } from "../../../constants/theme";
 import { AdminOrder } from "../types/admin.types";
+import { useTheme } from "@/hooks/useTheme";
 
 interface OrdersTabProps {
   orders: AdminOrder[];
@@ -10,6 +11,7 @@ interface OrdersTabProps {
 }
 
 export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onOrderPress }) => {
+  const { theme } = useTheme();
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -49,14 +51,14 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onOrderPress }) =>
       {orders.map((order) => (
         <TouchableOpacity
           key={order.id}
-          style={styles.card}
+          style={[styles.card, { backgroundColor: theme.card }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onOrderPress(order);
           }}
         >
           <View style={styles.orderHeader}>
-            <Text style={styles.orderId}>#{order.id.slice(0, 8)}</Text>
+            <Text style={[styles.orderId, { color: theme.text }]}>#{order.id.slice(0, 8)}</Text>
             <View
               style={[
                 styles.statusBadge,
@@ -66,13 +68,13 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onOrderPress }) =>
               <Text style={styles.statusText}>{getStatusLabel(order.status)}</Text>
             </View>
           </View>
-          <Text style={styles.businessName}>{order.businessName}</Text>
-          <Text style={styles.customerName}>Cliente: {order.customerName}</Text>
+          <Text style={[styles.businessName, { color: theme.text }]}>{order.businessName}</Text>
+          <Text style={[styles.customerName, { color: theme.textSecondary }]}>Cliente: {order.customerName}</Text>
           <Text style={styles.orderTotal}>
-            Total: ${(order.total / 100).toFixed(2)}
+            Total: €{(order.total / 100).toFixed(2)}
           </Text>
-          <Text style={styles.orderDate}>
-            {new Date(order.createdAt).toLocaleString("es-VE")}
+          <Text style={[styles.orderDate, { color: theme.textSecondary }]}>
+            {new Date(order.createdAt).toLocaleString("es-ES")}
           </Text>
         </TouchableOpacity>
       ))}
@@ -85,10 +87,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 3,
   },
   orderHeader: {
     flexDirection: "row",
@@ -99,7 +105,6 @@ const styles = StyleSheet.create({
   orderId: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#000000",
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -114,12 +119,10 @@ const styles = StyleSheet.create({
   businessName: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#000000",
     marginBottom: 4,
   },
   customerName: {
     fontSize: 14,
-    color: "#666666",
     marginBottom: 4,
   },
   orderTotal: {
@@ -130,6 +133,5 @@ const styles = StyleSheet.create({
   },
   orderDate: {
     fontSize: 12,
-    color: "#666666",
   },
 });

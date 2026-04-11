@@ -140,7 +140,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
               <Feather name="dollar-sign" size={24} color={ComeYaColors.success} />
-              <Text style={[styles.statValue, { color: theme.text }]}>${(stats.totalRevenue / 100).toFixed(0)}</Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>€{(stats.totalRevenue / 100).toFixed(0)}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Ingresos</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
@@ -203,7 +203,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.orderTotal}>${((order.total || 0) / 100).toFixed(2)}</Text>
+                <Text style={styles.orderTotal}>€{((order.total || 0) / 100).toFixed(2)}</Text>
               </View>
               <Text style={[styles.orderAddress, { color: theme.textSecondary }]} numberOfLines={1}>
                 {order.deliveryAddress?.address || "Sin dirección"}
