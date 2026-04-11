@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
@@ -109,6 +110,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   };
 
   const s = st(theme);
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return (
@@ -269,7 +271,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
       {/* Tabs */}
-      <View style={s.tabBar}>
+      <View style={[s.tabBar, { paddingTop: insets.top }]}>
         {(["payouts", "history", "metrics"] as const).map(t => (
           <TouchableOpacity key={t} style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => setTab(t)}>
             <Text style={[s.tabLabel, tab === t && s.tabLabelActive]}>

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, ScrollView, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ComeYaColors, Spacing } from "../../../constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { DashboardMetrics, ActiveOrder, OnlineDriver, AdminStats } from "../types/admin.types";
@@ -25,6 +26,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   navigation,
 }) => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -69,7 +71,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const displayedOrders = showAllOrders ? activeOrders : activeOrders.slice(0, 5);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 100 }}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Métricas en Tiempo Real</Text>
       <View style={styles.metricsGrid}>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
