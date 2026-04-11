@@ -4,7 +4,7 @@
     "slug": "comeya",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./client/assets/nuevologoapp.jpeg",
     "scheme": "comeya",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/android-icon-foreground.png"
+        "foregroundImage": "./client/assets/nuevologoapp.jpeg"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -31,19 +31,19 @@
     },
     "web": {
       "output": "single",
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./client/assets/nuevologoapp.jpeg"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./client/assets/nuevologoapp.jpeg",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF",
           "dark": {
             "backgroundColor": "#121212",
-            "image": "./assets/images/splash-icon.png"
+            "image": "./client/assets/nuevologoapp.jpeg"
           }
         }
       ],

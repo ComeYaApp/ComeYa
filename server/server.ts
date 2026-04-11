@@ -60,6 +60,9 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'uploads')));
 
+// Serve client assets (logo, splash, etc.)
+app.use('/assets', express.static(path.join(process.cwd(), 'client/assets')));
+
 // ─── API ROUTES (modular) ─────────────────────────────────────────────────────
 import apiRouter from './routes';
 app.use('/api', apiRouter);
