@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, TextInput,
+  ActivityIndicator, RefreshControl, TextInput, Image,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
@@ -43,26 +44,32 @@ const METHOD_LABELS: Record<string, string> = {
 const fmt = (cents: number) => `€${(cents / 100).toFixed(2)}`;
 
 export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
-  const [tab, setTab]                   = useState<"payouts" | "metrics">("payouts");
+  const [tab, setTab]                   = useState<"payouts" | "history" | "metrics">("payouts");
   const [loading, setLoading]           = useState(true);
   const [refreshing, setRefreshing]     = useState(false);
   const [pendingPayouts, setPendingPayouts] = useState<Payout[]>([]);
+  const [paidPayouts, setPaidPayouts]   = useState<Payout[]>([]);
   const [metrics, setMetrics]           = useState<any>(null);
   const [selected, setSelected]         = useState<Payout | null>(null);
   const [notes, setNotes]               = useState("");
+  const [payoutMethod, setPayoutMethod] = useState("bizum");
+  const [proofUri, setProofUri]         = useState<string | null>(null);
   const [processing, setProcessing]     = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [payoutsRes, metricsRes] = await Promise.all([
+      const [payoutsRes, historyRes, metricsRes] = await Promise.all([
         apiRequest("GET", "/api/admin/finance/payouts/pending"),
+        apiRequest("GET", "/api/admin/finance/payouts/history"),
         apiRequest("GET", "/api/digital-payments/metrics"),
       ]);
-      const [payoutsData, metricsData] = await Promise.all([
+      const [payoutsData, historyData, metricsData] = await Promise.all([
         payoutsRes.json(),
+        historyRes.json(),
         metricsRes.json(),
       ]);
       if (payoutsData.success) setPendingPayouts(payoutsData.payouts ?? []);
+      if (historyData.success) setPaidPayouts(historyData.payouts ?? []);
       if (metricsData.success) setMetrics(metricsData);
     } catch {
       showToast("Error al cargar datos financieros", "error");
@@ -77,13 +84,20 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   const markPaid = async (payout: Payout) => {
     setProcessing(payout.id);
     try {
-      const res  = await apiRequest("POST", `/api/admin/finance/payouts/${payout.id}/mark-paid`, { notes: notes || undefined });
+      const res  = await apiRequest("POST", `/api/admin/finance/payouts/${payout.id}/mark-paid`, {
+        notes:    notes    || undefined,
+        method:   payoutMethod,
+        proofUrl: proofUri || undefined,
+      });
       const data = await res.json();
       if (data.success) {
         setPendingPayouts(prev => prev.filter(p => p.id !== payout.id));
         setSelected(null);
         setNotes("");
-        showToast("Pago registrado correctamente ✓", "success");
+        setProofUri(null);
+        setPayoutMethod("bizum");
+        showToast("✅ Pago registrado. Notificación enviada al recipiente.", "success");
+        load(); // recargar historial
       } else {
         showToast(data.error ?? "Error al procesar", "error");
       }
@@ -180,18 +194,61 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
         {/* Registrar transferencia */}
         <View style={s.card}>
           <Text style={[s.cardTitle, { color: theme.text }]}>Registrar transferencia realizada</Text>
-          <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 6 }]}>
-            Referencia de la transferencia (opcional):
-          </Text>
+
+          {/* Método usado */}
+          <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 6, marginTop: 8 }]}>Método de pago utilizado:</Text>
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+            {[
+              { id: "bizum",         label: "Bizum",       color: "#00ADEF" },
+              { id: "transferencia", label: "IBAN",        color: "#2E7D32" },
+              { id: "paypal",        label: "PayPal",      color: "#003087" },
+            ].map(m => (
+              <TouchableOpacity
+                key={m.id}
+                onPress={() => setPayoutMethod(m.id)}
+                style={[s.methodChip, { backgroundColor: payoutMethod === m.id ? m.color : theme.backgroundSecondary, borderColor: payoutMethod === m.id ? m.color : theme.border }]}
+              >
+                <Text style={{ color: payoutMethod === m.id ? "#FFF" : theme.text, fontWeight: "600", fontSize: 13 }}>{m.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Referencia */}
+          <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 6 }]}>Referencia / nota (opcional):</Text>
           <TextInput
             style={[s.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
-            placeholder="Ej: Bizum ref. 123456 · o IBAN transferencia"
+            placeholder="Ej: Bizum ref. 123456"
             placeholderTextColor={theme.textSecondary}
             value={notes}
             onChangeText={setNotes}
             multiline
-            numberOfLines={3}
+            numberOfLines={2}
           />
+
+          {/* Captura de transferencia */}
+          <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 6, marginTop: 12 }]}>Captura de la transferencia (opcional):</Text>
+          {proofUri ? (
+            <View>
+              <Image source={{ uri: proofUri }} style={s.proofImage} resizeMode="contain" />
+              <TouchableOpacity style={[s.btn, { backgroundColor: theme.backgroundSecondary, marginTop: 4 }]} onPress={() => setProofUri(null)}>
+                <Feather name="trash-2" size={14} color={theme.text} />
+                <Text style={[s.btnText, { color: theme.text }]}>Quitar imagen</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[s.btn, { backgroundColor: theme.backgroundSecondary, borderWidth: 1, borderColor: theme.border, borderStyle: "dashed" }]}
+              onPress={async () => {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== "granted") { showToast("Se necesita permiso de galería", "error"); return; }
+                const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+                if (!result.canceled && result.assets[0]) setProofUri(result.assets[0].uri);
+              }}
+            >
+              <Feather name="upload" size={16} color={theme.textSecondary} />
+              <Text style={[s.btnText, { color: theme.textSecondary }]}>Subir captura de transferencia</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <TouchableOpacity
@@ -213,12 +270,12 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
     <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
       {/* Tabs */}
       <View style={s.tabBar}>
-        {(["payouts", "metrics"] as const).map(t => (
+        {(["payouts", "history", "metrics"] as const).map(t => (
           <TouchableOpacity key={t} style={[s.tabBtn, tab === t && s.tabBtnActive]} onPress={() => setTab(t)}>
             <Text style={[s.tabLabel, tab === t && s.tabLabelActive]}>
-              {t === "payouts"
-                ? `Pagos pendientes${pendingPayouts.length ? ` (${pendingPayouts.length})` : ""}`
-                : "Métricas"}
+              {t === "payouts"  ? `Pendientes${pendingPayouts.length ? ` (${pendingPayouts.length})` : ""}` :
+               t === "history" ? `Pagados${paidPayouts.length ? ` (${paidPayouts.length})` : ""}` :
+               "Métricas"}
             </Text>
           </TouchableOpacity>
         ))}
@@ -266,6 +323,51 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                   <Text style={[s.tapHintText, { color: ComeYaColors.primary }]}>Ver cuenta y registrar pago</Text>
                 </View>
               </TouchableOpacity>
+            ))
+          )
+        )}
+
+        {/* ── HISTORIAL ── */}
+        {tab === "history" && (
+          paidPayouts.length === 0 ? (
+            <View style={s.empty}>
+              <Feather name="clock" size={48} color={theme.textSecondary} />
+              <Text style={[s.emptyText, { color: theme.textSecondary }]}>Sin historial de pagos</Text>
+              <Text style={[s.sub, { color: theme.textSecondary, textAlign: "center", marginTop: 8 }]}>
+                Los pagos que marques como completados aparecerán aquí
+              </Text>
+            </View>
+          ) : (
+            paidPayouts.map(payout => (
+              <View key={payout.id} style={s.card}>
+                <View style={s.row}>
+                  <View style={[s.badge, { backgroundColor: payout.recipientType === "business" ? ComeYaColors.primary + "20" : ComeYaColors.warning + "20" }]}>
+                    <Text style={[s.badgeText, { color: payout.recipientType === "business" ? ComeYaColors.primary : ComeYaColors.warning }]}>
+                      {payout.recipientType === "business" ? "Negocio" : "Repartidor"}
+                    </Text>
+                  </View>
+                  <Text style={[s.amount, { color: ComeYaColors.success }]}>{fmt(payout.amount)}</Text>
+                </View>
+                <Text style={[s.name, { color: theme.text }]}>{payout.recipientName ?? "—"}</Text>
+                {payout.businessName && payout.recipientType === "driver" && (
+                  <Text style={[s.sub, { color: theme.textSecondary }]}>Negocio: {payout.businessName}</Text>
+                )}
+                <Text style={[s.sub, { color: theme.textSecondary }]}>
+                  Pedido #{payout.orderId.slice(0, 8)} · Creado: {new Date(payout.createdAt).toLocaleDateString("es-ES")}
+                </Text>
+                {payout.method && (
+                  <View style={[s.methodTag, { backgroundColor: theme.backgroundSecondary }]}>
+                    <Feather name="check" size={12} color={ComeYaColors.success} />
+                    <Text style={[s.sub, { color: theme.text }]}>Pagado via {METHOD_LABELS[payout.method] ?? payout.method}</Text>
+                  </View>
+                )}
+                {payout.paidAt && (
+                  <Text style={[s.sub, { color: ComeYaColors.success }]}>✓ Pagado: {new Date(payout.paidAt).toLocaleDateString("es-ES")}</Text>
+                )}
+                {payout.notes && (
+                  <Text style={[s.sub, { color: theme.textSecondary, fontStyle: "italic" }]}>Nota: {payout.notes}</Text>
+                )}
+              </View>
             ))
           )
         )}
@@ -350,4 +452,7 @@ const st = (theme: any) => StyleSheet.create({
   methodRow:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 10, borderBottomWidth: 1 },
   methodName:    { fontSize: 14, fontWeight: "500" },
   methodAmount:  { fontSize: 15, fontWeight: "700" },
+  methodChip:    { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  proofImage:    { width: "100%", height: 200, borderRadius: 8, marginTop: 8 },
+  methodTag:     { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, alignSelf: "flex-start" },
 });

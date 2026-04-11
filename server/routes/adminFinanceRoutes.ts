@@ -432,25 +432,92 @@ router.post("/payouts/backfill", authenticateToken, requireRole("admin", "super_
   }
 });
 
-// POST /api/admin/payouts/:id/mark-paid — marcar payout como pagado
+// POST /api/admin/payouts/:id/mark-paid — marcar payout como pagado + notificar
 router.post("/payouts/:id/mark-paid", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    const { payouts } = await import("@shared/schema-mysql");
+    const { payouts, users, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
     const { notes, proofUrl, method } = req.body;
+
+    const [payout] = await db.select().from(payouts).where(eq(payouts.id, req.params.id)).limit(1);
+    if (!payout) return res.status(404).json({ error: "Payout no encontrado" });
 
     await db.update(payouts).set({
       status: "paid",
       paidBy: req.user!.id,
       paidAt: new Date(),
-      ...(notes ? { notes } : {}),
-      ...(method ? { method } : {}),
-      ...(proofUrl ? { accountSnapshot: JSON.stringify({ proofUrl }) } : {}),
+      ...(notes   ? { notes }   : {}),
+      ...(method  ? { method }  : {}),
+      ...(proofUrl ? { accountSnapshot: JSON.stringify({ proofUrl, notes, method }) } : {}),
     }).where(eq(payouts.id, req.params.id));
+
+    // Notificación push al recipiente
+    try {
+      const { sendPushToUser } = await import("../enhancedPushService");
+      let recipientUserId = payout.recipientId;
+
+      // Si es negocio, notificar al dueño
+      if (payout.recipientType === "business") {
+        const [biz] = await db.select({ ownerId: businesses.ownerId })
+          .from(businesses).where(eq(businesses.id, payout.recipientId)).limit(1);
+        if (biz?.ownerId) recipientUserId = biz.ownerId;
+      }
+
+      const amountEur = `€${(payout.amount / 100).toFixed(2)}`;
+      const methodLabel = method === "bizum" ? "Bizum" : method === "transferencia" ? "Transferencia IBAN" : method === "paypal" ? "PayPal" : "transferencia";
+
+      await sendPushToUser(recipientUserId, {
+        title: "💰 Pago recibido",
+        body: `ComeYa te ha enviado ${amountEur} vía ${methodLabel}. Pedido #${payout.orderId.slice(-6)}.`,
+        data: { screen: payout.recipientType === "business" ? "BusinessFinances" : "DriverEarnings", payoutId: payout.id },
+      });
+    } catch (pushErr) {
+      console.error("Push notification error:", pushErr);
+    }
 
     res.json({ success: true });
   } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/admin/finance/payouts/history — historial de payouts pagados
+router.get("/payouts/history", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { payouts, users, businesses, orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq, desc } = await import("drizzle-orm");
+
+    const paid = await db.select().from(payouts)
+      .where(eq(payouts.status, "paid"))
+      .orderBy(desc(payouts.paidAt));
+
+    console.log(`[Finance] Found ${paid.length} paid payouts`);
+
+    const enriched = await Promise.all(paid.map(async (p) => {
+      let recipientName = "";
+      let businessName = null;
+      
+      if (p.recipientType === "business") {
+        const [biz] = await db.select({ name: businesses.name }).from(businesses).where(eq(businesses.id, p.recipientId)).limit(1);
+        recipientName = biz?.name ?? "";
+      } else {
+        const [usr] = await db.select({ name: users.name }).from(users).where(eq(users.id, p.recipientId)).limit(1);
+        recipientName = usr?.name ?? "";
+        
+        // Si es driver, obtener nombre del negocio del pedido
+        const [order] = await db.select({ businessName: orders.businessName }).from(orders).where(eq(orders.id, p.orderId)).limit(1);
+        businessName = order?.businessName ?? null;
+      }
+      
+      const snap = p.accountSnapshot ? (() => { try { return JSON.parse(p.accountSnapshot); } catch { return null; } })() : null;
+      return { ...p, recipientName, businessName, proofUrl: snap?.proofUrl ?? null };
+    }));
+
+    res.json({ success: true, payouts: enriched });
+  } catch (error: any) {
+    console.error("[Finance] History error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
