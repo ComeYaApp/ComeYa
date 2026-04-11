@@ -314,6 +314,29 @@ export default function AdminMenuScreen() {
     setBusinessModalVisible(true);
   };
 
+  const handleSaveBusiness = async () => {
+    if (!selectedBusiness) return;
+    try {
+      const res = await apiRequest("PUT", `/api/admin/businesses/${selectedBusiness.id}`, {
+        name:     selectedBusiness.name,
+        address:  selectedBusiness.address,
+        phone:    selectedBusiness.phone,
+        type:     selectedBusiness.type,
+        isActive: selectedBusiness.isActive,
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Negocio actualizado", "success");
+        setBusinessModalVisible(false);
+        fetchData(); // recargar lista
+      } else {
+        showToast(data.error ?? "Error al guardar", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    }
+  };
+
   const handleDriverPress = (driver: any) => {
     setSelectedDriver(driver);
     setDriverModalVisible(true);
@@ -584,10 +607,7 @@ export default function AdminMenuScreen() {
                       alignItems: 'center',
                       marginTop: 10
                     }}
-                    onPress={() => {
-                      showToast('Negocio actualizado', 'success');
-                      setBusinessModalVisible(false);
-                    }}
+                    onPress={handleSaveBusiness}
                   >
                     <ThemedText style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Guardar Cambios</ThemedText>
                   </Pressable>

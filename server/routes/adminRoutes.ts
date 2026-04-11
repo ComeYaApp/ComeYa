@@ -285,6 +285,28 @@ router.get("/businesses", authenticateToken, requireRole("admin", "super_admin")
   }
 });
 
+// Update business
+router.put("/businesses/:id", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const { name, address, phone, type, isActive } = req.body;
+
+    await db.update(businesses).set({
+      ...(name     !== undefined && { name }),
+      ...(address  !== undefined && { address }),
+      ...(phone    !== undefined && { phone }),
+      ...(type     !== undefined && { type }),
+      ...(isActive !== undefined && { isActive }),
+    }).where(eq(businesses.id, req.params.id));
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Zones
 router.get("/zones", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
