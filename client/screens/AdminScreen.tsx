@@ -88,13 +88,6 @@ const menuItems: MenuItem[] = [
     color: "#4CAF50",
   },
   {
-    title: "Zonas",
-    subtitle: "Áreas de entrega",
-    icon: "map-pin",
-    tab: "zones",
-    color: "#E91E63",
-  },
-  {
     title: "Finanzas",
     subtitle: "Ingresos y comisiones",
     icon: "trending-up",
