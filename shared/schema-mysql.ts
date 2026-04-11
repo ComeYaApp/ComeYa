@@ -202,6 +202,7 @@ export const businesses = mysqlTable("businesses", {
   // Niveles de partner
   partnerLevel: varchar("partner_level", { length: 20 }).default("bronze"), // bronze, silver, gold, platinum
   partnerLevelUpdatedAt: timestamp("partner_level_updated_at"),
+  customCommission: int("custom_commission"), // null = usa global, numero = % especifico para este negocio
   totalOrdersCompleted: int("total_orders_completed").default(0),
   totalRevenueGenerated: int("total_revenue_generated").default(0), // en centavos
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),

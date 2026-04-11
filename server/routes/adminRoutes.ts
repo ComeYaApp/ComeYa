@@ -291,14 +291,16 @@ router.put("/businesses/:id", authenticateToken, requireRole("admin", "super_adm
     const { businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
-    const { name, address, phone, type, isActive } = req.body;
+    const { name, address, phone, type, isActive, customCommission } = req.body;
 
     await db.update(businesses).set({
-      ...(name     !== undefined && { name }),
-      ...(address  !== undefined && { address }),
-      ...(phone    !== undefined && { phone }),
-      ...(type     !== undefined && { type }),
-      ...(isActive !== undefined && { isActive }),
+      ...(name             !== undefined && { name }),
+      ...(address          !== undefined && { address }),
+      ...(phone            !== undefined && { phone }),
+      ...(type             !== undefined && { type }),
+      ...(isActive         !== undefined && { isActive }),
+      // null = usa comision global, numero = comision especifica
+      ...(customCommission !== undefined && { customCommission: customCommission === null ? null : parseInt(customCommission) }),
     }).where(eq(businesses.id, req.params.id));
 
     res.json({ success: true });

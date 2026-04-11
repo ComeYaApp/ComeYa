@@ -318,22 +318,23 @@ export default function AdminMenuScreen() {
     if (!selectedBusiness) return;
     try {
       const res = await apiRequest("PUT", `/api/admin/businesses/${selectedBusiness.id}`, {
-        name:     selectedBusiness.name,
-        address:  selectedBusiness.address,
-        phone:    selectedBusiness.phone,
-        type:     selectedBusiness.type,
-        isActive: selectedBusiness.isActive,
+        name:             selectedBusiness.name,
+        address:          selectedBusiness.address,
+        phone:            selectedBusiness.phone,
+        type:             selectedBusiness.type,
+        isActive:         selectedBusiness.isActive,
+        customCommission: (selectedBusiness as any).customCommission ?? null,
       });
       const data = await res.json();
       if (data.success) {
         showToast("Negocio actualizado", "success");
         setBusinessModalVisible(false);
-        fetchData(); // recargar lista
+        fetchData();
       } else {
         showToast(data.error ?? "Error al guardar", "error");
       }
     } catch {
-      showToast("Error de conexión", "error");
+      showToast("Error de conexion", "error");
     }
   };
 
@@ -526,14 +527,32 @@ export default function AdminMenuScreen() {
                       </View>
                       
                       <View style={{ width: '100%', marginBottom: 15 }}>
-                        <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Teléfono:</ThemedText>
+                        <ThemedText style={{ marginBottom: 5, fontWeight: '600' }}>Telefono:</ThemedText>
                         <TextInput
                           style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.backgroundSecondary }}
                           value={selectedBusiness.phone || ''}
                           onChangeText={(text) => setSelectedBusiness({...selectedBusiness, phone: text})}
-                          placeholder="Teléfono"
+                          placeholder="Telefono"
                           placeholderTextColor={theme.textSecondary}
                           keyboardType="phone-pad"
+                        />
+                      </View>
+
+                      {/* Comision personalizada */}
+                      <View style={{ width: '100%', marginBottom: 15, backgroundColor: theme.backgroundSecondary, padding: 12, borderRadius: 10 }}>
+                        <ThemedText style={{ fontWeight: '700', color: theme.text, marginBottom: 4 }}>Comision personalizada (%)</ThemedText>
+                        <ThemedText style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 8 }}>
+                          {(selectedBusiness as any).customCommission != null
+                            ? `Usando comision especifica: ${(selectedBusiness as any).customCommission}%`
+                            : 'Usando comision global del sistema'}
+                        </ThemedText>
+                        <TextInput
+                          style={{ borderWidth: 1, borderColor: theme.border, padding: 12, borderRadius: 8, fontSize: 16, color: theme.text, backgroundColor: theme.card }}
+                          value={(selectedBusiness as any).customCommission != null ? String((selectedBusiness as any).customCommission) : ''}
+                          onChangeText={(text) => setSelectedBusiness({...selectedBusiness, customCommission: text === '' ? null : parseInt(text) || 0} as any)}
+                          placeholder="Dejar vacio = usa global"
+                          placeholderTextColor={theme.textSecondary}
+                          keyboardType="numeric"
                         />
                       </View>
                     </View>

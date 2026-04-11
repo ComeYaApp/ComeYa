@@ -162,31 +162,25 @@ if (isTest && useDbStubs) {
       .then(async (conn) => {
         console.log('✅ Database connected successfully');
         
-        // Run migrations - add profile_image column if not exists
         try {
-          await conn.query(`
-            ALTER TABLE users ADD COLUMN profile_image TEXT DEFAULT NULL
-          `);
-          console.log('✅ Added profile_image column to users table');
+          await conn.query(`ALTER TABLE businesses ADD COLUMN custom_commission INT DEFAULT NULL`);
+          console.log('Added custom_commission to businesses');
         } catch (err: any) {
-          if (err.code === 'ER_DUP_FIELDNAME') {
-            console.log('ℹ️ profile_image column already exists');
-          } else {
-            console.log('ℹ️ Migration note:', err.message);
-          }
+          if (err.code !== 'ER_DUP_FIELDNAME') console.log('Migration note:', err.message);
         }
 
         try {
-          await conn.query(`
-            ALTER TABLE users ADD COLUMN bank_account TEXT DEFAULT NULL
-          `);
-          console.log('✅ Added bank_account column to users table');
+          await conn.query(`ALTER TABLE users ADD COLUMN profile_image TEXT DEFAULT NULL`);
+          console.log('Added profile_image to users');
         } catch (err: any) {
-          if (err.code === 'ER_DUP_FIELDNAME') {
-            console.log('ℹ️ bank_account column already exists');
-          } else {
-            console.log('ℹ️ Migration note:', err.message);
-          }
+          if (err.code !== 'ER_DUP_FIELDNAME') console.log('Migration note:', err.message);
+        }
+
+        try {
+          await conn.query(`ALTER TABLE users ADD COLUMN bank_account TEXT DEFAULT NULL`);
+          console.log('Added bank_account to users');
+        } catch (err: any) {
+          if (err.code !== 'ER_DUP_FIELDNAME') console.log('Migration note:', err.message);
         }
         
         conn.release();
