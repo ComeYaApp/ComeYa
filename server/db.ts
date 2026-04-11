@@ -128,6 +128,15 @@ if (isTest && useDbStubs) {
 } else {
   // Create production connection pool
   connection = mysql.createPool(createConnectionConfig());
+
+  // Forzar utf8mb4 en cada nueva conexión del pool
+  const originalGetConnection = connection.getConnection.bind(connection);
+  connection.getConnection = async () => {
+    const conn = await originalGetConnection();
+    await conn.query("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+    return conn;
+  };
+
   db = drizzle(connection);
 
   // Add connection pool event handlers (commented out to reduce log noise)

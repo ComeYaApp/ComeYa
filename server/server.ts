@@ -43,6 +43,16 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Forzar charset UTF-8 en todas las respuestas JSON
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = (body: any) => {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return originalJson(body);
+  };
+  next();
+});
+
 // Serve uploaded files
 app.use('/uploads', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
