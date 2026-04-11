@@ -5,44 +5,13 @@ import { sendOrderStatusNotification } from "../enhancedPushService";
 
 const router = express.Router();
 
-// GET /api/delivery/config — configuración de tarifas (público)
+// GET /api/delivery/config — redirige a deliveryConfigRoutes
+// (el PUT /config está en deliveryConfigRoutes.ts con la lógica de tramos)
 router.get("/config", (req, res) => {
   res.json({
     success: true,
-    config: {
-      baseFee: 15,
-      perKm: 8,
-      minFee: 15,
-      maxFee: 40,
-    },
+    config: { tier1: 2.50, tier2: 4.00, tier3: 5.00, extraPerKm: 1.00 },
   });
-});
-
-// PUT /api/delivery/config — actualizar configuración (admin)
-router.put("/config", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
-  try {
-    const { baseFee, perKm, minFee, maxFee } = req.body;
-    
-    // Validar que todos los valores sean números positivos
-    if (!baseFee || !perKm || !minFee || !maxFee) {
-      return res.status(400).json({ error: "Todos los campos son requeridos" });
-    }
-
-    if (baseFee < 0 || perKm < 0 || minFee < 0 || maxFee < 0) {
-      return res.status(400).json({ error: "Los valores deben ser positivos" });
-    }
-
-    // Aquí podrías guardar en la base de datos si lo necesitas
-    // Por ahora solo retornamos éxito
-    res.json({
-      success: true,
-      message: "Configuración actualizada correctamente",
-      config: { baseFee, perKm, minFee, maxFee },
-    });
-  } catch (error: any) {
-    console.error("Update delivery config error:", error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Get delivery zones (public)
