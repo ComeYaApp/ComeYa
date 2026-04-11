@@ -395,23 +395,28 @@ router.post("/settings/initialize", authenticateToken, requireRole("admin"), asy
     const { db } = await import("../db");
     
     const defaultSettings = [
-      { key: "comeya_commission", value: "15", type: "number", category: "commissions", description: "Comisión ComeYa (%)", isPublic: false },
-      { key: "business_commission", value: "100", type: "number", category: "commissions", description: "Comisión Negocio (%)", isPublic: false },
-      { key: "driver_commission", value: "100", type: "number", category: "commissions", description: "Comisión Repartidor (%)", isPublic: false },
-      { key: "regret_period_seconds", value: "60", type: "number", category: "operations", description: "Período de arrepentimiento (segundos)", isPublic: true },
-      { key: "business_call_delay_minutes", value: "3", type: "number", category: "operations", description: "Retraso llamada negocio (minutos)", isPublic: false },
-      { key: "fund_hold_hours", value: "1", type: "number", category: "payments", description: "Retención de fondos (horas)", isPublic: false },
-      { key: "max_cash_owed", value: "50000", type: "number", category: "payments", description: "Máximo efectivo adeudado (Bs.)", isPublic: false },
-      { key: "liquidation_deadline_days", value: "7", type: "number", category: "payments", description: "Plazo liquidación (días)", isPublic: false },
-      { key: "warning_threshold_days", value: "5", type: "number", category: "payments", description: "Umbral advertencia (días)", isPublic: false },
-      { key: "pago_movil_phone", value: "0414-000-0000", type: "string", category: "payments", description: "Teléfono Pago Móvil", isPublic: true },
-      { key: "pago_movil_bank", value: "banesco", type: "string", category: "payments", description: "Banco Pago Móvil", isPublic: true },
-      { key: "pago_movil_bank_name", value: "Banesco", type: "string", category: "payments", description: "Nombre Banco", isPublic: true },
-      { key: "pago_movil_cedula", value: "V-00000000", type: "string", category: "payments", description: "Cédula Pago Móvil", isPublic: true },
+      // Comisiones
+      { key: "comeya_commission",           value: "15",    type: "number", category: "commissions", description: "Comision ComeYa (%)",              isPublic: false },
+      { key: "business_commission",         value: "100",   type: "number", category: "commissions", description: "Comision Negocio (%)",             isPublic: false },
+      { key: "driver_commission",           value: "100",   type: "number", category: "commissions", description: "Comision Repartidor (%)",          isPublic: false },
+      // Operaciones
+      { key: "regret_period_seconds",       value: "60",    type: "number", category: "operations",  description: "Periodo arrepentimiento (seg)",   isPublic: true  },
+      { key: "business_call_delay_minutes", value: "3",     type: "number", category: "operations",  description: "Retraso llamada negocio (min)",   isPublic: false },
+      { key: "fund_hold_hours",             value: "1",     type: "number", category: "operations",  description: "Retencion de fondos (horas)",    isPublic: false },
+      // Pagos Espana
+      { key: "bizum_phone",                 value: "",      type: "string", category: "payments",    description: "Telefono Bizum ComeYa",          isPublic: true  },
+      { key: "comeya_iban",                 value: "",      type: "string", category: "payments",    description: "IBAN ComeYa",                    isPublic: true  },
+      { key: "stripe_public_key",           value: "",      type: "string", category: "payments",    description: "Stripe Public Key",              isPublic: false },
+      { key: "stripe_secret_key",           value: "",      type: "string", category: "payments",    description: "Stripe Secret Key",              isPublic: false },
+      // Servicios externos
+      { key: "gemini_api_key",              value: "",      type: "string", category: "services",    description: "Gemini API Key (OCR)",           isPublic: false },
+      { key: "twilio_verify_sid",           value: "",      type: "string", category: "services",    description: "Twilio Verify SID",              isPublic: false },
+      { key: "resend_api_key",              value: "",      type: "string", category: "services",    description: "Resend API Key (emails)",        isPublic: false },
+      { key: "google_maps_key",             value: "",      type: "string", category: "services",    description: "Google Maps API Key",            isPublic: false },
     ];
 
     for (const setting of defaultSettings) {
-      await db.insert(systemSettings).values(setting).onDuplicateKeyUpdate({ set: { value: setting.value } });
+      await db.insert(systemSettings).values(setting).onDuplicateKeyUpdate({ set: { description: setting.description } });
     }
 
     res.json({ success: true, message: "Configuraciones inicializadas" });
