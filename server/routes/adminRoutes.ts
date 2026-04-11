@@ -312,19 +312,73 @@ router.get("/delivery-zones", authenticateToken, requireRole("admin", "super_adm
   }
 });
 
-// Drivers
+// Drivers — lista completa con datos de delivery_drivers
 router.get("/drivers", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    const { users } = await import("@shared/schema-mysql");
+    const { users, deliveryDrivers, payouts } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq, and } = await import("drizzle-orm");
+
+    const driverUsers = await db.select().from(users).where(eq(users.role, "delivery_driver"));
+
+    const enriched = await Promise.all(driverUsers.map(async (u) => {
+      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, u.id)).limit(1);
+      const pendingPays = await db.select().from(payouts)
+        .where(and(eq(payouts.recipientId, u.id), eq(payouts.status, "pending")));
+      const pendingAmount = pendingPays.reduce((s, p) => s + p.amount, 0);
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        isOnline: u.isOnline,
+        isActive: u.isActive,
+        isBlocked: dd?.isBlocked ?? false,
+        blockedReason: dd?.blockedReason ?? null,
+        strikes: dd?.strikes ?? 0,
+        totalDeliveries: dd?.totalDeliveries ?? 0,
+        rating: dd?.rating ?? null,
+        vehicleType: dd?.vehicleType ?? null,
+        vehiclePlate: dd?.vehiclePlate ?? null,
+        currentLatitude: dd?.currentLatitude ?? null,
+        currentLongitude: dd?.currentLongitude ?? null,
+        createdAt: u.createdAt,
+        lastActiveAt: u.lastActiveAt,
+        pendingPayouts: pendingPays.length,
+        pendingAmount,
+      };
+    }));
+
+    res.json({ success: true, drivers: enriched });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Block driver
+router.post("/drivers/:id/block", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
+    const { reason } = req.body;
+    await db.update(deliveryDrivers).set({ isBlocked: true, blockedReason: reason ?? "Bloqueado por admin" })
+      .where(eq(deliveryDrivers.userId, req.params.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    const drivers = await db
-      .select()
-      .from(users)
-      .where(eq(users.role, "delivery_driver"));
-
-    res.json({ success: true, drivers });
+// Unblock driver
+router.post("/drivers/:id/unblock", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { deliveryDrivers } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    await db.update(deliveryDrivers).set({ isBlocked: false, blockedReason: null })
+      .where(eq(deliveryDrivers.userId, req.params.id));
+    res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
