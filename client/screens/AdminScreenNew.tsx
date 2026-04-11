@@ -1422,6 +1422,10 @@ export default function AdminMenuScreen() {
   };
 
   if (activeTab) {
+    // Tabs que manejan su propio scroll internamente
+    const selfScrollingTabs = ["dashboard", "finance", "drivers", "verifications"];
+    const isSelfScrolling = selfScrollingTabs.includes(activeTab);
+
     return (
       <ThemedView style={styles.container}>
         <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
@@ -1434,19 +1438,25 @@ export default function AdminMenuScreen() {
             </ThemedText>
           </View>
         </View>
-        <ScrollView 
-          style={styles.scrollView} 
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={ComeYaColors.primary}
-            />
-          }
-        >
-          {renderTabContent()}
-        </ScrollView>
+        {isSelfScrolling ? (
+          <View style={{ flex: 1 }}>
+            {renderTabContent()}
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={ComeYaColors.primary}
+              />
+            }
+          >
+            {renderTabContent()}
+          </ScrollView>
+        )}
       </ThemedView>
     );
   }

@@ -69,7 +69,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const displayedOrders = showAllOrders ? activeOrders : activeOrders.slice(0, 5);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Métricas en Tiempo Real</Text>
       <View style={styles.metricsGrid}>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
