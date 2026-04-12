@@ -41,7 +41,7 @@ export default function VerifyPhoneScreen({
   const insets = useSafeAreaInsets();
   const phone = route.params?.phone || "";
 
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [code, setCode] = useState(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +61,7 @@ export default function VerifyPhoneScreen({
 
   const handleCodeChange = (value: string, index: number) => {
     if (value.length > 1) {
-      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
+      const digits = value.replace(/\D/g, "").slice(0, 4).split("");
       const newCode = [...code];
       digits.forEach((digit, i) => {
         if (index + i < 4) {
@@ -69,7 +69,7 @@ export default function VerifyPhoneScreen({
         }
       });
       setCode(newCode);
-      const lastFilledIndex = Math.min(index + digits.length - 1, 5);
+      const lastFilledIndex = Math.min(index + digits.length - 1, 3);
       inputRefs.current[lastFilledIndex]?.focus();
       return;
     }
@@ -79,7 +79,7 @@ export default function VerifyPhoneScreen({
     setCode(newCode);
     setError("");
 
-    if (value && index < 5) {
+    if (value && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -92,7 +92,7 @@ export default function VerifyPhoneScreen({
 
   const handleVerify = async () => {
     const fullCode = code.join("");
-    if (fullCode.length !== 6) {
+    if (fullCode.length !== 4) {
       setError("Ingresa el código completo");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -202,7 +202,7 @@ export default function VerifyPhoneScreen({
           type="body"
           style={[styles.subtitle, { color: theme.textSecondary }]}
         >
-          Enviamos un código de 6 dígitos a{"\n"}
+          Enviamos un código de 4 dígitos a{"\n"}
           <ThemedText type="body" style={{ fontWeight: "600" }}>
             {formatPhone(phone)}
           </ThemedText>
@@ -233,7 +233,7 @@ export default function VerifyPhoneScreen({
                 handleKeyPress(nativeEvent.key, index)
               }
               keyboardType="number-pad"
-              maxLength={6}
+              maxLength={4}
               selectTextOnFocus
               testID={`code-input-${index}`}
             />
