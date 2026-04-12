@@ -138,3 +138,6 @@ export async function verifyCode(
     return false;
   }
 }
+
+// Export alias for backwards compatibility
+export const sendVerificationCode = sendVerificationSMS;

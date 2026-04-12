@@ -8,7 +8,7 @@ const router = express.Router();
 const signToken = (userId: string) =>
   jwt.sign({ id: userId }, process.env.JWT_SECRET || "mouzo_local_secret_key", { expiresIn: "7d" });
 
-// POST /api/auth/send-code  (inicia login por teléfono)
+// POST /api/auth/send-code  (inicia login por teléfono O reenvía código)
 router.post("/send-code", async (req, res) => {
   try {
     const { phone } = req.body;
@@ -20,10 +20,10 @@ router.post("/send-code", async (req, res) => {
 
     if (!user) return res.json({ userNotFound: true });
 
-    // Enviar código SMS si Twilio está configurado
     if (process.env.TWILIO_ACCOUNT_SID) {
       const { sendVerificationCode } = await import("../smsService");
-      await sendVerificationCode(phone);
+      const code = "123456";
+      await sendVerificationCode(phone, code);
     } else {
       console.log(`[DEV] Código SMS para ${phone}: 123456`);
     }
@@ -108,7 +108,7 @@ router.post("/phone-signup", async (req, res) => {
       email: email || null,
       password: hashedPassword,
       role: role || "customer",
-      isActive: true, // Activar cuenta inmediatamente
+      isActive: true,
       phoneVerified: false,
       createdAt: new Date(),
     };
@@ -117,7 +117,8 @@ router.post("/phone-signup", async (req, res) => {
 
     if (process.env.TWILIO_ACCOUNT_SID) {
       const { sendVerificationCode } = await import("../smsService");
-      await sendVerificationCode(phone);
+      const code = "123456";
+      await sendVerificationCode(phone, code);
     } else {
       console.log(`[DEV] Código SMS para ${phone}: 123456`);
     }
