@@ -68,6 +68,11 @@ router.post("/phone-login", async (req, res) => {
       };
       await db.insert(users).values(newUser);
       user = newUser;
+    } else {
+      // Actualizar usuario existente para marcar teléfono como verificado
+      await db.update(users).set({ phoneVerified: true, isActive: true } as any).where(eq(users.id, user.id));
+      user.phoneVerified = true;
+      user.isActive = true;
     }
 
     const token = signToken(user.id);
@@ -80,7 +85,7 @@ router.post("/phone-login", async (req, res) => {
 // POST /api/auth/phone-signup
 router.post("/phone-signup", async (req, res) => {
   try {
-    const { name, role, phone, email } = req.body;
+    const { name, role, phone, email, password } = req.body;
     if (!phone || !name) return res.status(400).json({ error: "Nombre y teléfono requeridos" });
 
     const { users } = await import("@shared/schema-mysql");
@@ -89,13 +94,21 @@ router.post("/phone-signup", async (req, res) => {
     const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
     if (existing) return res.status(400).json({ error: "El teléfono ya está registrado" });
 
+    // Hash password if provided
+    let hashedPassword = null;
+    if (password) {
+      const bcrypt = await import("bcrypt");
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
     const newUser: any = {
       id: crypto.randomUUID(),
       phone,
       name,
       email: email || null,
+      password: hashedPassword,
       role: role || "customer",
-      isActive: false, // Requiere verificación
+      isActive: true, // Activar cuenta inmediatamente
       phoneVerified: false,
       createdAt: new Date(),
     };
@@ -109,23 +122,32 @@ router.post("/phone-signup", async (req, res) => {
       console.log(`[DEV] Código SMS para ${phone}: 123456`);
     }
 
-    res.json({ success: true, requiresVerification: true });
+    res.json({ success: true, requiresVerification: true, userId: newUser.id });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// POST /api/auth/dev-email-login  (solo desarrollo)
+// POST /api/auth/dev-email-login  (login con email y contraseña)
 router.post("/dev-email-login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email) return res.status(400).json({ error: "Email requerido" });
+    if (!email || !password) return res.status(400).json({ error: "Email y contraseña requeridos" });
 
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    // Verificar contraseña
+    if (user.password) {
+      const bcrypt = await import("bcrypt");
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) return res.status(401).json({ error: "Contraseña incorrecta" });
+    } else {
+      return res.status(401).json({ error: "Esta cuenta no tiene contraseña configurada" });
+    }
 
     const token = signToken(user.id);
     res.json({ success: true, token, user: { id: user.id, name: user.name, phone: user.phone, email: user.email, role: user.role, isActive: user.isActive, phoneVerified: user.phoneVerified } });

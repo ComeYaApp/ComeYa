@@ -41,18 +41,18 @@ const slides: OnboardingSlide[] = [
   {
     id: 1,
     title: "ComeYa",
-    subtitle: "Tu app de entregas local",
+    subtitle: "Tu delivery en Soria",
     description:
-      "Conecta con restaurantes y mercados de Autlan. Pedidos frescos directo a tu puerta.",
+      "Conecta con restaurantes y negocios locales de Soria. Pedidos frescos directo a tu puerta.",
     icon: "heart",
     gradient: [ComeYaColors.primary, "#E65100"],
   },
   {
     id: 2,
     title: "ComeYa",
-    subtitle: 'En Nahuatl significa "vivir"',
+    subtitle: "Apoyando el comercio local",
     description:
-      '"Vivir es conectar"\n\nConectamos a la comunidad con los sabores locales que amamos.',
+      "Cada pedido apoya a un negocio de Soria.\n\nConectamos la comunidad soriana con los sabores que amamos.",
     icon: "sun",
     gradient: ["#9C27B0", "#6A1B9A"],
   },
@@ -61,7 +61,7 @@ const slides: OnboardingSlide[] = [
     title: "Cómo usar ComeYa",
     subtitle: "Es muy fácil",
     description:
-      "1. Explora restaurantes y mercados\n2. Agrega productos al carrito\n3. Paga con tarjeta o efectivo\n4. Recibe en tu puerta",
+      "1. Explora restaurantes y negocios\n2. Agrega productos al carrito\n3. Paga con tarjeta o Bizum\n4. Recibe en tu puerta",
     icon: "check-circle",
     gradient: ["#00897B", "#00695C"],
   },
