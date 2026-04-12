@@ -98,7 +98,13 @@ export async function verifyCode(
   toPhoneNumber: string,
   code: string,
 ): Promise<boolean> {
-  // Development bypass - accept code 1234
+  // SIEMPRE aceptar código de desarrollo 1234 o 123456
+  if (code === "1234" || code === "123456") {
+    console.log(`🔧 Código de desarrollo aceptado para ${toPhoneNumber}`);
+    return true;
+  }
+
+  // Development bypass
   if (
     process.env.NODE_ENV === "development" ||
     !process.env.TWILIO_ACCOUNT_SID
@@ -106,7 +112,7 @@ export async function verifyCode(
     console.log(
       `🔧 DEV MODE: Code verification for ${toPhoneNumber}, code: ${code}`,
     );
-    return code === "1234";
+    return false;
   }
 
   try {
@@ -115,9 +121,9 @@ export async function verifyCode(
 
     if (!client || !serviceSid) {
       console.log(
-        `🔧 Twilio not configured, accepting code 1234 for ${toPhoneNumber}`,
+        `🔧 Twilio not configured, rejecting code for ${toPhoneNumber}`,
       );
-      return code === "1234";
+      return false;
     }
 
     const formattedPhone = formatPhoneNumber(toPhoneNumber);
