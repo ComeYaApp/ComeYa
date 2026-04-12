@@ -46,7 +46,8 @@ router.post("/phone-login", async (req, res) => {
       const { verifyCode } = await import("../smsService");
       isValid = await verifyCode(phone, code);
     } else {
-      isValid = code === "123456"; // Código de desarrollo
+      // En desarrollo, aceptar 123456 o 1234
+      isValid = code === "123456" || code === "1234";
     }
 
     if (!isValid) return res.status(400).json({ error: "Código inválido" });
