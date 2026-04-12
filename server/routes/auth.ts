@@ -37,7 +37,7 @@ router.post("/send-code", async (req, res) => {
 // POST /api/auth/phone-login  (verifica código y devuelve token)
 router.post("/phone-login", async (req, res) => {
   try {
-    const { phone, code } = req.body;
+    const { phone, code, signupData } = req.body;
     if (!phone || !code) return res.status(400).json({ error: "Teléfono y código requeridos" });
 
     // Verificar código
@@ -46,7 +46,6 @@ router.post("/phone-login", async (req, res) => {
       const { verifyCode } = await import("../smsService");
       isValid = await verifyCode(phone, code);
     } else {
-      // En desarrollo, aceptar 123456 o 1234
       isValid = code === "123456" || code === "1234";
     }
 
@@ -58,19 +57,43 @@ router.post("/phone-login", async (req, res) => {
     let [user] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
 
     if (!user) {
-      const newUser: any = {
-        id: crypto.randomUUID(),
-        phone,
-        name: `Usuario ${phone.slice(-4)}`,
-        role: "customer",
-        isActive: true,
-        phoneVerified: true,
-        createdAt: new Date(),
-      };
-      await db.insert(users).values(newUser);
-      user = newUser;
+      // Si viene signupData, crear usuario nuevo
+      if (signupData) {
+        let hashedPassword = null;
+        if (signupData.password) {
+          const bcrypt = await import("bcrypt");
+          hashedPassword = await bcrypt.hash(signupData.password, 10);
+        }
+
+        const newUser: any = {
+          id: crypto.randomUUID(),
+          phone,
+          name: signupData.name,
+          email: signupData.email || null,
+          password: hashedPassword,
+          role: signupData.role || "customer",
+          isActive: true,
+          phoneVerified: true,
+          createdAt: new Date(),
+        };
+        await db.insert(users).values(newUser);
+        user = newUser;
+      } else {
+        // Login normal sin signup previo
+        const newUser: any = {
+          id: crypto.randomUUID(),
+          phone,
+          name: `Usuario ${phone.slice(-4)}`,
+          role: "customer",
+          isActive: true,
+          phoneVerified: true,
+          createdAt: new Date(),
+        };
+        await db.insert(users).values(newUser);
+        user = newUser;
+      }
     } else {
-      // Actualizar usuario existente para marcar teléfono como verificado
+      // Usuario existe, actualizar verificación
       await db.update(users).set({ phoneVerified: true, isActive: true } as any).where(eq(users.id, user.id));
       user.phoneVerified = true;
       user.isActive = true;
@@ -95,36 +118,16 @@ router.post("/phone-signup", async (req, res) => {
     const [existing] = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
     if (existing) return res.status(400).json({ error: "El teléfono ya está registrado" });
 
-    // Hash password if provided
-    let hashedPassword = null;
-    if (password) {
-      const bcrypt = await import("bcrypt");
-      hashedPassword = await bcrypt.hash(password, 10);
-    }
-
-    const newUser: any = {
-      id: crypto.randomUUID(),
-      phone,
-      name,
-      email: email || null,
-      password: hashedPassword,
-      role: role || "customer",
-      isActive: true,
-      phoneVerified: false,
-      createdAt: new Date(),
-    };
-
-    await db.insert(users).values(newUser);
-
+    // NO crear usuario todavía, solo enviar código
     if (process.env.TWILIO_ACCOUNT_SID) {
       const { sendVerificationCode } = await import("../smsService");
       const code = "123456";
       await sendVerificationCode(phone, code);
     } else {
-      console.log(`[DEV] Código SMS para ${phone}: 123456`);
+      console.log(`[DEV] Código SMS para ${phone}: 123456 o 1234`);
     }
 
-    res.json({ success: true, requiresVerification: true, userId: newUser.id });
+    res.json({ success: true, requiresVerification: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

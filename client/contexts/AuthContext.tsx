@@ -203,6 +203,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email?: string,
     password?: string,
   ): Promise<{ requiresVerification: boolean }> => {
+    // Guardar datos temporalmente para crear usuario después de verificar
+    await AsyncStorage.setItem("@ComeYa_pending_signup", JSON.stringify({
+      name,
+      role,
+      phone,
+      email,
+      password,
+    }));
+
     const response = await apiRequest("POST", "/api/auth/phone-signup", {
       name,
       role,
@@ -227,9 +236,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyPhone = async (phone: string, code: string) => {
     const normalizedPhone = normalizePhone(phone);
+    
+    // Obtener datos de signup si existen
+    const signupDataRaw = await AsyncStorage.getItem("@ComeYa_pending_signup");
+    const signupData = signupDataRaw ? JSON.parse(signupDataRaw) : null;
+    
     const response = await apiRequest("POST", "/api/auth/phone-login", {
       phone: normalizedPhone,
       code,
+      signupData,
     });
     const data = await response.json();
 
@@ -248,12 +263,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         theme: "system",
         accentColor: "#00C853",
       },
-      token: data.token, // Save the JWT token
+      token: data.token,
     };
 
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
     await AsyncStorage.setItem("token", data.token);
     await AsyncStorage.removeItem(PENDING_PHONE_KEY);
+    await AsyncStorage.removeItem("@ComeYa_pending_signup");
     setUser(newUser);
     setPendingVerificationPhone(null);
     registerPushToken();
