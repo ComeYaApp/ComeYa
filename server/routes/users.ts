@@ -121,7 +121,7 @@ router.put("/profile", authenticateToken, async (req, res) => {
   }
 });
 
-// Upload profile image — guarda base64 directo en DB (filesystem de Render es efímero)
+// Upload profile image — sube a Cloudinary
 router.post("/profile-image", authenticateToken, async (req, res) => {
   try {
     const { image } = req.body;
@@ -137,10 +137,20 @@ router.post("/profile-image", authenticateToken, async (req, res) => {
 
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { CloudinaryService } = await import("../cloudinaryService");
 
-    await db.update(users).set({ profileImage: image }).where(eq(users.id, req.user!.id));
+    // Eliminar imagen anterior si existe
+    const [currentUser] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
+    if (currentUser?.profileImage && currentUser.profileImage.includes('cloudinary')) {
+      const oldPublicId = CloudinaryService.extractPublicId(currentUser.profileImage);
+      if (oldPublicId) await CloudinaryService.deleteImage(oldPublicId).catch(() => {});
+    }
 
-    res.json({ success: true, profileImage: image, message: "Imagen actualizada" });
+    // Subir nueva imagen
+    const imageUrl = await CloudinaryService.uploadImage(image, 'profiles', `user-${req.user!.id}`);
+    await db.update(users).set({ profileImage: imageUrl }).where(eq(users.id, req.user!.id));
+
+    res.json({ success: true, profileImage: imageUrl, message: "Imagen actualizada" });
   } catch (error: any) {
     console.error("Upload image error:", error);
     res.status(500).json({ error: error.message });

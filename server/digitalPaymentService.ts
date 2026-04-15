@@ -7,6 +7,7 @@ import { autoVerificationService } from "./autoVerificationService";
 import { logger } from "./logger";
 import { notifyPagoMovilStatus, sendPushToUser } from "./enhancedPushService";
 import { createPayoutsForOrder } from "./payoutService";
+import { CloudinaryService } from "./cloudinaryService";
 
 interface PaymentProofData {
   orderId: string;
@@ -85,6 +86,12 @@ export class DigitalPaymentService {
         return { success: false, message: "Este método no requiere comprobante" };
       }
 
+      // Subir imagen a Cloudinary si es base64
+      let imageUrl = data.proofImageUrl;
+      if (imageUrl && imageUrl.startsWith('data:image/')) {
+        imageUrl = await CloudinaryService.uploadImage(imageUrl, 'comprobantes', `proof-${data.orderId}`);
+      }
+
       // Create payment proof with UUID
       const proofId = crypto.randomUUID();
       
@@ -94,7 +101,7 @@ export class DigitalPaymentService {
         userId: data.userId,
         paymentProvider: data.paymentProvider,
         referenceNumber: data.referenceNumber,
-        proofImageUrl: data.proofImageUrl,
+        proofImageUrl: imageUrl,
         amount: data.amount,
         status: "pending",
         submittedAt: new Date(),

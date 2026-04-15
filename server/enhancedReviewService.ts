@@ -1,6 +1,7 @@
 import { db } from './db';
 import { reviews, reviewTags, reviewResponses, businesses, deliveryDrivers } from '@shared/schema-mysql';
 import { eq, and, desc } from 'drizzle-orm';
+import { CloudinaryService } from './cloudinaryService';
 
 export class EnhancedReviewService {
   // Crear review mejorada
@@ -31,6 +32,19 @@ export class EnhancedReviewService {
       photos,
     } = data;
 
+    // Subir fotos a Cloudinary
+    let photoUrls: string[] = [];
+    if (photos && photos.length > 0) {
+      photoUrls = await Promise.all(
+        photos.map(async (photo, index) => {
+          if (photo.startsWith('data:image/')) {
+            return await CloudinaryService.uploadImage(photo, 'reviews', `review-${orderId}-${index}`);
+          }
+          return photo;
+        })
+      );
+    }
+
     // Calcular rating general (promedio)
     const ratings = [foodRating, deliveryRating, packagingRating].filter((r) => r && r > 0);
     const averageRating = ratings.length > 0 ? Math.round(ratings.reduce((a, b) => a! + b!, 0)! / ratings.length) : 5;
@@ -49,7 +63,7 @@ export class EnhancedReviewService {
       packagingRating: packagingRating || null,
       deliveryPersonRating: driverRating || null,
       comment: comment || null,
-      photos: photos && photos.length > 0 ? JSON.stringify(photos) : null,
+      photos: photoUrls.length > 0 ? JSON.stringify(photoUrls) : null,
       tags: tags && tags.length > 0 ? JSON.stringify(tags) : null,
       approved: true,
       flagged: false,

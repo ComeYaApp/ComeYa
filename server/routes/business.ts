@@ -497,10 +497,17 @@ router.post("/products", authenticateToken, requireRole("business_owner", "admin
   try {
     const { businesses, products } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { CloudinaryService } = await import("../cloudinaryService");
     const { name, description, price, image } = req.body;
 
     const [business] = await db.select().from(businesses).where(eq(businesses.ownerId, req.user!.id)).limit(1);
     if (!business) return res.status(404).json({ error: "Negocio no encontrado" });
+
+    let imageUrl = null;
+    if (image && image.startsWith('data:image/')) {
+      const productId = crypto.randomUUID();
+      imageUrl = await CloudinaryService.uploadImage(image, 'products', `product-${productId}`);
+    }
 
     const newProduct = {
       id: crypto.randomUUID(),
@@ -508,7 +515,7 @@ router.post("/products", authenticateToken, requireRole("business_owner", "admin
       name,
       description: description || null,
       price,
-      image: image || null,
+      image: imageUrl,
       isAvailable: true,
       createdAt: new Date(),
     };
@@ -526,6 +533,7 @@ router.put("/products/:id", authenticateToken, requireRole("business_owner", "ad
   try {
     const { businesses, products } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { CloudinaryService } = await import("../cloudinaryService");
 
     const [product] = await db.select().from(products).where(eq(products.id, req.params.id)).limit(1);
     if (!product) return res.status(404).json({ error: "Producto no encontrado" });
@@ -537,7 +545,19 @@ router.put("/products/:id", authenticateToken, requireRole("business_owner", "ad
     if (req.body.name !== undefined) updates.name = req.body.name;
     if (req.body.description !== undefined) updates.description = req.body.description;
     if (req.body.price !== undefined) updates.price = req.body.price;
-    if (req.body.image !== undefined) updates.image = req.body.image;
+    if (req.body.image !== undefined) {
+      if (req.body.image && req.body.image.startsWith('data:image/')) {
+        // Eliminar imagen anterior
+        if (product.image && product.image.includes('cloudinary')) {
+          const oldPublicId = CloudinaryService.extractPublicId(product.image);
+          if (oldPublicId) await CloudinaryService.deleteImage(oldPublicId).catch(() => {});
+        }
+        // Subir nueva
+        updates.image = await CloudinaryService.uploadImage(req.body.image, 'products', `product-${req.params.id}`);
+      } else {
+        updates.image = req.body.image;
+      }
+    }
 
     await db.update(products).set(updates).where(eq(products.id, req.params.id));
     res.json({ success: true, message: "Producto actualizado" });
@@ -650,9 +670,16 @@ router.post("/", authenticateToken, requireRole("business_owner"), async (req, r
   try {
     const { businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { CloudinaryService } = await import("../cloudinaryService");
     const { name, description, type, image, address, phone, categories } = req.body;
 
     if (!name) return res.status(400).json({ error: "El nombre del negocio es requerido" });
+
+    let imageUrl = null;
+    if (image && image.startsWith('data:image/')) {
+      const businessId = crypto.randomUUID();
+      imageUrl = await CloudinaryService.uploadImage(image, 'businesses', `business-${businessId}`);
+    }
 
     const newBusiness = {
       id: crypto.randomUUID(),
@@ -660,7 +687,7 @@ router.post("/", authenticateToken, requireRole("business_owner"), async (req, r
       name,
       description: description || null,
       type: type || "restaurant",
-      image: image || null,
+      image: imageUrl,
       address: address || null,
       phone: phone || null,
       categories: categories || null,
@@ -714,6 +741,7 @@ router.put("/:id", authenticateToken, requireRole("business_owner"), async (req,
   try {
     const { businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { CloudinaryService } = await import("../cloudinaryService");
 
     const [business] = await db
       .select()
@@ -726,7 +754,19 @@ router.put("/:id", authenticateToken, requireRole("business_owner"), async (req,
     const allowed = ["name", "description", "type", "image", "address", "phone", "categories", "isOpen", "deliveryTime", "deliveryFee", "minOrder"];
     const updates: any = {};
     for (const field of allowed) {
-      if (req.body[field] !== undefined) updates[field] = req.body[field];
+      if (req.body[field] !== undefined) {
+        if (field === 'image' && req.body[field] && req.body[field].startsWith('data:image/')) {
+          // Eliminar imagen anterior
+          if (business.image && business.image.includes('cloudinary')) {
+            const oldPublicId = CloudinaryService.extractPublicId(business.image);
+            if (oldPublicId) await CloudinaryService.deleteImage(oldPublicId).catch(() => {});
+          }
+          // Subir nueva
+          updates.image = await CloudinaryService.uploadImage(req.body[field], 'businesses', `business-${req.params.id}`);
+        } else {
+          updates[field] = req.body[field];
+        }
+      }
     }
 
     await db.update(businesses).set(updates).where(eq(businesses.id, req.params.id));

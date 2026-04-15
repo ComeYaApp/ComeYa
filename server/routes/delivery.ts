@@ -172,7 +172,7 @@ router.post("/assign", authenticateToken, requireRole("admin"), async (req, res)
 // Update delivery status
 router.patch("/orders/:id/status", authenticateToken, requireRole("delivery_driver"), async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, deliveryProofPhoto, latitude, longitude } = req.body;
     
     if (!status) {
       return res.status(400).json({ error: "Estado requerido" });
@@ -184,8 +184,9 @@ router.patch("/orders/:id/status", authenticateToken, requireRole("delivery_driv
       return res.status(400).json({ error: "Estado inválido" });
     }
 
-    const { orders } = await import("@shared/schema-mysql");
+    const { orders, deliveryProofs } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { CloudinaryService } = await import("../cloudinaryService");
     
     const [order] = await db
       .select()
@@ -201,12 +202,37 @@ router.patch("/orders/:id/status", authenticateToken, requireRole("delivery_driv
       return res.status(403).json({ error: "No autorizado" });
     }
 
+    // Si es delivered, subir foto de prueba a Cloudinary
+    let photoUrl = null;
+    if (status === "delivered" && deliveryProofPhoto) {
+      if (deliveryProofPhoto.startsWith('data:image/')) {
+        photoUrl = await CloudinaryService.uploadImage(deliveryProofPhoto, 'delivery-proofs', `delivery-${req.params.id}`);
+      } else {
+        photoUrl = deliveryProofPhoto;
+      }
+
+      // Crear registro de delivery proof
+      await db.insert(deliveryProofs).values({
+        id: crypto.randomUUID(),
+        orderId: req.params.id,
+        driverId: req.user!.id,
+        photoUrl,
+        latitude: latitude ? String(latitude) : null,
+        longitude: longitude ? String(longitude) : null,
+        timestamp: new Date(),
+      });
+    }
+
     await db
       .update(orders)
       .set({ 
         status,
         updatedAt: new Date(),
-        ...(status === "delivered" && { deliveredAt: new Date() })
+        ...(status === "delivered" && { 
+          deliveredAt: new Date(),
+          deliveryProofPhoto: photoUrl,
+          deliveryProofPhotoTimestamp: new Date(),
+        })
       })
       .where(eq(orders.id, req.params.id));
 
@@ -215,7 +241,7 @@ router.patch("/orders/:id/status", authenticateToken, requireRole("delivery_driv
       await sendOrderStatusNotification(req.params.id, order.userId, status);
     }
 
-    res.json({ success: true, message: "Estado actualizado" });
+    res.json({ success: true, message: "Estado actualizado", photoUrl });
   } catch (error: any) {
     console.error("Update delivery status error:", error);
     res.status(500).json({ error: error.message });
