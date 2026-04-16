@@ -2,44 +2,39 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1.00001, viewport-fit=cover" />
   <title>ComeYa - Delivery en Soria</title>
-  <meta name="description" content="ComeYa - Plataforma de delivery que conecta negocios locales con la comunidad de Soria, España." />
-  <link rel="icon" type="image/png" href="/icon.png" />
+  <meta name="description" content="ComeYa conecta restaurantes y negocios locales de Soria con sus clientes." />
   <meta name="theme-color" content="#FF6B35" />
   <meta property="og:title" content="ComeYa - Delivery en Soria" />
-  <meta property="og:description" content="Conectando negocios locales con la comunidad de Soria" />
+  <meta property="og:description" content="Conectando negocios locales con la comunidad de Soria, Espana." />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://app.comeyaa.com" />
   <style>
-    html, body, #root {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
+    html, body, #root { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
     #root { display: flex; flex: 1; }
-    .loading-container {
+    .splash {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       width: 100%;
       height: 100%;
-      position: relative;
+      background: linear-gradient(135deg, #FF6B35 0%, #E55A25 100%);
     }
-    .loading-logo-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
+    .splash-logo { font-size: 64px; margin-bottom: 16px; }
+    .splash-name { font-size: 32px; font-weight: 900; color: white; font-family: system-ui, sans-serif; }
+    .splash-sub { color: rgba(255,255,255,0.75); font-size: 14px; margin-top: 8px; font-family: system-ui, sans-serif; }
   </style>
 </head>
 <body>
   <noscript>Necesitas habilitar JavaScript para usar ComeYa.</noscript>
   <div id="root">
-    <div class="loading-container">
-      <img class="loading-logo-img" src="/splash.png" alt="ComeYa" />
+    <div class="splash">
+      <div class="splash-logo">&#x1F430;</div>
+      <div class="splash-name">ComeYa</div>
+      <div class="splash-sub">Cargando...</div>
     </div>
   </div>
 </body>

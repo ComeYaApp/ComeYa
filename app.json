@@ -31,7 +31,8 @@
     },
     "web": {
       "output": "single",
-      "favicon": "./public/icon.png"
+      "favicon": "./public/icon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
