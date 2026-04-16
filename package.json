@@ -39,7 +39,8 @@
     "build:apk:production": "eas build --platform android --profile production --local",
     "build:apk:preview": "eas build --platform android --profile preview --local",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "build": "npx expo export --platform web"
   },
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",
