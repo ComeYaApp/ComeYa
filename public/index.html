@@ -23,7 +23,7 @@
       height: 100%;
       background: linear-gradient(135deg, #FF6B35 0%, #E55A25 100%);
     }
-    .splash-logo { font-size: 64px; margin-bottom: 16px; }
+    .splash-logo { width: 120px; height: 120px; border-radius: 28px; object-fit: cover; margin-bottom: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
     .splash-name { font-size: 32px; font-weight: 900; color: white; font-family: system-ui, sans-serif; }
     .splash-sub { color: rgba(255,255,255,0.75); font-size: 14px; margin-top: 8px; font-family: system-ui, sans-serif; }
   </style>
@@ -32,7 +32,7 @@
   <noscript>Necesitas habilitar JavaScript para usar ComeYa.</noscript>
   <div id="root">
     <div class="splash">
-      <div class="splash-logo">&#x1F430;</div>
+      <img class="splash-logo" src="/logo.jpeg" alt="ComeYa" />
       <div class="splash-name">ComeYa</div>
       <div class="splash-sub">Cargando...</div>
     </div>
