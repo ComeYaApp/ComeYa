@@ -1,46 +1,549 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1.00001, viewport-fit=cover" />
-  <title>ComeYa - Delivery en Soria</title>
-  <meta name="description" content="ComeYa - Plataforma de delivery que conecta negocios locales con la comunidad de Soria, España." />
-  <meta name="theme-color" content="#FF6B35" />
-  <meta property="og:title" content="ComeYa - Delivery en Soria" />
-  <meta property="og:description" content="Conectando negocios locales con la comunidad de Soria" />
-  <meta property="og:type" content="website" />
-  <style>
-    html, body, #root { width: 100%; height: 100%; margin: 0; padding: 0; }
-    #root { display: flex; }
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      background-color: #FFFFFF;
-    }
-    @media (prefers-color-scheme: dark) {
-      .loading-container { background-color: #121212; }
-    }
-    .loading-logo-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ComeYa - Delivery en Soria</title>
+<meta name="description" content="ComeYa conecta restaurantes y negocios locales de Soria con sus clientes. Pide tu comida favorita y recibela en casa."/>
+<meta name="theme-color" content="#FF6B35"/>
+<meta property="og:title" content="ComeYa - Delivery en Soria"/>
+<meta property="og:description" content="Conectando negocios locales con la comunidad de Soria, Espana."/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://comeyaa.com"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#FF6B35;
+  --primary-dark:#E55A25;
+  --primary-light:#FF8C5A;
+  --bg:#F7F7F7;
+  --surface:#FFFFFF;
+  --text:#1A1A1A;
+  --text2:#555555;
+  --border:#E0E0E0;
+  --r-md:12px;
+  --r-lg:20px;
+  --r-full:9999px;
+  --sh-md:0 4px 20px rgba(0,0,0,.10);
+  --sh-lg:0 8px 40px rgba(0,0,0,.14);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{text-decoration:none;color:inherit}
+.container{max-width:1120px;margin:0 auto;padding:0 24px}
+
+/* NAVBAR */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);transition:box-shadow .3s}
+.nav.scrolled{box-shadow:var(--sh-md)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:68px}
+.nav-logo{font-size:1.4rem;font-weight:800;color:var(--primary)}
+.nav-logo span{color:var(--text)}
+.nav-links{display:flex;align-items:center;gap:32px;list-style:none}
+.nav-links a{font-size:.95rem;font-weight:500;color:var(--text2);transition:color .2s}
+.nav-links a:hover{color:var(--primary)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border-radius:var(--r-full);font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;border:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 4px 16px rgba(255,107,53,.4)}
+.nav-cta{display:flex;gap:12px}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:4px}
+.hamburger span{display:block;width:24px;height:2px;background:var(--text);border-radius:2px}
+
+/* SECTION SHARED */
+.sec-header{text-align:center;margin-bottom:64px}
+.sec-tag{display:inline-block;background:rgba(255,107,53,.1);color:var(--primary);padding:4px 14px;border-radius:var(--r-full);font-size:.8rem;font-weight:600;margin-bottom:12px}
+.sec-title{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
+.sec-sub{font-size:1.05rem;color:var(--text2);max-width:520px;margin:0 auto}
+
+/* STORE BUTTONS */
+.store-btn{display:inline-flex;align-items:center;gap:12px;background:var(--text);color:#fff;padding:14px 22px;border-radius:var(--r-md);transition:all .2s}
+.store-btn:hover{background:#333;transform:translateY(-2px);box-shadow:var(--sh-md)}
+.store-btn svg{width:24px;height:24px;flex-shrink:0}
+.store-btn-text{display:flex;flex-direction:column}
+.store-btn-text small{font-size:.7rem;opacity:.75;font-weight:400}
+.store-btn-text strong{font-size:1rem;font-weight:700}
+</style>
 </head>
 <body>
-  <noscript>Necesitas habilitar JavaScript para usar ComeYa.</noscript>
-  <div id="root">
-    <div class="loading-container">
-      <img src="/assets/splash.png" class="loading-logo-img" alt="ComeYa" />
+
+<!-- NAVBAR -->
+<nav class="nav" id="nav">
+  <div class="container">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">&#x1F430; Come<span>Ya</span></a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#como-funciona">Como funciona</a></li>
+        <li><a href="#features">Funcionalidades</a></li>
+        <li><a href="#negocios">Para Negocios</a></li>
+        <li><a href="#repartidores">Repartidores</a></li>
+        <li><a href="#contacto">Contacto</a></li>
+      </ul>
+      <div class="nav-cta" id="nav-cta">
+        <a href="#descargar" class="btn btn-primary">Descargar App</a>
+      </div>
+      <div class="hamburger" id="ham" onclick="toggleMenu()">
+        <span></span><span></span><span></span>
+      </div>
     </div>
   </div>
+</nav>
+
+<style>
+/* HERO */
+.hero{min-height:100vh;display:flex;align-items:center;padding-top:68px;background:linear-gradient(135deg,#fff9f6 0%,#fff3ee 50%,#fff 100%);position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-120px;right:-120px;width:500px;height:500px;background:radial-gradient(circle,rgba(255,107,53,.12) 0%,transparent 70%);border-radius:50%;pointer-events:none}
+.hero-inner{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;padding:80px 0}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,107,53,.1);color:var(--primary);padding:6px 16px;border-radius:var(--r-full);font-size:.85rem;font-weight:600;margin-bottom:24px}
+.hero-dot{width:8px;height:8px;background:var(--primary);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+.hero-title{font-size:clamp(2.4rem,5vw,3.6rem);font-weight:900;line-height:1.1;letter-spacing:-.02em;margin-bottom:20px}
+.hero-title .hl{color:var(--primary)}
+.hero-sub{font-size:1.15rem;color:var(--text2);margin-bottom:36px;max-width:480px;line-height:1.7}
+.hero-actions{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:48px}
+.hero-stats{display:flex;gap:32px}
+.hero-stat{display:flex;flex-direction:column}
+.hero-stat-n{font-size:1.8rem;font-weight:800;color:var(--primary);line-height:1}
+.hero-stat-l{font-size:.8rem;color:var(--text2);margin-top:4px}
+.hero-visual{display:flex;justify-content:center;align-items:center;position:relative}
+.phone{width:280px;height:560px;background:var(--text);border-radius:40px;padding:12px;box-shadow:0 32px 80px rgba(0,0,0,.25);position:relative;z-index:2}
+.phone-screen{width:100%;height:100%;background:linear-gradient(160deg,#FF6B35 0%,#E55A25 40%,#1A1A1A 100%);border-radius:30px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
+.phone-logo{font-size:3.5rem;line-height:1}
+.phone-name{font-size:1.8rem;font-weight:900;color:#fff;letter-spacing:-.02em}
+.phone-tag{font-size:.85rem;color:rgba(255,255,255,.75);text-align:center}
+.phone-cards{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:8px}
+.phone-card{background:rgba(255,255,255,.15);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.pc-icon{font-size:1.2rem}
+.pc-text{display:flex;flex-direction:column}
+.pc-title{font-size:.75rem;font-weight:600;color:#fff}
+.pc-sub{font-size:.65rem;color:rgba(255,255,255,.65)}
+.fbadge{position:absolute;background:var(--surface);border-radius:var(--r-md);padding:10px 14px;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;white-space:nowrap;animation:floatY 3s ease-in-out infinite}
+.fbadge:nth-child(2){animation-delay:1s}
+.fbadge:nth-child(3){animation-delay:2s}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.fb1{top:60px;left:-60px}
+.fb2{top:200px;right:-70px}
+.fb3{bottom:100px;left:-50px}
+</style>
+
+<!-- HERO -->
+<section class="hero" id="inicio">
+  <div class="container">
+    <div class="hero-inner">
+      <div>
+        <div class="hero-badge"><span class="hero-dot"></span>Disponible en Soria, Espana</div>
+        <h1 class="hero-title">Tu comida favorita,<br><span class="hl">en tu puerta</span></h1>
+        <p class="hero-sub">ComeYa conecta los mejores restaurantes y negocios locales de Soria contigo. Pide en segundos, sigue tu pedido en tiempo real y apoya el comercio local.</p>
+        <div class="hero-actions">
+          <a href="#descargar" class="store-btn">
+            <svg viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            <div class="store-btn-text"><small>Descargar en</small><strong>App Store</strong></div>
+          </a>
+          <a href="#descargar" class="store-btn">
+            <svg viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.64.22.99.14l12.12-6.99-2.54-2.54-10.57 9.39zm-1.7-20.1C1.18 4.04 1 4.53 1 5.14v13.72c0 .61.18 1.1.48 1.48l.08.07 7.69-7.69v-.18L1.56 3.59l-.08.07zm17.52 8.95l-2.17-1.25-2.85 2.85 2.85 2.85 2.19-1.26c.62-.36.62-.94 0-1.19zM4.17.24L16.29 7.23l-2.54 2.54L3.18.38C3.53.3 3.87.07 4.17.24z"/></svg>
+            <div class="store-btn-text"><small>Disponible en</small><strong>Google Play</strong></div>
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><span class="hero-stat-n">50+</span><span class="hero-stat-l">Negocios locales</span></div>
+          <div class="hero-stat"><span class="hero-stat-n">30min</span><span class="hero-stat-l">Tiempo promedio</span></div>
+          <div class="hero-stat"><span class="hero-stat-n">4.8&#9733;</span><span class="hero-stat-l">Valoracion media</span></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="fbadge fb1">&#x1F6F5; En camino &middot; 8 min</div>
+        <div class="fbadge fb2">&#x2B50; 4.9 &middot; Excelente</div>
+        <div class="fbadge fb3">&#x1F381; +50 puntos ganados</div>
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-logo">&#x1F430;</div>
+            <div class="phone-name">ComeYa</div>
+            <div class="phone-tag">Delivery en Soria</div>
+            <div class="phone-cards">
+              <div class="phone-card"><span class="pc-icon">&#x1F355;</span><div class="pc-text"><span class="pc-title">Pizzeria Centro</span><span class="pc-sub">25-35 min &middot; Desde 1.99&euro;</span></div></div>
+              <div class="phone-card"><span class="pc-icon">&#x1F354;</span><div class="pc-text"><span class="pc-title">Burger Soria</span><span class="pc-sub">20-30 min &middot; Desde 1.50&euro;</span></div></div>
+              <div class="phone-card"><span class="pc-icon">&#x1F957;</span><div class="pc-text"><span class="pc-title">Ensaladas Fresh</span><span class="pc-sub">15-25 min &middot; Desde 2.00&euro;</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* COMO FUNCIONA */
+.how{padding:100px 0;background:var(--surface)}
+.how-steps{display:flex;align-items:flex-start;margin-bottom:56px}
+.how-step{flex:1;text-align:center;padding:32px 24px;position:relative}
+.how-num{position:absolute;top:0;left:50%;transform:translate(-50%,-50%);width:32px;height:32px;background:var(--primary);color:#fff;border-radius:50%;font-size:.85rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.how-icon{font-size:3rem;margin-bottom:16px}
+.how-step h3{font-size:1.1rem;font-weight:700;margin-bottom:8px}
+.how-step p{font-size:.9rem;color:var(--text2);line-height:1.6}
+.how-line{width:80px;height:2px;background:linear-gradient(90deg,var(--primary),var(--primary-light));margin-top:80px;flex-shrink:0;opacity:.4}
+.how-cta{text-align:center;background:linear-gradient(135deg,#fff9f6,#fff3ee);border:1px solid rgba(255,107,53,.2);border-radius:var(--r-lg);padding:40px}
+.how-cta p{font-size:1.1rem;font-weight:600;margin-bottom:20px;color:var(--text2)}
+
+/* FEATURES */
+.features{padding:100px 0;background:var(--bg)}
+.feat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.feat-card{background:var(--surface);border-radius:var(--r-lg);padding:28px;border:1px solid var(--border);transition:all .25s}
+.feat-card:hover{transform:translateY(-4px);box-shadow:var(--sh-lg);border-color:rgba(255,107,53,.3)}
+.feat-card.wide{grid-column:span 2}
+.feat-icon{font-size:2rem;margin-bottom:14px}
+.feat-card h3{font-size:1rem;font-weight:700;margin-bottom:8px}
+.feat-card p{font-size:.875rem;color:var(--text2);line-height:1.6}
+.feat-tag{display:inline-block;margin-top:12px;background:rgba(255,107,53,.1);color:var(--primary);padding:3px 10px;border-radius:var(--r-full);font-size:.75rem;font-weight:600}
+</style>
+
+<!-- COMO FUNCIONA -->
+<section class="how" id="como-funciona">
+  <div class="container">
+    <div class="sec-header">
+      <span class="sec-tag">Simple y rapido</span>
+      <h2 class="sec-title">Como funciona?</h2>
+      <p class="sec-sub">En 3 pasos tienes tu pedido en casa</p>
+    </div>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-num">1</div>
+        <div class="how-icon">&#x1F50D;</div>
+        <h3>Elige tu restaurante</h3>
+        <p>Explora los mejores negocios locales de Soria, filtra por categoria, valoracion o tiempo de entrega.</p>
+      </div>
+      <div class="how-line"></div>
+      <div class="how-step">
+        <div class="how-num">2</div>
+        <div class="how-icon">&#x1F6D2;</div>
+        <h3>Haz tu pedido</h3>
+        <p>Selecciona tus platos favoritos, aplica cupones y elige tu metodo de pago preferido.</p>
+      </div>
+      <div class="how-line"></div>
+      <div class="how-step">
+        <div class="how-num">3</div>
+        <div class="how-icon">&#x1F6F5;</div>
+        <h3>Recibelo en casa</h3>
+        <p>Sigue tu pedido en tiempo real. Tu repartidor llega en minutos con tu comida caliente.</p>
+      </div>
+    </div>
+    <div class="how-cta">
+      <p>Quieres la mejor experiencia? Descarga la app</p>
+      <a href="#descargar" class="btn btn-primary">&#x1F4F1; Descargar gratis</a>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="sec-header">
+      <span class="sec-tag">Todo lo que necesitas</span>
+      <h2 class="sec-title">Una app, mil posibilidades</h2>
+      <p class="sec-sub">Disenada para que pedir sea tan facil como pensar en que comer</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card wide">
+        <div class="feat-icon">&#x1F4CD;</div>
+        <h3>Tracking en tiempo real</h3>
+        <p>Sigue a tu repartidor en el mapa con actualizaciones cada 10 segundos. Sabe exactamente cuando llega tu pedido.</p>
+        <span class="feat-tag">GPS en vivo</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">&#x1F3AE;</div>
+        <h3>Gamificacion</h3>
+        <p>Gana puntos con cada pedido, sube de nivel Bronze a Platinum y canjea recompensas exclusivas.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">&#x1F381;</div>
+        <h3>Gift Cards</h3>
+        <p>Regala experiencias gastronomicas con tarjetas regalo personalizadas para cualquier ocasion.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">&#x1F465;</div>
+        <h3>Pedidos grupales</h3>
+        <p>Organiza pedidos con amigos, cada uno elige lo suyo y el coste se divide automaticamente.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">&#x1F4C5;</div>
+        <h3>Pedidos programados</h3>
+        <p>Programa tu pedido para cuando lo necesites. Perfecto para la hora de comer en el trabajo.</p>
+      </div>
+      <div class="feat-card wide">
+        <div class="feat-icon">&#x2B50;</div>
+        <h3>Resenas detalladas</h3>
+        <p>Valora por separado la comida, el empaque, la entrega y el repartidor. Sube hasta 3 fotos de tu pedido.</p>
+        <span class="feat-tag">4 categorias</span>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">&#x1F4F6;</div>
+        <h3>Modo offline</h3>
+        <p>Navega y prepara pedidos sin conexion. Se sincronizan automaticamente cuando vuelves a conectarte.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">&#x1F514;</div>
+        <h3>Notificaciones inteligentes</h3>
+        <p>Alertas personalizadas segun tus habitos. Nunca te pierdas una oferta o el estado de tu pedido.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* AUDIENCE */
+.audience{padding:100px 0}
+.aud-negocios{background:var(--surface)}
+.aud-repartidores{background:var(--bg)}
+.aud-inner{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
+.aud-content h2{font-size:clamp(1.8rem,3.5vw,2.4rem);font-weight:800;letter-spacing:-.02em;margin-bottom:16px}
+.aud-content p{font-size:1rem;color:var(--text2);line-height:1.7;margin-bottom:32px}
+.aud-list{list-style:none;display:flex;flex-direction:column;gap:14px;margin-bottom:36px}
+.aud-list li{display:flex;align-items:flex-start;gap:12px;font-size:.95rem}
+.aud-list li::before{content:'\2713';display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:rgba(255,107,53,.12);color:var(--primary);border-radius:50%;font-size:.75rem;font-weight:700;flex-shrink:0;margin-top:1px}
+.aud-visual{background:linear-gradient(135deg,#FF6B35 0%,#E55A25 100%);border-radius:var(--r-lg);padding:48px 40px;color:#fff;display:flex;flex-direction:column;gap:20px}
+.aud-visual-title{font-size:1.4rem;font-weight:800}
+.aud-stat-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.aud-stat{background:rgba(255,255,255,.15);border-radius:var(--r-md);padding:16px}
+.aud-stat-n{font-size:1.8rem;font-weight:800;line-height:1}
+.aud-stat-l{font-size:.78rem;opacity:.8;margin-top:4px}
+.levels{display:flex;gap:8px;flex-wrap:wrap}
+.lv{padding:6px 14px;border-radius:var(--r-full);font-size:.8rem;font-weight:700}
+.lv-b{background:#CD7F32;color:#fff}
+.lv-s{background:#C0C0C0;color:#333}
+.lv-g{background:#FFD700;color:#333}
+.lv-p{background:#E5E4E2;color:#333}
+.aud-visual-dark{background:linear-gradient(135deg,#1A1A1A 0%,#2D2D2D 100%)}
+</style>
+
+<!-- NEGOCIOS -->
+<section class="audience aud-negocios" id="negocios">
+  <div class="container">
+    <div class="aud-inner">
+      <div class="aud-content">
+        <span class="sec-tag">Para negocios</span>
+        <h2>Haz crecer tu negocio local</h2>
+        <p>Unete a la plataforma de delivery de Soria y llega a mas clientes sin complicaciones. Gestion completa desde tu movil.</p>
+        <ul class="aud-list">
+          <li>Panel de analytics con metricas en tiempo real</li>
+          <li>Gestion de pedidos y menu desde la app</li>
+          <li>Sistema de niveles con beneficios progresivos</li>
+          <li>Payouts automaticos a tu cuenta bancaria</li>
+          <li>Responde a resenas y fideliza clientes</li>
+          <li>Modo saturado para controlar la capacidad</li>
+        </ul>
+        <a href="mailto:negocios@comeyaa.com" class="btn btn-primary">Unir mi negocio</a>
+      </div>
+      <div class="aud-visual">
+        <div class="aud-visual-title">&#x1F3EA; Panel de Negocios</div>
+        <div class="aud-stat-row">
+          <div class="aud-stat"><div class="aud-stat-n">+34%</div><div class="aud-stat-l">Ventas este mes</div></div>
+          <div class="aud-stat"><div class="aud-stat-n">4.8&#9733;</div><div class="aud-stat-l">Valoracion media</div></div>
+          <div class="aud-stat"><div class="aud-stat-n">127</div><div class="aud-stat-l">Pedidos esta semana</div></div>
+          <div class="aud-stat"><div class="aud-stat-n">28min</div><div class="aud-stat-l">Tiempo promedio</div></div>
+        </div>
+        <div>
+          <div style="font-size:.85rem;opacity:.8;margin-bottom:10px">Sistema de niveles</div>
+          <div class="levels">
+            <span class="lv lv-b">Bronze</span>
+            <span class="lv lv-s">Silver</span>
+            <span class="lv lv-g">Gold</span>
+            <span class="lv lv-p">Platinum</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REPARTIDORES -->
+<section class="audience aud-repartidores" id="repartidores">
+  <div class="container">
+    <div class="aud-inner">
+      <div class="aud-visual aud-visual-dark">
+        <div class="aud-visual-title">&#x1F6F5; Panel Repartidor</div>
+        <div class="aud-stat-row">
+          <div class="aud-stat"><div class="aud-stat-n">47.50&euro;</div><div class="aud-stat-l">Ganancias hoy</div></div>
+          <div class="aud-stat"><div class="aud-stat-n">12</div><div class="aud-stat-l">Entregas hoy</div></div>
+          <div class="aud-stat"><div class="aud-stat-n">4.9&#9733;</div><div class="aud-stat-l">Tu valoracion</div></div>
+          <div class="aud-stat"><div class="aud-stat-n">98%</div><div class="aud-stat-l">Tasa completado</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,.1);border-radius:12px;padding:16px">
+          <div style="font-size:.85rem;opacity:.8;margin-bottom:6px">Pedido activo</div>
+          <div style="font-weight:700">Pizzeria Centro &#x2192; Calle Mayor 12</div>
+          <div style="font-size:.8rem;opacity:.7;margin-top:4px">ETA: 8 minutos &middot; 2.3 km</div>
+        </div>
+      </div>
+      <div class="aud-content">
+        <span class="sec-tag">Para repartidores</span>
+        <h2>Gana dinero a tu ritmo</h2>
+        <p>Trabaja cuando quieras, donde quieras. ComeYa te da las herramientas para maximizar tus ganancias en Soria.</p>
+        <ul class="aud-list">
+          <li>Ganancias en tiempo real visibles al instante</li>
+          <li>Navegacion integrada con Google Maps</li>
+          <li>Asignacion inteligente segun tu ubicacion</li>
+          <li>Historial completo de entregas y estadisticas</li>
+          <li>Prueba de entrega con foto y GPS</li>
+          <li>Payouts semanales a tu cuenta</li>
+        </ul>
+        <a href="mailto:repartidores@comeyaa.com" class="btn btn-primary">Quiero repartir</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* DOWNLOAD CTA */
+.download{padding:100px 0;background:linear-gradient(135deg,#1A1A1A 0%,#2D2D2D 100%);text-align:center;position:relative;overflow:hidden}
+.download::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(255,107,53,.15) 0%,transparent 70%);pointer-events:none}
+.dl-inner{position:relative;z-index:1}
+.dl-inner h2{font-size:clamp(2rem,4vw,3rem);font-weight:900;color:#fff;letter-spacing:-.02em;margin-bottom:16px}
+.dl-inner h2 span{color:var(--primary)}
+.dl-inner p{font-size:1.1rem;color:rgba(255,255,255,.65);margin-bottom:40px;max-width:480px;margin-left:auto;margin-right:auto}
+.dl-btns{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:32px}
+.dl-btns .store-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2)}
+.dl-btns .store-btn:hover{background:rgba(255,255,255,.2)}
+.dl-note{font-size:.85rem;color:rgba(255,255,255,.35)}
+.dl-web-banner{display:inline-flex;align-items:center;gap:12px;background:rgba(255,107,53,.15);border:1px solid rgba(255,107,53,.3);border-radius:var(--r-lg);padding:16px 28px;margin-bottom:40px;color:rgba(255,255,255,.85);font-size:.9rem}
+.dl-web-banner strong{color:var(--primary)}
+
+/* FOOTER */
+.footer{background:#111;color:rgba(255,255,255,.6);padding:60px 0 32px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
+.footer-brand-name{font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:12px}
+.footer-brand-desc{font-size:.875rem;line-height:1.7;margin-bottom:20px}
+.footer-col h4{font-size:.875rem;font-weight:700;color:#fff;margin-bottom:16px;text-transform:uppercase;letter-spacing:.05em}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.footer-col ul a{font-size:.875rem;color:rgba(255,255,255,.55);transition:color .2s}
+.footer-col ul a:hover{color:var(--primary)}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:24px;display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
+.footer-bottom a{color:var(--primary)}
+
+/* RESPONSIVE */
+@media(max-width:1024px){
+  .feat-grid{grid-template-columns:repeat(2,1fr)}
+  .feat-card.wide{grid-column:span 1}
+  .footer-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:768px){
+  .nav-links,.nav-cta{display:none}
+  .hamburger{display:flex}
+  .hero-inner{grid-template-columns:1fr;gap:48px;padding:48px 0;text-align:center}
+  .hero-sub{margin:0 auto 36px}
+  .hero-actions{justify-content:center}
+  .hero-stats{justify-content:center}
+  .hero-visual{order:-1}
+  .phone{width:220px;height:440px}
+  .fb1{left:-10px}
+  .fb2{right:-10px}
+  .fb3{display:none}
+  .how-steps{flex-direction:column;align-items:center}
+  .how-line{width:2px;height:40px;margin:0}
+  .how-step{width:100%;max-width:320px}
+  .feat-grid{grid-template-columns:1fr}
+  .aud-inner{grid-template-columns:1fr;gap:40px}
+  .footer-grid{grid-template-columns:1fr;gap:32px}
+  .footer-bottom{flex-direction:column;gap:8px;text-align:center}
+}
+</style>
+
+<!-- DOWNLOAD CTA -->
+<section class="download" id="descargar">
+  <div class="container">
+    <div class="dl-inner">
+      <h2>Descarga <span>ComeYa</span> gratis</h2>
+      <p>Disponible para iOS y Android. La experiencia completa con GPS, notificaciones y todas las funciones en tu movil.</p>
+
+      <div class="dl-web-banner">
+        &#x1F310; <span>Tambien puedes explorar desde el navegador &mdash; <strong>aunque recomendamos la app para la mejor experiencia</strong></span>
+      </div>
+
+      <div class="dl-btns">
+        <a href="#" class="store-btn">
+          <svg viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <div class="store-btn-text"><small>Descargar en</small><strong>App Store</strong></div>
+        </a>
+        <a href="#" class="store-btn">
+          <svg viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.64.22.99.14l12.12-6.99-2.54-2.54-10.57 9.39zm-1.7-20.1C1.18 4.04 1 4.53 1 5.14v13.72c0 .61.18 1.1.48 1.48l.08.07 7.69-7.69v-.18L1.56 3.59l-.08.07zm17.52 8.95l-2.17-1.25-2.85 2.85 2.85 2.85 2.19-1.26c.62-.36.62-.94 0-1.19zM4.17.24L16.29 7.23l-2.54 2.54L3.18.38C3.53.3 3.87.07 4.17.24z"/></svg>
+          <div class="store-btn-text"><small>Disponible en</small><strong>Google Play</strong></div>
+        </a>
+      </div>
+      <div class="dl-note">Gratis para descargar &middot; Sin comisiones ocultas &middot; Hecho en Soria</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer" id="contacto">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand-name">&#x1F430; ComeYa</div>
+        <p class="footer-brand-desc">Conectando negocios locales con la comunidad de Soria, Espana. Apoyamos el comercio de proximidad con tecnologia moderna.</p>
+        <p style="font-size:.8rem">&#x1F4CD; Soria, Castilla y Leon, Espana</p>
+      </div>
+      <div class="footer-col">
+        <h4>App</h4>
+        <ul>
+          <li><a href="#como-funciona">Como funciona</a></li>
+          <li><a href="#features">Funcionalidades</a></li>
+          <li><a href="#descargar">Descargar</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Negocios</h4>
+        <ul>
+          <li><a href="#negocios">Para negocios</a></li>
+          <li><a href="#repartidores">Para repartidores</a></li>
+          <li><a href="mailto:negocios@comeyaa.com">Unir mi negocio</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contacto</h4>
+        <ul>
+          <li><a href="mailto:support@comeyaa.com">support@comeyaa.com</a></li>
+          <li><a href="mailto:negocios@comeyaa.com">negocios@comeyaa.com</a></li>
+          <li><a href="#">Politica de privacidad</a></li>
+          <li><a href="#">Terminos de uso</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&#169; 2026 ComeYa &mdash; Todos los derechos reservados</span>
+      <span>Hecho con &#10084; en Soria, Espana</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled',window.scrollY>20);
+});
+
+function toggleMenu(){
+  var links=document.getElementById('nav-links');
+  var cta=document.getElementById('nav-cta');
+  var open=links.getAttribute('data-open')==='1';
+  if(open){
+    links.removeAttribute('style');
+    cta.removeAttribute('style');
+    links.setAttribute('data-open','0');
+  } else {
+    links.style.cssText='display:flex;flex-direction:column;position:fixed;top:68px;left:0;right:0;background:#fff;padding:24px;gap:20px;border-bottom:1px solid #E0E0E0;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.1)';
+    cta.style.cssText='display:flex;flex-direction:column;position:fixed;top:68px;left:0;right:0;background:#fff;padding:0 24px 24px;margin-top:220px;z-index:99';
+    links.setAttribute('data-open','1');
+  }
+}
+
+// Detect OS and highlight correct store button
+(function(){
+  var ua=navigator.userAgent||'';
+  var isIOS=/iPad|iPhone|iPod/.test(ua);
+  var isAndroid=/Android/.test(ua);
+  var btns=document.querySelectorAll('.store-btn');
+  if(isIOS && btns[0]) btns[0].style.background='#FF6B35';
+  if(isAndroid && btns[1]) btns[1].style.background='#FF6B35';
+})();
+</script>
 </body>
 </html>
