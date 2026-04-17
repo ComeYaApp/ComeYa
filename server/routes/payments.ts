@@ -151,6 +151,10 @@ router.get("/success", async (req, res) => {
     const { db } = await import("../db");
     const { orders } = await import("../../shared/schema-mysql");
 
+    if (!orderId) {
+      return res.status(400).send("<h2>Error: orderId no encontrado</h2>");
+    }
+
     // Para PayPal hay que capturar el pago
     if (provider === "paypal" && token) {
       const base = process.env.PAYPAL_MODE === "live"
@@ -178,21 +182,78 @@ router.get("/success", async (req, res) => {
 
     // Confirmar pedido
     await db.update(orders)
-      .set({ status: "confirmed", updatedAt: new Date() })
+      .set({ status: "accepted", paidAt: new Date(), updatedAt: new Date() })
       .where(eq(orders.id, orderId));
 
-    // Redirigir a la app
-    res.redirect(`${process.env.FRONTEND_URL}/order-confirmed?orderId=${orderId}`);
+    // Redirigir de vuelta a la app via deep link
+    // La app tiene scheme "comeya://" configurado en app.json
+    const deepLink = `comeya://order-confirmed?orderId=${orderId}`;
+    
+    // Pagina HTML que intenta abrir la app y muestra mensaje de exito
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Pago completado - ComeYa</title>
+        <style>
+          body { font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F7F7F7; padding: 24px; text-align: center; }
+          .card { background: white; border-radius: 20px; padding: 40px 32px; max-width: 400px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+          .icon { font-size: 64px; margin-bottom: 16px; }
+          h1 { color: #1A1A1A; font-size: 24px; margin-bottom: 8px; }
+          p { color: #555; font-size: 16px; margin-bottom: 24px; }
+          .btn { display: inline-block; background: #FF6B35; color: white; padding: 14px 28px; border-radius: 50px; text-decoration: none; font-weight: 700; font-size: 16px; }
+        </style>
+        <script>
+          // Intentar abrir la app automaticamente
+          window.location.href = '${deepLink}';
+          // Si no abre en 2 segundos, mostrar boton
+          setTimeout(() => {
+            document.getElementById('btn').style.display = 'inline-block';
+          }, 2000);
+        </script>
+      </head>
+      <body>
+        <div class="card">
+          <div class="icon">&#x2705;</div>
+          <h1>Pago completado</h1>
+          <p>Tu pedido ha sido confirmado. Vuelve a la app para seguir tu pedido.</p>
+          <a id="btn" href="${deepLink}" class="btn" style="display:none">Volver a ComeYa</a>
+        </div>
+      </body>
+      </html>
+    `);
   } catch (error: any) {
     console.error("Payment success error:", error);
-    res.redirect(`${process.env.FRONTEND_URL}/payment-error`);
+    res.send(`
+      <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Error - ComeYa</title>
+      <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F7F7F7;padding:24px;text-align:center;}</style></head>
+      <body><div style="background:white;border-radius:20px;padding:40px;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,.1)">
+      <div style="font-size:64px">&#x26A0;&#xFE0F;</div>
+      <h1 style="color:#1A1A1A">Hubo un problema</h1>
+      <p style="color:#555">El pago fue procesado pero hubo un error. Contacta soporte con tu pedido.</p>
+      <a href="comeya://" style="display:inline-block;background:#FF6B35;color:white;padding:14px 28px;border-radius:50px;text-decoration:none;font-weight:700">Volver a ComeYa</a>
+      </div></body></html>
+    `);
   }
 });
 
 // GET /api/payments/cancel
 router.get("/cancel", async (req, res) => {
   const { orderId } = req.query as any;
-  res.redirect(`${process.env.FRONTEND_URL}/order-cancelled?orderId=${orderId}`);
+  res.send(`
+    <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Pago cancelado - ComeYa</title>
+    <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#F7F7F7;padding:24px;text-align:center;}</style>
+    <script>window.location.href='comeya://order-cancelled?orderId=${orderId}';</script>
+    </head>
+    <body><div style="background:white;border-radius:20px;padding:40px;max-width:400px;box-shadow:0 4px 20px rgba(0,0,0,.1)">
+    <div style="font-size:64px">&#x274C;</div>
+    <h1 style="color:#1A1A1A">Pago cancelado</h1>
+    <p style="color:#555">No se realizo ningun cargo. Puedes intentarlo de nuevo.</p>
+    <a href="comeya://" style="display:inline-block;background:#FF6B35;color:white;padding:14px 28px;border-radius:50px;text-decoration:none;font-weight:700">Volver a ComeYa</a>
+    </div></body></html>
+  `);
 });
 
 // POST /api/payments/webhook/stripe
