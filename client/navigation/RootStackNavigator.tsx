@@ -45,6 +45,7 @@ import TermsScreen from "@/screens/TermsScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
 import DigitalPaymentMethodScreen from "@/screens/DigitalPaymentMethodScreen";
 import PaymentWebViewScreen from "@/screens/PaymentWebViewScreen";
+import AdminPaymentAccountsScreen from "@/screens/AdminPaymentAccountsScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -106,6 +107,7 @@ export type RootStackParamList = {
   ReportIssue: { orderId: string; orderNumber?: string };
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
   DigitalPaymentMethod: { orderTotal: number };
+  AdminPaymentAccounts: undefined;
   PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };
   BusinessMap: undefined;
@@ -329,6 +331,11 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="DigitalPaymentMethod"
             component={DigitalPaymentMethodScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AdminPaymentAccounts"
+            component={AdminPaymentAccountsScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
