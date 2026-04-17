@@ -44,6 +44,7 @@ import groupOrdersRoutes from "./routes/groupOrders";
 import gamificationRoutes from "./routes/gamification";
 import giftCardsRoutes from "./routes/giftCards";
 import orderChatRoutes from "./routes/orderChat";
+import stripePaymentRoutes from "./routes/stripePaymentRoutes";
 
 const router = express.Router();
 
@@ -153,5 +154,6 @@ router.use("/group-orders",         groupOrdersRoutes);
 router.use("/gamification",         gamificationRoutes);
 router.use("/gift-cards",           giftCardsRoutes);
 router.use("/orders",               orderChatRoutes);
+router.use("/stripe",               stripePaymentRoutes);
 
 export default router;

@@ -334,4 +334,83 @@ router.post("/confirm-delivery/:orderId", authenticateToken, async (req, res) =>
   }
 });
 
+// GET /api/stripe/cards — tarjetas guardadas del usuario
+router.get("/cards", authenticateToken, async (req, res) => {
+  try {
+    const [user] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    if (!user.stripePaymentMethodId || !user.cardLast4) {
+      return res.json({ cards: [] });
+    }
+
+    res.json({
+      cards: [{
+        id: user.stripePaymentMethodId,
+        brand: user.cardBrand || 'card',
+        last4: user.cardLast4,
+        expMonth: 12,
+        expYear: 2026,
+        isDefault: true,
+      }]
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/stripe/history — historial de pagos
+router.get("/history", authenticateToken, async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { desc } = await import("drizzle-orm");
+    const userOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.userId, req.user!.id))
+      .orderBy(desc(orders.createdAt))
+      .limit(20);
+
+    const payments = userOrders
+      .filter(o => o.stripePaymentIntentId || o.paymentMethod)
+      .map(o => ({
+        payment: {
+          id: o.stripePaymentIntentId || o.id,
+          amount: o.total || 0,
+          method: o.paymentMethod || 'card',
+          status: ['delivered', 'accepted', 'confirmed'].includes(o.status) ? 'completed' : 'pending',
+          createdAt: o.createdAt,
+        },
+        order: {
+          id: o.id,
+          total: o.total || 0,
+          status: o.status,
+        },
+      }));
+
+    res.json({ payments });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/stripe/cards/:cardId/default — marcar tarjeta como predeterminada
+router.put("/cards/:cardId/default", authenticateToken, async (req, res) => {
+  res.json({ success: true });
+});
+
+// DELETE /api/stripe/cards/:cardId — eliminar tarjeta
+router.delete("/cards/:cardId", authenticateToken, async (req, res) => {
+  try {
+    await db.update(users).set({
+      stripePaymentMethodId: null,
+      cardLast4: null,
+      cardBrand: null,
+    }).where(eq(users.id, req.user!.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

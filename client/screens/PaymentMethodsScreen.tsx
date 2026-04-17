@@ -77,8 +77,8 @@ export default function PaymentMethodsScreen() {
   const loadData = async () => {
     try {
       const [cardsRes, historyRes] = await Promise.all([
-        apiRequest('GET', '/api/payments/cards'),
-        apiRequest('GET', '/api/payments/history'),
+        apiRequest('GET', '/api/stripe/cards'),
+        apiRequest('GET', '/api/stripe/history'),
       ]);
       const cardsData = await cardsRes.json();
       const historyData = await historyRes.json();
@@ -101,7 +101,7 @@ export default function PaymentMethodsScreen() {
 
   const handleSetDefault = async (cardId: string) => {
     try {
-      await apiRequest('PUT', `/api/payments/cards/${cardId}/default`);
+      await apiRequest('PUT', `/api/stripe/cards/${cardId}/default`);
       showToast('Tarjeta predeterminada actualizada', 'success');
       await loadData();
     } catch (error: any) {
@@ -112,7 +112,7 @@ export default function PaymentMethodsScreen() {
   const confirmDeleteCard = async () => {
     if (!cardToDelete) return;
     try {
-      await apiRequest('DELETE', `/api/payments/cards/${cardToDelete}`);
+      await apiRequest('DELETE', `/api/stripe/cards/${cardToDelete}`);
       showToast('Tarjeta eliminada', 'success');
       await loadData();
     } catch (error: any) {
@@ -293,7 +293,7 @@ export default function PaymentMethodsScreen() {
                         €{((item.payment.amount || 0) / 100).toFixed(2)}
                       </ThemedText>
                       <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                        {new Date(item.payment.createdAt).toLocaleDateString('es-VE', {
+                        {new Date(item.payment.createdAt).toLocaleDateString('es-ES', {
                           day: 'numeric',
                           month: 'short',
                           year: 'numeric',

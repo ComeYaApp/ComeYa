@@ -292,25 +292,19 @@ export default function BusinessStripeSetupScreen() {
               <View style={styles.requirementRow}>
                 <Feather name="check" size={18} color={ComeYaColors.success} />
                 <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-                  Identificación oficial (INE/Pasaporte)
+                  DNI o NIE
                 </ThemedText>
               </View>
               <View style={styles.requirementRow}>
                 <Feather name="check" size={18} color={ComeYaColors.success} />
                 <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-                  RFC (Registro Federal de Contribuyentes)
+                  NIF / CIF (numero fiscal)
                 </ThemedText>
               </View>
               <View style={styles.requirementRow}>
                 <Feather name="check" size={18} color={ComeYaColors.success} />
                 <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-                  CURP
-                </ThemedText>
-              </View>
-              <View style={styles.requirementRow}>
-                <Feather name="check" size={18} color={ComeYaColors.success} />
-                <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-                  Cuenta bancaria (CLABE interbancaria)
+                  Cuenta bancaria (IBAN espanol)
                 </ThemedText>
               </View>
               <View style={styles.requirementRow}>
@@ -376,10 +370,10 @@ export default function BusinessStripeSetupScreen() {
           </View>
           <View style={styles.infoRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
-              Comisión Stripe:
+              Comision Stripe:
             </ThemedText>
             <ThemedText type="body" style={{ fontWeight: '600' }}>
-              3.6% + $3 MXN
+              1.5% + 0.25 EUR
             </ThemedText>
           </View>
         </View>
