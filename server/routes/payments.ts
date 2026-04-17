@@ -198,22 +198,8 @@ router.get("/cancel", async (req, res) => {
 // POST /api/payments/webhook/stripe
 router.post("/webhook/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   try {
-    const stripe = (await import("stripe")).default;
-    const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
-    const sig = req.headers["stripe-signature"] as string;
-    const event = stripeClient.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as any;
-      const orderId = session.metadata?.orderId;
-      if (orderId) {
-        const { db } = await import("../db");
-        const { orders } = await import("../../shared/schema-mysql");
-        await db.update(orders).set({ status: "confirmed", updatedAt: new Date() }).where(eq(orders.id, orderId));
-      }
-    }
-
-    res.json({ received: true });
+    const { handleStripeWebhook } = await import("../webhookHandlers");
+    return handleStripeWebhook(req, res);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

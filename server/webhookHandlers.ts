@@ -1,17 +1,12 @@
-// Enhanced Webhook Handlers for MOUZO - Production Ready
+// Enhanced Webhook Handlers for ComeYa - Production Ready
 import { Request, Response } from "express";
-import { stripe } from "./stripeClient";
+import { getStripe } from "./stripeClient";
 import { db } from "./db";
 import { orders, transactions, businesses } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
-
-if (!WEBHOOK_SECRET) {
-  console.error("STRIPE_WEBHOOK_SECRET environment variable is required");
-  process.exit(1);
-}
 
 interface WebhookContext {
   eventId: string;
@@ -52,9 +47,15 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     return res.status(400).json({ error: "Missing signature" });
   }
 
+  if (!WEBHOOK_SECRET) {
+    console.error("STRIPE_WEBHOOK_SECRET not configured");
+    return res.status(500).json({ error: "Webhook not configured" });
+  }
+
   let event: Stripe.Event;
 
   try {
+    const stripe = getStripe();
     event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
   } catch (err: any) {
     console.error("Webhook signature verification failed:", err.message);
@@ -153,27 +154,34 @@ async function handlePaymentIntentSucceeded(
   );
 
   try {
+    // Verificar que el pedido existe
+    const [existingOrder] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!existingOrder) {
+      throw new Error(`Order not found: ${orderId}`);
+    }
+
     // Update order status
-    const [updatedOrder] = await db
+    await db
       .update(orders)
       .set({
-        status: "paid",
+        status: "accepted",
+        paidAt: new Date(),
         stripePaymentIntentId: paymentIntent.id,
         updatedAt: new Date(),
       })
-      .where(eq(orders.id, orderId))
-      .returning();
-
-    if (!updatedOrder) {
-      throw new Error(`Order not found: ${orderId}`);
-    }
+      .where(eq(orders.id, orderId));
 
     // Create transaction record
     await db.insert(transactions).values({
       id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       orderId: orderId,
-      businessId: updatedOrder.businessId,
-      userId: updatedOrder.userId,
+      businessId: existingOrder.businessId,
+      userId: existingOrder.userId,
       amount: paymentIntent.amount,
       type: "payment",
       status: "completed",
@@ -188,7 +196,7 @@ async function handlePaymentIntentSucceeded(
 
     logWebhookEvent(
       context,
-      `Order ${orderId} marked as paid and transaction recorded`,
+      `Order ${orderId} marked as accepted and transaction recorded`,
     );
   } catch (error: any) {
     logWebhookError(context, `Failed to update order ${orderId}`, error);
