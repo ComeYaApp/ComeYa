@@ -1,4 +1,5 @@
-import { useState, Platform } from 'react';
+import { useState } from 'react';
+import { Platform } from 'react-native';
 import { apiRequest } from '@/lib/query-client';
 
 interface PaymentSheetParams {
@@ -16,16 +17,15 @@ interface PaymentSheetResult {
 
 export function useStripePaymentSheet() {
   const [loading, setLoading] = useState(false);
-  const isWeb = Platform.OS === 'web';
 
   const presentPaymentSheet = async (params: PaymentSheetParams): Promise<PaymentSheetResult> => {
-    if (isWeb) {
+    // No disponible en web
+    if (typeof Platform === 'undefined' || Platform.OS === 'web') {
       return { success: false, error: 'Payment Sheet no disponible en web' };
     }
 
     setLoading(true);
     try {
-      // 1. Obtener datos del backend
       const res = await apiRequest('POST', '/api/stripe/create-payment-sheet', {
         orderId: params.orderId,
         amount: params.amount,
@@ -39,12 +39,8 @@ export function useStripePaymentSheet() {
         return { success: false, error: data.error || 'Error al inicializar el pago' };
       }
 
-      // 2. Importar Stripe dinámicamente (no disponible en web/Expo Go)
-      const { useStripe } = await import('@stripe/stripe-react-native');
-      // No podemos usar hooks dinámicamente, usamos el módulo directamente
       const StripeModule = await import('@stripe/stripe-react-native');
 
-      // 3. Inicializar Payment Sheet
       const { error: initError } = await StripeModule.initPaymentSheet({
         merchantDisplayName: 'ComeYa',
         customerId: data.customer,
@@ -67,17 +63,12 @@ export function useStripePaymentSheet() {
         },
       });
 
-      if (initError) {
-        return { success: false, error: initError.message };
-      }
+      if (initError) return { success: false, error: initError.message };
 
-      // 4. Presentar Payment Sheet
       const { error: presentError } = await StripeModule.presentPaymentSheet();
 
       if (presentError) {
-        if (presentError.code === 'Canceled') {
-          return { success: false, error: 'Pago cancelado' };
-        }
+        if (presentError.code === 'Canceled') return { success: false, error: 'Pago cancelado' };
         return { success: false, error: presentError.message };
       }
 
