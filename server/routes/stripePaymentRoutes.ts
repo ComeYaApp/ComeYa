@@ -35,9 +35,13 @@ router.post("/create-payment-sheet", authenticateToken, async (req, res) => {
     const stripe = getStripe();
     const { businesses, orders } = await import("@shared/schema-mysql");
 
-    // Obtener o crear customer de Stripe
-    const [user] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
-    let customerId = user?.stripeCustomerId;
+    // Obtener o crear customer de Stripe usando SQL raw (stripeCustomerId no esta en schema Drizzle)
+    const { sql } = await import("drizzle-orm");
+    const [userRows]: any = await db.execute(
+      sql`SELECT id, name, stripe_customer_id FROM users WHERE id = ${req.user!.id} LIMIT 1`
+    );
+    const user = userRows[0];
+    let customerId = user?.stripe_customer_id;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -45,7 +49,9 @@ router.post("/create-payment-sheet", authenticateToken, async (req, res) => {
         ...(user?.name && { name: user.name }),
       });
       customerId = customer.id;
-      await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, req.user!.id));
+      await db.execute(
+        sql`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${req.user!.id}`
+      );
     }
 
     // Ephemeral key para el Payment Sheet
