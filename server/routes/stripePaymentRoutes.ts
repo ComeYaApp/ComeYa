@@ -20,6 +20,85 @@ router.get("/publishable-key", async (_req, res) => {
   }
 });
 
+// Create PaymentSheet — devuelve paymentIntent + ephemeralKey + customerId
+router.post("/create-payment-sheet", authenticateToken, async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ error: "Stripe no configurado" });
+    }
+
+    const { amount, businessId, orderId, subtotal, deliveryFee } = req.body;
+    if (!amount || amount <= 0 || !orderId) {
+      return res.status(400).json({ error: "Datos de pago incompletos" });
+    }
+
+    const stripe = getStripe();
+    const { businesses, orders } = await import("@shared/schema-mysql");
+
+    // Obtener o crear customer de Stripe
+    const [user] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
+    let customerId = user?.stripeCustomerId;
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        metadata: { userId: req.user!.id },
+        ...(user?.name && { name: user.name }),
+      });
+      customerId = customer.id;
+      await db.update(users).set({ stripeCustomerId: customerId }).where(eq(users.id, req.user!.id));
+    }
+
+    // Ephemeral key para el Payment Sheet
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: '2024-06-20' }
+    );
+
+    // Calcular comision
+    const subtotalCents = Math.round(subtotal || 0);
+    const nemyCommission = Math.round(subtotalCents * 0.15);
+    const amountCents = Math.round(amount);
+
+    // Crear PaymentIntent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency: 'eur',
+      customer: customerId,
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        userId: req.user!.id,
+        businessId: businessId || '',
+        orderId,
+        subtotal: subtotalCents.toString(),
+        deliveryFee: (deliveryFee || 0).toString(),
+        nemyCommission: nemyCommission.toString(),
+      },
+    });
+
+    // Actualizar pedido con el paymentIntentId
+    await db.update(orders).set({
+      paymentIntentId: paymentIntent.id,
+      stripePaymentIntentId: paymentIntent.id,
+      productosBase: subtotalCents,
+      nemyCommission,
+      platformFee: nemyCommission,
+      businessEarnings: subtotalCents,
+      deliveryEarnings: deliveryFee || 0,
+      updatedAt: new Date(),
+    }).where(eq(orders.id, orderId));
+
+    res.json({
+      paymentIntent: paymentIntent.client_secret,
+      ephemeralKey: ephemeralKey.secret,
+      customer: customerId,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    });
+  } catch (error: any) {
+    console.error('Create payment sheet error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Create PaymentIntent for checkout
 router.post("/create-payment-intent", authenticateToken, async (req, res) => {
   try {

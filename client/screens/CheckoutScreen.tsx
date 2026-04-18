@@ -25,6 +25,7 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import { calculateDistance, calculateDeliveryFee, estimateDeliveryTime } from "@/utils/distance";
+import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 
 type SubstitutionOption = "refund" | "call" | "substitute";
 
@@ -42,6 +43,7 @@ export default function CheckoutScreen({ route }: any) {
   const { cart, subtotal: cartSubtotal, clearCart } = useCart();
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { presentPaymentSheet } = useStripePaymentSheet();
   
   // Usar subtotal del carrito directamente
   const subtotal = cartSubtotal;
@@ -219,7 +221,39 @@ export default function CheckoutScreen({ route }: any) {
       const order = await orderResponse.json();
       const orderId = order.orderId || order.id;
 
-      // Iniciar sesión de pago según el provider
+      // Stripe card/bizum — usar Payment Sheet nativo
+      if (paymentMethod === "stripe_card" || paymentMethod === "stripe_bizum") {
+        const result = await presentPaymentSheet({
+          orderId,
+          amount: totalAmount,
+          subtotal: subtotalCents,
+          deliveryFee: deliveryFeeCents,
+          businessId: cart.businessId,
+        });
+
+        await clearCart();
+        Haptics.notificationAsync(
+          result.success
+            ? Haptics.NotificationFeedbackType.Success
+            : Haptics.NotificationFeedbackType.Error
+        );
+        setIsLoading(false);
+
+        if (result.success) {
+          navigation.reset({
+            index: 0,
+            routes: [
+              { name: "Main" },
+              { name: "OrderTracking", params: { orderId } },
+            ],
+          });
+        } else if (result.error !== 'Pago cancelado') {
+          showToast(result.error || "Error al procesar el pago", "error");
+        }
+        return;
+      }
+
+      // Otros métodos (PayPal, Bizum manual, Transferencia) — usar WebView
       const paymentRes = await apiRequest("POST", "/api/payments/create-session", {
         orderId,
         amount: totalAmount,
