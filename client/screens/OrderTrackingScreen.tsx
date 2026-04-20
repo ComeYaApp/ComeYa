@@ -269,7 +269,7 @@ export default function OrderTrackingScreen() {
             ).toISOString(),
             deliveryPersonId: "delivery_demo",
             deliveryPersonName: "Carlos Repartidor",
-            deliveryPersonPhone: "+583171234569",
+            deliveryPersonPhone: "+34600000000",
           };
           setOrder(mockOrder);
         }
@@ -348,7 +348,7 @@ export default function OrderTrackingScreen() {
     : null;
 
   const estimatedTime = order.estimatedDelivery
-    ? new Date(order.estimatedDelivery).toLocaleTimeString("es-VE", {
+    ? new Date(order.estimatedDelivery).toLocaleTimeString("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
       })
@@ -623,7 +623,7 @@ export default function OrderTrackingScreen() {
                       fontWeight: "600",
                     }}
                   >
-                    ${tip}
+                    �${tip}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -728,7 +728,7 @@ export default function OrderTrackingScreen() {
               </ThemedText>
             </View>
             <ThemedText type="body" style={{ color: "#4CAF50" }}>
-              Tu repartidor recibirá ${selectedTip} MXN
+              Tu repartidor recibirá ${selectedTip} EUR
             </ThemedText>
           </View>
         ) : null}

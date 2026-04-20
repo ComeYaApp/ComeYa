@@ -290,7 +290,7 @@ export default function MapViewScreen({ navigation }: any) {
             {
               backgroundColor: order.color,
               borderColor: "#fff",
-              transform: [{ scale: isSelected ? 1.2 : 1 }],
+              transform: [{ scale: selectedOrder?.id === order.id ? 1.2 : 1 }],
             },
           ]}
         >
