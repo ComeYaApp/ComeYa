@@ -11,6 +11,9 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.comeya.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicacion para asignarte pedidos y mostrar tu posicion en tiempo real."
       }
@@ -25,8 +28,8 @@
       "package": "com.comeya.app",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDLejpcrNJNHzQIduWuot5QAoepitVk2zY"
-        }
+            "apiKey": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
+          }
       }
     },
     "web": {
