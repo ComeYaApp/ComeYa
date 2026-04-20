@@ -46,10 +46,9 @@ export default function RouteOptimizationScreen() {
   const [prioritizeEarnings, setPrioritizeEarnings] = useState(true);
   const [avoidTraffic, setAvoidTraffic] = useState(true);
 
-  // Driver location (mock)
   const driverLocation = {
-    latitude: 20.3167,
-    longitude: -103.7333,
+    latitude: 41.7636,
+    longitude: -2.4677,
   };
 
   useEffect(() => {
@@ -59,65 +58,41 @@ export default function RouteOptimizationScreen() {
   const loadAvailableOrders = async () => {
     setLoading(true);
     try {
-      // Mock data - in real app, fetch from API
       const mockOrders: DeliveryOrder[] = [
         {
           id: '1',
-          customerName: 'María González',
-          address: 'Av. Hidalgo 123, Centro',
-          coordinates: { latitude: 20.3200, longitude: -103.7300 },
+          customerName: 'Maria Garcia',
+          address: 'Calle Collado 12, Centro',
+          coordinates: { latitude: 41.7650, longitude: -2.4650 },
           estimatedTime: 15,
           priority: 'high',
-          value: 2500,
-          distance: 2.5,
+          value: 1500,
+          distance: 1.2,
           status: 'pending',
         },
         {
           id: '2',
-          customerName: 'Carlos Ruiz',
-          address: 'Calle Morelos 456, Norte',
-          coordinates: { latitude: 20.3250, longitude: -103.7280 },
+          customerName: 'Carlos Lopez',
+          address: 'Av. Valladolid 45, Norte',
+          coordinates: { latitude: 41.7700, longitude: -2.4600 },
           estimatedTime: 20,
           priority: 'medium',
-          value: 1800,
-          distance: 3.2,
+          value: 2200,
+          distance: 2.1,
           status: 'pending',
         },
         {
           id: '3',
-          customerName: 'Ana López',
-          address: 'Av. Revolución 789, Sur',
-          coordinates: { latitude: 20.3100, longitude: -103.7400 },
-          estimatedTime: 25,
-          priority: 'high',
-          value: 3200,
-          distance: 4.1,
-          status: 'pending',
-        },
-        {
-          id: '4',
-          customerName: 'Pedro Martínez',
-          address: 'Calle Juárez 321, Este',
-          coordinates: { latitude: 20.3180, longitude: -103.7250 },
+          customerName: 'Ana Martinez',
+          address: 'Calle Real 8, Sur',
+          coordinates: { latitude: 41.7580, longitude: -2.4720 },
           estimatedTime: 18,
-          priority: 'low',
-          value: 1500,
-          distance: 2.8,
-          status: 'pending',
-        },
-        {
-          id: '5',
-          customerName: 'Laura Sánchez',
-          address: 'Av. Independencia 654, Oeste',
-          coordinates: { latitude: 20.3220, longitude: -103.7380 },
-          estimatedTime: 22,
-          priority: 'medium',
-          value: 2100,
-          distance: 3.5,
+          priority: 'high',
+          value: 1800,
+          distance: 1.8,
           status: 'pending',
         },
       ];
-
       setAvailableOrders(mockOrders);
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -248,9 +223,9 @@ export default function RouteOptimizationScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
+    return new Intl.NumberFormat('es-ES', {
       style: 'currency',
-      currency: 'MXN',
+      currency: 'EUR',
     }).format(amount / 100);
   };
 
