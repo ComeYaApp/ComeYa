@@ -20,8 +20,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#FE1519",
-        "foregroundImage": "./client/assets/icon.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./client/assets/adaptive-icon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -42,12 +42,12 @@
         "expo-splash-screen",
         {
           "image": "./client/assets/splash.png",
-          "imageWidth": 200,
+          "imageWidth": 400,
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF",
           "dark": {
             "backgroundColor": "#121212",
-            "image": "./client/assets/splash.png"
+            "image": "./client/assets/splash-dark.png"
           }
         }
       ],
