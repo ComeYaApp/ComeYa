@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "reactnativekeyboardcontroller_autolinked_build",
+		"source" : "C:/CY/node_modules/react-native-keyboard-controller/android/src/main/jni"
+	}
+}

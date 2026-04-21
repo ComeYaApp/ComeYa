@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "rnstripe_autolinked_build",
+		"source" : "C:/CY/node_modules/@stripe/stripe-react-native/android/build/generated/source/codegen/jni"
+	}
+}
