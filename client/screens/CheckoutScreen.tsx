@@ -253,14 +253,7 @@ export default function CheckoutScreen({ route }: any) {
         return;
       }
 
-      // Otros métodos (PayPal, Bizum manual, Transferencia) — usar WebView
-      const paymentRes = await apiRequest("POST", "/api/payments/create-session", {
-        orderId,
-        amount: totalAmount,
-        provider: paymentMethod,
-      });
-      const paymentData = await paymentRes.json();
-
+      // Otros métodos (PayPal, Bizum manual, Transferencia) — navegar a subir comprobante
       await clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsLoading(false);
@@ -270,12 +263,8 @@ export default function CheckoutScreen({ route }: any) {
         routes: [
           { name: "Main" },
           {
-            name: "PaymentWebView",
-            params: {
-              orderId,
-              paymentUrl: paymentData.url,
-              provider: paymentMethod,
-            },
+            name: "OrderTracking",
+            params: { orderId },
           },
         ],
       });
