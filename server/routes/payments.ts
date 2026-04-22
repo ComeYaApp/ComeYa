@@ -4,6 +4,101 @@ import { eq } from "drizzle-orm";
 
 const router = express.Router();
 
+// POST /api/payments/submit-proof — subir comprobante de pago manual
+router.post("/submit-proof", authenticateToken, async (req, res) => {
+  try {
+    const { orderId, imageUrl, referenceNumber, senderName, amount, paymentMethod } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!orderId || !imageUrl || !referenceNumber) {
+      return res.status(400).json({ error: "orderId, imageUrl y referenceNumber son requeridos" });
+    }
+
+    const { db } = await import("../db");
+    const { orders, paymentProofs } = await import("../../shared/schema-mysql");
+    const { v4: uuidv4 } = await import("uuid");
+
+    // Verificar que el pedido existe y pertenece al usuario
+    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    // Guardar comprobante en BD
+    const proofId = uuidv4();
+    await db.insert(paymentProofs).values({
+      id: proofId,
+      orderId,
+      userId,
+      proofImageUrl: imageUrl,
+      referenceNumber: referenceNumber.trim(),
+      senderName: senderName?.trim() || null,
+      amount: amount || order.total,
+      paymentMethod: paymentMethod || order.paymentMethod,
+      status: "pending",
+      submittedAt: new Date(),
+    });
+
+    // Actualizar estado del pedido a pending_verification
+    await db.update(orders)
+      .set({ status: "pending", updatedAt: new Date() })
+      .where(eq(orders.id, orderId));
+
+    // Intentar auto-verificación con OCR
+    try {
+      const { autoVerificationService } = await import("../autoVerificationService");
+      const result = await autoVerificationService.shouldAutoApprove(proofId);
+      if (result.approved) {
+        await db.update(orders)
+          .set({ status: "confirmed", paidAt: new Date(), updatedAt: new Date() })
+          .where(eq(orders.id, orderId));
+        await db.update(paymentProofs as any)
+          .set({ status: "approved" })
+          .where(eq((paymentProofs as any).id, proofId));
+      }
+    } catch { /* auto-verificación falla silenciosamente */ }
+
+    res.json({ success: true, proofId, message: "Comprobante recibido. Será verificado en breve." });
+  } catch (error: any) {
+    console.error("Submit proof error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/payments/analyze-proof — analizar comprobante con OCR/Gemini
+router.post("/analyze-proof", authenticateToken, async (req, res) => {
+  try {
+    const { imageBase64, expectedAmount, paymentMethod } = req.body;
+    if (!imageBase64) return res.status(400).json({ error: "imageBase64 requerido" });
+
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `Analiza este comprobante de pago bancario/transferencia y extrae:
+1. referenceNumber: número de referencia, localizador o ID de transacción
+2. amount: importe en euros (solo número)
+3. senderName: nombre del remitente
+4. date: fecha de la transacción
+5. bankName: nombre del banco
+6. isValid: true si parece un comprobante legítimo
+
+Responde SOLO con JSON válido sin markdown. Ejemplo:
+{"referenceNumber":"123456","amount":25.50,"senderName":"Juan García","date":"2024-04-22","bankName":"Santander","isValid":true}`;
+
+    const result = await model.generateContent([
+      { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+      prompt,
+    ]);
+
+    const text = result.response.text().replace(/```json|```/g, "").trim();
+    const extracted = JSON.parse(text);
+
+    res.json({ success: true, extracted });
+  } catch (error: any) {
+    console.error("OCR analyze error:", error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/payments/create-session
 // Crea una sesión de pago según el provider
 router.post("/create-session", authenticateToken, async (req, res) => {

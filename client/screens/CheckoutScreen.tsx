@@ -253,7 +253,7 @@ export default function CheckoutScreen({ route }: any) {
         return;
       }
 
-      // Otros métodos (PayPal, Bizum manual, Transferencia) — navegar a subir comprobante
+      // Otros métodos (Bizum manual, SEPA, PayPal manual) — navegar a subir comprobante
       await clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsLoading(false);
@@ -263,8 +263,12 @@ export default function CheckoutScreen({ route }: any) {
         routes: [
           { name: "Main" },
           {
-            name: "OrderTracking",
-            params: { orderId },
+            name: "PaymentProof",
+            params: {
+              orderId,
+              amount: totalAmount,
+              paymentMethod,
+            },
           },
         ],
       });
