@@ -22,6 +22,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,6 +33,16 @@ const DEFAULT_REGION = {
   latitudeDelta: 0.04,
   longitudeDelta: 0.04,
 };
+
+interface ActiveOrder {
+  id: string;
+  businessName: string;
+  status: string;
+  business: { latitude: number; longitude: number };
+  customer: { latitude: number; longitude: number };
+  driver?: { latitude: number; longitude: number; name: string };
+  eta?: number;
+}
 
 interface BusinessPin {
   id: string;
@@ -52,6 +63,7 @@ export default function BusinessMapScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const { theme, isDark } = useTheme();
+  const { user } = useAuth();
 
   const [businesses, setBusinesses] = useState<BusinessPin[]>([]);
   const [selected, setSelected] = useState<BusinessPin | null>(null);
@@ -59,6 +71,8 @@ export default function BusinessMapScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [MapView, setMapView] = useState<any>(null);
   const [Marker, setMarker] = useState<any>(null);
+  const [Polyline, setPolyline] = useState<any>(null);
+  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   const mapRef = useRef<any>(null);
 
   // Cargar react-native-maps dinámicamente (no disponible en web)
@@ -67,9 +81,59 @@ export default function BusinessMapScreen() {
       import("react-native-maps").then((mod) => {
         setMapView(() => mod.default);
         setMarker(() => mod.Marker);
+        setPolyline(() => mod.Polyline);
       });
     }
   }, []);
+
+  // Cargar pedidos activos del cliente
+  useEffect(() => {
+    if (user?.role !== "customer") return;
+    const fetchOrders = async () => {
+      try {
+        const res = await apiRequest("GET", "/api/orders?status=active");
+        const data = await res.json();
+        const orders = (data.orders || []).filter((o: any) =>
+          ["pending", "confirmed", "preparing", "ready", "on_the_way"].includes(o.status)
+        );
+        const mapped: ActiveOrder[] = await Promise.all(orders.map(async (o: any) => {
+          let driverLoc = undefined;
+          try {
+            const dRes = await apiRequest("GET", `/api/delivery/location/${o.id}`);
+            const dData = await dRes.json();
+            if (dData.location) {
+              driverLoc = {
+                latitude: parseFloat(dData.location.latitude),
+                longitude: parseFloat(dData.location.longitude),
+                name: o.deliveryPersonName || "Repartidor",
+              };
+            }
+          } catch {}
+          let bizLat = 0, bizLng = 0;
+          try {
+            const bRes = await apiRequest("GET", `/api/business/${o.businessId}`);
+            const bData = await bRes.json();
+            bizLat = parseFloat(bData.business?.latitude || 0);
+            bizLng = parseFloat(bData.business?.longitude || 0);
+          } catch {}
+          const addr = o.deliveryAddress ? JSON.parse(o.deliveryAddress) : {};
+          return {
+            id: o.id,
+            businessName: o.businessName || "Negocio",
+            status: o.status,
+            business: { latitude: bizLat, longitude: bizLng },
+            customer: { latitude: addr.latitude || userLocation?.latitude || 0, longitude: addr.longitude || userLocation?.longitude || 0 },
+            driver: driverLoc,
+            eta: o.estimatedDelivery ? Math.max(0, Math.round((new Date(o.estimatedDelivery).getTime() - Date.now()) / 60000)) : undefined,
+          };
+        }));
+        setActiveOrders(mapped);
+      } catch {}
+    };
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 15000);
+    return () => clearInterval(interval);
+  }, [user, userLocation]);
 
   // Pedir permiso de ubicación y centrar mapa cuando llegue
   useEffect(() => {
@@ -194,18 +258,54 @@ export default function BusinessMapScreen() {
             coordinate={{ latitude: b.latitude, longitude: b.longitude }}
             onPress={() => handlePinPress(b)}
           >
-            {/* Pin personalizado */}
             <View style={[styles.pin, { borderColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
               <View style={[styles.pinInner, { backgroundColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
-                <Feather
-                  name={b.type === "market" ? "shopping-bag" : "coffee"}
-                  size={16}
-                  color="#FFFFFF"
-                />
+                <Feather name={b.type === "market" ? "shopping-bag" : "coffee"} size={16} color="#FFFFFF" />
               </View>
               <View style={[styles.pinTail, { borderTopColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]} />
             </View>
           </Marker>
+        ))}
+
+        {/* Pedidos activos del cliente */}
+        {Marker && Polyline && activeOrders.map((order) => (
+          <React.Fragment key={order.id}>
+            {/* Ruta negocio → cliente */}
+            {order.business.latitude !== 0 && order.customer.latitude !== 0 && (
+              <Polyline
+                coordinates={[
+                  { latitude: order.business.latitude, longitude: order.business.longitude },
+                  ...(order.driver ? [{ latitude: order.driver.latitude, longitude: order.driver.longitude }] : []),
+                  { latitude: order.customer.latitude, longitude: order.customer.longitude },
+                ]}
+                strokeColor={ComeYaColors.primary}
+                strokeWidth={4}
+                lineDashPattern={order.status === "on_the_way" ? undefined : [8, 4]}
+              />
+            )}
+            {/* Marcador repartidor */}
+            {order.driver && (
+              <Marker coordinate={{ latitude: order.driver.latitude, longitude: order.driver.longitude }} anchor={{ x: 0.5, y: 0.5 }}>
+                <View style={styles.driverPin}>
+                  <Feather name="navigation" size={14} color="#fff" />
+                </View>
+              </Marker>
+            )}
+            {/* Marcador destino cliente */}
+            {order.customer.latitude !== 0 && (
+              <Marker coordinate={{ latitude: order.customer.latitude, longitude: order.customer.longitude }} anchor={{ x: 0.5, y: 0.5 }}
+                onPress={() => navigation.navigate("OrderTracking", { orderId: order.id })}>
+                <View style={styles.customerPin}>
+                  <Feather name="home" size={14} color="#fff" />
+                  {order.eta !== undefined && (
+                    <View style={styles.etaBubble}>
+                      <ThemedText type="caption" style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>{order.eta}m</ThemedText>
+                    </View>
+                  )}
+                </View>
+              </Marker>
+            )}
+          </React.Fragment>
         ))}
       </MapView>
 
@@ -458,6 +558,23 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 2,
+  },
+  driverPin: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: ComeYaColors.success,
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 2, borderColor: "#fff",
+  },
+  customerPin: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: "#3B82F6",
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 2, borderColor: "#fff",
+  },
+  etaBubble: {
+    position: "absolute", top: -10, right: -10,
+    backgroundColor: ComeYaColors.primary,
+    borderRadius: 8, paddingHorizontal: 4, paddingVertical: 1,
   },
   btnMenu: {
     flex: 1,
