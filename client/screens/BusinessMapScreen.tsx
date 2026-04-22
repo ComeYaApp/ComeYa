@@ -73,7 +73,24 @@ export default function BusinessMapScreen() {
   const [Marker, setMarker] = useState<any>(null);
   const [Polyline, setPolyline] = useState<any>(null);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+  const [Circle, setCircle] = useState<any>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const mapRef = useRef<any>(null);
+
+  const CATEGORIES = [
+    { key: "all", label: "Todos", icon: "grid" },
+    { key: "restaurant", label: "Comida", icon: "coffee" },
+    { key: "market", label: "Mercado", icon: "shopping-bag" },
+    { key: "pharmacy", label: "Farmacia", icon: "plus-circle" },
+  ];
+
+  const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    pending:    { label: "Confirmando pago", color: "#F59E0B" },
+    confirmed:  { label: "Pedido confirmado", color: "#3B82F6" },
+    preparing:  { label: "Preparando", color: "#8B5CF6" },
+    ready:      { label: "Listo para recoger", color: "#10B981" },
+    on_the_way: { label: "En camino 🛵", color: ComeYaColors.success },
+  };
 
   // Cargar react-native-maps dinámicamente (no disponible en web)
   useEffect(() => {
@@ -82,6 +99,7 @@ export default function BusinessMapScreen() {
         setMapView(() => mod.default);
         setMarker(() => mod.Marker);
         setPolyline(() => mod.Polyline);
+        setCircle(() => mod.Circle);
       });
     }
   }, []);
@@ -252,17 +270,35 @@ export default function BusinessMapScreen() {
         showsMyLocationButton={false}
         userInterfaceStyle={isDark ? "dark" : "light"}
       >
-        {Marker && businesses.map((b) => (
+        {/* Radio de cobertura */}
+        {Circle && userLocation && (
+          <Circle
+            center={userLocation}
+            radius={3000}
+            strokeColor={ComeYaColors.primary + "60"}
+            fillColor={ComeYaColors.primary + "10"}
+            strokeWidth={1.5}
+          />
+        )}
+
+        {Marker && businesses
+          .filter(b => categoryFilter === "all" || b.type === categoryFilter)
+          .map((b) => (
           <Marker
             key={b.id}
             coordinate={{ latitude: b.latitude, longitude: b.longitude }}
             onPress={() => handlePinPress(b)}
           >
-            <View style={[styles.pin, { borderColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
-              <View style={[styles.pinInner, { backgroundColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
-                <Feather name={b.type === "market" ? "shopping-bag" : "coffee"} size={16} color="#FFFFFF" />
+            <View style={{ alignItems: "center" }}>
+              <View style={[styles.deliveryTimeBubble, { backgroundColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
+                <ThemedText type="caption" style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{b.deliveryTime}</ThemedText>
               </View>
-              <View style={[styles.pinTail, { borderTopColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]} />
+              <View style={[styles.pin, { borderColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
+                <View style={[styles.pinInner, { backgroundColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
+                  <Feather name={b.type === "market" ? "shopping-bag" : "coffee"} size={16} color="#FFFFFF" />
+                </View>
+                <View style={[styles.pinTail, { borderTopColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]} />
+              </View>
             </View>
           </Marker>
         ))}
@@ -320,7 +356,7 @@ export default function BusinessMapScreen() {
         <View style={[styles.headerTitle, { backgroundColor: theme.card }]}>
           <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
           <ThemedText type="body" style={{ fontWeight: "700", marginLeft: Spacing.xs }}>
-            {businesses.length} negocios
+            {categoryFilter === "all" ? businesses.length : businesses.filter(b => b.type === categoryFilter).length} negocios
           </ThemedText>
         </View>
         <Pressable
@@ -331,7 +367,23 @@ export default function BusinessMapScreen() {
         </Pressable>
       </View>
 
-      {/* Leyenda */}
+      {/* Filtros de categoría */}
+      <View style={[styles.filtersRow, { top: insets.top + 58 }]}>
+        {CATEGORIES.map(cat => (
+          <Pressable
+            key={cat.key}
+            onPress={() => { setCategoryFilter(cat.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            style={[styles.filterChip, { backgroundColor: categoryFilter === cat.key ? ComeYaColors.primary : theme.card }]}
+          >
+            <Feather name={cat.icon as any} size={13} color={categoryFilter === cat.key ? "#fff" : theme.text} />
+            <ThemedText type="caption" style={{ marginLeft: 4, color: categoryFilter === cat.key ? "#fff" : theme.text, fontWeight: "600" }}>
+              {cat.label}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Leyenda */
       <View style={[styles.legend, { backgroundColor: theme.card, bottom: selected ? 280 : insets.bottom + Spacing.lg }]}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: ComeYaColors.primary }]} />
@@ -421,6 +473,30 @@ export default function BusinessMapScreen() {
           </View>
         </Pressable>
       ) : null}
+
+      {/* Banner pedidos activos */}
+      {activeOrders.length > 0 && !selected && (
+        <Pressable
+          onPress={() => navigation.navigate("OrderTracking", { orderId: activeOrders[0].id })}
+          style={[styles.orderBanner, { backgroundColor: theme.card, bottom: insets.bottom + 16 }]}
+        >
+          <View style={[styles.orderBannerDot, { backgroundColor: STATUS_LABELS[activeOrders[0].status]?.color || ComeYaColors.primary }]} />
+          <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+            <ThemedText type="caption" style={{ fontWeight: "700", color: STATUS_LABELS[activeOrders[0].status]?.color || ComeYaColors.primary }}>
+              {STATUS_LABELS[activeOrders[0].status]?.label || "Pedido activo"}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
+              {activeOrders[0].businessName}{activeOrders[0].eta !== undefined ? ` · ${activeOrders[0].eta} min` : ""}
+            </ThemedText>
+          </View>
+          {activeOrders.length > 1 && (
+            <View style={[styles.orderCountBadge, { backgroundColor: ComeYaColors.primary }]}>
+              <ThemedText type="caption" style={{ color: "#fff", fontWeight: "700", fontSize: 11 }}>{activeOrders.length}</ThemedText>
+            </View>
+          )}
+          <Feather name="chevron-right" size={18} color={theme.textSecondary} />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -584,5 +660,53 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,
     backgroundColor: ComeYaColors.primary,
+  },
+  filtersRow: {
+    position: "absolute",
+    left: 0, right: 0,
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    zIndex: 9,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  deliveryTimeBubble: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 2,
+  },
+  orderBanner: {
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  orderBannerDot: {
+    width: 10, height: 10, borderRadius: 5,
+  },
+  orderCountBadge: {
+    width: 22, height: 22, borderRadius: 11,
+    justifyContent: "center", alignItems: "center",
+    marginRight: Spacing.xs,
   },
 });
