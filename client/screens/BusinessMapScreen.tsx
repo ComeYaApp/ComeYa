@@ -383,7 +383,7 @@ export default function BusinessMapScreen() {
         ))}
       </View>
 
-      {/* Leyenda */
+      {/* Leyenda */}
       <View style={[styles.legend, { backgroundColor: theme.card, bottom: selected ? 280 : insets.bottom + Spacing.lg }]}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: ComeYaColors.primary }]} />
