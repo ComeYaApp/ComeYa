@@ -158,7 +158,6 @@ export function CollapsibleMap({
           <MapView
             style={styles.map}
             initialRegion={getInitialRegion()}
-            provider={PROVIDER_GOOGLE}
             showsUserLocation={false}
             showsMyLocationButton={false}
             showsCompass={false}
