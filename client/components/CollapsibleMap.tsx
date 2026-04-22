@@ -44,7 +44,8 @@ const MAP_HEIGHT = 300;
 
 const isValidLocation = (location?: Location): location is Location => {
   if (!location) return false;
-  return Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
+  return Number.isFinite(location.latitude) && Number.isFinite(location.longitude)
+    && location.latitude !== 0 && location.longitude !== 0;
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {

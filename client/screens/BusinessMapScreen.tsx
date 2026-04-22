@@ -183,7 +183,7 @@ export default function BusinessMapScreen() {
             type: b.type || "restaurant",
             image: b.image || "",
             rating: (b.rating || 0) / 100,
-            deliveryTime: b.delivery_time || "30-45 min",
+            deliveryTime: b.delivery_time || b.deliveryTime || "30-45 min",
             deliveryFee: (b.delivery_fee || 0) / 100,
             isOpen: b.isOpen ?? b.is_open ?? false,
             latitude: parseFloat(b.latitude),
@@ -288,17 +288,23 @@ export default function BusinessMapScreen() {
             key={b.id}
             coordinate={{ latitude: b.latitude, longitude: b.longitude }}
             onPress={() => handlePinPress(b)}
+            anchor={{ x: 0.5, y: 1 }}
           >
-            <View style={{ alignItems: "center" }}>
-              <View style={[styles.deliveryTimeBubble, { backgroundColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
-                <ThemedText type="caption" style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{b.deliveryTime}</ThemedText>
-              </View>
-              <View style={[styles.pin, { borderColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
-                <View style={[styles.pinInner, { backgroundColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]}>
-                  <Feather name={b.type === "market" ? "shopping-bag" : "coffee"} size={16} color="#FFFFFF" />
+            <View style={styles.businessPinWrapper}>
+              {/* Bubble con imagen y nombre */}
+              <View style={[styles.businessBubble, { backgroundColor: b.isOpen ? "#fff" : "#f0f0f0", borderColor: b.isOpen ? ComeYaColors.primary : "#ccc" }]}>
+                <View style={[styles.businessBubbleIcon, { backgroundColor: b.isOpen ? ComeYaColors.primary + "15" : "#e0e0e0" }]}>
+                  <Feather name={b.type === "market" ? "shopping-bag" : b.type === "pharmacy" ? "plus-circle" : "coffee"} size={18} color={b.isOpen ? ComeYaColors.primary : "#9E9E9E"} />
                 </View>
-                <View style={[styles.pinTail, { borderTopColor: b.isOpen ? ComeYaColors.primary : "#9E9E9E" }]} />
+                <View style={styles.businessBubbleInfo}>
+                  <ThemedText type="caption" style={{ fontWeight: "700", fontSize: 11, color: b.isOpen ? "#1a1a1a" : "#9E9E9E" }} numberOfLines={1}>{b.name}</ThemedText>
+                  <ThemedText type="caption" style={{ fontSize: 10, color: b.isOpen ? ComeYaColors.primary : "#9E9E9E", fontWeight: "600" }}>
+                    {b.isOpen ? (typeof b.deliveryTime === "string" && b.deliveryTime.includes("min") ? b.deliveryTime : "30-45 min") : "Cerrado"}
+                  </ThemedText>
+                </View>
               </View>
+              {/* Tail del pin */}
+              <View style={[styles.businessPinTail, { borderTopColor: b.isOpen ? ComeYaColors.primary : "#ccc" }]} />
             </View>
           </Marker>
         ))}
@@ -323,21 +329,27 @@ export default function BusinessMapScreen() {
             {order.driver && (
               <Marker coordinate={{ latitude: order.driver.latitude, longitude: order.driver.longitude }} anchor={{ x: 0.5, y: 0.5 }}>
                 <View style={styles.driverPin}>
-                  <Feather name="navigation" size={14} color="#fff" />
+                  <View style={styles.driverPinInner}>
+                    <ThemedText style={{ fontSize: 18 }}>🛵</ThemedText>
+                  </View>
+                  <View style={styles.driverPinLabel}>
+                    <ThemedText type="caption" style={{ fontSize: 9, fontWeight: "700", color: "#fff" }} numberOfLines={1}>{order.driver.name.split(" ")[0]}</ThemedText>
+                  </View>
                 </View>
               </Marker>
             )}
             {/* Marcador destino cliente */}
             {order.customer.latitude !== 0 && (
-              <Marker coordinate={{ latitude: order.customer.latitude, longitude: order.customer.longitude }} anchor={{ x: 0.5, y: 0.5 }}
+              <Marker coordinate={{ latitude: order.customer.latitude, longitude: order.customer.longitude }} anchor={{ x: 0.5, y: 1 }}
                 onPress={() => navigation.navigate("OrderTracking", { orderId: order.id })}>
-                <View style={styles.customerPin}>
-                  <Feather name="home" size={14} color="#fff" />
-                  {order.eta !== undefined && (
-                    <View style={styles.etaBubble}>
-                      <ThemedText type="caption" style={{ color: "#fff", fontSize: 9, fontWeight: "700" }}>{order.eta}m</ThemedText>
-                    </View>
-                  )}
+                <View style={styles.customerPinWrapper}>
+                  <View style={styles.customerBubble}>
+                    <Feather name="home" size={14} color="#fff" />
+                    {order.eta !== undefined && (
+                      <ThemedText type="caption" style={{ color: "#fff", fontSize: 10, fontWeight: "700", marginLeft: 4 }}>{order.eta} min</ThemedText>
+                    )}
+                  </View>
+                  <View style={styles.customerPinTail} />
                 </View>
               </Marker>
             )}
@@ -544,31 +556,82 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // Pin personalizado
-  pin: {
+  // Pins profesionales estilo Rappi/Uber
+  businessPinWrapper: { alignItems: "center" },
+  businessBubble: {
+    flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: "transparent",
-    borderColor: ComeYaColors.primary,
+    borderWidth: 1.5,
+    maxWidth: 160,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+    gap: 6,
   },
-  pinInner: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
+  businessBubbleIcon: {
+    width: 28, height: 28, borderRadius: 14,
+    justifyContent: "center", alignItems: "center",
   },
-  pinTail: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 8,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: ComeYaColors.primary,
+  businessBubbleInfo: { flex: 1 },
+  businessPinTail: {
+    width: 0, height: 0,
+    borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 10,
+    borderLeftColor: "transparent", borderRightColor: "transparent",
     marginTop: -1,
+  },
+  driverPin: { alignItems: "center" },
+  driverPinInner: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: "#fff",
+    justifyContent: "center", alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: ComeYaColors.success,
+  },
+  driverPinLabel: {
+    backgroundColor: ComeYaColors.success,
+    paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 8, marginTop: 2,
+  },
+  customerPinWrapper: { alignItems: "center" },
+  customerBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#3B82F6",
+    paddingHorizontal: 10, paddingVertical: 7,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  customerPinTail: {
+    width: 0, height: 0,
+    borderLeftWidth: 7, borderRightWidth: 7, borderTopWidth: 10,
+    borderLeftColor: "transparent", borderRightColor: "transparent",
+    borderTopColor: "#3B82F6",
+    marginTop: -1,
+  },
+  customerPin: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: "#3B82F6",
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 2, borderColor: "#fff",
+  },
+  etaBubble: {
+    position: "absolute", top: -10, right: -10,
+    backgroundColor: ComeYaColors.primary,
+    borderRadius: 8, paddingHorizontal: 4, paddingVertical: 1,
   },
 
   // Leyenda
