@@ -150,12 +150,13 @@ export function CollapsibleMap({
   };
 
   const routeCoords = [businessLocation, deliveryPersonLocation, customerLocation].filter(isValidLocation);
+  const hasAnyLocation = routeCoords.length > 0;
 
   return (
     <View style={styles.wrapper}>
       {/* MAP */}
       <View style={styles.mapContainer}>
-        {mapAvailable ? (
+        {mapAvailable && hasAnyLocation ? (
           <MapView
             style={styles.map}
             initialRegion={getInitialRegion()}
@@ -206,9 +207,9 @@ export function CollapsibleMap({
           </MapView>
         ) : (
           <View style={[styles.mapFallback, { backgroundColor: theme.backgroundSecondary }]}>
-            <Feather name="map" size={40} color={theme.textSecondary} />
-            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
-              Mapa no disponible
+            <Feather name="map-pin" size={40} color={theme.textSecondary} />
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}>
+              {!mapAvailable ? "Mapa no disponible" : "Esperando ubicación del pedido..."}
             </ThemedText>
           </View>
         )}
