@@ -4,21 +4,24 @@ export default {
     slug: "comeya",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
+      config: {
+        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+      },
       infoPlist: {
         NSLocationWhenInUseUsageDescription: "Necesitamos tu ubicacion para asignarte pedidos y mostrar tu posicion en tiempo real."
       }
     },
     android: {
       adaptiveIcon: {
-        backgroundColor: "#FFFFFF",
-        foregroundImage: "./assets/images/android-icon-foreground.png"
+        backgroundColor: "#FE1519",
+        foregroundImage: "./client/assets/nuevologoapp-padded.jpeg"
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
@@ -31,19 +34,20 @@ export default {
     },
     web: {
       output: "single",
-      favicon: "./assets/images/icon.png"
+      favicon: "./public/icon.png",
+      bundler: "metro"
     },
     plugins: [
       [
         "expo-splash-screen",
         {
-          image: "./assets/images/splash-icon.png",
-          imageWidth: 200,
+          image: "./client/assets/splash.png",
+          imageWidth: 500,
           resizeMode: "contain",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#FE1519",
           dark: {
-            backgroundColor: "#121212",
-            image: "./assets/images/splash-icon.png"
+            backgroundColor: "#FE1519",
+            image: "./client/assets/splash.png"
           }
         }
       ],
