@@ -9,7 +9,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import * as Clipboard from "expo-clipboard";
+import { Clipboard } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -96,7 +96,7 @@ export default function PaymentProofScreen() {
   const [step, setStep] = useState<"instructions" | "upload" | "success">("instructions");
 
   const handleCopy = async (text: string, label: string) => {
-    await Clipboard.setStringAsync(text);
+    await Clipboard.setString(text);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     showToast(`${label} copiado`, "success");
   };
