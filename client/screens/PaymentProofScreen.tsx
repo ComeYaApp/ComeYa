@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator,
   TextInput, Alert, Linking, Platform, Image,
@@ -36,7 +36,7 @@ const PAYMENT_INFO: Record<string, {
       "Sube la captura de pantalla del comprobante",
     ],
     fields: [
-      { label: "Número Bizum", value: process.env.EXPO_PUBLIC_BIZUM_PHONE || "600 000 000", copyable: true },
+      { label: "Número Bizum", value: "600 000 000", copyable: true },
       { label: "Titular", value: "ComeYa S.L.", copyable: false },
     ],
   },
@@ -52,7 +52,7 @@ const PAYMENT_INFO: Record<string, {
       "Sube el justificante de la transferencia",
     ],
     fields: [
-      { label: "IBAN", value: process.env.EXPO_PUBLIC_IBAN || "ES00 0000 0000 0000 0000 0000", copyable: true },
+      { label: "IBAN", value: "ES00 0000 0000 0000 0000 0000", copyable: true },
       { label: "Titular", value: "ComeYa S.L.", copyable: true },
       { label: "Banco", value: "Banco Santander", copyable: false },
     ],
@@ -95,8 +95,8 @@ export default function PaymentProofScreen() {
   const [ocrResult, setOcrResult] = useState<any>(null);
   const [step, setStep] = useState<"instructions" | "upload" | "success">("instructions");
 
-  const handleCopy = async (text: string, label: string) => {
-    await Clipboard.setString(text);
+  const handleCopy = (text: string, label: string) => {
+    try { require('react-native').Clipboard.setString(text); } catch {}
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     showToast(`${label} copiado`, "success");
   };
