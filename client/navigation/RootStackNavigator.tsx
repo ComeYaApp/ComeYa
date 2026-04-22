@@ -45,6 +45,7 @@ import TermsScreen from "@/screens/TermsScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
 import DigitalPaymentMethodScreen from "@/screens/DigitalPaymentMethodScreen";
 import PaymentWebViewScreen from "@/screens/PaymentWebViewScreen";
+import AdminPaymentAccountsScreen from "@/screens/AdminPaymentAccountsScreen";
 import PaymentProofScreen from "@/screens/PaymentProofScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
