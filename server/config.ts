@@ -1,31 +1,54 @@
-// Configuración global de ComeYa — todos los valores de negocio en un solo lugar
+// Configuración global de ComeYa — lee de system_settings en la BD
+// El admin edita estos valores desde su panel sin tocar código ni .env
 
-const commission = parseFloat(process.env.NEMY_COMMISSION || "15") / 100; // 0.15
-const driverCommission = parseFloat(process.env.DRIVER_COMMISSION || "100") / 100;
-const businessCommission = parseFloat(process.env.BUSINESS_COMMISSION || "100") / 100;
+let cache: Record<string, string> = {};
+let cacheExpiry = 0;
+const CACHE_TTL = 60 * 1000; // 1 minuto
+
+async function getSettings(): Promise<Record<string, string>> {
+  if (Date.now() < cacheExpiry && Object.keys(cache).length > 0) return cache;
+  try {
+    const { db } = await import("./db");
+    const { systemSettings } = await import("../shared/schema-mysql");
+    const rows = await db.select().from(systemSettings);
+    cache = {};
+    for (const row of rows) cache[row.key] = row.value;
+    cacheExpiry = Date.now() + CACHE_TTL;
+  } catch {
+    // Si falla la BD usar valores por defecto
+  }
+  return cache;
+}
+
+async function get(key: string, def: string): Promise<string> {
+  const s = await getSettings();
+  return s[key] ?? def;
+}
+
+async function getNum(key: string, def: number): Promise<number> {
+  const v = await get(key, String(def));
+  const n = parseFloat(v);
+  return isNaN(n) ? def : n;
+}
 
 export const CONFIG = {
-  // Comisiones
-  COMEYA_COMMISSION: commission,           // 0.15 (15%)
-  COMEYA_COMMISSION_DIVISOR: 1 + commission, // 1.15
-  DRIVER_COMMISSION: driverCommission,
-  BUSINESS_COMMISSION: businessCommission,
+  // Comisiones — key existente en BD: "comeya_commission_pct" o "nemy_commission"
+  async commission()        { return (await getNum("comeya_commission_pct", 15)) / 100; },
+  async commissionDivisor() { return 1 + await CONFIG.commission(); },
 
   // Delivery
-  DEFAULT_DELIVERY_FEE: 300,              // €3.00 en céntimos
-  DEFAULT_DELIVERY_TIME: "30-45 min",
+  async deliveryFee()  { return getNum("default_delivery_fee_cents", 300); },
+  async deliveryTime() { return get("default_delivery_time", "30-45 min"); },
 
-  // Pedidos
-  REGRET_PERIOD_SECONDS: parseInt(process.env.REGRET_PERIOD_SECONDS || "60"),
-  FUND_HOLD_HOURS: parseInt(process.env.FUND_HOLD_HOURS || "1"),
-
-  // Efectivo
-  MAX_CASH_OWED: parseInt(process.env.MAX_CASH_OWED || "50000"),
-  LIQUIDATION_DEADLINE_DAYS: parseInt(process.env.LIQUIDATION_DEADLINE_DAYS || "7"),
-  WARNING_THRESHOLD_DAYS: parseInt(process.env.WARNING_THRESHOLD_DAYS || "5"),
-
-  // Cuenta receptora ComeYa
-  BIZUM_PHONE: process.env.COMEYA_BIZUM_PHONE || process.env.MOUZO_PAGO_MOVIL_PHONE || "600000000",
-  IBAN: process.env.COMEYA_IBAN || "ES00 0000 0000 0000 0000 0000",
-  PAYPAL_EMAIL: process.env.COMEYA_PAYPAL_EMAIL || "pagos@comeya.es",
+  // Datos de pago ComeYa — editables por el admin desde el panel
+  async bizumPhone()   { return get("comeya_bizum_phone", "600 000 000"); },
+  async iban()         { return get("comeya_iban", "ES00 0000 0000 0000 0000 0000"); },
+  async paypalEmail()  { return get("comeya_paypal_email", "pagos@comeya.es"); },
+  async titular()      { return get("comeya_titular", "ComeYa S.L."); },
+  async banco()        { return get("comeya_banco", "Banco Santander"); },
 };
+
+export function invalidateSettingsCache() {
+  cache = {};
+  cacheExpiry = 0;
+}

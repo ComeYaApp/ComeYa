@@ -156,7 +156,7 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? CONFIG.DEFAULT_DELIVERY_FEE;
+    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? await CONFIG.deliveryFee();
     const finalSubtotal = clientSubtotal ?? subtotal;
     const total = clientTotal ?? (finalSubtotal + deliveryFee);
 
@@ -172,7 +172,7 @@ router.post("/", authenticateToken, async (req, res) => {
       status: "pending" as const,
       subtotal: finalSubtotal,
       productosBase: productosBase ?? finalSubtotal,
-      nemyCommission: nemyCommission ?? Math.round(finalSubtotal * CONFIG.COMEYA_COMMISSION),
+      nemyCommission: nemyCommission ?? Math.round(finalSubtotal * await CONFIG.commission()),
       deliveryFee,
       total,
       paymentMethod: paymentMethod || "cash",
