@@ -80,6 +80,11 @@ export const orders = mysqlTable("orders", {
   paymentMethod: text("payment_method").notNull(),
   paymentProvider: varchar("payment_provider", { length: 50 }).default("stripe_bizum"),
   orderType: text("order_type"), // delivery | pickup
+  estimatedPickupTime: int("estimated_pickup_time"), // minutos estimados para pickup
+  pickupReadyAt: timestamp("pickup_ready_at"), // cuando el pedido estuvo listo para recoger
+  customerArrivedAt: timestamp("customer_arrived_at"), // cuando el cliente avisó que llegó
+  pickupCode: varchar("pickup_code", { length: 6 }), // código de 6 dígitos para recoger
+  pickupQrCode: text("pickup_qr_code"), // QR code único para escanear
   // Referencia de pago (Stripe/PayPal)
   paymentReference: text("pago_movil_reference"),
   paymentProofUrl: text("pago_movil_proof_url"),

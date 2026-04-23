@@ -194,6 +194,13 @@ router.post("/", authenticateToken, async (req, res) => {
 
     await db.insert(orders).values(newOrder);
 
+    // Si es pickup, generar código y QR
+    if (orderType === 'pickup') {
+      const { pickupService } = await import('../pickupService');
+      const estimatedMinutes = 20; // Default, el negocio lo ajustará
+      await pickupService.createPickupOrder(orderId, estimatedMinutes);
+    }
+
     // Notificar al negocio del nuevo pedido
     if (business.ownerId) {
       await sendPushToUser(business.ownerId, {

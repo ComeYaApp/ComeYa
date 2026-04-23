@@ -38,6 +38,11 @@ export default function BusinessOrdersScreen() {
     onConfirm: () => void;
     variant?: "default" | "danger";
   }>({ visible: false, title: "", message: "", onConfirm: () => {} });
+  const [timeModal, setTimeModal] = useState<{
+    visible: boolean;
+    orderId: string;
+  }>({ visible: false, orderId: "" });
+  const [selectedTime, setSelectedTime] = useState(20);
 
   // WebSocket connection
   useEffect(() => {
@@ -129,17 +134,24 @@ export default function BusinessOrdersScreen() {
     }
   };
 
-  const handleAccept = (orderId: string) => {
+  const handleAccept = (orderId: string, isPickup: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setConfirmModal({
-      visible: true,
-      title: "Aceptar Pedido",
-      message: "¿Confirmar este pedido?",
-      onConfirm: () => {
-        updateOrderStatus(orderId, "accepted");
-        setConfirmModal({ ...confirmModal, visible: false });
-      },
-    });
+    
+    if (isPickup) {
+      // Mostrar modal de tiempo para pickup
+      setTimeModal({ visible: true, orderId });
+    } else {
+      // Aceptar delivery directamente
+      setConfirmModal({
+        visible: true,
+        title: "Aceptar Pedido",
+        message: "¿Confirmar este pedido?",
+        onConfirm: () => {
+          updateOrderStatus(orderId, "accepted");
+          setConfirmModal({ ...confirmModal, visible: false });
+        },
+      });
+    }
   };
 
   const handleReject = (orderId: string) => {
@@ -309,7 +321,7 @@ export default function BusinessOrdersScreen() {
               <Pressable
                 onPress={() => {
                   console.log("Accept button pressed", item.id);
-                  handleAccept(item.id);
+                  handleAccept(item.id, item.orderType === "pickup");
                 }}
                 style={({ pressed }) => [
                   styles.actionButton,
