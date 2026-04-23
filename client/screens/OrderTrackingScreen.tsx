@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+ï»¿import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -623,7 +623,7 @@ export default function OrderTrackingScreen() {
                       fontWeight: "600",
                     }}
                   >
-                    €${tip}
+                    ï¿½${tip}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -913,3 +913,4 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
   },
 });
+

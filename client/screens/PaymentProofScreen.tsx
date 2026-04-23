@@ -9,7 +9,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import { Clipboard } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -91,11 +90,14 @@ export default function PaymentProofScreen() {
     apiRequest("GET", "/api/payments/info").then(r => r.json()).then(d => { if (d.success) setPaymentInfo(d); }).catch(() => {});
   }, []);
 
-  const config = React.useMemo(() => ({
-    bizum: { ...PAYMENT_INFO.bizum, fields: [{ label: "N\u00famero Bizum", value: paymentInfo.bizum, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: false }] },
-    sepa: { ...PAYMENT_INFO.sepa, fields: [{ label: "IBAN", value: paymentInfo.iban, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: true }, { label: "Banco", value: paymentInfo.banco, copyable: false }] },
-    paypal: { ...PAYMENT_INFO.paypal, fields: [{ label: "Email PayPal", value: paymentInfo.paypalEmail, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: false }] },
-  })[paymentMethod] || PAYMENT_INFO.bizum;
+  const config = React.useMemo(() => {
+    const map: Record<string, any> = {
+      bizum: { ...PAYMENT_INFO.bizum, fields: [{ label: "N\u00famero Bizum", value: paymentInfo.bizum, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: false }] },
+      sepa:  { ...PAYMENT_INFO.sepa,  fields: [{ label: "IBAN", value: paymentInfo.iban, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: true }, { label: "Banco", value: paymentInfo.banco, copyable: false }] },
+      paypal:{ ...PAYMENT_INFO.paypal,fields: [{ label: "Email PayPal", value: paymentInfo.paypalEmail, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: false }] },
+    };
+    return map[paymentMethod] || PAYMENT_INFO.bizum;
+  }, [paymentMethod, paymentInfo]);
 
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [referenceNumber, setReferenceNumber] = useState("");

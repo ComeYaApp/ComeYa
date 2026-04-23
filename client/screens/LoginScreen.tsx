@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -44,7 +44,7 @@ interface FeaturedBusiness {
   deliveryTime?: string;
 }
 
-const venezuelaBgImage = require("../../assets/images/autlan-background.jpg");
+const bgImage = require("../../assets/images/autlan-background.jpg");
 
 type LoginScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Login">;
@@ -230,7 +230,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
   return (
     <ImageBackground
-      source={venezuelaBgImage}
+      source={bgImage}
       style={styles.container}
       resizeMode="cover"
     >
@@ -836,3 +836,4 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 });
+
