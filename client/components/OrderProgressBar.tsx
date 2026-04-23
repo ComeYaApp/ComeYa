@@ -6,14 +6,23 @@ import { Feather } from '@expo/vector-icons';
 
 interface OrderProgressBarProps {
   status: string;
+  orderType?: 'delivery' | 'pickup';
 }
 
-const statusSteps = [
+const deliverySteps = [
   { key: 'pending',    label: 'Pendiente',  icon: 'clock' },
   { key: 'accepted',   label: 'Aceptado',   icon: 'check-circle' },
   { key: 'preparing',  label: 'Preparando', icon: 'package' },
   { key: 'on_the_way', label: 'En camino',  icon: 'truck' },
   { key: 'delivered',  label: 'Entregado',  icon: 'check-circle' },
+];
+
+const pickupSteps = [
+  { key: 'pending',    label: 'Pendiente',  icon: 'clock' },
+  { key: 'accepted',   label: 'Aceptado',   icon: 'check-circle' },
+  { key: 'preparing',  label: 'Preparando', icon: 'package' },
+  { key: 'ready',      label: 'Listo',      icon: 'shopping-bag' },
+  { key: 'delivered',  label: 'Recogido',   icon: 'check-circle' },
 ];
 
 // Mapea statuses antiguos al nuevo sistema
@@ -29,7 +38,9 @@ const STATUS_INDEX_OVERRIDE: Record<string, number> = {
   refunded: -1,
 };
 
-export function OrderProgressBar({ status }: OrderProgressBarProps) {
+export function OrderProgressBar({ status, orderType = 'delivery' }: OrderProgressBarProps) {
+  const statusSteps = orderType === 'pickup' ? pickupSteps : deliverySteps;
+  
   const resolvedIndex =
     STATUS_INDEX_OVERRIDE[status] !== undefined
       ? STATUS_INDEX_OVERRIDE[status]

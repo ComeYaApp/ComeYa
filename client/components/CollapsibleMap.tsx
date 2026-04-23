@@ -6,6 +6,7 @@ import {
   Dimensions,
   Platform,
   Animated,
+  Linking,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -37,6 +38,7 @@ interface CollapsibleMapProps {
   status?: string;
   onCallDriver?: () => void;
   onChatDriver?: () => void;
+  isPickup?: boolean; // Nuevo: indica si es pedido pickup
 }
 
 const { width } = Dimensions.get("window");
@@ -57,6 +59,15 @@ const STATUS_LABELS: Record<string, { label: string; color: string; icon: string
   in_transit:    { label: "En camino",              color: "#10B981", icon: "navigation" },
   arriving:      { label: "Llegando",               color: "#10B981", icon: "map-pin" },
   delivered:     { label: "Entregado",              color: "#10B981", icon: "check-circle" },
+  cancelled:     { label: "Cancelado",              color: "#EF4444", icon: "x-circle" },
+};
+
+const STATUS_LABELS_PICKUP: Record<string, { label: string; color: string; icon: string }> = {
+  pending:       { label: "Esperando confirmación", color: "#F59E0B", icon: "clock" },
+  accepted:      { label: "Pedido aceptado",        color: "#3B82F6", icon: "check" },
+  preparing:     { label: "Preparando tu pedido",   color: "#8B5CF6", icon: "package" },
+  ready:         { label: "¡Listo! Puedes recogerlo", color: "#10B981", icon: "shopping-bag" },
+  delivered:     { label: "Recogido",               color: "#10B981", icon: "check-circle" },
   cancelled:     { label: "Cancelado",              color: "#EF4444", icon: "x-circle" },
 };
 
@@ -108,12 +119,15 @@ export function CollapsibleMap({
   status = "preparing",
   onCallDriver,
   onChatDriver,
+  isPickup = false,
 }: CollapsibleMapProps) {
   const { theme, isDark } = useTheme();
   const [mapAvailable, setMapAvailable] = useState(false);
 
-  const statusInfo = STATUS_LABELS[status] ?? STATUS_LABELS.preparing;
-  const hasDriver = !!deliveryPersonLocation || !!driverName;
+  const statusInfo = isPickup 
+    ? (STATUS_LABELS_PICKUP[status] ?? STATUS_LABELS_PICKUP.preparing)
+    : (STATUS_LABELS[status] ?? STATUS_LABELS.preparing);
+  const hasDriver = !isPickup && (!!deliveryPersonLocation || !!driverName);
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -130,8 +144,11 @@ export function CollapsibleMap({
   }, []);
 
   const getInitialRegion = () => {
-    const locations = [businessLocation, deliveryPersonLocation, customerLocation].filter(isValidLocation);
-    // Si no hay ninguna ubicación todavía, usar la del cliente si existe, si no Soria
+    // Para pickup: solo mostrar negocio y cliente
+    const locations = isPickup 
+      ? [businessLocation, customerLocation].filter(isValidLocation)
+      : [businessLocation, deliveryPersonLocation, customerLocation].filter(isValidLocation);
+    
     if (locations.length === 0) {
       return customerLocation && isValidLocation(customerLocation)
         ? { latitude: customerLocation.latitude, longitude: customerLocation.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }
@@ -149,7 +166,9 @@ export function CollapsibleMap({
     };
   };
 
-  const routeCoords = [businessLocation, deliveryPersonLocation, customerLocation].filter(isValidLocation);
+  const routeCoords = isPickup
+    ? [customerLocation, businessLocation].filter(isValidLocation)
+    : [businessLocation, deliveryPersonLocation, customerLocation].filter(isValidLocation);
   const hasAnyLocation = routeCoords.length > 0;
 
   return (
@@ -178,8 +197,8 @@ export function CollapsibleMap({
               </Marker>
             )}
 
-            {/* Driver marker — pulsing */}
-            {isValidLocation(deliveryPersonLocation) && (
+            {/* Driver marker — pulsing (SOLO DELIVERY) */}
+            {!isPickup && isValidLocation(deliveryPersonLocation) && (
               <Marker coordinate={deliveryPersonLocation} title="Repartidor" anchor={{ x: 0.5, y: 0.5 }}>
                 <DriverMarker color={ComeYaColors.success} />
               </Marker>
@@ -233,7 +252,7 @@ export function CollapsibleMap({
         )}
       </View>
 
-      {/* Driver card — bottom overlay */}
+      {/* Driver card — bottom overlay (SOLO DELIVERY) */}
       {hasDriver && (
         <View style={[styles.driverCard, { backgroundColor: theme.card }, Shadows.lg]}>
           <View style={styles.driverLeft}>
@@ -277,6 +296,27 @@ export function CollapsibleMap({
             )}
           </View>
         </View>
+      )}
+
+      {/* Botón Abrir en Google Maps (SOLO PICKUP) */}
+      {isPickup && isValidLocation(businessLocation) && (
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const url = Platform.select({
+              ios: `maps://app?daddr=${businessLocation.latitude},${businessLocation.longitude}`,
+              android: `google.navigation:q=${businessLocation.latitude},${businessLocation.longitude}`,
+              default: `https://www.google.com/maps/dir/?api=1&destination=${businessLocation.latitude},${businessLocation.longitude}`,
+            });
+            Linking.openURL(url!);
+          }}
+          style={[styles.navigateButton, { backgroundColor: ComeYaColors.primary }, Shadows.lg]}
+        >
+          <Feather name="navigation" size={18} color="#FFFFFF" />
+          <ThemedText type="body" style={{ color: "#FFFFFF", marginLeft: Spacing.sm, fontWeight: "600" }}>
+            Abrir en Google Maps
+          </ThemedText>
+        </Pressable>
       )}
     </View>
   );
@@ -421,5 +461,14 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
+  },
+  navigateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    margin: Spacing.md,
+    borderRadius: BorderRadius.lg,
   },
 });

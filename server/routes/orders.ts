@@ -101,6 +101,7 @@ router.post("/", authenticateToken, async (req, res) => {
       substitutionPreference, itemSubstitutionPreferences,
       cashPaymentAmount, cashChangeAmount,
       couponCode, couponDiscount,
+      orderType,
     } = req.body;
 
     // items puede llegar como array o como string JSON
@@ -156,9 +157,12 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? await CONFIG.deliveryFee();
+    const deliveryFee = orderType === 'pickup' ? 0 : (clientDeliveryFee ?? business.deliveryFee ?? await CONFIG.deliveryFee());
     const finalSubtotal = clientSubtotal ?? subtotal;
-    const total = clientTotal ?? (finalSubtotal + deliveryFee);
+    // Comision incluida en el precio — el total ya la lleva, no se muestra por separado
+    const commission = await CONFIG.commission();
+    const nemyCommissionCalc = nemyCommission ?? Math.round(finalSubtotal * commission);
+    const total = clientTotal ?? (finalSubtotal + nemyCommissionCalc + deliveryFee);
 
     // Create order
     const orderId = crypto.randomUUID();
@@ -172,10 +176,11 @@ router.post("/", authenticateToken, async (req, res) => {
       status: "pending" as const,
       subtotal: finalSubtotal,
       productosBase: productosBase ?? finalSubtotal,
-      nemyCommission: nemyCommission ?? Math.round(finalSubtotal * await CONFIG.commission()),
+      nemyCommission: nemyCommissionCalc,
       deliveryFee,
       total,
       paymentMethod: paymentMethod || "cash",
+      orderType: orderType || "delivery",
       deliveryAddress: deliveryAddress || "",
       deliveryLatitude: deliveryLatitude || null,
       deliveryLongitude: deliveryLongitude || null,
@@ -406,6 +411,60 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
 
     res.json({ success: true, message: "Propina enviada" });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark pickup order as delivered (business owner)
+router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
+  try {
+    const { orders, businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const [order] = await db
+      .select({ order: orders, business: businesses })
+      .from(orders)
+      .leftJoin(businesses, eq(orders.businessId, businesses.id))
+      .where(eq(orders.id, req.params.id))
+      .limit(1);
+
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    // Solo el dueño del negocio o admin puede marcar como recogido
+    const canMark = 
+      req.user!.role === "admin" ||
+      (req.user!.role === "business_owner" && order.business?.ownerId === req.user!.id);
+
+    if (!canMark) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
+    // Verificar que sea pickup y esté en estado ready
+    if (order.order.orderType !== "pickup") {
+      return res.status(400).json({ error: "Solo para pedidos de tipo pickup" });
+    }
+
+    if (order.order.status !== "ready") {
+      return res.status(400).json({ error: "El pedido debe estar en estado 'listo'" });
+    }
+
+    // Marcar como entregado
+    await db.update(orders).set({
+      status: "delivered",
+      deliveredAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(orders.id, req.params.id));
+
+    // Notificar al cliente
+    await sendOrderStatusNotification(req.params.id, order.order.userId, "delivered");
+
+    // Liberar fondos (si aplica)
+    const { fundReleaseService } = await import("../fundReleaseService");
+    await fundReleaseService.releaseOrderFunds(req.params.id);
+
+    res.json({ success: true, message: "Pedido marcado como recogido" });
+  } catch (error: any) {
+    console.error("Mark picked up error:", error);
     res.status(500).json({ error: error.message });
   }
 });

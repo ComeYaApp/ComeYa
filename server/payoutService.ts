@@ -116,14 +116,14 @@ export async function savePaymentAccount(
     method: string;       // bizum | transferencia | tarjeta | paypal
     isDefault?: boolean;
     label?: string;
-    // Bizum
-    pagoMovilPhone?: string;  // reutilizado para teléfono Bizum
-    // Transferencia IBAN
-    binanceId?: string;       // reutilizado para IBAN
-    zelleEmail?: string;      // reutilizado para titular IBAN / email PayPal
+    // Bizum — teléfono
+    pagoMovilPhone?: string;
+    // Transferencia SEPA — IBAN y titular
+    binanceId?: string;       // campo reutilizado: almacena IBAN
+    zelleEmail?: string;      // campo reutilizado: almacena titular IBAN o email PayPal
     // Tarjeta
-    zinliEmail?: string;      // reutilizado para titular tarjeta
-    zellePhone?: string;      // reutilizado para últimos 4 dígitos
+    zinliEmail?: string;      // campo reutilizado: almacena titular tarjeta
+    zellePhone?: string;      // campo reutilizado: almacena últimos 4 dígitos tarjeta
   }
 ) {
   if (data.isDefault) {

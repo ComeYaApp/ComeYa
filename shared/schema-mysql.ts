@@ -79,6 +79,7 @@ export const orders = mysqlTable("orders", {
   total: int("total").notNull(),
   paymentMethod: text("payment_method").notNull(),
   paymentProvider: varchar("payment_provider", { length: 50 }).default("stripe_bizum"),
+  orderType: text("order_type"), // delivery | pickup
   // Referencia de pago (Stripe/PayPal)
   paymentReference: text("pago_movil_reference"),
   paymentProofUrl: text("pago_movil_proof_url"),
@@ -259,6 +260,7 @@ export const payments = mysqlTable("payments", {
   currency: text("currency").notNull().default("EUR"),
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method").notNull().default("stripe_bizum"),
+  orderType: text("order_type").notNull().default("delivery"), // delivery | pickup
   pagoMovilReference: text("pago_movil_reference"),
   processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),

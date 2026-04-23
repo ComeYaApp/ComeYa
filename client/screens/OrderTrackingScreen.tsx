@@ -62,6 +62,7 @@ export default function OrderTrackingScreen() {
 
   const { orderId } = route.params;
   const [order, setOrder] = useState<Order | null>(null);
+  const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [businessLocation, setBusinessLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -194,6 +195,7 @@ export default function OrderTrackingScreen() {
             deliveryPersonPhone: apiOrder.deliveryPersonPhone,
           };
           setOrder(transformedOrder);
+          setOrderType(apiOrder.orderType || 'delivery');
 
           // Cargar ubicación real del negocio
           if (apiOrder.businessId) {
@@ -398,8 +400,8 @@ export default function OrderTrackingScreen() {
           </View>
         )}
 
-        {/* Buscando repartidor */}
-        {(order as any).searchingDriver && (
+        {/* Buscando repartidor - SOLO PARA DELIVERY */}
+        {orderType === 'delivery' && (order as any).searchingDriver && (
           <View style={[styles.statusCard, { backgroundColor: ComeYaColors.warning + '15', borderWidth: 1, borderColor: ComeYaColors.warning }, Shadows.md]}>
             <View style={styles.businessRow}>
               <ActivityIndicator size="small" color={ComeYaColors.warning} />
@@ -416,7 +418,7 @@ export default function OrderTrackingScreen() {
         )}
 
         {/* Progress Bar */}
-        <OrderProgressBar status={order.status} />
+        <OrderProgressBar status={order.status} orderType={orderType} />
 
         <View
           style={[
@@ -467,21 +469,31 @@ export default function OrderTrackingScreen() {
           </View>
         </View>
 
-        <CollapsibleMap
-          businessLocation={businessLocation || undefined}
-          deliveryPersonLocation={deliveryLocation || undefined}
-          customerLocation={userLocation || undefined}
-          driverName={order.deliveryPersonName}
-          driverPhoto={driverPhoto || undefined}
-          eta={etaRange ?? undefined}
-          status={order.status}
-          onCallDriver={order.deliveryPersonPhone ? () => handleCall(order.deliveryPersonPhone!) : undefined}
-          onChatDriver={order.deliveryPersonId ? () => navigation.navigate("OrderChat", {
-            orderId: order.id,
-            receiverId: order.deliveryPersonId!,
-            receiverName: order.deliveryPersonName ?? "Repartidor",
-          }) : undefined}
-        />
+        {/* Mapa - Diferente según orderType */}
+        {orderType === 'delivery' ? (
+          <CollapsibleMap
+            businessLocation={businessLocation || undefined}
+            deliveryPersonLocation={deliveryLocation || undefined}
+            customerLocation={userLocation || undefined}
+            driverName={order.deliveryPersonName}
+            driverPhoto={driverPhoto || undefined}
+            eta={etaRange ?? undefined}
+            status={order.status}
+            onCallDriver={order.deliveryPersonPhone ? () => handleCall(order.deliveryPersonPhone!) : undefined}
+            onChatDriver={order.deliveryPersonId ? () => navigation.navigate("OrderChat", {
+              orderId: order.id,
+              receiverId: order.deliveryPersonId!,
+              receiverName: order.deliveryPersonName ?? "Repartidor",
+            }) : undefined}
+          />
+        ) : (
+          <CollapsibleMap
+            businessLocation={businessLocation || undefined}
+            customerLocation={userLocation || undefined}
+            status={order.status}
+            isPickup={true}
+          />
+        )}
 
         <View
           style={[
@@ -491,14 +503,21 @@ export default function OrderTrackingScreen() {
           ]}
         >
           <View style={styles.addressHeader}>
-            <Feather name="map-pin" size={20} color={ComeYaColors.primary} />
+            <Feather name={orderType === 'pickup' ? "shopping-bag" : "map-pin"} size={20} color={ComeYaColors.primary} />
             <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
-              Dirección de entrega
+              {orderType === 'pickup' ? 'Dirección del negocio' : 'Dirección de entrega'}
             </ThemedText>
           </View>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             {order.deliveryAddress}
           </ThemedText>
+          {orderType === 'pickup' && order.status === 'ready' && (
+            <View style={{ marginTop: Spacing.md, padding: Spacing.md, backgroundColor: ComeYaColors.success + '15', borderRadius: BorderRadius.sm }}>
+              <ThemedText type="small" style={{ color: ComeYaColors.success, fontWeight: '600' }}>
+                ✅ Tu pedido está listo para recoger
+              </ThemedText>
+            </View>
+          )}
         </View>
 
         <View
@@ -541,20 +560,24 @@ export default function OrderTrackingScreen() {
               </ThemedText>
               <ThemedText type="small">€{order.subtotal.toFixed(2)}</ThemedText>
             </View>
-            <View style={styles.itemRow}>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Comision ComeYa (15%)
-              </ThemedText>
-              <ThemedText type="small">€{nemyCommission.toFixed(2)}</ThemedText>
-            </View>
-            <View style={styles.itemRow}>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Envío
-              </ThemedText>
-              <ThemedText type="small">
-                €{order.deliveryFee.toFixed(2)}
-              </ThemedText>
-            </View>
+            {orderType === 'delivery' && (
+              <>
+                <View style={styles.itemRow}>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    Comision ComeYa (15%)
+                  </ThemedText>
+                  <ThemedText type="small">€{nemyCommission.toFixed(2)}</ThemedText>
+                </View>
+                <View style={styles.itemRow}>
+                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                    Envío
+                  </ThemedText>
+                  <ThemedText type="small">
+                    €{order.deliveryFee.toFixed(2)}
+                  </ThemedText>
+                </View>
+              </>
+            )}
             <View style={styles.itemRow}>
               <ThemedText type="h4">Total</ThemedText>
               <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>

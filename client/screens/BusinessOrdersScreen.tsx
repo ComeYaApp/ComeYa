@@ -366,6 +366,33 @@ export default function BusinessOrdersScreen() {
             </Pressable>
           )}
 
+          {item.status === "ready" && item.orderType === "pickup" && (
+            <Pressable
+              onPress={async () => {
+                try {
+                  await apiRequest("POST", `/api/orders/${item.id}/mark-picked-up`);
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                  loadOrders();
+                } catch (error) {
+                  console.error("Error marking as picked up:", error);
+                  Alert.alert("Error", "No se pudo marcar como recogido");
+                }
+              }}
+              style={[
+                styles.actionButton,
+                { backgroundColor: ComeYaColors.primary, flex: 1 },
+              ]}
+            >
+              <Feather name="shopping-bag" size={18} color="#FFF" />
+              <ThemedText
+                type="small"
+                style={{ color: "#FFF", marginLeft: Spacing.xs }}
+              >
+                Cliente Recogió Pedido
+              </ThemedText>
+            </Pressable>
+          )}
+
           {item.status === "on_the_way" && (
             <View
               style={[

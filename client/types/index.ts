@@ -102,6 +102,7 @@ export interface Order {
   deliveryFee: number;
   total: number;
   paymentMethod: "card";
+  orderType?: "delivery" | "pickup";
   deliveryAddress: string;
   deliveryPersonId?: string;
   deliveryPersonName?: string;

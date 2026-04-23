@@ -23,6 +23,17 @@ export class FundReleaseService {
     return FundReleaseService.instance;
   }
 
+  // Release funds - creates payouts for business and driver
+  private async releaseFunds(order: any): Promise<void> {
+    const { createPayoutsForOrder } = await import("./payoutService");
+    await createPayoutsForOrder(order.id);
+    await db.update(orders).set({
+      fundsReleased: true,
+      fundsReleasedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(orders.id, order.id));
+  }
+
   // Release funds when customer confirms delivery
   async releaseOnCustomerConfirmation(orderId: string, customerId: string): Promise<FundReleaseResult> {
     try {
@@ -37,7 +48,7 @@ export class FundReleaseService {
       if (order.status !== "delivered") return { success: false, message: "El pedido aún no ha sido entregado" };
       if (order.fundsReleased) return { success: false, message: "Los fondos ya fueron liberados" };
 
-      // Solo marcar como confirmado — los payouts los crea fundRelease.ts después
+      // Marcar como confirmado y liberar fondos
       await db
         .update(orders)
         .set({
@@ -48,6 +59,14 @@ export class FundReleaseService {
           updatedAt: new Date(),
         })
         .where(eq(orders.id, orderId));
+
+      // Crear payouts para negocio y repartidor
+      try {
+        const { createPayoutsForOrder } = await import("./payoutService");
+        await createPayoutsForOrder(orderId);
+      } catch (e: any) {
+        logger.error(`Error creating payouts for order ${orderId}:`, e);
+      }
 
       logger.info(`✅ Customer confirmed delivery: Order ${orderId}`, { orderId, customerId });
 

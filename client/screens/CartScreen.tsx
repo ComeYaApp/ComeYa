@@ -104,13 +104,15 @@ export default function CartScreen() {
     calculateFee();
   }, [selectedAddress, business]);
 
-  const deliveryFee = calculatedDeliveryFee ?? (businessData?.deliveryFee ? businessData.deliveryFee / 100 : 3);
+  const [orderType, setOrderType] = React.useState<'delivery' | 'pickup'>('delivery');
+
+  const deliveryFee = orderType === 'pickup' ? 0 : (calculatedDeliveryFee ?? (businessData?.deliveryFee ? businessData.deliveryFee / 100 : 3));
   const minimumOrder = business?.minimumOrder || 0;
-  
-  // Precio base de productos (sin comision)
-  const productosBase = subtotal;
-  const nemyCommission = productosBase * 0.15;
-  const total = productosBase + nemyCommission + deliveryFee;
+
+  // Comisión incluida en el precio — no se muestra al cliente
+  const COMMISSION = 0.15;
+  const subtotalConComision = subtotal * (1 + COMMISSION);
+  const total = subtotalConComision + deliveryFee;
   const canProceed = subtotal >= minimumOrder;
 
   const handleCheckout = () => {
@@ -119,8 +121,9 @@ export default function CartScreen() {
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate("Checkout", { 
-      calculatedDeliveryFee: deliveryFee 
+    navigation.navigate("Checkout", {
+      calculatedDeliveryFee: deliveryFee,
+      orderType,
     } as any);
   };
 
@@ -299,36 +302,45 @@ export default function CartScreen() {
           },
         ]}
       >
-        <View style={styles.summaryRow}>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Productos
-          </ThemedText>
-          <ThemedText type="body">€{productosBase.toFixed(2)}</ThemedText>
+        {/* Selector Delivery / Pickup */}
+        <View style={[styles.orderTypeRow, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.md, marginBottom: Spacing.md }]}>
+          <Pressable
+            onPress={() => { setOrderType('delivery'); Haptics.selectionAsync(); }}
+            style={[styles.orderTypeBtn, orderType === 'delivery' && { backgroundColor: ComeYaColors.primary, borderRadius: BorderRadius.md }]}
+          >
+            <Feather name="truck" size={16} color={orderType === 'delivery' ? '#fff' : theme.textSecondary} />
+            <ThemedText type="small" style={{ marginLeft: 6, color: orderType === 'delivery' ? '#fff' : theme.textSecondary, fontWeight: '600' }}>Envío a domicilio</ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => { setOrderType('pickup'); Haptics.selectionAsync(); }}
+            style={[styles.orderTypeBtn, orderType === 'pickup' && { backgroundColor: ComeYaColors.primary, borderRadius: BorderRadius.md }]}
+          >
+            <Feather name="shopping-bag" size={16} color={orderType === 'pickup' ? '#fff' : theme.textSecondary} />
+            <ThemedText type="small" style={{ marginLeft: 6, color: orderType === 'pickup' ? '#fff' : theme.textSecondary, fontWeight: '600' }}>Recoger en local</ThemedText>
+          </Pressable>
         </View>
+
         <View style={styles.summaryRow}>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Comision ComeYa (15%)
-          </ThemedText>
-          <ThemedText type="body">€{nemyCommission.toFixed(2)}</ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>Subtotal</ThemedText>
+          <ThemedText type="body">€{subtotalConComision.toFixed(2)}</ThemedText>
         </View>
-        <View style={styles.summaryRow}>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Envío
-          </ThemedText>
-          <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
-        </View>
+        {orderType === 'delivery' && (
+          <View style={styles.summaryRow}>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>Envío</ThemedText>
+            <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
+          </View>
+        )}
+        {orderType === 'pickup' && (
+          <View style={[styles.summaryRow, { backgroundColor: ComeYaColors.success + '15', padding: Spacing.sm, borderRadius: BorderRadius.sm }]}>
+            <ThemedText type="small" style={{ color: ComeYaColors.success }}>🎉 Sin coste de envío al recoger en local</ThemedText>
+          </View>
+        )}
         <View style={[styles.summaryRow, styles.totalRow]}>
           <ThemedText type="h3">Total</ThemedText>
-          <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            €{total.toFixed(2)}
-          </ThemedText>
+          <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>€{total.toFixed(2)}</ThemedText>
         </View>
-        <Button
-          onPress={handleCheckout}
-          disabled={!canProceed}
-          style={styles.checkoutButton}
-        >
-          {canProceed ? "Continuar al pago" : `Mínimo $${minimumOrder}`}
+        <Button onPress={handleCheckout} disabled={!canProceed} style={styles.checkoutButton}>
+          {canProceed ? 'Continuar al pago' : `Mínimo €${minimumOrder}`}
         </Button>
       </View>
     </View>
@@ -441,5 +453,17 @@ const styles = StyleSheet.create({
   },
   checkoutButton: {
     width: "100%",
+  },
+  orderTypeRow: {
+    flexDirection: "row",
+    padding: 4,
+  },
+  orderTypeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
   },
 });
