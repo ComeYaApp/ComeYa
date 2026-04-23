@@ -9,6 +9,7 @@ import {
   Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -25,6 +26,7 @@ import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 export default function BusinessOrdersScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const { theme } = useTheme();
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
@@ -341,6 +343,24 @@ export default function BusinessOrdersScreen() {
                 </ThemedText>
               </Pressable>
             </>
+          )}
+
+          {item.status === "ready" && item.orderType === "pickup" && (
+            <Pressable
+              onPress={() => navigation.navigate("PickupScanner" as any)}
+              style={[
+                styles.actionButton,
+                { backgroundColor: ComeYaColors.success, flex: 1 },
+              ]}
+            >
+              <Feather name="hash" size={18} color="#FFF" />
+              <ThemedText
+                type="small"
+                style={{ color: "#FFF", marginLeft: Spacing.xs }}
+              >
+                Escanear Código
+              </ThemedText>
+            </Pressable>
           )}
 
           {item.status === "accepted" && (

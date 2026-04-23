@@ -22,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { CollapsibleMap } from "@/components/CollapsibleMap";
+import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { Order } from "@/types";
@@ -63,6 +64,9 @@ export default function OrderTrackingScreen() {
   const { orderId } = route.params;
   const [order, setOrder] = useState<Order | null>(null);
   const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
+  const [pickupInfo, setPickupInfo] = useState<any>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [showQR, setShowQR] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [businessLocation, setBusinessLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -132,7 +136,6 @@ export default function OrderTrackingScreen() {
           }
         }
       } catch (error) {
-        // Silently handle delivery location errors - this is expected for demo orders
         console.log("Delivery location not available for this order");
       }
     };
@@ -141,6 +144,39 @@ export default function OrderTrackingScreen() {
     const interval = setInterval(fetchDeliveryLocation, 10000);
     return () => clearInterval(interval);
   }, [orderId]);
+
+  // Cargar info de pickup y actualizar cada 30s
+  useEffect(() => {
+    if (orderType !== 'pickup' || !orderId) return;
+    
+    const fetchPickupInfo = async () => {
+      try {
+        const response = await apiRequest('GET', `/api/pickup/${orderId}/info`);
+        const data = await response.json();
+        if (data.success) {
+          setPickupInfo(data.pickup);
+          setTimeRemaining(data.pickup.timeRemaining);
+        }
+      } catch (error) {
+        console.log('Pickup info not available');
+      }
+    };
+
+    fetchPickupInfo();
+    const interval = setInterval(fetchPickupInfo, 30000);
+    return () => clearInterval(interval);
+  }, [orderId, orderType]);
+
+  // Countdown timer - actualizar cada minuto
+  useEffect(() => {
+    if (timeRemaining === null || timeRemaining <= 0) return;
+    
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => prev! > 0 ? prev! - 1 : 0);
+    }, 60000);
+    
+    return () => clearInterval(timer);
+  }, [timeRemaining]);
 
   // Request location permission + watch position
   useEffect(() => {
@@ -362,6 +398,16 @@ export default function OrderTrackingScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      {/* Modal QR Code */}
+      {pickupInfo && (
+        <QRCodeDisplay
+          visible={showQR}
+          code={pickupInfo.code}
+          qrData={pickupInfo.qrCode}
+          onClose={() => setShowQR(false)}
+        />
+      )}
+
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <Pressable
           onPress={() => navigation.goBack()}
@@ -419,6 +465,96 @@ export default function OrderTrackingScreen() {
 
         {/* Progress Bar */}
         <OrderProgressBar status={order.status} orderType={orderType} />
+
+        {/* Timer para Pickup */}
+        {orderType === 'pickup' && pickupInfo && order.status !== 'delivered' && (
+          <View style={[styles.timerCard, { backgroundColor: theme.card }, Shadows.md]}>
+            {order.status === 'ready' ? (
+              <>
+                <Feather name="check-circle" size={40} color={ComeYaColors.success} />
+                <ThemedText type="h3" style={{ color: ComeYaColors.success, marginTop: Spacing.sm }}>
+                  ¡Tu pedido está listo!
+                </ThemedText>
+                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.xs }}>
+                  Puedes venir a recogerlo cuando quieras
+                </ThemedText>
+                <Pressable
+                  onPress={() => setShowQR(true)}
+                  style={[styles.codeContainer, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.lg }]}
+                >
+                  <ThemedText type="h1" style={{ fontFamily: "monospace", letterSpacing: 4 }}>
+                    {pickupInfo.code}
+                  </ThemedText>
+                  <Feather name="maximize" size={20} color={theme.textSecondary} style={{ marginTop: Spacing.xs }} />
+                </Pressable>
+                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+                  Toca para ver QR Code
+                </ThemedText>
+              </>
+            ) : timeRemaining !== null && timeRemaining > 0 ? (
+              <>
+                <View style={[styles.timerCircle, { borderColor: ComeYaColors.primary }]}>
+                  <ThemedText type="h1" style={{ color: ComeYaColors.primary, fontSize: 36 }}>
+                    {timeRemaining}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                    minutos
+                  </ThemedText>
+                </View>
+                <View style={styles.progressBarContainer}>
+                  <View 
+                    style={[
+                      styles.progressBarFill, 
+                      { 
+                        width: `${pickupInfo.progress}%`,
+                        backgroundColor: ComeYaColors.primary 
+                      }
+                    ]} 
+                  />
+                </View>
+                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
+                  Tiempo estimado restante
+                </ThemedText>
+                {pickupInfo.pendingBefore > 0 && (
+                  <View style={[styles.queueBadge, { backgroundColor: ComeYaColors.warning + '20', marginTop: Spacing.md }]}>
+                    <Feather name="users" size={16} color={ComeYaColors.warning} />
+                    <ThemedText type="small" style={{ color: ComeYaColors.warning, marginLeft: Spacing.xs }}>
+                      Hay {pickupInfo.pendingBefore} pedido{pickupInfo.pendingBefore > 1 ? 's' : ''} antes del tuyo
+                    </ThemedText>
+                  </View>
+                )}
+              </>
+            ) : (
+              <>
+                <Feather name="clock" size={40} color={ComeYaColors.primary} />
+                <ThemedText type="h4" style={{ marginTop: Spacing.sm }}>
+                  Preparando tu pedido
+                </ThemedText>
+              </>
+            )}
+          </View>
+        )}
+
+        {/* Botón Ya Llegué */}
+        {orderType === 'pickup' && order.status === 'ready' && !(order as any).customerArrivedAt && (
+          <Pressable
+            onPress={async () => {
+              try {
+                await apiRequest('POST', `/api/pickup/${orderId}/arrived`);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert("✅ Notificado", "El negocio sabe que ya llegaste");
+              } catch (error) {
+                Alert.alert("Error", "No se pudo notificar al negocio");
+              }
+            }}
+            style={[styles.arrivedButton, { backgroundColor: ComeYaColors.primary }, Shadows.md]}
+          >
+            <Feather name="map-pin" size={20} color="#FFF" />
+            <ThemedText type="body" style={{ color: "#FFF", marginLeft: Spacing.sm, fontWeight: "600" }}>
+              Ya Llegué al Local
+            </ThemedText>
+          </Pressable>
+        )}
 
         <View
           style={[
@@ -934,6 +1070,56 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginHorizontal: Spacing.lg,
     marginTop: Spacing.lg,
+  },
+  timerCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    marginBottom: Spacing.lg,
+    alignItems: "center",
+  },
+  timerCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  progressBarContainer: {
+    width: "100%",
+    height: 8,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginVertical: Spacing.md,
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  queueBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  codeContainer: {
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    alignItems: 'center',
+  },
+  arrivedButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
   },
 });
 
