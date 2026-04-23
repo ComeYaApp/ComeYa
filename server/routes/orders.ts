@@ -125,7 +125,7 @@ router.post("/", authenticateToken, async (req, res) => {
     }
 
     // Verify products exist and calculate total
-    const productIds = items.map((item: any) => item.productId);
+    const productIds = items.map((item: any) => item.productId || item.product?.id).filter(Boolean);
     const orderProducts = await db
       .select()
       .from(products)
@@ -135,10 +135,10 @@ router.post("/", authenticateToken, async (req, res) => {
     const validItems = [];
 
     for (const item of items) {
-      const product = orderProducts.find(p => p.id === item.productId);
+      const product = orderProducts.find(p => p.id === (item.productId || item.product?.id));
       if (!product || !product.isAvailable) {
         return res.status(400).json({ 
-          error: `Producto no disponible: ${item.productId}` 
+          error: `Producto no disponible: ${item.productId || item.product?.id}` 
         });
       }
 
@@ -191,7 +191,7 @@ router.post("/", authenticateToken, async (req, res) => {
     if (business.ownerId) {
       await sendPushToUser(business.ownerId, {
         title: "🛒 Nuevo pedido recibido",
-        body: `Pedido #${orderId.slice(-6)} — $${(total / 100).toFixed(2)}`,
+        body: `Pedido #${orderId.slice(-6)} — €${(total / 100).toFixed(2)}`,
         data: { orderId, screen: "BusinessOrders" },
       });
     }
@@ -434,7 +434,7 @@ router.patch("/:id/cancel", authenticateToken, async (req, res) => {
     }
 
     // Check if order can be cancelled
-    if (!["pending", "confirmed"].includes(order.status)) {
+    if (!["pending", "confirmed", "accepted"].includes(order.status)) {
       return res.status(400).json({ 
         error: "El pedido no puede ser cancelado en su estado actual" 
       });
