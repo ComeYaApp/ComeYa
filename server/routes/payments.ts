@@ -4,6 +4,39 @@ import { eq } from "drizzle-orm";
 
 const router = express.Router();
 
+// POST /api/payments/upload-proof-image — subir imagen a Cloudinary via servidor
+router.post("/upload-proof-image", authenticateToken, async (req: any, res) => {
+  try {
+    const multer = (await import("multer")).default;
+    const cloudinary = (await import("cloudinary")).v2;
+
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    const upload = multer({ storage: multer.memoryStorage() }).single("file");
+
+    upload(req, res, async (err: any) => {
+      if (err) return res.status(400).json({ success: false, error: err.message });
+      if (!req.file) return res.status(400).json({ success: false, error: "No se recibió archivo" });
+
+      const result = await new Promise<any>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder: "payment_proofs", resource_type: "image" },
+          (error, result) => error ? reject(error) : resolve(result)
+        );
+        stream.end(req.file!.buffer);
+      });
+
+      res.json({ success: true, url: result.secure_url });
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /api/payments/submit-proof — subir comprobante de pago manual
 router.post("/submit-proof", authenticateToken, async (req, res) => {
   try {

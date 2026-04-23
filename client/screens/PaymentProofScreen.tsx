@@ -171,21 +171,24 @@ export default function PaymentProofScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Subir imagen a Cloudinary
+      // Subir imagen al servidor que la sube a Cloudinary
       const formData = new FormData();
       formData.append("file", {
         uri: proofImage,
         type: "image/jpeg",
         name: `proof_${orderId}.jpg`,
       } as any);
-      formData.append("upload_preset", "payment_proofs");
 
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || "dkuj3vq57"}/image/upload`,
-        { method: "POST", body: formData }
-      );
+      const { getApiUrl, getAuthToken } = await import("@/lib/query-client");
+      const token = await getAuthToken();
+      const uploadRes = await fetch(`${getApiUrl()}/api/payments/upload-proof-image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
       const uploadData = await uploadRes.json();
-      const imageUrl = uploadData.secure_url;
+      if (!uploadData.success) throw new Error(uploadData.error || "Error al subir imagen");
+      const imageUrl = uploadData.url;
 
       // Enviar comprobante al servidor
       const res = await apiRequest("POST", "/api/payments/submit-proof", {
