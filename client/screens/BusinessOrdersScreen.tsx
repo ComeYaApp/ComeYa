@@ -6,6 +6,7 @@ import {
   Pressable,
   RefreshControl,
   Alert,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -441,6 +442,71 @@ export default function BusinessOrdersScreen() {
         onCancel={() => setConfirmModal({ ...confirmModal, visible: false })}
         variant={confirmModal.variant}
       />
+
+      {/* Modal de Tiempo Estimado */}
+      <Modal
+        visible={timeModal.visible}
+        transparent
+        animationType="slide"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <ThemedText type="h3" style={{ marginBottom: Spacing.lg }}>
+              ¿Cuánto tiempo tomará?
+            </ThemedText>
+            
+            <View style={styles.timeGrid}>
+              {[10, 15, 20, 25, 30, 40].map((time) => (
+                <Pressable
+                  key={time}
+                  onPress={() => setSelectedTime(time)}
+                  style={[
+                    styles.timeOption,
+                    {
+                      backgroundColor: selectedTime === time ? ComeYaColors.primary : theme.backgroundSecondary,
+                      borderColor: selectedTime === time ? ComeYaColors.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="h4"
+                    style={{ color: selectedTime === time ? "#FFF" : theme.text }}
+                  >
+                    {time} min
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={() => setTimeModal({ visible: false, orderId: "" })}
+                style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
+              >
+                <ThemedText type="body">Cancelar</ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  try {
+                    await apiRequest("PATCH", `/api/orders/${timeModal.orderId}/status`, { status: "accepted" });
+                    await apiRequest("POST", `/api/pickup/${timeModal.orderId}/update-time`, { estimatedMinutes: selectedTime });
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                    setTimeModal({ visible: false, orderId: "" });
+                    loadOrders();
+                  } catch (error) {
+                    Alert.alert("Error", "No se pudo aceptar el pedido");
+                  }
+                }}
+                style={[styles.modalButton, { backgroundColor: ComeYaColors.primary }]}
+              >
+                <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
+                  Aceptar y Notificar
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <ThemedText type="h2">Pedidos</ThemedText>
       </View>
@@ -596,5 +662,39 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     paddingVertical: Spacing["4xl"],
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "85%",
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+  },
+  timeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
+  },
+  timeOption: {
+    width: "30%",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    alignItems: "center",
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
   },
 });
