@@ -476,6 +476,73 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
   }
 });
 
+// Complete order (business scans customer QR)
+router.put("/:id/complete", authenticateToken, async (req, res) => {
+  try {
+    const { orders, businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const [order] = await db
+      .select({ order: orders, business: businesses })
+      .from(orders)
+      .leftJoin(businesses, eq(orders.businessId, businesses.id))
+      .where(eq(orders.id, req.params.id))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    // Verificar que sea el dueño del negocio o admin
+    const canComplete = 
+      req.user!.role === "admin" ||
+      (req.user!.role === "business_owner" && order.business?.ownerId === req.user!.id);
+
+    if (!canComplete) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
+    // Verificar que el pedido esté en un estado válido para completar
+    const validStatuses = ["ready", "picked_up", "on_the_way", "in_transit", "arriving"];
+    if (!validStatuses.includes(order.order.status)) {
+      return res.status(400).json({ 
+        error: `No se puede completar un pedido en estado '${order.order.status}'` 
+      });
+    }
+
+    // Marcar como entregado y confirmado
+    await db.update(orders).set({
+      status: "delivered",
+      deliveredAt: new Date(),
+      confirmedByCustomer: true,
+      confirmedByCustomerAt: new Date(),
+      fundsReleased: true,
+      fundsReleasedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(orders.id, req.params.id));
+
+    // Notificar al cliente
+    await sendOrderStatusNotification(req.params.id, order.order.userId, "delivered");
+
+    // Crear payouts para negocio y repartidor
+    try {
+      const { createPayoutsForOrder } = await import("../payoutService");
+      await createPayoutsForOrder(req.params.id);
+    } catch (e: any) {
+      console.error(`Error creating payouts for order ${req.params.id}:`, e);
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Pedido completado exitosamente",
+      orderId: order.order.id
+    });
+  } catch (error: any) {
+    console.error("Complete order error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Cancel order
 router.patch("/:id/cancel", authenticateToken, async (req, res) => {
   try {

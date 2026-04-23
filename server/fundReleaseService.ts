@@ -82,6 +82,34 @@ export class FundReleaseService {
     }
   }
 
+  // Release funds for a specific order (used by business QR scan or pickup)
+  async releaseOrderFunds(orderId: string): Promise<FundReleaseResult> {
+    try {
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+
+      if (!order) return { success: false, message: "Pedido no encontrado" };
+      if (order.fundsReleased) return { success: false, message: "Los fondos ya fueron liberados" };
+
+      await this.releaseFunds(order);
+
+      logger.info(`✅ Funds released: Order ${orderId}`, { orderId });
+
+      return {
+        success: true,
+        message: "Fondos liberados exitosamente",
+        orderId: order.id,
+        amountReleased: order.total,
+      };
+    } catch (error: any) {
+      logger.error("Error releasing order funds:", error);
+      return { success: false, message: error.message };
+    }
+  }
+
   // Auto-release funds after timeout (24h default)
   async autoReleaseFunds(): Promise<{ released: number; failed: number }> {
     try {

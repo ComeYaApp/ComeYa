@@ -496,6 +496,16 @@ export default function BusinessDashboardScreen() {
             </Pressable>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.card }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate("QRScanner");
+              }}
+            >
+              <Feather name="maximize" size={24} color="#4CAF50" />
+              <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: 'center' }}>Escanear QR</ThemedText>
+            </Pressable>
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: theme.card }]}
               onPress={() => navigation.navigate("BusinessProfile" as any)}
             >
               <Feather name="settings" size={24} color={ComeYaColors.primary} />

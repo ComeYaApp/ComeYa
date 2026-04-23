@@ -48,6 +48,7 @@ import PaymentWebViewScreen from "@/screens/PaymentWebViewScreen";
 import AdminPaymentAccountsScreen from "@/screens/AdminPaymentAccountsScreen";
 import PaymentProofScreen from "@/screens/PaymentProofScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
+import QRScannerScreen from "@/screens/QRScannerScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -119,6 +120,7 @@ export type RootStackParamList = {
   MyBusinesses: { openAddModal?: boolean; draft?: { name?: string; type?: string; address?: string; phone?: string } } | undefined;
   Terms: undefined;
   Privacy: undefined;
+  QRScanner: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -353,6 +355,14 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="DeliveryConfirmation"
             component={DeliveryConfirmationScreen}
+            options={{ 
+              presentation: "modal",
+              headerShown: false 
+            }}
+          />
+          <Stack.Screen
+            name="QRScanner"
+            component={QRScannerScreen}
             options={{ 
               presentation: "modal",
               headerShown: false 
