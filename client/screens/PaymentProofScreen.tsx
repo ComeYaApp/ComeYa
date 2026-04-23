@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, StyleSheet, ScrollView, Pressable, ActivityIndicator,
   TextInput, Alert, Linking, Platform, Image,
@@ -85,7 +85,17 @@ export default function PaymentProofScreen() {
   const amountEur = (amount / 100).toFixed(2);
   const shortId = orderId.slice(-6).toUpperCase();
 
-  const config = PAYMENT_INFO[paymentMethod] || PAYMENT_INFO.bizum;
+  const [paymentInfo, setPaymentInfo] = useState({ bizum: "600 000 000", iban: "ES00 0000 0000 0000 0000 0000", paypalEmail: "pagos@comeya.es", titular: "ComeYa S.L.", banco: "Banco Santander" });
+
+  useEffect(() => {
+    apiRequest("GET", "/api/payments/info").then(r => r.json()).then(d => { if (d.success) setPaymentInfo(d); }).catch(() => {});
+  }, []);
+
+  const config = React.useMemo(() => ({
+    bizum: { ...PAYMENT_INFO.bizum, fields: [{ label: "N\u00famero Bizum", value: paymentInfo.bizum, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: false }] },
+    sepa: { ...PAYMENT_INFO.sepa, fields: [{ label: "IBAN", value: paymentInfo.iban, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: true }, { label: "Banco", value: paymentInfo.banco, copyable: false }] },
+    paypal: { ...PAYMENT_INFO.paypal, fields: [{ label: "Email PayPal", value: paymentInfo.paypalEmail, copyable: true }, { label: "Titular", value: paymentInfo.titular, copyable: false }] },
+  })[paymentMethod] || PAYMENT_INFO.bizum;
 
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [referenceNumber, setReferenceNumber] = useState("");

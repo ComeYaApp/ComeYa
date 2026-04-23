@@ -1,5 +1,6 @@
 import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
+import { CONFIG } from "../config";
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ router.get("/dashboard", authenticateToken, requireRole("business_owner"), async
       .filter(o => o.status === "delivered")
       .reduce((sum, o) => {
         const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
-        const productBase = Math.round(subtotalWithMarkup / 1.15);
+        const productBase = Math.round(subtotalWithMarkup / CONFIG.COMEYA_COMMISSION_DIVISOR);
         return sum + productBase;
       }, 0);
 
@@ -108,22 +109,22 @@ router.get("/stats", authenticateToken, requireRole("business_owner"), async (re
     // Fórmula: (total - deliveryFee) / 1.15
     const todayRevenue = todayOrders.reduce((sum, o) => {
       const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
-      const productBase = Math.round(subtotalWithMarkup / 1.15);
+      const productBase = Math.round(subtotalWithMarkup / CONFIG.COMEYA_COMMISSION_DIVISOR);
       return sum + productBase;
     }, 0);
     const weekRevenue = weekOrders.reduce((sum, o) => {
       const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
-      const productBase = Math.round(subtotalWithMarkup / 1.15);
+      const productBase = Math.round(subtotalWithMarkup / CONFIG.COMEYA_COMMISSION_DIVISOR);
       return sum + productBase;
     }, 0);
     const monthRevenue = monthOrders.reduce((sum, o) => {
       const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
-      const productBase = Math.round(subtotalWithMarkup / 1.15);
+      const productBase = Math.round(subtotalWithMarkup / CONFIG.COMEYA_COMMISSION_DIVISOR);
       return sum + productBase;
     }, 0);
     const totalRevenue = deliveredOrders.reduce((sum, o) => {
       const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
-      const productBase = Math.round(subtotalWithMarkup / 1.15);
+      const productBase = Math.round(subtotalWithMarkup / CONFIG.COMEYA_COMMISSION_DIVISOR);
       return sum + productBase;
     }, 0);
 
@@ -263,7 +264,7 @@ router.get("/my-businesses", authenticateToken, requireRole("business_owner"), a
         .filter(o => o.status === "delivered")
         .reduce((sum, o) => {
           const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
-          const productBase = Math.round(subtotalWithMarkup / 1.15);
+          const productBase = Math.round(subtotalWithMarkup / CONFIG.COMEYA_COMMISSION_DIVISOR);
           return sum + productBase;
         }, 0);
       const pendingOrders = businessOrders.filter(o => 

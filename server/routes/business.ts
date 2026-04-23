@@ -2,6 +2,7 @@ import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
 import { eq, and, desc } from "drizzle-orm";
 import { getPartnerStatus, updatePartnerLevel } from "../partnerLevelService";
+import { CONFIG } from "../config";
 
 const router = express.Router();
 
@@ -695,8 +696,8 @@ router.post("/", authenticateToken, requireRole("business_owner"), async (req, r
       isOpen: false,
       rating: 0,
       totalRatings: 0,
-      deliveryTime: "30-45 min",
-      deliveryFee: 199,
+      deliveryTime: CONFIG.DEFAULT_DELIVERY_TIME,
+      deliveryFee: CONFIG.DEFAULT_DELIVERY_FEE,
       minOrder: 1000,
       createdAt: new Date(),
     };

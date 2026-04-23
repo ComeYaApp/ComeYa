@@ -4,6 +4,18 @@ import { eq } from "drizzle-orm";
 
 const router = express.Router();
 
+// GET /api/payments/info — datos de pago de ComeYa (IBAN, Bizum, PayPal)
+router.get("/info", authenticateToken, async (req, res) => {
+  res.json({
+    success: true,
+    bizum: process.env.COMEYA_BIZUM_PHONE || process.env.MOUZO_PAGO_MOVIL_PHONE || "600 000 000",
+    iban: process.env.COMEYA_IBAN || "ES00 0000 0000 0000 0000 0000",
+    paypalEmail: process.env.COMEYA_PAYPAL_EMAIL || "pagos@comeya.es",
+    titular: "ComeYa S.L.",
+    banco: "Banco Santander",
+  });
+});
+
 // POST /api/payments/upload-proof-image — subir imagen a Cloudinary via servidor
 router.post("/upload-proof-image", authenticateToken, async (req: any, res) => {
   try {

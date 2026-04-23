@@ -4,6 +4,8 @@ import { eq, and, desc, inArray } from "drizzle-orm";
 import { sendPushToUser, sendOrderStatusNotification } from "../enhancedPushService";
 import { notifyNewOrder } from "../websocket";
 
+import { CONFIG } from "../config";
+
 const router = express.Router();
 
 // Get user orders
@@ -154,7 +156,7 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? 300;
+    const deliveryFee = clientDeliveryFee ?? business.deliveryFee ?? CONFIG.DEFAULT_DELIVERY_FEE;
     const finalSubtotal = clientSubtotal ?? subtotal;
     const total = clientTotal ?? (finalSubtotal + deliveryFee);
 
@@ -170,7 +172,7 @@ router.post("/", authenticateToken, async (req, res) => {
       status: "pending" as const,
       subtotal: finalSubtotal,
       productosBase: productosBase ?? finalSubtotal,
-      nemyCommission: nemyCommission ?? Math.round(finalSubtotal * 0.15),
+      nemyCommission: nemyCommission ?? Math.round(finalSubtotal * CONFIG.COMEYA_COMMISSION),
       deliveryFee,
       total,
       paymentMethod: paymentMethod || "cash",
