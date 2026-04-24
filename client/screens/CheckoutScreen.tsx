@@ -145,8 +145,8 @@ export default function CheckoutScreen({ route }: any) {
   const deliveryFee = route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5));
   
   const [tip, setTip] = useState(0);
-  const comeyaCommission = subtotal * 0.15;
-  const total = subtotal + comeyaCommission + deliveryFee - couponDiscount + tip;
+  // Los productos YA incluyen la comisión del 15% en su precio
+  const total = subtotal + deliveryFee - couponDiscount + tip;
 
   // Calcular delivery fee dinámico cuando cambia la dirección
   useEffect(() => {
@@ -187,12 +187,11 @@ export default function CheckoutScreen({ route }: any) {
     try {
       const finalItemSubstitutions = showItemSubstitutions ? itemSubstitutions : {};
       const subtotalCents = Math.round(subtotal * 100);
-      const commissionCents = Math.round(subtotal * 0.15 * 100);
       const deliveryFeeCents = Math.round(deliveryFee * 100);
       const discountCents = appliedCoupon ? Math.round(couponDiscount * 100) : 0;
       const tipCents = Math.round(tip * 100);
-      // El total que valida el servidor NO incluye propina
-      const orderTotal = subtotalCents + commissionCents + deliveryFeeCents - discountCents;
+      // El total que valida el servidor (sin comisión extra porque ya está en los precios)
+      const orderTotal = subtotalCents + deliveryFeeCents - discountCents;
       const totalAmount = orderTotal + tipCents;
 
       const orderResponse = await apiRequest("POST", "/api/orders", {
@@ -203,7 +202,7 @@ export default function CheckoutScreen({ route }: any) {
         status: "pending",
         subtotal: subtotalCents,
         productosBase: subtotalCents,
-        nemyCommission: commissionCents,
+        nemyCommission: 0, // Ya incluida en los precios
         deliveryFee: deliveryFeeCents,
         total: orderTotal,
         tip: tipCents,
@@ -925,12 +924,6 @@ export default function CheckoutScreen({ route }: any) {
             Subtotal
           </ThemedText>
           <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
-        </View>
-        <View style={styles.totalRow}>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Comisión ComeYa (15%)
-          </ThemedText>
-          <ThemedText type="body">€{comeyaCommission.toFixed(2)}</ThemedText>
         </View>
         <View style={styles.totalRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
