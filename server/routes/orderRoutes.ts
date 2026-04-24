@@ -131,12 +131,29 @@ router.get("/", authenticateToken, async (req, res) => {
   try {
     const { orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const { eq } = await import("drizzle-orm");
+    const { eq, inArray } = await import("drizzle-orm");
 
-    const userOrders = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.userId, req.user!.id));
+    let userOrders;
+    
+    // Filtro por status si se proporciona
+    if (req.query.status === 'active') {
+      // Pedidos activos = pending, confirmed, preparing, ready, on_the_way
+      userOrders = await db
+        .select()
+        .from(orders)
+        .where(
+          eq(orders.userId, req.user!.id)
+        );
+      // Filtrar en memoria para incluir solo estados activos
+      userOrders = userOrders.filter(o => 
+        ['pending', 'confirmed', 'preparing', 'ready', 'on_the_way'].includes(o.status)
+      );
+    } else {
+      userOrders = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.userId, req.user!.id));
+    }
     
     res.json({ success: true, orders: userOrders });
   } catch (error: any) {

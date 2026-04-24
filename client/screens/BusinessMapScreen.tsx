@@ -85,7 +85,7 @@ export default function BusinessMapScreen() {
   ];
 
   const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    pending:    { label: "Confirmando pago", color: "#F59E0B" },
+    pending:    { label: "Esperando confirmación", color: "#F59E0B" },
     confirmed:  { label: "Pedido confirmado", color: "#3B82F6" },
     preparing:  { label: "Preparando", color: "#8B5CF6" },
     ready:      { label: "Listo para recoger", color: "#10B981" },
@@ -111,22 +111,25 @@ export default function BusinessMapScreen() {
       try {
         const res = await apiRequest("GET", "/api/orders?status=active");
         const data = await res.json();
-        const orders = (data.orders || []).filter((o: any) =>
-          ["pending", "confirmed", "preparing", "ready", "on_the_way"].includes(o.status)
-        );
+        const orders = data.orders || [];
+        
         const mapped: ActiveOrder[] = await Promise.all(orders.map(async (o: any) => {
           let driverLoc = undefined;
-          try {
-            const dRes = await apiRequest("GET", `/api/delivery/location/${o.id}`);
-            const dData = await dRes.json();
-            if (dData.location) {
-              driverLoc = {
-                latitude: parseFloat(dData.location.latitude),
-                longitude: parseFloat(dData.location.longitude),
-                name: o.deliveryPersonName || "Repartidor",
-              };
-            }
-          } catch {}
+          if (o.deliveryPersonId) {
+            try {
+              const dRes = await apiRequest("GET", `/api/delivery/location/${o.id}`);
+              const dData = await dRes.json();
+              if (dData.location) {
+                driverLoc = {
+                  latitude: parseFloat(dData.location.latitude),
+                  longitude: parseFloat(dData.location.longitude),
+                  name: o.deliveryPersonName || "Repartidor",
+                };
+              }
+            } catch {}
+          }
+          
+          // Cargar ubicación del negocio
           let bizLat = 0, bizLng = 0;
           try {
             const bRes = await apiRequest("GET", `/api/business/${o.businessId}`);
@@ -134,19 +137,47 @@ export default function BusinessMapScreen() {
             bizLat = parseFloat(bData.business?.latitude || 0);
             bizLng = parseFloat(bData.business?.longitude || 0);
           } catch {}
-          const addr = o.deliveryAddress ? JSON.parse(o.deliveryAddress) : {};
+          
+          // Parsear dirección de entrega
+          let custLat = userLocation?.latitude || 0;
+          let custLng = userLocation?.longitude || 0;
+          if (o.deliveryAddress) {
+            try {
+              const addr = typeof o.deliveryAddress === 'string' ? JSON.parse(o.deliveryAddress) : o.deliveryAddress;
+              if (addr.latitude && addr.longitude) {
+                custLat = parseFloat(addr.latitude);
+                custLng = parseFloat(addr.longitude);
+              }
+            } catch {}
+          }
+          // Usar coordenadas directas si están disponibles
+          if (o.deliveryLatitude && o.deliveryLongitude) {
+            custLat = parseFloat(o.deliveryLatitude);
+            custLng = parseFloat(o.deliveryLongitude);
+          }
+          
           return {
             id: o.id,
             businessName: o.businessName || "Negocio",
             status: o.status,
             business: { latitude: bizLat, longitude: bizLng },
-            customer: { latitude: addr.latitude || userLocation?.latitude || 0, longitude: addr.longitude || userLocation?.longitude || 0 },
+            customer: { latitude: custLat, longitude: custLng },
             driver: driverLoc,
             eta: o.estimatedDelivery ? Math.max(0, Math.round((new Date(o.estimatedDelivery).getTime() - Date.now()) / 60000)) : undefined,
           };
         }));
-        setActiveOrders(mapped);
-      } catch {}
+        
+        // Filtrar pedidos con coordenadas válidas
+        const validOrders = mapped.filter(o => 
+          o.business.latitude !== 0 && o.business.longitude !== 0 &&
+          o.customer.latitude !== 0 && o.customer.longitude !== 0
+        );
+        
+        setActiveOrders(validOrders);
+        console.log('🗺️ Active orders loaded:', validOrders.length, validOrders);
+      } catch (e) {
+        console.error('Error loading active orders:', e);
+      }
     };
     fetchOrders();
     const interval = setInterval(fetchOrders, 15000);
@@ -312,47 +343,58 @@ export default function BusinessMapScreen() {
         {/* Pedidos activos del cliente */}
         {Marker && Polyline && activeOrders.map((order) => (
           <React.Fragment key={order.id}>
-            {/* Ruta negocio → cliente */}
-            {order.business.latitude !== 0 && order.customer.latitude !== 0 && (
-              <Polyline
-                coordinates={[
-                  { latitude: order.business.latitude, longitude: order.business.longitude },
-                  ...(order.driver ? [{ latitude: order.driver.latitude, longitude: order.driver.longitude }] : []),
-                  { latitude: order.customer.latitude, longitude: order.customer.longitude },
-                ]}
-                strokeColor={ComeYaColors.primary}
-                strokeWidth={4}
-                lineDashPattern={order.status === "on_the_way" ? undefined : [8, 4]}
-              />
-            )}
+            {/* Ruta negocio → cliente (o negocio → driver → cliente si hay driver) */}
+            <Polyline
+              coordinates={[
+                { latitude: order.business.latitude, longitude: order.business.longitude },
+                ...(order.driver ? [{ latitude: order.driver.latitude, longitude: order.driver.longitude }] : []),
+                { latitude: order.customer.latitude, longitude: order.customer.longitude },
+              ]}
+              strokeColor={STATUS_LABELS[order.status]?.color || ComeYaColors.primary}
+              strokeWidth={3}
+              lineDashPattern={order.status === "on_the_way" ? undefined : [10, 5]}
+            />
+            
             {/* Marcador repartidor */}
             {order.driver && (
-              <Marker coordinate={{ latitude: order.driver.latitude, longitude: order.driver.longitude }} anchor={{ x: 0.5, y: 0.5 }}>
+              <Marker 
+                coordinate={{ latitude: order.driver.latitude, longitude: order.driver.longitude }} 
+                anchor={{ x: 0.5, y: 0.5 }}
+                onPress={() => navigation.navigate("OrderTracking", { orderId: order.id })}
+              >
                 <View style={styles.driverPin}>
                   <View style={styles.driverPinInner}>
-                    <ThemedText style={{ fontSize: 18 }}>🛵</ThemedText>
+                    <ThemedText style={{ fontSize: 20 }}>🛵</ThemedText>
                   </View>
-                  <View style={styles.driverPinLabel}>
-                    <ThemedText type="caption" style={{ fontSize: 9, fontWeight: "700", color: "#fff" }} numberOfLines={1}>{order.driver.name.split(" ")[0]}</ThemedText>
-                  </View>
+                  {order.eta !== undefined && (
+                    <View style={styles.driverPinLabel}>
+                      <ThemedText type="caption" style={{ fontSize: 10, fontWeight: "700", color: "#fff" }}>
+                        {order.eta} min
+                      </ThemedText>
+                    </View>
+                  )}
                 </View>
               </Marker>
             )}
+            
             {/* Marcador destino cliente */}
-            {order.customer.latitude !== 0 && (
-              <Marker coordinate={{ latitude: order.customer.latitude, longitude: order.customer.longitude }} anchor={{ x: 0.5, y: 1 }}
-                onPress={() => navigation.navigate("OrderTracking", { orderId: order.id })}>
-                <View style={styles.customerPinWrapper}>
-                  <View style={styles.customerBubble}>
-                    <Feather name="home" size={14} color="#fff" />
-                    {order.eta !== undefined && (
-                      <ThemedText type="caption" style={{ color: "#fff", fontSize: 10, fontWeight: "700", marginLeft: 4 }}>{order.eta} min</ThemedText>
-                    )}
-                  </View>
-                  <View style={styles.customerPinTail} />
+            <Marker 
+              coordinate={{ latitude: order.customer.latitude, longitude: order.customer.longitude }} 
+              anchor={{ x: 0.5, y: 1 }}
+              onPress={() => navigation.navigate("OrderTracking", { orderId: order.id })}
+            >
+              <View style={styles.customerPinWrapper}>
+                <View style={styles.customerBubble}>
+                  <Feather name="home" size={16} color="#fff" />
+                  {order.eta !== undefined && (
+                    <ThemedText type="caption" style={{ color: "#fff", fontSize: 11, fontWeight: "700", marginLeft: 4 }}>
+                      {order.eta}'
+                    </ThemedText>
+                  )}
                 </View>
-              </Marker>
-            )}
+                <View style={styles.customerPinTail} />
+              </View>
+            </Marker>
           </React.Fragment>
         ))}
       </MapView>
@@ -584,52 +626,50 @@ const styles = StyleSheet.create({
     borderLeftColor: "transparent", borderRightColor: "transparent",
     marginTop: -1,
   },
-  driverPinWrapper: { alignItems: "center", width: 40, height: 50 },
-  driverPinBody: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "#E8F5E9",
-    justifyContent: "center", alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+  driverPin: {
+    alignItems: "center",
   },
-  driverPinTail: {
-    width: 0, height: 0,
-    borderLeftWidth: 8, borderRightWidth: 8, borderTopWidth: 12,
-    borderLeftColor: "transparent", borderRightColor: "transparent",
-    borderTopColor: "#E8F5E9",
-    marginTop: -2,
-  },
-  customerPinWrapper: { alignItems: "center", width: 40, height: 50 },
-  customerPinBody: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "#E3F2FD",
+  driverPinInner: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#4CAF50",
     justifyContent: "center", alignItems: "center",
+    borderWidth: 3, borderColor: "#fff",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  driverPinLabel: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 4,
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
+  customerBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: ComeYaColors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 8,
   },
   customerPinTail: {
     width: 0, height: 0,
-    borderLeftWidth: 8, borderRightWidth: 8, borderTopWidth: 12,
+    borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 10,
     borderLeftColor: "transparent", borderRightColor: "transparent",
-    borderTopColor: "#E3F2FD",
-    marginTop: -2,
-  },
-  customerPin: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: "#3B82F6",
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 2, borderColor: "#fff",
-  },
-  etaBubble: {
-    position: "absolute", top: -10, right: -10,
-    backgroundColor: ComeYaColors.primary,
-    borderRadius: 8, paddingHorizontal: 4, paddingVertical: 1,
+    borderTopColor: ComeYaColors.primary,
+    marginTop: -1,
   },
 
   // Leyenda
