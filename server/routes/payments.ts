@@ -4,17 +4,34 @@ import { eq } from "drizzle-orm";
 
 const router = express.Router();
 
-// GET /api/payments/info — datos de pago de ComeYa (IBAN, Bizum, PayPal)
+// GET /api/payments/info — datos de pago de ComeYa desde payment_receiving_accounts
 router.get("/info", authenticateToken, async (req, res) => {
-  const { CONFIG } = await import("../config");
-  res.json({
-    success: true,
-    bizum:       await CONFIG.bizumPhone(),
-    iban:        await CONFIG.iban(),
-    paypalEmail: await CONFIG.paypalEmail(),
-    titular:     await CONFIG.titular(),
-    banco:       await CONFIG.banco(),
-  });
+  try {
+    const { db } = await import("../db");
+    const [rows]: any = await db.execute(
+      "SELECT provider, account_data FROM payment_receiving_accounts WHERE is_active = TRUE"
+    );
+
+    const data: any = { success: true, bizum: "", iban: "", paypalEmail: "", titular: "ComeYa S.L.", banco: "" };
+    rows.forEach((row: any) => {
+      const d = row.account_data;
+      if (row.provider === "bizum")        { data.bizum = d.phone || ""; data.titular = d.name || data.titular; }
+      if (row.provider === "transferencia") { data.iban = d.iban || ""; data.titular = d.titular || data.titular; data.banco = d.banco || ""; }
+      if (row.provider === "paypal")        { data.paypalEmail = d.email || ""; }
+    });
+    res.json(data);
+  } catch (error: any) {
+    // Fallback a config.ts si falla la BD
+    const { CONFIG } = await import("../config");
+    res.json({
+      success: true,
+      bizum:       await CONFIG.bizumPhone(),
+      iban:        await CONFIG.iban(),
+      paypalEmail: await CONFIG.paypalEmail(),
+      titular:     await CONFIG.titular(),
+      banco:       await CONFIG.banco(),
+    });
+  }
 });
 
 // POST /api/payments/upload-proof-image — subir imagen a Cloudinary via servidor

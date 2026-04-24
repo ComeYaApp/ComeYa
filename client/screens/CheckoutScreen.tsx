@@ -29,7 +29,7 @@ import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 
 type SubstitutionOption = "refund" | "call" | "substitute";
 
-type PaymentMethod = "stripe_card" | "stripe_bizum" | "paypal" | "binance";
+type PaymentMethod = "stripe_card" | "stripe_bizum" | "paypal" | "bizum_manual" | "sepa" | "binance";
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -298,7 +298,7 @@ export default function CheckoutScreen({ route }: any) {
         return;
       }
 
-      // Otros métodos (Bizum manual, SEPA, PayPal manual) — navegar a subir comprobante
+      // Métodos manuales (Bizum manual, SEPA, PayPal) — navegar a subir comprobante
       await clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsLoading(false);
@@ -312,7 +312,9 @@ export default function CheckoutScreen({ route }: any) {
             params: {
               orderId,
               amount: totalAmount,
-              paymentMethod,
+              paymentMethod: paymentMethod === 'bizum_manual' ? 'bizum'
+                           : paymentMethod === 'sepa'         ? 'sepa'
+                           : 'paypal',
             },
           },
         ],

@@ -21,10 +21,12 @@ interface Props {
   route?: { params?: { orderTotal?: number } };
 }
 
-const METHOD_CONFIG: Record<string, { icon: any; color: string; subtitle: string }> = {
+const METHOD_CONFIG: Record<string, { icon: any; color: string; subtitle: string; manual?: boolean }> = {
   stripe_card:  { icon: 'credit-card', color: '#635BFF', subtitle: 'Visa, Mastercard, Amex' },
   stripe_bizum: { icon: 'smartphone',  color: '#00ADEF', subtitle: 'Pago instantáneo desde tu móvil' },
-  paypal:       { icon: 'dollar-sign', color: '#003087', subtitle: 'Paga con tu cuenta PayPal' },
+  bizum_manual: { icon: 'smartphone',  color: '#00ADEF', subtitle: 'Transferencia manual con comprobante', manual: true },
+  sepa:         { icon: 'credit-card', color: '#1A56DB', subtitle: 'Transferencia bancaria SEPA', manual: true },
+  paypal:       { icon: 'dollar-sign', color: '#003087', subtitle: 'Envía desde tu cuenta PayPal', manual: true },
 };
 
 export default function DigitalPaymentMethodScreen({ route }: Props) {
@@ -34,8 +36,9 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<PaymentMethod | null>(null);
-  const [savedAccounts, setSavedAccounts] = useState<Record<string, string>>({}); // method -> detail
+  const [savedAccounts, setSavedAccounts] = useState<Record<string, string>>({});
   const [pendingDefault, setPendingDefault] = useState<string | null>(null);
+  const [receivingInfo, setReceivingInfo] = useState<any>(null);
   const orderTotal = route?.params?.orderTotal || 0;
 
   useEffect(() => { loadMethods(); loadSavedAccounts(); }, []);
@@ -49,13 +52,35 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
     }
   }, [pendingDefault, methods]);
 
+  // Cuando llega receivingInfo, añadir métodos manuales configurados
+  useEffect(() => {
+    if (!receivingInfo) return;
+    setMethods(prev => {
+      const manual: PaymentMethod[] = [];
+      // Bizum manual (si el admin configuró un teléfono)
+      if (receivingInfo.bizum && !prev.find(m => m.provider === 'bizum_manual')) {
+        manual.push({ id: 'bm', name: 'bizum_manual', provider: 'bizum_manual', displayName: 'Bizum (manual)', isActive: true, requiresManualVerification: true, instructions: `Envía al ${receivingInfo.bizum}` });
+      }
+      // Transferencia SEPA (si el admin configuró un IBAN)
+      if (receivingInfo.iban && !prev.find(m => m.provider === 'sepa')) {
+        manual.push({ id: 'sp', name: 'sepa', provider: 'sepa', displayName: 'Transferencia SEPA', isActive: true, requiresManualVerification: true, instructions: `IBAN: ${receivingInfo.iban}` });
+      }
+      // PayPal manual (si el admin configuró un email)
+      if (receivingInfo.paypalEmail && !prev.find(m => m.provider === 'paypal')) {
+        manual.push({ id: 'pp', name: 'paypal', provider: 'paypal', displayName: 'PayPal', isActive: true, requiresManualVerification: true, instructions: `Envía a ${receivingInfo.paypalEmail}` });
+      }
+      return [...prev, ...manual];
+    });
+  }, [receivingInfo]);
+
   const loadSavedAccounts = async () => {
     try {
+      // Cargar cuentas del usuario (para mostrar "guardado")
       const res = await apiRequest('GET', '/api/payouts/accounts');
       const data = await res.json();
       if (data.success && data.accounts) {
         const map: Record<string, string> = {};
-        let defaultMethod: PaymentMethod | null = null;
+        let defaultMethod: string | null = null;
         for (const acc of data.accounts) {
           if (acc.method === 'bizum')        { map['stripe_bizum'] = acc.pagoMovilPhone || ''; }
           if (acc.method === 'tarjeta')      { map['stripe_card']  = acc.zinliEmail ? `${acc.zinliEmail} **** ${acc.zellePhone}` : ''; }
@@ -67,11 +92,14 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
           }
         }
         setSavedAccounts(map);
-        // Auto-seleccionar el método guardado como default
-        if (defaultMethod) {
-          setSelected(null); // se asignará después de cargar los métodos
-          setPendingDefault(defaultMethod);
-        }
+        if (defaultMethod) setPendingDefault(defaultMethod);
+      }
+
+      // Cargar cuentas receptoras de ComeYa para saber qué métodos manuales están configurados
+      const infoRes = await apiRequest('GET', '/api/payments/info');
+      const infoData = await infoRes.json();
+      if (infoData.success) {
+        setReceivingInfo(infoData);
       }
     } catch { /* silencioso */ }
   };
@@ -84,35 +112,34 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
       if (data.success && data.methods?.length > 0) {
         activeMethods = data.methods.filter((m: PaymentMethod) => m.isActive);
       } else {
+        // Stripe siempre disponible si está configurado
         activeMethods = [
-          { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Pago seguro con tarjeta via Stripe' },
-          { id: '2', name: 'bizum',        provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo con Bizum via Stripe' },
-          { id: '3', name: 'paypal',       provider: 'paypal',       displayName: 'PayPal',      isActive: true, requiresManualVerification: false, instructions: 'Serás redirigido a PayPal' },
+          { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Visa, Mastercard, Amex — pago instantáneo' },
+          { id: '2', name: 'stripe_bizum', provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo desde tu móvil' },
         ];
       }
       setMethods(activeMethods);
-      // Auto-seleccionar el método default una vez que tenemos la lista
-      if (pendingDefault) {
+      if (pendingDefault && activeMethods.length > 0) {
         const match = activeMethods.find(m => m.provider === pendingDefault);
         if (match) setSelected(match);
         setPendingDefault(null);
       }
     } catch {
-      const fallback = [
-        { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Pago seguro con tarjeta via Stripe' },
-        { id: '2', name: 'bizum',        provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo con Bizum via Stripe' },
-        { id: '3', name: 'paypal',       provider: 'paypal',       displayName: 'PayPal',      isActive: true, requiresManualVerification: false, instructions: 'Serás redirigido a PayPal' },
-      ];
-      setMethods(fallback);
+      setMethods([
+        { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Visa, Mastercard, Amex' },
+        { id: '2', name: 'stripe_bizum', provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo' },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleContinue = () => {
-    if (selected) {
-      (navigation as any).navigate('Checkout', { selectedPaymentMethod: selected });
-    }
+    if (!selected) return;
+    const config = METHOD_CONFIG[selected.provider];
+    // Métodos manuales van a PaymentProof después de crear el pedido
+    // Métodos automáticos (Stripe) vuelven al checkout
+    (navigation as any).navigate('Checkout', { selectedPaymentMethod: selected });
   };
 
   if (loading) {
@@ -170,6 +197,9 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
                 </Text>
                 {savedAccounts[method.provider] && (
                   <Text style={[styles.cardSaved, { color: ComeYaColors.success }]}>✓ Cuenta guardada</Text>
+                )}
+                {config.manual && (
+                  <Text style={[styles.cardSaved, { color: ComeYaColors.warning }]}>📸 Requiere comprobante</Text>
                 )}
               </View>
               <View style={[styles.radio, { borderColor: isSelected ? config.color : theme.border, backgroundColor: isSelected ? config.color : 'transparent' }]}>
