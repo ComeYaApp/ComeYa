@@ -48,8 +48,8 @@ export default function CheckoutScreen({ route }: any) {
   // Usar subtotal del carrito directamente
   const subtotal = cartSubtotal;
   
-  // Obtener orderType de los parámetros de navegación
-  const orderType = route?.params?.orderType || 'delivery';
+  // Obtener orderType de los parámetros de navegación con validación estricta
+  const orderType: 'delivery' | 'pickup' = route?.params?.orderType === 'pickup' ? 'pickup' : 'delivery';
 
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);

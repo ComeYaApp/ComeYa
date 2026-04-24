@@ -166,6 +166,9 @@ router.post("/", authenticateToken, async (req, res) => {
     // SIEMPRE usar el total del cliente - NO recalcular
     const total = clientTotal;
 
+    // Validar que orderType sea válido
+    const validOrderType = orderType === 'pickup' ? 'pickup' : 'delivery';
+
     // Create order
     const orderId = crypto.randomUUID();
     const newOrder = {
@@ -182,7 +185,7 @@ router.post("/", authenticateToken, async (req, res) => {
       deliveryFee,
       total,
       paymentMethod: paymentMethod || "cash",
-      orderType: orderType || "delivery",
+      orderType: validOrderType,
       deliveryAddress: deliveryAddress || "",
       deliveryLatitude: deliveryLatitude || null,
       deliveryLongitude: deliveryLongitude || null,
