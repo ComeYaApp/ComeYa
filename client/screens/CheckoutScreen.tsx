@@ -47,6 +47,9 @@ export default function CheckoutScreen({ route }: any) {
   
   // Usar subtotal del carrito directamente
   const subtotal = cartSubtotal;
+  
+  // Obtener orderType de los parámetros de navegación
+  const orderType = route?.params?.orderType || 'delivery';
 
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
@@ -142,7 +145,7 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
-  const deliveryFee = route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5));
+  const deliveryFee = orderType === 'pickup' ? 0 : (route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5)));
   
   const [tip, setTip] = useState(0);
   // Los productos YA incluyen la comisión del 15% en su precio
@@ -210,6 +213,7 @@ export default function CheckoutScreen({ route }: any) {
         total: orderTotal,
         tip: tipCents,
         paymentMethod,
+        orderType,
         deliveryAddressId: selectedAddress.id,
         deliveryAddress: `${selectedAddress.street}, ${selectedAddress.city}`,
         deliveryLatitude: selectedAddress.latitude,
@@ -928,12 +932,19 @@ export default function CheckoutScreen({ route }: any) {
           </ThemedText>
           <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
         </View>
-        <View style={styles.totalRow}>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Envío {estimatedTime ? `(~${estimatedTime} min)` : ''}
-          </ThemedText>
-          <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
-        </View>
+        {orderType === 'delivery' && (
+          <View style={styles.totalRow}>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Envío {estimatedTime ? `(~${estimatedTime} min)` : ''}
+            </ThemedText>
+            <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
+          </View>
+        )}
+        {orderType === 'pickup' && (
+          <View style={[styles.totalRow, { backgroundColor: ComeYaColors.success + '15', padding: Spacing.sm, borderRadius: BorderRadius.sm }]}>
+            <ThemedText type="small" style={{ color: ComeYaColors.success }}>🎉 Sin coste de envío al recoger en local</ThemedText>
+          </View>
+        )}
         {couponDiscount > 0 && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: ComeYaColors.success }}>

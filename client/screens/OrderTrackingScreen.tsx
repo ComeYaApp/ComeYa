@@ -697,22 +697,14 @@ export default function OrderTrackingScreen() {
               <ThemedText type="small">€{order.subtotal.toFixed(2)}</ThemedText>
             </View>
             {orderType === 'delivery' && (
-              <>
-                <View style={styles.itemRow}>
-                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                    Comision ComeYa (15%)
-                  </ThemedText>
-                  <ThemedText type="small">€{nemyCommission.toFixed(2)}</ThemedText>
-                </View>
-                <View style={styles.itemRow}>
-                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                    Envío
-                  </ThemedText>
-                  <ThemedText type="small">
-                    €{order.deliveryFee.toFixed(2)}
-                  </ThemedText>
-                </View>
-              </>
+              <View style={styles.itemRow}>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  Envío
+                </ThemedText>
+                <ThemedText type="small">
+                  €{order.deliveryFee.toFixed(2)}
+                </ThemedText>
+              </View>
             )}
             <View style={styles.itemRow}>
               <ThemedText type="h4">Total</ThemedText>
