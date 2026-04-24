@@ -196,15 +196,21 @@ export default function OrdersScreen() {
               {formatDate(item.createdAt)}
             </ThemedText>
           </View>
-          <Badge
-            text={STATUS_LABELS[item.status]}
-            variant={STATUS_VARIANTS[item.status]}
-          />
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <Badge
+              text={STATUS_LABELS[item.status]}
+              variant={STATUS_VARIANTS[item.status]}
+            />
+            <Badge
+              text={(item as any).orderType === 'pickup' ? '🛍️ Recoger' : '🚚 Delivery'}
+              variant="secondary"
+            />
+          </View>
         </View>
 
         {isActive && (
           <View style={styles.statusSection}>
-            <OrderProgressBar status={item.status} />
+            <OrderProgressBar status={item.status} orderType={(item as any).orderType || 'delivery'} />
           </View>
         )}
 
