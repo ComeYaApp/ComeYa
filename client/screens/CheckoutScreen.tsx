@@ -187,11 +187,14 @@ export default function CheckoutScreen({ route }: any) {
     try {
       const finalItemSubstitutions = showItemSubstitutions ? itemSubstitutions : {};
       const subtotalCents = Math.round(subtotal * 100);
+      // Calcular base sin comisión (revertir el markup del 15%)
+      const baseSubtotalCents = Math.round(subtotalCents / 1.15);
+      const commissionCents = subtotalCents - baseSubtotalCents;
       const deliveryFeeCents = Math.round(deliveryFee * 100);
       const discountCents = appliedCoupon ? Math.round(couponDiscount * 100) : 0;
       const tipCents = Math.round(tip * 100);
-      // El total que valida el servidor (sin comisión extra porque ya está en los precios)
-      const orderTotal = subtotalCents + deliveryFeeCents - discountCents;
+      // El total que valida el servidor
+      const orderTotal = baseSubtotalCents + commissionCents + deliveryFeeCents - discountCents;
       const totalAmount = orderTotal + tipCents;
 
       const orderResponse = await apiRequest("POST", "/api/orders", {
@@ -201,8 +204,8 @@ export default function CheckoutScreen({ route }: any) {
         items: JSON.stringify(cart.items),
         status: "pending",
         subtotal: subtotalCents,
-        productosBase: subtotalCents,
-        nemyCommission: 0, // Ya incluida en los precios
+        productosBase: baseSubtotalCents,
+        nemyCommission: commissionCents,
         deliveryFee: deliveryFeeCents,
         total: orderTotal,
         tip: tipCents,
