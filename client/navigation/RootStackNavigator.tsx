@@ -73,6 +73,7 @@ export type RootStackParamList = {
     addressRefreshToken?: number;
     selectedAddressId?: string;
     selectedPaymentMethod?: any;
+    orderType?: 'delivery' | 'pickup';
   } | undefined;
   OrderTracking: { orderId: string };
   Carnival: undefined;
