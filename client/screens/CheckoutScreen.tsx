@@ -51,6 +51,9 @@ export default function CheckoutScreen({ route }: any) {
   // Obtener orderType de los parámetros de navegación con validación estricta
   const orderType: 'delivery' | 'pickup' = route?.params?.orderType === 'pickup' ? 'pickup' : 'delivery';
 
+  // FORZAR que orderType se mantenga durante toda la sesión
+  const [confirmedOrderType] = React.useState<'delivery' | 'pickup'>(orderType);
+
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
@@ -145,7 +148,7 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
-  const deliveryFee = orderType === 'pickup' ? 0 : (route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5)));
+  const deliveryFee = confirmedOrderType === 'pickup' ? 0 : (route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5)));
   
   const [tip, setTip] = useState(0);
   // Los productos YA incluyen la comisión del 15% en su precio
@@ -213,7 +216,7 @@ export default function CheckoutScreen({ route }: any) {
         total: orderTotal,
         tip: tipCents,
         paymentMethod,
-        orderType,
+        orderType: confirmedOrderType,
         deliveryAddressId: selectedAddress.id,
         deliveryAddress: `${selectedAddress.street}, ${selectedAddress.city}`,
         deliveryLatitude: selectedAddress.latitude,
@@ -932,7 +935,7 @@ export default function CheckoutScreen({ route }: any) {
           </ThemedText>
           <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
         </View>
-        {orderType === 'delivery' && (
+        {confirmedOrderType === 'delivery' && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío {estimatedTime ? `(~${estimatedTime} min)` : ''}
@@ -940,7 +943,7 @@ export default function CheckoutScreen({ route }: any) {
             <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
           </View>
         )}
-        {orderType === 'pickup' && (
+        {confirmedOrderType === 'pickup' && (
           <View style={[styles.totalRow, { backgroundColor: ComeYaColors.success + '15', padding: Spacing.sm, borderRadius: BorderRadius.sm }]}>
             <ThemedText type="small" style={{ color: ComeYaColors.success }}>🎉 Sin coste de envío al recoger en local</ThemedText>
           </View>

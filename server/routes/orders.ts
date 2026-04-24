@@ -163,11 +163,14 @@ router.post("/", authenticateToken, async (req, res) => {
       ? nemyCommission 
       : Math.round(finalSubtotal * (await CONFIG.commission()));
     
+    // Validar que orderType sea válido y forzar a minúsculas
+    const validOrderType: 'pickup' | 'delivery' = 
+      typeof orderType === 'string' && orderType.toLowerCase() === 'pickup' 
+        ? 'pickup' 
+        : 'delivery';
+    
     // SIEMPRE usar el total del cliente - NO recalcular
     const total = clientTotal;
-
-    // Validar que orderType sea válido
-    const validOrderType = orderType === 'pickup' ? 'pickup' : 'delivery';
 
     // Create order
     const orderId = crypto.randomUUID();
