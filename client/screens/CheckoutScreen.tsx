@@ -63,6 +63,42 @@ export default function CheckoutScreen({ route }: any) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe_card");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
 
+  // Cargar método de pago guardado como default
+  useEffect(() => {
+    const loadDefaultPayment = async () => {
+      try {
+        const res = await apiRequest('GET', '/api/payouts/accounts');
+        const data = await res.json();
+        if (data.success && data.accounts?.length > 0) {
+          const defaultAcc = data.accounts.find((a: any) => a.isDefault) || data.accounts[0];
+          if (defaultAcc && !route?.params?.selectedPaymentMethod) {
+            const providerMap: Record<string, PaymentMethod> = {
+              bizum: 'stripe_bizum',
+              tarjeta: 'stripe_card',
+              paypal: 'paypal',
+            };
+            const provider = providerMap[defaultAcc.method];
+            if (provider) {
+              setPaymentMethod(provider);
+              const detail =
+                defaultAcc.method === 'bizum'   ? defaultAcc.pagoMovilPhone :
+                defaultAcc.method === 'tarjeta' ? `**** ${defaultAcc.zellePhone}` :
+                defaultAcc.zelleEmail;
+              setSelectedPaymentMethod({
+                provider,
+                displayName:
+                  defaultAcc.method === 'bizum'   ? 'Bizum' :
+                  defaultAcc.method === 'tarjeta' ? 'Tarjeta' : 'PayPal',
+                instructions: detail || 'Método guardado',
+              });
+            }
+          }
+        }
+      } catch { /* silencioso */ }
+    };
+    loadDefaultPayment();
+  }, []);
+
   // Preferencias de sustitución
   const [globalSubstitution, setGlobalSubstitution] =
     useState<SubstitutionOption>("refund");

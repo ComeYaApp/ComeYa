@@ -35,9 +35,19 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<PaymentMethod | null>(null);
   const [savedAccounts, setSavedAccounts] = useState<Record<string, string>>({}); // method -> detail
+  const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const orderTotal = route?.params?.orderTotal || 0;
 
   useEffect(() => { loadMethods(); loadSavedAccounts(); }, []);
+
+  // Cuando llegan tanto los métodos como el default pendiente, auto-seleccionar
+  useEffect(() => {
+    if (pendingDefault && methods.length > 0) {
+      const match = methods.find(m => m.provider === pendingDefault);
+      if (match) setSelected(match);
+      setPendingDefault(null);
+    }
+  }, [pendingDefault, methods]);
 
   const loadSavedAccounts = async () => {
     try {
@@ -45,12 +55,23 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
       const data = await res.json();
       if (data.success && data.accounts) {
         const map: Record<string, string> = {};
+        let defaultMethod: PaymentMethod | null = null;
         for (const acc of data.accounts) {
-          if (acc.method === 'bizum')   map['stripe_bizum'] = acc.pagoMovilPhone || '';
-          if (acc.method === 'tarjeta') map['stripe_card']  = acc.zinliEmail ? `${acc.zinliEmail} **** ${acc.zellePhone}` : '';
-          if (acc.method === 'paypal')  map['paypal']       = acc.zelleEmail || '';
+          if (acc.method === 'bizum')        { map['stripe_bizum'] = acc.pagoMovilPhone || ''; }
+          if (acc.method === 'tarjeta')      { map['stripe_card']  = acc.zinliEmail ? `${acc.zinliEmail} **** ${acc.zellePhone}` : ''; }
+          if (acc.method === 'paypal')       { map['paypal']       = acc.zelleEmail || ''; }
+          if (acc.isDefault && !defaultMethod) {
+            if (acc.method === 'bizum')   defaultMethod = 'stripe_bizum';
+            if (acc.method === 'tarjeta') defaultMethod = 'stripe_card';
+            if (acc.method === 'paypal')  defaultMethod = 'paypal';
+          }
         }
         setSavedAccounts(map);
+        // Auto-seleccionar el método guardado como default
+        if (defaultMethod) {
+          setSelected(null); // se asignará después de cargar los métodos
+          setPendingDefault(defaultMethod);
+        }
       }
     } catch { /* silencioso */ }
   };
@@ -59,22 +80,30 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
     try {
       const res = await apiRequest('GET', '/api/digital-payments/methods');
       const data = await res.json();
+      let activeMethods: PaymentMethod[] = [];
       if (data.success && data.methods?.length > 0) {
-        setMethods(data.methods.filter((m: PaymentMethod) => m.isActive));
+        activeMethods = data.methods.filter((m: PaymentMethod) => m.isActive);
       } else {
-        // Fallback con los métodos hardcodeados si el endpoint falla
-        setMethods([
+        activeMethods = [
           { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Pago seguro con tarjeta via Stripe' },
           { id: '2', name: 'bizum',        provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo con Bizum via Stripe' },
           { id: '3', name: 'paypal',       provider: 'paypal',       displayName: 'PayPal',      isActive: true, requiresManualVerification: false, instructions: 'Serás redirigido a PayPal' },
-        ]);
+        ];
+      }
+      setMethods(activeMethods);
+      // Auto-seleccionar el método default una vez que tenemos la lista
+      if (pendingDefault) {
+        const match = activeMethods.find(m => m.provider === pendingDefault);
+        if (match) setSelected(match);
+        setPendingDefault(null);
       }
     } catch {
-      setMethods([
+      const fallback = [
         { id: '1', name: 'stripe_card',  provider: 'stripe_card',  displayName: 'Tarjeta',    isActive: true, requiresManualVerification: false, instructions: 'Pago seguro con tarjeta via Stripe' },
         { id: '2', name: 'bizum',        provider: 'stripe_bizum', displayName: 'Bizum',       isActive: true, requiresManualVerification: false, instructions: 'Pago instantáneo con Bizum via Stripe' },
         { id: '3', name: 'paypal',       provider: 'paypal',       displayName: 'PayPal',      isActive: true, requiresManualVerification: false, instructions: 'Serás redirigido a PayPal' },
-      ]);
+      ];
+      setMethods(fallback);
     } finally {
       setLoading(false);
     }
