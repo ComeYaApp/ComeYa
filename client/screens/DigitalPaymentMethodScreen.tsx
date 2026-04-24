@@ -18,7 +18,7 @@ interface PaymentMethod {
 }
 
 interface Props {
-  route?: { params?: { orderTotal?: number } };
+  route?: { params?: { orderTotal?: number; orderType?: 'delivery' | 'pickup'; calculatedDeliveryFee?: number } };
 }
 
 const METHOD_CONFIG: Record<string, { icon: any; color: string; subtitle: string; manual?: boolean }> = {
@@ -40,6 +40,8 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const [pendingDefault, setPendingDefault] = useState<string | null>(null);
   const [receivingInfo, setReceivingInfo] = useState<any>(null);
   const orderTotal = route?.params?.orderTotal || 0;
+  const orderType = route?.params?.orderType || 'delivery';
+  const calculatedDeliveryFee = route?.params?.calculatedDeliveryFee;
 
   useEffect(() => { loadMethods(); loadSavedAccounts(); }, []);
 
@@ -136,10 +138,11 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
 
   const handleContinue = () => {
     if (!selected) return;
-    const config = METHOD_CONFIG[selected.provider];
-    // Métodos manuales van a PaymentProof después de crear el pedido
-    // Métodos automáticos (Stripe) vuelven al checkout
-    (navigation as any).navigate('Checkout', { selectedPaymentMethod: selected });
+    (navigation as any).navigate('Checkout', {
+      selectedPaymentMethod: selected,
+      orderType,
+      calculatedDeliveryFee,
+    });
   };
 
   if (loading) {

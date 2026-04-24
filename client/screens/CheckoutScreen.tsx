@@ -52,7 +52,11 @@ export default function CheckoutScreen({ route }: any) {
   const orderType: 'delivery' | 'pickup' = route?.params?.orderType === 'pickup' ? 'pickup' : 'delivery';
 
   // FORZAR que orderType se mantenga durante toda la sesión
-  const [confirmedOrderType] = React.useState<'delivery' | 'pickup'>(orderType);
+  // useMemo en lugar de useState para que se actualice si cambian los params
+  const confirmedOrderType = React.useMemo<'delivery' | 'pickup'>(
+    () => route?.params?.orderType === 'pickup' ? 'pickup' : 'delivery',
+    [route?.params?.orderType]
+  );
 
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
@@ -658,6 +662,8 @@ export default function CheckoutScreen({ route }: any) {
                 Haptics.selectionAsync();
                 navigation.navigate("DigitalPaymentMethod", {
                   orderTotal: total,
+                  orderType: confirmedOrderType,
+                  calculatedDeliveryFee: Math.round(deliveryFee * 100),
                 } as any);
               }}
               style={styles.inlineLink}
