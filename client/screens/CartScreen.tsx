@@ -109,10 +109,9 @@ export default function CartScreen() {
   const deliveryFee = orderType === 'pickup' ? 0 : (calculatedDeliveryFee ?? (businessData?.deliveryFee ? businessData.deliveryFee / 100 : 3));
   const minimumOrder = business?.minimumOrder || 0;
 
-  // Comisión incluida en el precio — no se muestra al cliente
-  const COMMISSION = 0.15;
-  const subtotalConComision = subtotal * (1 + COMMISSION);
-  const total = subtotalConComision + deliveryFee;
+  // Los precios de los productos YA incluyen la comisión del 15%
+  // No aplicar comisión adicional aquí
+  const total = subtotal + deliveryFee;
   const canProceed = subtotal >= minimumOrder;
 
   const handleCheckout = () => {
@@ -322,7 +321,7 @@ export default function CartScreen() {
 
         <View style={styles.summaryRow}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>Subtotal</ThemedText>
-          <ThemedText type="body">€{subtotalConComision.toFixed(2)}</ThemedText>
+          <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
         </View>
         {orderType === 'delivery' && (
           <View style={styles.summaryRow}>

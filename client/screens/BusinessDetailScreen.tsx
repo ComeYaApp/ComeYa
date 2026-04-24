@@ -90,11 +90,16 @@ export default function BusinessDetailScreen() {
             const isAvailable = p.isAvailable === true || p.isAvailable === 1 || 
                                p.is_available === true || p.is_available === 1;
             
+            // Precio base en euros
+            const basePrice = (p.price || 0) / 100;
+            // Agregar comisión del 15%
+            const priceWithCommission = basePrice * 1.15;
+            
             return {
               id: p.id,
               name: p.name,
               description: p.description || '',
-              price: (p.price || 0) / 100,
+              price: priceWithCommission, // 👈 Precio con comisión incluida
               image: p.image || require("../../assets/images/delivery-hero.png"),
               category: p.category || 'General',
               isAvailable: isAvailable,
