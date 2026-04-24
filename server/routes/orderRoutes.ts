@@ -69,13 +69,16 @@ router.post("/", authenticateToken, validateOrderFinancials, async (req, res) =>
       }
     }
 
-    const productosBase = req.body.productosBase ?? req.body.subtotal;
-    const nemyCommission =
-      typeof req.body.nemyCommission === "number" && req.body.nemyCommission > 0
-        ? req.body.nemyCommission
-        : Math.round(productosBase * 0.15);
+    // El subtotal que viene del frontend YA incluye la comisión del 15%
+    // No necesitamos calcular productosBase ni nemyCommission por separado
+    const subtotal = req.body.subtotal; // Productos con comisión incluida
     const couponDiscount = req.body.couponDiscount || 0;
-    const calculatedTotal = productosBase + nemyCommission + deliveryFee - couponDiscount;
+    
+    // Para pickup, deliveryFee = 0
+    const finalDeliveryFee = req.body.orderType === 'pickup' ? 0 : deliveryFee;
+    
+    // Total = subtotal (ya con comisión) + delivery - descuentos
+    const calculatedTotal = subtotal + finalDeliveryFee - couponDiscount;
 
     const orderData = {
       userId: req.user!.id,
@@ -84,10 +87,10 @@ router.post("/", authenticateToken, validateOrderFinancials, async (req, res) =>
       businessImage: req.body.businessImage,
       items: req.body.items,
       status: req.body.status || "pending",
-      subtotal: productosBase,
-      productosBase,
-      nemyCommission,
-      deliveryFee,
+      subtotal: subtotal,
+      productosBase: req.body.productosBase || null,
+      nemyCommission: req.body.nemyCommission || null,
+      deliveryFee: finalDeliveryFee,
       total: calculatedTotal,
       paymentMethod: req.body.paymentMethod,
       orderType: req.body.orderType === 'pickup' ? 'pickup' : 'delivery',

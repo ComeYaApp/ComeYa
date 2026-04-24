@@ -690,12 +690,6 @@ export default function OrderTrackingScreen() {
             </ThemedText>
           )}
           <View style={[styles.totalSection, { borderTopColor: theme.border }]}>
-            <View style={styles.itemRow}>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Subtotal
-              </ThemedText>
-              <ThemedText type="small">€{order.subtotal.toFixed(2)}</ThemedText>
-            </View>
             {orderType === 'delivery' && (
               <View style={styles.itemRow}>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
