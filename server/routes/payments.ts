@@ -81,47 +81,145 @@ router.post("/submit-proof", authenticateToken, async (req, res) => {
     const { orders, paymentProofs } = await import("../../shared/schema-mysql");
     const { v4: uuidv4 } = await import("uuid");
 
-    // Verificar que el pedido existe y pertenece al usuario
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
 
-    // Guardar comprobante en BD
+    // Detectar duplicado por referencia
+    const { sql: drizzleSql } = await import("drizzle-orm");
+    const [existing] = await db.select().from(paymentProofs)
+      .where(drizzleSql`reference_number = ${referenceNumber.trim()} AND id != 'none'`)
+      .limit(1);
+    if (existing) {
+      return res.status(409).json({ error: "Este comprobante ya fue enviado anteriormente" });
+    }
+
     const proofId = uuidv4();
     await db.insert(paymentProofs).values({
       id: proofId,
       orderId,
       userId,
+      paymentProvider: paymentMethod || order.paymentMethod || 'bizum',
       proofImageUrl: imageUrl,
       referenceNumber: referenceNumber.trim(),
-      senderName: senderName?.trim() || null,
       amount: amount || order.total,
-      paymentMethod: paymentMethod || order.paymentMethod,
       status: "pending",
       submittedAt: new Date(),
     });
 
-    // Actualizar estado del pedido a pending_verification
-    await db.update(orders)
-      .set({ status: "pending", updatedAt: new Date() })
-      .where(eq(orders.id, orderId));
+    // Guardar senderName en verificationNotes si viene
+    if (senderName) {
+      await db.execute(
+        drizzleSql`UPDATE payment_proofs SET verification_notes = ${`Remitente: ${senderName}`} WHERE id = ${proofId}`
+      );
+    }
 
     // Intentar auto-verificación con OCR
     try {
       const { autoVerificationService } = await import("../autoVerificationService");
       const result = await autoVerificationService.shouldAutoApprove(proofId);
-      if (result.approved) {
+      if (result.autoApprove) {
         await db.update(orders)
           .set({ status: "confirmed", paidAt: new Date(), updatedAt: new Date() })
           .where(eq(orders.id, orderId));
-        await db.update(paymentProofs as any)
-          .set({ status: "approved" })
-          .where(eq((paymentProofs as any).id, proofId));
+        await db.execute(
+          drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_at = NOW() WHERE id = ${proofId}`
+        );
+        return res.json({ success: true, proofId, autoApproved: true, message: "Pago verificado automáticamente" });
       }
     } catch { /* auto-verificación falla silenciosamente */ }
 
-    res.json({ success: true, proofId, message: "Comprobante recibido. Será verificado en breve." });
+    res.json({ success: true, proofId, autoApproved: false, message: "Comprobante recibido. Será verificado en breve." });
   } catch (error: any) {
     console.error("Submit proof error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/payments/proofs/pending — comprobantes pendientes (admin)
+router.get("/proofs/pending", authenticateToken, async (req, res) => {
+  try {
+    const { db } = await import("../db");
+    const { sql: drizzleSql } = await import("drizzle-orm");
+    const [rows]: any = await db.execute(
+      drizzleSql`
+        SELECT pp.*, o.business_name, o.total as order_total, u.name as user_name, u.phone as user_phone
+        FROM payment_proofs pp
+        LEFT JOIN orders o ON pp.order_id = o.id
+        LEFT JOIN users u ON pp.user_id = u.id
+        WHERE pp.status = 'pending'
+        ORDER BY pp.submitted_at DESC
+      `
+    );
+    res.json({ success: true, proofs: rows });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/payments/proofs/:proofId/approve — aprobar comprobante (admin)
+router.post("/proofs/:proofId/approve", authenticateToken, async (req, res) => {
+  try {
+    const { db } = await import("../db");
+    const { orders, paymentProofs } = await import("../../shared/schema-mysql");
+    const { sql: drizzleSql } = await import("drizzle-orm");
+    const { proofId } = req.params;
+
+    const [proof] = await db.select().from(paymentProofs)
+      .where(drizzleSql`id = ${proofId}`).limit(1);
+    if (!proof) return res.status(404).json({ error: "Comprobante no encontrado" });
+
+    await db.execute(
+      drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_by = ${req.user!.id}, verified_at = NOW() WHERE id = ${proofId}`
+    );
+    await db.update(orders)
+      .set({ status: "confirmed", paidAt: new Date(), updatedAt: new Date() })
+      .where(eq(orders.id, proof.orderId));
+
+    // Notificar al cliente
+    try {
+      const { sendPushToUser } = await import("../enhancedPushService");
+      await sendPushToUser(proof.userId, {
+        title: "✅ Pago confirmado",
+        body: "Tu comprobante fue verificado. Tu pedido está confirmado.",
+        data: { orderId: proof.orderId, screen: "OrderTracking" },
+      });
+    } catch {}
+
+    res.json({ success: true, message: "Comprobante aprobado" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/payments/proofs/:proofId/reject — rechazar comprobante (admin)
+router.post("/proofs/:proofId/reject", authenticateToken, async (req, res) => {
+  try {
+    const { db } = await import("../db");
+    const { paymentProofs } = await import("../../shared/schema-mysql");
+    const { sql: drizzleSql } = await import("drizzle-orm");
+    const { proofId } = req.params;
+    const { reason } = req.body;
+
+    const [proof] = await db.select().from(paymentProofs)
+      .where(drizzleSql`id = ${proofId}`).limit(1);
+    if (!proof) return res.status(404).json({ error: "Comprobante no encontrado" });
+
+    await db.execute(
+      drizzleSql`UPDATE payment_proofs SET status = 'rejected', verified_by = ${req.user!.id}, verified_at = NOW(), verification_notes = ${reason || 'Rechazado por admin'} WHERE id = ${proofId}`
+    );
+
+    // Notificar al cliente
+    try {
+      const { sendPushToUser } = await import("../enhancedPushService");
+      await sendPushToUser(proof.userId, {
+        title: "❌ Comprobante rechazado",
+        body: reason || "Tu comprobante no pudo ser verificado. Contacta soporte.",
+        data: { orderId: proof.orderId, screen: "OrderTracking" },
+      });
+    } catch {}
+
+    res.json({ success: true, message: "Comprobante rechazado" });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

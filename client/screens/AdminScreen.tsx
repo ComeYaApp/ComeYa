@@ -34,6 +34,7 @@ import {
   ZonesTab,
   SettingsTab,
 } from "@/components/admin/tabs";
+import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab";
 import type {
   DashboardMetrics,
   ActiveOrder,
@@ -93,6 +94,13 @@ const menuItems: MenuItem[] = [
     icon: "trending-up",
     tab: "finance",
     color: "#00BCD4",
+  },
+  {
+    title: "Comprobantes",
+    subtitle: "Verificar pagos manuales",
+    icon: "file-text",
+    tab: "proofs",
+    color: "#F59E0B",
   },
   {
     title: "Cupones",
@@ -303,6 +311,8 @@ export default function AdminMenuScreen() {
         return <DriversTab theme={theme} showToast={showToast} />;
       case "finance":
         return <FinanceTab theme={theme} showToast={showToast} />;
+      case "proofs":
+        return <PaymentProofsTab theme={theme} showToast={showToast} />;
       case "businesses":
         return (
           <BusinessesTab
