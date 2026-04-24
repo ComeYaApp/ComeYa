@@ -71,6 +71,17 @@ const STATUS_LABELS_PICKUP: Record<string, { label: string; color: string; icon:
   cancelled:     { label: "Cancelado",              color: "#EF4444", icon: "x-circle" },
 };
 
+function PinMarker({ color, icon }: { color: string; icon: string }) {
+  return (
+    <View style={styles.pinContainer}>
+      <View style={[styles.pinBody, { backgroundColor: color }]}>
+        <Feather name={icon as any} size={16} color="#FFFFFF" />
+      </View>
+      <View style={[styles.pinTip, { borderTopColor: color }]} />
+    </View>
+  );
+}
+
 function DriverMarker({ color }: { color: string }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -99,10 +110,11 @@ function DriverMarker({ color }: { color: string }) {
           { borderColor: color, transform: [{ scale: pulseAnim }] },
         ]}
       />
-      <View style={[styles.markerOuter, { backgroundColor: "#FFFFFF" }]}>
-        <View style={[styles.markerInner, { backgroundColor: color }]}>
-          <Feather name="navigation" size={14} color="#FFFFFF" />
+      <View style={styles.pinContainer}>
+        <View style={[styles.pinBody, { backgroundColor: color }]}>
+          <Feather name="navigation" size={16} color="#FFFFFF" />
         </View>
+        <View style={[styles.pinTip, { borderTopColor: color }]} />
       </View>
     </View>
   );
@@ -186,32 +198,27 @@ export function CollapsibleMap({
             mapType="standard"
             customMapStyle={isDark ? darkMapStyle : []}
           >
-            {/* Business marker */}
+            {/* Business marker - Restaurante o Mercado */}
             {isValidLocation(businessLocation) && (
-              <Marker coordinate={businessLocation} title="Negocio" anchor={{ x: 0.5, y: 0.5 }}>
-                <View style={[styles.markerOuter, { backgroundColor: "#FFFFFF" }]}>
-                  <View style={[styles.markerInner, { backgroundColor: ComeYaColors.primary }]}>
-                    <Feather name="shopping-bag" size={14} color="#FFFFFF" />
-                  </View>
-                </View>
+              <Marker coordinate={businessLocation} title="Negocio" anchor={{ x: 0.5, y: 1 }}>
+                <PinMarker 
+                  color="#FF6B35" 
+                  icon={isPickup ? "shopping-bag" : "utensils"} 
+                />
               </Marker>
             )}
 
             {/* Driver marker — pulsing (SOLO DELIVERY) */}
             {!isPickup && isValidLocation(deliveryPersonLocation) && (
-              <Marker coordinate={deliveryPersonLocation} title="Repartidor" anchor={{ x: 0.5, y: 0.5 }}>
-                <DriverMarker color={ComeYaColors.success} />
+              <Marker coordinate={deliveryPersonLocation} title="Repartidor" anchor={{ x: 0.5, y: 1 }}>
+                <DriverMarker color="#10B981" />
               </Marker>
             )}
 
             {/* Customer marker */}
             {isValidLocation(customerLocation) && (
-              <Marker coordinate={customerLocation} title="Tu ubicación" anchor={{ x: 0.5, y: 0.5 }}>
-                <View style={[styles.markerOuter, { backgroundColor: "#FFFFFF" }]}>
-                  <View style={[styles.markerInner, { backgroundColor: "#3B82F6" }]}>
-                    <Feather name="home" size={14} color="#FFFFFF" />
-                  </View>
-                </View>
+              <Marker coordinate={customerLocation} title="Tu ubicación" anchor={{ x: 0.5, y: 1 }}>
+                <PinMarker color="#3B82F6" icon="home" />
               </Marker>
             )}
 
@@ -430,36 +437,52 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // Markers
+  // Pulsing wrapper for driver
   pulsingWrapper: {
     alignItems: "center",
-    justifyContent: "center",
-    width: 40,
-    height: 40,
+    justifyContent: "flex-end",
+    width: 50,
+    height: 60,
   },
   pulsingRing: {
     position: "absolute",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    bottom: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     borderWidth: 2,
     opacity: 0.4,
   },
-  markerOuter: {
+  // Pin markers (teardrop shape)
+  pinContainer: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    width: 40,
+    height: 50,
+  },
+  pinBody: {
     width: 36,
     height: 36,
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    ...Shadows.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  markerInner: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
+  pinTip: {
+    width: 0,
+    height: 0,
+    backgroundColor: "transparent",
+    borderStyle: "solid",
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    marginTop: -2,
   },
   navigateButton: {
     flexDirection: "row",
