@@ -163,6 +163,7 @@ router.post("/", authenticateToken, async (req, res) => {
     const nemyCommissionCalc = nemyCommission !== undefined && nemyCommission !== null 
       ? nemyCommission 
       : Math.round(finalSubtotal * (await CONFIG.commission()));
+    // USAR EL TOTAL DEL CLIENTE - el frontend ya lo calculó correctamente
     const total = clientTotal ?? (finalSubtotal + nemyCommissionCalc + deliveryFee);
 
     // Create order
