@@ -16,17 +16,16 @@ import { useToast } from "@/contexts/ToastContext";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
-// ── Métodos disponibles por rol ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CLIENTE → guarda preferencia de método para pagar en el checkout
+//   - Bizum  → teléfono (para que el checkout lo muestre pre-seleccionado)
+//   - Tarjeta → sin datos (Stripe los gestiona de forma segura al pagar)
+//   - PayPal  → email
 //
-// CLIENTE → paga con estos métodos en el checkout
-//   - Bizum (Stripe)
-//   - Tarjeta bancaria (Stripe)
-//   - PayPal
-//
-// NEGOCIO / REPARTIDOR → recibe pagos de ComeYa en estas cuentas
-//   - Bizum (número de teléfono)
-//   - Transferencia bancaria (IBAN)
-//
+// NEGOCIO / REPARTIDOR → registra cuentas donde ComeYa les transfiere sus ganancias
+//   - Bizum        → teléfono
+//   - Transferencia → IBAN + titular
+//   - PayPal        → email
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CUSTOMER_METHODS = [
@@ -36,8 +35,8 @@ const CUSTOMER_METHODS = [
 ];
 
 const BUSINESS_METHODS = [
-  { id: "bizum",         label: "Bizum",         icon: "smartphone" as const, color: "#00ADEF", desc: "Recibe pagos instantáneos" },
-  { id: "transferencia", label: "Transferencia",  icon: "credit-card" as const, color: "#2E7D32", desc: "SEPA / IBAN" },
+  { id: "bizum",         label: "Bizum",         icon: "smartphone" as const,  color: "#00ADEF", desc: "Recibe pagos instantáneos en tu móvil" },
+  { id: "transferencia", label: "Transferencia",  icon: "credit-card" as const, color: "#2E7D32", desc: "Transferencia SEPA a tu cuenta bancaria" },
   { id: "paypal",        label: "PayPal",         icon: "dollar-sign" as const, color: "#003087", desc: "Recibe en tu cuenta PayPal" },
 ];
 
@@ -45,12 +44,9 @@ interface Account {
   id: string;
   method: string;
   isDefault: boolean;
-  // Campos reutilizados para España
-  pagoMovilPhone?: string;  // → teléfono Bizum
-  binanceId?: string;       // → IBAN
-  zelleEmail?: string;      // → titular IBAN / email PayPal
-  zinliEmail?: string;      // → titular tarjeta
-  zellePhone?: string;      // → últimos 4 tarjeta
+  pagoMovilPhone?: string;
+  binanceId?: string;
+  zelleEmail?: string;
 }
 
 export default function PaymentWalletSetupScreen() {
@@ -68,24 +64,21 @@ export default function PaymentWalletSetupScreen() {
   const [saving, setSaving] = useState(false);
   const [activeMethod, setActiveMethod] = useState(METHODS[0].id);
 
-  // Campos del formulario
   const [bizumPhone, setBizumPhone] = useState("");
   const [ibanHolder, setIbanHolder] = useState("");
   const [ibanNumber, setIbanNumber] = useState("");
-  const [cardHolder, setCardHolder] = useState("");
-  const [cardLast4, setCardLast4] = useState("");
   const [paypalEmail, setPaypalEmail] = useState("");
 
   const title    = isCustomer ? "Mis métodos de pago" : "Cuentas para recibir pagos";
   const subtitle = isCustomer
-    ? "Guarda tus datos para pagar más rápido en el checkout"
-    : "ComeYa transferirá tus ganancias a estas cuentas";
+    ? "Guarda tus preferencias para agilizar el pago en el checkout"
+    : "ComeYa transferirá tus ganancias a estas cuentas tras cada entrega confirmada";
 
   useEffect(() => { loadAccounts(); }, []);
 
   const loadAccounts = async () => {
     try {
-      const res = await apiRequest("GET", "/api/payouts/accounts");
+      const res  = await apiRequest("GET", "/api/payouts/accounts");
       const data = await res.json();
       if (data.success) {
         setAccounts(data.accounts || []);
@@ -104,14 +97,11 @@ export default function PaymentWalletSetupScreen() {
     setBizumPhone(acc.pagoMovilPhone || "");
     setIbanHolder(acc.zelleEmail || "");
     setIbanNumber(acc.binanceId || "");
-    setCardHolder(acc.zinliEmail || "");
-    setCardLast4(acc.zellePhone || "");
     setPaypalEmail(acc.zelleEmail || "");
   };
 
   const clearForm = () => {
-    setBizumPhone(""); setIbanHolder(""); setIbanNumber("");
-    setCardHolder(""); setCardLast4(""); setPaypalEmail("");
+    setBizumPhone(""); setIbanHolder(""); setIbanNumber(""); setPaypalEmail("");
   };
 
   const handleMethodChange = (method: string) => {
@@ -121,7 +111,6 @@ export default function PaymentWalletSetupScreen() {
   };
 
   const handleSave = async () => {
-    // Validación básica
     if (activeMethod === "bizum" && !bizumPhone.trim()) {
       showToast("Introduce tu número de Bizum", "error"); return;
     }
@@ -139,19 +128,17 @@ export default function PaymentWalletSetupScreen() {
       if (existing) {
         await apiRequest("DELETE", `/api/payouts/accounts/${existing.id}`);
       }
-
       await apiRequest("POST", "/api/payouts/accounts", {
         method: activeMethod,
         isDefault: true,
-        pagoMovilPhone: activeMethod === "bizum"         ? bizumPhone.trim()   : undefined,
-        binanceId:      activeMethod === "transferencia" ? ibanNumber.trim()   : undefined,
+        pagoMovilPhone: activeMethod === "bizum"         ? bizumPhone.trim()  : undefined,
+        binanceId:      activeMethod === "transferencia" ? ibanNumber.trim()  : undefined,
         zelleEmail:     activeMethod === "transferencia" ? ibanHolder.trim()
-                      : activeMethod === "paypal"        ? paypalEmail.trim()  : undefined,
-        // tarjeta: sin datos sensibles, solo guarda la preferencia
+                      : activeMethod === "paypal"        ? paypalEmail.trim() : undefined,
+        // tarjeta: solo guarda la preferencia, sin datos sensibles
       });
-
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast("Guardado correctamente", "success");
+      showToast("Guardado correctamente ✓", "success");
       await loadAccounts();
     } catch {
       showToast("Error guardando cuenta", "error");
@@ -183,6 +170,7 @@ export default function PaymentWalletSetupScreen() {
   }
 
   const activeConfig = METHODS.find(m => m.id === activeMethod)!;
+  const isTarjetaCliente = activeMethod === "tarjeta" && isCustomer;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -198,17 +186,17 @@ export default function PaymentWalletSetupScreen() {
         </View>
       </View>
 
-      {/* Banner informativo por rol */}
+      {/* Banner informativo */}
       <View style={[styles.infoBanner, { backgroundColor: ComeYaColors.primary + "12", borderColor: ComeYaColors.primary + "30" }]}>
         <Feather name="info" size={14} color={ComeYaColors.primary} />
         <ThemedText type="caption" style={{ color: ComeYaColors.primary, flex: 1, marginLeft: 6 }}>
           {isCustomer
-            ? "Guarda tus métodos para agilizar el pago. Podrás seleccionarlos en el checkout."
-            : "ComeYa transferirá tus ganancias a la cuenta que configures aquí tras cada entrega confirmada."}
+            ? "Guarda tus métodos para que el checkout los pre-seleccione automáticamente."
+            : "ComeYa transferirá tus ganancias a la cuenta que configures aquí."}
         </ThemedText>
       </View>
 
-      {/* Tabs de métodos */}
+      {/* Tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -222,13 +210,7 @@ export default function PaymentWalletSetupScreen() {
             <Pressable
               key={m.id}
               onPress={() => handleMethodChange(m.id)}
-              style={[
-                styles.tab,
-                {
-                  backgroundColor: isActive ? m.color : theme.card,
-                  borderColor: isActive ? m.color : theme.border,
-                },
-              ]}
+              style={[styles.tab, { backgroundColor: isActive ? m.color : theme.card, borderColor: isActive ? m.color : theme.border }]}
             >
               <Feather name={m.icon} size={16} color={isActive ? "#FFF" : theme.text} />
               <ThemedText type="small" style={{ color: isActive ? "#FFF" : theme.text, marginLeft: 4, fontWeight: "600" }}>
@@ -244,7 +226,7 @@ export default function PaymentWalletSetupScreen() {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.lg, paddingBottom: insets.bottom + 100 }}>
 
-        {/* Descripción del método activo */}
+        {/* Descripción del método */}
         <View style={[styles.methodDesc, { backgroundColor: activeConfig.color + "12" }]}>
           <Feather name={activeConfig.icon} size={20} color={activeConfig.color} />
           <View style={{ flex: 1, marginLeft: Spacing.sm }}>
@@ -255,10 +237,12 @@ export default function PaymentWalletSetupScreen() {
 
         <View style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}>
 
-          {/* ── BIZUM ── */}
+          {/* BIZUM — cliente y negocio/driver */}
           {activeMethod === "bizum" && (
             <>
-              <ThemedText type="small" style={styles.label}>Número de teléfono Bizum</ThemedText>
+              <ThemedText type="small" style={styles.label}>
+                {isCustomer ? "Tu número de teléfono Bizum" : "Número de teléfono para recibir Bizum"}
+              </ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                 value={bizumPhone}
@@ -269,21 +253,21 @@ export default function PaymentWalletSetupScreen() {
               />
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
                 {isCustomer
-                  ? "El número asociado a tu cuenta Bizum"
+                  ? "El número asociado a tu cuenta Bizum en tu banco"
                   : "ComeYa te enviará el pago a este número de Bizum"}
               </ThemedText>
             </>
           )}
 
-          {/* ── TRANSFERENCIA BANCARIA ── */}
+          {/* TRANSFERENCIA SEPA — solo negocio/driver */}
           {activeMethod === "transferencia" && (
             <>
-              <ThemedText type="small" style={styles.label}>Titular de la cuenta</ThemedText>
+              <ThemedText type="small" style={styles.label}>Titular de la cuenta bancaria</ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                 value={ibanHolder}
                 onChangeText={setIbanHolder}
-                placeholder="Nombre y Apellidos"
+                placeholder="Nombre y Apellidos o Razón Social"
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="words"
               />
@@ -291,38 +275,40 @@ export default function PaymentWalletSetupScreen() {
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                 value={ibanNumber}
-                onChangeText={(t) => setIbanNumber(t.toUpperCase())}
+                onChangeText={(t) => setIbanNumber(t.replace(/\s/g, "").toUpperCase())}
                 placeholder="ES00 0000 0000 0000 0000 0000"
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="characters"
               />
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                ComeYa realizará transferencias SEPA a este IBAN
+                ComeYa realizará transferencias SEPA a este IBAN en 1-2 días hábiles
               </ThemedText>
             </>
           )}
 
-          {/* ── TARJETA (solo cliente) ── */}
-          {activeMethod === "tarjeta" && isCustomer && (
-            <View style={[styles.stripeInfo, { backgroundColor: "#635BFF" + "12", borderColor: "#635BFF" + "30" }]}>
-              <Feather name="shield" size={28} color="#635BFF" />
+          {/* TARJETA — solo cliente, gestionada por Stripe */}
+          {isTarjetaCliente && (
+            <View style={[styles.stripeInfo, { backgroundColor: "#635BFF" + "12", borderColor: "#635BFF" + "40" }]}>
+              <Feather name="shield" size={32} color="#635BFF" />
               <View style={{ flex: 1, marginLeft: Spacing.md }}>
-                <ThemedText type="body" style={{ fontWeight: "700", color: "#635BFF" }}>Gestionado por Stripe</ThemedText>
+                <ThemedText type="body" style={{ fontWeight: "700", color: "#635BFF" }}>
+                  Gestionado por Stripe
+                </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4, lineHeight: 18 }}>
-                  No necesitas guardar datos de tarjeta aquí. Stripe los almacena de forma segura cuando realizas tu primer pago con tarjeta.
+                  No necesitas introducir datos de tarjeta aquí. Stripe los almacena de forma segura la primera vez que pagas.
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 6 }}>
-                  Selecciona "Tarjeta" como método preferido y Stripe te pedirá los datos al pagar.
+                  Pulsa el botón para establecer Tarjeta como tu método preferido en el checkout.
                 </ThemedText>
               </View>
             </View>
           )}
 
-          {/* ── PAYPAL (cliente Y negocio/repartidor) ── */}
+          {/* PAYPAL — cliente y negocio/driver */}
           {activeMethod === "paypal" && (
             <>
               <ThemedText type="small" style={styles.label}>
-                {isCustomer ? "Email de PayPal" : "Email de PayPal para recibir pagos"}
+                {isCustomer ? "Email de tu cuenta PayPal" : "Email de PayPal para recibir pagos"}
               </ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
@@ -341,8 +327,18 @@ export default function PaymentWalletSetupScreen() {
             </>
           )}
 
-          <Button onPress={handleSave} disabled={saving} style={{ marginTop: Spacing.lg }}>
-            {saving ? <ActivityIndicator color="#FFF" /> : "Guardar"}
+          {/* Botón guardar */}
+          <Button
+            onPress={handleSave}
+            disabled={saving}
+            style={{ marginTop: Spacing.lg, ...(isTarjetaCliente && { backgroundColor: "#635BFF" }) }}
+          >
+            {saving
+              ? <ActivityIndicator color="#FFF" />
+              : isTarjetaCliente
+                ? "Establecer como método preferido"
+                : "Guardar"
+            }
           </Button>
         </View>
 
@@ -388,23 +384,19 @@ export default function PaymentWalletSetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, gap: Spacing.md },
-  backBtn: { width: 40, height: 40, justifyContent: "center" },
-  infoBanner: { flexDirection: "row", alignItems: "flex-start", marginHorizontal: Spacing.lg, marginBottom: Spacing.sm, padding: Spacing.sm, borderRadius: BorderRadius.md, borderWidth: 1, gap: 6 },
-  tabs: { maxHeight: 56, marginBottom: Spacing.sm },
-  tab: { flexDirection: "row", alignItems: "center", paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1.5 },
-  dot: { width: 8, height: 8, borderRadius: 4, marginLeft: 6 },
-  methodDesc: { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.md, marginBottom: Spacing.md },
-  card: { padding: Spacing.lg, borderRadius: BorderRadius.lg },
-  label: { marginBottom: Spacing.xs, fontWeight: "600", marginTop: Spacing.md, color: "#333" },
-  input: { height: 52, borderRadius: BorderRadius.md, borderWidth: 1.5, paddingHorizontal: Spacing.md, fontSize: 16, marginBottom: Spacing.xs },
-  accountRow: { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.sm, borderWidth: 1 },
-  methodIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
+  container:    { flex: 1 },
+  header:       { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md, gap: Spacing.md },
+  backBtn:      { width: 40, height: 40, justifyContent: "center" },
+  infoBanner:   { flexDirection: "row", alignItems: "flex-start", marginHorizontal: Spacing.lg, marginBottom: Spacing.sm, padding: Spacing.sm, borderRadius: BorderRadius.md, borderWidth: 1, gap: 6 },
+  tabs:         { maxHeight: 56, marginBottom: Spacing.sm },
+  tab:          { flexDirection: "row", alignItems: "center", paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1.5 },
+  dot:          { width: 8, height: 8, borderRadius: 4, marginLeft: 6 },
+  methodDesc:   { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.md, marginBottom: Spacing.md },
+  card:         { padding: Spacing.lg, borderRadius: BorderRadius.lg },
+  label:        { marginBottom: Spacing.xs, fontWeight: "600", marginTop: Spacing.md },
+  input:        { height: 52, borderRadius: BorderRadius.md, borderWidth: 1.5, paddingHorizontal: Spacing.md, fontSize: 16, marginBottom: Spacing.xs },
+  stripeInfo:   { flexDirection: "row", alignItems: "flex-start", padding: Spacing.lg, borderRadius: BorderRadius.lg, borderWidth: 1 },
+  accountRow:   { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.sm, borderWidth: 1 },
+  methodIcon:   { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   defaultBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm, marginRight: Spacing.sm },
-  stripeInfo: {
-    flexDirection: "row", alignItems: "flex-start",
-    padding: Spacing.lg, borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-  },
 });
