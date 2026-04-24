@@ -159,9 +159,10 @@ router.post("/", authenticateToken, async (req, res) => {
 
     const deliveryFee = orderType === 'pickup' ? 0 : (clientDeliveryFee ?? business.deliveryFee ?? await CONFIG.deliveryFee());
     const finalSubtotal = clientSubtotal ?? subtotal;
-    // Comision incluida en el precio — el total ya la lleva, no se muestra por separado
-    const commission = await CONFIG.commission();
-    const nemyCommissionCalc = nemyCommission ?? Math.round(finalSubtotal * commission);
+    // Si nemyCommission viene definido (incluso si es 0), usarlo. Si no, calcularlo
+    const nemyCommissionCalc = nemyCommission !== undefined && nemyCommission !== null 
+      ? nemyCommission 
+      : Math.round(finalSubtotal * (await CONFIG.commission()));
     const total = clientTotal ?? (finalSubtotal + nemyCommissionCalc + deliveryFee);
 
     // Create order
