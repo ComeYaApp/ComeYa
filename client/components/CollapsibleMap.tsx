@@ -71,11 +71,11 @@ const STATUS_LABELS_PICKUP: Record<string, { label: string; color: string; icon:
   cancelled:     { label: "Cancelado",              color: "#EF4444", icon: "x-circle" },
 };
 
-function PinMarker({ color, icon }: { color: string; icon: string }) {
+function PinMarker({ color, icon, iconColor }: { color: string; icon: string; iconColor?: string }) {
   return (
     <View style={styles.pinContainer}>
       <View style={[styles.pinBody, { backgroundColor: color }]}>
-        <Feather name={icon as any} size={16} color="#FFFFFF" />
+        <Feather name={icon as any} size={16} color={iconColor || "#FFFFFF"} />
       </View>
       <View style={[styles.pinTip, { borderTopColor: color }]} />
     </View>
@@ -111,10 +111,10 @@ function DriverMarker({ color }: { color: string }) {
         ]}
       />
       <View style={styles.pinContainer}>
-        <View style={[styles.pinBody, { backgroundColor: color }]}>
-          <Feather name="navigation" size={16} color="#FFFFFF" />
+        <View style={[styles.pinBody, { backgroundColor: "#E8F5E9" }]}>
+          <Feather name="navigation" size={16} color="#10B981" />
         </View>
-        <View style={[styles.pinTip, { borderTopColor: color }]} />
+        <View style={[styles.pinTip, { borderTopColor: "#E8F5E9" }]} />
       </View>
     </View>
   );
@@ -202,8 +202,9 @@ export function CollapsibleMap({
             {isValidLocation(businessLocation) && (
               <Marker coordinate={businessLocation} title="Negocio" anchor={{ x: 0.5, y: 1 }}>
                 <PinMarker 
-                  color="#FF6B35" 
+                  color="#FFF3E0" 
                   icon={isPickup ? "shopping-bag" : "utensils"} 
+                  iconColor="#FF6B35"
                 />
               </Marker>
             )}
@@ -218,7 +219,7 @@ export function CollapsibleMap({
             {/* Customer marker */}
             {isValidLocation(customerLocation) && (
               <Marker coordinate={customerLocation} title="Tu ubicación" anchor={{ x: 0.5, y: 1 }}>
-                <PinMarker color="#3B82F6" icon="home" />
+                <PinMarker color="#E3F2FD" icon="home" iconColor="#3B82F6" />
               </Marker>
             )}
 
