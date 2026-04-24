@@ -30,9 +30,9 @@ import { apiRequest } from "@/lib/query-client";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CUSTOMER_METHODS = [
-  { id: "bizum",    label: "Bizum",   icon: "smartphone" as const, color: "#00ADEF", desc: "Pago instantáneo desde tu móvil" },
-  { id: "tarjeta",  label: "Tarjeta", icon: "credit-card" as const, color: "#635BFF", desc: "Visa, Mastercard, Amex (Stripe)" },
-  { id: "paypal",   label: "PayPal",  icon: "dollar-sign" as const, color: "#003087", desc: "Paga con tu cuenta PayPal" },
+  { id: "bizum",   label: "Bizum",   icon: "smartphone" as const,  color: "#00ADEF", desc: "Pago instantáneo desde tu móvil" },
+  { id: "tarjeta", label: "Tarjeta", icon: "credit-card" as const, color: "#635BFF", desc: "Visa, Mastercard, Amex — gestionado por Stripe" },
+  { id: "paypal",  label: "PayPal",  icon: "dollar-sign" as const, color: "#003087", desc: "Paga con tu cuenta PayPal" },
 ];
 
 const BUSINESS_METHODS = [
@@ -128,9 +128,6 @@ export default function PaymentWalletSetupScreen() {
     if (activeMethod === "transferencia" && (!ibanNumber.trim() || !ibanHolder.trim())) {
       showToast("Introduce el IBAN y el titular", "error"); return;
     }
-    if (activeMethod === "tarjeta" && (!cardHolder.trim() || !cardLast4.trim())) {
-      showToast("Introduce los datos de la tarjeta", "error"); return;
-    }
     if (activeMethod === "paypal" && !paypalEmail.trim()) {
       showToast("Introduce tu email de PayPal", "error"); return;
     }
@@ -150,8 +147,7 @@ export default function PaymentWalletSetupScreen() {
         binanceId:      activeMethod === "transferencia" ? ibanNumber.trim()   : undefined,
         zelleEmail:     activeMethod === "transferencia" ? ibanHolder.trim()
                       : activeMethod === "paypal"        ? paypalEmail.trim()  : undefined,
-        zinliEmail:     activeMethod === "tarjeta"       ? cardHolder.trim()   : undefined,
-        zellePhone:     activeMethod === "tarjeta"       ? cardLast4.trim()    : undefined,
+        // tarjeta: sin datos sensibles, solo guarda la preferencia
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -307,31 +303,19 @@ export default function PaymentWalletSetupScreen() {
           )}
 
           {/* ── TARJETA (solo cliente) ── */}
-          {activeMethod === "tarjeta" && (
-            <>
-              <ThemedText type="small" style={styles.label}>Titular de la tarjeta</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={cardHolder}
-                onChangeText={setCardHolder}
-                placeholder="Nombre en la tarjeta"
-                placeholderTextColor={theme.textSecondary}
-                autoCapitalize="words"
-              />
-              <ThemedText type="small" style={styles.label}>Últimos 4 dígitos</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                value={cardLast4}
-                onChangeText={setCardLast4}
-                placeholder="1234"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="numeric"
-                maxLength={4}
-              />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                El pago se procesará de forma segura a través de Stripe
-              </ThemedText>
-            </>
+          {activeMethod === "tarjeta" && isCustomer && (
+            <View style={[styles.stripeInfo, { backgroundColor: "#635BFF" + "12", borderColor: "#635BFF" + "30" }]}>
+              <Feather name="shield" size={28} color="#635BFF" />
+              <View style={{ flex: 1, marginLeft: Spacing.md }}>
+                <ThemedText type="body" style={{ fontWeight: "700", color: "#635BFF" }}>Gestionado por Stripe</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4, lineHeight: 18 }}>
+                  No necesitas guardar datos de tarjeta aquí. Stripe los almacena de forma segura cuando realizas tu primer pago con tarjeta.
+                </ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 6 }}>
+                  Selecciona "Tarjeta" como método preferido y Stripe te pedirá los datos al pagar.
+                </ThemedText>
+              </View>
+            </View>
           )}
 
           {/* ── PAYPAL (cliente Y negocio/repartidor) ── */}
@@ -373,7 +357,7 @@ export default function PaymentWalletSetupScreen() {
               const detail =
                 acc.method === "bizum"         ? acc.pagoMovilPhone
                 : acc.method === "transferencia" ? acc.binanceId
-                : acc.method === "tarjeta"       ? `**** ${acc.zellePhone}`
+                : acc.method === "tarjeta"       ? "Gestionada por Stripe"
                 : acc.method === "paypal"        ? acc.zelleEmail
                 : "—";
               return (
@@ -418,4 +402,9 @@ const styles = StyleSheet.create({
   accountRow: { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.sm, borderWidth: 1 },
   methodIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   defaultBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm, marginRight: Spacing.sm },
+  stripeInfo: {
+    flexDirection: "row", alignItems: "flex-start",
+    padding: Spacing.lg, borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+  },
 });
