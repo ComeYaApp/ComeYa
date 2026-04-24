@@ -203,14 +203,7 @@ export default function CheckoutScreen({ route }: any) {
       const orderTotal = baseSubtotalCents + commissionCents + deliveryFeeCents - discountCents;
       const totalAmount = orderTotal + tipCents;
 
-      const orderResponse = await apiRequest("POST", "/api/orders/test-ordertype", {
-        orderType: 'pickup',
-      });
-      const testResult = await orderResponse.json();
-      alert(`TEST BACKEND: ${JSON.stringify(testResult)}`);
-      return;
-
-      const orderResponse2 = await apiRequest("POST", "/api/orders", {
+      const orderResponse = await apiRequest("POST", "/api/orders", {
         businessId: cart.businessId,
         businessName: cart.businessName,
         businessImage: business?.image || business?.profileImage || "",
@@ -223,7 +216,7 @@ export default function CheckoutScreen({ route }: any) {
         total: orderTotal,
         tip: tipCents,
         paymentMethod,
-        orderType: 'pickup',  // HARDCODED PARA TEST
+        orderType: confirmedOrderType,
         deliveryAddressId: selectedAddress.id,
         deliveryAddress: `${selectedAddress.street}, ${selectedAddress.city}`,
         deliveryLatitude: selectedAddress.latitude,
