@@ -8,6 +8,17 @@ import { CONFIG } from "../config";
 
 const router = express.Router();
 
+// TEST ENDPOINT - BORRAR DESPUÉS
+router.post("/test-ordertype", authenticateToken, async (req, res) => {
+  const { orderType } = req.body;
+  return res.json({ 
+    received: orderType, 
+    type: typeof orderType,
+    isPickup: orderType === 'pickup',
+    body: req.body 
+  });
+});
+
 // Get user orders
 router.get("/", authenticateToken, async (req, res) => {
   try {

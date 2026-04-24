@@ -90,6 +90,7 @@ router.post("/", authenticateToken, validateOrderFinancials, async (req, res) =>
       deliveryFee,
       total: calculatedTotal,
       paymentMethod: req.body.paymentMethod,
+      orderType: req.body.orderType === 'pickup' ? 'pickup' : 'delivery',
       deliveryAddress: req.body.deliveryAddress,
       notes: req.body.notes,
       substitutionPreference: req.body.substitutionPreference,
