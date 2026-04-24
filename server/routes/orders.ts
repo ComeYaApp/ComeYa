@@ -159,12 +159,12 @@ router.post("/", authenticateToken, async (req, res) => {
 
     const deliveryFee = orderType === 'pickup' ? 0 : (clientDeliveryFee ?? business.deliveryFee ?? await CONFIG.deliveryFee());
     const finalSubtotal = clientSubtotal ?? subtotal;
-    // Si nemyCommission viene definido (incluso si es 0), usarlo. Si no, calcularlo
     const nemyCommissionCalc = nemyCommission !== undefined && nemyCommission !== null 
       ? nemyCommission 
       : Math.round(finalSubtotal * (await CONFIG.commission()));
-    // USAR EL TOTAL DEL CLIENTE - el frontend ya lo calculó correctamente
-    const total = clientTotal ?? (finalSubtotal + nemyCommissionCalc + deliveryFee);
+    
+    // SIEMPRE usar el total del cliente - NO recalcular
+    const total = clientTotal;
 
     // Create order
     const orderId = crypto.randomUUID();
