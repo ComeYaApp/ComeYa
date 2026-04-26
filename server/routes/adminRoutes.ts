@@ -589,8 +589,29 @@ router.get("/support", authenticateToken, requireRole("admin", "super_admin"), a
 // Admin logs
 router.get("/logs", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    res.json({ success: true, logs: [] });
+    const { db } = await import("../db");
+    
+    const result = await db.execute(sql`
+      SELECT 
+        id,
+        user_id as userId,
+        action,
+        entity_type as entityType,
+        entity_id as entityId,
+        changes,
+        ip_address as ipAddress,
+        user_agent as userAgent,
+        created_at as createdAt
+      FROM audit_logs
+      ORDER BY created_at DESC
+      LIMIT 100
+    `);
+    
+    const rows = Array.isArray(result[0]) ? result[0] : result;
+    
+    res.json({ success: true, logs: rows });
   } catch (error: any) {
+    console.error('Admin logs error:', error);
     res.status(500).json({ error: error.message });
   }
 });
