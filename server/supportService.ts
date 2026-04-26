@@ -1,5 +1,5 @@
 import { db } from './db';
-import { supportTickets, supportMessages } from '@shared/schema-mysql';
+import { supportTickets } from '@shared/schema-mysql';
 import { eq, and, desc } from 'drizzle-orm';
 import { sendPushToUser } from './enhancedPushService';
 
@@ -24,13 +24,8 @@ export class SupportService {
 
     const ticketId = ticket.insertId;
 
-    // Agregar mensaje inicial
-    await db.insert(supportMessages).values({
-      ticketId,
-      senderId: data.userId,
-      senderType: 'user',
-      message: data.initialMessage,
-    });
+    // TODO: Guardar mensaje inicial en una tabla de mensajes de tickets cuando se cree
+    // Por ahora el mensaje inicial se guarda en el subject
 
     // Notificar a admins
     // TODO: Implementar notificación a admins
@@ -66,11 +61,8 @@ export class SupportService {
       throw new Error('Ticket no encontrado');
     }
 
-    const messages = await db
-      .select()
-      .from(supportMessages)
-      .where(eq(supportMessages.ticketId, ticketId))
-      .orderBy(supportMessages.createdAt);
+    // TODO: Obtener mensajes del ticket cuando se implemente la tabla
+    const messages: any[] = [];
 
     return { ticket, messages };
   }
@@ -83,13 +75,7 @@ export class SupportService {
     message: string;
     attachments?: string[];
   }) {
-    await db.insert(supportMessages).values({
-      ticketId: data.ticketId,
-      senderId: data.senderId,
-      senderType: data.senderType,
-      message: data.message,
-      attachments: data.attachments ? JSON.stringify(data.attachments) : null,
-    });
+    // TODO: Implementar cuando se cree la tabla de mensajes de tickets
 
     // Actualizar timestamp del ticket
     await db

@@ -26,9 +26,9 @@ import { useToast } from "@/contexts/ToastContext";
 interface SupportTicket {
   id: string;
   subject: string;
-  message: string;
   status: string;
   priority: string;
+  category: string;
   createdAt: string;
 }
 
@@ -70,7 +70,8 @@ export default function SupportScreen() {
       const response = await apiRequest("POST", "/api/support/tickets", {
         userId: user?.id,
         subject,
-        message,
+        category: "other",
+        initialMessage: message,
         priority: "normal",
       });
       return response.json();
@@ -324,9 +325,9 @@ export default function SupportScreen() {
                       color: theme.textSecondary,
                       marginTop: Spacing.xs,
                     }}
-                    numberOfLines={2}
+                    numberOfLines={1}
                   >
-                    {ticket.message}
+                    {ticket.category || "General"}
                   </ThemedText>
                 </Animated.View>
               </Pressable>
