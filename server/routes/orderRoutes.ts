@@ -363,6 +363,32 @@ router.post(
         })
         .where(eq(orders.id, orderId));
 
+      // Subir foto de entrega a Cloudinary si se proporcionó
+      if (req.body.deliveryPhoto) {
+        try {
+          const { CloudinaryService } = await import("../cloudinaryService");
+          const { deliveryProofs } = await import("@shared/schema-mysql");
+          const photoUrl = await CloudinaryService.uploadImage(
+            req.body.deliveryPhoto,
+            "delivery-proofs",
+            `proof-${orderId}-${Date.now()}`
+          );
+          await db.insert(deliveryProofs).values({
+            id: crypto.randomUUID(),
+            orderId,
+            driverId: req.user!.id,
+            photoUrl,
+            latitude: driverLat ? String(driverLat) : "0",
+            longitude: driverLng ? String(driverLng) : "0",
+            timestamp: new Date(),
+          });
+          await db.update(orders).set({ deliveryProofPhoto: photoUrl }).where(eq(orders.id, orderId));
+        } catch (photoErr) {
+          console.error("Error uploading delivery photo:", photoErr);
+          // No bloqueamos la entrega si falla la foto
+        }
+      }
+
       // Notificar al cliente que su pedido fue entregado
       await sendOrderStatusNotification(orderId, order.userId, "delivered");
 

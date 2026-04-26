@@ -243,19 +243,11 @@ export default function DriverMyDeliveriesScreen() {
       let photoBase64: string | null = null;
       if (photoUri) {
         try {
-          const xhr = new XMLHttpRequest();
-          photoBase64 = await new Promise<string>((resolve, reject) => {
-            xhr.onload = () => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(xhr.response);
-            };
-            xhr.onerror = reject;
-            xhr.responseType = "blob";
-            xhr.open("GET", photoUri);
-            xhr.send();
-          });
+          const FileSystem = await import('expo-file-system/legacy');
+          const encoding = (FileSystem as any)?.EncodingType?.Base64 || 'base64';
+          const base64 = await (FileSystem as any).readAsStringAsync(photoUri, { encoding });
+          const ext = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
+          photoBase64 = `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${base64}`;
         } catch { photoBase64 = null; }
       }
 
