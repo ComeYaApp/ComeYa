@@ -179,40 +179,30 @@ router.post('/admin/create', authenticateToken, requireRole('admin', 'super_admi
       });
     }
 
-    const couponId = crypto.randomUUID();
-    
-    await db.execute(
-      `INSERT INTO coupons (
-        id, code, type, discount_type, discount_value, min_order_amount, max_discount,
-        max_uses, max_uses_per_user, description, valid_for_businesses, valid_for_categories,
-        valid_for_products, new_users_only, first_order_only, day_of_week, time_range, expires_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        couponId,
-        code.toUpperCase(),
-        type || 'percentage',
-        discountType || 'percentage',
-        discountValue,
-        minOrderAmount || 0,
-        maxDiscount || null,
-        maxUses || null,
-        maxUsesPerUser || 1,
-        description || '',
-        validForBusinesses ? JSON.stringify(validForBusinesses) : null,
-        validForCategories ? JSON.stringify(validForCategories) : null,
-        validForProducts ? JSON.stringify(validForProducts) : null,
-        newUsersOnly || false,
-        firstOrderOnly || false,
-        dayOfWeek ? JSON.stringify(dayOfWeek) : null,
-        timeRange ? JSON.stringify(timeRange) : null,
-        expiresAt || null,
-      ]
-    );
+    await db.insert(coupons).values({
+      code: code.toUpperCase(),
+      discountType: discountType || 'percentage',
+      discountValue,
+      minOrderAmount: minOrderAmount || 0,
+      maxDiscount: maxDiscount || null,
+      maxUses: maxUses || null,
+      maxUsesPerUser: maxUsesPerUser || 1,
+      description: description || '',
+      type: type || 'percentage',
+      validForBusinesses: validForBusinesses ? JSON.stringify(validForBusinesses) : null,
+      validForCategories: validForCategories ? JSON.stringify(validForCategories) : null,
+      validForProducts: validForProducts ? JSON.stringify(validForProducts) : null,
+      newUsersOnly: newUsersOnly || false,
+      firstOrderOnly: firstOrderOnly || false,
+      dayOfWeek: dayOfWeek ? JSON.stringify(dayOfWeek) : null,
+      timeRange: timeRange ? JSON.stringify(timeRange) : null,
+      expiresAt: expiresAt || null,
+      isActive: true,
+    });
 
     res.json({
       success: true,
       message: 'Cupón creado exitosamente',
-      couponId,
     });
   } catch (error: any) {
     console.error('Error creating coupon:', error);
