@@ -13,7 +13,6 @@ import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
 import AdminFinanceScreen from "@/screens/AdminFinanceScreen";
 import AdminMapScreen from "@/screens/AdminMapScreen";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
-import DeliveryDashboardScreen from "@/screens/DeliveryDashboardScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 // Stack wrapper para el tab Mapa (necesita poder navegar a BusinessDetail)
@@ -177,18 +176,7 @@ const tabBarHeight = Platform.select({
           }}
         />
       ) : null}
-      {isDelivery ? (
-        <Tab.Screen
-          name="DeliveryTab"
-          component={DeliveryDashboardScreen}
-          options={{
-            title: "Entregas",
-            tabBarIcon: ({ color, size }) => (
-              <Feather name="truck" size={size} color={color} />
-            ),
-          }}
-        />
-      ) : null}
+
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStackNavigator}
