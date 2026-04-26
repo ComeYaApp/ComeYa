@@ -32,10 +32,18 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
 
     let vehicleType = null;
     let vehiclePlate = null;
+    let vehiclePhoto = null;
+    let vehicleBrand = null;
+    let vehicleModel = null;
+    let vehicleColor = null;
     if (user.role === "delivery_driver") {
       const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id)).limit(1);
       vehicleType = dd?.vehicleType ?? null;
       vehiclePlate = dd?.vehiclePlate ?? null;
+      vehiclePhoto = dd?.vehiclePhoto ?? null;
+      vehicleBrand = dd?.vehicleBrand ?? null;
+      vehicleModel = dd?.vehicleModel ?? null;
+      vehicleColor = dd?.vehicleColor ?? null;
     }
 
     res.json({
@@ -44,10 +52,10 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
       address: user.address,
       vehicleType,
       vehiclePlate,
-      vehiclePhoto: dd?.vehiclePhoto ?? null,
-      vehicleBrand: dd?.vehicleBrand ?? null,
-      vehicleModel: dd?.vehicleModel ?? null,
-      vehicleColor: dd?.vehicleColor ?? null,
+      vehiclePhoto,
+      vehicleBrand,
+      vehicleModel,
+      vehicleColor,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
