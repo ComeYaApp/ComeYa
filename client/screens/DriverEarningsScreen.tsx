@@ -144,7 +144,7 @@ export default function DriverEarningsScreen() {
         <View>
           <ThemedText type="h2">💰 Mis Ganancias</ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Pagos manuales vía Bizum o transferencia IBAN
+            Bizum, IBAN o Stripe Connect
           </ThemedText>
         </View>
       </View>
@@ -240,13 +240,13 @@ export default function DriverEarningsScreen() {
           <Feather name="info" size={20} color={ComeYaColors.primary} />
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
             <ThemedText type="body" style={{ fontWeight: "600" }}>
-              Pagos automáticos
+              Cómo recibes tus pagos
             </ThemedText>
             <ThemedText
               type="caption"
               style={{ color: theme.textSecondary, marginTop: 4 }}
             >
-              Cuando confirmes una entrega, tu pago se libera y ComeYa lo transfiere a tu cuenta Bizum o IBAN configurada en Perfil → Cuentas de pago.
+              Cuando el cliente confirme la entrega, tus fondos se liberan automáticamente. Si tienes Stripe Connect configurado, el pago llega directo a tu cuenta bancaria. Si no, ComeYa te transfiere vía Bizum o IBAN desde Perfil → Cuentas de pago.
             </ThemedText>
           </View>
         </View>
