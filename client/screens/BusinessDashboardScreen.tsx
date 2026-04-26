@@ -486,12 +486,34 @@ export default function BusinessDashboardScreen() {
                   />
                 </View>
                 <View style={styles.orderDetails}>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    {order.customerName || "Cliente"}
-                  </ThemedText>
-                  <ThemedText type="body" style={{ fontWeight: "600", color: ComeYaColors.primary }}>
-                    €{(order.subtotal || 0).toFixed(2)}
-                  </ThemedText>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                      {order.customerName || "Cliente"}
+                    </ThemedText>
+                    {order.customerPhone ? (
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                        {order.customerPhone}
+                      </ThemedText>
+                    ) : null}
+                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                      {new Date(order.createdAt).toLocaleDateString("es-ES", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </ThemedText>
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <ThemedText type="body" style={{ fontWeight: "600", color: ComeYaColors.primary }}>
+                      €{(order.subtotal || 0).toFixed(2)}
+                    </ThemedText>
+                    {order.deliveryFee > 0 ? (
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                        + €{order.deliveryFee.toFixed(2)} envío
+                      </ThemedText>
+                    ) : null}
+                  </View>
                 </View>
               </Animated.View>
             ))}
