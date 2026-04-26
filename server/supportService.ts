@@ -1,10 +1,9 @@
 import { db } from './db';
-import { supportTickets } from '@shared/schema-mysql';
+import { supportTickets, ticketMessages } from '@shared/schema-mysql';
 import { eq, and, desc } from 'drizzle-orm';
 import { sendPushToUser } from './enhancedPushService';
 
 export class SupportService {
-  // Crear ticket
   static async createTicket(data: {
     userId: string;
     orderId?: string;
@@ -13,7 +12,7 @@ export class SupportService {
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     initialMessage: string;
   }) {
-    const [ticket] = await db.insert(supportTickets).values({
+    const [result] = await db.insert(supportTickets).values({
       userId: data.userId,
       orderId: data.orderId,
       subject: data.subject,
@@ -22,68 +21,63 @@ export class SupportService {
       status: 'open',
     });
 
-    const ticketId = ticket.insertId;
+    const ticketId = (result as any).insertId;
 
-    // TODO: Guardar mensaje inicial en una tabla de mensajes de tickets cuando se cree
-    // Por ahora el mensaje inicial se guarda en el subject
-
-    // Notificar a admins
-    // TODO: Implementar notificación a admins
+    // Guardar mensaje inicial
+    await db.insert(ticketMessages).values({
+      ticketId,
+      senderId: data.userId,
+      senderType: 'user',
+      message: data.initialMessage,
+    });
 
     return { success: true, ticketId };
   }
 
-  // Obtener tickets del usuario
   static async getUserTickets(userId: string) {
-    const tickets = await db
+    return db
       .select()
       .from(supportTickets)
       .where(eq(supportTickets.userId, userId))
       .orderBy(desc(supportTickets.createdAt));
-
-    return tickets;
   }
 
-  // Obtener ticket por ID
   static async getTicket(ticketId: string, userId: string) {
     const [ticket] = await db
       .select()
       .from(supportTickets)
-      .where(
-        and(
-          eq(supportTickets.id, ticketId),
-          eq(supportTickets.userId, userId)
-        )
-      )
+      .where(and(eq(supportTickets.id, ticketId), eq(supportTickets.userId, userId)))
       .limit(1);
 
-    if (!ticket) {
-      throw new Error('Ticket no encontrado');
-    }
+    if (!ticket) throw new Error('Ticket no encontrado');
 
-    // TODO: Obtener mensajes del ticket cuando se implemente la tabla
-    const messages: any[] = [];
+    const messages = await db
+      .select()
+      .from(ticketMessages)
+      .where(eq(ticketMessages.ticketId, ticketId))
+      .orderBy(ticketMessages.createdAt);
 
     return { ticket, messages };
   }
 
-  // Agregar mensaje al ticket
   static async addMessage(data: {
     ticketId: string;
     senderId: string;
     senderType: 'user' | 'admin';
     message: string;
-    attachments?: string[];
   }) {
-    // TODO: Implementar cuando se cree la tabla de mensajes de tickets
+    await db.insert(ticketMessages).values({
+      ticketId: data.ticketId,
+      senderId: data.senderId,
+      senderType: data.senderType,
+      message: data.message,
+    });
 
-    // Actualizar timestamp del ticket
     await db
       .update(supportTickets)
       .set({ updatedAt: new Date() })
       .where(eq(supportTickets.id, data.ticketId));
 
-    // Notificar al usuario si el mensaje es de admin
     if (data.senderType === 'admin') {
       const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, data.ticketId)).limit(1);
       if (ticket) {
@@ -98,52 +92,32 @@ export class SupportService {
     return { success: true };
   }
 
-  // Actualizar estado del ticket
   static async updateTicketStatus(
     ticketId: string,
     status: 'open' | 'in_progress' | 'resolved' | 'closed',
     adminId?: string
   ) {
     const updateData: any = { status, updatedAt: new Date() };
+    if (status === 'resolved' || status === 'closed') updateData.resolvedAt = new Date();
+    if (adminId) updateData.assignedTo = adminId;
 
-    if (status === 'resolved' || status === 'closed') {
-      updateData.resolvedAt = new Date();
-    }
-
-    if (adminId) {
-      updateData.assignedTo = adminId;
-    }
-
-    await db
-      .update(supportTickets)
-      .set(updateData)
-      .where(eq(supportTickets.id, ticketId));
-
+    await db.update(supportTickets).set(updateData).where(eq(supportTickets.id, ticketId));
     return { success: true };
   }
 
-  // Obtener tickets pendientes (para admins)
   static async getPendingTickets() {
-    const tickets = await db
+    return db
       .select()
       .from(supportTickets)
       .where(eq(supportTickets.status, 'open'))
-      .orderBy(desc(supportTickets.priority), desc(supportTickets.createdAt));
-
-    return tickets;
+      .orderBy(desc(supportTickets.createdAt));
   }
 
-  // Asignar ticket a admin
   static async assignTicket(ticketId: string, adminId: string) {
     await db
       .update(supportTickets)
-      .set({
-        assignedTo: adminId,
-        status: 'in_progress',
-        updatedAt: new Date(),
-      })
+      .set({ assignedTo: adminId, status: 'in_progress', updatedAt: new Date() })
       .where(eq(supportTickets.id, ticketId));
-
     return { success: true };
   }
 }

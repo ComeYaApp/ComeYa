@@ -1081,3 +1081,15 @@ export const giftCardDesigns = mysqlTable("gift_card_designs", {
 export type GiftCard = typeof giftCards.$inferSelect;
 export type GiftCardTransaction = typeof giftCardTransactions.$inferSelect;
 export type GiftCardDesign = typeof giftCardDesigns.$inferSelect;
+
+// Ticket Messages - Mensajes de conversación en tickets de soporte
+export const ticketMessages = mysqlTable("ticket_messages", {
+  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  ticketId: varchar("ticket_id", { length: 255 }).notNull(),
+  senderId: varchar("sender_id", { length: 255 }).notNull(),
+  senderType: varchar("sender_type", { length: 20 }).notNull(), // user, admin
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+export type TicketMessage = typeof ticketMessages.$inferSelect;
