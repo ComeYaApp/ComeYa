@@ -132,7 +132,7 @@ export default function BusinessDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { user } = useAuth();
-  const { businesses, selectedBusiness } = useBusiness();
+  const { businesses, selectedBusiness, isLoading: businessLoading } = useBusiness();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
   const [isOpen, setIsOpen] = useState(true);
@@ -154,13 +154,15 @@ export default function BusinessDashboardScreen() {
   });
 
   const loadData = async () => {
+    if (!selectedBusiness?.id) {
+      setLoading(false);
+      return;
+    }
     try {
-      const businessId = selectedBusiness?.id;
-      const statsUrl = businessId ? `/api/business/stats?businessId=${businessId}` : "/api/business/stats";
-      
+      const businessId = selectedBusiness.id;
       const [dashboardRes, statsRes] = await Promise.all([
-        apiRequest("GET", "/api/business/dashboard"),
-        apiRequest("GET", statsUrl),
+        apiRequest("GET", `/api/business/dashboard?businessId=${businessId}`),
+        apiRequest("GET", `/api/business/stats?businessId=${businessId}`),
       ]);
       
       const dashboardData = await dashboardRes.json();
@@ -192,16 +194,17 @@ export default function BusinessDashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (selectedBusiness) {
+      if (!businessLoading) {
         loadData();
       }
-    }, [selectedBusiness])
+    }, [selectedBusiness, businessLoading])
   );
 
   useEffect(() => {
+    if (!selectedBusiness?.id) return;
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedBusiness?.id]);
 
   useEffect(() => {
     if (dashboard.pendingOrders > 0) {
@@ -277,12 +280,26 @@ export default function BusinessDashboardScreen() {
     return translations[status] || status;
   };
 
-  if (loading) {
+  if (loading || businessLoading) {
     return (
       <LinearGradient colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']} style={styles.container}>
         <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color={ComeYaColors.primary} />
           <ThemedText style={{ marginTop: Spacing.md }}>Cargando dashboard...</ThemedText>
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (!selectedBusiness) {
+    return (
+      <LinearGradient colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']} style={styles.container}>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+          <Feather name="shopping-bag" size={48} color={theme.textSecondary} />
+          <ThemedText type="h3" style={{ marginTop: Spacing.md }}>Sin negocio registrado</ThemedText>
+          <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
+            Crea tu negocio para empezar a recibir pedidos
+          </ThemedText>
         </View>
       </LinearGradient>
     );

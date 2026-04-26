@@ -86,9 +86,14 @@ router.get("/dashboard", authenticateToken, requireRole("business_owner", "admin
         isOpen: business.isOpen || false,
         pendingOrders: pendingOrders.length,
         todayOrders: todayOrders.length,
-        todayRevenue: Math.round(todayRevenue),
+        todayRevenue: Math.round(todayRevenue / 100),
         totalOrders: businessOrders.length,
-        recentOrders: businessOrders.slice(0, 10),
+        recentOrders: businessOrders.slice(0, 10).map(o => ({
+          ...o,
+          subtotal: Math.round((o.subtotal || 0) / 100),
+          deliveryFee: Math.round((o.deliveryFee || 0) / 100),
+          total: Math.round((o.total || 0) / 100),
+        })),
       },
     });
   } catch (error: any) {
@@ -158,16 +163,16 @@ router.get("/stats", authenticateToken, requireRole("business_owner", "admin", "
     res.json({
       success: true,
       revenue: {
-        today: Math.round(revenue(todayOrders)),
-        week: Math.round(revenue(weekOrders)),
-        month: Math.round(revenue(monthOrders)),
-        total: Math.round(totalRevenue),
+        today: Math.round(revenue(todayOrders) / 100),
+        week: Math.round(revenue(weekOrders) / 100),
+        month: Math.round(revenue(monthOrders) / 100),
+        total: Math.round(totalRevenue / 100),
       },
       orders: {
         total: businessOrders.length,
         completed: completedOrders.length,
         cancelled: cancelledOrders.length,
-        avgValue,
+        avgValue: Math.round(avgValue / 100),
       },
       topProducts,
     });
