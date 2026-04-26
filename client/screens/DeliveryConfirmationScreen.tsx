@@ -1,19 +1,22 @@
-// Delivery Confirmation Screen
 import React, { useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
+  Pressable,
   TextInput,
   Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../hooks/useTheme';
-import { apiRequest } from '../lib/query-client';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+
+import { ThemedText } from '@/components/ThemedText';
+import { useTheme } from '@/hooks/useTheme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
+import { apiRequest } from '@/lib/query-client';
 
 interface Props {
   orderId: string;
@@ -27,52 +30,48 @@ interface Props {
   onDisputed: () => void;
 }
 
+const ISSUES = [
+  { id: 'never_arrived', label: 'El pedido nunca llegó',   icon: 'x-circle' },
+  { id: 'wrong_items',   label: 'Productos incorrectos',   icon: 'shuffle' },
+  { id: 'damaged',       label: 'Productos dañados',       icon: 'alert-triangle' },
+  { id: 'incomplete',    label: 'Pedido incompleto',       icon: 'minus-circle' },
+  { id: 'quality',       label: 'Mala calidad',            icon: 'thumbs-down' },
+  { id: 'other',         label: 'Otro problema',           icon: 'help-circle' },
+] as const;
+
 export default function DeliveryConfirmationScreen({
   orderId,
   orderDetails,
   onConfirmed,
   onDisputed,
 }: Props) {
-  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const issues = [
-    { id: 'never_arrived', label: 'El pedido nunca llegó', icon: 'close-circle' },
-    { id: 'wrong_items', label: 'Productos incorrectos', icon: 'swap-horizontal' },
-    { id: 'damaged', label: 'Productos dañados', icon: 'warning' },
-    { id: 'incomplete', label: 'Pedido incompleto', icon: 'remove-circle' },
-    { id: 'quality', label: 'Mala calidad', icon: 'thumbs-down' },
-    { id: 'other', label: 'Otro problema', icon: 'help-circle' },
-  ];
-
-  const handleConfirmDelivery = async () => {
+  const handleConfirmDelivery = () => {
     Alert.alert(
-      '¿Confirmar Entrega?',
+      '¿Confirmar entrega?',
       'Al confirmar, los fondos serán liberados al negocio y repartidor. Esta acción no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Confirmar',
-          style: 'default',
           onPress: async () => {
             setLoading(true);
             try {
-              const response = await apiRequest('/fund-release/confirm-delivery', {
-                method: 'POST',
-                body: JSON.stringify({ orderId }),
-              });
-
-              if (response.success) {
-                Alert.alert(
-                  '¡Gracias!',
-                  'Tu confirmación ha sido registrada. Los fondos han sido liberados.',
-                  [{ text: 'OK', onPress: onConfirmed }]
-                );
+              const res = await apiRequest('POST', '/api/fund-release/confirm-delivery', { orderId });
+              const data = await res.json();
+              if (data.success) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert('¡Gracias!', 'Tu confirmación ha sido registrada. Los fondos han sido liberados.', [
+                  { text: 'OK', onPress: onConfirmed },
+                ]);
               } else {
-                throw new Error(response.message || 'Error al confirmar entrega');
+                throw new Error(data.error || data.message || 'Error al confirmar entrega');
               }
             } catch (error: any) {
               Alert.alert('Error', error.message);
@@ -85,47 +84,34 @@ export default function DeliveryConfirmationScreen({
     );
   };
 
-  const handleReportIssue = () => {
-    setShowDisputeModal(true);
-  };
-
   const handleSubmitDispute = async () => {
     if (!selectedIssue) {
       Alert.alert('Error', 'Por favor selecciona el tipo de problema');
       return;
     }
-
     if (selectedIssue === 'other' && !disputeReason.trim()) {
       Alert.alert('Error', 'Por favor describe el problema');
       return;
     }
 
     setLoading(true);
-
     try {
-      const issue = issues.find((i) => i.id === selectedIssue);
-      const reason =
-        selectedIssue === 'other'
-          ? disputeReason
-          : issue?.label || 'Problema con el pedido';
+      const issue = ISSUES.find((i) => i.id === selectedIssue);
+      const reason = selectedIssue === 'other' ? disputeReason : issue?.label || 'Problema con el pedido';
 
-      const response = await apiRequest('/fund-release/dispute', {
-        method: 'POST',
-        body: JSON.stringify({
-          orderId,
-          reason,
-        }),
-      });
+      const res = await apiRequest('POST', '/api/fund-release/dispute', { orderId, reason });
+      const data = await res.json();
 
-      if (response.success) {
+      if (data.success) {
         setShowDisputeModal(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert(
-          'Disputa Registrada',
+          'Disputa registrada',
           'Tu caso será revisado por nuestro equipo. Te contactaremos pronto.',
           [{ text: 'OK', onPress: onDisputed }]
         );
       } else {
-        throw new Error(response.message || 'Error al registrar disputa');
+        throw new Error(data.error || data.message || 'Error al registrar disputa');
       }
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -134,208 +120,147 @@ export default function DeliveryConfirmationScreen({
     }
   };
 
+  const deliveredAt = new Date(orderDetails.deliveredAt).toLocaleString('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header Icon */}
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot, paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* Icono principal */}
         <View style={styles.headerIcon}>
-          <View
-            style={[
-              styles.iconCircle,
-              { backgroundColor: colors.primary + '20' },
-            ]}
-          >
-            <Ionicons name="checkmark-done" size={64} color={colors.primary} />
+          <View style={[styles.iconCircle, { backgroundColor: ComeYaColors.primary + '20' }]}>
+            <Feather name="check-circle" size={64} color={ComeYaColors.primary} />
           </View>
         </View>
 
-        {/* Title */}
-        <Text style={[styles.title, { color: colors.text }]}>
-          ¿Recibiste tu pedido?
-        </Text>
+        <ThemedText type="h2" style={styles.title}>¿Recibiste tu pedido?</ThemedText>
+        <ThemedText type="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
+          Confirma que todo está correcto para liberar el pago al negocio y repartidor
+        </ThemedText>
 
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Confirma que todo está correcto para liberar el pago al negocio y
-          repartidor
-        </Text>
-
-        {/* Order Summary */}
-        <View style={[styles.orderCard, { backgroundColor: colors.card }]}>
-          <View style={styles.orderHeader}>
-            <Ionicons name="restaurant" size={24} color={colors.primary} />
-            <Text style={[styles.businessName, { color: colors.text }]}>
-              {orderDetails.businessName}
-            </Text>
+        {/* Resumen del pedido */}
+        <View style={[styles.orderCard, { backgroundColor: theme.card }, Shadows.sm]}>
+          <View style={[styles.orderHeader, { borderBottomColor: theme.border }]}>
+            <View style={[styles.businessIcon, { backgroundColor: ComeYaColors.primary + '20' }]}>
+              <Feather name="shopping-bag" size={20} color={ComeYaColors.primary} />
+            </View>
+            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>{orderDetails.businessName}</ThemedText>
           </View>
-
           <View style={styles.orderDetail}>
-            <Text style={[styles.orderLabel, { color: colors.textSecondary }]}>
-              Total Pagado
-            </Text>
-            <Text style={[styles.orderValue, { color: colors.primary }]}>
-              €{orderDetails.total.toFixed(2)}
-            </Text>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>Total pagado</ThemedText>
+            <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
+              €{(orderDetails.total / 100).toFixed(2)}
+            </ThemedText>
           </View>
-
           <View style={styles.orderDetail}>
-            <Text style={[styles.orderLabel, { color: colors.textSecondary }]}>
-              Entregado
-            </Text>
-            <Text style={[styles.orderValue, { color: colors.text }]}>
-              {new Date(orderDetails.deliveredAt).toLocaleString('es-VE', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>Entregado</ThemedText>
+            <ThemedText type="body">{deliveredAt}</ThemedText>
           </View>
         </View>
 
-        {/* Info Card */}
-        <View style={[styles.infoCard, { backgroundColor: '#34C75920' }]}>
-          <Ionicons name="information-circle" size={24} color="#34C759" />
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>¿Por qué confirmar?</Text>
-            <Text style={styles.infoText}>
-              Tu confirmación permite que el negocio y el repartidor reciban su
-              pago. Si no confirmas en 24 horas, se liberará automáticamente.
-            </Text>
+        {/* Info */}
+        <View style={[styles.infoCard, { backgroundColor: ComeYaColors.success + '15' }]}>
+          <Feather name="info" size={20} color={ComeYaColors.success} />
+          <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+            <ThemedText type="small" style={{ color: ComeYaColors.success, fontWeight: '700', marginBottom: 2 }}>
+              ¿Por qué confirmar?
+            </ThemedText>
+            <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              Tu confirmación permite que el negocio y el repartidor reciban su pago. Si no confirmas en 24 horas, se liberará automáticamente.
+            </ThemedText>
           </View>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actions}>
-          <TouchableOpacity
-            style={[
-              styles.confirmButton,
-              { backgroundColor: colors.primary },
-            ]}
-            onPress={handleConfirmDelivery}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-                <Text style={styles.confirmButtonText}>
-                  Sí, Todo Está Bien
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
+        {/* Botones */}
+        <Pressable
+          style={[styles.confirmButton, { backgroundColor: ComeYaColors.primary, opacity: loading ? 0.7 : 1 }]}
+          onPress={handleConfirmDelivery}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <>
+              <Feather name="check-circle" size={22} color="#FFF" />
+              <ThemedText type="body" style={styles.confirmButtonText}>Sí, todo está bien</ThemedText>
+            </>
+          )}
+        </Pressable>
 
-          <TouchableOpacity
-            style={[styles.issueButton, { backgroundColor: colors.card }]}
-            onPress={handleReportIssue}
-            disabled={loading}
-          >
-            <Ionicons name="alert-circle" size={24} color="#FF3B30" />
-            <Text style={[styles.issueButtonText, { color: colors.text }]}>
-              Reportar un Problema
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <Pressable
+          style={[styles.issueButton, { backgroundColor: theme.card, borderColor: ComeYaColors.error }]}
+          onPress={() => setShowDisputeModal(true)}
+          disabled={loading}
+        >
+          <Feather name="alert-circle" size={22} color={ComeYaColors.error} />
+          <ThemedText type="body" style={{ color: ComeYaColors.error, marginLeft: Spacing.sm, fontWeight: '600' }}>
+            Reportar un problema
+          </ThemedText>
+        </Pressable>
 
-        {/* Auto-release Info */}
-        <View style={[styles.autoReleaseCard, { backgroundColor: colors.card }]}>
-          <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-          <Text style={[styles.autoReleaseText, { color: colors.textSecondary }]}>
-            Si no confirmas en 24 horas, el pago se liberará automáticamente.
-            Podrás disputar hasta 3 días después.
-          </Text>
+        {/* Auto-release */}
+        <View style={[styles.autoReleaseCard, { backgroundColor: theme.card }]}>
+          <Feather name="clock" size={18} color={theme.textSecondary} />
+          <ThemedText type="small" style={{ color: theme.textSecondary, flex: 1, marginLeft: Spacing.sm }}>
+            Si no confirmas en 24 horas, el pago se liberará automáticamente. Podrás disputar hasta 3 días después.
+          </ThemedText>
         </View>
       </ScrollView>
 
-      {/* Dispute Modal */}
+      {/* Modal de disputa */}
       <Modal
         visible={showDisputeModal}
         animationType="slide"
-        transparent={true}
+        transparent
         onRequestClose={() => setShowDisputeModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>
-                Reportar Problema
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowDisputeModal(false)}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText type="h3">Reportar problema</ThemedText>
+              <Pressable onPress={() => setShowDisputeModal(false)} hitSlop={12}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
             </View>
 
-            <ScrollView style={styles.modalBody}>
-              <Text style={[styles.modalLabel, { color: colors.text }]}>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <ThemedText type="body" style={{ fontWeight: '600', marginBottom: Spacing.md }}>
                 ¿Qué problema tuviste?
-              </Text>
+              </ThemedText>
 
-              {issues.map((issue) => (
-                <TouchableOpacity
-                  key={issue.id}
-                  style={[
-                    styles.issueOption,
-                    {
-                      backgroundColor:
-                        selectedIssue === issue.id
-                          ? colors.primary + '20'
-                          : colors.background,
-                      borderColor:
-                        selectedIssue === issue.id
-                          ? colors.primary
-                          : colors.border,
-                    },
-                  ]}
-                  onPress={() => setSelectedIssue(issue.id)}
-                >
-                  <Ionicons
-                    name={issue.icon as any}
-                    size={24}
-                    color={
-                      selectedIssue === issue.id
-                        ? colors.primary
-                        : colors.textSecondary
-                    }
-                  />
-                  <Text
+              {ISSUES.map((issue) => {
+                const selected = selectedIssue === issue.id;
+                return (
+                  <Pressable
+                    key={issue.id}
                     style={[
-                      styles.issueOptionText,
+                      styles.issueOption,
                       {
-                        color:
-                          selectedIssue === issue.id
-                            ? colors.primary
-                            : colors.text,
+                        backgroundColor: selected ? ComeYaColors.primary + '15' : theme.backgroundSecondary,
+                        borderColor: selected ? ComeYaColors.primary : theme.border,
                       },
                     ]}
+                    onPress={() => { setSelectedIssue(issue.id); Haptics.selectionAsync(); }}
                   >
-                    {issue.label}
-                  </Text>
-                  {selectedIssue === issue.id && (
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={24}
-                      color={colors.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-              ))}
+                    <Feather name={issue.icon as any} size={22} color={selected ? ComeYaColors.primary : theme.textSecondary} />
+                    <ThemedText type="body" style={{ flex: 1, marginLeft: Spacing.sm, color: selected ? ComeYaColors.primary : theme.text }}>
+                      {issue.label}
+                    </ThemedText>
+                    {selected && <Feather name="check-circle" size={20} color={ComeYaColors.primary} />}
+                  </Pressable>
+                );
+              })}
 
               {selectedIssue === 'other' && (
                 <TextInput
-                  style={[
-                    styles.textArea,
-                    {
-                      backgroundColor: colors.background,
-                      color: colors.text,
-                      borderColor: colors.border,
-                    },
-                  ]}
+                  style={[styles.textArea, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                   placeholder="Describe el problema..."
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={theme.textSecondary}
                   value={disputeReason}
                   onChangeText={setDisputeReason}
                   multiline
@@ -345,25 +270,20 @@ export default function DeliveryConfirmationScreen({
               )}
             </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[
-                  styles.submitDisputeButton,
-                  {
-                    backgroundColor: selectedIssue ? '#FF3B30' : colors.border,
-                  },
-                ]}
+            <View style={[styles.modalFooter, { borderTopColor: theme.border }]}>
+              <Pressable
+                style={[styles.submitButton, { backgroundColor: selectedIssue ? ComeYaColors.error : theme.backgroundSecondary }]}
                 onPress={handleSubmitDispute}
                 disabled={!selectedIssue || loading}
               >
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
                 ) : (
-                  <Text style={styles.submitDisputeButtonText}>
-                    Enviar Reporte
-                  </Text>
+                  <ThemedText type="body" style={{ color: selectedIssue ? '#FFF' : theme.textSecondary, fontWeight: '700' }}>
+                    Enviar reporte
+                  </ThemedText>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         </View>
@@ -373,198 +293,27 @@ export default function DeliveryConfirmationScreen({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  headerIcon: {
-    alignItems: 'center',
-    marginVertical: 32,
-  },
-  iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  orderCard: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  businessName: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  orderDetail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  orderLabel: {
-    fontSize: 14,
-  },
-  orderValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  infoCard: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-    marginBottom: 32,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#34C759',
-    marginBottom: 4,
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-  },
-  actions: {
-    gap: 12,
-    marginBottom: 20,
-  },
-  confirmButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 18,
-    borderRadius: 12,
-    gap: 12,
-  },
-  confirmButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  issueButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 18,
-    borderRadius: 12,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#FF3B30',
-  },
-  issueButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  autoReleaseCard: {
-    flexDirection: 'row',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-    marginBottom: 32,
-  },
-  autoReleaseText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  issueOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    gap: 12,
-    borderWidth: 1,
-  },
-  issueOptionText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  textArea: {
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    marginTop: 12,
-    minHeight: 100,
-  },
-  modalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
-  },
-  submitDisputeButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  submitDisputeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-  },
+  container: { flex: 1 },
+  content: { padding: Spacing.lg, paddingBottom: 60 },
+  headerIcon: { alignItems: 'center', marginVertical: 32 },
+  iconCircle: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
+  title: { textAlign: 'center', marginBottom: Spacing.sm },
+  subtitle: { textAlign: 'center', lineHeight: 22, marginBottom: Spacing.xl },
+  orderCard: { padding: Spacing.lg, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
+  orderHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md, paddingBottom: Spacing.md, borderBottomWidth: 1 },
+  businessIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  orderDetail: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm },
+  infoCard: { flexDirection: 'row', alignItems: 'flex-start', padding: Spacing.md, borderRadius: BorderRadius.md, marginBottom: Spacing.xl },
+  confirmButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, padding: 18, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
+  confirmButtonText: { color: '#FFF', fontWeight: '700', fontSize: 17 },
+  issueButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 18, borderRadius: BorderRadius.lg, borderWidth: 1.5, marginBottom: Spacing.md },
+  autoReleaseCard: { flexDirection: 'row', alignItems: 'flex-start', padding: Spacing.md, borderRadius: BorderRadius.md, marginTop: Spacing.sm },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing.lg, borderBottomWidth: 1 },
+  modalBody: { padding: Spacing.lg },
+  issueOption: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.md, marginBottom: Spacing.sm, borderWidth: 1.5 },
+  textArea: { padding: Spacing.md, borderRadius: BorderRadius.md, fontSize: 15, borderWidth: 1, marginTop: Spacing.sm, minHeight: 100 },
+  modalFooter: { padding: Spacing.lg, borderTopWidth: 1 },
+  submitButton: { padding: 16, borderRadius: BorderRadius.lg, alignItems: 'center' },
 });
