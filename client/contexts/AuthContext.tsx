@@ -187,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
       await AsyncStorage.setItem("token", data.token);
       setUser(newUser);
+      setToken(data.token);
       registerPushToken();
       return { success: true };
     }

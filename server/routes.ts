@@ -47,6 +47,7 @@ import orderChatRoutes from "./routes/orderChat";
 import stripePaymentRoutes from "./routes/stripePaymentRoutes";
 import stripeConnectRoutes from "./routes/stripeConnect";
 import pickupRoutes from "./routes/pickup";
+import registrationRoutes from "./routes/registration";
 
 const router = express.Router();
 
@@ -160,5 +161,6 @@ router.use("/stripe",               stripePaymentRoutes);
 router.use("/connect",              stripeConnectRoutes);
 router.use("/business/stripe",      stripeConnectRoutes);
 router.use("/pickup",               pickupRoutes);
+router.use("/registration",        registrationRoutes);
 
 export default router;

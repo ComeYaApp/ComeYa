@@ -72,7 +72,7 @@ router.post("/phone-login", async (req, res) => {
           email: signupData.email || null,
           password: hashedPassword,
           role: signupData.role || "customer",
-          isActive: true,
+          isActive: signupData.role === "customer" ? true : false, // Solo clientes activos inmediatamente
           phoneVerified: true,
           createdAt: new Date(),
         };
@@ -149,9 +149,9 @@ router.post("/dev-email-login", async (req, res) => {
     if (user.password) {
       const bcrypt = await import("bcrypt");
       const isValid = await bcrypt.compare(password, user.password);
-      if (!isValid) return res.status(401).json({ error: "Contraseña incorrecta" });
+      if (!isValid) return res.status(401).json({ error: "Credenciales incorrectas. Verifica tu correo y contraseña." });
     } else {
-      return res.status(401).json({ error: "Esta cuenta no tiene contraseña configurada" });
+      return res.status(401).json({ error: "Esta cuenta no tiene contraseña configurada. Inicia sesión con código SMS." });
     }
 
     const token = signToken(user.id);

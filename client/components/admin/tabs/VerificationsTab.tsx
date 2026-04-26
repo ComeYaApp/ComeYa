@@ -194,8 +194,69 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                     <Row label="Registrado" value={new Date(selected.createdAt).toLocaleDateString("es-ES")} theme={theme} />
                   </Section>
 
+                  {/* Foto de perfil (REPARTIDORES) */}
+                  {selected.role === "delivery_driver" && (
+                    <Section title="Foto de perfil" theme={theme}>
+                      {selected.profileImage ? (
+                        <Image source={{ uri: selected.profileImage }} style={s.docImage} resizeMode="cover" />
+                      ) : (
+                        <View style={[s.noDoc, { backgroundColor: theme.backgroundRoot }]}>
+                          <Feather name="user" size={32} color={theme.textSecondary} />
+                          <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 8 }}>Sin foto de perfil</Text>
+                        </View>
+                      )}
+                    </Section>
+                  )}
+
+                  {/* Información del vehículo (REPARTIDORES) */}
+                  {selected.role === "delivery_driver" && (
+                    <>
+                      <Section title="Información del vehículo" theme={theme}>
+                        <Row label="Tipo" value={selected.deliveryDriver?.vehicleType || "No especificado"} theme={theme} />
+                        {selected.deliveryDriver && ["motorcycle", "car"].includes(selected.deliveryDriver.vehicleType) && (
+                          <>
+                            <Row label="Matrícula" value={selected.deliveryDriver.vehiclePlate || "No proporcionada"} theme={theme} />
+                            <Row label="Marca" value={selected.deliveryDriver.vehicleBrand || "No proporcionada"} theme={theme} />
+                            <Row label="Modelo" value={selected.deliveryDriver.vehicleModel || "No proporcionado"} theme={theme} />
+                            <Row label="Color" value={selected.deliveryDriver.vehicleColor || "No proporcionado"} theme={theme} />
+                          </>
+                        )}
+                      </Section>
+
+                      {/* Foto del vehículo */}
+                      <Section title="Foto del vehículo" theme={theme}>
+                        {selected.deliveryDriver?.vehiclePhoto ? (
+                          <Image source={{ uri: selected.deliveryDriver.vehiclePhoto }} style={s.docImage} resizeMode="cover" />
+                        ) : (
+                          <View style={[s.noDoc, { backgroundColor: theme.backgroundRoot }]}>
+                            <Feather name="truck" size={32} color={theme.textSecondary} />
+                            <Text style={{ color: theme.textSecondary, fontSize: 13, marginTop: 8 }}>Sin foto del vehículo</Text>
+                          </View>
+                        )}
+                      </Section>
+
+                      {/* Documentos del vehículo (solo motorcycle/car) */}
+                      {selected.deliveryDriver && ["motorcycle", "car"].includes(selected.deliveryDriver.vehicleType) && (
+                        <Section title="Documentos del vehículo" theme={theme}>
+                          <DocRow label="Permiso de circulación" url={selected.deliveryDriver.vehicleDocument} theme={theme} />
+                          <DocRow label="Seguro" url={selected.deliveryDriver.insuranceDocument} theme={theme} />
+                        </Section>
+                      )}
+                    </>
+                  )}
+
+                  {/* Información del negocio (BUSINESS_OWNER) */}
+                  {selected.role === "business_owner" && selected.business && (
+                    <Section title="Información del negocio" theme={theme}>
+                      <Row label="Nombre" value={selected.business.name || "No proporcionado"} theme={theme} />
+                      <Row label="Tipo" value={selected.business.type || "No especificado"} theme={theme} />
+                      <Row label="Dirección" value={selected.business.address || "No proporcionada"} theme={theme} />
+                      <Row label="Teléfono" value={selected.business.phone || "No proporcionado"} theme={theme} />
+                    </Section>
+                  )}
+
                   {/* Documentos */}
-                  <Section title="Documentos subidos" theme={theme}>
+                  <Section title="Documentos personales" theme={theme}>
                     <DocRow label="Foto DNI/NIE"       url={selected.idDocumentUrl}       theme={theme} />
                     <DocRow label="Cert. autónomo/empresa" url={selected.autonomoDocumentUrl} theme={theme} />
                   </Section>
@@ -342,4 +403,6 @@ const s = StyleSheet.create({
   actions:     { flexDirection: "row", gap: 12, marginTop: 8, marginBottom: 20 },
   actionBtn:   { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 14, borderRadius: 12, gap: 8 },
   actionBtnText: { color: "#FFF", fontWeight: "700", fontSize: 15 },
+  docImage:    { width: "100%", height: 200, borderRadius: 10 },
+  noDoc:       { width: "100%", height: 200, borderRadius: 10, justifyContent: "center", alignItems: "center" },
 });

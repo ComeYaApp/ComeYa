@@ -1343,14 +1343,17 @@ export default function AdminMenuScreen() {
                         {new Date(log.createdAt).toLocaleString('es-ES')}
                       </ThemedText>
                     </View>
-                    <ThemedText style={{ marginBottom: 4 }}>
-                      {log.resource}{log.resourceId ? ` (${log.resourceId.slice(0, 8)}...)` : ''}
+                    <ThemedText style={{ marginBottom: 4, color: theme.text }}>
+                      {log.entityType || log.entity_type}{(log.entityId || log.entity_id) ? ` (${(log.entityId || log.entity_id).slice(0, 8)}...)` : ''}
                     </ThemedText>
-                    {log.userEmail && (
-                      <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>Por: {log.userEmail}</ThemedText>
+                    {log.changes && (
+                      <ThemedText style={{ color: theme.textSecondary, fontSize: 12, marginBottom: 4 }}>Cambios: {log.changes}</ThemedText>
                     )}
-                    {log.ipAddress && (
-                      <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>IP: {log.ipAddress}</ThemedText>
+                    {(log.userId || log.user_id) && (
+                      <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>Usuario: {(log.userId || log.user_id).slice(0, 8)}...</ThemedText>
+                    )}
+                    {(log.ipAddress || log.ip_address) && (
+                      <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>IP: {log.ipAddress || log.ip_address}</ThemedText>
                     )}
                   </View>
                 ))}

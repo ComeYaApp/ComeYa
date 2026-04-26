@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator, ImageBackground, TextInput, Platform,
+  ActivityIndicator, ImageBackground, TextInput, Platform, Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { AlertModal } from "@/components/AlertModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
@@ -44,6 +45,18 @@ const BUSINESS_TYPES = [
   { id: "other",      name: "Otro" },
 ];
 
+const VEHICLE_TYPES = [
+  { id: "bicycle", name: "Bicicleta", icon: "🚲", requiresPlate: false, requiresInsurance: false },
+  { id: "ebike", name: "Bici eléctrica", icon: "⚡🚲", requiresPlate: false, requiresInsurance: false },
+  { id: "scooter", name: "Patinete", icon: "🛴", requiresPlate: false, requiresInsurance: false },
+  { id: "motorcycle", name: "Moto/Ciclomotor", icon: "🏍️", requiresPlate: true, requiresInsurance: true },
+  { id: "car", name: "Coche", icon: "🚗", requiresPlate: true, requiresInsurance: true },
+];
+
+const VEHICLE_COLORS = [
+  "Blanco", "Negro", "Gris", "Plata", "Rojo", "Azul", "Verde", "Amarillo", "Naranja", "Otro"
+];
+
 const TOTAL_STEPS = 4;
 
 export default function SignupScreen({ navigation, route }: SignupScreenProps) {
@@ -58,6 +71,12 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showUserExistsModal, setShowUserExistsModal] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: "success" | "error" | "warning" | "info";
+    title: string;
+    message: string;
+  }>({ visible: false, type: "info", title: "", message: "" });
 
   // Paso 1 — Rol + datos personales
   const [role, setRole] = useState<UserRole>("customer");
@@ -82,6 +101,15 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
   // Paso 4 — Documentos
   const [idDocumentUri, setIdDocumentUri] = useState<string | null>(null);
   const [autonomoDocumentUri, setAutonomoDocumentUri] = useState<string | null>(null);
+  const [vehicleDocumentUri, setVehicleDocumentUri] = useState<string | null>(null);
+  const [insuranceDocumentUri, setInsuranceDocumentUri] = useState<string | null>(null);
+  const [profilePhotoUri, setProfilePhotoUri] = useState<string | null>(null);
+  const [vehiclePhotoUri, setVehiclePhotoUri] = useState<string | null>(null);
+  const [vehicleType, setVehicleType] = useState<string>("bicycle");
+  const [vehiclePlate, setVehiclePlate] = useState("");
+  const [vehicleBrand, setVehicleBrand] = useState("");
+  const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleColor, setVehicleColor] = useState("");
 
   const formatPhone = (v: string) => {
     const n = v.replace(/\D/g, "");
@@ -97,8 +125,19 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     if (s === 1) {
       if (!firstName.trim()) e.firstName = "Nombre requerido";
       if (!lastName.trim()) e.lastName = "Apellidos requeridos";
-      if (!dni.trim()) e.dni = "DNI/NIE requerido";
-      else if (!/^[0-9XYZ][0-9]{6,7}[A-Z]$/i.test(dni.trim())) e.dni = "Formato inválido (ej: 12345678A)";
+      if (!dni.trim()) {
+        e.dni = "DNI/NIE requerido";
+      } else {
+        const dniClean = dni.trim().toUpperCase();
+        // DNI: 8 dígitos + letra (ej: 12345678Z)
+        const dniPattern = /^[0-9]{8}[A-Z]$/;
+        // NIE: X/Y/Z + 7 dígitos + letra (ej: X1234567L)
+        const niePattern = /^[XYZ][0-9]{7}[A-Z]$/;
+        
+        if (!dniPattern.test(dniClean) && !niePattern.test(dniClean)) {
+          e.dni = "Formato inválido. DNI: 12345678A o NIE: X1234567L";
+        }
+      }
       if (!phone || phone.replace(/\D/g, "").length < 9) e.phone = "Teléfono de 9 dígitos requerido";
     }
     if (s === 2) {
@@ -106,7 +145,11 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
       if (!city.trim()) e.city = "Ciudad requerida";
     }
     if (s === 3) {
-      if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Correo inválido";
+      if (!email.trim()) {
+        e.email = "Correo electrónico requerido";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        e.email = "Correo inválido";
+      }
       if (!password) e.password = "Contraseña requerida";
       else if (password.length < 8) e.password = "Mínimo 8 caracteres";
       if (password !== confirmPassword) e.confirmPassword = "Las contraseñas no coinciden";
@@ -116,7 +159,27 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     }
     if (s === 4 && needsDocs) {
       if (!idDocumentUri) e.idDocument = "Foto del DNI/NIE requerida";
-      if (!autonomoDocumentUri) e.autonomoDocument = "Documento de autónomo/empresa requerido";
+      if (role === "business_owner") {
+        if (!autonomoDocumentUri) e.autonomoDocument = "Documento de autónomo/empresa requerido";
+      }
+      if (role === "delivery_driver") {
+        if (!profilePhotoUri) e.profilePhoto = "Foto de perfil requerida";
+        if (!autonomoDocumentUri) e.autonomoDocument = "Alta de autónomo requerida";
+        if (!vehicleType) e.vehicleType = "Tipo de vehículo requerido";
+        
+        const selectedVehicle = VEHICLE_TYPES.find(v => v.id === vehicleType);
+        if (selectedVehicle?.requiresPlate) {
+          if (!vehiclePlate.trim()) e.vehiclePlate = "Matrícula requerida";
+          if (!vehicleBrand.trim()) e.vehicleBrand = "Marca requerida";
+          if (!vehicleModel.trim()) e.vehicleModel = "Modelo requerido";
+          if (!vehicleColor) e.vehicleColor = "Color requerido";
+          if (!vehiclePhotoUri) e.vehiclePhoto = "Foto del vehículo requerida";
+          if (!vehicleDocumentUri) e.vehicleDocument = "Permiso de circulación requerido";
+          if (!insuranceDocumentUri) e.insuranceDocument = "Seguro obligatorio requerido";
+        } else {
+          if (!vehiclePhotoUri) e.vehiclePhoto = "Foto del vehículo requerida";
+        }
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -143,7 +206,12 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
   const pickDocument = async (setter: (uri: string) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showToast("Se necesita permiso para acceder a la galería", "error");
+      setAlertConfig({
+        visible: true,
+        type: "warning",
+        title: "Permiso requerido",
+        message: "Se necesita permiso para acceder a la galería",
+      });
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -164,7 +232,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
       const fullAddress = `${street.trim()}, ${city.trim()}${zipCode ? ` ${zipCode}` : ""}`;
 
-      const result = await signup(fullName, role, formattedPhone, email.trim() || undefined, password);
+      const result = await signup(fullName, role, formattedPhone, email.trim(), password);
 
       if (result?.requiresVerification) {
         // Guardar datos extra para completar perfil tras verificación
@@ -182,22 +250,103 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
           }));
         }
 
-        // Si hay documentos, subirlos al servidor
-        if (needsDocs && (idDocumentUri || autonomoDocumentUri)) {
+        // Subir documentos a Cloudinary
+        if (needsDocs) {
           try {
             const userId = result.userId;
             if (userId) {
-              const formData = new FormData();
+              const documentData: any = {};
+              
+              // Convertir URIs a base64
               if (idDocumentUri) {
-                formData.append("idDocument", { uri: idDocumentUri, name: "id_document.jpg", type: "image/jpeg" } as any);
+                const response = await fetch(idDocumentUri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve) => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                documentData.idDocument = base64;
               }
+              
               if (autonomoDocumentUri) {
-                formData.append("autonomoDocument", { uri: autonomoDocumentUri, name: "autonomo_document.jpg", type: "image/jpeg" } as any);
+                const response = await fetch(autonomoDocumentUri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve) => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                documentData.autonomoDocument = base64;
               }
-              await apiRequest("POST", `/api/users/${userId}/verification-documents`, formData);
+              
+              if (profilePhotoUri) {
+                const response = await fetch(profilePhotoUri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve) => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                documentData.profilePhoto = base64;
+              }
+              
+              if (vehiclePhotoUri) {
+                const response = await fetch(vehiclePhotoUri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve) => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                documentData.vehiclePhoto = base64;
+              }
+              
+              if (vehicleDocumentUri) {
+                const response = await fetch(vehicleDocumentUri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve) => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                documentData.vehicleDocument = base64;
+              }
+              
+              if (insuranceDocumentUri) {
+                const response = await fetch(insuranceDocumentUri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve) => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                documentData.insuranceDocument = base64;
+              }
+              
+              // Agregar datos del vehículo si es repartidor
+              if (role === "delivery_driver") {
+                documentData.userId = userId;
+                documentData.vehicleType = vehicleType;
+                documentData.vehiclePlate = vehiclePlate.toUpperCase();
+                documentData.vehicleBrand = vehicleBrand;
+                documentData.vehicleModel = vehicleModel;
+                documentData.vehicleColor = vehicleColor;
+              } else {
+                documentData.userId = userId;
+              }
+              
+              // Subir a Cloudinary
+              await apiRequest("POST", "/api/registration/upload-documents", documentData);
             }
           } catch (e) {
             console.error("Error uploading docs:", e);
+            setAlertConfig({
+              visible: true,
+              type: "warning",
+              title: "Documentos pendientes",
+              message: "No pudimos subir tus documentos. Puedes completarlos después desde tu perfil.",
+            });
           }
         }
 
@@ -209,7 +358,12 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
       if (error.message?.includes("already") || error.message?.includes("existe")) {
         setShowUserExistsModal(true);
       } else {
-        showToast(error.message || "Error al crear la cuenta", "error");
+        setAlertConfig({
+          visible: true,
+          type: "error",
+          title: "Error al crear cuenta",
+          message: error.message || "No pudimos crear tu cuenta. Intenta nuevamente.",
+        });
       }
     } finally {
       setIsLoading(false);
@@ -281,7 +435,22 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
 
                 <Field label="Nombre *" placeholder="Tu nombre" value={firstName} onChangeText={setFirstName} error={errors.firstName} icon="user" autoCapitalize="words" />
                 <Field label="Apellidos *" placeholder="Tus apellidos" value={lastName} onChangeText={setLastName} error={errors.lastName} icon="user" autoCapitalize="words" />
-                <Field label="DNI / NIE *" placeholder="12345678A" value={dni} onChangeText={(t) => setDni(t.toUpperCase())} error={errors.dni} icon="credit-card" autoCapitalize="characters" />
+                
+                <ThemedText type="small" style={styles.inputLabel}>DNI / NIE *</ThemedText>
+                <View style={[styles.inputBox, errors.dni ? styles.inputBoxError : null]}>
+                  <Feather name="credit-card" size={18} color="#666" style={{ marginRight: 8 }} />
+                  <TextInput
+                    placeholder="12345678A"
+                    value={dni}
+                    onChangeText={(t) => setDni(t.toUpperCase().slice(0, 9))}
+                    autoCapitalize="characters"
+                    placeholderTextColor="#999"
+                    style={styles.textInput}
+                    maxLength={9}
+                  />
+                </View>
+                {errors.dni ? <ThemedText type="caption" style={styles.inputError}>{errors.dni}</ThemedText> : null}
+                <ThemedText type="caption" style={{ color: "#888", marginBottom: Spacing.md }}>8 dígitos + letra (DNI) o letra + 7 dígitos + letra (NIE)</ThemedText>
 
                 <ThemedText type="small" style={styles.inputLabel}>Teléfono *</ThemedText>
                 <View style={styles.phoneRow}>
@@ -317,7 +486,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
             {/* ── PASO 3: Contraseña + email + negocio ── */}
             {step === 3 && (
               <>
-                <Field label="Correo electrónico (opcional)" placeholder="tu@email.com" value={email} onChangeText={setEmail} error={errors.email} icon="mail" keyboardType="email-address" autoCapitalize="none" />
+                <Field label="Correo electrónico *" placeholder="tu@email.com" value={email} onChangeText={setEmail} error={errors.email} icon="mail" keyboardType="email-address" autoCapitalize="none" />
 
                 <ThemedText type="small" style={styles.inputLabel}>Contraseña *</ThemedText>
                 <View style={[styles.inputBox, errors.password ? styles.inputBoxError : null]}>
@@ -393,12 +562,172 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                 />
 
                 <DocUpload
-                  label={role === "business_owner" ? "Certificado de autónomo / empresa *" : "Documento de autónomo *"}
-                  description="Alta en Hacienda o certificado de empresa"
+                  label={role === "business_owner" ? "Certificado de autónomo / empresa *" : "Alta de autónomo (modelo 036/037) *"}
+                  description={role === "business_owner" ? "Alta en Hacienda o certificado de empresa" : "Documento de alta en Hacienda como autónomo"}
                   uri={autonomoDocumentUri}
                   error={errors.autonomoDocument}
                   onPress={() => pickDocument(setAutonomoDocumentUri)}
                 />
+
+                {role === "delivery_driver" && (
+                  <>
+                    <View style={styles.divider} />
+                    <ThemedText type="small" style={[styles.sectionLabel, { marginTop: 0 }]}>Foto de perfil</ThemedText>
+                    <ThemedText type="caption" style={{ color: "#888", marginBottom: Spacing.sm }}>El cliente verá tu foto para identificarte al momento de la entrega</ThemedText>
+                    
+                    <Pressable
+                      onPress={() => pickDocument(setProfilePhotoUri)}
+                      style={[styles.photoUpload, profilePhotoUri ? styles.photoUploadDone : null, errors.profilePhoto ? styles.inputBoxError : null]}
+                    >
+                      {profilePhotoUri ? (
+                        <View style={styles.photoPreview}>
+                          <Image source={{ uri: profilePhotoUri }} style={styles.photoImage} />
+                          <View style={styles.photoOverlay}>
+                            <Feather name="check-circle" size={32} color="#FFF" />
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.photoPlaceholder}>
+                          <Feather name="camera" size={32} color="#888" />
+                          <ThemedText type="small" style={{ color: "#666", marginTop: Spacing.xs, fontWeight: "600" }}>Tomar foto de perfil</ThemedText>
+                          <ThemedText type="caption" style={{ color: "#888", textAlign: "center", marginTop: 4 }}>Foto clara de tu rostro</ThemedText>
+                        </View>
+                      )}
+                    </Pressable>
+                    {errors.profilePhoto ? <ThemedText type="caption" style={styles.inputError}>{errors.profilePhoto}</ThemedText> : null}
+
+                    <View style={styles.divider} />
+                    <ThemedText type="small" style={[styles.sectionLabel, { marginTop: 0 }]}>Información del vehículo</ThemedText>
+                    <ThemedText type="caption" style={{ color: "#888", marginBottom: Spacing.sm }}>El cliente verá esta información para identificarte</ThemedText>
+                    
+                    <ThemedText type="small" style={styles.inputLabel}>Tipo de vehículo *</ThemedText>
+                    <View style={styles.vehicleTypeGrid}>
+                      {VEHICLE_TYPES.map((v) => (
+                        <Pressable
+                          key={v.id}
+                          onPress={() => { setVehicleType(v.id); Haptics.selectionAsync(); }}
+                          style={[styles.vehicleTypeCard, vehicleType === v.id && styles.vehicleTypeCardActive]}
+                        >
+                          <ThemedText style={{ fontSize: 28, marginBottom: 4 }}>{v.icon}</ThemedText>
+                          <ThemedText type="caption" style={{ fontWeight: "600", textAlign: "center", color: vehicleType === v.id ? ComeYaColors.primary : "#333" }}>{v.name}</ThemedText>
+                        </Pressable>
+                      ))}
+                    </View>
+                    {errors.vehicleType ? <ThemedText type="caption" style={styles.inputError}>{errors.vehicleType}</ThemedText> : null}
+
+                    {VEHICLE_TYPES.find(v => v.id === vehicleType)?.requiresPlate && (
+                      <>
+                        <Field 
+                          label="Matrícula *" 
+                          placeholder="1234ABC" 
+                          value={vehiclePlate} 
+                          onChangeText={(t: string) => setVehiclePlate(t.toUpperCase().slice(0, 10))} 
+                          error={errors.vehiclePlate} 
+                          icon="hash" 
+                          autoCapitalize="characters" 
+                        />
+                        
+                        <Field 
+                          label="Marca *" 
+                          placeholder="Honda, Yamaha, Seat..." 
+                          value={vehicleBrand} 
+                          onChangeText={setVehicleBrand} 
+                          error={errors.vehicleBrand} 
+                          icon="tag" 
+                          autoCapitalize="words" 
+                        />
+                        
+                        <Field 
+                          label="Modelo *" 
+                          placeholder="PCX 125, Ibiza..." 
+                          value={vehicleModel} 
+                          onChangeText={setVehicleModel} 
+                          error={errors.vehicleModel} 
+                          icon="tag" 
+                          autoCapitalize="words" 
+                        />
+
+                        <ThemedText type="small" style={styles.inputLabel}>Color *</ThemedText>
+                        <View style={styles.chipRow}>
+                          {VEHICLE_COLORS.map((color) => (
+                            <Pressable
+                              key={color}
+                              onPress={() => { setVehicleColor(color); Haptics.selectionAsync(); }}
+                              style={[styles.chip, vehicleColor === color && styles.chipActive]}
+                            >
+                              <ThemedText type="caption" style={vehicleColor === color ? styles.chipTextActive : styles.chipText}>{color}</ThemedText>
+                            </Pressable>
+                          ))}
+                        </View>
+                        {errors.vehicleColor ? <ThemedText type="caption" style={styles.inputError}>{errors.vehicleColor}</ThemedText> : null}
+
+                        <ThemedText type="small" style={styles.inputLabel}>Foto del vehículo *</ThemedText>
+                        <ThemedText type="caption" style={{ color: "#888", marginBottom: Spacing.sm }}>Foto clara donde se vea la matrícula y el color</ThemedText>
+                        <Pressable
+                          onPress={() => pickDocument(setVehiclePhotoUri)}
+                          style={[styles.photoUpload, vehiclePhotoUri ? styles.photoUploadDone : null, errors.vehiclePhoto ? styles.inputBoxError : null]}
+                        >
+                          {vehiclePhotoUri ? (
+                            <View style={styles.photoPreview}>
+                              <Image source={{ uri: vehiclePhotoUri }} style={styles.photoImage} />
+                              <View style={styles.photoOverlay}>
+                                <Feather name="check-circle" size={32} color="#FFF" />
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.photoPlaceholder}>
+                              <Feather name="camera" size={32} color="#888" />
+                              <ThemedText type="small" style={{ color: "#666", marginTop: Spacing.xs, fontWeight: "600" }}>Tomar foto del vehículo</ThemedText>
+                            </View>
+                          )}
+                        </Pressable>
+                        {errors.vehiclePhoto ? <ThemedText type="caption" style={styles.inputError}>{errors.vehiclePhoto}</ThemedText> : null}
+
+                        <DocUpload
+                          label="Permiso de circulación *"
+                          description="Documento del vehículo (ficha técnica)"
+                          uri={vehicleDocumentUri}
+                          error={errors.vehicleDocument}
+                          onPress={() => pickDocument(setVehicleDocumentUri)}
+                        />
+
+                        <DocUpload
+                          label="Seguro obligatorio *"
+                          description="Póliza de seguro vigente del vehículo"
+                          uri={insuranceDocumentUri}
+                          error={errors.insuranceDocument}
+                          onPress={() => pickDocument(setInsuranceDocumentUri)}
+                        />
+                      </>
+                    )}
+
+                    {!VEHICLE_TYPES.find(v => v.id === vehicleType)?.requiresPlate && (
+                      <>
+                        <ThemedText type="small" style={styles.inputLabel}>Foto del vehículo *</ThemedText>
+                        <ThemedText type="caption" style={{ color: "#888", marginBottom: Spacing.sm }}>Foto clara de tu bicicleta/patinete</ThemedText>
+                        <Pressable
+                          onPress={() => pickDocument(setVehiclePhotoUri)}
+                          style={[styles.photoUpload, vehiclePhotoUri ? styles.photoUploadDone : null, errors.vehiclePhoto ? styles.inputBoxError : null]}
+                        >
+                          {vehiclePhotoUri ? (
+                            <View style={styles.photoPreview}>
+                              <Image source={{ uri: vehiclePhotoUri }} style={styles.photoImage} />
+                              <View style={styles.photoOverlay}>
+                                <Feather name="check-circle" size={32} color="#FFF" />
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.photoPlaceholder}>
+                              <Feather name="camera" size={32} color="#888" />
+                              <ThemedText type="small" style={{ color: "#666", marginTop: Spacing.xs, fontWeight: "600" }}>Tomar foto del vehículo</ThemedText>
+                            </View>
+                          )}
+                        </Pressable>
+                        {errors.vehiclePhoto ? <ThemedText type="caption" style={styles.inputError}>{errors.vehiclePhoto}</ThemedText> : null}
+                      </>
+                    )}
+                  </>
+                )}
               </>
             )}
 
@@ -433,6 +762,14 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
           </View>
         </ScrollView>
       </View>
+
+      <AlertModal
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </ImageBackground>
   );
 }
@@ -516,4 +853,13 @@ const styles = StyleSheet.create({
   loginLink: { flexDirection: "row", justifyContent: "center", marginBottom: Spacing.lg },
   loginText: { color: "rgba(255,255,255,0.8)" },
   loginLinkText: { color: ComeYaColors.primary, fontWeight: "600" },
+  vehicleTypeGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm, marginBottom: Spacing.md },
+  vehicleTypeCard: { width: "30%", padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 2, borderColor: "#E0E0E0", backgroundColor: "#FFF", alignItems: "center" },
+  vehicleTypeCardActive: { borderColor: ComeYaColors.primary, backgroundColor: ComeYaColors.primaryLight },
+  photoUpload: { width: "100%", height: 200, borderRadius: BorderRadius.lg, borderWidth: 2, borderColor: "#E0E0E0", borderStyle: "dashed", backgroundColor: "#FAFAFA", overflow: "hidden", marginBottom: Spacing.md },
+  photoUploadDone: { borderColor: ComeYaColors.success, borderStyle: "solid" },
+  photoPreview: { width: "100%", height: "100%", position: "relative" },
+  photoImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  photoOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.3)", justifyContent: "center", alignItems: "center" },
+  photoPlaceholder: { flex: 1, justifyContent: "center", alignItems: "center", padding: Spacing.lg },
 });

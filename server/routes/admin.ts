@@ -353,11 +353,27 @@ router.get("/businesses/:id/products", authenticateToken, requireRole("admin"), 
 // Audit logs
 router.get("/logs", authenticateToken, requireRole("admin"), async (req, res) => {
   try {
-    const { auditLogs } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const logs = await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(200);
+    const logs = await db.execute(sql`
+      SELECT 
+        id,
+        user_id as userId,
+        action,
+        entity_type as entityType,
+        entity_id as entityId,
+        changes,
+        ip_address as ipAddress,
+        user_agent as userAgent,
+        created_at as createdAt
+      FROM audit_logs
+      ORDER BY created_at DESC
+      LIMIT 200
+    `);
     res.json({ success: true, logs });
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
+  } catch (error: any) {
+    console.error("Error fetching logs:", error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // System Settings

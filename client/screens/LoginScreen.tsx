@@ -25,6 +25,7 @@ import { Button } from "@/components/Button";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { PlaceholderImage } from "@/components/PlaceholderImage";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
+import { AlertModal } from "@/components/AlertModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
@@ -75,6 +76,12 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     FeaturedBusiness[]
   >([]);
   const [showBiometricOption, setShowBiometricOption] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    type: "success" | "error" | "warning" | "info";
+    title: string;
+    message: string;
+  }>({ visible: false, type: "info", title: "", message: "" });
 
   useEffect(() => {
     fetchFeaturedBusinesses();
@@ -150,12 +157,25 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       const result = await loginWithPassword(identifier, password);
 
       if (result?.requiresVerification) {
-        showToast("Verifica tu teléfono para continuar", "info");
-        navigation.navigate("VerifyPhone", { phone: normalizedPhone });
+        setAlertConfig({
+          visible: true,
+          type: "info",
+          title: "Verificación requerida",
+          message: "Verifica tu teléfono para continuar",
+        });
+        setTimeout(() => {
+          navigation.navigate("VerifyPhone", { phone: normalizedPhone });
+        }, 1500);
       }
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      showToast(error.message || "Error al iniciar sesión", "error");
+      const errorMessage = error.message || "Error al iniciar sesión";
+      setAlertConfig({
+        visible: true,
+        type: "error",
+        title: "Error de autenticación",
+        message: errorMessage,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -173,8 +193,15 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       const result = await requestPhoneLogin(normalizedPhone);
 
       if (result?.userNotFound) {
-        showToast("No encontramos tu cuenta. Regístrate primero.", "info");
-        navigation.navigate("Signup", { phone: normalizedPhone });
+        setAlertConfig({
+          visible: true,
+          type: "warning",
+          title: "Cuenta no encontrada",
+          message: "No encontramos tu cuenta. Regístrate primero.",
+        });
+        setTimeout(() => {
+          navigation.navigate("Signup", { phone: normalizedPhone });
+        }, 1500);
         return;
       }
 
@@ -183,7 +210,12 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       }
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      showToast(error.message || "Error al enviar código", "error");
+      setAlertConfig({
+        visible: true,
+        type: "error",
+        title: "Error al enviar código",
+        message: error.message || "No pudimos enviar el código SMS. Intenta nuevamente.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -196,10 +228,20 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     try {
       const success = await loginWithBiometric();
       if (!success) {
-        showToast("No se pudo verificar tu identidad", "error");
+        setAlertConfig({
+          visible: true,
+          type: "error",
+          title: "Verificación fallida",
+          message: "No se pudo verificar tu identidad. Intenta con otro método.",
+        });
       }
     } catch (error) {
-      showToast("Error con autenticación biométrica", "error");
+      setAlertConfig({
+        visible: true,
+        type: "error",
+        title: "Error biométrico",
+        message: "Hubo un problema con la autenticación biométrica.",
+      });
     } finally {
       setIsBiometricLoading(false);
     }
@@ -569,6 +611,14 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AlertModal
+        visible={alertConfig.visible}
+        type={alertConfig.type}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+      />
     </ImageBackground>
   );
 }

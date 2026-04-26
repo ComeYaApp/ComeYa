@@ -656,15 +656,37 @@ export default router;
 // GET /api/admin/verifications/pending — lista pendientes de aprobación
 router.get("/verifications/pending", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    const { users } = await import("@shared/schema-mysql");
+    const { users, deliveryDrivers, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const { inArray } = await import("drizzle-orm");
+    const { inArray, eq } = await import("drizzle-orm");
 
     const pending = await db.select().from(users).where(
       inArray(users.role, ["delivery_driver", "business_owner"])
     );
 
-    res.json({ success: true, users: pending });
+    // Enriquecer con datos de delivery_drivers y businesses
+    const enriched = await Promise.all(pending.map(async (user) => {
+      let deliveryDriver = null;
+      let business = null;
+
+      if (user.role === "delivery_driver") {
+        const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id)).limit(1);
+        deliveryDriver = dd || null;
+      }
+
+      if (user.role === "business_owner") {
+        const [biz] = await db.select().from(businesses).where(eq(businesses.ownerId, user.id)).limit(1);
+        business = biz || null;
+      }
+
+      return {
+        ...user,
+        deliveryDriver,
+        business,
+      };
+    }));
+
+    res.json({ success: true, users: enriched });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
