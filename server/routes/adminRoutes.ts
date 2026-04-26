@@ -408,6 +408,30 @@ router.post("/drivers/:id/unblock", authenticateToken, requireRole("admin", "sup
   }
 });
 
+// Add strike to driver
+router.post("/drivers/:id/strike", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason?.trim()) return res.status(400).json({ error: "La razón del strike es requerida" });
+    const { addStrike } = await import("../strikeService");
+    await addStrike(req.params.id, reason.trim());
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Remove strike from driver
+router.delete("/drivers/:id/strike", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { removeStrike } = await import("../strikeService");
+    await removeStrike(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Debug: Check database wallets (no auth for testing)
 router.get("/debug/wallets-noauth", async (req, res) => {
   try {

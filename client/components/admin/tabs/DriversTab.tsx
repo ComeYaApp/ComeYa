@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert,
+  ActivityIndicator, RefreshControl, Alert, TextInput, Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
@@ -40,6 +40,8 @@ export const DriversTab: React.FC<Props> = ({ theme, showToast }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected]   = useState<Driver | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [strikeModalVisible, setStrikeModalVisible] = useState(false);
+  const [strikeReason, setStrikeReason] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -74,6 +76,64 @@ export const DriversTab: React.FC<Props> = ({ theme, showToast }) => {
               if (data.success) {
                 showToast(`Repartidor ${action}do`, "success");
                 setSelected(null);
+                load();
+              } else {
+                showToast(data.error ?? "Error", "error");
+              }
+            } catch {
+              showToast("Error de conexión", "error");
+            } finally {
+              setProcessing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleAddStrike = () => {
+    setStrikeReason("");
+    setStrikeModalVisible(true);
+  };
+
+  const confirmAddStrike = async () => {
+    if (!strikeReason.trim() || !selected) return;
+    setStrikeModalVisible(false);
+    setProcessing(true);
+    try {
+      const res = await apiRequest("POST", `/api/admin/drivers/${selected.id}/strike`, { reason: strikeReason.trim() });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Strike añadido", "success");
+        setSelected({ ...selected, strikes: selected.strikes + 1 });
+        load();
+      } else {
+        showToast(data.error ?? "Error", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRemoveStrike = () => {
+    if (!selected || selected.strikes === 0) return;
+    Alert.alert(
+      "Quitar strike",
+      `¿Quitar 1 strike a ${selected.name}? Strikes actuales: ${selected.strikes}`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Quitar strike",
+          onPress: async () => {
+            setProcessing(true);
+            try {
+              const res = await apiRequest("DELETE", `/api/admin/drivers/${selected.id}/strike`);
+              const data = await res.json();
+              if (data.success) {
+                showToast("Strike eliminado", "success");
+                setSelected({ ...selected, strikes: Math.max(0, selected.strikes - 1) });
                 load();
               } else {
                 showToast(data.error ?? "Error", "error");
@@ -188,6 +248,64 @@ export const DriversTab: React.FC<Props> = ({ theme, showToast }) => {
               </>
           }
         </TouchableOpacity>
+
+        {/* Strikes */}
+        <View style={[s.card, { marginTop: 4 }]}>
+          <Text style={[s.cardTitle, { color: theme.text }]}>Gestionar strikes ({selected.strikes}/3)</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity
+              style={[s.btn, { flex: 1, backgroundColor: ComeYaColors.warning }]}
+              onPress={handleAddStrike}
+              disabled={processing || selected.strikes >= 3}
+            >
+              <Feather name="alert-triangle" size={15} color="#FFF" />
+              <Text style={s.btnText}>Añadir strike</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.btn, { flex: 1, backgroundColor: selected.strikes > 0 ? ComeYaColors.success : theme.backgroundSecondary }]}
+              onPress={handleRemoveStrike}
+              disabled={processing || selected.strikes === 0}
+            >
+              <Feather name="minus-circle" size={15} color={selected.strikes > 0 ? "#FFF" : theme.textSecondary} />
+              <Text style={[s.btnText, { color: selected.strikes > 0 ? "#FFF" : theme.textSecondary }]}>Quitar strike</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Modal razón del strike */}
+        <Modal visible={strikeModalVisible} transparent animationType="slide">
+          <View style={s.modalOverlay}>
+            <View style={[s.modalCard, { backgroundColor: theme.card }]}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={[s.cardTitle, { color: theme.text, marginBottom: 0 }]}>Razón del strike</Text>
+                <TouchableOpacity onPress={() => setStrikeModalVisible(false)}>
+                  <Feather name="x" size={22} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color: theme.textSecondary, marginBottom: 12, fontSize: 13 }}>
+                Describe el motivo del strike para {selected.name}. El repartidor recibirá una notificación.
+              </Text>
+              <TextInput
+                style={[s.textInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                placeholder="Ej: Cancelación injustificada, queja del cliente..."
+                placeholderTextColor={theme.textSecondary}
+                value={strikeReason}
+                onChangeText={setStrikeReason}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              <TouchableOpacity
+                style={[s.btn, { backgroundColor: strikeReason.trim() ? ComeYaColors.warning : theme.backgroundSecondary, marginTop: 12 }]}
+                onPress={confirmAddStrike}
+                disabled={!strikeReason.trim()}
+              >
+                <Feather name="alert-triangle" size={15} color={strikeReason.trim() ? "#FFF" : theme.textSecondary} />
+                <Text style={[s.btnText, { color: strikeReason.trim() ? "#FFF" : theme.textSecondary }]}>Confirmar strike</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     );
   }
@@ -300,4 +418,7 @@ const st = (theme: any) => StyleSheet.create({
   backText:    { fontSize: 14 },
   empty:       { alignItems: "center", paddingVertical: 60, gap: 12 },
   emptyText:   { fontSize: 15, fontWeight: "600" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalCard:   { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  textInput:   { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 14, minHeight: 80 },
 });

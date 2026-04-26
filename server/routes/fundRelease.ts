@@ -64,6 +64,25 @@ router.post("/dispute", authenticateToken, async (req, res) => {
       return res.status(400).json(result);
     }
 
+    // Disputa registrada → strike automático al repartidor
+    try {
+      const { orders } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+      const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+      if (order?.deliveryPersonId) {
+        const { addStrike } = await import("../strikeService");
+        await addStrike(
+          order.deliveryPersonId,
+          `Disputa del cliente: ${reason}`,
+          orderId
+        );
+      }
+    } catch (strikeErr) {
+      console.error("Error adding strike on dispute:", strikeErr);
+      // No bloqueamos la respuesta si falla el strike
+    }
+
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
