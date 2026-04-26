@@ -280,6 +280,17 @@ export default function BusinessDashboardScreen() {
     return translations[status] || status;
   };
 
+  const getPaymentMethodLabel = (method: string | null) => {
+    if (!method) return null;
+    const labels: Record<string, string> = {
+      bizum: "💳 Bizum",
+      transfer: "🏦 Transferencia",
+      card: "💳 Tarjeta",
+      cash: "💵 Efectivo",
+    };
+    return labels[method] || method;
+  };
+
   if (loading || businessLoading) {
     return (
       <LinearGradient colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']} style={styles.container}>
@@ -493,6 +504,11 @@ export default function BusinessDashboardScreen() {
                     {order.customerPhone ? (
                       <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
                         {order.customerPhone}
+                      </ThemedText>
+                    ) : null}
+                    {order.paymentMethod ? (
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                        {getPaymentMethodLabel(order.paymentMethod)}
                       </ThemedText>
                     ) : null}
                     <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>

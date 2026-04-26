@@ -565,14 +565,16 @@ export default function ProfileScreen() {
               />
             </>
           )}
-          <SettingsItem
-            icon="map-pin"
-            label="Direcciones guardadas"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("SavedAddresses");
-            }}
-          />
+          {user?.role === "customer" && (
+            <SettingsItem
+              icon="map-pin"
+              label="Direcciones guardadas"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate("SavedAddresses");
+              }}
+            />
+          )}
           {user?.role === "business_owner" && (
             <SettingsItem
               icon="credit-card"

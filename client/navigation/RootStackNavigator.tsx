@@ -81,6 +81,7 @@ export type RootStackParamList = {
   BusinessList: undefined;
   PaymentMethods: undefined;
   PaymentWalletSetup: undefined;
+  BusinessStripeSetup: undefined;
   Support: undefined;
   Review: {
     orderId: string;
@@ -203,6 +204,11 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="PaymentWalletSetup"
             component={PaymentWalletSetupScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BusinessStripeSetup"
+            component={BusinessStripeSetupScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
