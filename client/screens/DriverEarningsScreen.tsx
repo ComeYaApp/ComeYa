@@ -22,6 +22,7 @@ interface EarningsData {
   stats: {
     totalDeliveries: number;
     rating?: number;
+    totalRatings?: number;
     completionRate: number;
     avgDeliveryTime: number;
     todayEarnings?: number;
@@ -29,15 +30,15 @@ interface EarningsData {
     monthEarnings?: number;
     totalEarnings?: number;
   };
-}
-
-interface Transaction {
-  id: string;
-  type: string;
-  amount: number;
-  description: string;
-  status: string;
-  createdAt: string;
+  deliveries?: {
+    id: string;
+    businessName: string;
+    deliveryFee: number;
+    deliveryEarnings: number;
+    deliveredAt: string | null;
+    createdAt: string;
+    paymentMethod: string;
+  }[];
 }
 
 type Period = "today" | "week" | "month";
@@ -84,13 +85,7 @@ export default function DriverEarningsScreen() {
     enabled: !!user?.id,
   });
 
-  const { data: transactionsData, refetch: refetchTransactions } = useQuery<{
-    success: boolean;
-    transactions: Transaction[];
-  }>({
-    queryKey: ["/api/wallet/transactions"],
-    enabled: !!user?.id,
-  });
+  const handleRefresh = () => refetch();
 
   const earnings = {
     today: (data?.stats?.todayEarnings || 0) / 100,
@@ -101,23 +96,18 @@ export default function DriverEarningsScreen() {
 
   const stats = {
     totalDeliveries: data?.stats?.totalDeliveries || 0,
-    averageRating: data?.stats?.rating || 0,
+    // rating viene como 0-50 (0.0-5.0 * 10), mostrar como X.X
+    averageRating: data?.stats?.rating && data.stats.rating > 0
+      ? (data.stats.rating / 10).toFixed(1)
+      : data?.stats?.totalRatings && data.stats.totalRatings > 0
+        ? (data.stats.rating! / 10).toFixed(1)
+        : "—",
     completionRate: data?.stats?.completionRate || 100,
     avgDeliveryTime: data?.stats?.avgDeliveryTime || 0,
   };
 
-  const transactions = transactionsData?.transactions || [];
-  const deliveryTransactions = transactions.filter(
-    (t) => t.type === "delivery_income" || t.type === "income"
-  );
-
-  // Debug log
-  console.log("📊 Driver Earnings Debug:");
-  console.log("  Today:", earnings.today);
-  console.log("  Week:", earnings.week);
-  console.log("  Month:", earnings.month);
-  console.log("  Total:", earnings.total);
-  console.log("  Transactions:", deliveryTransactions.length);
+  // Usar pedidos reales del endpoint en lugar de transacciones de wallet
+  const deliveries = data?.deliveries || [];
 
   const periodLabels: Record<Period, string> = {
     today: "Hoy",
@@ -146,11 +136,6 @@ export default function DriverEarningsScreen() {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const handleRefresh = () => {
-    refetch();
-    refetchTransactions();
   };
 
   return (
@@ -307,7 +292,7 @@ export default function DriverEarningsScreen() {
           <StatCard
             icon="star"
             label="Calificación"
-            value={stats.averageRating.toFixed(1)}
+            value={stats.averageRating}
             color="#FF9800"
             delay={250}
           />
@@ -335,36 +320,30 @@ export default function DriverEarningsScreen() {
           📦 Historial de Entregas
         </ThemedText>
 
-        {deliveryTransactions.length > 0 ? (
-          deliveryTransactions.slice(0, 15).map((tx, index) => (
+        {deliveries.length > 0 ? (
+          deliveries.slice(0, 20).map((delivery, index) => (
             <Animated.View
-              key={tx.id}
+              key={delivery.id}
               entering={FadeInRight.delay(index * 50).springify()}
               style={[styles.deliveryItem, { backgroundColor: theme.card }, Shadows.sm]}
             >
-              <View
-                style={[
-                  styles.deliveryIcon,
-                  { backgroundColor: ComeYaColors.success + "20" },
-                ]}
-              >
+              <View style={[styles.deliveryIcon, { backgroundColor: ComeYaColors.success + "20" }]}>
                 <Feather name="check-circle" size={20} color={ComeYaColors.success} />
               </View>
               <View style={styles.deliveryInfo}>
-                <ThemedText type="body">{tx.description}</ThemedText>
+                <ThemedText type="body" numberOfLines={1}>{delivery.businessName}</ThemedText>
                 <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                  {formatDate(tx.createdAt)}
+                  {formatDate(delivery.deliveredAt || delivery.createdAt)}
                 </ThemedText>
               </View>
-              <ThemedText
-                type="body"
-                style={{
-                  color: ComeYaColors.success,
-                  fontWeight: "600",
-                }}
-              >
-                +€{(Math.abs(tx.amount) / 100).toFixed(2)}
-              </ThemedText>
+              <View style={{ alignItems: "flex-end" }}>
+                <ThemedText type="body" style={{ color: ComeYaColors.success, fontWeight: "600" }}>
+                  +€{((delivery.deliveryEarnings || delivery.deliveryFee) / 100).toFixed(2)}
+                </ThemedText>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  {delivery.paymentMethod === "cash" ? "Efectivo" : "Digital"}
+                </ThemedText>
+              </View>
             </Animated.View>
           ))
         ) : (

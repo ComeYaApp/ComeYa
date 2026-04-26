@@ -247,6 +247,16 @@ router.get(
         availableToWithdraw: canWithdraw,
         pendingCashOrders: cashSummary.pendingOrders || [],
       },
+      // Historial de entregas para mostrar en pantalla
+      deliveries: completedOrders.map(o => ({
+        id: o.id,
+        businessName: o.businessName,
+        deliveryFee: o.deliveryFee || 0,
+        deliveryEarnings: o.deliveryEarnings || o.deliveryFee || 0,
+        deliveredAt: o.deliveredAt,
+        createdAt: o.createdAt,
+        paymentMethod: o.paymentMethod,
+      })).sort((a, b) => new Date(b.deliveredAt || b.createdAt).getTime() - new Date(a.deliveredAt || a.createdAt).getTime()),
     });
   }),
 );
