@@ -178,6 +178,52 @@ router.patch("/businesses/:id/status", authenticateToken, requireRole("admin"), 
   }
 });
 
+// Update business custom commission
+router.put("/businesses/:id/commission", authenticateToken, requireRole("admin"), async (req, res) => {
+  try {
+    const { customCommission } = req.body;
+    
+    // Validate commission value
+    if (customCommission !== null && customCommission !== undefined) {
+      const commission = Number(customCommission);
+      if (isNaN(commission) || commission < 0 || commission > 100) {
+        return res.status(400).json({ error: "La comisión debe ser un número entre 0 y 100" });
+      }
+    }
+
+    const { businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    
+    const [business] = await db
+      .select()
+      .from(businesses)
+      .where(eq(businesses.id, req.params.id))
+      .limit(1);
+
+    if (!business) {
+      return res.status(404).json({ error: "Negocio no encontrado" });
+    }
+
+    await db
+      .update(businesses)
+      .set({ 
+        customCommission: customCommission === null ? null : Number(customCommission),
+        updatedAt: new Date()
+      })
+      .where(eq(businesses.id, req.params.id));
+
+    res.json({ 
+      success: true, 
+      message: customCommission === null 
+        ? "Se usará la comisión global del sistema" 
+        : `Comisión personalizada establecida en ${customCommission}%`
+    });
+  } catch (error: any) {
+    console.error("Update business commission error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all orders
 router.get("/orders", authenticateToken, requireRole("admin"), async (req, res) => {
   try {

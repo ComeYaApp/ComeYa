@@ -114,6 +114,7 @@ export interface Business {
   isActive: boolean;
   deliveryFee: number;
   minOrderAmount: number;
+  customCommission: number | null;
 }
 
 export interface Product {
