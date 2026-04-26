@@ -103,9 +103,19 @@ export default function EditProfileScreen() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await apiRequest("GET", `/api/users/${user?.id}/verification-status`);
-        const data = await res.json();
-        if (data.success) setVerificationStatus(data.verificationStatus || "pending");
+        const [verRes, profileRes] = await Promise.all([
+          apiRequest("GET", `/api/users/${user?.id}/verification-status`),
+          apiRequest("GET", "/api/users/profile/full"),
+        ]);
+        const verData = await verRes.json();
+        const profileData = await profileRes.json();
+        if (verData.success) setVerificationStatus(verData.verificationStatus || "pending");
+        if (profileData.success) {
+          if (profileData.dni) setDni(profileData.dni);
+          if (profileData.address) setAddress(profileData.address);
+          if (profileData.vehicleType) setVehicleType(profileData.vehicleType);
+          if (profileData.vehiclePlate) setVehiclePlate(profileData.vehiclePlate);
+        }
       } catch {}
     };
     if (user?.id) load();
@@ -138,6 +148,14 @@ export default function EditProfileScreen() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Error al actualizar");
+
+      // Actualizar vehículo si es repartidor
+      if (isDriver && (vehicleType || vehiclePlate)) {
+        await apiRequest("PUT", "/api/users/vehicle", {
+          vehicleType: vehicleType || undefined,
+          vehiclePlate: vehiclePlate.trim() || undefined,
+        });
+      }
 
       await updateUser({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined });
 

@@ -21,6 +21,59 @@ router.put("/push-token", authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/users/profile/full — perfil completo con datos de delivery_drivers
+router.get("/profile/full", authenticateToken, async (req, res) => {
+  try {
+    const { users, deliveryDrivers } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const [user] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    let vehicleType = null;
+    let vehiclePlate = null;
+    if (user.role === "delivery_driver") {
+      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id)).limit(1);
+      vehicleType = dd?.vehicleType ?? null;
+      vehiclePlate = dd?.vehiclePlate ?? null;
+    }
+
+    res.json({
+      success: true,
+      dni: user.dni,
+      address: user.address,
+      vehicleType,
+      vehiclePlate,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/users/vehicle — actualizar datos del vehículo del repartidor
+router.put("/vehicle", authenticateToken, async (req, res) => {
+  try {
+    const { deliveryDrivers } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const { vehicleType, vehiclePlate } = req.body;
+    const updates: any = {};
+    if (vehicleType) updates.vehicleType = vehicleType;
+    if (vehiclePlate !== undefined) updates.vehiclePlate = vehiclePlate || null;
+
+    const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id)).limit(1);
+    if (existing) {
+      await db.update(deliveryDrivers).set(updates).where(eq(deliveryDrivers.userId, req.user!.id));
+    } else {
+      await db.insert(deliveryDrivers).values({ id: crypto.randomUUID(), userId: req.user!.id, ...updates });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user profile
 router.get("/profile", authenticateToken, async (req, res) => {
   try {
