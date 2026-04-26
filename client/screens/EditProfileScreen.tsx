@@ -86,6 +86,10 @@ export default function EditProfileScreen() {
   // Solo repartidor
   const [vehicleType,  setVehicleType]  = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
+  const [vehicleBrand, setVehicleBrand] = useState("");
+  const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleColor, setVehicleColor] = useState("");
+  const [vehiclePhotoUri, setVehiclePhotoUri] = useState<string | null>(null);
 
   // Documentos
   const [idDocUri,       setIdDocUri]       = useState<string | null>(null);
@@ -115,6 +119,10 @@ export default function EditProfileScreen() {
           if (profileData.address) setAddress(profileData.address);
           if (profileData.vehicleType) setVehicleType(profileData.vehicleType);
           if (profileData.vehiclePlate) setVehiclePlate(profileData.vehiclePlate);
+          if (profileData.vehicleBrand) setVehicleBrand(profileData.vehicleBrand);
+          if (profileData.vehicleModel) setVehicleModel(profileData.vehicleModel);
+          if (profileData.vehicleColor) setVehicleColor(profileData.vehicleColor);
+          if (profileData.vehiclePhoto) setVehiclePhotoUri(profileData.vehiclePhoto);
         }
       } catch {}
     };
@@ -150,10 +158,41 @@ export default function EditProfileScreen() {
       if (!data.success) throw new Error(data.error || "Error al actualizar");
 
       // Actualizar vehículo si es repartidor
-      if (isDriver && (vehicleType || vehiclePlate)) {
+      if (isDriver && (vehicleType || vehiclePlate || vehicleBrand || vehicleModel || vehicleColor)) {
+        // Subir foto de vehículo a Cloudinary si es nueva (URI local)
+        let vehiclePhotoUrl: string | undefined = undefined;
+        if (vehiclePhotoUri && !vehiclePhotoUri.startsWith('http')) {
+          const xhr = new XMLHttpRequest();
+          const base64 = await new Promise<string>((resolve, reject) => {
+            xhr.onload = () => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(xhr.response);
+            };
+            xhr.onerror = reject;
+            xhr.responseType = 'blob';
+            xhr.open('GET', vehiclePhotoUri);
+            xhr.send();
+          });
+          const uploadRes = await apiRequest('POST', '/api/registration/upload-documents', {
+            userId: user!.id,
+            vehiclePhoto: base64,
+            vehicleType,
+          });
+          const uploadData = await uploadRes.json();
+          vehiclePhotoUrl = uploadData.uploadedUrls?.vehiclePhoto;
+        } else if (vehiclePhotoUri?.startsWith('http')) {
+          vehiclePhotoUrl = vehiclePhotoUri;
+        }
+
         await apiRequest("PUT", "/api/users/vehicle", {
           vehicleType: vehicleType || undefined,
           vehiclePlate: vehiclePlate.trim() || undefined,
+          vehicleBrand: vehicleBrand.trim() || undefined,
+          vehicleModel: vehicleModel.trim() || undefined,
+          vehicleColor: vehicleColor.trim() || undefined,
+          vehiclePhoto: vehiclePhotoUrl,
         });
       }
 
@@ -308,6 +347,25 @@ export default function EditProfileScreen() {
               <Input label="Matrícula" leftIcon="hash" value={vehiclePlate}
                 onChangeText={(t) => setVehiclePlate(t.toUpperCase())} placeholder="1234 ABC"
                 autoCapitalize="characters" />
+
+              {(vehicleType === 'motorcycle' || vehicleType === 'car') && (
+                <>
+                  <Input label="Marca" leftIcon="tag" value={vehicleBrand}
+                    onChangeText={setVehicleBrand} placeholder="Honda, Toyota..." />
+                  <Input label="Modelo" leftIcon="info" value={vehicleModel}
+                    onChangeText={setVehicleModel} placeholder="CBR 500, Corolla..." />
+                  <Input label="Color" leftIcon="droplet" value={vehicleColor}
+                    onChangeText={setVehicleColor} placeholder="Rojo, Negro..." />
+                </>
+              )}
+
+              <DocUpload
+                label="Foto del vehículo *"
+                description="Foto clara del vehículo con matrícula visible"
+                uri={vehiclePhotoUri}
+                onPress={() => pickDocument((uri) => setVehiclePhotoUri(uri))}
+                theme={theme}
+              />
             </>
           )}
 

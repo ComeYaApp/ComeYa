@@ -435,6 +435,10 @@ export const deliveryDrivers = mysqlTable("delivery_drivers", {
   userId: varchar("user_id", { length: 255 }).notNull().unique(),
   vehicleType: text("vehicle_type").notNull(), // bike, motorcycle, car
   vehiclePlate: text("vehicle_plate"),
+  vehiclePhoto: text("vehicle_photo"),
+  vehicleBrand: varchar("vehicle_brand", { length: 100 }),
+  vehicleModel: varchar("vehicle_model", { length: 100 }),
+  vehicleColor: varchar("vehicle_color", { length: 50 }),
   isAvailable: boolean("is_available").notNull().default(false),
   currentLatitude: text("current_latitude"),
   currentLongitude: text("current_longitude"),

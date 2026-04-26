@@ -44,6 +44,10 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
       address: user.address,
       vehicleType,
       vehiclePlate,
+      vehiclePhoto: dd?.vehiclePhoto ?? null,
+      vehicleBrand: dd?.vehicleBrand ?? null,
+      vehicleModel: dd?.vehicleModel ?? null,
+      vehicleColor: dd?.vehicleColor ?? null,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -56,10 +60,14 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
     const { deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const { vehicleType, vehiclePlate } = req.body;
+    const { vehicleType, vehiclePlate, vehiclePhoto, vehicleBrand, vehicleModel, vehicleColor } = req.body;
     const updates: any = {};
     if (vehicleType) updates.vehicleType = vehicleType;
     if (vehiclePlate !== undefined) updates.vehiclePlate = vehiclePlate || null;
+    if (vehiclePhoto !== undefined) updates.vehiclePhoto = vehiclePhoto || null;
+    if (vehicleBrand !== undefined) updates.vehicleBrand = vehicleBrand || null;
+    if (vehicleModel !== undefined) updates.vehicleModel = vehicleModel || null;
+    if (vehicleColor !== undefined) updates.vehicleColor = vehicleColor || null;
 
     const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id)).limit(1);
     if (existing) {
