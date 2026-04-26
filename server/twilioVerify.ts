@@ -1,4 +1,4 @@
-// Twilio Verify API Integration for MOUZO - Phone-only Authentication
+// Twilio Verify API Integration for ComeYa - Phone-only Authentication
 import twilio from "twilio";
 
 const client = twilio(
@@ -23,7 +23,7 @@ export async function sendVerificationCode(
         to: formatPhoneNumber(phoneNumber),
         channel: "sms",
         locale: "es",
-        customFriendlyName: "MOUZO San Cristóbal",
+        customFriendlyName: "ComeYa Soria",
       });
 
     console.log(
@@ -69,23 +69,26 @@ export async function verifyCode(
   }
 }
 
-// Format phone number for Venezuela
+// Format phone number for Spain
 function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, "");
 
-  // Mexican numbers
-  if (cleaned.startsWith("52")) {
+  // Spanish numbers (starts with 34 or 6/7/9)
+  if (cleaned.startsWith("34")) {
     return `+${cleaned}`;
   }
 
-  if (cleaned.length === 10) {
-    return `+58${cleaned}`;
+  // Spanish mobile numbers (6xx, 7xx, 9xx)
+  if (cleaned.length === 9 && (cleaned.startsWith("6") || cleaned.startsWith("7") || cleaned.startsWith("9"))) {
+    return `+34${cleaned}`;
   }
 
-  if (cleaned.startsWith("+")) {
-    return cleaned;
+  // Already has + prefix
+  if (phone.startsWith("+")) {
+    return phone;
   }
 
+  // Default: add + prefix
   return `+${cleaned}`;
 }
 
