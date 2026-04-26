@@ -53,7 +53,7 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
 
   const fetchCoupons = async () => {
     try {
-      const res = await apiRequest("GET", "/api/admin/coupons");
+      const res = await apiRequest("GET", "/api/coupons/admin/all");
       const data = await res.json();
       setCoupons(data.coupons || []);
     } catch (error) {
@@ -71,7 +71,7 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
     }
 
     try {
-      const res = await apiRequest("POST", "/api/admin/coupons", {
+      const res = await apiRequest("POST", "/api/coupons/admin/create", {
         code: formData.code.toUpperCase(),
         discountType: formData.discountType,
         discountValue: formData.discountType === "percentage" 

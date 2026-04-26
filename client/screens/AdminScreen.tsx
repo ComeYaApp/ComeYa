@@ -23,7 +23,6 @@ import { useToast } from "@/contexts/ToastContext";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import {
-  DashboardTab,
   DriversTab,
   FinanceTab,
   BusinessesTab,
@@ -36,9 +35,6 @@ import {
 } from "@/components/admin/tabs";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab";
 import type {
-  DashboardMetrics,
-  ActiveOrder,
-  OnlineDriver,
   AdminUser,
   AdminOrder,
   Business,
@@ -53,13 +49,6 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  {
-    title: "Dashboard",
-    subtitle: "Métricas y pedidos activos",
-    icon: "bar-chart-2",
-    tab: "dashboard",
-    color: ComeYaColors.primary,
-  },
   {
     title: "Pedidos",
     subtitle: "Gestionar pedidos",
@@ -131,9 +120,6 @@ export default function AdminMenuScreen() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<string | null>(null);
-  const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics | null>(null);
-  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
-  const [onlineDrivers, setOnlineDrivers] = useState<OnlineDriver[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -146,24 +132,6 @@ export default function AdminMenuScreen() {
 
   // Debug modal state
   console.log('Modal states:', { userModalVisible, orderModalVisible, selectedUser, selectedOrder });
-
-  const fetchDashboardData = async () => {
-    try {
-      const [metricsRes, ordersRes, driversRes] = await Promise.all([
-        apiRequest("GET", "/api/admin/dashboard/metrics"),
-        apiRequest("GET", "/api/admin/dashboard/active-orders"),
-        apiRequest("GET", "/api/admin/dashboard/online-drivers"),
-      ]);
-      const metricsData = await metricsRes.json();
-      const ordersData = await ordersRes.json();
-      const driversData = await driversRes.json();
-      setDashboardMetrics(metricsData);
-      setActiveOrders(ordersData.orders || []);
-      setOnlineDrivers(driversData.drivers || []);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    }
-  };
 
   const fetchData = async () => {
     try {
@@ -189,20 +157,14 @@ export default function AdminMenuScreen() {
   };
 
   useEffect(() => {
-    if (activeTab === "dashboard") {
-      fetchDashboardData();
-    } else if (["users", "orders", "businesses"].includes(activeTab || "")) {
+    if (["users", "orders", "businesses"].includes(activeTab || "")) {
       fetchData();
     }
   }, [activeTab]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    if (activeTab === "dashboard") {
-      fetchDashboardData();
-    } else {
-      fetchData();
-    }
+    fetchData();
   };
 
   const handleMenuPress = (tab: string) => {
@@ -298,15 +260,6 @@ export default function AdminMenuScreen() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case "dashboard":
-        return (
-          <DashboardTab
-            metrics={dashboardMetrics}
-            activeOrders={activeOrders}
-            onlineDrivers={onlineDrivers}
-            stats={null}
-          />
-        );
       case "drivers":
         return <DriversTab theme={theme} showToast={showToast} />;
       case "finance":

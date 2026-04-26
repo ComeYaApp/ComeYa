@@ -62,12 +62,6 @@ const menuItems: MenuItem[] = [
     color: "#10B981",
   },
   {
-    subtitle: "Métricas y pedidos activos",
-    icon: "bar-chart-2",
-    tab: "dashboard",
-    color: ComeYaColors.primary,
-  },
-  {
     title: "Pedidos",
     subtitle: "Gestionar pedidos",
     icon: "package",
@@ -263,6 +257,13 @@ export default function AdminMenuScreen() {
     setSelectedUser(null);
     setSelectedOrder(null);
     setActiveTab(tab);
+    
+    // Forzar recarga de datos al cambiar de tab
+    if (["users", "orders", "businesses"].includes(tab)) {
+      fetchData();
+    } else if (tab === "dashboard") {
+      fetchDashboardData();
+    }
   };
 
   const handleBack = () => {
@@ -761,7 +762,15 @@ export default function AdminMenuScreen() {
       case "orders":
         return (
           <View style={{ flex: 1 }}>
-            <OrdersTab orders={orders} onOrderPress={handleOrderPress} />
+            {orders.length === 0 ? (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+                <Feather name="package" size={48} color={theme.textSecondary} />
+                <ThemedText style={{ color: theme.textSecondary, marginTop: 16, fontSize: 16 }}>No hay pedidos</ThemedText>
+                <ThemedText style={{ color: theme.textSecondary, marginTop: 8, fontSize: 14, textAlign: 'center' }}>Los pedidos aparecerán aquí cuando los clientes realicen compras</ThemedText>
+              </View>
+            ) : (
+              <OrdersTab orders={orders} onOrderPress={handleOrderPress} />
+            )}
             {orderModalVisible && selectedOrder && (
               <Pressable
                 style={styles.modalOverlay}

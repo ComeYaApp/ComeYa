@@ -121,7 +121,7 @@ router.get('/my-usage', authenticateToken, async (req, res) => {
 // ============= ADMIN ROUTES =============
 
 // GET /api/coupons/admin/all - Obtener todos los cupones
-router.get('/admin/all', authenticateToken, requireRole(['admin', 'super_admin']), async (req, res) => {
+router.get('/admin/all', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const allCoupons = await db.select().from(coupons);
     
@@ -136,7 +136,7 @@ router.get('/admin/all', authenticateToken, requireRole(['admin', 'super_admin']
 });
 
 // POST /api/coupons/admin/create - Crear nuevo cupón
-router.post('/admin/create', authenticateToken, requireRole(['admin', 'super_admin']), async (req, res) => {
+router.post('/admin/create', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const {
       code,
@@ -221,7 +221,7 @@ router.post('/admin/create', authenticateToken, requireRole(['admin', 'super_adm
 });
 
 // PUT /api/coupons/admin/:id - Actualizar cupón
-router.put('/admin/:id', authenticateToken, requireRole(['admin', 'super_admin']), async (req, res) => {
+router.put('/admin/:id', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -273,7 +273,7 @@ router.put('/admin/:id', authenticateToken, requireRole(['admin', 'super_admin']
 });
 
 // DELETE /api/coupons/admin/:id - Eliminar cupón
-router.delete('/admin/:id', authenticateToken, requireRole(['admin', 'super_admin']), async (req, res) => {
+router.delete('/admin/:id', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const { id } = req.params;
     await db.execute(`DELETE FROM coupons WHERE id = ?`, [id]);
@@ -285,7 +285,7 @@ router.delete('/admin/:id', authenticateToken, requireRole(['admin', 'super_admi
 });
 
 // GET /api/coupons/admin/stats - Estadísticas de cupones
-router.get('/admin/stats', authenticateToken, requireRole(['admin', 'super_admin']), async (req, res) => {
+router.get('/admin/stats', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const stats = await db.execute(`
       SELECT 
