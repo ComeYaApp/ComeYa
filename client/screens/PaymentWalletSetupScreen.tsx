@@ -196,6 +196,25 @@ export default function PaymentWalletSetupScreen() {
         </ThemedText>
       </View>
 
+      {/* Banner Stripe Connect para negocios y repartidores */}
+      {!isCustomer && (
+        <Pressable
+          onPress={() => (navigation as any).navigate('BusinessStripeSetup')}
+          style={[styles.stripeConnectBanner, { backgroundColor: "#635BFF" + "12", borderColor: "#635BFF" + "40" }]}
+        >
+          <View style={[styles.stripeConnectIcon, { backgroundColor: "#635BFF" + "20" }]}>
+            <Feather name="zap" size={20} color="#635BFF" />
+          </View>
+          <View style={{ flex: 1, marginLeft: Spacing.md }}>
+            <ThemedText type="body" style={{ fontWeight: "700", color: "#635BFF" }}>Pagos automáticos con Stripe</ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+              Conecta tu cuenta bancaria y recibe tus ganancias automáticamente
+            </ThemedText>
+          </View>
+          <Feather name="chevron-right" size={18} color="#635BFF" />
+        </Pressable>
+      )}
+
       {/* Tabs */}
       <ScrollView
         horizontal
@@ -396,6 +415,8 @@ const styles = StyleSheet.create({
   label:        { marginBottom: Spacing.xs, fontWeight: "600", marginTop: Spacing.md },
   input:        { height: 52, borderRadius: BorderRadius.md, borderWidth: 1.5, paddingHorizontal: Spacing.md, fontSize: 16, marginBottom: Spacing.xs },
   stripeInfo:   { flexDirection: "row", alignItems: "flex-start", padding: Spacing.lg, borderRadius: BorderRadius.lg, borderWidth: 1 },
+  stripeConnectBanner: { flexDirection: "row", alignItems: "center", marginHorizontal: Spacing.lg, marginBottom: Spacing.sm, padding: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1 },
+  stripeConnectIcon:   { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   accountRow:   { flexDirection: "row", alignItems: "center", padding: Spacing.md, borderRadius: BorderRadius.lg, marginBottom: Spacing.sm, borderWidth: 1 },
   methodIcon:   { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   defaultBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.sm, marginRight: Spacing.sm },
