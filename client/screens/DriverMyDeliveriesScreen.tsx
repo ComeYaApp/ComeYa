@@ -8,6 +8,7 @@ import {
   Alert,
   Linking,
   Platform,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -16,6 +17,9 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
+import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import { Image } from "expo-image";
 import { gpsService } from '@/services/gpsService';
 
 import { ThemedText } from "@/components/ThemedText";
@@ -54,6 +58,10 @@ export default function DriverMyDeliveriesScreen() {
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [proximityError, setProximityError] = useState<{ distanceMeters: number; maxDistanceMeters: number } | null>(null);
   const [gpsError, setGpsError] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  const [deliveryPhotoUri, setDeliveryPhotoUri] = useState<string | null>(null);
+  const [pendingDeliveryOrderId, setPendingDeliveryOrderId] = useState<string | null>(null);
+  const [completedOrder, setCompletedOrder] = useState<{ earnings: number; businessName: string } | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -165,21 +173,48 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   const handleDelivered = async (orderId: string) => {
-    console.log('handleDelivered called for:', orderId);
-    setPendingOrderId(orderId);
+    setPendingDeliveryOrderId(orderId);
+    setDeliveryPhotoUri(null);
+    setPhotoModalVisible(true);
+  };
+
+  const pickDeliveryPhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Cámara requerida", "Necesitas dar permiso de cámara para tomar la foto de entrega.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.6,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setDeliveryPhotoUri(result.assets[0].uri);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+  const confirmDeliveryWithPhoto = async () => {
+    if (!deliveryPhotoUri) {
+      Alert.alert("Foto requerida", "Debes tomar una foto de la entrega para continuar.");
+      return;
+    }
+    if (!pendingDeliveryOrderId) return;
+    setPhotoModalVisible(false);
+    setPendingOrderId(pendingDeliveryOrderId);
     setShowConfirmModal(true);
   };
 
   const confirmDelivery = async () => {
     if (pendingOrderId) {
       const previousOrders = orders;
+      const orderBeingDelivered = orders.find((o: any) => o.id === pendingOrderId);
       
       try {
         setActionOrderId(pendingOrderId);
-        
-        // Intentar obtener ubicación
         const location = await gpsService.getCurrentLocation();
-        await completeDeliveryWithLocation(pendingOrderId, location, previousOrders);
+        await completeDeliveryWithLocation(pendingOrderId, location, previousOrders, deliveryPhotoUri, orderBeingDelivered);
       } catch (error) {
         console.error('Error in confirmDelivery:', error);
         setOrders(previousOrders);
@@ -191,9 +226,11 @@ export default function DriverMyDeliveriesScreen() {
   };
   
   const completeDeliveryWithLocation = async (
-    orderId: string, 
+    orderId: string,
     location: { latitude: number; longitude: number } | null,
-    previousOrders: any[]
+    previousOrders: any[],
+    photoUri: string | null = null,
+    orderData: any = null
   ) => {
     setOrders((prev: any[]) =>
       prev.map((order) =>
@@ -202,12 +239,37 @@ export default function DriverMyDeliveriesScreen() {
     );
 
     try {
+      // Convertir foto a base64 si existe
+      let photoBase64: string | null = null;
+      if (photoUri) {
+        try {
+          const xhr = new XMLHttpRequest();
+          photoBase64 = await new Promise<string>((resolve, reject) => {
+            xhr.onload = () => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(xhr.response);
+            };
+            xhr.onerror = reject;
+            xhr.responseType = "blob";
+            xhr.open("GET", photoUri);
+            xhr.send();
+          });
+        } catch { photoBase64 = null; }
+      }
+
       await apiRequest('POST', `/api/orders/${orderId}/complete-delivery`, {
         latitude: location?.latitude ?? null,
         longitude: location?.longitude ?? null,
+        deliveryPhoto: photoBase64,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("¡Entregado!", "El pedido ha sido marcado como entregado. Esperando confirmación del cliente.");
+      // Mostrar pantalla post-entrega
+      setCompletedOrder({
+        earnings: (orderData?.deliveryEarnings || orderData?.deliveryFee || 0) / 100,
+        businessName: orderData?.businessName || "Pedido",
+      });
       loadOrders();
     } catch (error: any) {
       console.error('Error confirming delivery:', error);
@@ -516,6 +578,86 @@ export default function DriverMyDeliveriesScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
+      {/* Pantalla post-entrega tipo Rappi */}
+      {completedOrder && (
+        <Modal visible transparent animationType="fade">
+          <View style={styles.successOverlay}>
+            <Animated.View entering={ZoomIn.springify()} style={styles.successCard}>
+              <View style={styles.successIconCircle}>
+                <Feather name="check-circle" size={56} color="#4CAF50" />
+              </View>
+              <ThemedText type="h2" style={{ color: "#1B5E20", marginTop: 16, textAlign: "center" }}>
+                ¡Entrega completada!
+              </ThemedText>
+              <ThemedText type="body" style={{ color: "#388E3C", marginTop: 8, textAlign: "center" }}>
+                {completedOrder.businessName}
+              </ThemedText>
+              <View style={styles.earningsBadge}>
+                <ThemedText type="h1" style={{ color: "#4CAF50", fontSize: 40 }}>
+                  +€{completedOrder.earnings.toFixed(2)}
+                </ThemedText>
+                <ThemedText type="small" style={{ color: "#388E3C" }}>ganados</ThemedText>
+              </View>
+              <ThemedText type="caption" style={{ color: "#666", textAlign: "center", marginBottom: 24 }}>
+                El cliente recibirá una notificación para confirmar la recepción.
+              </ThemedText>
+              <Pressable
+                onPress={() => setCompletedOrder(null)}
+                style={styles.successButton}
+              >
+                <ThemedText type="body" style={{ color: "#FFF", fontWeight: "700" }}>Continuar</ThemedText>
+              </Pressable>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Modal foto de entrega */}
+      <Modal visible={photoModalVisible} transparent animationType="slide">
+        <View style={styles.photoModalOverlay}>
+          <Animated.View entering={FadeInDown.springify()} style={[styles.photoModalCard, { backgroundColor: theme.card }]}>
+            <View style={styles.photoModalHeader}>
+              <ThemedText type="h3">Foto de entrega</ThemedText>
+              <Pressable onPress={() => setPhotoModalVisible(false)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: 16 }}>
+              Toma una foto del pedido entregado. Es obligatoria para confirmar la entrega.
+            </ThemedText>
+
+            {deliveryPhotoUri ? (
+              <Pressable onPress={pickDeliveryPhoto}>
+                <Image
+                  source={{ uri: deliveryPhotoUri }}
+                  style={styles.photoPreview}
+                  contentFit="cover"
+                />
+                <ThemedText type="small" style={{ color: ComeYaColors.primary, textAlign: "center", marginTop: 8 }}>
+                  Toca para cambiar foto
+                </ThemedText>
+              </Pressable>
+            ) : (
+              <Pressable onPress={pickDeliveryPhoto} style={[styles.photoPlaceholder, { borderColor: theme.border }]}>
+                <Feather name="camera" size={40} color={theme.textSecondary} />
+                <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: 12 }}>Tomar foto</ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>Obligatoria para confirmar entrega</ThemedText>
+              </Pressable>
+            )}
+
+            <Pressable
+              onPress={confirmDeliveryWithPhoto}
+              disabled={!deliveryPhotoUri}
+              style={[styles.confirmPhotoButton, { backgroundColor: deliveryPhotoUri ? "#4CAF50" : theme.backgroundSecondary }]}
+            >
+              <Feather name="check-circle" size={18} color={deliveryPhotoUri ? "#FFF" : theme.textSecondary} />
+              <ThemedText type="body" style={{ color: deliveryPhotoUri ? "#FFF" : theme.textSecondary, marginLeft: 8, fontWeight: "700" }}>
+                Confirmar entrega
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+        </View>
+      </Modal>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <View style={styles.headerRow}>
           <ThemedText type="h2">Mis Entregas</ThemedText>
@@ -693,5 +835,83 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     paddingVertical: Spacing["4xl"],
+  },
+  successOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  successCard: {
+    backgroundColor: "#F1F8E9",
+    borderRadius: 24,
+    padding: 32,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 360,
+  },
+  successIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  earningsBadge: {
+    alignItems: "center",
+    marginVertical: 20,
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  successButton: {
+    backgroundColor: "#4CAF50",
+    paddingVertical: 14,
+    paddingHorizontal: 48,
+    borderRadius: 12,
+    width: "100%",
+    alignItems: "center",
+  },
+  photoModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  photoModalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: Spacing.lg,
+    paddingBottom: 40,
+  },
+  photoModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  photoPreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: 12,
+  },
+  photoPlaceholder: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  confirmPhotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 16,
   },
 });

@@ -140,7 +140,7 @@ export default function DriverEarningsScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("es-VE", {
+    return date.toLocaleDateString("es-ES", {
       day: "numeric",
       month: "short",
       hour: "2-digit",
@@ -159,7 +159,7 @@ export default function DriverEarningsScreen() {
         <View>
           <ThemedText type="h2">💰 Mis Ganancias</ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            Pagos automáticos vía Stripe
+            Pagos manuales vía Bizum o transferencia IBAN
           </ThemedText>
         </View>
       </View>
@@ -261,9 +261,7 @@ export default function DriverEarningsScreen() {
               type="caption"
               style={{ color: theme.textSecondary, marginTop: 4 }}
             >
-              Cuando confirmes la entrega, tu pago se libera automáticamente y
-              Cuando confirmes una entrega, tu pago se libera instantáneamente. ComeYa lo transfiere automáticamente a tu cuenta Bizum, Stripe o PayPal configurada en Perfil → Métodos de pago.
-              Configura tu cuenta en Perfil → Pagos y Cuenta Bancaria.
+              Cuando confirmes una entrega, tu pago se libera y ComeYa lo transfiere a tu cuenta Bizum o IBAN configurada en Perfil → Cuentas de pago.
             </ThemedText>
           </View>
         </View>

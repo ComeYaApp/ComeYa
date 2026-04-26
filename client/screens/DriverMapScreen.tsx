@@ -1,0 +1,502 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Linking,
+  Platform,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import * as Haptics from "expo-haptics";
+
+import { ThemedText } from "@/components/ThemedText";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { apiRequest } from "@/lib/query-client";
+
+interface ActiveOrder {
+  id: string;
+  status: string;
+  businessName: string;
+  businessAddress: string;
+  businessLatitude: string | null;
+  businessLongitude: string | null;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryLatitude: string | null;
+  deliveryLongitude: string | null;
+  deliveryFee: number;
+  total: number;
+  paymentMethod: string;
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  ready: "#00BCD4",
+  picked_up: "#FF9800",
+  on_the_way: "#4CAF50",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  ready: "Ir a recoger",
+  picked_up: "En camino al cliente",
+  on_the_way: "En camino al cliente",
+};
+
+export default function DriverMapScreen() {
+  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const { user } = useAuth();
+  const mapRef = useRef<MapView>(null);
+
+  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
+
+  // Cargar pedido activo del driver
+  const loadActiveOrder = async () => {
+    try {
+      const res = await apiRequest("GET", "/api/delivery/my-orders");
+      const data = await res.json();
+      if (data.success && data.orders?.length > 0) {
+        const active = data.orders.find((o: any) =>
+          ["ready", "picked_up", "on_the_way"].includes(o.status)
+        );
+        setActiveOrder(active || null);
+      } else {
+        setActiveOrder(null);
+      }
+    } catch {}
+  };
+
+  const loadStatus = async () => {
+    try {
+      const res = await apiRequest("GET", "/api/delivery/status");
+      const data = await res.json();
+      if (data.success) setIsOnline(data.isOnline);
+    } catch {}
+  };
+
+  // GPS en tiempo real
+  useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+
+    const start = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("GPS requerido", "Activa el GPS para usar el mapa de entregas.");
+        setLoading(false);
+        return;
+      }
+
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setDriverLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      setLoading(false);
+
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+        (l) => {
+          const coords = { latitude: l.coords.latitude, longitude: l.coords.longitude };
+          setDriverLocation(coords);
+          // Enviar ubicación al servidor
+          apiRequest("POST", "/api/delivery/location", {
+            deliveryPersonId: user?.id,
+            latitude: l.coords.latitude.toString(),
+            longitude: l.coords.longitude.toString(),
+            isOnline: true,
+          }).catch(() => {});
+        }
+      );
+    };
+
+    start();
+    loadStatus();
+    loadActiveOrder();
+
+    const interval = setInterval(loadActiveOrder, 10000);
+    return () => {
+      sub?.remove();
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Centrar mapa en la ruta activa
+  const fitToRoute = () => {
+    if (!mapRef.current) return;
+    const coords: { latitude: number; longitude: number }[] = [];
+    if (driverLocation) coords.push(driverLocation);
+    if (activeOrder?.businessLatitude && activeOrder?.businessLongitude) {
+      coords.push({
+        latitude: parseFloat(activeOrder.businessLatitude),
+        longitude: parseFloat(activeOrder.businessLongitude),
+      });
+    }
+    if (activeOrder?.deliveryLatitude && activeOrder?.deliveryLongitude) {
+      coords.push({
+        latitude: parseFloat(activeOrder.deliveryLatitude),
+        longitude: parseFloat(activeOrder.deliveryLongitude),
+      });
+    }
+    if (coords.length > 0) {
+      mapRef.current.fitToCoordinates(coords, {
+        edgePadding: { top: 120, right: 60, bottom: 220, left: 60 },
+        animated: true,
+      });
+    }
+  };
+
+  const openNavigation = (lat: string, lng: string, address: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const url = Platform.select({
+      ios: `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`,
+      android: `google.navigation:q=${lat},${lng}`,
+      default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+    });
+    Linking.canOpenURL(url!).then((ok) => {
+      Linking.openURL(ok ? url! : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`);
+    });
+  };
+
+  const callCustomer = () => {
+    if (activeOrder?.customerPhone) Linking.openURL(`tel:${activeOrder.customerPhone}`);
+  };
+
+  const businessCoords = activeOrder?.businessLatitude && activeOrder?.businessLongitude
+    ? { latitude: parseFloat(activeOrder.businessLatitude), longitude: parseFloat(activeOrder.businessLongitude) }
+    : null;
+
+  const customerCoords = activeOrder?.deliveryLatitude && activeOrder?.deliveryLongitude
+    ? { latitude: parseFloat(activeOrder.deliveryLatitude), longitude: parseFloat(activeOrder.deliveryLongitude) }
+    : null;
+
+  const isPickingUp = activeOrder?.status === "ready";
+  const destination = isPickingUp ? businessCoords : customerCoords;
+  const destinationAddress = isPickingUp ? activeOrder?.businessAddress : activeOrder?.deliveryAddress;
+
+  const initialRegion = driverLocation
+    ? { ...driverLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }
+    : { latitude: 41.7636, longitude: -2.4677, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+
+  if (loading) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.backgroundRoot }]}>
+        <ActivityIndicator size="large" color={ComeYaColors.primary} />
+        <ThemedText style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
+          Obteniendo ubicación GPS...
+        </ThemedText>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={initialRegion}
+        showsUserLocation={false}
+        showsMyLocationButton={false}
+        onMapReady={fitToRoute}
+      >
+        {/* Marcador del driver */}
+        {driverLocation && (
+          <Marker coordinate={driverLocation} anchor={{ x: 0.5, y: 0.5 }}>
+            <View style={styles.driverMarker}>
+              <Feather name="navigation" size={18} color="#FFF" />
+            </View>
+          </Marker>
+        )}
+
+        {/* Marcador del negocio */}
+        {businessCoords && (
+          <Marker coordinate={businessCoords} anchor={{ x: 0.5, y: 1 }}>
+            <View style={[styles.poiMarker, { backgroundColor: "#FF9800" }]}>
+              <Feather name="shopping-bag" size={14} color="#FFF" />
+            </View>
+          </Marker>
+        )}
+
+        {/* Marcador del cliente */}
+        {customerCoords && (
+          <Marker coordinate={customerCoords} anchor={{ x: 0.5, y: 1 }}>
+            <View style={[styles.poiMarker, { backgroundColor: "#9C27B0" }]}>
+              <Feather name="home" size={14} color="#FFF" />
+            </View>
+          </Marker>
+        )}
+
+        {/* Línea driver → destino actual */}
+        {driverLocation && destination && (
+          <Polyline
+            coordinates={[driverLocation, destination]}
+            strokeColor={isPickingUp ? "#FF9800" : "#4CAF50"}
+            strokeWidth={4}
+            lineDashPattern={[8, 4]}
+          />
+        )}
+
+        {/* Línea negocio → cliente (ruta completa) */}
+        {businessCoords && customerCoords && (
+          <Polyline
+            coordinates={[businessCoords, customerCoords]}
+            strokeColor="rgba(0,0,0,0.15)"
+            strokeWidth={2}
+          />
+        )}
+      </MapView>
+
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.card }]}>
+        <View style={styles.headerLeft}>
+          <View style={[styles.onlineDot, { backgroundColor: isOnline ? ComeYaColors.success : "#F44336" }]} />
+          <ThemedText type="h4" style={{ marginLeft: 6 }}>
+            {isOnline ? "En línea" : "Desconectado"}
+          </ThemedText>
+        </View>
+        <ThemedText type="h3">Mi Mapa</ThemedText>
+        <Pressable onPress={fitToRoute} style={styles.fitButton}>
+          <Feather name="maximize-2" size={20} color={ComeYaColors.primary} />
+        </Pressable>
+      </View>
+
+      {/* Panel inferior — pedido activo */}
+      {activeOrder ? (
+        <View style={[styles.orderPanel, { backgroundColor: theme.card }, Shadows.lg]}>
+          {/* Estado */}
+          <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[activeOrder.status] || ComeYaColors.primary) + "20" }]}>
+            <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[activeOrder.status] || ComeYaColors.primary }]} />
+            <ThemedText type="small" style={{ color: STATUS_COLORS[activeOrder.status] || ComeYaColors.primary, fontWeight: "700" }}>
+              {STATUS_LABELS[activeOrder.status] || activeOrder.status}
+            </ThemedText>
+          </View>
+
+          {/* Destino actual */}
+          <View style={styles.destinationRow}>
+            <View style={[styles.destIcon, { backgroundColor: isPickingUp ? "#FF9800" : "#9C27B0" }]}>
+              <Feather name={isPickingUp ? "shopping-bag" : "home"} size={16} color="#FFF" />
+            </View>
+            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                {isPickingUp ? "Recoger en" : "Entregar en"}
+              </ThemedText>
+              <ThemedText type="body" style={{ fontWeight: "600" }} numberOfLines={1}>
+                {isPickingUp ? activeOrder.businessName : activeOrder.customerName}
+              </ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }} numberOfLines={1}>
+                {destinationAddress}
+              </ThemedText>
+            </View>
+            <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
+              €{(activeOrder.deliveryFee / 100).toFixed(2)}
+            </ThemedText>
+          </View>
+
+          {/* Botones de acción */}
+          <View style={styles.actionRow}>
+            {destination && (
+              <Pressable
+                onPress={() => openNavigation(
+                  destination.latitude.toString(),
+                  destination.longitude.toString(),
+                  destinationAddress || ""
+                )}
+                style={[styles.navButton, { backgroundColor: ComeYaColors.primary }]}
+              >
+                <Feather name="navigation" size={16} color="#FFF" />
+                <ThemedText type="small" style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}>
+                  Navegar
+                </ThemedText>
+              </Pressable>
+            )}
+            {!isPickingUp && activeOrder.customerPhone && (
+              <Pressable onPress={callCustomer} style={[styles.callButton, { backgroundColor: "#4CAF50" }]}>
+                <Feather name="phone" size={16} color="#FFF" />
+                <ThemedText type="small" style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}>
+                  Llamar
+                </ThemedText>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Pago */}
+          <View style={[styles.paymentRow, { backgroundColor: theme.backgroundSecondary }]}>
+            <Feather
+              name={activeOrder.paymentMethod === "cash" ? "dollar-sign" : "credit-card"}
+              size={14}
+              color={activeOrder.paymentMethod === "cash" ? "#FF9800" : "#4CAF50"}
+            />
+            <ThemedText type="small" style={{ marginLeft: 6, color: theme.textSecondary }}>
+              {activeOrder.paymentMethod === "cash"
+                ? `Cobrar €${(activeOrder.total / 100).toFixed(2)} en efectivo`
+                : "Pagado digitalmente"}
+            </ThemedText>
+          </View>
+        </View>
+      ) : (
+        <View style={[styles.noOrderPanel, { backgroundColor: theme.card }, Shadows.md]}>
+          <Feather name="map-pin" size={32} color={theme.textSecondary} />
+          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}>
+            {isOnline ? "Esperando pedidos..." : "Actívate para recibir pedidos"}
+          </ThemedText>
+        </View>
+      )}
+
+      {/* Leyenda */}
+      <View style={[styles.legend, { backgroundColor: theme.card + "EE" }]}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: ComeYaColors.primary }]} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Tú</ThemedText>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: "#FF9800" }]} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Negocio</ThemedText>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: "#9C27B0" }]} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Cliente</ThemedText>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  map: { flex: 1 },
+  header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center" },
+  onlineDot: { width: 10, height: 10, borderRadius: 5 },
+  fitButton: { padding: 8 },
+  driverMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: ComeYaColors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  poiMarker: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  orderPanel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: Spacing.lg,
+    paddingBottom: Spacing.xl,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    marginBottom: Spacing.md,
+  },
+  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  destinationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  destIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  navButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  callButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+  },
+  paymentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+  },
+  noOrderPanel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: Spacing.xl,
+    alignItems: "center",
+  },
+  legend: {
+    position: "absolute",
+    top: 100,
+    right: 12,
+    borderRadius: 12,
+    padding: 10,
+    gap: 6,
+  },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+});

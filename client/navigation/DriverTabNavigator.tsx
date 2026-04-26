@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import DriverAvailableOrdersScreen from "@/screens/DriverAvailableOrdersScreen";
 import DriverMyDeliveriesScreen from "@/screens/DriverMyDeliveriesScreen";
 import DriverEarningsScreen from "@/screens/DriverEarningsScreen";
+import DriverMapScreen from "@/screens/DriverMapScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
@@ -58,6 +59,17 @@ export default function DriverTabNavigator() {
           title: "Entregas",
           tabBarIcon: ({ color, size }) => (
             <Feather name="truck" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="DriverMap"
+        component={DriverMapScreen}
+        options={{
+          title: "Mi Mapa",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="map" size={size} color={color} />
           ),
         }}
       />

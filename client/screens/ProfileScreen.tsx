@@ -155,15 +155,27 @@ export default function ProfileScreen() {
       : null;
   const [driverStrikes, setDriverStrikes] = useState(0);
   const maxStrikes = 3;
+  const [driverStats, setDriverStats] = useState<{ rating: number; totalDeliveries: number; vehicleType: string | null; vehiclePlate: string | null; verificationStatus: string } | null>(null);
 
   useEffect(() => {
     const loadDriverStatus = async () => {
       if (user?.role === "delivery_driver") {
         try {
-          const response = await apiRequest("GET", "/api/delivery/status");
-          const data = await response.json();
-          if (data.success) {
-            setDriverStrikes(data.strikes || 0);
+          const [statusRes, profileRes] = await Promise.all([
+            apiRequest("GET", "/api/delivery/status"),
+            apiRequest("GET", "/api/users/profile/full"),
+          ]);
+          const statusData = await statusRes.json();
+          const profileData = await profileRes.json();
+          if (statusData.success) setDriverStrikes(statusData.strikes || 0);
+          if (profileData.success) {
+            setDriverStats({
+              rating: statusData.rating || 0,
+              totalDeliveries: statusData.totalDeliveries || 0,
+              vehicleType: profileData.vehicleType,
+              vehiclePlate: profileData.vehiclePlate,
+              verificationStatus: user?.isActive ? "verified" : "pending",
+            });
           }
         } catch (error) {
           console.log("Error loading driver status:", error);
@@ -614,6 +626,57 @@ export default function ProfileScreen() {
             <ThemedText type="h4" style={styles.sectionTitle}>
               Estado del Repartidor
             </ThemedText>
+
+            {/* Stats rápidas */}
+            {driverStats && (
+              <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
+                <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center" }}>
+                  <ThemedText type="h3" style={{ color: "#FF9800" }}>
+                    {driverStats.rating > 0 ? (driverStats.rating / 10).toFixed(1) : "—"}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>Rating</ThemedText>
+                </View>
+                <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center" }}>
+                  <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
+                    {driverStats.totalDeliveries}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>Entregas</ThemedText>
+                </View>
+                <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center" }}>
+                  <Feather
+                    name={driverStats.verificationStatus === "verified" ? "check-circle" : "clock"}
+                    size={20}
+                    color={driverStats.verificationStatus === "verified" ? ComeYaColors.success : ComeYaColors.warning}
+                  />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                    {driverStats.verificationStatus === "verified" ? "Verificado" : "Pendiente"}
+                  </ThemedText>
+                </View>
+              </View>
+            )}
+
+            {/* Vehículo */}
+            {driverStats?.vehicleType && (
+              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: ComeYaColors.primary + "20", justifyContent: "center", alignItems: "center" }}>
+                  <Feather
+                    name={driverStats.vehicleType === "car" ? "truck" : driverStats.vehicleType === "motorcycle" ? "zap" : "wind"}
+                    size={18}
+                    color={ComeYaColors.primary}
+                  />
+                </View>
+                <View style={{ marginLeft: 12 }}>
+                  <ThemedText type="body" style={{ fontWeight: "600" }}>
+                    {driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}
+                  </ThemedText>
+                  {driverStats.vehiclePlate && (
+                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                      Matrícula: {driverStats.vehiclePlate}
+                    </ThemedText>
+                  )}
+                </View>
+              </View>
+            )}
             <View style={styles.strikesContainer}>
               <View style={styles.strikesHeader}>
                 <View style={styles.strikesIconContainer}>

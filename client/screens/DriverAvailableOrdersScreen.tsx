@@ -203,6 +203,8 @@ export default function DriverAvailableOrdersScreen() {
 
   const renderOrder = ({ item }: { item: any }) => {
     const items = typeof item.items === "string" ? JSON.parse(item.items) : item.items;
+    const distanceKm = item.distanceKm ? (item.distanceKm / 1000).toFixed(1) : null;
+    const estimatedMin = item.estimatedMinutes || (distanceKm ? Math.round(parseFloat(distanceKm) * 3) : null);
 
     return (
       <View
@@ -218,47 +220,54 @@ export default function DriverAvailableOrdersScreen() {
           <Badge text="Listo" variant="success" />
         </View>
 
-        <View style={styles.locationInfo}>
-          <Feather name="map-pin" size={16} color={theme.textSecondary} />
-          <ThemedText
-            type="small"
-            style={{ color: theme.textSecondary, marginLeft: Spacing.xs, flex: 1 }}
-            numberOfLines={2}
-          >
-            {item.deliveryAddress}
-          </ThemedText>
-        </View>
-
-        <View style={styles.orderDetails}>
-          <View style={styles.detailRow}>
-            <Feather name="package" size={16} color={theme.textSecondary} />
-            <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
-              {items.length} productos
+        {/* Ruta: negocio → cliente */}
+        <View style={styles.routeRow}>
+          <View style={styles.routePoint}>
+            <View style={[styles.routeDot, { backgroundColor: "#FF9800" }]} />
+            <ThemedText type="small" style={{ color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
+              {item.businessAddress || item.businessName}
             </ThemedText>
           </View>
-          <View style={styles.detailRow}>
-            <Feather
-              name={item.paymentMethod === "cash" ? "dollar-sign" : "credit-card"}
-              size={16}
-              color={theme.textSecondary}
-            />
-            <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
-              {item.paymentMethod === "cash" ? "💵 Efectivo" :
-               item.paymentMethod === "pago_movil" ? "📱 Pago Móvil" :
-               item.paymentMethod === "binance_pay" ? "🟡 Binance" :
-               item.paymentMethod === "zinli" ? "💜 Zinli" :
-               item.paymentMethod === "zelle" ? "💙 Zelle" : "💳 Digital"}
+          <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
+          <View style={styles.routePoint}>
+            <View style={[styles.routeDot, { backgroundColor: "#9C27B0" }]} />
+            <ThemedText type="small" style={{ color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
+              {item.deliveryAddress}
             </ThemedText>
+          </View>
+        </View>
+
+        {/* Métricas */}
+        <View style={styles.metricsRow}>
+          {distanceKm && (
+            <View style={styles.metricChip}>
+              <Feather name="map-pin" size={13} color={theme.textSecondary} />
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>{distanceKm} km</ThemedText>
+            </View>
+          )}
+          {estimatedMin && (
+            <View style={styles.metricChip}>
+              <Feather name="clock" size={13} color={theme.textSecondary} />
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>~{estimatedMin} min</ThemedText>
+            </View>
+          )}
+          <View style={styles.metricChip}>
+            <Feather name={item.paymentMethod === "cash" ? "dollar-sign" : "credit-card"} size={13} color={theme.textSecondary} />
+            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+              {item.paymentMethod === "cash" ? "Efectivo" : "Digital"}
+            </ThemedText>
+          </View>
+          <View style={styles.metricChip}>
+            <Feather name="package" size={13} color={theme.textSecondary} />
+            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>{items.length} prod.</ThemedText>
           </View>
         </View>
 
         <View style={styles.orderFooter}>
           <View>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Ganancia estimada
-            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>Tu ganancia</ThemedText>
             <ThemedText type="h3" style={{ color: ComeYaColors.success }}>
-              €{(item.deliveryFee || 0).toFixed(2)}
+              €{((item.deliveryFee || 0) / 100).toFixed(2)}
             </ThemedText>
           </View>
           <Pressable
@@ -445,6 +454,40 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  routeRow: {
+    marginBottom: Spacing.md,
+    gap: 4,
+  },
+  routePoint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  routeDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    flexShrink: 0,
+  },
+  routeLine: {
+    width: 2,
+    height: 12,
+    marginLeft: 4,
+  },
+  metricsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: Spacing.md,
+  },
+  metricChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
   },
   orderFooter: {
     flexDirection: "row",
