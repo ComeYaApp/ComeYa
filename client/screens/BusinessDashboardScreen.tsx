@@ -431,6 +431,26 @@ export default function BusinessDashboardScreen() {
           </View>
         </View>
 
+        {/* Sistema de Pagos */}
+        <View style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}>
+          <View style={styles.infoHeader}>
+            <Feather name="info" size={20} color={ComeYaColors.primary} />
+            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Sistema de Pagos</ThemedText>
+          </View>
+          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+            • Recibes el 100% del precio base de tus productos
+          </ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            • ComeYa agrega un 15% de markup al precio final
+          </ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            • Pagos: Bizum, Transferencia, Tarjeta, Efectivo
+          </ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            • Transferimos tus ganancias al confirmar la entrega
+          </ThemedText>
+        </View>
+
         {stats.topProducts.length > 0 ? (
           <>
             <ThemedText type="h3" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
@@ -497,20 +517,13 @@ export default function BusinessDashboardScreen() {
             </Pressable>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.card }]}
-              onPress={() => navigation.navigate("BusinessFinances" as any)}
-            >
-              <Feather name="dollar-sign" size={24} color="#4CAF50" />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: 'center' }}>Finanzas</ThemedText>
-            </Pressable>
-          </View>
-          <View style={[styles.actionsRow, { marginTop: Spacing.sm }]}>
-            <Pressable
-              style={[styles.actionButton, { backgroundColor: theme.card }]}
               onPress={() => navigation.navigate("BusinessHours" as any)}
             >
               <Feather name="clock" size={24} color="#FF9800" />
               <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: 'center' }}>Horarios</ThemedText>
             </Pressable>
+          </View>
+          <View style={[styles.actionsRow, { marginTop: Spacing.sm }]}>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.card }]}
               onPress={() => {
@@ -607,6 +620,15 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     marginTop: Spacing.md,
+  },
+  infoCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.lg,
+  },
+  infoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   productRow: {
     flexDirection: "row",

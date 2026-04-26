@@ -5,7 +5,6 @@ import { Feather } from "@expo/vector-icons";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import BusinessOrdersScreen from "@/screens/BusinessOrdersScreen";
 import BusinessProductsScreen from "@/screens/BusinessProductsScreen";
-import BusinessFinancesScreen from "@/screens/BusinessFinancesScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
@@ -59,16 +58,6 @@ export default function BusinessTabNavigator() {
           title: "Productos",
           tabBarIcon: ({ color, size }) => (
             <Feather name="package" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="BusinessFinances"
-        component={BusinessFinancesScreen}
-        options={{
-          title: "Finanzas",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="dollar-sign" size={size} color={color} />
           ),
         }}
       />
