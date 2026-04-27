@@ -69,23 +69,29 @@ export async function verifyCode(
   }
 }
 
-// Format phone number for Spain
+// Format phone number for Spain and developers
 function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, "");
+
+  // Already has + prefix
+  if (phone.startsWith("+")) {
+    return phone;
+  }
+
+  // Venezuelan numbers (starts with 58 or 04xx)
+  if (cleaned.startsWith("58")) {
+    return `+${cleaned}`;
+  }
+  if (cleaned.length === 11 && cleaned.startsWith("04")) {
+    return `+58${cleaned.substring(1)}`;
+  }
 
   // Spanish numbers (starts with 34 or 6/7/9)
   if (cleaned.startsWith("34")) {
     return `+${cleaned}`;
   }
-
-  // Spanish mobile numbers (6xx, 7xx, 9xx)
   if (cleaned.length === 9 && (cleaned.startsWith("6") || cleaned.startsWith("7") || cleaned.startsWith("9"))) {
     return `+34${cleaned}`;
-  }
-
-  // Already has + prefix
-  if (phone.startsWith("+")) {
-    return phone;
   }
 
   // Default: add + prefix

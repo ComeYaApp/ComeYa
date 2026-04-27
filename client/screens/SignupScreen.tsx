@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View, StyleSheet, ScrollView, Pressable,
   ActivityIndicator, ImageBackground, TextInput, Platform, Image,
@@ -138,7 +138,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
           e.dni = "Formato inválido. DNI: 12345678A o NIE: X1234567L";
         }
       }
-      if (!phone || phone.replace(/\D/g, "").length < 9) e.phone = "Teléfono de 9 dígitos requerido";
+      if (!phone || phone.replace(/\D/g, "").length < 7) e.phone = "Tel\u00e9fono requerido";
     }
     if (s === 2) {
       if (!street.trim()) e.street = "Calle requerida";
@@ -228,7 +228,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const formattedPhone = `+34${phone.replace(/\D/g, "")}`;
+      const digits = phone.replace(/\D/g, "");\n      const formattedPhone = digits.startsWith("58") ? `+${digits}` : (digits.startsWith("04") || (digits.length >= 10 && digits.startsWith("4"))) ? `+58${digits.startsWith("0") ? digits.substring(1) : digits}` : `+34${digits}`;
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
       const fullAddress = `${street.trim()}, ${city.trim()}${zipCode ? ` ${zipCode}` : ""}`;
 
@@ -442,7 +442,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                   <TextInput
                     placeholder="12345678A"
                     value={dni}
-                    onChangeText={(t) => setDni(t.toUpperCase().slice(0, 9))}
+                    onChangeText={(t) => setDni(t.toUpperCase().slice(0, 12))}
                     autoCapitalize="characters"
                     placeholderTextColor="#999"
                     style={styles.textInput}
@@ -462,11 +462,11 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                     <TextInput
                       placeholder="612 345 678"
                       value={formatPhone(phone)}
-                      onChangeText={(t) => setPhone(t.replace(/\D/g, "").slice(0, 9))}
+                      onChangeText={(t) => setPhone(t.replace(/\D/g, "").slice(0, 12))}
                       keyboardType="phone-pad"
                       placeholderTextColor="#999"
                       style={styles.textInput}
-                      maxLength={11}
+                      maxLength={14}
                     />
                   </View>
                 </View>
