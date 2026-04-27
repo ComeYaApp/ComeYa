@@ -228,7 +228,8 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const digits = phone.replace(/\D/g, "");\n      const formattedPhone = digits.startsWith("58") ? `+${digits}` : (digits.startsWith("04") || (digits.length >= 10 && digits.startsWith("4"))) ? `+58${digits.startsWith("0") ? digits.substring(1) : digits}` : `+34${digits}`;
+      const digits = phone.replace(/\D/g, "");
+      const formattedPhone = digits.startsWith("58") ? `+${digits}` : (digits.startsWith("04") || (digits.length >= 10 && digits.startsWith("4"))) ? `+58${digits.startsWith("0") ? digits.substring(1) : digits}` : `+34${digits}`;
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
       const fullAddress = `${street.trim()}, ${city.trim()}${zipCode ? ` ${zipCode}` : ""}`;
 
