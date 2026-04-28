@@ -174,14 +174,13 @@ export default function HomeScreen() {
 
       if (activeCategory) {
         const categoryMap: Record<string, string[]> = {
-          bocadillos: [\"bocadillo\", \"sandwich\", \"montado\"],
-          menu: [\"men\u00fa\", \"menu\", \"plato\", \"casera\", \"del d\u00eda\"],
-          pizzas: [\"pizza\", \"pizzer\u00eda\", \"italiana\"],
-          hamburguesas: [\"hamburguesa\", \"burger\"],
-          tapas: [\"tapas\", \"raciones\", \"pinchos\", \"bar\"],
-          postres: [\"postre\", \"dulce\", \"pasteler\u00eda\", \"caf\u00e9\"],
-          mercado: [\"mercado\", \"supermercado\", \"carnicer\u00eda\", \"frutas\"],
-          asiatica: [\"chino\", \"japon\u00e9s\", \"sushi\", \"asi\u00e1tica\"],
+          bocadillos: ["bocadillo", "sandwich", "montado"],
+          menu: ["menu", "plato", "casera"],
+          pizzas: ["pizza", "pizzeria", "italiana"],
+          hamburguesas: ["hamburguesa", "burger"],
+          tapas: ["tapas", "raciones", "pinchos", "bar"],
+          postres: ["postre", "dulce", "pasteleria", "cafe"],
+          mercado: ["mercado", "supermercado", "carniceria", "frutas"],
         };
         const matchCategories = categoryMap[activeCategory] || [activeCategory];
         filtered = filtered.filter((b) =>
