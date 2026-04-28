@@ -639,6 +639,7 @@ export default function HomeScreen() {
                       style={({ pressed }) => [
                         styles.gridCard,
                         {
+                          width: GRID_CARD_WIDTH,
                           backgroundColor: theme.card,
                           opacity: pressed ? 0.9 : 1,
                         },
@@ -1054,7 +1055,6 @@ const styles = StyleSheet.create({
     gap: GRID_GAP,
   },
   gridCard: {
-    width: GRID_CARD_WIDTH,
     borderRadius: BorderRadius.lg,
     overflow: "hidden",
   },
