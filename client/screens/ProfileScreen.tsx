@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -243,6 +243,21 @@ export default function ProfileScreen() {
 
   const pickImage = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Web: usar input file directo
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async (e: any) =        const file = e.target.files?.[0];
+        if (!file) return;
+        const { fileToBase64 } = await import('@/utils/uploadImageWeb');
+        const base64 = await fileToBase64(file);
+        await uploadImage(URL.createObjectURL(file));
+      };
+      input.click();
+      return;
+    }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {

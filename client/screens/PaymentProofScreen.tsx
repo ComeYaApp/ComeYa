@@ -114,6 +114,25 @@ export default function PaymentProofScreen() {
   };
 
   const handlePickImage = async () => {
+    // En web usar input file nativo
+    if (Platform.OS === "web") {
+      const { pickAndUploadImage } = await import("@/utils/uploadImageWeb");
+      const url = await pickAndUploadImage("comprobantes");
+      if (url) {
+        setProofImage(url);
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(",")[1];
+            analyzeWithOCR(base64);
+          };
+          reader.readAsDataURL(blob);
+        } catch {}
+      }
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería para subir el comprobante.");
@@ -131,6 +150,26 @@ export default function PaymentProofScreen() {
   };
 
   const handleTakePhoto = async () => {
+    // En web usar input file con capture
+    if (Platform.OS === "web") {
+      const { captureFromCamera } = await import("@/utils/uploadImageWeb");
+      const url = await captureFromCamera("comprobantes");
+      if (url) {
+        setProofImage(url);
+        // Obtener base64 para OCR
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(",")[1];
+            analyzeWithOCR(base64);
+          };
+          reader.readAsDataURL(blob);
+        } catch {}
+      }
+      return;
+    }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permiso requerido", "Necesitamos acceso a tu cámara.");

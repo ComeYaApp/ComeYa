@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   Pressable,
   TextInput,
   Image,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -117,7 +118,15 @@ export default function ReviewScreenEnhanced() {
 
   const handlePickImage = async () => {
     if (photos.length >= 3) {
-      showToast("Máximo 3 fotos", "warning");
+      showToast("M\u00e1ximo 3 fotos", "warning");
+      return;
+    }
+
+    // Web: usar input file
+    if (Platform.OS === "web") {
+      const { pickAndUploadImage } = await import("@/utils/uploadImageWeb");
+      const url = await pickAndUploadImage("reviews");
+      if (url) setPhotos([...photos, url]);
       return;
     }
 
