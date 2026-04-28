@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -63,8 +63,8 @@ export default function BusinessDetailScreen() {
             name: data.business.name,
             description: data.business.description || '',
             type: data.business.type || 'restaurant',
-            profileImage: data.business.image || require("../../assets/images/delivery-hero.png"),
-            bannerImage: data.business.coverImage || data.business.image || require("../../assets/images/delivery-hero.png"),
+            profileImage: data.business.image || null,
+            bannerImage: data.business.coverImage || data.business.image || null,
             rating: (data.business.rating || 0) / 100,
             reviewCount: data.business.totalRatings || 0,
             deliveryTime: data.business.deliveryTime || '30-45 min',
@@ -100,7 +100,7 @@ export default function BusinessDetailScreen() {
               name: p.name,
               description: p.description || '',
               price: priceWithCommission, // 👈 Precio con comisión incluida
-              image: p.image || require("../../assets/images/delivery-hero.png"),
+              image: p.image || null,
               category: p.category || 'General',
               isAvailable: isAvailable,
               available: isAvailable,

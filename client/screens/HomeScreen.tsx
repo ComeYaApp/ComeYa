@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -96,8 +96,8 @@ export default function HomeScreen() {
         name: b.name,
         description: b.description || '',
         type: b.type || 'restaurant',
-        profileImage: b.image || require("../../assets/images/delivery-hero.png"),
-        bannerImage: b.cover_image || b.image || require("../../assets/images/delivery-hero.png"),
+        profileImage: b.image || null,
+        bannerImage: b.cover_image || b.image || null,
         rating: (b.rating || 0) / 100, // Convertir de centavos a decimal
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || '30-45 min',

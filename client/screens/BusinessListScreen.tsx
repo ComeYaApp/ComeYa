@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+﻿import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -66,8 +66,8 @@ export default function BusinessListScreen() {
         name: b.name,
         description: b.description || "",
         type: b.type || "restaurant",
-        profileImage: b.image || require("../../assets/images/delivery-hero.png"),
-        bannerImage: b.cover_image || b.image || require("../../assets/images/delivery-hero.png"),
+        profileImage: b.image || null,
+        bannerImage: b.cover_image || b.image || null,
         rating: (b.rating || 0) / 100,
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || "30-45 min",
