@@ -96,8 +96,8 @@ export default function HomeScreen() {
         name: b.name,
         description: b.description || '',
         type: b.type || 'restaurant',
-        profileImage: b.image || null,
-        bannerImage: b.cover_image || b.image || null,
+        profileImage: b.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
+        bannerImage: b.cover_image || b.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
         rating: (b.rating || 0) / 100, // Convertir de centavos a decimal
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || '30-45 min',

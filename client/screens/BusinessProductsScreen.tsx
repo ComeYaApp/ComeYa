@@ -108,14 +108,14 @@ export default function BusinessProductsScreen() {
           name: form.name,
           description: form.description,
           price: priceInCents,
-          image: form.image || null,
+          image: form.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
         });
       } else {
         await apiRequest("POST", "/api/business/products", {
           name: form.name,
           description: form.description,
           price: priceInCents,
-          image: form.image || null,
+          image: form.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
         });
       }
       
