@@ -82,46 +82,36 @@ export default function HomeScreen() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  // Mapa de iconos y colores por palabra clave de categoría
+    // Mapa de iconos y colores - clave = primera categoria del negocio
   const CATEGORY_STYLE: Record<string, { icon: string; color: string; label: string }> = {
-    pizza: { icon: "circle", color: "#E91E63", label: "Pizzas" },
-    italiana: { icon: "circle", color: "#E91E63", label: "Italiana" },
-    burger: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
-    hamburguesa: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
-    sushi: { icon: "wind", color: "#00BCD4", label: "Sushi" },
-    japonesa: { icon: "wind", color: "#00BCD4", label: "Japonesa" },
-    pollo: { icon: "feather", color: "#FF9800", label: "Pollo" },
-    alitas: { icon: "feather", color: "#FF9800", label: "Alitas" },
-    mariscos: { icon: "anchor", color: "#2196F3", label: "Mariscos" },
-    pescado: { icon: "anchor", color: "#2196F3", label: "Pescado" },
-    mexicana: { icon: "sun", color: "#FF5722", label: "Mexicana" },
-    tacos: { icon: "sun", color: "#FF5722", label: "Tacos" },
-    antojitos: { icon: "sun", color: "#FF5722", label: "Antojitos" },
-    mercado: { icon: "shopping-bag", color: "#4CAF50", label: "Mercado" },
-    carniceria: { icon: "shopping-bag", color: "#795548", label: "Carnicería" },
-    abarrotes: { icon: "package", color: "#607D8B", label: "Abarrotes" },
-    tapas: { icon: "grid", color: "#9C27B0", label: "Tapas" },
-    bar: { icon: "coffee", color: "#9C27B0", label: "Bar" },
-    asador: { icon: "award", color: "#FF5722", label: "Asador" },
-    parrilla: { icon: "award", color: "#FF5722", label: "Parrilla" },
-    pastas: { icon: "circle", color: "#FF9800", label: "Pastas" },
-    americana: { icon: "layers", color: "#F44336", label: "Americana" },
+    pizza: { icon: 'circle', color: '#E91E63', label: 'Pizzas' },
+    burger: { icon: 'layers', color: '#F44336', label: 'Hamburguesas' },
+    burgers: { icon: 'layers', color: '#F44336', label: 'Hamburguesas' },
+    sushi: { icon: 'wind', color: '#00BCD4', label: 'Sushi' },
+    pollo: { icon: 'feather', color: '#FF9800', label: 'Pollo' },
+    mariscos: { icon: 'anchor', color: '#2196F3', label: 'Mariscos' },
+    tacos: { icon: 'sun', color: '#FF5722', label: 'Mexicana' },
+    mexicana: { icon: 'sun', color: '#FF5722', label: 'Mexicana' },
+    mercado: { icon: 'shopping-bag', color: '#4CAF50', label: 'Mercado' },
+    carniceria: { icon: 'shopping-bag', color: '#795548', label: 'Carniceria' },
   };
 
-  // Genera categorías dinámicamente desde los negocios cargados
+  // Genera categorias unicas usando SOLO la primera categoria de cada negocio
   const dynamicCategories = React.useMemo(() => {
     const seen = new Set<string>();
     const cats: { id: string; icon: string; color: string; label: string }[] = [];
     businesses.forEach((b) => {
-      b.categories.forEach((cat) => {
-        const key = cat.toLowerCase().trim();
-        if (!key || seen.has(key)) return;
-        seen.add(key);
-        const style = CATEGORY_STYLE[key] || { icon: "tag", color: ComeYaColors.primary, label: cat.charAt(0).toUpperCase() + cat.slice(1) };
-        cats.push({ id: key, ...style });
-      });
+      const firstCat = b.categories[0]?.toLowerCase().trim();
+      if (!firstCat || seen.has(firstCat)) return;
+      seen.add(firstCat);
+      const style = CATEGORY_STYLE[firstCat] || {
+        icon: 'tag',
+        color: ComeYaColors.primary,
+        label: firstCat.charAt(0).toUpperCase() + firstCat.slice(1),
+      };
+      cats.push({ id: firstCat, ...style });
     });
-    return cats.slice(0, 8); // max 8 categorías
+    return cats;
   }, [businesses]);
 
   const loadData = useCallback(async () => {
@@ -215,6 +205,7 @@ export default function HomeScreen() {
       }
 
       if (activeCategory) {
+        // Buscar en todas las categorias del negocio, no solo la primera
         filtered = filtered.filter((b) =>
           b.categories.some((cat) => cat.toLowerCase().trim() === activeCategory)
         );
