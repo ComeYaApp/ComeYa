@@ -1,49 +1,219 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/hooks/useTheme';
 import { ComeYaLogo } from '@/components/ComeYaLogo';
 import { apiRequest } from '@/lib/query-client';
 import { useToast } from '@/contexts/ToastContext';
+import { useCart } from '@/contexts/CartContext';
 
 const PRIMARY = "#DC2626";
 
-export default function StripePaymentScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
+// Cargar Stripe key desde el backend
+let stripePromise: Promise<any> | null = null;
+
+const getStripePromise = async () => {
+  if (!stripePromise) {
+    try {
+      const response = await apiRequest('GET', '/api/stripe/publishable-key');
+      const data = await response.json();
+      if (data.publishableKey) {
+        stripePromise = loadStripe(data.publishableKey);
+      }
+    } catch (error) {
+      console.error('Error loading Stripe key:', error);
+    }
+  }
+  return stripePromise;
+};
+
+function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, onSuccess, onCancel }: any) {
+  const stripe = useStripe();
+  const elements = useElements();
   const { theme } = useTheme();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
 
-  const params = route.params as any;
-  const { orderId, amount, subtotal, deliveryFee, businessId } = params || {};
+  useEffect(() => {
+    // Crear Payment Intent en el backend
+    const createPaymentIntent = async () => {
+      try {
+        const response = await apiRequest('POST', '/api/stripe/create-payment-intent', {
+          orderId,
+          amount,
+          businessId,
+          subtotal,
+          deliveryFee,
+        });
+        const data = await response.json();
+        if (data.clientSecret) {
+          setClientSecret(data.clientSecret);
+        } else {
+          showToast('Error al inicializar el pago', 'error');
+        }
+      } catch (error) {
+        console.error('Error creating payment intent:', error);
+        showToast('Error al conectar con el servidor de pagos', 'error');
+      }
+    };
+    createPaymentIntent();
+  }, [orderId, amount, businessId, subtotal, deliveryFee]);
 
-  const handlePayment = async () => {
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    if (!stripe || !elements || !clientSecret) {
+      return;
+    }
+
     setLoading(true);
+
     try {
-      // Simular pago exitoso por ahora
-      // En producción, aquí integrarías Stripe.js
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      showToast('Pago procesado exitosamente', 'success');
-      
-      navigation.reset({
-        index: 0,
-        routes: [
-          { name: 'Main' as never },
-          { name: 'OrderTracking' as never, params: { orderId } },
-        ],
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        throw new Error('Card element not found');
+      }
+
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
       });
-    } catch (error) {
+
+      if (error) {
+        showToast(error.message || 'Error al procesar el pago', 'error');
+        setLoading(false);
+      } else if (paymentIntent?.status === 'succeeded') {
+        showToast('¡Pago exitoso!', 'success');
+        onSuccess();
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error);
       showToast('Error al procesar el pago', 'error');
       setLoading(false);
     }
   };
 
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: theme.text,
+        '::placeholder': {
+          color: theme.textSecondary,
+        },
+        backgroundColor: theme.backgroundSecondary,
+      },
+      invalid: {
+        color: '#DC2626',
+      },
+    },
+  };
+
   return (
-    <View style={[styles.webContainer, { backgroundColor: theme.backgroundRoot }]}>
+    <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+      <View style={styles.stripeContainer}>
+        <View style={[styles.stripeElementWrapper, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}>
+          <CardElement options={cardElementOptions} />
+        </View>
+      </View>
+
+      {!clientSecret && (
+        <View style={[styles.infoBox, { backgroundColor: PRIMARY + "10", borderColor: PRIMARY + "30" }]}>
+          <ActivityIndicator size="small" color={PRIMARY} />
+          <ThemedText type="small" style={{ color: PRIMARY, marginLeft: 12 }}>
+            Inicializando pago seguro...
+          </ThemedText>
+        </View>
+      )}
+
+      <button
+        type="submit"
+        disabled={!stripe || loading || !clientSecret}
+        style={{
+          height: 56,
+          backgroundColor: (!stripe || loading || !clientSecret) ? 'rgba(220, 38, 38, 0.6)' : PRIMARY,
+          borderRadius: 16,
+          display: 'flex',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginBottom: 16,
+          border: 'none',
+          cursor: (!stripe || loading || !clientSecret) ? 'not-allowed' : 'pointer',
+          boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+          width: '100%',
+        }}
+      >
+        {loading ? (
+          <ActivityIndicator color="#FFF" size="small" />
+        ) : (
+          <>
+            <Feather name="lock" size={20} color="#FFF" />
+            <span style={{ color: '#FFF', marginLeft: 12, fontWeight: '600', fontSize: 18 }}>
+              Pagar €{(amount / 100).toFixed(2)}
+            </span>
+          </>
+        )}
+      </button>
+
+      <Pressable onPress={onCancel} style={styles.cancelButton}>
+        <ThemedText type="body" style={{ color: theme.textSecondary }}>
+          Cancelar y volver
+        </ThemedText>
+      </Pressable>
+    </form>
+  );
+}
+
+export default function StripePaymentScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { theme } = useTheme();
+  const { clearCart } = useCart();
+  const [stripeReady, setStripeReady] = useState(false);
+
+  const params = route.params as any;
+  const { orderId, amount, subtotal, deliveryFee, businessId } = params || {};
+
+  useEffect(() => {
+    getStripePromise().then(() => setStripeReady(true));
+  }, []);
+
+  const handleSuccess = async () => {
+    await clearCart();
+    navigation.reset({
+      index: 0,
+      routes: [
+        { name: 'Main' as never },
+        { name: 'OrderTracking' as never, params: { orderId } },
+      ],
+    });
+  };
+
+  const handleCancel = () => {
+    navigation.goBack();
+  };
+
+  if (!stripeReady) {
+    return (
+      <View style={[styles.webContainer, { backgroundColor: theme.backgroundRoot, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+        <ThemedText type="body" style={{ marginTop: 16, color: theme.textSecondary }}>
+          Cargando pasarela de pago...
+        </ThemedText>
+      </View>
+    );
+  }
+
+  return (
+    <Elements stripe={stripePromise}>
+      <View style={[styles.webContainer, { backgroundColor: theme.backgroundRoot }]}>
       {/* LEFT: Hero Section */}
       <View style={styles.heroSection}>
         <View style={styles.heroContent}>
@@ -98,63 +268,19 @@ export default function StripePaymentScreen() {
             Información de pago
           </ThemedText>
 
-          {/* Placeholder para Stripe Elements */}
-          <View style={styles.stripeContainer}>
-            <View style={[styles.stripeElement, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}>
-              <Feather name="credit-card" size={20} color={theme.textSecondary} />
-              <ThemedText type="body" style={{ color: theme.textSecondary, marginLeft: 12 }}>
-                Número de tarjeta
-              </ThemedText>
-            </View>
-            
-            <View style={styles.stripeRow}>
-              <View style={[styles.stripeElement, styles.stripeHalf, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}>
-                <Feather name="calendar" size={20} color={theme.textSecondary} />
-                <ThemedText type="body" style={{ color: theme.textSecondary, marginLeft: 12 }}>
-                  MM/AA
-                </ThemedText>
-              </View>
-              <View style={[styles.stripeElement, styles.stripeHalf, { borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}>
-                <Feather name="lock" size={20} color={theme.textSecondary} />
-                <ThemedText type="body" style={{ color: theme.textSecondary, marginLeft: 12 }}>
-                  CVC
-                </ThemedText>
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.infoBox, { backgroundColor: PRIMARY + "10", borderColor: PRIMARY + "30" }]}>
-            <Feather name="info" size={20} color={PRIMARY} />
-            <ThemedText type="small" style={{ color: PRIMARY, marginLeft: 12, flex: 1 }}>
-              Integración de Stripe en desarrollo. Por ahora, usa métodos de pago manuales (Bizum, SEPA, PayPal).
-            </ThemedText>
-          </View>
-
-          <Pressable
-            onPress={handlePayment}
-            disabled={loading}
-            style={[styles.payButton, loading && { opacity: 0.6 }]}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <>
-                <Feather name="lock" size={20} color="#FFF" />
-                <ThemedText type="h4" style={{ color: "#FFF", marginLeft: 12, fontWeight: "600" }}>
-                  Pagar €{(amount / 100).toFixed(2)}
-                </ThemedText>
-              </>
-            )}
-          </Pressable>
-
-          <Pressable onPress={() => navigation.goBack()} style={styles.cancelButton}>
-            <ThemedText type="body" style={{ color: theme.textSecondary }}>
-              Cancelar y volver
-            </ThemedText>
-          </Pressable>
+          <PaymentForm 
+            orderId={orderId}
+            amount={amount}
+            businessId={businessId}
+            subtotal={subtotal}
+            deliveryFee={deliveryFee}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
         </View>
       </View>
-    </View>
+      </View>
+    </Elements>
   );
 }
 
@@ -257,22 +383,13 @@ const styles = StyleSheet.create({
   },
   stripeContainer: {
     marginBottom: 24,
+    width: '100%',
   },
-  stripeElement: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 56,
+  stripeElementWrapper: {
     borderWidth: 1.5,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  stripeRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  stripeHalf: {
-    flex: 1,
+    padding: 16,
+    minHeight: 56,
   },
   infoBox: {
     flexDirection: "row",
