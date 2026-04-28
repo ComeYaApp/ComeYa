@@ -7,12 +7,13 @@ import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
 import { ComeYaColors } from "@/constants/theme";
 
-const PRIMARY = ComeYaColors.primary;
+// Rojo para versión web
+const PRIMARY = "#DC2626";
 
 export default function CartScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
-  const { items, addItem, removeItem, clearCart } = useCart();
+  const { cart, addToCart, removeFromCart, updateQuantity, clearCart } = useCart();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -20,9 +21,24 @@ export default function CartScreen() {
   const sub = isDark ? "#aaa" : "#666";
   const border = isDark ? "#333" : "#e8e8e8";
 
-  const subtotal = items.reduce((s: number, i: any) => s + i.price * i.quantity, 0);
-  const deliveryFee = items.length > 0 ? 2.99 : 0;
+  // Obtener items del carrito
+  const cartItems = cart?.items || [];
+  const subtotal = cartItems.reduce((s: number, i: any) => s + (i.product.price * i.quantity), 0);
+  const deliveryFee = cartItems.length > 0 ? 2.99 : 0;
   const total = subtotal + deliveryFee;
+
+  // Funciones adaptadas
+  const handleIncrement = (item: any) => {
+    updateQuantity(item.id, item.quantity + 1);
+  };
+
+  const handleDecrement = (item: any) => {
+    if (item.quantity > 1) {
+      updateQuantity(item.id, item.quantity - 1);
+    } else {
+      removeFromCart(item.id);
+    }
+  };
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
@@ -39,7 +55,7 @@ export default function CartScreen() {
       <View style={s.body}>
         {/* IZQUIERDA — Productos */}
         <ScrollView style={s.left} contentContainerStyle={s.leftContent} showsVerticalScrollIndicator={false}>
-          {items.length === 0 ? (
+          {cartItems.length === 0 ? (
             <View style={s.empty}>
               <Text style={{ fontSize: 64 }}>🛒</Text>
               <Text style={[s.emptyTitle, { color: text }]}>Tu carrito está vacío</Text>
@@ -51,25 +67,25 @@ export default function CartScreen() {
           ) : (
             <>
               <Text style={[s.sectionTitle, { color: text }]}>
-                {items[0]?.businessName || "Tu pedido"} · {items.reduce((s: number, i: any) => s + i.quantity, 0)} artículos
+                {cartItems[0]?.product?.name ? cart?.businessName : "Tu pedido"} · {cartItems.reduce((s: number, i: any) => s + i.quantity, 0)} artículos
               </Text>
-              {items.map((item: any) => (
+              {cartItems.map((item: any) => (
                 <View key={item.id} style={[s.itemCard, { backgroundColor: card, borderColor: border }]}>
-                  <Image source={{ uri: item.image }} style={s.itemImg} contentFit="cover" />
+                  <Image source={{ uri: item.product.image }} style={s.itemImg} contentFit="cover" />
                   <View style={s.itemInfo}>
-                    <Text style={[s.itemName, { color: text }]}>{item.name}</Text>
-                    <Text style={[s.itemPrice, { color: PRIMARY }]}>€{item.price.toFixed(2)} / ud.</Text>
+                    <Text style={[s.itemName, { color: text }]}>{item.product.name}</Text>
+                    <Text style={[s.itemPrice, { color: PRIMARY }]}>€{item.product.price.toFixed(2)} / ud.</Text>
                   </View>
                   <View style={s.qtyRow}>
-                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => removeItem(item.id)}>
+                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => handleDecrement(item)}>
                       <Feather name="minus" size={14} color={text} />
                     </Pressable>
                     <Text style={[s.qtyText, { color: text }]}>{item.quantity}</Text>
-                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => addItem(item)}>
+                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => handleIncrement(item)}>
                       <Feather name="plus" size={14} color={text} />
                     </Pressable>
                   </View>
-                  <Text style={[s.itemTotal, { color: text }]}>€{(item.price * item.quantity).toFixed(2)}</Text>
+                  <Text style={[s.itemTotal, { color: text }]}>€{(item.product.price * item.quantity).toFixed(2)}</Text>
                 </View>
               ))}
               <Pressable onPress={clearCart} style={s.clearBtn}>
@@ -81,14 +97,14 @@ export default function CartScreen() {
         </ScrollView>
 
         {/* DERECHA — Resumen */}
-        {items.length > 0 && (
+        {cartItems.length > 0 && (
           <View style={[s.summary, { backgroundColor: card, borderLeftColor: border }]}>
             <Text style={[s.summaryTitle, { color: text }]}>Resumen del pedido</Text>
             <View style={[s.summaryBox, { borderColor: border }]}>
-              {items.map((item: any) => (
+              {cartItems.map((item: any) => (
                 <View key={item.id} style={s.summaryRow}>
-                  <Text style={[s.summaryLabel, { color: sub }]}>{item.quantity}x {item.name}</Text>
-                  <Text style={[s.summaryValue, { color: text }]}>€{(item.price * item.quantity).toFixed(2)}</Text>
+                  <Text style={[s.summaryLabel, { color: sub }]}>{item.quantity}x {item.product.name}</Text>
+                  <Text style={[s.summaryValue, { color: text }]}>€{(item.product.price * item.quantity).toFixed(2)}</Text>
                 </View>
               ))}
             </View>
@@ -128,7 +144,7 @@ const s = StyleSheet.create({
   empty: { alignItems: "center", paddingVertical: 80, gap: 12 },
   emptyTitle: { fontSize: 22, fontWeight: "700" },
   emptySub: { fontSize: 15, textAlign: "center" },
-  browseBtn: { backgroundColor: ComeYaColors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, marginTop: 8 },
+  browseBtn: { backgroundColor: PRIMARY, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, marginTop: 8 },
   browseBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   sectionTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   itemCard: { flexDirection: "row", alignItems: "center", gap: 16, padding: 16, borderRadius: 14, borderWidth: 1, marginBottom: 12 },
@@ -151,7 +167,7 @@ const s = StyleSheet.create({
   totalRow: { borderTopWidth: 1, paddingTop: 12, marginTop: 4 },
   totalLabel: { fontSize: 17, fontWeight: "800" },
   totalValue: { fontSize: 20, fontWeight: "900" },
-  checkoutBtn: { backgroundColor: ComeYaColors.primary, borderRadius: 12, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16, marginBottom: 10 },
+  checkoutBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16, marginBottom: 10 },
   checkoutBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   secureText: { fontSize: 12, textAlign: "center" },
 });

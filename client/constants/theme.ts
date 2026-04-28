@@ -1,9 +1,9 @@
 // Unified Design System for ComeYa App
 export const theme = {
   colors: {
-    primary: '#FF6B35',
-    primaryDark: '#E55A25',
-    primaryLight: '#FF8C5A',
+    primary: '#DC2626',
+    primaryDark: '#B91C1C',
+    primaryLight: '#EF4444',
     secondary: '#2D2D2D',
     background: '#F7F7F7',
     backgroundSecondary: '#EFEFEF',

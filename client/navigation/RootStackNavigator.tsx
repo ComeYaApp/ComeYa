@@ -49,6 +49,7 @@ import AdminPaymentAccountsScreen from "@/screens/AdminPaymentAccountsScreen";
 import PaymentProofScreen from "@/screens/PaymentProofScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import QRScannerScreen from "@/screens/QRScannerScreen";
+import StripePaymentScreen from "@/screens/StripePaymentScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -112,6 +113,7 @@ export type RootStackParamList = {
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
   DigitalPaymentMethod: { orderTotal: number };
   PaymentProof: { orderId: string; amount: number; paymentMethod: string };
+  StripePayment: { orderId: string; amount: number; subtotal: number; deliveryFee: number; businessId: string };
   AdminPaymentAccounts: undefined;
   PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };
@@ -347,6 +349,11 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="PaymentProof"
             component={PaymentProofScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="StripePayment"
+            component={StripePaymentScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

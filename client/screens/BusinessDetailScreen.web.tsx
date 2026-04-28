@@ -14,13 +14,14 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, "BusinessDetail">;
-const PRIMARY = ComeYaColors.primary;
+// Rojo para versión web
+const PRIMARY = "#DC2626";
 
 export default function BusinessDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { theme, isDark } = useTheme();
-  const { items, addItem, removeItem, getItemQuantity, getTotalPrice } = useCart();
+  const { cart, addToCart, removeFromCart, getCartItem, clearCart } = useCart();
   const [business, setBusiness] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,8 +51,21 @@ export default function BusinessDetailScreen() {
 
   const categories = [...new Set(products.map(p => p.category))];
   const filteredProducts = activeCategory ? products.filter(p => p.category === activeCategory) : products;
-  const cartTotal = getTotalPrice ? getTotalPrice() : items.reduce((s: number, i: any) => s + i.price * i.quantity, 0);
-  const cartCount = items.reduce((s: number, i: any) => s + i.quantity, 0);
+  
+  // Obtener items del carrito
+  const cartItems = cart?.items || [];
+  const cartTotal = cartItems.reduce((s: number, i: any) => s + (i.product.price * i.quantity), 0);
+  const cartCount = cartItems.reduce((s: number, i: any) => s + i.quantity, 0);
+
+  // Funciones adaptadas
+  const handleAddItem = (product: any) => {
+    addToCart(product, route.params.businessId, business?.name || '', 1);
+  };
+
+  const handleRemoveItem = (productId: string) => {
+    const item = cartItems.find((i: any) => i.product.id === productId);
+    if (item) removeFromCart(item.id);
+  };
 
   if (loading) return (
     <View style={[s.root, { backgroundColor: bg, justifyContent: "center", alignItems: "center" }]}>
@@ -120,7 +134,8 @@ export default function BusinessDetailScreen() {
             {activeCategory && <Text style={[s.catTitle, { color: text }]}>{activeCategory}</Text>}
             <View style={s.productsGrid}>
               {filteredProducts.filter(p => p.isAvailable).map(p => {
-                const qty = getItemQuantity ? getItemQuantity(p.id) : (items.find((i: any) => i.id === p.id)?.quantity || 0);
+                const cartItem = getCartItem(p.id);
+                const qty = cartItem?.quantity || 0;
                 return (
                   <View key={p.id} style={[s.productCard, { backgroundColor: card }]}>
                     <Image source={{ uri: p.image }} style={s.productImg} contentFit="cover" />
@@ -130,16 +145,16 @@ export default function BusinessDetailScreen() {
                       <View style={s.productFooter}>
                         <Text style={[s.productPrice, { color: PRIMARY }]}>€{p.price.toFixed(2)}</Text>
                         {qty === 0 ? (
-                          <Pressable style={s.addBtn} onPress={() => addItem({ ...p, businessId: route.params.businessId, businessName: business?.name })}>
+                          <Pressable style={s.addBtn} onPress={() => handleAddItem(p)}>
                             <Feather name="plus" size={16} color="#fff" />
                           </Pressable>
                         ) : (
                           <View style={s.qtyRow}>
-                            <Pressable style={s.qtyBtn} onPress={() => removeItem(p.id)}>
+                            <Pressable style={s.qtyBtn} onPress={() => handleRemoveItem(p.id)}>
                               <Feather name="minus" size={14} color={PRIMARY} />
                             </Pressable>
                             <Text style={[s.qtyText, { color: text }]}>{qty}</Text>
-                            <Pressable style={s.qtyBtn} onPress={() => addItem({ ...p, businessId: route.params.businessId, businessName: business?.name })}>
+                            <Pressable style={s.qtyBtn} onPress={() => handleAddItem(p)}>
                               <Feather name="plus" size={14} color={PRIMARY} />
                             </Pressable>
                           </View>
@@ -156,7 +171,7 @@ export default function BusinessDetailScreen() {
         {/* CARRITO FLOTANTE DERECHA */}
         <View style={[s.cartPanel, { backgroundColor: card, borderLeftColor: border }]}>
           <Text style={[s.cartTitle, { color: text }]}>Tu pedido</Text>
-          {items.length === 0 ? (
+          {cartItems.length === 0 ? (
             <View style={s.cartEmpty}>
               <Text style={{ fontSize: 40 }}>🛒</Text>
               <Text style={[s.cartEmptyText, { color: sub }]}>Añade productos para empezar</Text>
@@ -164,13 +179,13 @@ export default function BusinessDetailScreen() {
           ) : (
             <>
               <ScrollView style={s.cartItems} showsVerticalScrollIndicator={false}>
-                {items.map((item: any) => (
+                {cartItems.map((item: any) => (
                   <View key={item.id} style={[s.cartItem, { borderBottomColor: border }]}>
                     <View style={s.cartItemQty}>
                       <Text style={s.cartItemQtyText}>{item.quantity}x</Text>
                     </View>
-                    <Text style={[s.cartItemName, { color: text, flex: 1 }]} numberOfLines={1}>{item.name}</Text>
-                    <Text style={[s.cartItemPrice, { color: text }]}>€{(item.price * item.quantity).toFixed(2)}</Text>
+                    <Text style={[s.cartItemName, { color: text, flex: 1 }]} numberOfLines={1}>{item.product.name}</Text>
+                    <Text style={[s.cartItemPrice, { color: text }]}>€{(item.product.price * item.quantity).toFixed(2)}</Text>
                   </View>
                 ))}
               </ScrollView>

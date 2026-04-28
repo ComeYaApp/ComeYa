@@ -7,6 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { ComeYaLogo } from "@/components/ComeYaLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
@@ -15,7 +16,8 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { Business } from "@/types";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-const PRIMARY = ComeYaColors.primary;
+// Rojo para versión web
+const PRIMARY = "#DC2626";
 
 const FILTERS = [
   { id: "all", label: "Todos" },
@@ -115,7 +117,10 @@ export default function HomeScreen() {
       <View style={[s.navbar, { backgroundColor: card, borderBottomColor: border }]}>
         <View style={s.navLeft}>
           <View style={s.navLogo}>
-            <Text style={s.navLogoText}>🐰 ComeYa</Text>
+            <View style={s.navLogoCircle}>
+              <ComeYaLogo size={28} />
+            </View>
+            <Text style={s.navLogoText}>ComeYa</Text>
           </View>
           <View style={[s.navSearch, { backgroundColor: bg, borderColor: border }]}>
             <Feather name="search" size={16} color={sub} />
@@ -264,7 +269,19 @@ const s = StyleSheet.create({
   root: { flex: 1 },
   navbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1, zIndex: 10 },
   navLeft: { flexDirection: "row", alignItems: "center", gap: 20, flex: 1 },
-  navLogo: {},
+  navLogo: { flexDirection: "row", alignItems: "center", gap: 10 },
+  navLogoCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
   navLogoText: { fontSize: 20, fontWeight: "900", color: PRIMARY },
   navSearch: { flex: 1, maxWidth: 480, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
   navSearchInput: { flex: 1, fontSize: 14, outlineStyle: "none" } as any,

@@ -20,7 +20,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        backgroundColor: "#FE1519",
+        backgroundColor: "#DC2626",
         foregroundImage: "./client/assets/nuevologoapp-padded.jpeg"
       },
       edgeToEdgeEnabled: true,
@@ -44,9 +44,9 @@ export default {
           image: "./client/assets/splash.png",
           imageWidth: 500,
           resizeMode: "contain",
-          backgroundColor: "#FE1519",
+          backgroundColor: "#DC2626",
           dark: {
-            backgroundColor: "#FE1519",
+            backgroundColor: "#DC2626",
             image: "./client/assets/splash.png"
           }
         }

@@ -8,7 +8,8 @@ import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useBusiness } from "@/contexts/BusinessContext";
 
-const PRIMARY = ComeYaColors.primary;
+// Rojo para versión web
+const PRIMARY = "#DC2626";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "bar-chart-2" },
@@ -170,7 +171,7 @@ const s = StyleSheet.create({
   sideBizName: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
   sideRole: { fontSize: 12 },
   navItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
-  navItemActive: { backgroundColor: ComeYaColors.primary + "10", borderRightWidth: 3, borderRightColor: ComeYaColors.primary },
+  navItemActive: { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY },
   navItemText: { fontSize: 14, fontWeight: "600" },
   sideFooter: { marginTop: "auto" as any, borderTopWidth: 1, borderTopColor: "#e0e0e0" },
   main: { flex: 1 },

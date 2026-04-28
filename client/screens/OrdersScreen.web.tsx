@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = ComeYaColors.primary;
+const PRIMARY = "#DC2626";
 
 const STATUS: Record<string, { label: string; color: string; icon: string }> = {
   pending:    { label: "Pendiente",       color: "#F59E0B", icon: "clock" },
