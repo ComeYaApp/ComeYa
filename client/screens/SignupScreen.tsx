@@ -115,7 +115,8 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     const n = v.replace(/\D/g, "");
     if (n.length <= 3) return n;
     if (n.length <= 6) return `${n.slice(0, 3)} ${n.slice(3)}`;
-    return `${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6, 9)}`;
+    if (n.length <= 9) return `${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6, 9)}`;
+    return `${n.slice(0, 4)} ${n.slice(4, 7)} ${n.slice(7, 11)}`;
   };
 
   const needsDocs = role === "delivery_driver" || role === "business_owner";
