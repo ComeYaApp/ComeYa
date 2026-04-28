@@ -82,6 +82,48 @@ export default function HomeScreen() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
+  // Mapa de iconos y colores por palabra clave de categoría
+  const CATEGORY_STYLE: Record<string, { icon: string; color: string; label: string }> = {
+    pizza: { icon: "circle", color: "#E91E63", label: "Pizzas" },
+    italiana: { icon: "circle", color: "#E91E63", label: "Italiana" },
+    burger: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
+    hamburguesa: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
+    sushi: { icon: "wind", color: "#00BCD4", label: "Sushi" },
+    japonesa: { icon: "wind", color: "#00BCD4", label: "Japonesa" },
+    pollo: { icon: "feather", color: "#FF9800", label: "Pollo" },
+    alitas: { icon: "feather", color: "#FF9800", label: "Alitas" },
+    mariscos: { icon: "anchor", color: "#2196F3", label: "Mariscos" },
+    pescado: { icon: "anchor", color: "#2196F3", label: "Pescado" },
+    mexicana: { icon: "sun", color: "#FF5722", label: "Mexicana" },
+    tacos: { icon: "sun", color: "#FF5722", label: "Tacos" },
+    antojitos: { icon: "sun", color: "#FF5722", label: "Antojitos" },
+    mercado: { icon: "shopping-bag", color: "#4CAF50", label: "Mercado" },
+    carniceria: { icon: "shopping-bag", color: "#795548", label: "Carnicería" },
+    abarrotes: { icon: "package", color: "#607D8B", label: "Abarrotes" },
+    tapas: { icon: "grid", color: "#9C27B0", label: "Tapas" },
+    bar: { icon: "coffee", color: "#9C27B0", label: "Bar" },
+    asador: { icon: "award", color: "#FF5722", label: "Asador" },
+    parrilla: { icon: "award", color: "#FF5722", label: "Parrilla" },
+    pastas: { icon: "circle", color: "#FF9800", label: "Pastas" },
+    americana: { icon: "layers", color: "#F44336", label: "Americana" },
+  };
+
+  // Genera categorías dinámicamente desde los negocios cargados
+  const dynamicCategories = React.useMemo(() => {
+    const seen = new Set<string>();
+    const cats: { id: string; icon: string; color: string; label: string }[] = [];
+    businesses.forEach((b) => {
+      b.categories.forEach((cat) => {
+        const key = cat.toLowerCase().trim();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        const style = CATEGORY_STYLE[key] || { icon: "tag", color: ComeYaColors.primary, label: cat.charAt(0).toUpperCase() + cat.slice(1) };
+        cats.push({ id: key, ...style });
+      });
+    });
+    return cats.slice(0, 8); // max 8 categorías
+  }, [businesses]);
+
   const loadData = useCallback(async () => {
     try {
       const response = await apiRequest('GET', '/api/businesses');
@@ -173,20 +215,8 @@ export default function HomeScreen() {
       }
 
       if (activeCategory) {
-        const categoryMap: Record<string, string[]> = {
-          bocadillos: ["bocadillo", "sandwich", "montado"],
-          menu: ["menu", "plato", "casera"],
-          pizzas: ["pizza", "pizzeria", "italiana"],
-          hamburguesas: ["hamburguesa", "burger"],
-          tapas: ["tapas", "raciones", "pinchos", "bar"],
-          postres: ["postre", "dulce", "pasteleria", "cafe"],
-          mercado: ["mercado", "supermercado", "carniceria", "frutas"],
-        };
-        const matchCategories = categoryMap[activeCategory] || [activeCategory];
         filtered = filtered.filter((b) =>
-          b.categories.some((cat) =>
-            matchCategories.some((match) => cat.toLowerCase().includes(match)),
-          ),
+          b.categories.some((cat) => cat.toLowerCase().trim() === activeCategory)
         );
       }
 
@@ -300,31 +330,8 @@ export default function HomeScreen() {
             contentContainerStyle={styles.quickAccessScroll}
           >
             {[
-              { id: "bocadillos", icon: "coffee", label: "Bocadillos", color: "#FF8C00" },
-              { id: "menu", icon: "book-open", label: "Menú del día", color: "#4CAF50" },
-              { id: "pizzas", icon: "circle", label: "Pizzas", color: "#E91E63" },
-              { id: "hamburguesas", icon: "layers", label: "Hamburguesas", color: "#F44336" },
-              { id: "tapas", icon: "grid", label: "Tapas", color: "#9C27B0" },
-              { id: "postres", icon: "star", label: "Postres", color: "#FFB800" },
-              { id: "mercado", icon: "shopping-bag", label: "Mercado", color: "#2196F3" },
-            ].filter((item) => {
-              // Solo mostrar categorías que tienen al menos un negocio
-              const catMap: Record<string, string[]> = {
-                bocadillos: ["bocadillo", "sandwich", "montado"],
-                menu: ["menú", "menu", "plato", "casera"],
-                pizzas: ["pizza", "pizzería", "italiana"],
-                hamburguesas: ["hamburguesa", "burger"],
-                tapas: ["tapas", "raciones", "pinchos", "bar"],
-                postres: ["postre", "dulce", "pastelería", "café"],
-                mercado: ["mercado", "supermercado", "carnicería", "frutas"],
-              };
-              const keywords = catMap[item.id] || [item.id];
-              return businesses.some((b) =>
-                b.categories.some((cat) =>
-                  keywords.some((kw) => cat.toLowerCase().includes(kw))
-                ) || b.type === item.id
-              );
-            }).map((item) => {
+            ...dynamicCategories
+            ].map((item) => {
               const isActive = activeCategory === item.id;
               return (
                 <Pressable
