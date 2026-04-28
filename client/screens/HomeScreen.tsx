@@ -174,12 +174,14 @@ export default function HomeScreen() {
 
       if (activeCategory) {
         const categoryMap: Record<string, string[]> = {
-          arepas: ["arepas", "arepa", "reina pepiada"],
-          empanadas: ["empanadas", "empanada", "pastelitos"],
-          parrilla: ["parrilla", "carne", "asado", "churrasco"],
-          pollo: ["pollo", "alitas", "broaster"],
-          pastelitos: ["pastelitos", "tequeños", "pasapalos"],
-          cachapas: ["cachapas", "cachapa", "pabellon"],
+          bocadillos: [\"bocadillo\", \"sandwich\", \"montado\"],
+          menu: [\"men\u00fa\", \"menu\", \"plato\", \"casera\", \"del d\u00eda\"],
+          pizzas: [\"pizza\", \"pizzer\u00eda\", \"italiana\"],
+          hamburguesas: [\"hamburguesa\", \"burger\"],
+          tapas: [\"tapas\", \"raciones\", \"pinchos\", \"bar\"],
+          postres: [\"postre\", \"dulce\", \"pasteler\u00eda\", \"caf\u00e9\"],
+          mercado: [\"mercado\", \"supermercado\", \"carnicer\u00eda\", \"frutas\"],
+          asiatica: [\"chino\", \"japon\u00e9s\", \"sushi\", \"asi\u00e1tica\"],
         };
         const matchCategories = categoryMap[activeCategory] || [activeCategory];
         filtered = filtered.filter((b) =>
@@ -284,7 +286,7 @@ export default function HomeScreen() {
           style={styles.questionContainer}
         >
           <ThemedText type="h1" style={styles.questionText}>
-            Que vas a comer hoy?
+            ¿Qué quieres pedir hoy?
           </ThemedText>
         </Animated.View>
 
@@ -299,13 +301,31 @@ export default function HomeScreen() {
             contentContainerStyle={styles.quickAccessScroll}
           >
             {[
-              { id: "arepas", icon: "sun", label: "Arepas", color: "#FF8C00" },
-              { id: "empanadas", icon: "coffee", label: "Empanadas", color: "#E91E63" },
-              { id: "parrilla", icon: "award", label: "Parrilla", color: "#F44336" },
-              { id: "pollo", icon: "feather", label: "Pollo", color: "#FF5722" },
-              { id: "pastelitos", icon: "star", label: "Pastelitos", color: "#9C27B0" },
-              { id: "cachapas", icon: "disc", label: "Cachapas", color: "#FFB800" },
-            ].map((item) => {
+              { id: "bocadillos", icon: "coffee", label: "Bocadillos", color: "#FF8C00" },
+              { id: "menu", icon: "book-open", label: "Menú del día", color: "#4CAF50" },
+              { id: "pizzas", icon: "circle", label: "Pizzas", color: "#E91E63" },
+              { id: "hamburguesas", icon: "layers", label: "Hamburguesas", color: "#F44336" },
+              { id: "tapas", icon: "grid", label: "Tapas", color: "#9C27B0" },
+              { id: "postres", icon: "star", label: "Postres", color: "#FFB800" },
+              { id: "mercado", icon: "shopping-bag", label: "Mercado", color: "#2196F3" },
+            ].filter((item) => {
+              // Solo mostrar categorías que tienen al menos un negocio
+              const catMap: Record<string, string[]> = {
+                bocadillos: ["bocadillo", "sandwich", "montado"],
+                menu: ["menú", "menu", "plato", "casera"],
+                pizzas: ["pizza", "pizzería", "italiana"],
+                hamburguesas: ["hamburguesa", "burger"],
+                tapas: ["tapas", "raciones", "pinchos", "bar"],
+                postres: ["postre", "dulce", "pastelería", "café"],
+                mercado: ["mercado", "supermercado", "carnicería", "frutas"],
+              };
+              const keywords = catMap[item.id] || [item.id];
+              return businesses.some((b) =>
+                b.categories.some((cat) =>
+                  keywords.some((kw) => cat.toLowerCase().includes(kw))
+                ) || b.type === item.id
+              );
+            }).map((item) => {
               const isActive = activeCategory === item.id;
               return (
                 <Pressable
