@@ -271,7 +271,7 @@ export default function OrderTrackingScreen() {
       </View>
 
       {/* DERECHA: Panel de información scrolleable */}
-      <View style={s.infoSection}>
+      <View style={[s.infoSection, { backgroundColor: theme.backgroundSecondary }]}>
         <ScrollView 
           style={{ flex: 1 }} 
           contentContainerStyle={s.scrollContent}
@@ -689,7 +689,6 @@ const s = StyleSheet.create({
   infoSection: {
     flex: 1,
     height: "100%",
-    backgroundColor: "#fafafa",
   } as any,
   scrollContent: {
     padding: Spacing.xl,
@@ -707,7 +706,6 @@ const s = StyleSheet.create({
     borderRadius: 22, 
     justifyContent: "center", 
     alignItems: "center",
-    backgroundColor: "#FFF",
     ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' } }),
   },
   
@@ -715,7 +713,6 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
-    backgroundColor: "#FFF",
     ...Platform.select({ web: { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } }),
   },
   businessRow: { flexDirection: "row", alignItems: "center" },
@@ -730,7 +727,6 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.xl, 
     borderWidth: 1.5,
     marginBottom: Spacing.lg,
-    backgroundColor: "#FFF",
     ...Platform.select({ web: { boxShadow: '0 2px 8px rgba(0,0,0,0.06)' } }),
   },
   statusIcon: { width: 52, height: 52, borderRadius: 26, justifyContent: "center", alignItems: "center" },
@@ -741,7 +737,6 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.xl, 
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
-    backgroundColor: "#FFF",
     ...Platform.select({ web: { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } }),
   },
   detailRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm },
@@ -752,7 +747,6 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
-    backgroundColor: "#FFF",
     ...Platform.select({ web: { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } }),
   },
   driverHeader: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.lg },
@@ -773,7 +767,6 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
-    backgroundColor: "#FFF",
     ...Platform.select({ web: { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } }),
   },
   addressHeader: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.md },
@@ -782,7 +775,6 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     marginBottom: Spacing.lg,
-    backgroundColor: "#FFF",
     ...Platform.select({ web: { boxShadow: '0 4px 12px rgba(0,0,0,0.08)' } }),
   },
   tipHeader: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.md },
@@ -834,6 +826,5 @@ const s = StyleSheet.create({
     marginBottom: Spacing.xl,
     cursor: 'pointer' as any,
     transition: 'all 0.2s ease' as any,
-    backgroundColor: "#FFF",
   },
 });

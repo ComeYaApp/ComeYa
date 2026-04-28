@@ -111,7 +111,7 @@ export default function SupportScreen() {
         >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
-        <ThemedText type="h2">Soporte</ThemedText>
+        <ThemedText type="h2">Soporte 🐰</ThemedText>
         <View style={{ width: 44 }} />
       </View>
 
@@ -122,7 +122,7 @@ export default function SupportScreen() {
         >
           <ScrollView contentContainerStyle={styles.formContent}>
             <ThemedText type="h3" style={{ marginBottom: Spacing.lg }}>
-              Nuevo ticket de soporte
+              Crear ticket de soporte
             </ThemedText>
 
             <Pressable
@@ -136,14 +136,14 @@ export default function SupportScreen() {
               ]}
             >
               <View style={styles.chatPromoIcon}>
-                <Feather name="zap" size={24} color={ComeYaColors.primary} />
+                <ThemedText type="h3" style={{ fontSize: 24 }}>🐰</ThemedText>
               </View>
               <View style={{ flex: 1 }}>
                 <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-                  ¿Necesitas ayuda rápida?
+                  ¿Necesitas ayuda inmediata?
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Prueba nuestro chat con IA para respuestas instantáneas.
+                  Chatea con nuestro asistente IA para respuestas instantáneas
                 </ThemedText>
               </View>
               <Feather name="chevron-right" size={20} color={ComeYaColors.primary} />
@@ -248,22 +248,20 @@ export default function SupportScreen() {
               </View>
             ) : tickets.length === 0 ? (
               <View style={styles.emptyState}>
-                <Feather
-                  name="message-circle"
-                  size={48}
-                  color={theme.textSecondary}
-                />
+                <View style={[styles.emptyIconContainer, { backgroundColor: ComeYaColors.primary + "10" }]}>
+                  <ThemedText type="h1" style={{ fontSize: 48 }}>🐰</ThemedText>
+                </View>
                 <ThemedText
                   type="h4"
                   style={{ color: theme.text, marginTop: Spacing.md }}
                 >
-                  Sin tickets
+                  No tienes tickets
                 </ThemedText>
                 <ThemedText
                   type="body"
-                  style={{ color: theme.textSecondary, textAlign: "center" }}
+                  style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.xs }}
                 >
-                  Crea un ticket si necesitas ayuda
+                  Crea un ticket si necesitas ayuda con tu pedido
                 </ThemedText>
               </View>
             ) : (
@@ -398,6 +396,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: Spacing["4xl"],
   },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   newTicketContainer: {
     flex: 1,
   },
@@ -411,9 +416,9 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   chatPromoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",

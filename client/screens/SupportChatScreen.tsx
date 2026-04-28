@@ -33,7 +33,7 @@ const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "¡Hola! Soy el asistente virtual de ComeYa. Estoy aquí para ayudarte con:\n\n• Información sobre tus pedidos\n• Consultas sobre productos\n• Tiempos de entrega\n• Negocios disponibles\n• Cualquier otra duda\n\n¿En qué puedo ayudarte hoy?",
+    "¡Hola! 🐰 Soy el asistente virtual de ComeYa. Estoy aquí para ayudarte con:\n\n• Información sobre tus pedidos\n• Consultas sobre productos y negocios\n• Tiempos de entrega\n• Métodos de pago\n• Cualquier otra duda\n\n¿En qué puedo ayudarte hoy?",
   timestamp: new Date(),
 };
 
@@ -65,17 +65,13 @@ function MessageBubble({ message }: { message: Message }) {
               { backgroundColor: ComeYaColors.primary + "20" },
             ]}
           >
-            <Feather
-              name="message-circle"
-              size={12}
-              color={ComeYaColors.primary}
-            />
+            <ThemedText type="body" style={{ fontSize: 14 }}>🐰</ThemedText>
           </View>
           <ThemedText
             type="caption"
             style={{ color: ComeYaColors.primary, fontWeight: "600" }}
           >
-            ComeYa Soporte
+            ComeYa
           </ThemedText>
         </View>
       ) : null}
@@ -115,7 +111,7 @@ function EmptyState() {
         type="h3"
         style={{ marginTop: Spacing.lg, textAlign: "center" }}
       >
-        Soporte ComeYa
+        Chat de Soporte 🐰
       </ThemedText>
       <ThemedText
         type="body"
@@ -123,9 +119,10 @@ function EmptyState() {
           color: theme.textSecondary,
           textAlign: "center",
           marginTop: Spacing.sm,
+          paddingHorizontal: Spacing.xl,
         }}
       >
-        Estamos aquí para ayudarte
+        Pregúntame lo que necesites sobre ComeYa
       </ThemedText>
     </View>
   );
@@ -150,7 +147,7 @@ function TypingIndicator() {
         type="caption"
         style={{ color: theme.textSecondary, marginLeft: Spacing.sm }}
       >
-        ComeYa está escribiendo...
+        Escribiendo...
       </ThemedText>
     </View>
   );
@@ -363,9 +360,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   botIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginRight: Spacing.xs,
@@ -377,9 +374,9 @@ const styles = StyleSheet.create({
     paddingVertical: 100,
   },
   emptyIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     justifyContent: "center",
     alignItems: "center",
   },
