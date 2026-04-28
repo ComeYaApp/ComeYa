@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Platform, View, Dimensions } from "react-native";
+import { StyleSheet, Platform, View } from "react-native";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -25,12 +25,56 @@ import { AppProvider } from "@/contexts/AppContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { StripeProvider } from "@/providers/StripeProvider";
 import { OnboardingOverlay, checkOnboardingCompleted } from "@/components/OnboardingOverlay";
-import { NotificationPermissionModal } from "@/components/NotificationPermissionModal";
 import { useTheme } from "@/hooks/useTheme";
 
 SplashScreen.preventAutoHideAsync();
 
-const MAX_WIDTH = 480;
+// Inyectar estilos CSS globales para el layout web responsive
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = `
+    * { box-sizing: border-box; }
+    html, body, #root { height: 100%; margin: 0; padding: 0; background: #f0f0f0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    /* Contenedor centrado estilo app móvil en escritorio */
+    .web-app-shell {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    }
+
+    /* La app se muestra como un móvil centrado en pantallas grandes */
+    .web-app-container {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      background: white;
+      position: relative;
+      box-shadow: 0 0 40px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    /* En móvil ocupa todo el ancho */
+    @media (max-width: 520px) {
+      .web-app-shell { background: white; }
+      .web-app-container { max-width: 100%; box-shadow: none; }
+    }
+
+    /* En tablet un poco más ancho */
+    @media (min-width: 521px) and (max-width: 900px) {
+      .web-app-container { max-width: 420px; }
+    }
+
+    /* Scrollbar bonita */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #E8B4A8; border-radius: 4px; }
+  `;
+  document.head.appendChild(style);
+}
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -40,21 +84,20 @@ export default function App() {
   });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const screenWidth = Dimensions.get("window").width;
-  const isDesktop = screenWidth > 520;
 
   useEffect(() => {
-    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    const check = async () => {
+    const checkOnboarding = async () => {
       const completed = await checkOnboardingCompleted();
       setShowOnboarding(!completed);
       setOnboardingChecked(true);
     };
-    check();
+    checkOnboarding();
   }, []);
 
   if (!fontsLoaded && !fontError) return null;
@@ -72,29 +115,17 @@ export default function App() {
                     <AuthProvider>
                       <BusinessProvider>
                         <CartProvider>
-                          {isDesktop ? (
-                            // Layout desktop: app centrada con fondo gris
-                            <View style={styles.desktopShell}>
-                              <View style={styles.desktopContainer}>
-                                <AppThemedShell>
-                                  <RootStackNavigator />
-                                </AppThemedShell>
-                              </View>
-                            </View>
-                          ) : (
-                            // Layout móvil: igual que la app nativa
-                            <AppThemedShell>
-                              <RootStackNavigator />
-                            </AppThemedShell>
-                          )}
+                          {/* Shell web responsive */}
+                          <div className="web-app-shell">
+                            <div className="web-app-container">
+                              <AppThemedShell>
+                                <RootStackNavigator />
+                              </AppThemedShell>
+                            </div>
+                          </div>
                           {showOnboarding && (
                             <OnboardingOverlay onComplete={() => setShowOnboarding(false)} />
                           )}
-                          <NotificationPermissionModal
-                            visible={showNotificationModal}
-                            onAccept={() => setShowNotificationModal(false)}
-                            onDecline={() => setShowNotificationModal(false)}
-                          />
                         </CartProvider>
                       </BusinessProvider>
                     </AuthProvider>
@@ -122,23 +153,5 @@ function AppThemedShell({ children }: { children: React.ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  desktopShell: {
-    flex: 1,
-    backgroundColor: "#e8e8e8",
-    alignItems: "center",
-    justifyContent: "flex-start",
-  },
-  desktopContainer: {
-    width: MAX_WIDTH,
-    flex: 1,
-    backgroundColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    overflow: "hidden",
-  } as any,
+  root: { flex: 1 },
 });
