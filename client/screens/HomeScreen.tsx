@@ -8,6 +8,7 @@ import {
   TextInput,
   Dimensions,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -53,9 +54,9 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
 >;
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const GRID_PADDING = Spacing.lg * 2; // paddingHorizontal del scrollContent
+const GRID_PADDING = Spacing.lg * 2;
 const GRID_GAP = Spacing.sm;
-const GRID_CARD_WIDTH = (SCREEN_WIDTH - GRID_PADDING - GRID_GAP) / 2;
+// GRID_CARD_WIDTH se calcula dinámicamente en el componente
 
 const filters = [
   { id: "rapido", name: "Rapido", icon: "zap" },
@@ -70,7 +71,11 @@ export default function HomeScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const { settings } = useApp();
-  const showCarnivalBanner = false; // Carnaval terminado - mantener oculto
+  const showCarnivalBanner = false;
+  const { width: windowWidth } = useWindowDimensions();
+  // Limitar ancho en web escritorio
+  const contentWidth = Math.min(windowWidth, 900);
+  const GRID_CARD_WIDTH = (contentWidth - GRID_PADDING - GRID_GAP) / 2;
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
