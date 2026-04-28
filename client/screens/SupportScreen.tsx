@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -111,7 +112,7 @@ export default function SupportScreen() {
         >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
-        <ThemedText type="h2">Soporte 🐰</ThemedText>
+        <ThemedText type="h2">Soporte</ThemedText>
         <View style={{ width: 44 }} />
       </View>
 
@@ -136,7 +137,10 @@ export default function SupportScreen() {
               ]}
             >
               <View style={styles.chatPromoIcon}>
-                <ThemedText type="h3" style={{ fontSize: 24 }}>🐰</ThemedText>
+                <Image
+                  source={require("../../assets/images/comeya-logo-final.png")}
+                  contentFit="contain"
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
@@ -249,7 +253,10 @@ export default function SupportScreen() {
             ) : tickets.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={[styles.emptyIconContainer, { backgroundColor: ComeYaColors.primary + "10" }]}>
-                  <ThemedText type="h1" style={{ fontSize: 48 }}>🐰</ThemedText>
+                  <Image
+                    source={require("../../assets/images/comeya-logo-final.png")}
+                    contentFit="contain"
+                  />
                 </View>
                 <ThemedText
                   type="h4"

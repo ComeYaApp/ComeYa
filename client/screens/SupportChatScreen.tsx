@@ -33,7 +33,7 @@ const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "¡Hola! 🐰 Soy el asistente virtual de ComeYa. Estoy aquí para ayudarte con:\n\n• Información sobre tus pedidos\n• Consultas sobre productos y negocios\n• Tiempos de entrega\n• Métodos de pago\n• Cualquier otra duda\n\n¿En qué puedo ayudarte hoy?",
+    "¡Hola! Soy el asistente virtual de ComeYa. Estoy aquí para ayudarte con:\n\n• Información sobre tus pedidos\n• Consultas sobre productos y negocios\n• Tiempos de entrega\n• Métodos de pago\n• Cualquier otra duda\n\n¿En qué puedo ayudarte hoy?",
   timestamp: new Date(),
 };
 
@@ -65,7 +65,11 @@ function MessageBubble({ message }: { message: Message }) {
               { backgroundColor: ComeYaColors.primary + "20" },
             ]}
           >
-            <ThemedText type="body" style={{ fontSize: 14 }}>🐰</ThemedText>
+            <Image
+              source={require("../../assets/images/comeya-logo-final.png")}
+              style={{ width: 16, height: 16 }}
+              contentFit="contain"
+            />
           </View>
           <ThemedText
             type="caption"
@@ -107,11 +111,16 @@ function EmptyState() {
       >
         <Feather name="message-circle" size={48} color={ComeYaColors.primary} />
       </View>
+      <Image
+        source={require("../../assets/images/comeya-logo-final.png")}
+        style={{ width: 80, height: 80, marginTop: Spacing.md }}
+        contentFit="contain"
+      />
       <ThemedText
         type="h3"
         style={{ marginTop: Spacing.lg, textAlign: "center" }}
       >
-        Chat de Soporte 🐰
+        Chat de Soporte
       </ThemedText>
       <ThemedText
         type="body"
