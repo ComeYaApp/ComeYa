@@ -1,113 +1,250 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { theme } from '@/constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { ThemedText } from '@/components/ThemedText';
+import { useTheme } from '@/hooks/useTheme';
+import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
+import { apiRequest } from '@/lib/query-client';
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente',
-  accepted: 'Aceptado',
-  preparing: 'Preparando',
-  ready: 'Listo para recoger',
-  picked_up: 'Recogido',
-  on_the_way: 'En camino',
-  delivered: 'Entregado',
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
+
+function loadGoogleMaps(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as any).google?.maps) { resolve(); return; }
+    const existing = document.getElementById("gmap-script");
+    if (existing) { existing.addEventListener("load", () => resolve()); return; }
+    const script = document.createElement("script");
+    script.id = "gmap-script";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+const STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  pending:    { label: "Esperando confirmación", color: "#F59E0B", icon: "clock" },
+  confirmed:  { label: "Pedido confirmado",       color: "#3B82F6", icon: "check-circle" },
+  preparing:  { label: "Preparando tu pedido",    color: "#8B5CF6", icon: "package" },
+  ready:      { label: "Listo para recoger",      color: "#10B981", icon: "check-square" },
+  on_the_way: { label: "En camino 🛵",            color: ComeYaColors.success, icon: "truck" },
+  delivered:  { label: "Entregado ✓",             color: "#4CAF50", icon: "check-circle" },
 };
 
-const STATUS_STEPS = ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'delivered'];
+const STATUS_STEPS = ["pending", "confirmed", "preparing", "ready", "on_the_way", "delivered"];
 
 export default function OrderTrackingScreen() {
   const route = useRoute() as any;
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
   const orderId = route.params?.orderId;
+
+  const mapRef = useRef<HTMLDivElement>(null);
+  const gmap = useRef<any>(null);
+  const driverMarkerRef = useRef<any>(null);
+
+  const [mapsReady, setMapsReady] = useState(false);
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [eta, setEta] = useState<number | null>(null);
 
   useEffect(() => {
+    loadGoogleMaps().then(() => setMapsReady(true)).catch(console.error);
+  }, []);
+
+  // Cargar pedido
+  useEffect(() => {
     if (!orderId) return;
-    const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://comeya-backend.onrender.com';
-    fetch(`${backendUrl}/api/orders/${orderId}`)
-      .then(r => r.json())
-      .then(d => { setOrder(d.order || d); setLoading(false); })
-      .catch(() => setLoading(false));
+    const fetch = async () => {
+      try {
+        const res = await apiRequest("GET", `/api/orders/${orderId}`);
+        const data = await res.json();
+        setOrder(data.order || data);
+        if (data.order?.estimatedDelivery) {
+          setEta(Math.max(0, Math.round((new Date(data.order.estimatedDelivery).getTime() - Date.now()) / 60000)));
+        }
+      } catch {} finally { setLoading(false); }
+    };
+    fetch();
+    const interval = setInterval(fetch, 15000);
+    return () => clearInterval(interval);
   }, [orderId]);
 
+  // Inicializar mapa cuando esté listo el pedido
+  useEffect(() => {
+    if (!mapsReady || !mapRef.current || !order || gmap.current) return;
+    const google = (window as any).google;
+
+    const center = order.deliveryLatitude && order.deliveryLongitude
+      ? { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) }
+      : { lat: 41.7636, lng: -2.4677 };
+
+    gmap.current = new google.maps.Map(mapRef.current, {
+      center, zoom: 14,
+      disableDefaultUI: true, zoomControl: true,
+      styles: isDark ? DARK_STYLE : [],
+      gestureHandling: "greedy",
+    });
+
+    // Pin destino (cliente)
+    if (order.deliveryLatitude && order.deliveryLongitude) {
+      new google.maps.Marker({
+        position: { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) },
+        map: gmap.current,
+        title: "Tu dirección",
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><rect x="2" y="2" width="36" height="36" rx="18" fill="${ComeYaColors.primary}" stroke="white" stroke-width="2"/><text x="20" y="26" text-anchor="middle" font-size="20">🏠</text><polygon points="14,38 26,38 20,48" fill="${ComeYaColors.primary}"/></svg>`)}`,
+          scaledSize: new google.maps.Size(40, 48),
+          anchor: new google.maps.Point(20, 48),
+        },
+      });
+    }
+
+    // Actualizar posición del repartidor cada 10s
+    const updateDriver = async () => {
+      try {
+        const res = await apiRequest("GET", `/api/delivery/location/${orderId}`);
+        const data = await res.json();
+        if (data.location?.latitude && data.location?.longitude) {
+          const pos = { lat: parseFloat(data.location.latitude), lng: parseFloat(data.location.longitude) };
+          if (driverMarkerRef.current) {
+            driverMarkerRef.current.setPosition(pos);
+          } else {
+            driverMarkerRef.current = new google.maps.Marker({
+              position: pos,
+              map: gmap.current,
+              title: "Repartidor",
+              icon: {
+                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><circle cx="24" cy="24" r="22" fill="#4CAF50" stroke="white" stroke-width="3"/><text x="24" y="30" text-anchor="middle" font-size="22">🛵</text></svg>`)}`,
+                scaledSize: new google.maps.Size(48, 48),
+                anchor: new google.maps.Point(24, 24),
+              },
+              zIndex: 999,
+            });
+          }
+        }
+      } catch {}
+    };
+
+    if (order.status === "on_the_way") {
+      updateDriver();
+      const interval = setInterval(updateDriver, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [mapsReady, order]);
+
   const currentStep = order ? STATUS_STEPS.indexOf(order.status) : 0;
+  const statusInfo = STATUS_LABELS[order?.status] || { label: "Procesando...", color: "#888", icon: "clock" };
 
   return (
-    <ScrollView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>← Volver</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>Seguimiento del Pedido</Text>
+    <View style={[s.container, { backgroundColor: theme.backgroundRoot }]}>
+
+      {/* Mapa ocupa la mitad superior */}
+      <View style={s.mapContainer}>
+        <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+        {(!mapsReady || loading) && (
+          <View style={s.mapLoading}>
+            <ActivityIndicator size="large" color={ComeYaColors.primary} />
+          </View>
+        )}
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 60 }} />
-      ) : (
-        <View style={s.content}>
-          <View style={s.mapBanner}>
-            <Text style={s.mapIcon}>📍</Text>
-            <View>
-              <Text style={s.mapTitle}>Tracking GPS en vivo</Text>
-              <Text style={s.mapSub}>Disponible en la app movil con mapa interactivo</Text>
-            </View>
-            <View style={s.appBadge}><Text style={s.appBadgeText}>App</Text></View>
-          </View>
+      {/* Panel inferior con info */}
+      <ScrollView style={[s.panel, { backgroundColor: theme.backgroundRoot }]} contentContainerStyle={{ padding: Spacing.lg }}>
 
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Estado actual</Text>
-            <Text style={s.statusBig}>{STATUS_LABELS[order?.status] || order?.status || 'Cargando...'}</Text>
-            <View style={s.progressBar}>
-              {STATUS_STEPS.map((step, i) => (
-                <View key={step} style={[s.progressStep, i <= currentStep && s.progressStepActive]} />
-              ))}
-            </View>
-          </View>
+        {/* Header */}
+        <View style={s.panelHeader}>
+          <Pressable onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: theme.card }]}>
+            <Feather name="arrow-left" size={20} color={theme.text} />
+          </Pressable>
+          <ThemedText type="h3">Seguimiento</ThemedText>
+          <View style={{ width: 40 }} />
+        </View>
 
-          <View style={s.card}>
-            <Text style={s.cardTitle}>Detalles del pedido</Text>
-            <Text style={s.detail}>Pedido #{orderId?.slice(-6)}</Text>
-            {order?.businessName && <Text style={s.detail}>Negocio: {order.businessName}</Text>}
-            {order?.total && <Text style={s.detail}>Total: {(order.total / 100).toFixed(2)}€</Text>}
+        {/* Estado actual */}
+        <View style={[s.statusCard, { backgroundColor: statusInfo.color + "15", borderColor: statusInfo.color + "40" }]}>
+          <View style={[s.statusIcon, { backgroundColor: statusInfo.color }]}>
+            <Feather name={statusInfo.icon as any} size={20} color="#fff" />
           </View>
-
-          <View style={s.downloadBanner}>
-            <Text style={s.dlTitle}>Para la mejor experiencia</Text>
-            <Text style={s.dlSub}>Descarga la app y sigue tu pedido en el mapa en tiempo real</Text>
-            <TouchableOpacity style={s.dlBtn}>
-              <Text style={s.dlBtnText}>📱 Descargar ComeYa</Text>
-            </TouchableOpacity>
+          <View style={{ flex: 1, marginLeft: Spacing.md }}>
+            <ThemedText type="h4" style={{ color: statusInfo.color }}>{statusInfo.label}</ThemedText>
+            {eta !== null && order?.status === "on_the_way" && (
+              <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                Llega en aproximadamente {eta} minutos
+              </ThemedText>
+            )}
           </View>
         </View>
-      )}
-    </ScrollView>
+
+        {/* Barra de progreso */}
+        <View style={s.progressRow}>
+          {STATUS_STEPS.slice(0, 5).map((step, i) => (
+            <View key={step} style={[s.progressStep, { backgroundColor: i <= currentStep ? statusInfo.color : theme.border }]} />
+          ))}
+        </View>
+
+        {/* Detalles del pedido */}
+        {order && (
+          <View style={[s.detailCard, { backgroundColor: theme.card }]}>
+            <ThemedText type="small" style={{ color: theme.textSecondary, fontWeight: "600", marginBottom: Spacing.sm }}>
+              DETALLES DEL PEDIDO
+            </ThemedText>
+            <View style={s.detailRow}>
+              <Feather name="hash" size={14} color={theme.textSecondary} />
+              <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Pedido #{orderId?.slice(-6)}</ThemedText>
+            </View>
+            {order.businessName && (
+              <View style={s.detailRow}>
+                <Feather name="briefcase" size={14} color={theme.textSecondary} />
+                <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>{order.businessName}</ThemedText>
+              </View>
+            )}
+            {order.total && (
+              <View style={s.detailRow}>
+                <Feather name="credit-card" size={14} color={theme.textSecondary} />
+                <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>€{(order.total / 100).toFixed(2)}</ThemedText>
+              </View>
+            )}
+            {order.deliveryAddress && (
+              <View style={s.detailRow}>
+                <Feather name="map-pin" size={14} color={theme.textSecondary} />
+                <ThemedText type="body" style={{ marginLeft: Spacing.sm, flex: 1 }} numberOfLines={2}>{order.deliveryAddress}</ThemedText>
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
+const DARK_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#212121" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#373737" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+];
+
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F7F7' },
-  header: { backgroundColor: '#fff', padding: 20, paddingTop: 48, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
-  back: { marginBottom: 8 },
-  backText: { color: theme.colors.primary, fontSize: 15, fontWeight: '600' },
-  title: { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
-  content: { padding: 16, gap: 16 },
-  mapBanner: { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#E0E0E0' },
-  mapIcon: { fontSize: 32 },
-  mapTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-  mapSub: { fontSize: 12, color: '#888', marginTop: 2 },
-  appBadge: { marginLeft: 'auto', backgroundColor: theme.colors.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  appBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#E0E0E0' },
-  cardTitle: { fontSize: 13, fontWeight: '600', color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  statusBig: { fontSize: 22, fontWeight: '800', color: theme.colors.primary, marginBottom: 16 },
-  progressBar: { flexDirection: 'row', gap: 4 },
-  progressStep: { flex: 1, height: 6, borderRadius: 3, backgroundColor: '#E0E0E0' },
-  progressStepActive: { backgroundColor: theme.colors.primary },
-  detail: { fontSize: 15, color: '#333', marginBottom: 6 },
-  downloadBanner: { backgroundColor: theme.colors.primary, borderRadius: 16, padding: 24, alignItems: 'center' },
-  dlTitle: { fontSize: 17, fontWeight: '800', color: '#fff', marginBottom: 6 },
-  dlSub: { fontSize: 13, color: 'rgba(255,255,255,.8)', textAlign: 'center', marginBottom: 16 },
-  dlBtn: { backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  dlBtnText: { color: theme.colors.primary, fontWeight: '700', fontSize: 15 },
+  container: { flex: 1 },
+  mapContainer: { height: "45%", position: "relative" } as any,
+  mapLoading: { position: "absolute", inset: 0, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(255,255,255,0.8)", zIndex: 10 } as any,
+  panel: { flex: 1 },
+  panelHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.lg },
+  backBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
+  statusCard: {
+    flexDirection: "row", alignItems: "center",
+    padding: Spacing.md, borderRadius: BorderRadius.lg, borderWidth: 1,
+    marginBottom: Spacing.md,
+  },
+  statusIcon: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" },
+  progressRow: { flexDirection: "row", gap: 4, marginBottom: Spacing.lg },
+  progressStep: { flex: 1, height: 6, borderRadius: 3 },
+  detailCard: { borderRadius: BorderRadius.lg, padding: Spacing.lg },
+  detailRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: Spacing.sm },
 });
