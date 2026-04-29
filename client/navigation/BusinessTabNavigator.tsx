@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import BusinessOrdersScreen from "@/screens/BusinessOrdersScreen";
 import BusinessProductsScreen from "@/screens/BusinessProductsScreen";
+import MyBusinessesScreen from "@/screens/MyBusinessesScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
@@ -18,9 +19,7 @@ export default function BusinessTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: true,
-        headerStyle: {
-          backgroundColor: theme.background,
-        },
+        headerStyle: { backgroundColor: theme.background },
         headerTintColor: theme.text,
         tabBarActiveTintColor: ComeYaColors.primary,
         tabBarInactiveTintColor: theme.textSecondary,
@@ -31,45 +30,20 @@ export default function BusinessTabNavigator() {
         },
       }}
     >
-      <Tab.Screen
-        name="BusinessDashboard"
-        component={BusinessDashboardScreen}
-        options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size} color={color} />
-          ),
-        }}
+      <Tab.Screen name="BusinessDashboard" component={BusinessDashboardScreen}
+        options={{ title: "Dashboard", tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> }}
       />
-      <Tab.Screen
-        name="BusinessOrders"
-        component={BusinessOrdersScreen}
-        options={{
-          title: "Pedidos",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="shopping-bag" size={size} color={color} />
-          ),
-        }}
+      <Tab.Screen name="BusinessOrders" component={BusinessOrdersScreen}
+        options={{ title: "Pedidos", tabBarIcon: ({ color, size }) => <Feather name="shopping-bag" size={size} color={color} /> }}
       />
-      <Tab.Screen
-        name="BusinessProducts"
-        component={BusinessProductsScreen}
-        options={{
-          title: "Productos",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="package" size={size} color={color} />
-          ),
-        }}
+      <Tab.Screen name="BusinessProducts" component={BusinessProductsScreen}
+        options={{ title: "Productos", tabBarIcon: ({ color, size }) => <Feather name="package" size={size} color={color} /> }}
       />
-      <Tab.Screen
-        name="BusinessProfile"
-        component={ProfileScreen}
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
-          ),
-        }}
+      <Tab.Screen name="MyBusinesses" component={MyBusinessesScreen}
+        options={{ title: "Mis Negocios", tabBarIcon: ({ color, size }) => <Feather name="briefcase" size={size} color={color} /> }}
+      />
+      <Tab.Screen name="BusinessProfile" component={ProfileScreen}
+        options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }}
       />
     </Tab.Navigator>
   );

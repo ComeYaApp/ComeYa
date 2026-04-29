@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
+import { BusinessSidebar } from "@/components/BusinessSidebar";
+
 const BUSINESS_TYPES = [
   { id: "restaurant", name: "Restaurante", icon: "coffee" },
   { id: "market", name: "Mercado", icon: "shopping-bag" },
@@ -89,25 +91,26 @@ export default function MyBusinessesScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
-          <Feather name="briefcase" size={28} color={ComeYaColors.primary} />
-        </View>
-        <Text style={[s.sideTitle, { color: text }]}>Mis Negocios</Text>
-        <Text style={[s.sideSub, { color: sub }]}>{businesses.length} negocio{businesses.length !== 1 ? "s" : ""} registrado{businesses.length !== 1 ? "s" : ""}</Text>
-        <Pressable onPress={() => setShowForm(!showForm)} style={[s.addBtn, { backgroundColor: ComeYaColors.primary }]}>
-          <Feather name={showForm ? "x" : "plus"} size={18} color="#fff" />
-          <Text style={s.addBtnText}>{showForm ? "Cancelar" : "Nuevo negocio"}</Text>
-        </Pressable>
-        <Pressable onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="arrow-left" size={16} color={text} />
-          <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-        </Pressable>
-      </View>
+      <BusinessSidebar />
 
       {/* Main */}
-      <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <View style={s.main}>
+        {/* Toolbar */}
+        <View style={[s.toolbar, { backgroundColor: card, borderBottomColor: border }]}>
+          <View style={s.toolbarLeft}>
+            <Feather name="briefcase" size={20} color={ComeYaColors.primary} />
+            <Text style={[s.toolbarTitle, { color: text }]}>Mis Negocios</Text>
+            <View style={[s.countChip, { backgroundColor: ComeYaColors.primary + "15" }]}>
+              <Text style={[s.countChipText, { color: ComeYaColors.primary }]}>{businesses.length}</Text>
+            </View>
+          </View>
+          <Pressable onPress={() => setShowForm(!showForm)} style={[s.addBtn, { backgroundColor: showForm ? border : ComeYaColors.primary }]}>
+            <Feather name={showForm ? "x" : "plus"} size={16} color={showForm ? text : "#fff"} />
+            <Text style={[s.addBtnText, { color: showForm ? text : "#fff" }]}>{showForm ? "Cancelar" : "Nuevo negocio"}</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView style={s.scrollArea} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {/* Formulario nuevo negocio */}
         {showForm && (
           <View style={[s.formCard, { backgroundColor: card, borderColor: ComeYaColors.primary + "40" }]}>
@@ -199,22 +202,23 @@ export default function MyBusinessesScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 260, padding: 24, borderRightWidth: 1, paddingTop: 40, alignItems: "center" },
-  iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", marginBottom: 12 },
-  sideTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4, textAlign: "center" },
-  sideSub: { fontSize: 13, marginBottom: 20, textAlign: "center" },
-  addBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, marginBottom: 10, width: "100%", justifyContent: "center" },
-  addBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, width: "100%", justifyContent: "center" },
-  backBtnText: { fontSize: 14, fontWeight: "600" },
-  main: { flex: 1 },
+  main: { flex: 1, flexDirection: "column" },
+  toolbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1 },
+  toolbarLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  toolbarTitle: { fontSize: 20, fontWeight: "800" },
+  countChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  countChipText: { fontSize: 13, fontWeight: "700" },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, justifyContent: "center" },
+  addBtnText: { fontWeight: "700", fontSize: 13 },
+  scrollArea: { flex: 1 },
   content: { padding: 32, maxWidth: 800 },
   formCard: { padding: 24, borderRadius: 16, borderWidth: 2, marginBottom: 24 },
   formTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
