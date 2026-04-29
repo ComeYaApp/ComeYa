@@ -26,6 +26,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { calculateDistance, calculateDeliveryFee, estimateDeliveryTime } from "@/utils/distance";
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
+import { useResponsive } from "@/hooks/useResponsive";
 
 type SubstitutionOption = "refund" | "call" | "substitute";
 type PaymentMethod = "stripe_card" | "stripe_bizum" | "paypal" | "bizum_manual" | "sepa" | "binance";
@@ -69,6 +70,7 @@ export default function CheckoutScreen({ route }: any) {
   const [couponLoading, setCouponLoading] = useState(false);
   const [addressPickerVisible, setAddressPickerVisible] = useState(false);
   const [tip, setTip] = useState(0);
+  const { isMobile } = useResponsive();
 
   const deliveryFee = confirmedOrderType === 'pickup' ? 0 : (route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5)));
   const total = subtotal + deliveryFee - couponDiscount + tip;
@@ -372,9 +374,9 @@ export default function CheckoutScreen({ route }: any) {
   }
 
   return (
-    <View style={[styles.webContainer, { backgroundColor: theme.backgroundRoot }]}>
-      {/* LEFT: Hero Section */}
-      <View style={styles.heroSection}>
+    <ScrollView style={{ flex: 1, backgroundColor: theme.backgroundRoot }} contentContainerStyle={styles.webContainer}>
+      {/* LEFT: Hero Section — oculto en móvil */}
+      {!isMobile && <View style={styles.heroSection}>
         <View style={styles.heroContent}>
           {/* Logo */}
           <Pressable onPress={() => navigation.navigate("Main" as never)} style={styles.logoContainer}>
@@ -442,16 +444,11 @@ export default function CheckoutScreen({ route }: any) {
             </View>
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* RIGHT: Form Section */}
-      <View style={styles.formSection}>
-        <ScrollView 
-          style={styles.formScrollView}
-          contentContainerStyle={styles.formScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.formCard, { backgroundColor: theme.card }]}>
+      <View style={[styles.formSection, isMobile && styles.formSectionMobile]}>
+        <View style={[styles.formCard, { backgroundColor: theme.card }, isMobile && { padding: 20, borderRadius: 16 }]}>
             {/* Address Section */}
             <View style={styles.formSection}>
               <View style={styles.formSectionHeader}>
@@ -824,8 +821,7 @@ export default function CheckoutScreen({ route }: any) {
                 </ThemedText>
               )}
             </Pressable>
-          </View>
-        </ScrollView>
+        </View>
       </View>
 
       {/* Address Picker Modal */}
@@ -901,7 +897,7 @@ export default function CheckoutScreen({ route }: any) {
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -995,9 +991,13 @@ const styles = StyleSheet.create({
   // RIGHT: Form Section
   formSection: {
     flex: 1,
+    minWidth: 300,
     justifyContent: "center",
     alignItems: "center",
     padding: 48,
+  },
+  formSectionMobile: {
+    padding: 16,
   },
   formScrollView: {
     flex: 1,
