@@ -117,8 +117,7 @@ export const FinanceTab: React.FC<Props> = ({ defaultTab = "payouts" }) => {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: bg, flexDirection: "row" }}>
-      <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: bg }}>
 
         {/* Tab bar */}
         <View style={[tb.bar, { backgroundColor: card, borderBottomColor: border }]}>
@@ -360,7 +359,6 @@ export const FinanceTab: React.FC<Props> = ({ defaultTab = "payouts" }) => {
             )
           )}
         </ScrollView>
-      </View>
     </View>
   );
 };

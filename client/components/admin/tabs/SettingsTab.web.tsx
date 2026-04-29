@@ -289,14 +289,6 @@ export const SettingsTab: React.FC<Props> = () => {
         </View>
       ))}
 
-      {/* Footer info */}
-      <View style={[ft.box, { backgroundColor: isDark ? "#1a1a1a" : "#fff", borderColor: border }]}>
-        <Text style={[ft.title, { color: sub }]}>VARIABLES DE ENTORNO (Render)</Text>
-        <Text style={[ft.body, { color: sub }]}>
-          Las siguientes configuraciones van en el panel de Render como variables de entorno y NO se gestionan desde aquí:{"\n\n"}
-          <Text style={{ fontWeight: "700", color: text }}>STRIPE_SECRET_KEY · STRIPE_PUBLISHABLE_KEY · GEMINI_API_KEY · TWILIO_ACCOUNT_SID · TWILIO_AUTH_TOKEN · TWILIO_VERIFY_SERVICE_SID · CLOUDINARY_API_KEY · RESEND_API_KEY · DATABASE_URL · JWT_SECRET</Text>
-        </Text>
-      </View>
 
     </ScrollView>
   );
@@ -342,8 +334,4 @@ const si = StyleSheet.create({
   boolLabel:  { fontSize: 12, fontWeight: "700" },
 });
 
-const ft = StyleSheet.create({
-  box:   { borderRadius: 14, padding: 18, borderWidth: 1, marginTop: 4 },
-  title: { fontSize: 9, fontWeight: "800", letterSpacing: 1, marginBottom: 10 },
-  body:  { fontSize: 12, lineHeight: 20 },
-});
+
