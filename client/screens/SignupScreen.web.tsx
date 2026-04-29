@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, StyleSheet, Pressable, ActivityIndicator,
-  TextInput, Text,
+  TextInput, Text, ScrollView,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RouteProp } from "@react-navigation/native";
@@ -56,7 +56,7 @@ export default function SignupScreen({ navigation, route }: Props) {
   };
 
   return (
-    <View style={s.root}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.root}>
       {/* IZQUIERDA/ARRIBA — Hero */}
       <View style={s.left}>
         <View style={s.leftInner}>
@@ -208,7 +208,7 @@ export default function SignupScreen({ navigation, route }: Props) {
           </View>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 

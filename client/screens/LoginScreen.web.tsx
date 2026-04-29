@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   View, StyleSheet, Pressable, ActivityIndicator,
-  TextInput, Text,
+  TextInput, Text, ScrollView,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
@@ -73,7 +73,7 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={s.root}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.root}>
       {/* IZQUIERDA/ARRIBA — Branding Hero */}
       <View style={s.left}>
         <View style={s.leftInner}>
@@ -214,7 +214,7 @@ export default function LoginScreen({ navigation }: Props) {
           </View>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
