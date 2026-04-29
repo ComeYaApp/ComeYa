@@ -1,10 +1,9 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Platform } from "react-native";
-
-import { Platform } from "react-native";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import MainTabNavigatorWeb from "@/navigation/MainTabNavigator.web";
+// Note: Platform already imported above — no duplicate needed
 import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
 import DriverTabNavigator from "@/navigation/DriverTabNavigator";
 import LoginScreen from "@/screens/LoginScreen";

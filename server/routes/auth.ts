@@ -204,6 +204,33 @@ router.post("/disable-biometric", authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/auth/change-password
+router.put("/change-password", authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: "Faltan campos" });
+    if (newPassword.length < 8) return res.status(400).json({ error: "La contraseña debe tener al menos 8 caracteres" });
+
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const bcrypt = await import("bcrypt");
+
+    const [user] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    if (user.password) {
+      const valid = await bcrypt.compare(currentPassword, user.password);
+      if (!valid) return res.status(401).json({ success: false, error: "Contraseña actual incorrecta" });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await db.update(users).set({ password: hashed } as any).where(eq(users.id, req.user!.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/auth/logout
 router.post("/logout", authenticateToken, async (req, res) => {
   res.json({ success: true, message: "Sesión cerrada" });

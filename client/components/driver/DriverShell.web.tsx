@@ -13,7 +13,7 @@ export type DriverSection =
   | "deliveries_active" | "deliveries_history"
   | "earnings_stats"    | "earnings_history"
   | "map"
-  | "profile_account"   | "profile_vehicle";
+  | "profile_personal" | "profile_account" | "profile_vehicle";
 
 interface NavItem {
   id: DriverSection;
@@ -43,8 +43,9 @@ const NAV: NavItem[] = [
   {
     id: "profile_account" as DriverSection, label: "Mi perfil", icon: "user", color: "#EC4899",
     children: [
-      { id: "profile_account", label: "Cuentas de pago", icon: "credit-card" },
-      { id: "profile_vehicle", label: "Mi vehículo",     icon: "navigation"  },
+      { id: "profile_personal", label: "Datos personales",  icon: "user"        },
+      { id: "profile_vehicle",  label: "Mi vehículo",       icon: "navigation"  },
+      { id: "profile_account",  label: "Cuentas de cobro",  icon: "credit-card" },
     ],
   },
 ];

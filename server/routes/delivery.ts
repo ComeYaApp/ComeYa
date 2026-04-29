@@ -299,6 +299,51 @@ router.get("/location/:orderId", async (req, res) => {
   }
 });
 
+// GET /api/delivery/active-order — pedido activo del repartidor (para el mapa)
+router.get("/active-order", authenticateToken, requireRole("delivery_driver"), async (req, res) => {
+  try {
+    const { orders, businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { inArray } = await import("drizzle-orm");
+
+    const activeOrders = await db
+      .select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.deliveryPersonId, req.user!.id),
+          inArray(orders.status, ["picked_up", "on_the_way", "ready"])
+        )
+      )
+      .limit(1);
+
+    if (!activeOrders.length) {
+      return res.json({ success: true, order: null });
+    }
+
+    const order = activeOrders[0];
+    const [biz] = await db
+      .select({ name: businesses.name, address: businesses.address })
+      .from(businesses)
+      .where(eq(businesses.id, order.businessId))
+      .limit(1);
+
+    res.json({
+      success: true,
+      order: {
+        id: order.id,
+        status: order.status,
+        businessName: biz?.name ?? order.businessName ?? "Negocio",
+        deliveryAddress: order.deliveryAddress,
+        deliveryLatitude: order.deliveryLatitude,
+        deliveryLongitude: order.deliveryLongitude,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get driver stats
 router.get("/stats", authenticateToken, requireRole("delivery_driver"), async (req, res) => {
   try {
