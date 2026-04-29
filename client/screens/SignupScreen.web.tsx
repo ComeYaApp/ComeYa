@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useResponsive } from "@/hooks/useResponsive";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Signup">;
@@ -28,6 +29,7 @@ const ROLES = [
 export default function SignupScreen({ navigation, route }: Props) {
   const { signup } = useAuth();
   const { showToast } = useToast();
+  const { isMobile } = useResponsive();
   const [role, setRole] = useState("customer");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState(route.params?.phone?.replace("+34", "") || "");
@@ -55,8 +57,8 @@ export default function SignupScreen({ navigation, route }: Props) {
 
   return (
     <View style={s.root}>
-      {/* IZQUIERDA — Hero */}
-      <View style={s.left}>
+      {/* IZQUIERDA — Hero (oculto en móvil) */}
+      {!isMobile && <View style={s.left}>
         <View style={s.leftInner}>
           <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
             <Feather name="arrow-left" size={20} color="#fff" />
@@ -89,7 +91,7 @@ export default function SignupScreen({ navigation, route }: Props) {
             ))}
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* DERECHA — Formulario */}
       <View style={s.right}>
@@ -219,11 +221,12 @@ const s = StyleSheet.create({
   left: { 
     flex: 1,
     minWidth: 300,
+    maxWidth: 600,
     backgroundColor: PRIMARY,
     position: "relative" as any,
   },
   leftInner: { 
-    padding: 64,
+    padding: 48,
     maxWidth: 600,
     margin: "auto" as any,
   },

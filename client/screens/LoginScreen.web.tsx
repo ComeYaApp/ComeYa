@@ -74,8 +74,8 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <View style={s.root}>
-      {/* IZQUIERDA — Branding Hero */}
-      <View style={s.left}>
+      {/* IZQUIERDA — Branding Hero (oculto en móvil) */}
+      {!isMobile && <View style={s.left}>
         <View style={s.leftInner}>
           <View style={s.logoRow}>
             <View style={s.logoCircle}>
@@ -112,7 +112,7 @@ export default function LoginScreen({ navigation }: Props) {
             ))}
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* DERECHA — Formulario Centrado */}
       <View style={s.right}>
@@ -234,11 +234,12 @@ const s = StyleSheet.create({
   left: { 
     flex: 1,
     minWidth: 300,
+    maxWidth: 600,
     backgroundColor: PRIMARY,
     position: "relative" as any,
   },
   leftInner: { 
-    padding: 64,
+    padding: 48,
     maxWidth: 600,
     margin: "auto" as any,
   },
