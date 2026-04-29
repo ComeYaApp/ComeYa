@@ -30,6 +30,7 @@ import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab.web";
 // Web-specific screens embedded as panels
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
 import AdminMapPanel             from "@/screens/AdminMapScreen.web";
+import DeliveryConfigPanel       from "@/screens/DeliveryConfigScreen.web";
 // Note: AdminPaymentAccountsScreen.web and AdminMapScreen.web export default, used directly as panels
 
 const PRIMARY = "#DC2626";
@@ -180,6 +181,9 @@ export default function AdminDashboardScreen() {
       // ── Configuración ──
       case "settings":
         return <SettingsTab />;
+
+      case "delivery_config":
+        return <DeliveryConfigPanel />;
 
       default:
         return <DashboardView onNavigate={setSection} />;

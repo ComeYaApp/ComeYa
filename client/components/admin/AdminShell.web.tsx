@@ -16,7 +16,7 @@ export type AdminSection =
   | "finance" | "finance_payouts" | "finance_proofs" | "finance_accounts" | "finance_earnings"
   | "marketing" | "coupons"
   | "support" | "support_tickets" | "support_verifications"
-  | "settings";
+  | "settings" | "delivery_config";
 
 interface NavItem {
   id: AdminSection;
@@ -47,8 +47,9 @@ const NAV: NavItem[] = [
   {
     id: "drivers", label: "Repartidores", icon: "truck", color: "#8B5CF6",
     children: [
-      { id: "drivers_list", label: "Lista",  icon: "users" },
-      { id: "drivers_map",  label: "Mapa",   icon: "map"   },
+      { id: "drivers_list",    label: "Lista",            icon: "users"      },
+      { id: "drivers_map",     label: "Mapa",             icon: "map"        },
+      { id: "delivery_config", label: "Tarifas delivery", icon: "navigation" },
     ],
   },
   {
