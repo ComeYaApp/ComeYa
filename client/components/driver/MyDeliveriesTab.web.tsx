@@ -260,7 +260,7 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                       <Feather name={meta.icon as any} size={12} color={meta.color} />
                       <Text style={[s.statusTxt, { color: meta.color }]}>{meta.label}</Text>
                     </View>
-                    <Text style={[s.orderId, { color: sub }]}>#{order.id.slice(-8).toUpperCase()}</Text>
+                    <Text style={[s.orderId, { color: sub }]}>#{order.id.slice(0, 8).toUpperCase()}</Text>
                   </View>
 
                   {/* Business + address */}

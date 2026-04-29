@@ -210,7 +210,7 @@ export function AvailableOrdersTab({ isOnline, onToggleOnline, togglingOnline, s
                     </View>
                     <View style={{ flex: 1, marginLeft: 10 }}>
                       <Text style={[s.businessName, { color: text }]}>{order.businessName}</Text>
-                      <Text style={[s.orderId, { color: sub }]}>#{order.id.slice(-8).toUpperCase()} · {fmtTime(order.createdAt)}</Text>
+                      <Text style={[s.orderId, { color: sub }]}>#{order.id.slice(0, 8).toUpperCase()} · {fmtTime(order.createdAt)}</Text>
                     </View>
                     <View style={[s.newBadge, { backgroundColor: GREEN + "20" }]}>
                       <Text style={[s.newBadgeTxt, { color: GREEN }]}>NUEVO</Text>

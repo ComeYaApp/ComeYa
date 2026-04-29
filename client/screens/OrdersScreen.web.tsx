@@ -97,7 +97,7 @@ export default function OrdersScreen() {
                   <View style={s.orderInfo}>
                     <Text style={[s.orderBiz, { color: text }]} numberOfLines={1}>{order.businessName}</Text>
                     <Text style={[s.orderMeta, { color: sub }]}>
-                      #{order.id?.slice(-6)} · {new Date(order.createdAt).toLocaleDateString("es-ES")}
+                      #{order.id?.slice(0, 8).toUpperCase()} · {new Date(order.createdAt).toLocaleDateString("es-ES")}
                     </Text>
                     <View style={[s.statusBadge, { backgroundColor: st.color + "15" }]}>
                       <Text style={[s.statusText, { color: st.color }]}>{st.label}</Text>
@@ -124,7 +124,7 @@ export default function OrdersScreen() {
               <ScrollView contentContainerStyle={s.detailContent} showsVerticalScrollIndicator={false}>
                 <View style={s.detailHeader}>
                   <Text style={[s.detailTitle, { color: text }]}>{selected.businessName}</Text>
-                  <Text style={[s.detailId, { color: sub }]}>Pedido #{selected.id?.slice(-6)}</Text>
+                  <Text style={[s.detailId, { color: sub }]}>Pedido #{selected.id?.slice(0, 8).toUpperCase()}</Text>
                 </View>
 
                 <View style={[s.statusCard, { backgroundColor: st.color + "12", borderColor: st.color + "30" }]}>
