@@ -74,8 +74,8 @@ export default function BusinessDashboardScreen() {
               setActiveNav(item.id);
               if (item.id === "orders") navigation.navigate("BusinessOrders");
               if (item.id === "products") navigation.navigate("BusinessProducts");
-              if (item.id === "analytics") navigation.navigate("BusinessAnalytics");
-              if (item.id === "profile") navigation.navigate("Main");
+              if (item.id === "analytics") navigation.navigate("BusinessStats");
+              if (item.id === "profile") navigation.navigate("BusinessProfile");
             }}
             style={[s.navItem, activeNav === item.id && s.navItemActive]}
           >
@@ -144,7 +144,7 @@ export default function BusinessDashboardScreen() {
             <View style={s.actionsGrid}>
               {[
                 { label: "Gestionar productos", icon: "grid", screen: "BusinessProducts", color: "#3B82F6" },
-                { label: "Ver analytics", icon: "trending-up", screen: "BusinessAnalytics", color: "#10B981" },
+                { label: "Ver estadísticas", icon: "trending-up", screen: "BusinessStats", color: "#10B981" },
                 { label: "Horarios", icon: "clock", screen: "BusinessHours", color: "#8B5CF6" },
                 { label: "Configuración", icon: "settings", screen: "BusinessManage", color: "#F59E0B" },
               ].map(a => (
