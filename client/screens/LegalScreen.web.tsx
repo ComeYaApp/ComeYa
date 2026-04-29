@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const legalContent = {
   terms: {
@@ -52,10 +53,11 @@ export default function LegalScreen() {
 
   const { type } = route.params;
   const content = legalContent[type as keyof typeof legalContent];
+  const { isMobile } = useResponsive();
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name={content.icon} size={32} color={ComeYaColors.primary} />
         </View>
@@ -70,7 +72,7 @@ export default function LegalScreen() {
           <Feather name="arrow-left" size={18} color={theme.text} />
           <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Volver</ThemedText>
         </Pressable>
-      </View>
+      </View>}
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {content.sections.map((section, i) => (

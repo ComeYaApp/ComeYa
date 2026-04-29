@@ -6,6 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const SPANISH_BANKS = [
   { code: "0049", name: "Santander" }, { code: "0075", name: "Banco Popular" },
@@ -22,6 +23,7 @@ export default function AddBankAccountScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
   const { token } = useAuth();
+  const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -71,8 +73,7 @@ export default function AddBankAccountScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="credit-card" size={28} color={ComeYaColors.primary} />
         </View>
@@ -96,7 +97,7 @@ export default function AddBankAccountScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

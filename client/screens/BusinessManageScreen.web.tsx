@@ -8,6 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 interface Product { id: string; name: string; price: number; image: string; category: string; isAvailable: boolean; }
 interface Business { id: string; name: string; isOpen: boolean; products: Product[]; }
@@ -17,6 +18,7 @@ export default function BusinessManageScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { isMobile } = useResponsive();
   const [activeTab, setActiveTab] = useState<"products" | "settings">("products");
 
   const bg = isDark ? "#111" : "#f7f7f7";
@@ -57,8 +59,7 @@ export default function BusinessManageScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <Text style={[s.sideTitle, { color: text }]}>{business?.name || "Mi Negocio"}</Text>
 
         {/* Estado abierto/cerrado */}
@@ -112,7 +113,7 @@ export default function BusinessManageScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

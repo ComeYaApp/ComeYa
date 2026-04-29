@@ -12,6 +12,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, "Login"> };
 
@@ -28,6 +29,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [featuredBusinesses, setFeaturedBusinesses] = useState<any[]>([]);
+  const { isMobile } = useResponsive();
 
   useEffect(() => {
     apiRequest("GET", "/api/businesses/featured").then(r => r.json())
@@ -225,11 +227,13 @@ const s = StyleSheet.create({
     flexDirection: "row", 
     backgroundColor: "#fff", 
     minHeight: "100vh" as any,
+    flexWrap: "wrap" as any,
   },
 
   // IZQUIERDA — Hero Section
   left: { 
-    flex: 1, 
+    flex: 1,
+    minWidth: 300,
     backgroundColor: PRIMARY,
     position: "relative" as any,
   },

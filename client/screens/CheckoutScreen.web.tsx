@@ -909,10 +909,12 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     flexDirection: "row",
+    flexWrap: "wrap" as any,
   },
   // LEFT: Hero Section
   heroSection: {
     flex: 1,
+    minWidth: 300,
     maxWidth: 600,
     backgroundColor: PRIMARY,
     padding: 48,

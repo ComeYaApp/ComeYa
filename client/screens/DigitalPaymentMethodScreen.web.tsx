@@ -287,6 +287,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     backgroundColor: "#FAFAFA",
+    flexWrap: "wrap" as any,
   },
   center: {
     flex: 1,
@@ -296,6 +297,7 @@ const styles = StyleSheet.create({
   // LEFT: Hero Section
   heroSection: {
     flex: 1,
+    minWidth: 300,
     maxWidth: 600,
     backgroundColor: PRIMARY,
     padding: 48,

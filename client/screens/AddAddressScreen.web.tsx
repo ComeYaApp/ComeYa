@@ -493,6 +493,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#FAFAFA",
     minHeight: "100vh",
+    flexWrap: "wrap" as any,
     ...Platform.select({
       web: {
         height: "100vh",
@@ -503,6 +504,7 @@ const styles = StyleSheet.create({
   // LEFT: Hero Section
   heroSection: {
     flex: 1,
+    minWidth: 300,
     maxWidth: 600,
     backgroundColor: PRIMARY,
     padding: 48,

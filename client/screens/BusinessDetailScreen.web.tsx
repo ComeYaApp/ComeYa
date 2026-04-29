@@ -11,6 +11,7 @@ import { useCart } from "@/contexts/CartContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useResponsive } from "@/hooks/useResponsive";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, "BusinessDetail">;
@@ -27,6 +28,7 @@ export default function BusinessDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
+  const { isMobile } = useResponsive();
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const text = isDark ? "#fff" : "#1a1a1a";
@@ -169,7 +171,8 @@ export default function BusinessDetailScreen() {
         </ScrollView>
 
         {/* CARRITO FLOTANTE DERECHA */}
-        <View style={[s.cartPanel, { backgroundColor: card, borderLeftColor: border }]}>
+        {!isMobile && (
+          <View style={[s.cartPanel, { backgroundColor: card, borderLeftColor: border }]}>
           <Text style={[s.cartTitle, { color: text }]}>Tu pedido</Text>
           {cartItems.length === 0 ? (
             <View style={s.cartEmpty}>
@@ -208,7 +211,8 @@ export default function BusinessDetailScreen() {
               </View>
             </>
           )}
-        </View>
+          </View>
+        )}
       </View>
     </View>
   );

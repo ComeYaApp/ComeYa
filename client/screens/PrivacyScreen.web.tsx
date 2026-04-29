@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, ComeYaColors } from "@/constants/theme";
+import { useResponsive } from "@/hooks/useResponsive";
 
 export default function PrivacyScreen() {
   const navigation = useNavigation();
@@ -12,6 +13,7 @@ export default function PrivacyScreen() {
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const border = isDark ? "#333" : "#e8e8e8";
+  const { isMobile } = useResponsive();
 
   const sections = [
     { title: "1. Responsable del Tratamiento", body: "ComeYa es el responsable del tratamiento de sus datos personales. Email: privacy@comeya.es · DPO: dpo@comeya.es · Dirección: Soria, España." },
@@ -28,7 +30,7 @@ export default function PrivacyScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.success + "15" }]}>
           <Feather name="shield" size={32} color={ComeYaColors.success} />
         </View>
@@ -46,7 +48,7 @@ export default function PrivacyScreen() {
           <Feather name="arrow-left" size={18} color={theme.text} />
           <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Volver</ThemedText>
         </Pressable>
-      </View>
+      </View>}
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={[s.heroBadge, { backgroundColor: ComeYaColors.success + "15" }]}>

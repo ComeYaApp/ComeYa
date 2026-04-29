@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const CUSTOMER_METHODS = [
   { id: "bizum", label: "Bizum", icon: "smartphone" as const, color: "#00ADEF", desc: "Pago instantáneo desde tu móvil" },
@@ -36,6 +37,7 @@ export default function PaymentWalletSetupScreen() {
 
   const isCustomer = user?.role === "customer";
   const METHODS = isCustomer ? CUSTOMER_METHODS : BUSINESS_METHODS;
+  const { isMobile } = useResponsive();
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,7 @@ export default function PaymentWalletSetupScreen() {
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="credit-card" size={28} color={ComeYaColors.primary} />
         </View>
@@ -142,7 +144,7 @@ export default function PaymentWalletSetupScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

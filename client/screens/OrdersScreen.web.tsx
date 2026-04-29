@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const PRIMARY = "#DC2626";
 
@@ -28,6 +29,7 @@ export default function OrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
   const [tab, setTab] = useState<"active" | "history">("active");
+  const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -59,8 +61,8 @@ export default function OrdersScreen() {
       </View>
 
       <View style={s.body}>
-        {/* LISTA */}
-        <View style={[s.list, { borderRightColor: border }]}>
+        {/* LISTA — en móvil ocupa todo el ancho, en desktop 360px */}
+        <View style={[s.list, { borderRightColor: border, width: isMobile ? "100%" : 360, display: (isMobile && selected) ? "none" : "flex" } as any]}>
           {/* Tabs */}
           <View style={[s.tabs, { borderBottomColor: border }]}>
             {(["active", "history"] as const).map(t => (
@@ -110,8 +112,15 @@ export default function OrdersScreen() {
           </ScrollView>
         </View>
 
-        {/* DETALLE */}
-        <View style={[s.detail, { backgroundColor: card }]}>
+        {/* DETALLE — en móvil ocupa todo el ancho con botón volver */}
+        <View style={[s.detail, { backgroundColor: card, display: (isMobile && !selected) ? "none" : "flex" } as any]}>
+          {isMobile && selected && (
+            <Pressable onPress={() => setSelected(null)}
+              style={[s.mobileBack, { borderBottomColor: border }]}>
+              <Feather name="arrow-left" size={18} color={text} />
+              <Text style={[{ color: text, fontSize: 15, fontWeight: "600" }]}>Volver a pedidos</Text>
+            </Pressable>
+          )}
           {!selected ? (
             <View style={s.detailEmpty}>
               <Text style={{ fontSize: 48 }}>👆</Text>
@@ -191,7 +200,8 @@ const s = StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: "center" },
   navTitle: { fontSize: 18, fontWeight: "800" },
   body: { flex: 1, flexDirection: "row" },
-  list: { width: 360, borderRightWidth: 1 },
+  list: { borderRightWidth: 1 },
+  mobileBack: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16, borderBottomWidth: 1 },
   tabs: { flexDirection: "row", borderBottomWidth: 1 },
   tab: { flex: 1, paddingVertical: 14, alignItems: "center" },
   tabActive: { borderBottomWidth: 2, borderBottomColor: ComeYaColors.primary },

@@ -11,7 +11,7 @@ import { useApp, ThemeMode } from "@/contexts/AppContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
-import { BusinessSidebar } from "@/components/BusinessSidebar";
+import { useResponsive } from "@/hooks/useResponsive";
 import { confirm } from "@/hooks/useWebDialog";
 
 const PRIMARY = "#DC2626";
@@ -46,6 +46,7 @@ export default function ProfileScreen() {
   const [activeSection, setActiveSection] = useState("account");
 
   const isBusiness = user?.role === "business_owner";
+  const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -166,9 +167,55 @@ export default function ProfileScreen() {
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar: BusinessSidebar para business_owner, propio para el resto */}
       {isBusiness ? (
-        <BusinessSidebar activeSubSection={activeSection} onSubSectionChange={setActiveSection} />
+        <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border, display: isMobile ? "none" : "flex" }]}>
+          <View style={[s.sideHeader, { borderBottomColor: border }]}>
+            <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
+              <Image
+                source={profileImage ? { uri: profileImage } : require("../../assets/images/avatar-placeholder.png")}
+                style={[s.avatar, isUploadingImage && { opacity: 0.5 }]}
+                onError={() => setProfileImage(null)}
+                contentFit="cover"
+              />
+              {isUploadingImage ? (
+                <View style={[s.editBadge, { backgroundColor: PRIMARY }]}><ActivityIndicator size="small" color="#FFF" /></View>
+              ) : (
+                <View style={[s.editBadge, { backgroundColor: PRIMARY }]}><Feather name="camera" size={12} color="#FFF" /></View>
+              )}
+            </Pressable>
+            <Text style={[s.userName, { color: text }]}>{user?.name || "Usuario"}</Text>
+            <Text style={[s.userPhone, { color: sub }]}>{user?.phone || "Sin teléfono"}</Text>
+            <View style={s.badges}>
+              <View style={[s.roleBadge, { backgroundColor: PRIMARY + "15" }]}>
+                <Text style={[s.roleBadgeText, { color: PRIMARY }]}>{getRoleLabel()}</Text>
+              </View>
+              {approvalStatus && (
+                <View style={[s.roleBadge, { backgroundColor: approvalStatus.variant === "success" ? "#4CAF5020" : "#F59E0B20" }]}>
+                  <Text style={[s.roleBadgeText, { color: approvalStatus.variant === "success" ? "#4CAF50" : "#F59E0B" }]}>{approvalStatus.text}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <View style={s.sideNav}>
+            {[
+              { id: "account", label: "Cuenta", icon: "user" },
+              { id: "preferences", label: "Preferencias", icon: "settings" },
+              { id: "more", label: "Más", icon: "grid" },
+            ].map(item => (
+              <Pressable key={item.id} onPress={() => setActiveSection(item.id)} style={[s.navItem, activeSection === item.id && s.navItemActive]}>
+                <Feather name={item.icon as any} size={18} color={activeSection === item.id ? PRIMARY : sub} />
+                <Text style={[s.navItemText, { color: activeSection === item.id ? PRIMARY : text }]}>{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable onPress={handleLogout} style={s.logoutBtn}>
+              <Feather name="log-out" size={18} color="#EF4444" />
+              <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>Cerrar sesión</Text>
+            </Pressable>
+          </View>
+        </View>
       ) : (
-        <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+        <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border, display: isMobile ? "none" : "flex" }]}>
           {/* Profile Header */}
           <View style={[s.sideHeader, { borderBottomColor: border }]}>
             <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
@@ -220,6 +267,46 @@ export default function ProfileScreen() {
 
       {/* CONTENT */}
       <ScrollView style={s.main} contentContainerStyle={s.mainContent} showsVerticalScrollIndicator={false}>
+        {/* Nav horizontal móvil */}
+        {isMobile && (
+          <View style={[s.mobileNav, { backgroundColor: card, borderBottomColor: border }]}>
+            {/* Avatar compacto */}
+            <View style={[s.mobileHeader, { borderBottomColor: border }]}>
+              <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
+                <Image
+                  source={profileImage ? { uri: profileImage } : require("../../assets/images/avatar-placeholder.png")}
+                  style={s.avatarSmall}
+                  onError={() => setProfileImage(null)}
+                  contentFit="cover"
+                />
+                <View style={[s.editBadge, { backgroundColor: PRIMARY }]}>
+                  {isUploadingImage ? <ActivityIndicator size="small" color="#FFF" /> : <Feather name="camera" size={10} color="#FFF" />}
+                </View>
+              </Pressable>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.userName, { color: text, fontSize: 15, marginBottom: 0 }]}>{user?.name || "Usuario"}</Text>
+                <Text style={[s.userPhone, { color: sub, marginBottom: 0 }]}>{user?.phone || ""}</Text>
+              </View>
+              <Pressable onPress={handleLogout}>
+                <Feather name="log-out" size={20} color="#EF4444" />
+              </Pressable>
+            </View>
+            {/* Tabs */}
+            <View style={s.mobileTabs}>
+              {[
+                { id: "account", label: "Cuenta", icon: "user" },
+                { id: "preferences", label: "Ajustes", icon: "settings" },
+                { id: "more", label: "Más", icon: "grid" },
+              ].map(item => (
+                <Pressable key={item.id} onPress={() => setActiveSection(item.id)}
+                  style={[s.mobileTab, activeSection === item.id && { borderBottomColor: PRIMARY, borderBottomWidth: 2 }]}>
+                  <Feather name={item.icon as any} size={16} color={activeSection === item.id ? PRIMARY : sub} />
+                  <Text style={[s.mobileTabText, { color: activeSection === item.id ? PRIMARY : sub }]}>{item.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
         {/* Avatar header para business (el sidebar no lo muestra) */}
         {isBusiness && (
           <View style={[s.businessHeader, { backgroundColor: card, borderColor: border }]}>
@@ -471,4 +558,11 @@ const s = StyleSheet.create({
   themeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5 },
   themeBtnText: { fontSize: 12, fontWeight: "600" },
   version: { textAlign: "center", fontSize: 12, marginTop: 20 },
+  // Móvil
+  mobileNav:     { borderBottomWidth: 1 },
+  mobileHeader:  { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderBottomWidth: 1 },
+  avatarSmall:   { width: 44, height: 44, borderRadius: 22 },
+  mobileTabs:    { flexDirection: "row" },
+  mobileTab:     { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: "transparent" },
+  mobileTabText: { fontSize: 12, fontWeight: "600" },
 });

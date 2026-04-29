@@ -6,6 +6,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
+import { useResponsive } from "@/hooks/useResponsive";
 
 export default function TermsScreen() {
   const navigation = useNavigation();
@@ -13,6 +14,7 @@ export default function TermsScreen() {
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const border = isDark ? "#333" : "#e8e8e8";
+  const { isMobile } = useResponsive();
 
   const sections = [
     { title: "1. Aceptación de los Términos", body: "Al descargar, instalar, registrarse o utilizar la aplicación ComeYa, usted acepta expresamente estar legalmente vinculado por estos Términos, nuestra Política de Privacidad y todas las políticas aplicables. ComeYa es una plataforma tecnológica que actúa como intermediario entre usuarios finales, establecimientos comerciales y repartidores independientes en Soria, España." },
@@ -29,7 +31,7 @@ export default function TermsScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="file-text" size={32} color={ComeYaColors.primary} />
         </View>
@@ -48,7 +50,7 @@ export default function TermsScreen() {
           <Feather name="arrow-left" size={18} color={theme.text} />
           <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Volver</ThemedText>
         </Pressable>
-      </View>
+      </View>}
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={[s.badge2, { backgroundColor: ComeYaColors.primary + "15" }]}>

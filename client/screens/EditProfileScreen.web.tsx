@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 function resolveProfileImageUrl(img: string): string {
   if (img.startsWith("data:image/")) return img;
@@ -29,8 +30,9 @@ export default function EditProfileScreen() {
   const sub = isDark ? "#aaa" : "#666";
   const inputBg = isDark ? "#2a2a2a" : "#f5f5f5";
 
-  const isDriver = user?.role === "delivery_driver";
-  const isBusiness = user?.role === "business_owner";
+  const isDriver   = user?.role === "delivery_driver";
+  const isBusiness  = user?.role === "business_owner";
+  const { isMobile } = useResponsive();
 
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
@@ -146,7 +148,8 @@ export default function EditProfileScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
+      {/* Sidebar — oculto en móvil */}
+      {!isMobile && (
       <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <Pressable style={s.avatarWrap} onPress={pickImage} disabled={isUploadingImage}>
           {profileImage ? (
@@ -175,6 +178,7 @@ export default function EditProfileScreen() {
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
       </View>
+      )}
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

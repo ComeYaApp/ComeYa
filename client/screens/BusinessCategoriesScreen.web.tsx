@@ -6,12 +6,14 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 interface Category { id: string; name: string; description: string; isActive: boolean; }
 
 export default function BusinessCategoriesScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const { isMobile } = useResponsive();
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const border = isDark ? "#333" : "#e8e8e8";
@@ -54,7 +56,7 @@ export default function BusinessCategoriesScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="folder" size={28} color={ComeYaColors.primary} />
         </View>
@@ -68,7 +70,7 @@ export default function BusinessCategoriesScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
+      </View>}
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {showForm && (

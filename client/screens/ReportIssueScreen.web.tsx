@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 const ISSUE_TYPES = [
   { id: "missing_items", label: "Artículos faltantes", icon: "package" },
@@ -33,6 +34,7 @@ export default function ReportIssueScreen() {
   const { showToast } = useToast();
 
   const { orderId, orderNumber } = route.params || {};
+  const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -79,8 +81,7 @@ export default function ReportIssueScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.error + "15" }]}>
           <Feather name="alert-circle" size={28} color={ComeYaColors.error} />
         </View>
@@ -107,7 +108,7 @@ export default function ReportIssueScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

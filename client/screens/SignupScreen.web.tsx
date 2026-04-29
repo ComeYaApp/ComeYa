@@ -212,11 +212,13 @@ const s = StyleSheet.create({
     flexDirection: "row", 
     backgroundColor: "#fff",
     minHeight: "100vh" as any,
+    flexWrap: "wrap" as any,
   },
 
   // IZQUIERDA — Hero
   left: { 
-    flex: 1, 
+    flex: 1,
+    minWidth: 300,
     backgroundColor: PRIMARY,
     position: "relative" as any,
   },

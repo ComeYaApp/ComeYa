@@ -6,6 +6,7 @@ import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
 import { ComeYaColors } from "@/constants/theme";
+import { useResponsive } from "@/hooks/useResponsive";
 
 // Rojo para versión web
 const PRIMARY = "#DC2626";
@@ -15,6 +16,7 @@ export default function CartScreen() {
   const { theme, isDark } = useTheme();
   const { cart, addToCart, removeFromCart, updateQuantity, clearCart } = useCart();
 
+  const { isMobile } = useResponsive();
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const text = isDark ? "#fff" : "#1a1a1a";
@@ -97,7 +99,7 @@ export default function CartScreen() {
         </ScrollView>
 
         {/* DERECHA — Resumen */}
-        {cartItems.length > 0 && (
+        {cartItems.length > 0 && !isMobile && (
           <View style={[s.summary, { backgroundColor: card, borderLeftColor: border }]}>
             <Text style={[s.summaryTitle, { color: text }]}>Resumen del pedido</Text>
             <View style={[s.summaryBox, { borderColor: border }]}>

@@ -1,24 +1,25 @@
-import { Dimensions, Platform } from "react-native";
+import { Dimensions, Platform, useWindowDimensions } from "react-native";
 
 const MAX_CONTENT_WIDTH = 680;
 const BREAKPOINT_DESKTOP = 900;
+const BREAKPOINT_MOBILE  = 768;
 
 export function useWebLayout() {
-  const windowWidth = Dimensions.get("window").width;
-  const isWeb = Platform.OS === "web";
+  const { width: windowWidth } = useWindowDimensions();
+  const isWeb     = Platform.OS === "web";
   const isDesktop = isWeb && windowWidth >= BREAKPOINT_DESKTOP;
+  const isMobile  = isWeb && windowWidth < BREAKPOINT_MOBILE;
 
   return {
     isWeb,
     isDesktop,
+    isMobile,
     windowWidth,
-    // Estilos para el contenedor principal de cada pantalla
     containerStyle: isDesktop ? {
       flex: 1 as const,
       alignItems: "center" as const,
       backgroundColor: "#f5f5f5",
     } : { flex: 1 as const },
-    // Estilos para el contenido centrado
     contentStyle: isDesktop ? {
       width: MAX_CONTENT_WIDTH,
       flex: 1 as const,

@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 type Period = "today" | "week" | "month";
 
@@ -17,6 +18,7 @@ export default function DeliveryEarningsScreen() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -86,8 +88,7 @@ export default function DeliveryEarningsScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         {/* Wallet card */}
         <View style={[s.walletCard, { backgroundColor: wallet.cashOwed > 0 ? ComeYaColors.error : ComeYaColors.success }]}>
           <Text style={s.walletLabel}>{wallet.cashOwed > 0 ? "🚨 Debes depositar" : "✅ Disponible"}</Text>
@@ -125,7 +126,7 @@ export default function DeliveryEarningsScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

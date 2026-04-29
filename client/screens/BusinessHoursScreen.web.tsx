@@ -6,6 +6,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useResponsive } from "@/hooks/useResponsive";
 
 interface Shift { open: string; close: string; }
 interface DayHours { day: string; dayKey: string; isOpen: boolean; morning: Shift; hasEvening: boolean; evening: Shift; }
@@ -31,6 +32,7 @@ export default function BusinessHoursScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
   const { showToast } = useToast();
+  const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -98,8 +100,7 @@ export default function BusinessHoursScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="clock" size={28} color={ComeYaColors.primary} />
         </View>
@@ -133,7 +134,7 @@ export default function BusinessHoursScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
