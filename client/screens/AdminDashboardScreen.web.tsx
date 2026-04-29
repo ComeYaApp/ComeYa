@@ -15,7 +15,7 @@ import { LiveFeed }       from "@/components/admin/dashboard/LiveFeed";
 
 // Existing tabs
 import { OrdersTab }        from "@/components/admin/tabs/OrdersTab.web";
-import { BusinessesTab }    from "@/components/admin/tabs/BusinessesTab";
+import { BusinessesTab }    from "@/components/admin/tabs/BusinessesTab.web";
 import { DriversTab }       from "@/components/admin/tabs/DriversTab";
 import { UsersTab }         from "@/components/admin/tabs/UsersTab";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab";
@@ -23,7 +23,8 @@ import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab";
 import { CouponsTab }       from "@/components/admin/tabs/CouponsTab";
 import { SupportTab }       from "@/components/admin/tabs/SupportTab";
 import { SettingsTab }      from "@/components/admin/tabs/SettingsTab";
-import { ZonesTab }         from "@/components/admin/tabs/ZonesTab";
+import { ZonesTab }         from "@/components/admin/tabs/ZonesTab.web";
+import { CategoriesTab }    from "@/components/admin/tabs/CategoriesTab.web";
 import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab";
 
 // Web-specific screens embedded as panels
@@ -136,11 +137,11 @@ export default function AdminDashboardScreen() {
       // ── Negocios ──
       case "businesses":
       case "businesses_list":
-        return <TabWrap><BusinessesTab businesses={[]} onBusinessPress={() => {}} /></TabWrap>;
+        return <BusinessesTab />;
       case "businesses_zones":
-        return <TabWrap><ZonesTab theme={{} as any} showToast={showToast} /></TabWrap>;
+        return <ZonesTab />;
       case "businesses_categories":
-        return <TabWrap><ZonesTab theme={{} as any} showToast={showToast} /></TabWrap>;
+        return <CategoriesTab />;
 
       // ── Repartidores ──
       case "drivers":
