@@ -8,6 +8,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/hooks/useTheme';
 import { ComeYaLogo } from '@/components/ComeYaLogo';
 import { apiRequest } from '@/lib/query-client';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useToast } from '@/contexts/ToastContext';
 import { useCart } from '@/contexts/CartContext';
 
@@ -177,6 +178,7 @@ export default function StripePaymentScreen() {
   const { theme } = useTheme();
   const { clearCart } = useCart();
   const [stripeReady, setStripeReady] = useState(false);
+  const { isMobile } = useResponsive();
 
   const params = route.params as any;
   const { orderId, amount, subtotal, deliveryFee, businessId } = params || {};
@@ -213,9 +215,9 @@ export default function StripePaymentScreen() {
 
   return (
     <Elements stripe={stripePromise}>
-      <View style={[styles.webContainer, { backgroundColor: theme.backgroundRoot }]}>
-      {/* LEFT: Hero Section */}
-      <View style={styles.heroSection}>
+      <ScrollView style={{ flex: 1, backgroundColor: theme.backgroundRoot }} contentContainerStyle={styles.webContainer}>
+      {/* LEFT: Hero Section — oculto en móvil */}
+      {!isMobile && <View style={styles.heroSection}>
         <View style={styles.heroContent}>
           <Pressable onPress={() => navigation.goBack()} style={styles.logoContainer}>
             <View style={styles.logoCircle}>
@@ -259,11 +261,11 @@ export default function StripePaymentScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* RIGHT: Payment Form */}
-      <View style={styles.formSection}>
-        <View style={[styles.formCard, { backgroundColor: theme.card }]}>
+      <View style={[styles.formSection, isMobile && { padding: 16, justifyContent: 'flex-start' }]}>
+        <View style={[styles.formCard, { backgroundColor: theme.card }, isMobile && { padding: 20, borderRadius: 16 }]}>
           <ThemedText type="h3" style={{ marginBottom: 24 }}>
             Información de pago
           </ThemedText>
@@ -279,7 +281,7 @@ export default function StripePaymentScreen() {
           />
         </View>
       </View>
-      </View>
+      </ScrollView>
     </Elements>
   );
 }

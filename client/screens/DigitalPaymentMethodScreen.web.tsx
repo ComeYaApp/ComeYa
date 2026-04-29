@@ -7,6 +7,7 @@ import { apiRequest } from '../lib/query-client';
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from '../constants/theme';
 import { ThemedText } from '@/components/ThemedText';
 import { ComeYaLogo } from '@/components/ComeYaLogo';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface PaymentMethod {
   id: string;
@@ -44,6 +45,7 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const orderTotal = route?.params?.orderTotal || 0;
   const orderType = route?.params?.orderType || 'delivery';
   const calculatedDeliveryFee = route?.params?.calculatedDeliveryFee;
+  const { isMobile } = useResponsive();
 
   useEffect(() => { loadMethods(); loadSavedAccounts(); }, []);
 
@@ -148,9 +150,9 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   }
 
   return (
-    <View style={styles.webContainer}>
-      {/* LEFT: Hero Section */}
-      <View style={styles.heroSection}>
+    <ScrollView style={{ flex: 1, backgroundColor: "#FAFAFA" }} contentContainerStyle={styles.webContainer}>
+      {/* LEFT: Hero Section — oculto en móvil */}
+      {!isMobile && <View style={styles.heroSection}>
         <View style={styles.heroContent}>
           {/* Logo */}
           <Pressable onPress={() => navigation.goBack()} style={styles.logoContainer}>
@@ -204,16 +206,11 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
             </View>
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* RIGHT: Methods Section */}
-      <View style={styles.methodsSection}>
-        <ScrollView 
-          style={styles.methodsScrollView}
-          contentContainerStyle={styles.methodsScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.methodsCard}>
+      <View style={[styles.methodsSection, isMobile && { padding: 16, justifyContent: 'flex-start' }]}>
+        <View style={[styles.methodsCard, isMobile && { padding: 20, borderRadius: 16 }]}>
             <ThemedText type="h3" style={{ marginBottom: 24, color: "#1F2937" }}>
               Selecciona tu método de pago
             </ThemedText>
@@ -276,9 +273,8 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
               {selected && <Feather name="arrow-right" size={20} color="#FFF" style={{ marginLeft: 12 }} />}
             </Pressable>
           </View>
-        </ScrollView>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 

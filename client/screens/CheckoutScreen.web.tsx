@@ -374,6 +374,7 @@ export default function CheckoutScreen({ route }: any) {
   }
 
   return (
+    <>
     <ScrollView style={{ flex: 1, backgroundColor: theme.backgroundRoot }} contentContainerStyle={styles.webContainer}>
       {/* LEFT: Hero Section — oculto en móvil */}
       {!isMobile && <View style={styles.heroSection}>
@@ -823,9 +824,10 @@ export default function CheckoutScreen({ route }: any) {
             </Pressable>
         </View>
       </View>
+    </ScrollView>
 
-      {/* Address Picker Modal */}
-      <Modal
+    {/* Address Picker Modal */}
+    <Modal
         visible={addressPickerVisible}
         transparent
         animationType="fade"
@@ -897,7 +899,7 @@ export default function CheckoutScreen({ route }: any) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </>
   );
 }
 

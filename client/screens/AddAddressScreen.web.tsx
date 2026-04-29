@@ -25,6 +25,7 @@ import { useDebounce, usePerformanceMonitor } from '@/hooks/usePerformance';
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { ComeYaLogo } from '@/components/ComeYaLogo';
 import * as Location from 'expo-location';
+import { useResponsive } from '@/hooks/useResponsive';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddAddress'>;
 
@@ -64,6 +65,7 @@ export default function AddAddressScreen() {
   );
   const [duplicateWarning, setDuplicateWarning] = useState<Address | null>(null);
   const [suggestions, setSuggestions] = useState<Address[]>([]);
+  const { isMobile } = useResponsive();
 
   const debouncedStreet = useDebounce(street, 300);
 
@@ -158,9 +160,9 @@ export default function AddAddressScreen() {
   };
 
   return (
-    <View style={styles.webContainer}>
-      {/* LEFT: Hero Section */}
-      <View style={styles.heroSection}>
+    <ScrollView style={{ flex: 1, backgroundColor: "#FAFAFA" }} contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap" as any }}>
+      {/* LEFT: Hero Section — oculto en móvil */}
+      {!isMobile && <View style={styles.heroSection}>
         <View style={styles.heroContent}>
           {/* Logo */}
           <Pressable onPress={() => navigation.goBack()} style={styles.logoContainer}>
@@ -216,16 +218,11 @@ export default function AddAddressScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* RIGHT: Form Section */}
-      <View style={styles.formSection}>
-        <ScrollView 
-          style={styles.formScrollView}
-          contentContainerStyle={styles.formScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.formCard}>
+      <View style={[styles.formSection, isMobile && { padding: 16, justifyContent: 'flex-start' }]}>
+        <View style={[styles.formCard, isMobile && { padding: 20, borderRadius: 16 }]}>
             {/* Error banner */}
             {error && (
               <View style={styles.errorBanner}>
@@ -481,9 +478,8 @@ export default function AddAddressScreen() {
               )}
             </Pressable>
           </View>
-        </ScrollView>
-      </View>
-    </View>
+        </View>
+    </ScrollView>
   );
 }
 
