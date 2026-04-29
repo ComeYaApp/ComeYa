@@ -32,7 +32,7 @@ export default function LoginScreen({ navigation }: Props) {
   const { isMobile } = useResponsive();
 
   useEffect(() => {
-    apiRequest("GET", "/api/businesses/featured").then(r => r.json())
+    apiRequest("GET", "/api/business/featured").then(r => r.json())
       .then(d => setFeaturedBusinesses(d.businesses?.slice(0, 4) || []))
       .catch(() => {});
   }, []);
