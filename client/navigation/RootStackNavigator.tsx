@@ -2,7 +2,9 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Platform } from "react-native";
 
+import { Platform } from "react-native";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
+import MainTabNavigatorWeb from "@/navigation/MainTabNavigator.web";
 import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
 import DriverTabNavigator from "@/navigation/DriverTabNavigator";
 import LoginScreen from "@/screens/LoginScreen";
@@ -141,6 +143,8 @@ export default function RootStackNavigator() {
   const isDeliveryDriver = user?.role === "delivery_driver";
 
   const getMainNavigator = () => {
+    // En web, todos los roles usan MainTabNavigator.web que tiene el routing correcto
+    if (Platform.OS === "web") return MainTabNavigatorWeb;
     if (isBusinessOwner) return BusinessTabNavigator;
     if (isDeliveryDriver) return DriverTabNavigator;
     return MainTabNavigator;
