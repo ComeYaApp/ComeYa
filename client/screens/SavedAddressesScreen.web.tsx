@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/query-client";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
+import { useResponsive } from "@/hooks/useResponsive";
 
 interface Address {
   id: string;
@@ -39,6 +40,7 @@ export default function SavedAddressesScreen() {
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
+  const { isMobile } = useResponsive();
 
   useEffect(() => {
     loadAddresses();
@@ -92,9 +94,10 @@ export default function SavedAddressesScreen() {
   };
 
   return (
-    <View style={styles.webContainer}>
-      {/* LEFT: Hero Section */}
-      <View style={styles.heroSection}>
+    <>
+    <ScrollView style={{ flex: 1, backgroundColor: "#FAFAFA" }} contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap" as any }}>
+      {/* LEFT: Hero Section — oculto en móvil */}
+      {!isMobile && <View style={styles.heroSection}>
         <View style={styles.heroContent}>
           {/* Logo */}
           <Pressable onPress={() => navigation.goBack()} style={styles.logoContainer}>
@@ -155,16 +158,11 @@ export default function SavedAddressesScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </View>}
 
       {/* RIGHT: Content Section */}
-      <View style={styles.contentSection}>
-        <ScrollView 
-          style={styles.contentScrollView}
-          contentContainerStyle={styles.contentScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.contentCard}>
+      <View style={[styles.contentSection, isMobile && { padding: 16, justifyContent: 'flex-start' }]}>
+        <View style={[styles.contentCard, isMobile && { padding: 20, borderRadius: 16 }]}>
             {loading ? (
               <View style={styles.emptyState}>
                 <ThemedText type="body" style={{ color: "#6B7280" }}>
@@ -277,8 +275,8 @@ export default function SavedAddressesScreen() {
               </>
             )}
           </View>
-        </ScrollView>
-      </View>
+        </View>
+    </ScrollView>
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
@@ -292,7 +290,7 @@ export default function SavedAddressesScreen() {
         }}
         confirmText="Eliminar"
       />
-    </View>
+    </>
   );
 }
 
