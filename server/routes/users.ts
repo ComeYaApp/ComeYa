@@ -30,32 +30,32 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
     const [user] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    let vehicleType = null;
-    let vehiclePlate = null;
-    let vehiclePhoto = null;
-    let vehicleBrand = null;
-    let vehicleModel = null;
-    let vehicleColor = null;
+    let vehicleType = null, vehiclePlate = null, vehiclePhoto = null;
+    let vehicleBrand = null, vehicleModel = null, vehicleColor = null, vehicleYear = null;
+    let vehiclePlatePhoto = null, vehicleItvPhoto = null, vehicleInsurancePhoto = null, vehicleLicensePhoto = null;
+
     if (user.role === "delivery_driver") {
       const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id)).limit(1);
-      vehicleType = dd?.vehicleType ?? null;
-      vehiclePlate = dd?.vehiclePlate ?? null;
-      vehiclePhoto = dd?.vehiclePhoto ?? null;
-      vehicleBrand = dd?.vehicleBrand ?? null;
-      vehicleModel = dd?.vehicleModel ?? null;
-      vehicleColor = dd?.vehicleColor ?? null;
+      vehicleType          = dd?.vehicleType          ?? null;
+      vehiclePlate         = dd?.vehiclePlate         ?? null;
+      vehiclePhoto         = dd?.vehiclePhoto         ?? null;
+      vehicleBrand         = dd?.vehicleBrand         ?? null;
+      vehicleModel         = dd?.vehicleModel         ?? null;
+      vehicleColor         = dd?.vehicleColor         ?? null;
+      vehicleYear          = (dd as any)?.vehicleYear          ?? null;
+      vehiclePlatePhoto    = (dd as any)?.vehiclePlatePhoto    ?? null;
+      vehicleItvPhoto      = (dd as any)?.vehicleItvPhoto      ?? null;
+      vehicleInsurancePhoto= (dd as any)?.vehicleInsurancePhoto?? null;
+      vehicleLicensePhoto  = (dd as any)?.vehicleLicensePhoto  ?? null;
     }
 
     res.json({
       success: true,
       dni: user.dni,
       address: user.address,
-      vehicleType,
-      vehiclePlate,
-      vehiclePhoto,
-      vehicleBrand,
-      vehicleModel,
-      vehicleColor,
+      vehicleType, vehiclePlate, vehiclePhoto,
+      vehicleBrand, vehicleModel, vehicleColor, vehicleYear,
+      vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -67,15 +67,39 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
   try {
     const { deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { CloudinaryService } = await import("../cloudinaryService");
 
-    const { vehicleType, vehiclePlate, vehiclePhoto, vehicleBrand, vehicleModel, vehicleColor } = req.body;
+    const {
+      vehicleType, vehiclePlate, vehicleBrand, vehicleModel, vehicleColor, vehicleYear,
+      vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
+    } = req.body;
+
     const updates: any = {};
-    if (vehicleType) updates.vehicleType = vehicleType;
+    if (vehicleType  !== undefined) updates.vehicleType  = vehicleType  || null;
     if (vehiclePlate !== undefined) updates.vehiclePlate = vehiclePlate || null;
-    if (vehiclePhoto !== undefined) updates.vehiclePhoto = vehiclePhoto || null;
     if (vehicleBrand !== undefined) updates.vehicleBrand = vehicleBrand || null;
     if (vehicleModel !== undefined) updates.vehicleModel = vehicleModel || null;
     if (vehicleColor !== undefined) updates.vehicleColor = vehicleColor || null;
+    if (vehicleYear  !== undefined) updates.vehicleYear  = vehicleYear  || null;
+
+    // Subir fotos de documentos a Cloudinary si son base64
+    const uploadDoc = async (b64: string | undefined, key: string) => {
+      if (!b64) return undefined;
+      if (b64.startsWith("data:image/")) {
+        return await CloudinaryService.uploadImage(b64, "profiles", `driver-${req.user!.id}-${key}`);
+      }
+      return b64; // ya es URL
+    };
+
+    const plateUrl    = await uploadDoc(vehiclePlatePhoto,    "plate");
+    const itvUrl      = await uploadDoc(vehicleItvPhoto,      "itv");
+    const insuranceUrl= await uploadDoc(vehicleInsurancePhoto,"insurance");
+    const licenseUrl  = await uploadDoc(vehicleLicensePhoto,  "license");
+
+    if (plateUrl     !== undefined) updates.vehiclePlatePhoto     = plateUrl;
+    if (itvUrl       !== undefined) updates.vehicleItvPhoto       = itvUrl;
+    if (insuranceUrl !== undefined) updates.vehicleInsurancePhoto = insuranceUrl;
+    if (licenseUrl   !== undefined) updates.vehicleLicensePhoto   = licenseUrl;
 
     const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id)).limit(1);
     if (existing) {
