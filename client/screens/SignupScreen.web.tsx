@@ -57,7 +57,7 @@ export default function SignupScreen({ navigation, route }: Props) {
 
   return (
     <View style={s.root}>
-      {/* IZQUIERDA — Hero */}
+      {/* IZQUIERDA/ARRIBA — Hero */}
       <View style={s.left}>
         <View style={s.leftInner}>
           <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -72,24 +72,28 @@ export default function SignupScreen({ navigation, route }: Props) {
             <Text style={s.logoText}>ComeYa</Text>
           </View>
 
-          <Text style={s.headline}>Únete a la{"\n"}comunidad</Text>
-          <Text style={s.sub}>Miles de usuarios ya disfrutan de ComeYa en Soria</Text>
-
-          <View style={s.features}>
-            {[
-              { icon: "zap", text: "Entrega rápida en 30-45 min" },
-              { icon: "shield", text: "Pagos 100% seguros" },
-              { icon: "gift", text: "Gana puntos y recompensas" },
-              { icon: "star", text: "Acceso a ofertas exclusivas" },
-            ].map((f) => (
-              <View key={f.text} style={s.featureRow}>
-                <View style={s.featureIcon}>
-                  <Feather name={f.icon as any} size={18} color="#fff" />
-                </View>
-                <Text style={s.featureText}>{f.text}</Text>
+          {!isMobile && (
+            <>
+              <Text style={s.headline}>Únete a la{"\n"}comunidad</Text>
+              <Text style={s.sub}>Miles de usuarios ya disfrutan de ComeYa en Soria</Text>
+              <View style={s.features}>
+                {[
+                  { icon: "zap", text: "Entrega rápida en 30-45 min" },
+                  { icon: "shield", text: "Pagos 100% seguros" },
+                  { icon: "gift", text: "Gana puntos y recompensas" },
+                  { icon: "star", text: "Acceso a ofertas exclusivas" },
+                ].map((f) => (
+                  <View key={f.text} style={s.featureRow}>
+                    <View style={s.featureIcon}>
+                      <Feather name={f.icon as any} size={18} color="#fff" />
+                    </View>
+                    <Text style={s.featureText}>{f.text}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
+            </>
+          )}
+          {isMobile && <Text style={s.mobileTagline}>Únete a la comunidad 🍔</Text>}
         </View>
       </View>
 
@@ -217,18 +221,24 @@ const s = StyleSheet.create({
     flexWrap: "wrap" as any,
   },
 
-  // IZQUIERDA — Hero
+  // IZQUIERDA/ARRIBA — Hero
   left: { 
     flex: 1,
-    minWidth: 300,
+    minWidth: "100%" as any,
     maxWidth: 600,
     backgroundColor: PRIMARY,
     position: "relative" as any,
   },
   leftInner: { 
-    padding: 48,
+    padding: 28,
     maxWidth: 600,
     margin: "auto" as any,
+  },
+  mobileTagline: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "500",
+    marginTop: 4,
   },
   backBtn: { 
     flexDirection: "row", 
@@ -309,6 +319,7 @@ const s = StyleSheet.create({
   // DERECHA — Formulario
   right: { 
     flex: 1,
+    minWidth: 300,
     backgroundColor: "#fafafa",
     display: "flex" as any,
     alignItems: "center" as any,
