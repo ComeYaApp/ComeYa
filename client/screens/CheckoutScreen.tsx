@@ -1051,7 +1051,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.lg,
-    paddingBottom: Spacing["4xl"],
+    paddingBottom: 200,
   },
   section: {
     padding: Spacing.lg,

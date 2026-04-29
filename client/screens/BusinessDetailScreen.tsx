@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: Spacing["6xl"] + Spacing["3xl"],
+    paddingBottom: 160,
   },
   notFound: {
     flex: 1,
