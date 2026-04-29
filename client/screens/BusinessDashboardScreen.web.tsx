@@ -61,14 +61,12 @@ export default function BusinessDashboardScreen() {
   const periodRevenue = revenue[selectedPeriod];
 
   const metrics = stats ? [
-    { label: "Pedidos hoy",   value: stats.todayOrders   || 0,                                    icon: "package",     color: "#3B82F6" },
-    { label: "Ingresos hoy",  value: `€${revenue.today.toFixed(2)}`,                              icon: "trending-up", color: "#10B981" },
-    { label: "Ticket medio",  value: `€${((stats.averageTicket || 0) / 100).toFixed(2)}`,         icon: "dollar-sign", color: "#8B5CF6" },
-    { label: "Rating",        value: `${((stats.averageRating || 0) / 10).toFixed(1)}★`,          icon: "star",        color: "#F59E0B" },
-    { label: "Completados",   value: stats.completedOrders  || 0,                                 icon: "check-circle",color: "#4CAF50" },
-    { label: "Cancelados",    value: stats.cancelledOrders  || 0,                                 icon: "x-circle",    color: "#EF4444" },
-    { label: "Total ingresos",value: `€${revenue.total.toFixed(2)}`,                              icon: "award",       color: PRIMARY   },
-    { label: "Ticket prom.",  value: `€${((stats.averageTicket || 0) / 100).toFixed(2)}`,         icon: "bar-chart-2", color: "#06B6D4" },
+    { label: "Pedidos hoy",  value: stats.todayOrders  || 0,                                icon: "package",      color: "#3B82F6" },
+    { label: "Completados",  value: stats.completedOrders || 0,                             icon: "check-circle", color: "#4CAF50" },
+    { label: "Cancelados",   value: stats.cancelledOrders || 0,                             icon: "x-circle",     color: "#EF4444" },
+    { label: "Ticket medio", value: `€${((stats.averageTicket || 0) / 100).toFixed(2)}`,   icon: "dollar-sign",  color: "#8B5CF6" },
+    { label: "Rating",       value: `${((stats.averageRating || 0) / 10).toFixed(1)}★`,    icon: "star",         color: "#F59E0B" },
+    { label: "Total pedidos",value: stats.totalOrders  || 0,                                icon: "bar-chart-2",  color: "#06B6D4" },
   ] : [];
 
   const topProducts: { name: string; quantity: number; revenue: number }[] = stats?.topProducts || [];

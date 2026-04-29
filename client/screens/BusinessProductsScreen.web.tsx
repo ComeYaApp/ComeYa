@@ -108,44 +108,41 @@ export default function BusinessProductsScreen() {
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       <BusinessSidebar />
-      {/* Sidebar propio */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <Text style={[s.sideTitle, { color: text }]}>Productos</Text>
-        {selectedBusiness && (
-          <Pressable onPress={() => navigation.navigate("MyBusinesses")} style={[s.bizSelector, { backgroundColor: ComeYaColors.primary + "10", borderColor: ComeYaColors.primary + "30" }]}>
-            <Text style={[s.bizSelectorText, { color: ComeYaColors.primary }]} numberOfLines={1}>{selectedBusiness.name}</Text>
-            <Feather name="chevron-down" size={14} color={ComeYaColors.primary} />
-          </Pressable>
-        )}
-
-        {/* Stats */}
-        <View style={[s.stats, { borderColor: border }]}>
-          <View style={s.stat}>
-            <Text style={[s.statValue, { color: ComeYaColors.success }]}>{available.length}</Text>
-            <Text style={[s.statLabel, { color: sub }]}>Disponibles</Text>
-          </View>
-          <View style={[s.statDivider, { backgroundColor: border }]} />
-          <View style={s.stat}>
-            <Text style={[s.statValue, { color: ComeYaColors.error }]}>{unavailable.length}</Text>
-            <Text style={[s.statLabel, { color: sub }]}>Agotados</Text>
-          </View>
-          <View style={[s.statDivider, { backgroundColor: border }]} />
-          <View style={s.stat}>
-            <Text style={[s.statValue, { color: text }]}>{products.length}</Text>
-            <Text style={[s.statLabel, { color: sub }]}>Total</Text>
-          </View>
-        </View>
-
-        <Pressable onPress={openAdd} style={[s.addBtn, { backgroundColor: ComeYaColors.primary }]}>
-          <Feather name="plus" size={18} color="#fff" />
-          <Text style={s.addBtnText}>Nuevo producto</Text>
-        </Pressable>
-      </View>
 
       {/* Main */}
       <View style={s.main}>
+        {/* Toolbar */}
+        <View style={[s.toolbar, { backgroundColor: card, borderBottomColor: border }]}>
+          <View style={s.toolbarLeft}>
+            <Text style={[s.toolbarTitle, { color: text }]}>Productos</Text>
+            {selectedBusiness && (
+              <Pressable onPress={() => navigation.navigate("MyBusinesses")} style={[s.bizChip, { backgroundColor: ComeYaColors.primary + "15", borderColor: ComeYaColors.primary + "30" }]}>
+                <Text style={[s.bizChipText, { color: ComeYaColors.primary }]} numberOfLines={1}>{selectedBusiness.name}</Text>
+                <Feather name="chevron-down" size={12} color={ComeYaColors.primary} />
+              </Pressable>
+            )}
+          </View>
+          <View style={s.toolbarRight}>
+            <View style={[s.statChip, { backgroundColor: ComeYaColors.success + "15" }]}>
+              <Text style={[s.statChipValue, { color: ComeYaColors.success }]}>{available.length}</Text>
+              <Text style={[s.statChipLabel, { color: ComeYaColors.success }]}>Disponibles</Text>
+            </View>
+            <View style={[s.statChip, { backgroundColor: ComeYaColors.error + "15" }]}>
+              <Text style={[s.statChipValue, { color: ComeYaColors.error }]}>{unavailable.length}</Text>
+              <Text style={[s.statChipLabel, { color: ComeYaColors.error }]}>Agotados</Text>
+            </View>
+            <View style={[s.statChip, { backgroundColor: border }]}>
+              <Text style={[s.statChipValue, { color: text }]}>{products.length}</Text>
+              <Text style={[s.statChipLabel, { color: sub }]}>Total</Text>
+            </View>
+            <Pressable onPress={openAdd} style={[s.addBtn, { backgroundColor: ComeYaColors.primary }]}>
+              <Feather name="plus" size={16} color="#fff" />
+              <Text style={s.addBtnText}>Nuevo producto</Text>
+            </Pressable>
+          </View>
+        </View>
         {/* Barra de búsqueda */}
-        <View style={[s.searchBar, { backgroundColor: card, borderBottomColor: border }]}>
+        <View style={[s.searchBar, { backgroundColor: bg, borderBottomColor: border }]}>
           <Feather name="search" size={18} color={sub} />
           <TextInput
             style={[s.searchInput, { color: text }]}
@@ -296,18 +293,18 @@ const pc = StyleSheet.create({
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 240, padding: 24, borderRightWidth: 1, paddingTop: 40 },
-  sideTitle: { fontSize: 22, fontWeight: "800", marginBottom: 12 },
-  bizSelector: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, marginBottom: 16 },
-  bizSelectorText: { fontSize: 13, fontWeight: "600", flex: 1 },
-  stats: { flexDirection: "row", borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 14, marginBottom: 20 },
-  stat: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 22, fontWeight: "900" },
-  statLabel: { fontSize: 11, marginTop: 2 },
-  statDivider: { width: 1 },
-  addBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, justifyContent: "center" },
-  addBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   main: { flex: 1, flexDirection: "column" },
+  toolbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1 },
+  toolbarLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  toolbarTitle: { fontSize: 20, fontWeight: "800" },
+  bizChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
+  bizChipText: { fontSize: 12, fontWeight: "600" },
+  toolbarRight: { flexDirection: "row", alignItems: "center", gap: 10 },
+  statChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  statChipValue: { fontSize: 15, fontWeight: "800" },
+  statChipLabel: { fontSize: 11 },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 10, justifyContent: "center" },
+  addBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   searchBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingVertical: 12, borderBottomWidth: 1 },
   searchInput: { flex: 1, fontSize: 15 },
   content: { padding: 24, maxWidth: 900 },

@@ -101,53 +101,48 @@ export default function BusinessOrdersScreen() {
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       <BusinessSidebar />
-      {/* Sidebar */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <Text style={[s.sideTitle, { color: text }]}>Pedidos</Text>
 
-        {/* Contadores */}
-        <View style={[s.counters, { borderColor: border }]}>
-          <View style={s.counter}>
-            <Text style={[s.counterValue, { color: "#F59E0B" }]}>{pendingCount}</Text>
-            <Text style={[s.counterLabel, { color: sub }]}>Pendientes</Text>
+      {/* Main */}
+      <View style={s.main}>
+        {/* Toolbar */}
+        <View style={[s.toolbar, { backgroundColor: card, borderBottomColor: border }]}>
+          <View style={s.toolbarLeft}>
+            <Text style={[s.toolbarTitle, { color: text }]}>Pedidos</Text>
+            <View style={[s.statChip, { backgroundColor: "#F59E0B" + "20" }]}>
+              <Text style={[s.statChipValue, { color: "#F59E0B" }]}>{pendingCount}</Text>
+              <Text style={[s.statChipLabel, { color: "#F59E0B" }]}>Pendientes</Text>
+            </View>
+            <View style={[s.statChip, { backgroundColor: ComeYaColors.primary + "15" }]}>
+              <Text style={[s.statChipValue, { color: ComeYaColors.primary }]}>{activeCount}</Text>
+              <Text style={[s.statChipLabel, { color: ComeYaColors.primary }]}>Activos</Text>
+            </View>
+            <View style={[s.statChip, { backgroundColor: border }]}>
+              <Text style={[s.statChipValue, { color: text }]}>{orders.length}</Text>
+              <Text style={[s.statChipLabel, { color: sub }]}>Total</Text>
+            </View>
           </View>
-          <View style={[s.counterDivider, { backgroundColor: border }]} />
-          <View style={s.counter}>
-            <Text style={[s.counterValue, { color: ComeYaColors.primary }]}>{activeCount}</Text>
-            <Text style={[s.counterLabel, { color: sub }]}>Activos</Text>
-          </View>
-          <View style={[s.counterDivider, { backgroundColor: border }]} />
-          <View style={s.counter}>
-            <Text style={[s.counterValue, { color: text }]}>{orders.length}</Text>
-            <Text style={[s.counterLabel, { color: sub }]}>Total</Text>
+          <View style={s.toolbarRight}>
+            {([
+              { id: "pending", label: "Pendientes", color: "#F59E0B" },
+              { id: "active", label: "Activos", color: ComeYaColors.primary },
+              { id: "all", label: "Todos", color: sub },
+            ] as { id: Filter; label: string; color: string }[]).map(f => (
+              <Pressable
+                key={f.id}
+                onPress={() => setFilter(f.id)}
+                style={[s.filterBtn, { backgroundColor: filter === f.id ? f.color + "15" : "transparent", borderColor: filter === f.id ? f.color : border }]}
+              >
+                <View style={[s.filterDot, { backgroundColor: f.color }]} />
+                <Text style={[s.filterBtnText, { color: filter === f.id ? f.color : text }]}>{f.label}</Text>
+              </Pressable>
+            ))}
+            <Pressable onPress={loadOrders} style={[s.refreshBtn, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="refresh-cw" size={15} color={text} />
+            </Pressable>
           </View>
         </View>
 
-        {/* Filtros */}
-        <Text style={[s.filterLabel, { color: sub }]}>Filtrar</Text>
-        {([
-          { id: "pending", label: "Pendientes", color: "#F59E0B" },
-          { id: "active", label: "Activos", color: ComeYaColors.primary },
-          { id: "all", label: "Todos", color: text },
-        ] as { id: Filter; label: string; color: string }[]).map(f => (
-          <Pressable
-            key={f.id}
-            onPress={() => setFilter(f.id)}
-            style={[s.filterBtn, { backgroundColor: filter === f.id ? f.color + "15" : "transparent", borderColor: filter === f.id ? f.color : border }]}
-          >
-            <View style={[s.filterDot, { backgroundColor: f.color }]} />
-            <Text style={[s.filterBtnText, { color: filter === f.id ? f.color : text }]}>{f.label}</Text>
-          </Pressable>
-        ))}
-
-        <Pressable onPress={loadOrders} style={[s.refreshBtn, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="refresh-cw" size={16} color={text} />
-          <Text style={[s.refreshBtnText, { color: text }]}>Actualizar</Text>
-        </Pressable>
-      </View>
-
-      {/* Main */}
-      <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={s.scrollArea} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={s.loading}><ActivityIndicator color={ComeYaColors.primary} size="large" /></View>
         ) : filteredOrders.length === 0 ? (
@@ -279,7 +274,8 @@ export default function BusinessOrdersScreen() {
             );
           })
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {/* Modal tiempo estimado (pickup) */}
       {showTimeModal && (
@@ -310,20 +306,19 @@ export default function BusinessOrdersScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 260, padding: 24, borderRightWidth: 1, paddingTop: 40 },
-  sideTitle: { fontSize: 22, fontWeight: "800", marginBottom: 16 },
-  counters: { flexDirection: "row", borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 16, marginBottom: 20 },
-  counter: { flex: 1, alignItems: "center" },
-  counterValue: { fontSize: 24, fontWeight: "900" },
-  counterLabel: { fontSize: 11, marginTop: 2 },
-  counterDivider: { width: 1 },
-  filterLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", marginBottom: 10 },
-  filterBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, marginBottom: 8 },
-  filterDot: { width: 8, height: 8, borderRadius: 4 },
-  filterBtnText: { fontSize: 14, fontWeight: "600" },
-  refreshBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, marginTop: 8, justifyContent: "center" },
-  refreshBtnText: { fontSize: 13, fontWeight: "600" },
-  main: { flex: 1 },
+  main: { flex: 1, flexDirection: "column" },
+  toolbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 1 },
+  toolbarLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  toolbarTitle: { fontSize: 20, fontWeight: "800", marginRight: 4 },
+  statChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  statChipValue: { fontSize: 15, fontWeight: "800" },
+  statChipLabel: { fontSize: 11 },
+  toolbarRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  filterBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1.5 },
+  filterDot: { width: 7, height: 7, borderRadius: 4 },
+  filterBtnText: { fontSize: 13, fontWeight: "600" },
+  refreshBtn: { padding: 8, borderRadius: 8, backgroundColor: "transparent" },
+  scrollArea: { flex: 1 },
   content: { padding: 24, maxWidth: 900 },
   loading: { paddingVertical: 80, alignItems: "center" },
   empty: { alignItems: "center", paddingVertical: 80, gap: 12 },

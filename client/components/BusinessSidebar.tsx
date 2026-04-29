@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -10,13 +10,30 @@ import { useBusiness } from "@/contexts/BusinessContext";
 const PRIMARY = "#DC2626";
 
 const NAV_ITEMS = [
-  { id: "BusinessDashboard", label: "Dashboard", icon: "bar-chart-2" },
-  { id: "BusinessOrders",    label: "Pedidos",   icon: "package"    },
-  { id: "BusinessProducts",  label: "Productos", icon: "grid"       },
-  { id: "BusinessProfile",   label: "Perfil",    icon: "user"       },
+  { id: "BusinessDashboard", label: "Dashboard",  icon: "bar-chart-2", sub: null },
+  { id: "BusinessOrders",    label: "Pedidos",     icon: "package",     sub: null },
+  { id: "BusinessProducts",  label: "Productos",   icon: "grid",        sub: null },
+  {
+    id: "BusinessProfile",
+    label: "Perfil",
+    icon: "user",
+    sub: [
+      { id: "account",     label: "Cuenta",        icon: "user"      },
+      { id: "business",    label: "Mi Negocio",     icon: "briefcase" },
+      { id: "payments",    label: "Pagos",          icon: "credit-card" },
+      { id: "preferences", label: "Preferencias",  icon: "sliders"   },
+      { id: "more",        label: "Más",            icon: "grid"      },
+    ],
+  },
 ];
 
-export function BusinessSidebar() {
+interface Props {
+  /** Sección activa dentro de Perfil (account | preferences | more) */
+  activeSubSection?: string;
+  onSubSectionChange?: (id: string) => void;
+}
+
+export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props) {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { theme, isDark } = useTheme();
@@ -28,8 +45,8 @@ export function BusinessSidebar() {
   const text   = isDark ? "#fff"    : "#1a1a1a";
   const sub    = isDark ? "#aaa"    : "#666";
 
-  // Detectar pantalla activa por nombre de ruta
   const activeName = route.name;
+  const isProfileActive = activeName === "BusinessProfile";
 
   return (
     <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
@@ -51,14 +68,34 @@ export function BusinessSidebar() {
         {NAV_ITEMS.map(item => {
           const isActive = activeName === item.id;
           return (
-            <Pressable
-              key={item.id}
-              onPress={() => navigation.navigate(item.id)}
-              style={[s.navItem, isActive && { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY }]}
-            >
-              <Feather name={item.icon as any} size={18} color={isActive ? PRIMARY : sub} />
-              <Text style={[s.navText, { color: isActive ? PRIMARY : text }]}>{item.label}</Text>
-            </Pressable>
+            <View key={item.id}>
+              <Pressable
+                onPress={() => navigation.navigate(item.id)}
+                style={[s.navItem, isActive && { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY }]}
+              >
+                <Feather name={item.icon as any} size={18} color={isActive ? PRIMARY : sub} />
+                <Text style={[s.navText, { color: isActive ? PRIMARY : text }]}>{item.label}</Text>
+              </Pressable>
+
+              {/* Subitems de Perfil — solo visibles cuando Perfil está activo */}
+              {item.sub && isProfileActive && (
+                <View style={[s.subItems, { borderLeftColor: border }]}>
+                  {item.sub.map(subItem => {
+                    const isSubActive = activeSubSection === subItem.id;
+                    return (
+                      <Pressable
+                        key={subItem.id}
+                        onPress={() => onSubSectionChange?.(subItem.id)}
+                        style={[s.subItem, isSubActive && { backgroundColor: PRIMARY + "08" }]}
+                      >
+                        <Feather name={subItem.icon as any} size={15} color={isSubActive ? PRIMARY : sub} />
+                        <Text style={[s.subItemText, { color: isSubActive ? PRIMARY : sub }]}>{subItem.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
           );
         })}
       </View>
@@ -83,5 +120,8 @@ const s = StyleSheet.create({
   nav: { flex: 1 },
   navItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
   navText: { fontSize: 14, fontWeight: "600" },
+  subItems: { marginLeft: 20, borderLeftWidth: 1, paddingLeft: 8, marginBottom: 4 },
+  subItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8 },
+  subItemText: { fontSize: 13, fontWeight: "500" },
   footer: { borderTopWidth: 1 },
 });

@@ -11,6 +11,7 @@ import { useApp, ThemeMode } from "@/contexts/AppContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { BusinessSidebar } from "@/components/BusinessSidebar";
 
 const PRIMARY = "#DC2626";
 
@@ -42,6 +43,8 @@ export default function ProfileScreen() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [driverStats, setDriverStats] = useState<any>(null);
   const [activeSection, setActiveSection] = useState("account");
+
+  const isBusiness = user?.role === "business_owner";
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -161,95 +164,106 @@ export default function ProfileScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* SIDEBAR */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        {/* Profile Header */}
-        <View style={s.sideHeader}>
-          <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
-            <Image
-              source={profileImage ? { uri: profileImage } : require("../../assets/images/avatar-placeholder.png")}
-              style={[s.avatar, isUploadingImage && { opacity: 0.5 }]}
-              onError={() => setProfileImage(null)}
-              contentFit="cover"
-            />
-            {isUploadingImage ? (
-              <View style={[s.editBadge, { backgroundColor: PRIMARY }]}>
-                <ActivityIndicator size="small" color="#FFF" />
+      {/* Sidebar: BusinessSidebar para business_owner, propio para el resto */}
+      {isBusiness ? (
+        <BusinessSidebar activeSubSection={activeSection} onSubSectionChange={setActiveSection} />
+      ) : (
+        <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+          {/* Profile Header */}
+          <View style={[s.sideHeader, { borderBottomColor: border }]}>
+            <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
+              <Image
+                source={profileImage ? { uri: profileImage } : require("../../assets/images/avatar-placeholder.png")}
+                style={[s.avatar, isUploadingImage && { opacity: 0.5 }]}
+                onError={() => setProfileImage(null)}
+                contentFit="cover"
+              />
+              {isUploadingImage ? (
+                <View style={[s.editBadge, { backgroundColor: PRIMARY }]}><ActivityIndicator size="small" color="#FFF" /></View>
+              ) : (
+                <View style={[s.editBadge, { backgroundColor: PRIMARY }]}><Feather name="camera" size={12} color="#FFF" /></View>
+              )}
+            </Pressable>
+            <Text style={[s.userName, { color: text }]}>{user?.name || "Usuario"}</Text>
+            <Text style={[s.userPhone, { color: sub }]}>{user?.phone || "Sin teléfono"}</Text>
+            <View style={s.badges}>
+              <View style={[s.roleBadge, { backgroundColor: PRIMARY + "15" }]}>
+                <Text style={[s.roleBadgeText, { color: PRIMARY }]}>{getRoleLabel()}</Text>
               </View>
-            ) : (
-              <View style={[s.editBadge, { backgroundColor: PRIMARY }]}>
-                <Feather name="camera" size={12} color="#FFF" />
-              </View>
-            )}
-          </Pressable>
-          <Text style={[s.userName, { color: text }]}>{user?.name || "Usuario"}</Text>
-          <Text style={[s.userPhone, { color: sub }]}>{user?.phone || "Sin teléfono"}</Text>
-          <View style={s.badges}>
+              {approvalStatus && (
+                <View style={[s.roleBadge, { backgroundColor: approvalStatus.variant === "success" ? "#4CAF5020" : "#F59E0B20" }]}>
+                  <Text style={[s.roleBadgeText, { color: approvalStatus.variant === "success" ? "#4CAF50" : "#F59E0B" }]}>{approvalStatus.text}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <View style={s.sideNav}>
+            {[
+              { id: "account", label: "Cuenta", icon: "user" },
+              { id: "preferences", label: "Preferencias", icon: "settings" },
+              { id: "more", label: "Más", icon: "grid" },
+            ].map(item => (
+              <Pressable key={item.id} onPress={() => setActiveSection(item.id)} style={[s.navItem, activeSection === item.id && s.navItemActive]}>
+                <Feather name={item.icon as any} size={18} color={activeSection === item.id ? PRIMARY : sub} />
+                <Text style={[s.navItemText, { color: activeSection === item.id ? PRIMARY : text }]}>{item.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable onPress={handleLogout} style={s.logoutBtn}>
+              <Feather name="log-out" size={18} color="#EF4444" />
+              <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>Cerrar sesión</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      {/* CONTENT */}
+      <ScrollView style={s.main} contentContainerStyle={s.mainContent} showsVerticalScrollIndicator={false}>
+        {/* Avatar header para business (el sidebar no lo muestra) */}
+        {isBusiness && (
+          <View style={[s.businessHeader, { backgroundColor: card, borderColor: border }]}>
+            <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
+              <Image
+                source={profileImage ? { uri: profileImage } : require("../../assets/images/avatar-placeholder.png")}
+                style={[s.avatar, isUploadingImage && { opacity: 0.5 }]}
+                onError={() => setProfileImage(null)}
+                contentFit="cover"
+              />
+              {isUploadingImage ? (
+                <View style={[s.editBadge, { backgroundColor: PRIMARY }]}><ActivityIndicator size="small" color="#FFF" /></View>
+              ) : (
+                <View style={[s.editBadge, { backgroundColor: PRIMARY }]}><Feather name="camera" size={12} color="#FFF" /></View>
+              )}
+            </Pressable>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.userName, { color: text, textAlign: "left", marginBottom: 2 }]}>{user?.name || "Usuario"}</Text>
+              <Text style={[s.userPhone, { color: sub, textAlign: "left" }]}>{user?.phone || "Sin teléfono"}</Text>
+            </View>
             <View style={[s.roleBadge, { backgroundColor: PRIMARY + "15" }]}>
               <Text style={[s.roleBadgeText, { color: PRIMARY }]}>{getRoleLabel()}</Text>
             </View>
             {approvalStatus && (
               <View style={[s.roleBadge, { backgroundColor: approvalStatus.variant === "success" ? "#4CAF5020" : "#F59E0B20" }]}>
-                <Text style={[s.roleBadgeText, { color: approvalStatus.variant === "success" ? "#4CAF50" : "#F59E0B" }]}>
-                  {approvalStatus.text}
-                </Text>
+                <Text style={[s.roleBadgeText, { color: approvalStatus.variant === "success" ? "#4CAF50" : "#F59E0B" }]}>{approvalStatus.text}</Text>
               </View>
             )}
           </View>
-        </View>
-
-        {/* Navigation */}
-        <View style={s.sideNav}>
-          {[
-            { id: "account", label: "Cuenta", icon: "user" },
-            { id: "preferences", label: "Preferencias", icon: "settings" },
-            { id: "more", label: "Más", icon: "grid" },
-          ].map(item => (
-            <Pressable
-              key={item.id}
-              onPress={() => setActiveSection(item.id)}
-              style={[s.navItem, activeSection === item.id && s.navItemActive]}
-            >
-              <Feather name={item.icon as any} size={18} color={activeSection === item.id ? PRIMARY : sub} />
-              <Text style={[s.navItemText, { color: activeSection === item.id ? PRIMARY : text }]}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Logout */}
-        <View style={s.sideFooter}>
-          <Pressable onPress={handleLogout} style={s.logoutBtn}>
-            <Feather name="log-out" size={18} color="#EF4444" />
-            <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>Cerrar sesión</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* CONTENT */}
-      <ScrollView style={s.main} contentContainerStyle={s.mainContent} showsVerticalScrollIndicator={false}>
+        )}
         {activeSection === "account" && (
-          <AccountSection 
-            user={user} 
-            navigation={navigation} 
-            driverStats={driverStats}
-            theme={{ bg, card, text, sub, border }}
-          />
+          <AccountSection user={user} navigation={navigation} driverStats={driverStats} theme={{ bg, card, text, sub, border }} />
+        )}
+        {activeSection === "business" && isBusiness && (
+          <BusinessSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
+        )}
+        {activeSection === "payments" && isBusiness && (
+          <PaymentsSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
         )}
         {activeSection === "preferences" && (
-          <PreferencesSection 
-            themeMode={themeMode}
-            setThemeMode={setThemeMode}
-            settings={settings}
-            updateSettings={updateSettings}
-            showToast={showToast}
-            theme={{ bg, card, text, sub, border }}
-          />
+          <PreferencesSection themeMode={themeMode} setThemeMode={setThemeMode} settings={settings} updateSettings={updateSettings} showToast={showToast} theme={{ bg, card, text, sub, border }} />
         )}
         {activeSection === "more" && (
-          <MoreSection 
-            navigation={navigation}
-            theme={{ bg, card, text, sub, border }}
-          />
+          <MoreSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
         )}
       </ScrollView>
     </View>
@@ -261,25 +275,14 @@ function AccountSection({ user, navigation, driverStats, theme }: any) {
   return (
     <View>
       <Text style={[s.sectionTitle, { color: theme.text }]}>Cuenta</Text>
-      
       <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
         <SettingItem icon="user" label="Editar mi perfil" onPress={() => navigation.navigate("EditProfile")} theme={theme} />
-        
-        {user?.role === "business_owner" && (
-          <>
-            <SettingItem icon="briefcase" label="Mis Negocios" onPress={() => navigation.navigate("MyBusinesses")} theme={theme} />
-            <SettingItem icon="clock" label="Horarios de atención" onPress={() => navigation.navigate("BusinessHours")} theme={theme} />
-            <SettingItem icon="credit-card" label="Cuentas para recibir pagos" value="Bizum · Transferencia" onPress={() => navigation.navigate("PaymentWalletSetup")} theme={theme} />
-          </>
-        )}
-        
         {user?.role === "customer" && (
           <>
             <SettingItem icon="map-pin" label="Direcciones guardadas" onPress={() => navigation.navigate("SavedAddresses")} theme={theme} />
             <SettingItem icon="credit-card" label="Métodos de pago" value="Bizum · Tarjeta · PayPal" onPress={() => navigation.navigate("PaymentWalletSetup")} theme={theme} />
           </>
         )}
-        
         {user?.role === "delivery_driver" && (
           <SettingItem icon="credit-card" label="Cuentas para recibir pagos" value="Bizum · Transferencia" onPress={() => navigation.navigate("PaymentWalletSetup")} theme={theme} />
         )}
@@ -313,6 +316,32 @@ function AccountSection({ user, navigation, driverStats, theme }: any) {
           )}
         </View>
       )}
+    </View>
+  );
+}
+
+function BusinessSection({ navigation, theme }: any) {
+  return (
+    <View>
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Mi Negocio</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+        <SettingItem icon="briefcase" label="Mis Negocios" onPress={() => navigation.navigate("MyBusinesses")} theme={theme} />
+        <SettingItem icon="clock" label="Horarios de atención" onPress={() => navigation.navigate("BusinessHours")} theme={theme} />
+        <SettingItem icon="map-pin" label="Zonas de entrega" onPress={() => navigation.navigate("DeliveryConfig")} theme={theme} />
+        <SettingItem icon="settings" label="Configuración del negocio" onPress={() => navigation.navigate("BusinessManage")} theme={theme} />
+      </View>
+    </View>
+  );
+}
+
+function PaymentsSection({ navigation, theme }: any) {
+  return (
+    <View>
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Pagos</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+        <SettingItem icon="credit-card" label="Cuentas para recibir pagos" value="Bizum · Transferencia" onPress={() => navigation.navigate("PaymentWalletSetup")} theme={theme} />
+        <SettingItem icon="dollar-sign" label="Historial de pagos" onPress={() => navigation.navigate("BusinessFinances")} theme={theme} />
+      </View>
     </View>
   );
 }
@@ -409,8 +438,9 @@ function SettingItem({ icon, label, value, onPress, theme }: any) {
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
   sidebar: { width: 280, borderRightWidth: 1, flexDirection: "column" },
-  sideHeader: { padding: 24, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#e0e0e0" },
-  avatarContainer: { position: "relative", marginBottom: 16 },
+  sideHeader: { padding: 24, alignItems: "center", borderBottomWidth: 1 },
+  businessHeader: { flexDirection: "row", alignItems: "center", gap: 16, padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 24 },
+  avatarContainer: { position: "relative" },
   avatar: { width: 80, height: 80, borderRadius: 40 },
   editBadge: { position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#FFF" },
   userName: { fontSize: 18, fontWeight: "700", marginBottom: 4 },
