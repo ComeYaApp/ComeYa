@@ -21,11 +21,11 @@ import { UsersTab }         from "@/components/admin/tabs/UsersTab.web";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
 import { CouponsTab }       from "@/components/admin/tabs/CouponsTab.web";
-import { SupportTab }       from "@/components/admin/tabs/SupportTab";
+import { SupportTab }       from "@/components/admin/tabs/SupportTab.web";
 import { SettingsTab }      from "@/components/admin/tabs/SettingsTab";
 import { ZonesTab }         from "@/components/admin/tabs/ZonesTab.web";
 import { CategoriesTab }    from "@/components/admin/tabs/CategoriesTab.web";
-import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab";
+import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab.web";
 
 // Web-specific screens embedded as panels
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
@@ -173,9 +173,9 @@ export default function AdminDashboardScreen() {
       // ── Soporte ──
       case "support":
       case "support_tickets":
-        return <TabWrap><SupportTab theme={{} as any} showToast={showToast} /></TabWrap>;
+        return <SupportTab />;
       case "support_verifications":
-        return <TabWrap><VerificationsTab theme={{} as any} showToast={showToast} /></TabWrap>;
+        return <VerificationsTab />;
 
       // ── Configuración ──
       case "settings":
