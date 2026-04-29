@@ -61,7 +61,7 @@ router.get("/zones", async (req, res) => {
 });
 
 // Get available drivers (admin only)
-router.get("/drivers", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/drivers", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -115,7 +115,7 @@ router.get("/orders", authenticateToken, requireRole("delivery_driver"), async (
 });
 
 // Assign driver to order (admin only)
-router.post("/assign", authenticateToken, requireRole("admin"), async (req, res) => {
+router.post("/assign", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { orderId, driverId } = req.body;
     

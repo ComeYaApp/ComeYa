@@ -5,7 +5,7 @@ import { eq, desc, sql } from "drizzle-orm";
 const router = express.Router();
 
 // Get dashboard stats
-router.get("/dashboard", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/dashboard", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { db } = await import("../db");
     
@@ -48,7 +48,7 @@ router.get("/dashboard", authenticateToken, requireRole("admin"), async (req, re
 });
 
 // Get all users
-router.get("/users", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/users", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -73,7 +73,7 @@ router.get("/users", authenticateToken, requireRole("admin"), async (req, res) =
 });
 
 // Update user status
-router.patch("/users/:id/status", authenticateToken, requireRole("admin"), async (req, res) => {
+router.patch("/users/:id/status", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { isActive } = req.body;
     
@@ -113,7 +113,7 @@ router.patch("/users/:id/status", authenticateToken, requireRole("admin"), async
 });
 
 // Get all businesses
-router.get("/businesses", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/businesses", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { businesses, users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -139,7 +139,7 @@ router.get("/businesses", authenticateToken, requireRole("admin"), async (req, r
 });
 
 // Update business status
-router.patch("/businesses/:id/status", authenticateToken, requireRole("admin"), async (req, res) => {
+router.patch("/businesses/:id/status", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { isActive } = req.body;
     
@@ -179,7 +179,7 @@ router.patch("/businesses/:id/status", authenticateToken, requireRole("admin"), 
 });
 
 // Update business custom commission
-router.put("/businesses/:id/commission", authenticateToken, requireRole("admin"), async (req, res) => {
+router.put("/businesses/:id/commission", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { customCommission } = req.body;
     
@@ -225,7 +225,7 @@ router.put("/businesses/:id/commission", authenticateToken, requireRole("admin")
 });
 
 // Get all orders
-router.get("/orders", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/orders", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { orders, businesses, users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -258,7 +258,7 @@ router.get("/orders", authenticateToken, requireRole("admin"), async (req, res) 
 });
 
 // Get system stats
-router.get("/stats", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/stats", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { db } = await import("../db");
     
@@ -313,7 +313,7 @@ router.get("/stats", authenticateToken, requireRole("admin"), async (req, res) =
 });
 
 // Dashboard metrics (alias detallado)
-router.get("/dashboard/metrics", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/dashboard/metrics", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { db } = await import("../db");
     const [users] = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
@@ -326,7 +326,7 @@ router.get("/dashboard/metrics", authenticateToken, requireRole("admin"), async 
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
-router.get("/dashboard/active-orders", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/dashboard/active-orders", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { orders, businesses, users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -338,7 +338,7 @@ router.get("/dashboard/active-orders", authenticateToken, requireRole("admin"), 
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 
-router.get("/dashboard/online-drivers", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/dashboard/online-drivers", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -350,7 +350,7 @@ router.get("/dashboard/online-drivers", authenticateToken, requireRole("admin"),
 });
 
 // Update user (full)
-router.put("/users/:id", authenticateToken, requireRole("admin"), async (req, res) => {
+router.put("/users/:id", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -366,7 +366,7 @@ router.put("/users/:id", authenticateToken, requireRole("admin"), async (req, re
 });
 
 // Drivers
-router.get("/drivers", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/drivers", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -382,12 +382,12 @@ router.get("/coupons", authenticateToken, requireRole("admin", "super_admin"), a
 });
 
 // Zones
-router.get("/zones", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/zones", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   res.json({ success: true, zones: [] });
 });
 
 // Business products (admin)
-router.get("/businesses/:id/products", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/businesses/:id/products", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { products } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -397,7 +397,7 @@ router.get("/businesses/:id/products", authenticateToken, requireRole("admin"), 
 });
 
 // Audit logs
-router.get("/logs", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/logs", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { db } = await import("../db");
     const logs = await db.execute(sql`
@@ -423,7 +423,7 @@ router.get("/logs", authenticateToken, requireRole("admin"), async (req, res) =>
 });
 
 // System Settings
-router.get("/settings", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/settings", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { systemSettings } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -435,7 +435,7 @@ router.get("/settings", authenticateToken, requireRole("admin"), async (req, res
   }
 });
 
-router.put("/settings", authenticateToken, requireRole("admin"), async (req, res) => {
+router.put("/settings", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { key, value } = req.body;
     if (!key || value === undefined) {
@@ -451,7 +451,7 @@ router.put("/settings", authenticateToken, requireRole("admin"), async (req, res
   }
 });
 
-router.post("/settings/initialize", authenticateToken, requireRole("admin"), async (req, res) => {
+router.post("/settings/initialize", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { systemSettings } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
@@ -481,7 +481,7 @@ router.post("/settings/initialize", authenticateToken, requireRole("admin"), asy
 });
 
 // System health check
-router.get("/health", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/health", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { db } = await import("../db");
     

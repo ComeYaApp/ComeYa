@@ -108,7 +108,7 @@ router.post('/tickets/:id/messages', authenticateToken, async (req, res) => {
 });
 
 // Actualizar estado (solo admin)
-router.patch('/tickets/:id/status', authenticateToken, requireRole('admin'), async (req, res) => {
+router.patch('/tickets/:id/status', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await SupportService.updateTicketStatus(req.params.id, req.body.status, req.user!.id);
     res.json(result);
@@ -118,7 +118,7 @@ router.patch('/tickets/:id/status', authenticateToken, requireRole('admin'), asy
 });
 
 // Obtener tickets pendientes (solo admin)
-router.get('/admin/pending', authenticateToken, requireRole('admin'), async (req, res) => {
+router.get('/admin/pending', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const tickets = await SupportService.getPendingTickets();
     res.json({ success: true, tickets });
@@ -128,7 +128,7 @@ router.get('/admin/pending', authenticateToken, requireRole('admin'), async (req
 });
 
 // Asignar ticket (solo admin)
-router.post('/tickets/:id/assign', authenticateToken, requireRole('admin'), async (req, res) => {
+router.post('/tickets/:id/assign', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await SupportService.assignTicket(req.params.id, req.user!.id);
     res.json(result);

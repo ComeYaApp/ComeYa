@@ -333,7 +333,7 @@ router.post("/addresses", authenticateToken, async (req, res) => {
 });
 
 // Get user stats (for admin)
-router.get("/stats", authenticateToken, requireRole("admin"), async (req, res) => {
+router.get("/stats", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { users, orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");

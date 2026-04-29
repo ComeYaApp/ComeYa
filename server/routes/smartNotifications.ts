@@ -5,7 +5,7 @@ import { SmartNotificationService } from '../smartNotificationService';
 const router = express.Router();
 
 // Enviar notificación de reactivación (solo admin)
-router.post('/reactivation', authenticateToken, requireRole('admin'), async (req, res) => {
+router.post('/reactivation', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await SmartNotificationService.sendReactivationNotification();
     res.json(result);
@@ -15,7 +15,7 @@ router.post('/reactivation', authenticateToken, requireRole('admin'), async (req
 });
 
 // Enviar promoción segmentada (solo admin)
-router.post('/promotion', authenticateToken, requireRole('admin'), async (req, res) => {
+router.post('/promotion', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const { title, body, target, deepLink } = req.body;
     
@@ -37,7 +37,7 @@ router.post('/promotion', authenticateToken, requireRole('admin'), async (req, r
 });
 
 // Enviar recordatorio de hora de comida (cron job)
-router.post('/meal-reminder', authenticateToken, requireRole('admin'), async (req, res) => {
+router.post('/meal-reminder', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const result = await SmartNotificationService.sendMealTimeReminder();
     res.json(result);
@@ -47,7 +47,7 @@ router.post('/meal-reminder', authenticateToken, requireRole('admin'), async (re
 });
 
 // Notificar nuevo negocio (solo admin)
-router.post('/new-business', authenticateToken, requireRole('admin'), async (req, res) => {
+router.post('/new-business', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const { businessId, businessName } = req.body;
     
@@ -63,7 +63,7 @@ router.post('/new-business', authenticateToken, requireRole('admin'), async (req
 });
 
 // Promoción a usuarios con negocio en favoritos (solo admin)
-router.post('/favorite-promo', authenticateToken, requireRole('admin'), async (req, res) => {
+router.post('/favorite-promo', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const { businessId, promotion } = req.body;
     
