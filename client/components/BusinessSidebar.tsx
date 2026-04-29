@@ -10,11 +10,10 @@ import { useBusiness } from "@/contexts/BusinessContext";
 const PRIMARY = "#DC2626";
 
 const NAV_ITEMS = [
-  { id: "BusinessDashboard", label: "Dashboard",  icon: "bar-chart-2" },
-  { id: "BusinessOrders",    label: "Pedidos",     icon: "package"    },
-  { id: "BusinessProducts",  label: "Productos",   icon: "grid"       },
-  { id: "BusinessStats",     label: "Analytics",   icon: "trending-up"},
-  { id: "BusinessProfile",   label: "Perfil",      icon: "user"       },
+  { id: "BusinessDashboard", label: "Dashboard", icon: "bar-chart-2" },
+  { id: "BusinessOrders",    label: "Pedidos",   icon: "package"    },
+  { id: "BusinessProducts",  label: "Productos", icon: "grid"       },
+  { id: "BusinessProfile",   label: "Perfil",    icon: "user"       },
 ];
 
 export function BusinessSidebar() {
