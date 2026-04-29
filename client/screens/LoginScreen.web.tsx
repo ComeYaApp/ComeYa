@@ -83,38 +83,31 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
             <Text style={s.logoText}>ComeYa</Text>
           </View>
-          {!isMobile && (
-            <>
-              <Text style={s.headline}>Tu comida favorita,{"\n"}en tu puerta</Text>
-              <Text style={s.subheadline}>
-                Los mejores restaurantes y negocios locales de Soria, a un clic de distancia.
-              </Text>
-              {featuredBusinesses.length > 0 && (
-                <View style={s.bizGrid}>
-                  {featuredBusinesses.map((b) => (
-                    <View key={b.id} style={s.bizCard}>
-                      <Image source={{ uri: b.image }} style={s.bizImg} contentFit="cover" />
-                      <View style={s.bizOverlay}>
-                        <Text style={s.bizName} numberOfLines={1}>{b.name}</Text>
-                        <Text style={s.bizRating}>★ {(b.rating / 10).toFixed(1)}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-              <View style={s.stats}>
-                {[["50+", "Negocios"], ["30min", "Entrega promedio"], ["4.8★", "Valoración"]].map(([n, l]) => (
-                  <View key={l} style={s.stat}>
-                    <Text style={s.statN}>{n}</Text>
-                    <Text style={s.statL}>{l}</Text>
+          <Text style={[s.headline, isMobile && { fontSize: 28, lineHeight: 34, marginBottom: 12 }]}>Tu comida favorita,{"\n"}en tu puerta</Text>
+          <Text style={[s.subheadline, isMobile && { fontSize: 14, lineHeight: 20, marginBottom: 20 }]}>
+            Los mejores restaurantes y negocios locales de Soria, a un clic de distancia.
+          </Text>
+          {featuredBusinesses.length > 0 && (
+            <View style={s.bizGrid}>
+              {featuredBusinesses.map((b) => (
+                <View key={b.id} style={s.bizCard}>
+                  <Image source={{ uri: b.image }} style={s.bizImg} contentFit="cover" />
+                  <View style={s.bizOverlay}>
+                    <Text style={s.bizName} numberOfLines={1}>{b.name}</Text>
+                    <Text style={s.bizRating}>★ {(b.rating / 10).toFixed(1)}</Text>
                   </View>
-                ))}
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={[s.stats, isMobile && { gap: 24 }]}>
+            {[["50+", "Negocios"], ["30min", "Entrega promedio"], ["4.8★", "Valoración"]].map(([n, l]) => (
+              <View key={l} style={s.stat}>
+                <Text style={[s.statN, isMobile && { fontSize: 20 }]}>{n}</Text>
+                <Text style={s.statL}>{l}</Text>
               </View>
-            </>
-          )}
-          {isMobile && (
-            <Text style={s.mobileTagline}>Tu delivery local en Soria 🍔</Text>
-          )}
+            ))}
+          </View>
         </View>
       </View>
 
@@ -237,7 +230,7 @@ const s = StyleSheet.create({
   // IZQUIERDA/ARRIBA — Hero Section
   left: { 
     flex: 1,
-    minWidth: "100%" as any,
+    minWidth: 300,
     maxWidth: 600,
     backgroundColor: PRIMARY,
     position: "relative" as any,
@@ -247,16 +240,10 @@ const s = StyleSheet.create({
     maxWidth: 600,
     margin: "auto" as any,
   },
-  mobileTagline: {
-    fontSize: 16,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "500",
-    marginTop: 4,
-  },
   logoRow: { 
     flexDirection: "row", 
     alignItems: "center", 
-    marginBottom: 48, 
+    marginBottom: 24, 
     gap: 16,
   },
   logoCircle: {
