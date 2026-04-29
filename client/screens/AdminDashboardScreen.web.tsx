@@ -16,7 +16,7 @@ import { LiveFeed }       from "@/components/admin/dashboard/LiveFeed";
 // Existing tabs
 import { OrdersTab }        from "@/components/admin/tabs/OrdersTab.web";
 import { BusinessesTab }    from "@/components/admin/tabs/BusinessesTab.web";
-import { DriversTab }       from "@/components/admin/tabs/DriversTab";
+import { DriversTab }       from "@/components/admin/tabs/DriversTab.web";
 import { UsersTab }         from "@/components/admin/tabs/UsersTab";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab";
@@ -146,7 +146,7 @@ export default function AdminDashboardScreen() {
       // ── Repartidores ──
       case "drivers":
       case "drivers_list":
-        return <TabWrap><DriversTab theme={{} as any} showToast={showToast} /></TabWrap>;
+        return <DriversTab />;
       case "drivers_map":
         return <AdminMapPanel />;
 
