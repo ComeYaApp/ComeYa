@@ -20,7 +20,7 @@ import { DriversTab }       from "@/components/admin/tabs/DriversTab.web";
 import { UsersTab }         from "@/components/admin/tabs/UsersTab.web";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
-import { CouponsTab }       from "@/components/admin/tabs/CouponsTab";
+import { CouponsTab }       from "@/components/admin/tabs/CouponsTab.web";
 import { SupportTab }       from "@/components/admin/tabs/SupportTab";
 import { SettingsTab }      from "@/components/admin/tabs/SettingsTab";
 import { ZonesTab }         from "@/components/admin/tabs/ZonesTab.web";
@@ -168,7 +168,7 @@ export default function AdminDashboardScreen() {
       // ── Marketing ──
       case "marketing":
       case "coupons":
-        return <TabWrap><CouponsTab theme={{} as any} showToast={showToast} /></TabWrap>;
+        return <CouponsTab />;
 
       // ── Soporte ──
       case "support":
