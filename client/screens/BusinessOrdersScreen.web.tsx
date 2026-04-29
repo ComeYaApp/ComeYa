@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
+import { useToast } from "@/contexts/ToastContext";
 
 type Filter = "pending" | "active" | "all";
 
@@ -29,6 +30,7 @@ const PAYMENT_LABEL: Record<string, string> = {
 export default function BusinessOrdersScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("pending");
@@ -72,7 +74,7 @@ export default function BusinessOrdersScreen() {
     try {
       await apiRequest("PUT", `/api/business/orders/${orderId}/status`, { status });
       await loadOrders();
-    } catch { alert("No se pudo actualizar el pedido"); }
+    } catch { showToast("No se pudo actualizar el pedido", "error"); }
     finally { setActionLoading(null); }
   };
 
@@ -85,7 +87,7 @@ export default function BusinessOrdersScreen() {
       setShowTimeModal(false);
       setSelectedOrder(null);
       await loadOrders();
-    } catch { alert("No se pudo aceptar el pedido"); }
+    } catch { showToast("No se pudo aceptar el pedido", "error"); }
     finally { setActionLoading(null); }
   };
 
@@ -254,8 +256,8 @@ export default function BusinessOrdersScreen() {
                   {order.status === "ready" && order.orderType === "pickup" && (
                     <Pressable
                       onPress={async () => {
-                        try { await apiRequest("POST", `/api/orders/${order.id}/mark-picked-up`); await loadOrders(); }
-                        catch { alert("No se pudo marcar como recogido"); }
+                        try { await apiRequest("POST", `/api/orders/${order.id}/mark-picked-up`); await loadOrders(); showToast("Pedido marcado como recogido", "success"); }
+                        catch { showToast("No se pudo marcar como recogido", "error"); }
                       }}
                       style={[s.actionBtn, { backgroundColor: ComeYaColors.primary, flex: 1 }]}
                     >

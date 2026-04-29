@@ -12,6 +12,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
+import { confirm } from "@/hooks/useWebDialog";
 
 const PRIMARY = "#DC2626";
 
@@ -139,10 +140,9 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm("¿Estás seguro que deseas cerrar sesión?")) {
-      logout();
-    }
+  const handleLogout = async () => {
+    const ok = await confirm({ title: "Cerrar sesión", message: "¿Estás seguro que deseas salir?", confirmLabel: "Salir", cancelLabel: "Cancelar", variant: "warning" });
+    if (ok) logout();
   };
 
   const getRoleLabel = () => {

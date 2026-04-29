@@ -8,11 +8,14 @@ import { useNavigation } from "@react-navigation/native";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
+import { useToast } from "@/contexts/ToastContext";
+import { confirm } from "@/hooks/useWebDialog";
 
 export default function BusinessProductsScreen() {
   const { theme, isDark } = useTheme();
   const { selectedBusiness, businesses } = useBusiness();
   const navigation = useNavigation<any>();
+  const { showToast } = useToast();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -65,15 +68,15 @@ export default function BusinessProductsScreen() {
         if (d.success && d.imageUrl) {
           setForm(prev => ({ ...prev, image: `${getApiUrl()}${d.imageUrl}` }));
         }
-      } catch { alert("No se pudo subir la imagen"); }
+      } catch { showToast("No se pudo subir la imagen", "error"); }
       finally { setIsUploadingImage(false); }
     };
     input.click();
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { alert("El nombre es requerido"); return; }
-    if (!form.price || isNaN(parseFloat(form.price))) { alert("Introduce un precio válido"); return; }
+    if (!form.name.trim()) { showToast("El nombre es requerido", "error"); return; }
+    if (!form.price || isNaN(parseFloat(form.price))) { showToast("Introduce un precio válido", "error"); return; }
     try {
       const priceInCents = Math.round(parseFloat(form.price) * 100);
       const payload = {
@@ -85,7 +88,8 @@ export default function BusinessProductsScreen() {
       else await apiRequest("POST", "/api/business/products", payload);
       setShowForm(false);
       await loadProducts();
-    } catch { alert("Error al guardar producto"); }
+      showToast(editingProduct ? "Producto actualizado" : "Producto creado", "success");
+    } catch { showToast("Error al guardar producto", "error"); }
   };
 
   const toggleAvailability = async (productId: string, current: boolean) => {
@@ -96,9 +100,10 @@ export default function BusinessProductsScreen() {
   };
 
   const handleDelete = async (productId: string) => {
-    if (!window.confirm("¿Eliminar este producto?")) return;
-    try { await apiRequest("DELETE", `/api/business/products/${productId}`); await loadProducts(); }
-    catch { alert("No se pudo eliminar el producto"); }
+    const ok = await confirm({ title: "Eliminar producto", message: "Esta acción no se puede deshacer.", confirmLabel: "Eliminar", variant: "danger" });
+    if (!ok) return;
+    try { await apiRequest("DELETE", `/api/business/products/${productId}`); await loadProducts(); showToast("Producto eliminado", "success"); }
+    catch { showToast("No se pudo eliminar el producto", "error"); }
   };
 
   const filtered = products.filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()));

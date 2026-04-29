@@ -5,6 +5,8 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
+import { confirm } from "@/hooks/useWebDialog";
 import { useBusiness } from "@/contexts/BusinessContext";
 
 const PRIMARY = "#DC2626";
@@ -37,7 +39,8 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { theme, isDark } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { showToast } = useToast();
   const { selectedBusiness } = useBusiness();
 
   const card   = isDark ? "#1e1e1e" : "#fff";
@@ -102,9 +105,15 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
 
       {/* Footer */}
       <View style={[s.footer, { borderTopColor: border }]}>
-        <Pressable onPress={() => navigation.navigate("Main")} style={s.navItem}>
-          <Feather name="log-out" size={18} color={sub} />
-          <Text style={[s.navText, { color: sub }]}>Salir</Text>
+        <Pressable
+          onPress={async () => {
+            const ok = await confirm({ title: "Cerrar sesión", message: "¿Estás seguro que deseas salir?", confirmLabel: "Salir", cancelLabel: "Cancelar", variant: "warning" });
+            if (ok) logout();
+          }}
+          style={s.navItem}
+        >
+          <Feather name="log-out" size={18} color="#EF4444" />
+          <Text style={[s.navText, { color: "#EF4444" }]}>Salir</Text>
         </Pressable>
       </View>
     </View>

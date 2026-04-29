@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
+import { useToast } from "@/contexts/ToastContext";
+import { confirm } from "@/hooks/useWebDialog";
 
 const BUSINESS_TYPES = [
   { id: "restaurant", name: "Restaurante", icon: "coffee" },
@@ -26,6 +28,7 @@ export default function MyBusinessesScreen() {
   const route = useRoute() as any;
   const { theme, isDark } = useTheme();
   const { businesses, selectedBusiness, isLoading, loadBusinesses, selectBusiness, createBusiness, deleteBusiness } = useBusiness();
+  const { showToast } = useToast();
 
   const bg     = isDark ? "#111"    : "#f7f7f7";
   const card   = isDark ? "#1e1e1e" : "#fff";
@@ -92,31 +95,34 @@ export default function MyBusinessesScreen() {
   };
 
   const handleCreate = async () => {
-    if (!form.name.trim()) { alert("El nombre del negocio es requerido"); return; }
+    if (!form.name.trim()) { showToast("El nombre del negocio es requerido", "error"); return; }
     setSubmitting(true);
     try {
       await createBusiness(form);
       closeForm();
-    } catch (err: any) { alert(err.message || "No se pudo crear el negocio"); }
+      showToast("Negocio creado correctamente", "success");
+    } catch (err: any) { showToast(err.message || "No se pudo crear el negocio", "error"); }
     finally { setSubmitting(false); }
   };
 
   const handleEdit = async () => {
-    if (!form.name.trim()) { alert("El nombre del negocio es requerido"); return; }
+    if (!form.name.trim()) { showToast("El nombre del negocio es requerido", "error"); return; }
     setSubmitting(true);
     try {
       await apiRequest("PUT", `/api/business/${editingId}`, form);
       await loadBusinesses();
       closeForm();
-    } catch (err: any) { alert(err.message || "No se pudo actualizar el negocio"); }
+      showToast("Negocio actualizado correctamente", "success");
+    } catch (err: any) { showToast(err.message || "No se pudo actualizar el negocio", "error"); }
     finally { setSubmitting(false); }
   };
 
   const handleDelete = async (biz: Business) => {
-    if (!window.confirm(`¿Eliminar "${biz.name}"? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirm({ title: `Eliminar "${biz.name}"`, message: "Esta acción no se puede deshacer.", confirmLabel: "Eliminar", variant: "danger" });
+    if (!ok) return;
     setSubmitting(true);
-    try { await deleteBusiness(biz.id); }
-    catch (err: any) { alert(err.message || "No se pudo eliminar el negocio"); }
+    try { await deleteBusiness(biz.id); showToast("Negocio eliminado", "success"); }
+    catch (err: any) { showToast(err.message || "No se pudo eliminar el negocio", "error"); }
     finally { setSubmitting(false); }
   };
 
