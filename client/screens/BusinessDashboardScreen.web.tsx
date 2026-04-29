@@ -16,6 +16,9 @@ export default function BusinessDashboardScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const { selectedBusiness } = useBusiness();
+  const [stats, setStats] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const text = isDark ? "#fff" : "#1a1a1a";
