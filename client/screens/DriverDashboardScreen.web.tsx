@@ -22,6 +22,9 @@ export default function DriverDashboardScreen() {
   const [isOnline, setIsOnline]       = useState(false);
   const [togglingOnline, setToggling] = useState(false);
   const [loadingStatus, setLoading]   = useState(true);
+  const [mapOrderId, setMapOrderId]   = useState<string | undefined>();
+  const [mapDestLat, setMapDestLat]   = useState<string | undefined>();
+  const [mapDestLng, setMapDestLng]   = useState<string | undefined>();
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
 
@@ -61,11 +64,11 @@ export default function DriverDashboardScreen() {
   const renderContent = () => {
     switch (section) {
       case "available":          return <AvailableOrdersTab isOnline={isOnline} onToggleOnline={handleToggleOnline} togglingOnline={togglingOnline} showToast={showToast} />;
-      case "deliveries_active":  return <MyDeliveriesTab mode="active"  showToast={showToast} />;
+      case "deliveries_active":  return <MyDeliveriesTab mode="active"  showToast={showToast} onNavigateToMap={(id, lat, lng) => { setMapOrderId(id); setMapDestLat(lat); setMapDestLng(lng); setSection("map"); }} />;
       case "deliveries_history": return <MyDeliveriesTab mode="history" showToast={showToast} />;
       case "earnings_stats":     return <EarningsTab mode="stats" />;
       case "earnings_history":   return <EarningsTab mode="history" />;
-      case "map":                return <DriverMapScreen />;
+      case "map":                return <DriverMapScreen orderId={mapOrderId} destLat={mapDestLat} destLng={mapDestLng} onBack={() => setSection("deliveries_active")} />;
       case "profile_personal":   return <DriverProfileTab />;
       case "profile_account":    return <PaymentWalletSetupPanel />;
       case "profile_vehicle":    return <DriverVehicleTab />;

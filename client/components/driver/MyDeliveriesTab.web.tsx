@@ -47,9 +47,10 @@ interface Order {
 interface Props {
   mode: "active" | "history";
   showToast?: (msg: string, type?: string) => void;
+  onNavigateToMap?: (orderId: string, lat: string, lng: string) => void;
 }
 
-export function MyDeliveriesTab({ mode, showToast }: Props) {
+export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
   const { isDark } = useTheme();
   const [orders, setOrders]         = useState<Order[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -329,14 +330,20 @@ export function MyDeliveriesTab({ mode, showToast }: Props) {
                     <Text style={[s.earningVal, { color: GREEN }]}>+{fmtEur(earnings)}</Text>
 
                     <View style={s.footerActions}>
-                      {/* Navigate */}
+                      {/* Navegar — abre mapa interno si hay coords, Google Maps como fallback */}
                       {hasCoords && mode === "active" && (
                         <TouchableOpacity
-                          onPress={() => openMaps(order.deliveryLatitude!, order.deliveryLongitude!)}
+                          onPress={() => {
+                            if (onNavigateToMap) {
+                              onNavigateToMap(order.id, order.deliveryLatitude!, order.deliveryLongitude!);
+                            } else {
+                              window.open(`https://www.google.com/maps/dir/?api=1&destination=${order.deliveryLatitude},${order.deliveryLongitude}`, "_blank");
+                            }
+                          }}
                           style={[s.actionBtn, { backgroundColor: PURPLE + "15", borderColor: PURPLE + "30" }]}
                         >
-                          <Feather name="navigation" size={13} color={PURPLE} />
-                          <Text style={[s.actionBtnTxt, { color: PURPLE }]}>Navegar</Text>
+                          <Feather name="map" size={13} color={PURPLE} />
+                          <Text style={[s.actionBtnTxt, { color: PURPLE }]}>Ver en mapa</Text>
                         </TouchableOpacity>
                       )}
 
