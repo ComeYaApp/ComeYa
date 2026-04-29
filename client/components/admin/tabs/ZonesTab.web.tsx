@@ -140,12 +140,14 @@ export const ZonesTab: React.FC<Props> = () => {
         </View>
       ) : zones.length === 0 ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center", gap: 12, padding: 40 }}>
-          <View style={[li.emptyIcon, { backgroundColor: PRIMARY + "10" }]}>
-            <Feather name="map-pin" size={32} color={PRIMARY} />
+          <View style={[li.emptyIcon, { backgroundColor: "#F59E0B10" }]}>
+            <Feather name="map-pin" size={32} color="#F59E0B" />
           </View>
           <Text style={[li.emptyTitle, { color: text }]}>Sin zonas configuradas</Text>
           <Text style={[li.emptySub, { color: sub }]}>
-            Las zonas de entrega permiten definir áreas con tarifas y tiempos específicos. Configúralas desde el backend.
+            La tabla de zonas existe pero está vacía. Actualmente el coste de envío se calcula desde el campo{" "}
+            <Text style={{ fontWeight: "700", color: text }}>deliveryFee</Text> de cada negocio.{"\n\n"}
+            Para usar zonas dinámicas habría que añadir endpoints POST/PUT al backend y conectarlos al cálculo del checkout.
           </Text>
         </View>
       ) : (

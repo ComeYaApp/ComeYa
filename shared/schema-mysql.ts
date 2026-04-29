@@ -1093,3 +1093,19 @@ export const ticketMessages = mysqlTable("ticket_messages", {
 });
 
 export type TicketMessage = typeof ticketMessages.$inferSelect;
+
+// Business Categories - Categorías de negocios (farmacia, restaurante, ferretería, etc.)
+export const businessCategories = mysqlTable("business_categories", {
+  id:           varchar("id",          { length: 255 }).primaryKey().default(sql`(UUID())`),
+  name:         varchar("name",        { length: 100 }).notNull(),
+  slug:         varchar("slug",        { length: 100 }).notNull().unique(),
+  icon:         varchar("icon",        { length: 50  }).notNull().default("grid"),
+  color:        varchar("color",       { length: 20  }).notNull().default("#6B7280"),
+  description:  text("description"),
+  isActive:     boolean("is_active").notNull().default(true),
+  displayOrder: int("display_order").notNull().default(0),
+  createdAt:    timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt:    timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+});
+
+export type BusinessCategory = typeof businessCategories.$inferSelect;

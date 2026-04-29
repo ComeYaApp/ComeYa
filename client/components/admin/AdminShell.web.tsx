@@ -40,9 +40,8 @@ const NAV: NavItem[] = [
   {
     id: "businesses", label: "Negocios", icon: "briefcase", color: "#10B981",
     children: [
-      { id: "businesses_list",       label: "Todos los negocios", icon: "list"    },
-      { id: "businesses_zones",      label: "Zonas de entrega",   icon: "map-pin" },
-      { id: "businesses_categories", label: "Categorías",         icon: "tag"     },
+      { id: "businesses_list",       label: "Todos los negocios", icon: "list"  },
+      { id: "businesses_categories", label: "Categorías",         icon: "grid" },
     ],
   },
   {
