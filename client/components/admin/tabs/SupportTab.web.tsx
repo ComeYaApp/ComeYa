@@ -70,7 +70,7 @@ export function SupportTab({ }: Props) {
 
   const load = useCallback(async () => {
     try {
-      const res  = await apiRequest("GET", "/api/support/admin/tickets");
+      const res  = await apiRequest("GET", "/api/support/admin/pending");
       const data = await res.json();
       setTickets(data.tickets ?? []);
     } catch {}
@@ -129,7 +129,7 @@ export function SupportTab({ }: Props) {
   const updateStatus = async (ticketId: string, status: string) => {
     setUpdating(ticketId);
     try {
-      await apiRequest("PUT", `/api/support/tickets/${ticketId}`, { status });
+      await apiRequest("PATCH", `/api/support/tickets/${ticketId}/status`, { status });
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t));
       if (selected?.id === ticketId) setSelected(prev => prev ? { ...prev, status } : null);
       flash(true, "Estado actualizado");

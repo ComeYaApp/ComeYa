@@ -180,17 +180,19 @@ router.put("/users/:id", authenticateToken, requireRole("admin", "super_admin"),
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
-    const { name, email, phone, role } = req.body;
+    const { name, email, phone, role, isActive } = req.body;
     const userId = req.params.id;
+
+    const updates: any = {};
+    if (name     !== undefined) updates.name     = name;
+    if (email    !== undefined) updates.email    = email;
+    if (phone    !== undefined) updates.phone    = phone;
+    if (role     !== undefined) updates.role     = role;
+    if (isActive !== undefined) updates.isActive = isActive;
 
     await db
       .update(users)
-      .set({
-        name,
-        email,
-        phone,
-        role,
-      })
+      .set(updates)
       .where(eq(users.id, userId));
       
     res.json({ success: true, message: "Usuario actualizado correctamente" });
@@ -282,6 +284,29 @@ router.get("/businesses", authenticateToken, requireRole("admin", "super_admin")
     res.json({ success: true, businesses: allBusinesses });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Update business custom commission
+router.put("/businesses/:id/commission", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const { customCommission } = req.body;
+
+    const val = customCommission === null || customCommission === undefined
+      ? null
+      : parseInt(String(customCommission));
+
+    if (val !== null && (isNaN(val) || val < 0 || val > 100)) {
+      return res.status(400).json({ success: false, error: "Comisión debe ser entre 0 y 100" });
+    }
+
+    await db.update(businesses).set({ customCommission: val }).where(eq(businesses.id, req.params.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
