@@ -7,6 +7,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 interface Category { id: string; name: string; description: string; isActive: boolean; }
 
@@ -56,7 +57,7 @@ export default function BusinessCategoriesScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Categorias" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="folder" size={28} color={ComeYaColors.primary} />
         </View>
@@ -70,7 +71,7 @@ export default function BusinessCategoriesScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {showForm && (
@@ -109,7 +110,7 @@ export default function BusinessCategoriesScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 240, padding: 24, borderRightWidth: 1, paddingTop: 40, alignItems: "center" },
+  sidebar: { width: 240, minWidth: 240, maxWidth: 240, padding: 24, borderRightWidth: 1, paddingTop: 40, alignItems: "center" },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", marginBottom: 12 },
   sideTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4 },
   sideSub: { fontSize: 13, marginBottom: 20 },

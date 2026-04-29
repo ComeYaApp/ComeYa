@@ -6,6 +6,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, ComeYaColors } from "@/constants/theme";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 export default function PrivacyScreen() {
   const navigation = useNavigation();
@@ -30,7 +31,7 @@ export default function PrivacyScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Privacidad" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.success + "15" }]}>
           <Feather name="shield" size={32} color={ComeYaColors.success} />
         </View>
@@ -48,7 +49,7 @@ export default function PrivacyScreen() {
           <Feather name="arrow-left" size={18} color={theme.text} />
           <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Volver</ThemedText>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={[s.heroBadge, { backgroundColor: ComeYaColors.success + "15" }]}>
@@ -81,7 +82,7 @@ export default function PrivacyScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 28, borderRightWidth: 1, paddingTop: 48 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 28, borderRightWidth: 1, paddingTop: 48 },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", alignSelf: "center" },
   badge: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, alignSelf: "center" },
   contactCard: { padding: 16, borderRadius: 12, width: "100%" },

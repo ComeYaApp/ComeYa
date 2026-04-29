@@ -8,6 +8,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 const CUSTOMER_METHODS = [
   { id: "bizum", label: "Bizum", icon: "smartphone" as const, color: "#00ADEF", desc: "Pago instantáneo desde tu móvil" },
@@ -102,7 +103,7 @@ export default function PaymentWalletSetupScreen() {
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar */}
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Metodos de Pago" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="credit-card" size={28} color={ComeYaColors.primary} />
         </View>
@@ -144,7 +145,7 @@ export default function PaymentWalletSetupScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -234,7 +235,7 @@ export default function PaymentWalletSetupScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 28, borderRightWidth: 1, paddingTop: 48 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 28, borderRightWidth: 1, paddingTop: 48 },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", alignSelf: "center", marginBottom: 16 },
   sideTitle: { fontSize: 18, fontWeight: "800", textAlign: "center", marginBottom: 6 },
   sideSub: { fontSize: 12, textAlign: "center", marginBottom: 24, lineHeight: 18 },

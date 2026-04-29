@@ -52,6 +52,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
     const { orders, businesses, products } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     
+    const orderId = req.params.id as string;
     const [order] = await db
       .select({
         order: orders,
@@ -65,7 +66,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
       })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
-      .where(eq(orders.id, req.params.id))
+      .where(eq(orders.id, orderId))
       .limit(1);
 
     if (!order) {
@@ -149,7 +150,7 @@ router.post("/", authenticateToken, async (req, res) => {
     const validItems = [];
 
     for (const item of items) {
-      const product = orderProducts.find(p => p.id === (item.productId || item.product?.id));
+      const product = orderProducts.find((p: any) => p.id === (item.productId || item.product?.id));
       if (!product || !product.isAvailable) {
         return res.status(400).json({ 
           error: `Producto no disponible: ${item.productId || item.product?.id}` 
@@ -249,7 +250,8 @@ router.post("/:id/confirm", authenticateToken, async (req, res) => {
     const { orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const [order] = await db.select().from(orders).where(eq(orders.id, req.params.id)).limit(1);
+    const confirmId = req.params.id as string;
+    const [order] = await db.select().from(orders).where(eq(orders.id, confirmId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user!.id && req.user!.role !== "admin")
       return res.status(403).json({ error: "No autorizado" });
@@ -258,10 +260,10 @@ router.post("/:id/confirm", authenticateToken, async (req, res) => {
       status: "accepted",
       confirmedToBusinessAt: new Date(),
       updatedAt: new Date(),
-    }).where(eq(orders.id, req.params.id));
+    }).where(eq(orders.id, confirmId));
 
     // Notificar al cliente que el negocio aceptó
-    await sendOrderStatusNotification(req.params.id, order.userId, "accepted");
+    await sendOrderStatusNotification(confirmId, order.userId, "accepted");
 
     res.json({ success: true, message: "Pedido confirmado" });
   } catch (error: any) {
@@ -276,7 +278,8 @@ router.post("/:id/cancel-regret", authenticateToken, async (req, res) => {
     const { orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const [order] = await db.select().from(orders).where(eq(orders.id, req.params.id)).limit(1);
+    const regretId = req.params.id as string;
+    const [order] = await db.select().from(orders).where(eq(orders.id, regretId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user!.id && req.user!.role !== "admin")
       return res.status(403).json({ error: "No autorizado" });
@@ -289,7 +292,7 @@ router.post("/:id/cancel-regret", authenticateToken, async (req, res) => {
       cancelledBy: req.user!.id,
       cancellationReason: "regret_period",
       updatedAt: new Date(),
-    }).where(eq(orders.id, req.params.id));
+    }).where(eq(orders.id, regretId));
 
     res.json({ success: true, message: "Pedido cancelado sin penalización" });
   } catch (error: any) {
@@ -320,6 +323,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Estado inválido" });
     }
 
+    const statusId = req.params.id as string;
     const [order] = await db
       .select({
         order: orders,
@@ -327,7 +331,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
       })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
-      .where(eq(orders.id, req.params.id))
+      .where(eq(orders.id, statusId))
       .limit(1);
 
     if (!order) {
@@ -351,14 +355,14 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
         status,
         updatedAt: new Date()
       })
-      .where(eq(orders.id, req.params.id));
+      .where(eq(orders.id, statusId));
 
     // Notificaciones según el nuevo estado
     const o = order.order;
     if (status === "preparing") {
-      await sendOrderStatusNotification(req.params.id, o.userId, "preparing");
+      await sendOrderStatusNotification(statusId, o.userId, "preparing");
     } else if (status === "ready") {
-      await sendOrderStatusNotification(req.params.id, o.userId, "ready");
+      await sendOrderStatusNotification(statusId, o.userId, "ready");
       // Notificar al repartidor asignado que el pedido está listo para recoger
       if (o.deliveryPersonId) {
         await sendPushToUser(o.deliveryPersonId, {
@@ -368,7 +372,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
         });
       }
     } else if (status === "cancelled") {
-      await sendOrderStatusNotification(req.params.id, o.userId, "cancelled");
+      await sendOrderStatusNotification(statusId, o.userId, "cancelled");
       // Notificar al negocio si cancela el admin o el cliente
       if (order.business?.ownerId) {
         await sendPushToUser(order.business.ownerId, {
@@ -409,7 +413,8 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Monto de propina inválido" });
     }
 
-    const [order] = await db.select().from(orders).where(eq(orders.id, req.params.id)).limit(1);
+    const tipOrderId = req.params.id as string;
+    const [order] = await db.select().from(orders).where(eq(orders.id, tipOrderId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user!.id) return res.status(403).json({ error: "No autorizado" });
     if (order.status !== "delivered") return res.status(400).json({ error: "El pedido debe estar entregado" });
@@ -428,10 +433,10 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
 
     await db.insert(transactions).values({
       userId: driverId,
-      orderId: order.id,
+      orderId: tipOrderId,
       type: "tip",
       amount,
-      description: `Propina del cliente por pedido #${order.id.slice(-6)}`,
+      description: `Propina del cliente por pedido #${tipOrderId.slice(-6)}`,
       status: "completed",
     });
 
@@ -447,11 +452,12 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
     const { orders, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
+    const pickupId = req.params.id as string;
     const [order] = await db
       .select({ order: orders, business: businesses })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
-      .where(eq(orders.id, req.params.id))
+      .where(eq(orders.id, pickupId))
       .limit(1);
 
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
@@ -479,14 +485,14 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
       status: "delivered",
       deliveredAt: new Date(),
       updatedAt: new Date(),
-    }).where(eq(orders.id, req.params.id));
+    }).where(eq(orders.id, pickupId));
 
     // Notificar al cliente
-    await sendOrderStatusNotification(req.params.id, order.order.userId, "delivered");
+    await sendOrderStatusNotification(pickupId, order.order.userId, "delivered");
 
     // Liberar fondos (si aplica)
     const { fundReleaseService } = await import("../fundReleaseService");
-    await fundReleaseService.releaseOrderFunds(req.params.id);
+    await fundReleaseService.releaseOrderFunds(pickupId);
 
     res.json({ success: true, message: "Pedido marcado como recogido" });
   } catch (error: any) {
@@ -501,11 +507,12 @@ router.put("/:id/complete", authenticateToken, async (req, res) => {
     const { orders, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
+    const completeId = req.params.id as string;
     const [order] = await db
       .select({ order: orders, business: businesses })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
-      .where(eq(orders.id, req.params.id))
+      .where(eq(orders.id, completeId))
       .limit(1);
 
     if (!order) {
@@ -538,15 +545,15 @@ router.put("/:id/complete", authenticateToken, async (req, res) => {
       fundsReleased: true,
       fundsReleasedAt: new Date(),
       updatedAt: new Date(),
-    }).where(eq(orders.id, req.params.id));
+    }).where(eq(orders.id, completeId));
 
     // Notificar al cliente
-    await sendOrderStatusNotification(req.params.id, order.order.userId, "delivered");
+    await sendOrderStatusNotification(completeId, order.order.userId, "delivered");
 
     // Crear payouts para negocio y repartidor
     try {
       const { createPayoutsForOrder } = await import("../payoutService");
-      await createPayoutsForOrder(req.params.id);
+      await createPayoutsForOrder(completeId);
     } catch (e: any) {
       console.error(`Error creating payouts for order ${req.params.id}:`, e);
     }
@@ -568,10 +575,11 @@ router.patch("/:id/cancel", authenticateToken, async (req, res) => {
     const { orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     
+    const cancelId = req.params.id as string;
     const [order] = await db
       .select()
       .from(orders)
-      .where(eq(orders.id, req.params.id))
+      .where(eq(orders.id, cancelId))
       .limit(1);
 
     if (!order) {
@@ -600,7 +608,7 @@ router.patch("/:id/cancel", authenticateToken, async (req, res) => {
         status: "cancelled",
         updatedAt: new Date()
       })
-      .where(eq(orders.id, req.params.id));
+      .where(eq(orders.id, cancelId));
 
     res.json({ success: true, message: "Pedido cancelado" });
   } catch (error: any) {

@@ -9,6 +9,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 interface Address {
   id: string; label: string; street: string; city: string;
@@ -84,7 +85,7 @@ export default function AddressesScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Direcciones" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="map-pin" size={28} color={ComeYaColors.primary} />
         </View>
@@ -101,7 +102,7 @@ export default function AddressesScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -189,7 +190,7 @@ export default function AddressesScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 260, padding: 28, borderRightWidth: 1, paddingTop: 48, alignItems: "center" },
+  sidebar: { width: 260, minWidth: 260, maxWidth: 260, padding: 28, borderRightWidth: 1, paddingTop: 48, alignItems: "center" },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", marginBottom: 16 },
   sideTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4, textAlign: "center" },
   sideSub: { fontSize: 13, marginBottom: 24, textAlign: "center" },

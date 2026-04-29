@@ -9,6 +9,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 const ISSUE_TYPES = [
   { id: "missing_items", label: "Artículos faltantes", icon: "package" },
@@ -81,7 +82,7 @@ export default function ReportIssueScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Reportar Problema" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.error + "15" }]}>
           <Feather name="alert-circle" size={28} color={ComeYaColors.error} />
         </View>
@@ -108,7 +109,7 @@ export default function ReportIssueScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -175,7 +176,7 @@ export default function ReportIssueScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 260, padding: 24, borderRightWidth: 1, paddingTop: 40 },
+  sidebar: { width: 260, minWidth: 260, maxWidth: 260, padding: 24, borderRightWidth: 1, paddingTop: 40 },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", alignSelf: "center", marginBottom: 12 },
   sideTitle: { fontSize: 18, fontWeight: "800", textAlign: "center", marginBottom: 4 },
   sideSub: { fontSize: 13, textAlign: "center", marginBottom: 16 },

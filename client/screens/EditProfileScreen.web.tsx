@@ -9,6 +9,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 function resolveProfileImageUrl(img: string): string {
   if (img.startsWith("data:image/")) return img;
@@ -148,9 +149,8 @@ export default function EditProfileScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar — oculto en móvil */}
-      {!isMobile && (
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {/* Sidebar */}
+      <MobileSidebarWrapper title="Mi Perfil" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <Pressable style={s.avatarWrap} onPress={pickImage} disabled={isUploadingImage}>
           {profileImage ? (
             <Image source={{ uri: profileImage }} style={s.avatar} contentFit="cover" />
@@ -177,8 +177,7 @@ export default function EditProfileScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>
-      )}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -227,7 +226,7 @@ export default function EditProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, flexDirection: "row" },
+  root: { flex: 1, flexDirection: "row", flexWrap: "wrap" },
   sidebar: { width: 260, padding: 32, borderRightWidth: 1, alignItems: "center", paddingTop: 48 },
   avatarWrap: { position: "relative", marginBottom: 16 },
   avatar: { width: 96, height: 96, borderRadius: 48 },

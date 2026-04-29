@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 interface Product { id: string; name: string; price: number; image: string; category: string; isAvailable: boolean; }
 interface Business { id: string; name: string; isOpen: boolean; products: Product[]; }
@@ -59,7 +60,7 @@ export default function BusinessManageScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Mi Negocio" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <Text style={[s.sideTitle, { color: text }]}>{business?.name || "Mi Negocio"}</Text>
 
         {/* Estado abierto/cerrado */}
@@ -76,7 +77,7 @@ export default function BusinessManageScreen() {
           />
         </View>
 
-        {/* Stats rápidas */}
+        {/* Stats rápidas */}}
         <View style={[s.quickStats, { borderColor: border }]}>
           <View style={s.quickStat}>
             <Text style={[s.quickStatValue, { color: ComeYaColors.success }]}>{available.length}</Text>
@@ -113,7 +114,7 @@ export default function BusinessManageScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -192,7 +193,7 @@ function ProductRow({ product, onToggle, card, border, text, sub }: any) {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 24, borderRightWidth: 1, paddingTop: 40 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 24, borderRightWidth: 1, paddingTop: 40 },
   sideTitle: { fontSize: 20, fontWeight: "800", marginBottom: 16, textAlign: "center" },
   statusCard: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 16 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },

@@ -7,6 +7,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 interface Shift { open: string; close: string; }
 interface DayHours { day: string; dayKey: string; isOpen: boolean; morning: Shift; hasEvening: boolean; evening: Shift; }
@@ -100,7 +101,7 @@ export default function BusinessHoursScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Horarios" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="clock" size={28} color={ComeYaColors.primary} />
         </View>
@@ -134,7 +135,7 @@ export default function BusinessHoursScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -234,7 +235,7 @@ export default function BusinessHoursScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 260, padding: 24, borderRightWidth: 1, paddingTop: 40 },
+  sidebar: { width: 260, minWidth: 260, maxWidth: 260, padding: 24, borderRightWidth: 1, paddingTop: 40 },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", alignSelf: "center", marginBottom: 12 },
   sideTitle: { fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 6 },
   sideSub: { fontSize: 12, textAlign: "center", marginBottom: 20, lineHeight: 18 },

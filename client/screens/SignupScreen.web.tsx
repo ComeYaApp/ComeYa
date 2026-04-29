@@ -57,8 +57,8 @@ export default function SignupScreen({ navigation, route }: Props) {
 
   return (
     <View style={s.root}>
-      {/* IZQUIERDA — Hero (oculto en móvil) */}
-      {!isMobile && <View style={s.left}>
+      {/* IZQUIERDA — Hero */}
+      <View style={s.left}>
         <View style={s.leftInner}>
           <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
             <Feather name="arrow-left" size={20} color="#fff" />
@@ -91,7 +91,7 @@ export default function SignupScreen({ navigation, route }: Props) {
             ))}
           </View>
         </View>
-      </View>}
+      </View>
 
       {/* DERECHA — Formulario */}
       <View style={s.right}>

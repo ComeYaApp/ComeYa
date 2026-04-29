@@ -9,6 +9,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 const VEHICLE_TYPES = [
   { id: "bike", name: "Bicicleta", icon: "wind" },
@@ -109,7 +110,7 @@ export default function BecomeDriverScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Ser Repartidor" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.heroBadge, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="truck" size={32} color={ComeYaColors.primary} />
           <Text style={[s.heroTitle, { color: ComeYaColors.primary }]}>Ser Repartidor</Text>
@@ -138,7 +139,7 @@ export default function BecomeDriverScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -183,7 +184,7 @@ export default function BecomeDriverScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 24, borderRightWidth: 1, paddingTop: 32 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 24, borderRightWidth: 1, paddingTop: 32 },
   heroBadge: { padding: 20, borderRadius: 16, alignItems: "center", marginBottom: 20 },
   heroTitle: { fontSize: 18, fontWeight: "800", marginTop: 10 },
   heroSub: { fontSize: 13, marginTop: 4, textAlign: "center" },

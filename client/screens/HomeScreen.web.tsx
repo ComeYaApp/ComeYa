@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   View, StyleSheet, ScrollView, Pressable,
-  TextInput, Text, ActivityIndicator,
+  TextInput, Text, ActivityIndicator, Modal,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -54,6 +54,7 @@ export default function HomeScreen() {
   const [typeFilter,     setTypeFilter]     = useState("all");
   const [sortBy,         setSortBy]         = useState("rating");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [drawerOpen,     setDrawerOpen]     = useState(false);
 
   const bg     = isDark ? "#111"     : "#f7f7f7";
   const card   = isDark ? "#1e1e1e"  : "#fff";
@@ -115,7 +116,7 @@ export default function HomeScreen() {
 
   // ── Sidebar (desktop) ──────────────────────────────────────────────────────
   const SidebarContent = (
-    <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+    <View style={isMobile ? undefined : [s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
       <Text style={[s.sideTitle, { color: sub }]}>TIPO</Text>
       {FILTERS.map(f => (
         <Pressable key={f.id} onPress={() => setTypeFilter(f.id)}
@@ -220,6 +221,11 @@ export default function HomeScreen() {
 
         {/* Actions */}
         <View style={s.navActions}>
+          {isMobile && (
+            <Pressable style={s.navBtn} onPress={() => setDrawerOpen(true)}>
+              <Feather name="sliders" size={18} color={text} />
+            </Pressable>
+          )}
           {!isMobile && (
             <Pressable style={s.navBtn} onPress={() => navigation.navigate("OrderTracking" as any, { orderId: "" })}>
               <Feather name="package" size={16} color={text} />
@@ -241,11 +247,28 @@ export default function HomeScreen() {
         {/* Sidebar desktop */}
         {!isMobile && SidebarContent}
 
+        {/* Drawer móvil */}
+        <Modal visible={drawerOpen} transparent animationType="slide" onRequestClose={() => setDrawerOpen(false)}>
+          <Pressable style={s.drawerBackdrop} onPress={() => setDrawerOpen(false)} />
+          <View style={[s.drawer, { backgroundColor: card, borderTopColor: border }]}>
+            <View style={[s.drawerHeader, { borderBottomColor: border }]}>
+              <Text style={[s.drawerTitle, { color: text }]}>Filtros</Text>
+              <Pressable onPress={() => setDrawerOpen(false)} style={[s.drawerClose, { backgroundColor: bg }]}>
+                <Feather name="x" size={18} color={text} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+              {SidebarContent}
+            </ScrollView>
+          </View>
+        </Modal>
+
         {/* Contenido principal */}
         <ScrollView style={s.main} contentContainerStyle={[s.mainContent, { padding: px, paddingBottom: 48 }]} showsVerticalScrollIndicator={false}>
 
           {/* Filtros móvil */}
           {isMobile && MobileFilters}
+
 
           {/* Hero */}
           {!search && typeFilter === "all" && !activeCategory && (
@@ -335,6 +358,11 @@ const s = StyleSheet.create({
   // Body
   body:          { flex: 1, flexDirection: "row" },
   sidebar:       { width: 210, paddingVertical: 20, paddingHorizontal: 14, borderRightWidth: 1 },
+  drawerBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  drawer:        { maxHeight: "80%", borderTopLeftRadius: 20, borderTopRightRadius: 20, borderTopWidth: 1 },
+  drawerHeader:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1 },
+  drawerTitle:   { fontSize: 16, fontWeight: "700" },
+  drawerClose:   { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
   sideTitle:     { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 },
   sideItem:      { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, marginBottom: 2 },
   sideItemText:  { fontSize: 13, fontWeight: "500" },

@@ -7,6 +7,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 export default function TermsScreen() {
   const navigation = useNavigation();
@@ -31,7 +32,7 @@ export default function TermsScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Terminos" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="file-text" size={32} color={ComeYaColors.primary} />
         </View>
@@ -50,7 +51,7 @@ export default function TermsScreen() {
           <Feather name="arrow-left" size={18} color={theme.text} />
           <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Volver</ThemedText>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={[s.badge2, { backgroundColor: ComeYaColors.primary + "15" }]}>
@@ -79,7 +80,7 @@ export default function TermsScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 28, borderRightWidth: 1, paddingTop: 48 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 28, borderRightWidth: 1, paddingTop: 48 },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", alignSelf: "center" },
   badge: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, alignSelf: "center" },
   toc: { marginTop: 24, borderTopWidth: 1, paddingTop: 16 },

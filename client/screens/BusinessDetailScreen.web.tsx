@@ -170,8 +170,8 @@ export default function BusinessDetailScreen() {
           </View>
         </ScrollView>
 
-        {/* CARRITO FLOTANTE DERECHA */}
-        {!isMobile && (
+        {/* CARRITO FLOTANTE DERECHA / BARRA INFERIOR EN MÓVIL */}
+        {!isMobile ? (
           <View style={[s.cartPanel, { backgroundColor: card, borderLeftColor: border }]}>
           <Text style={[s.cartTitle, { color: text }]}>Tu pedido</Text>
           {cartItems.length === 0 ? (
@@ -212,7 +212,18 @@ export default function BusinessDetailScreen() {
             </>
           )}
           </View>
-        )}
+        ) : cartItems.length > 0 ? (
+          <View style={[s.cartBarMobile, { backgroundColor: card, borderTopColor: border }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.cartBarCount, { color: text }]}>{cartCount} producto{cartCount !== 1 ? "s" : ""}</Text>
+              <Text style={[s.cartBarTotal, { color: PRIMARY }]}>€{(cartTotal + (business?.deliveryFee || 300) / 100).toFixed(2)}</Text>
+            </View>
+            <Pressable style={s.cartBarBtn} onPress={() => navigation.navigate("Checkout")}>
+              <Text style={s.cartBarBtnText}>Ir al checkout</Text>
+              <Feather name="arrow-right" size={16} color="#fff" />
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -276,4 +287,10 @@ const s = StyleSheet.create({
   cartTotalValue: { fontSize: 18, fontWeight: "900" },
   checkoutBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 14 },
   checkoutBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  // Barra checkout móvil
+  cartBarMobile: { flexDirection: "row", alignItems: "center", padding: 16, borderTopWidth: 1, gap: 12 },
+  cartBarCount: { fontSize: 13, fontWeight: "600" },
+  cartBarTotal: { fontSize: 18, fontWeight: "900" },
+  cartBarBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: PRIMARY, paddingHorizontal: 20, paddingVertical: 14, borderRadius: 12 },
+  cartBarBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });

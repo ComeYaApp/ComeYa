@@ -54,9 +54,9 @@ export default function CartScreen() {
         <View style={{ width: 140 }} />
       </View>
 
-      <View style={s.body}>
+      <View style={[s.body, isMobile && s.bodyMobile]}>
         {/* IZQUIERDA — Productos */}
-        <ScrollView style={s.left} contentContainerStyle={s.leftContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={s.left} contentContainerStyle={[s.leftContent, isMobile && s.leftContentMobile]} showsVerticalScrollIndicator={false}>
           {cartItems.length === 0 ? (
             <View style={s.empty}>
               <Text style={{ fontSize: 64 }}>🛒</Text>
@@ -98,9 +98,9 @@ export default function CartScreen() {
           )}
         </ScrollView>
 
-        {/* DERECHA — Resumen */}
-        {cartItems.length > 0 && !isMobile && (
-          <View style={[s.summary, { backgroundColor: card, borderLeftColor: border }]}>
+        {/* RESUMEN — lateral en desktop, debajo en móvil */}
+        {cartItems.length > 0 && (
+          <View style={[s.summary, { backgroundColor: card }, isMobile ? s.summaryMobile : { borderLeftColor: border }]}>
             <Text style={[s.summaryTitle, { color: text }]}>Resumen del pedido</Text>
             <View style={[s.summaryBox, { borderColor: border }]}>
               {cartItems.map((item: any) => (
@@ -141,8 +141,10 @@ const s = StyleSheet.create({
   backText: { fontSize: 14, fontWeight: "600" },
   navTitle: { fontSize: 18, fontWeight: "800" },
   body: { flex: 1, flexDirection: "row" },
+  bodyMobile: { flexDirection: "column" },
   left: { flex: 1 },
   leftContent: { padding: 32, maxWidth: 720, alignSelf: "center", width: "100%" } as any,
+  leftContentMobile: { padding: 16 } as any,
   empty: { alignItems: "center", paddingVertical: 80, gap: 12 },
   emptyTitle: { fontSize: 22, fontWeight: "700" },
   emptySub: { fontSize: 15, textAlign: "center" },
@@ -161,6 +163,7 @@ const s = StyleSheet.create({
   clearBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   clearBtnText: { color: "#F44336", fontSize: 13, fontWeight: "600" },
   summary: { width: 340, padding: 24, borderLeftWidth: 1 },
+  summaryMobile: { width: "100%" as any, borderTopWidth: 1, borderLeftWidth: 0, padding: 20 },
   summaryTitle: { fontSize: 18, fontWeight: "800", marginBottom: 20 },
   summaryBox: { borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 16, gap: 8 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },

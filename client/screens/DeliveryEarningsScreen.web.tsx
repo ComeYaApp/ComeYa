@@ -9,6 +9,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 type Period = "today" | "week" | "month";
 
@@ -88,7 +89,7 @@ export default function DeliveryEarningsScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Ganancias" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         {/* Wallet card */}
         <View style={[s.walletCard, { backgroundColor: wallet.cashOwed > 0 ? ComeYaColors.error : ComeYaColors.success }]}>
           <Text style={s.walletLabel}>{wallet.cashOwed > 0 ? "🚨 Debes depositar" : "✅ Disponible"}</Text>
@@ -104,7 +105,7 @@ export default function DeliveryEarningsScreen() {
           </Pressable>
         </View>
 
-        {/* Stats rápidas */}
+        {/* Stats rápidas */}}
         <View style={[s.quickStats, { borderColor: border }]}>
           {[
             { label: "Entregas", value: stats.totalDeliveries || 0, icon: "truck", color: "#4CAF50" },
@@ -126,7 +127,7 @@ export default function DeliveryEarningsScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -212,7 +213,7 @@ export default function DeliveryEarningsScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 20, borderRightWidth: 1, paddingTop: 32 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 20, borderRightWidth: 1, paddingTop: 32 },
   walletCard: { padding: 20, borderRadius: 16, alignItems: "center", marginBottom: 16 },
   walletLabel: { color: "rgba(255,255,255,0.85)", fontSize: 13, marginBottom: 4 },
   walletAmount: { color: "#fff", fontSize: 36, fontWeight: "900", marginBottom: 12 },

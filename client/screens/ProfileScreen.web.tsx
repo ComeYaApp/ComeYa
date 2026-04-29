@@ -12,6 +12,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { confirm } from "@/hooks/useWebDialog";
 
 const PRIMARY = "#DC2626";
@@ -167,7 +168,7 @@ export default function ProfileScreen() {
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar: BusinessSidebar para business_owner, propio para el resto */}
       {isBusiness ? (
-        <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border, display: isMobile ? "none" : "flex" }]}>
+        <MobileSidebarWrapper title="Mi Perfil" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
           <View style={[s.sideHeader, { borderBottomColor: border }]}>
             <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
               <Image
@@ -213,9 +214,9 @@ export default function ProfileScreen() {
               <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>Cerrar sesión</Text>
             </Pressable>
           </View>
-        </View>
+        </MobileSidebarWrapper>
       ) : (
-        <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border, display: isMobile ? "none" : "flex" }]}>
+        <MobileSidebarWrapper title="Mi Perfil" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
           {/* Profile Header */}
           <View style={[s.sideHeader, { borderBottomColor: border }]}>
             <Pressable style={s.avatarContainer} onPress={pickImage} disabled={isUploadingImage}>
@@ -262,7 +263,7 @@ export default function ProfileScreen() {
               <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>Cerrar sesión</Text>
             </Pressable>
           </View>
-        </View>
+        </MobileSidebarWrapper>
       )}
 
       {/* CONTENT */}

@@ -62,7 +62,7 @@ export default function OrdersScreen() {
 
       <View style={s.body}>
         {/* LISTA — en móvil ocupa todo el ancho, en desktop 360px */}
-        <View style={[s.list, { borderRightColor: border, width: isMobile ? "100%" : 360, display: (isMobile && selected) ? "none" : "flex" } as any]}>
+        <View style={[s.list, { borderRightColor: border, width: isMobile ? "100%" : 360 }]}>
           {/* Tabs */}
           <View style={[s.tabs, { borderBottomColor: border }]}>
             {(["active", "history"] as const).map(t => (
@@ -113,7 +113,7 @@ export default function OrdersScreen() {
         </View>
 
         {/* DETALLE — en móvil ocupa todo el ancho con botón volver */}
-        <View style={[s.detail, { backgroundColor: card, display: (isMobile && !selected) ? "none" : "flex" } as any]}>
+        <View style={[s.detail, { backgroundColor: card }]}>
           {isMobile && selected && (
             <Pressable onPress={() => setSelected(null)}
               style={[s.mobileBack, { borderBottomColor: border }]}>
@@ -199,8 +199,8 @@ const s = StyleSheet.create({
   navbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1 },
   backBtn: { width: 40, height: 40, justifyContent: "center" },
   navTitle: { fontSize: 18, fontWeight: "800" },
-  body: { flex: 1, flexDirection: "row" },
-  list: { borderRightWidth: 1 },
+  body: { flex: 1, flexDirection: "row", flexWrap: "wrap" },
+  list: { borderRightWidth: 1, minWidth: 280 },
   mobileBack: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16, borderBottomWidth: 1 },
   tabs: { flexDirection: "row", borderBottomWidth: 1 },
   tab: { flex: 1, paddingVertical: 14, alignItems: "center" },

@@ -6,6 +6,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 const legalContent = {
   terms: {
@@ -57,7 +58,7 @@ export default function LegalScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Legal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name={content.icon} size={32} color={ComeYaColors.primary} />
         </View>
@@ -72,7 +73,7 @@ export default function LegalScreen() {
           <Feather name="arrow-left" size={18} color={theme.text} />
           <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>Volver</ThemedText>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {content.sections.map((section, i) => (
@@ -95,7 +96,7 @@ export default function LegalScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 32, borderRightWidth: 1, alignItems: "center", justifyContent: "flex-start", paddingTop: 48 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 32, borderRightWidth: 1, alignItems: "center", justifyContent: "flex-start", paddingTop: 48 },
   iconCircle: { width: 80, height: 80, borderRadius: 40, justifyContent: "center", alignItems: "center" },
   badge: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   backBtn: { flexDirection: "row", alignItems: "center", marginTop: 32, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },

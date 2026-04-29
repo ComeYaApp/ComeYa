@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 const SPANISH_BANKS = [
   { code: "0049", name: "Santander" }, { code: "0075", name: "Banco Popular" },
@@ -73,7 +74,7 @@ export default function AddBankAccountScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {!isMobile && <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      <MobileSidebarWrapper title="Cuenta Bancaria" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
           <Feather name="credit-card" size={28} color={ComeYaColors.primary} />
         </View>
@@ -97,7 +98,7 @@ export default function AddBankAccountScreen() {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
         </Pressable>
-      </View>}
+      </MobileSidebarWrapper>
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
@@ -167,7 +168,7 @@ export default function AddBankAccountScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, padding: 24, borderRightWidth: 1, paddingTop: 40 },
+  sidebar: { width: 280, minWidth: 280, maxWidth: 280, padding: 24, borderRightWidth: 1, paddingTop: 40 },
   iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", alignSelf: "center", marginBottom: 12 },
   sideTitle: { fontSize: 18, fontWeight: "800", textAlign: "center", marginBottom: 6 },
   sideSub: { fontSize: 12, textAlign: "center", marginBottom: 20, lineHeight: 18 },
