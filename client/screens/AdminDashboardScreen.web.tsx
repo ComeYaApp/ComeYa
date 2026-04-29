@@ -17,7 +17,7 @@ import { LiveFeed }       from "@/components/admin/dashboard/LiveFeed";
 import { OrdersTab }        from "@/components/admin/tabs/OrdersTab.web";
 import { BusinessesTab }    from "@/components/admin/tabs/BusinessesTab.web";
 import { DriversTab }       from "@/components/admin/tabs/DriversTab.web";
-import { UsersTab }         from "@/components/admin/tabs/UsersTab";
+import { UsersTab }         from "@/components/admin/tabs/UsersTab.web";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab";
 import { CouponsTab }       from "@/components/admin/tabs/CouponsTab";
@@ -152,7 +152,7 @@ export default function AdminDashboardScreen() {
 
       // ── Usuarios ──
       case "users":
-        return <TabWrap><UsersTab users={[]} onUserPress={() => {}} /></TabWrap>;
+        return <UsersTab />;
 
       // ── Finanzas ──
       case "finance":
