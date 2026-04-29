@@ -1,7 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
-import { Platform } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import HomeStackNavigator    from "@/navigation/HomeStackNavigator";
@@ -16,6 +16,13 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
+
+// Navigators móviles nativos (para móvil web)
+import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
+import DriverTabNavigator   from "@/navigation/DriverTabNavigator";
+import MainTabNavigatorMobile from "@/navigation/MainTabNavigator";
+
+const MOBILE_BREAKPOINT = 768;
 
 const MapStack = createNativeStackNavigator();
 function MapStackNavigator() {
@@ -44,10 +51,21 @@ export default function MainTabNavigator() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
 
   const isAdmin    = user?.role === "admin" || user?.role === "super_admin";
   const isBusiness = user?.role === "business_owner";
   const isDelivery = user?.role === "delivery_driver";
+
+  // En móvil web (< 768px) usar los navigators nativos con bottom tabs
+  // que ya están optimizados para pantallas pequeñas
+  if (width < MOBILE_BREAKPOINT) {
+    if (isAdmin)    return <MainTabNavigatorMobile />;
+    if (isBusiness) return <BusinessTabNavigator />;
+    if (isDelivery) return <DriverTabNavigator />;
+    return <MainTabNavigatorMobile />;
+  }
+
   const isCustomer = !isAdmin && !isBusiness && !isDelivery;
 
   const tabBarHeight = 64 + Math.max(insets.bottom, 8);
