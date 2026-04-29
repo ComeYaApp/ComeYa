@@ -22,7 +22,7 @@ import { FinanceTab }       from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
 import { CouponsTab }       from "@/components/admin/tabs/CouponsTab.web";
 import { SupportTab }       from "@/components/admin/tabs/SupportTab.web";
-import { SettingsTab }      from "@/components/admin/tabs/SettingsTab";
+import { SettingsTab }      from "@/components/admin/tabs/SettingsTab.web";
 import { ZonesTab }         from "@/components/admin/tabs/ZonesTab.web";
 import { CategoriesTab }    from "@/components/admin/tabs/CategoriesTab.web";
 import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab.web";
@@ -179,7 +179,7 @@ export default function AdminDashboardScreen() {
 
       // ── Configuración ──
       case "settings":
-        return <TabWrap><SettingsTab theme={{} as any} showToast={showToast} /></TabWrap>;
+        return <SettingsTab />;
 
       default:
         return <DashboardView onNavigate={setSection} />;

@@ -72,9 +72,11 @@ const NAV: NavItem[] = [
   {
     id: "support", label: "Soporte", icon: "message-circle", color: "#84CC16",
     children: [
-      { id: "support_tickets",       label: "Tickets",        icon: "inbox"      },
-      { id: "support_verifications", label: "Verificaciones", icon: "check-square" },
+      { id: "support_tickets",       label: "Tickets",        icon: "inbox"        },
     ],
+  },
+  {
+    id: "support_verifications", label: "Verificaciones", icon: "user-check", color: "#06B6D4",
   },
   {
     id: "settings", label: "Configuración", icon: "sliders", color: "#6B7280",
@@ -120,6 +122,8 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
     finance:             metrics?.pendingPayments || 0,
     support_tickets:     metrics?.openTickets     || 0,
     support:             metrics?.openTickets     || 0,
+    drivers:             metrics?.pendingVerifications || 0,
+    support_verifications: metrics?.pendingVerifications || 0,
   };
 
   const text = isDark ? "#fff" : "#111";

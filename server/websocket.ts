@@ -68,3 +68,31 @@ export function notifyPaymentVerified(businessId: string, orderId: string) {
   if (!io) return;
   io.to(`business:${businessId}`).emit('payment_verified', { orderId });
 }
+
+// ── Admin-specific events ─────────────────────────────────────────────────────
+
+export function notifyAdminFraud(data: { userId: string; userName?: string; proofId: string; reason: string }) {
+  if (!io) return;
+  io.to('admins').emit('admin_fraud_detected', { ...data, timestamp: new Date().toISOString() });
+  logger.warn(`🚨 Fraud alert sent to admins: ${data.reason}`);
+}
+
+export function notifyAdminNewProof(data: { proofId: string; orderId: string; userName: string; amount: number; method: string }) {
+  if (!io) return;
+  io.to('admins').emit('admin_new_proof', { ...data, timestamp: new Date().toISOString() });
+}
+
+export function notifyAdminNewPayout(data: { payoutId: string; recipientName: string; amount: number; recipientType: string }) {
+  if (!io) return;
+  io.to('admins').emit('admin_new_payout', { ...data, timestamp: new Date().toISOString() });
+}
+
+export function notifyAdminNewTicket(data: { ticketId: string; userName: string; subject: string; priority: string }) {
+  if (!io) return;
+  io.to('admins').emit('admin_new_ticket', { ...data, timestamp: new Date().toISOString() });
+}
+
+export function notifyAdminOrderStuck(data: { orderId: string; businessName: string; minutesWaiting: number }) {
+  if (!io) return;
+  io.to('admins').emit('admin_order_stuck', { ...data, timestamp: new Date().toISOString() });
+}

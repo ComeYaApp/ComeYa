@@ -128,6 +128,20 @@ router.post("/submit-proof", authenticateToken, async (req, res) => {
       }
     } catch { /* auto-verificación falla silenciosamente */ }
 
+    // Notificar al admin via WebSocket que hay un nuevo comprobante pendiente
+    try {
+      const { notifyAdminNewProof } = await import("../websocket");
+      const { users } = await import("../../shared/schema-mysql");
+      const [u] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+      notifyAdminNewProof({
+        proofId,
+        orderId,
+        userName: u?.name ?? "Cliente",
+        amount: amount || order.total,
+        method: paymentMethod || order.paymentMethod || "bizum",
+      });
+    } catch {}
+
     res.json({ success: true, proofId, autoApproved: false, message: "Comprobante recibido. Será verificado en breve." });
   } catch (error: any) {
     console.error("Submit proof error:", error);

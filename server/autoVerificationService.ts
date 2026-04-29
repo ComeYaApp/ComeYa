@@ -465,6 +465,13 @@ export class AutoVerificationService {
       changes: JSON.stringify({ reason }),
     });
 
+    // Notificar al admin via WebSocket
+    try {
+      const { notifyAdminFraud } = await import('./websocket');
+      const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+      notifyAdminFraud({ userId, userName: user?.name ?? 'Usuario desconocido', proofId, reason });
+    } catch {}
+
     // Contar intentos recientes del usuario
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentFraud = await db
