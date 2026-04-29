@@ -253,9 +253,6 @@ export default function ProfileScreen() {
         {activeSection === "account" && (
           <AccountSection user={user} navigation={navigation} driverStats={driverStats} theme={{ bg, card, text, sub, border }} />
         )}
-        {activeSection === "business" && isBusiness && (
-          <BusinessSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
-        )}
         {activeSection === "payments" && isBusiness && (
           <PaymentsSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
         )}

@@ -10,19 +10,19 @@ import { useBusiness } from "@/contexts/BusinessContext";
 const PRIMARY = "#DC2626";
 
 const NAV_ITEMS = [
-  { id: "BusinessDashboard", label: "Dashboard",  icon: "bar-chart-2", sub: null },
-  { id: "BusinessOrders",    label: "Pedidos",     icon: "package",     sub: null },
-  { id: "BusinessProducts",  label: "Productos",   icon: "grid",        sub: null },
+  { id: "BusinessDashboard", label: "Dashboard",    icon: "bar-chart-2", sub: null },
+  { id: "BusinessOrders",    label: "Pedidos",       icon: "package",     sub: null },
+  { id: "BusinessProducts",  label: "Productos",     icon: "grid",        sub: null },
+  { id: "MyBusinesses",      label: "Mis Negocios",  icon: "briefcase",   sub: null },
   {
     id: "BusinessProfile",
     label: "Perfil",
     icon: "user",
     sub: [
-      { id: "account",     label: "Cuenta",        icon: "user"      },
-      { id: "business",    label: "Mi Negocio",     icon: "briefcase" },
-      { id: "payments",    label: "Pagos",          icon: "credit-card" },
-      { id: "preferences", label: "Preferencias",  icon: "sliders"   },
-      { id: "more",        label: "Más",            icon: "grid"      },
+      { id: "account",     label: "Cuenta",       icon: "user"        },
+      { id: "payments",    label: "Pagos",         icon: "credit-card" },
+      { id: "preferences", label: "Preferencias", icon: "sliders"     },
+      { id: "more",        label: "Más",           icon: "grid"        },
     ],
   },
 ];
