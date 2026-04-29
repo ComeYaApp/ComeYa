@@ -8,9 +8,10 @@ import HomeStackNavigator    from "@/navigation/HomeStackNavigator";
 import OrdersStackNavigator  from "@/navigation/OrdersStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import BusinessMapScreen     from "@/screens/BusinessMapScreen";
-import AdminDashboardScreen  from "@/screens/AdminDashboardScreen.web";
-import AdminMapScreen        from "@/screens/AdminMapScreen.web";
+import AdminDashboardScreen   from "@/screens/AdminDashboardScreen.web";
+import AdminMapScreen         from "@/screens/AdminMapScreen.web";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
+import DriverDashboardScreen  from "@/screens/DriverDashboardScreen.web";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
@@ -136,6 +137,18 @@ export default function MainTabNavigator() {
         </>
       )}
 
+      {/* ── REPARTIDOR ── Dashboard con sidebar completo */}
+      {isDelivery && (
+        <Tab.Screen
+          name="DeliveryTab"
+          component={DriverDashboardScreen}
+          options={{
+            title: "Panel Repartidor",
+            tabBarIcon: ({ color, size }) => <Feather name="truck" size={size} color={color} />,
+          }}
+        />
+      )}
+
       {/* ── NEGOCIO ── */}
       {isBusiness && (
         <Tab.Screen
@@ -149,7 +162,7 @@ export default function MainTabNavigator() {
       )}
 
       {/* ── PERFIL (clientes y negocios) ── */}
-      {!isAdmin && (
+      {!isAdmin && !isDelivery && (
         <Tab.Screen
           name="ProfileTab"
           component={ProfileStackNavigator}

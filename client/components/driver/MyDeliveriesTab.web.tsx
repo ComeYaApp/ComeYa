@@ -1,0 +1,440 @@
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, RefreshControl, TextInput,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useTheme } from "@/hooks/useTheme";
+import { apiRequest } from "@/lib/query-client";
+
+const GREEN  = "#16A34A";
+const AMBER  = "#F59E0B";
+const BLUE   = "#3B82F6";
+const PURPLE = "#8B5CF6";
+const RED    = "#EF4444";
+
+const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
+  ready:       { label: "Listo para recoger", color: AMBER,  icon: "clock"       },
+  picked_up:   { label: "Recogido",           color: BLUE,   icon: "package"     },
+  preparing:   { label: "Preparando",         color: AMBER,  icon: "loader"      },
+  on_the_way:  { label: "En camino",          color: PURPLE, icon: "navigation"  },
+  delivered:   { label: "Esperando confirm.", color: BLUE,   icon: "check-circle"},
+  completed:   { label: "Completado",         color: GREEN,  icon: "check-circle"},
+  cancelled:   { label: "Cancelado",          color: RED,    icon: "x-circle"    },
+};
+
+const ACTIVE_STATUSES  = ["ready", "picked_up", "preparing", "on_the_way", "delivered"];
+const HISTORY_STATUSES = ["completed", "cancelled"];
+
+interface Order {
+  id: string;
+  businessName: string;
+  businessAddress?: string;
+  deliveryAddress: string;
+  deliveryLatitude?: string;
+  deliveryLongitude?: string;
+  items: any;
+  subtotal: number;
+  deliveryFee: number;
+  deliveryEarnings?: number;
+  total: number;
+  paymentMethod: string;
+  status: string;
+  createdAt: string;
+  deliveredAt?: string;
+}
+
+interface Props {
+  mode: "active" | "history";
+  showToast?: (msg: string, type?: string) => void;
+}
+
+export function MyDeliveriesTab({ mode, showToast }: Props) {
+  const { isDark } = useTheme();
+  const [orders, setOrders]         = useState<Order[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [actionId, setActionId]     = useState<string | null>(null);
+  const [search, setSearch]         = useState("");
+  const [msg, setMsg]               = useState<{ ok: boolean; text: string } | null>(null);
+  // Photo upload state (web: file input)
+  const [photoOrder, setPhotoOrder] = useState<string | null>(null);
+  const [photoB64, setPhotoB64]     = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const intervalRef = useRef<any>(null);
+
+  const bg     = isDark ? "#0d0d0d" : "#f2f3f5";
+  const card   = isDark ? "#1a1a1a" : "#fff";
+  const border = isDark ? "#2a2a2a" : "#ebebeb";
+  const text   = isDark ? "#fff"    : "#111";
+  const sub    = isDark ? "#666"    : "#aaa";
+  const chipBg = isDark ? "#222"    : "#f0f0f0";
+  const inputBg = isDark ? "#222"   : "#f8f8f8";
+
+  const flash = (ok: boolean, t: string) => {
+    setMsg({ ok, text: t });
+    setTimeout(() => setMsg(null), 3500);
+  };
+
+  const load = useCallback(async () => {
+    try {
+      const res  = await apiRequest("GET", "/api/delivery/my-orders");
+      const data = await res.json();
+      if (data.success) setOrders(data.orders ?? []);
+    } catch {}
+    finally { setLoading(false); setRefreshing(false); }
+  }, []);
+
+  useEffect(() => {
+    load();
+    if (mode === "active") {
+      intervalRef.current = setInterval(load, 6000);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [load, mode]);
+
+  const updateStatus = async (orderId: string, status: string, extra?: any) => {
+    setActionId(orderId);
+    try {
+      let endpoint = "";
+      let body: any = {};
+      if (status === "picked_up") {
+        endpoint = `/api/orders/${orderId}/pickup`;
+      } else if (status === "on_the_way") {
+        endpoint = `/api/orders/${orderId}/pickup`;
+      } else if (status === "delivered") {
+        endpoint = `/api/orders/${orderId}/complete-delivery`;
+        body = { deliveryPhoto: extra?.photo ?? null, latitude: null, longitude: null };
+      } else {
+        endpoint = `/api/delivery/orders/${orderId}/status`;
+        body = { status };
+      }
+      const res  = await apiRequest("POST", endpoint, body);
+      const data = await res.json();
+      if (data.success || res.ok) {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+        flash(true, status === "delivered" ? "¡Entrega confirmada! Esperando confirmación del cliente." : "Estado actualizado");
+      } else {
+        flash(false, data.error ?? "Error al actualizar estado");
+      }
+    } catch { flash(false, "Error de conexión"); }
+    finally { setActionId(null); setPhotoOrder(null); setPhotoB64(null); }
+  };
+
+  const handleDeliverWithPhoto = async (orderId: string) => {
+    if (!photoB64) { flash(false, "Selecciona una foto de entrega"); return; }
+    await updateStatus(orderId, "delivered", { photo: photoB64 });
+  };
+
+  const handleFileChange = (e: any) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setPhotoB64(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const openMaps = (lat: string, lng: string) => {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, "_blank");
+  };
+
+  const parseItems = (raw: any): any[] => {
+    if (Array.isArray(raw)) return raw;
+    try { return JSON.parse(raw); } catch { return []; }
+  };
+
+  const fmtEur  = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  const displayed = orders
+    .filter(o => mode === "active" ? ACTIVE_STATUSES.includes(o.status) : HISTORY_STATUSES.includes(o.status))
+    .filter(o => !search.trim() || o.businessName.toLowerCase().includes(search.toLowerCase()) || o.id.includes(search));
+
+  // ── KPIs ──
+  const activeCount    = orders.filter(o => ACTIVE_STATUSES.includes(o.status)).length;
+  const completedCount = orders.filter(o => o.status === "completed").length;
+  const totalEarned    = orders.filter(o => o.status === "completed").reduce((s, o) => s + (o.deliveryEarnings ?? o.deliveryFee ?? 0), 0);
+
+  return (
+    <View style={[s.root, { backgroundColor: bg }]}>
+
+      {/* ── Header ── */}
+      <View style={[s.header, { backgroundColor: card, borderBottomColor: border }]}>
+        <View style={s.headerLeft}>
+          <Text style={[s.title, { color: text }]}>
+            {mode === "active" ? "Entregas activas" : "Historial de entregas"}
+          </Text>
+          <Text style={[s.subtitle, { color: sub }]}>
+            {mode === "active" ? `${activeCount} en curso` : `${completedCount} completadas`}
+          </Text>
+        </View>
+        <View style={[s.searchWrap, { backgroundColor: inputBg, borderColor: border }]}>
+          <Feather name="search" size={14} color={sub} />
+          <TextInput
+            style={[s.searchInput, { color: text }] as any}
+            placeholder="Buscar pedido..."
+            placeholderTextColor={sub}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+      </View>
+
+      {/* ── KPI strip ── */}
+      <View style={[s.kpiStrip, { backgroundColor: card, borderBottomColor: border }]}>
+        {[
+          { label: "Activas",     value: activeCount,          color: BLUE,  icon: "activity"    },
+          { label: "Completadas", value: completedCount,       color: GREEN, icon: "check-circle" },
+          { label: "Ganado hoy",  value: fmtEur(totalEarned),  color: AMBER, icon: "trending-up"  },
+          { label: "Mostrando",   value: displayed.length,     color: sub,   icon: "list"         },
+        ].map(k => (
+          <View key={k.label} style={s.kpiItem}>
+            <View style={[s.kpiIcon, { backgroundColor: k.color + "15" }]}>
+              <Feather name={k.icon as any} size={14} color={k.color} />
+            </View>
+            <Text style={[s.kpiVal, { color: k.color }]}>{k.value}</Text>
+            <Text style={[s.kpiLbl, { color: sub }]}>{k.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* ── Feedback ── */}
+      {msg && (
+        <View style={[s.msgBar, { backgroundColor: msg.ok ? "#16A34A15" : "#EF444415" }]}>
+          <Feather name={msg.ok ? "check-circle" : "alert-circle"} size={14} color={msg.ok ? GREEN : RED} />
+          <Text style={[s.msgTxt, { color: msg.ok ? GREEN : RED }]}>{msg.text}</Text>
+        </View>
+      )}
+
+      {/* ── Hidden file input for photo ── */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
+      {/* ── List ── */}
+      {loading ? (
+        <View style={s.center}>
+          <ActivityIndicator size="large" color={GREEN} />
+        </View>
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={s.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={GREEN} />}
+        >
+          {displayed.length === 0 ? (
+            <View style={s.empty}>
+              <View style={[s.emptyIcon, { backgroundColor: chipBg }]}>
+                <Feather name={mode === "active" ? "truck" : "archive"} size={36} color={sub} />
+              </View>
+              <Text style={[s.emptyTitle, { color: text }]}>
+                {mode === "active" ? "Sin entregas activas" : "Sin historial"}
+              </Text>
+              <Text style={[s.emptySub, { color: sub }]}>
+                {mode === "active"
+                  ? "Acepta pedidos disponibles para verlos aquí."
+                  : "Las entregas completadas aparecerán aquí."}
+              </Text>
+            </View>
+          ) : (
+            displayed.map(order => {
+              const meta     = STATUS_META[order.status] ?? STATUS_META.ready;
+              const items    = parseItems(order.items);
+              const isAction = actionId === order.id;
+              const isPhoto  = photoOrder === order.id;
+              const hasCoords = order.deliveryLatitude && order.deliveryLongitude;
+              const earnings = order.deliveryEarnings ?? order.deliveryFee ?? 0;
+
+              return (
+                <View key={order.id} style={[s.card, { backgroundColor: card, borderColor: border, borderLeftColor: meta.color, borderLeftWidth: 4 }]}>
+
+                  {/* Card header */}
+                  <View style={s.cardHeader}>
+                    <View style={[s.statusPill, { backgroundColor: meta.color + "18" }]}>
+                      <Feather name={meta.icon as any} size={12} color={meta.color} />
+                      <Text style={[s.statusTxt, { color: meta.color }]}>{meta.label}</Text>
+                    </View>
+                    <Text style={[s.orderId, { color: sub }]}>#{order.id.slice(-8).toUpperCase()}</Text>
+                  </View>
+
+                  {/* Business + address */}
+                  <View style={s.cardBody}>
+                    <Text style={[s.businessName, { color: text }]}>{order.businessName}</Text>
+                    <View style={s.addrRow}>
+                      <Feather name="map-pin" size={12} color={sub} />
+                      <Text style={[s.addrTxt, { color: sub }]} numberOfLines={1}>{order.deliveryAddress}</Text>
+                    </View>
+                    <Text style={[s.dateRow, { color: sub }]}>
+                      {fmtDate(order.createdAt)}
+                      {order.deliveredAt ? ` · Entregado ${fmtDate(order.deliveredAt)}` : ""}
+                    </Text>
+                  </View>
+
+                  {/* Items */}
+                  {items.length > 0 && (
+                    <View style={[s.itemsBox, { borderTopColor: border, borderBottomColor: border }]}>
+                      {items.slice(0, 2).map((it: any, i: number) => (
+                        <Text key={i} style={[s.itemRow, { color: text }]} numberOfLines={1}>
+                          <Text style={{ color: sub }}>{it.quantity ?? 1}×  </Text>
+                          {it.name ?? it.productName ?? "Producto"}
+                        </Text>
+                      ))}
+                      {items.length > 2 && <Text style={[s.itemMore, { color: sub }]}>+{items.length - 2} más</Text>}
+                    </View>
+                  )}
+
+                  {/* Photo upload panel */}
+                  {isPhoto && (
+                    <View style={[s.photoPanel, { backgroundColor: isDark ? "#222" : "#f8f9fa", borderColor: border }]}>
+                      <Text style={[s.photoTitle, { color: text }]}>📸 Foto de entrega obligatoria</Text>
+                      <Text style={[s.photoSub, { color: sub }]}>Sube una foto del pedido entregado para confirmar.</Text>
+                      <View style={s.photoActions}>
+                        <TouchableOpacity
+                          onPress={() => fileRef.current?.click()}
+                          style={[s.photoBtn, { backgroundColor: BLUE + "15", borderColor: BLUE + "40" }]}
+                        >
+                          <Feather name="camera" size={14} color={BLUE} />
+                          <Text style={[s.photoBtnTxt, { color: BLUE }]}>
+                            {photoB64 ? "Cambiar foto ✓" : "Seleccionar foto"}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleDeliverWithPhoto(order.id)}
+                          disabled={!photoB64 || isAction}
+                          style={[s.photoBtn, {
+                            backgroundColor: photoB64 ? GREEN + "15" : chipBg,
+                            borderColor: photoB64 ? GREEN + "40" : border,
+                          }]}
+                        >
+                          {isAction
+                            ? <ActivityIndicator size="small" color={GREEN} />
+                            : <Feather name="check-circle" size={14} color={photoB64 ? GREEN : sub} />
+                          }
+                          <Text style={[s.photoBtnTxt, { color: photoB64 ? GREEN : sub }]}>Confirmar entrega</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { setPhotoOrder(null); setPhotoB64(null); }}>
+                          <Feather name="x" size={18} color={sub} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Footer */}
+                  <View style={[s.cardFooter, { borderTopColor: border }]}>
+                    <Text style={[s.earningVal, { color: GREEN }]}>+{fmtEur(earnings)}</Text>
+
+                    <View style={s.footerActions}>
+                      {/* Navigate */}
+                      {hasCoords && mode === "active" && (
+                        <TouchableOpacity
+                          onPress={() => openMaps(order.deliveryLatitude!, order.deliveryLongitude!)}
+                          style={[s.actionBtn, { backgroundColor: PURPLE + "15", borderColor: PURPLE + "30" }]}
+                        >
+                          <Feather name="navigation" size={13} color={PURPLE} />
+                          <Text style={[s.actionBtnTxt, { color: PURPLE }]}>Navegar</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* State machine buttons */}
+                      {mode === "active" && !isPhoto && (
+                        <>
+                          {order.status === "ready" && (
+                            <TouchableOpacity
+                              onPress={() => updateStatus(order.id, "picked_up")}
+                              disabled={isAction}
+                              style={[s.actionBtn, { backgroundColor: AMBER + "15", borderColor: AMBER + "30" }]}
+                            >
+                              {isAction ? <ActivityIndicator size="small" color={AMBER} /> : <Feather name="package" size={13} color={AMBER} />}
+                              <Text style={[s.actionBtnTxt, { color: AMBER }]}>Recoger</Text>
+                            </TouchableOpacity>
+                          )}
+                          {(order.status === "picked_up" || order.status === "preparing") && (
+                            <TouchableOpacity
+                              onPress={() => updateStatus(order.id, "on_the_way")}
+                              disabled={isAction}
+                              style={[s.actionBtn, { backgroundColor: BLUE + "15", borderColor: BLUE + "30" }]}
+                            >
+                              {isAction ? <ActivityIndicator size="small" color={BLUE} /> : <Feather name="truck" size={13} color={BLUE} />}
+                              <Text style={[s.actionBtnTxt, { color: BLUE }]}>En camino</Text>
+                            </TouchableOpacity>
+                          )}
+                          {order.status === "on_the_way" && (
+                            <TouchableOpacity
+                              onPress={() => { setPhotoOrder(order.id); setPhotoB64(null); }}
+                              style={[s.actionBtn, { backgroundColor: GREEN + "15", borderColor: GREEN + "30" }]}
+                            >
+                              <Feather name="check-circle" size={13} color={GREEN} />
+                              <Text style={[s.actionBtnTxt, { color: GREEN }]}>Entregar</Text>
+                            </TouchableOpacity>
+                          )}
+                          {order.status === "delivered" && (
+                            <View style={[s.actionBtn, { backgroundColor: BLUE + "10", borderColor: BLUE + "20" }]}>
+                              <Feather name="clock" size={13} color={BLUE} />
+                              <Text style={[s.actionBtnTxt, { color: BLUE }]}>Esperando cliente</Text>
+                            </View>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root:         { flex: 1 },
+  header:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 16, borderBottomWidth: 1, gap: 16 },
+  headerLeft:   { flex: 1 },
+  title:        { fontSize: 20, fontWeight: "800" },
+  subtitle:     { fontSize: 12, marginTop: 2 },
+  searchWrap:   { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, minWidth: 220 },
+  searchInput:  { flex: 1, fontSize: 13 },
+  kpiStrip:     { flexDirection: "row", borderBottomWidth: 1 },
+  kpiItem:      { flex: 1, alignItems: "center", paddingVertical: 14, gap: 4 },
+  kpiIcon:      { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center", marginBottom: 2 },
+  kpiVal:       { fontSize: 16, fontWeight: "800" },
+  kpiLbl:       { fontSize: 10, fontWeight: "600" },
+  msgBar:       { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
+  msgTxt:       { fontSize: 13, fontWeight: "600" },
+  center:       { flex: 1, justifyContent: "center", alignItems: "center" },
+  listContent:  { padding: 20, gap: 14, paddingBottom: 40 },
+  empty:        { alignItems: "center", paddingVertical: 60, gap: 12 },
+  emptyIcon:    { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center" },
+  emptyTitle:   { fontSize: 17, fontWeight: "700" },
+  emptySub:     { fontSize: 13, textAlign: "center", maxWidth: 320 },
+  card:         { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  cardHeader:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 },
+  statusPill:   { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusTxt:    { fontSize: 11, fontWeight: "700" },
+  orderId:      { fontSize: 11 },
+  cardBody:     { paddingHorizontal: 16, paddingBottom: 12, gap: 4 },
+  businessName: { fontSize: 15, fontWeight: "700" },
+  addrRow:      { flexDirection: "row", alignItems: "center", gap: 5 },
+  addrTxt:      { fontSize: 12, flex: 1 },
+  dateRow:      { fontSize: 11 },
+  itemsBox:     { paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1, gap: 3 },
+  itemRow:      { fontSize: 12 },
+  itemMore:     { fontSize: 11, marginTop: 2 },
+  photoPanel:   { margin: 16, borderRadius: 10, borderWidth: 1, padding: 14, gap: 8 },
+  photoTitle:   { fontSize: 14, fontWeight: "700" },
+  photoSub:     { fontSize: 12 },
+  photoActions: { flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap" },
+  photoBtn:     { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
+  photoBtnTxt:  { fontSize: 12, fontWeight: "600" },
+  cardFooter:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderTopWidth: 1 },
+  earningVal:   { fontSize: 20, fontWeight: "900" },
+  footerActions:{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  actionBtn:    { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1 },
+  actionBtnTxt: { fontSize: 12, fontWeight: "700" },
+});
