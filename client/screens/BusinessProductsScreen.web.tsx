@@ -7,6 +7,7 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { useNavigation } from "@react-navigation/native";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { BusinessSidebar } from "@/components/BusinessSidebar";
 
 export default function BusinessProductsScreen() {
   const { theme, isDark } = useTheme();
@@ -106,7 +107,8 @@ export default function BusinessProductsScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
+      <BusinessSidebar />
+      {/* Sidebar propio */}
       <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <Text style={[s.sideTitle, { color: text }]}>Productos</Text>
         {selectedBusiness && (

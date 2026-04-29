@@ -7,28 +7,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useBusiness } from "@/contexts/BusinessContext";
+import { BusinessSidebar } from "@/components/BusinessSidebar";
 
-// Rojo para versión web
 const PRIMARY = "#DC2626";
-
-const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard", icon: "bar-chart-2" },
-  { id: "orders", label: "Pedidos", icon: "package" },
-  { id: "products", label: "Productos", icon: "grid" },
-  { id: "analytics", label: "Analytics", icon: "trending-up" },
-  { id: "profile", label: "Perfil", icon: "user" },
-];
 
 export default function BusinessDashboardScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const { selectedBusiness } = useBusiness();
-  const [activeNav, setActiveNav] = useState("dashboard");
-  const [stats, setStats] = useState<any>(null);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const text = isDark ? "#fff" : "#1a1a1a";
@@ -60,36 +47,7 @@ export default function BusinessDashboardScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* SIDEBAR */}
-      <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <View style={s.sideHeader}>
-          <Text style={[s.sideLogoText, { color: PRIMARY }]}>ComeYa</Text>
-          <Text style={[s.sideBizName, { color: text }]} numberOfLines={1}>{selectedBusiness?.name || "Mi Negocio"}</Text>
-          <Text style={[s.sideRole, { color: sub }]}>Panel de negocio</Text>
-        </View>
-        {NAV_ITEMS.map(item => (
-          <Pressable
-            key={item.id}
-            onPress={() => {
-              setActiveNav(item.id);
-              if (item.id === "orders") navigation.navigate("BusinessOrders");
-              if (item.id === "products") navigation.navigate("BusinessProducts");
-              if (item.id === "analytics") navigation.navigate("BusinessStats");
-              if (item.id === "profile") navigation.navigate("BusinessProfile");
-            }}
-            style={[s.navItem, activeNav === item.id && s.navItemActive]}
-          >
-            <Feather name={item.icon as any} size={18} color={activeNav === item.id ? PRIMARY : sub} />
-            <Text style={[s.navItemText, { color: activeNav === item.id ? PRIMARY : text }]}>{item.label}</Text>
-          </Pressable>
-        ))}
-        <View style={s.sideFooter}>
-          <Pressable onPress={() => navigation.navigate("Main")} style={s.navItem}>
-            <Feather name="log-out" size={18} color={sub} />
-            <Text style={[s.navItemText, { color: sub }]}>Salir</Text>
-          </Pressable>
-        </View>
-      </View>
+      <BusinessSidebar />
 
       {/* CONTENIDO */}
       <ScrollView style={s.main} contentContainerStyle={s.mainContent} showsVerticalScrollIndicator={false}>
@@ -165,15 +123,6 @@ export default function BusinessDashboardScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 240, borderRightWidth: 1, flexDirection: "column" },
-  sideHeader: { padding: 24, paddingBottom: 16 },
-  sideLogoText: { fontSize: 18, fontWeight: "900", marginBottom: 12 },
-  sideBizName: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
-  sideRole: { fontSize: 12 },
-  navItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
-  navItemActive: { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY },
-  navItemText: { fontSize: 14, fontWeight: "600" },
-  sideFooter: { marginTop: "auto" as any, borderTopWidth: 1, borderTopColor: "#e0e0e0" },
   main: { flex: 1 },
   mainContent: { padding: 32 },
   pageHeader: { marginBottom: 24 },

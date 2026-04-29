@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { BusinessSidebar } from "@/components/BusinessSidebar";
 
 type Filter = "pending" | "active" | "all";
 
@@ -99,6 +100,7 @@ export default function BusinessOrdersScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
+      <BusinessSidebar />
       {/* Sidebar */}
       <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <Text style={[s.sideTitle, { color: text }]}>Pedidos</Text>
