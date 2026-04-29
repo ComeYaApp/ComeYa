@@ -261,7 +261,7 @@ export const CouponsTab: React.FC<Props> = () => {
                       <View style={li.statItem}>
                         <Feather name="clock" size={11} color={expired ? "#EF4444" : sub} />
                         <Text style={[li.statTxt, { color: expired ? "#EF4444" : sub }]}>
-                          {expired ? "Expiró " : "Expira "}{new Date(coupon.expiresAt).toLocaleDateString("es-ES")}
+                          {`${expired ? "Expiró" : "Expira"} ${new Date(coupon.expiresAt).toLocaleDateString("es-ES")}`}
                         </Text>
                       </View>
                     )}

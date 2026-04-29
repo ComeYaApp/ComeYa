@@ -214,48 +214,27 @@ router.post('/admin/create', authenticateToken, requireRole('admin', 'super_admi
 router.put('/admin/:id', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { code, discountType, discountValue, minOrderAmount, maxUses, maxUsesPerUser, expiresAt, isActive } = req.body;
 
-    const allowedFields = [
-      'description', 'discount_value', 'min_order_amount', 'max_discount',
-      'max_uses', 'max_uses_per_user', 'is_active', 'expires_at',
-      'valid_for_businesses', 'valid_for_categories', 'valid_for_products',
-      'new_users_only', 'first_order_only', 'day_of_week', 'time_range'
-    ];
+    const updates: any = {};
+    if (code             !== undefined) updates.code             = String(code).toUpperCase();
+    if (discountType     !== undefined) updates.discountType     = discountType;
+    if (discountValue    !== undefined) updates.discountValue    = Number(discountValue);
+    if (minOrderAmount   !== undefined) updates.minOrderAmount   = minOrderAmount === null ? null : Number(minOrderAmount);
+    if (maxUses          !== undefined) updates.maxUses          = maxUses === null ? null : Number(maxUses);
+    if (maxUsesPerUser   !== undefined) updates.maxUsesPerUser   = Number(maxUsesPerUser);
+    if (expiresAt        !== undefined) updates.expiresAt        = expiresAt ? new Date(expiresAt) : null;
+    if (isActive         !== undefined) updates.isActive         = Boolean(isActive);
 
-    const setClause = [];
-    const values = [];
-
-    for (const [key, value] of Object.entries(updates)) {
-      const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-      if (allowedFields.includes(snakeKey)) {
-        setClause.push(`${snakeKey} = ?`);
-        if (typeof value === 'object' && value !== null) {
-          values.push(JSON.stringify(value));
-        } else {
-          values.push(value);
-        }
-      }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, error: 'No hay campos válidos para actualizar' });
     }
 
-    if (setClause.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No hay campos válidos para actualizar',
-      });
-    }
+    await db.update(coupons).set(updates).where(eq(coupons.id, id));
 
-    values.push(id);
-    
-    await db.execute(
-      `UPDATE coupons SET ${setClause.join(', ')} WHERE id = ?`,
-      values
-    );
+    const [updated] = await db.select().from(coupons).where(eq(coupons.id, id)).limit(1);
 
-    res.json({
-      success: true,
-      message: 'Cupón actualizado exitosamente',
-    });
+    res.json({ success: true, coupon: updated });
   } catch (error: any) {
     console.error('Error updating coupon:', error);
     res.status(500).json({ success: false, error: error.message });

@@ -139,7 +139,7 @@ export function CouponForm({ coupon, isDark, onClose, onSaved }: Props) {
               >
                 <Feather name={t.icon as any} size={14} color={form.discountType === t.id ? PINK : sub} />
                 <Text style={[fp.typeTxt, { color: form.discountType === t.id ? PINK : text }]}>{t.label}</Text>
-                {form.discountType === t.id && <Feather name="check" size={12} color={PINK} style={{ marginLeft: "auto" as any }} />}
+                {form.discountType === t.id && <Feather name="check" size={12} color={PINK} />}
               </TouchableOpacity>
             ))}
           </View>
