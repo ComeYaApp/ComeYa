@@ -39,7 +39,7 @@ export default function BusinessDashboardScreen() {
     if (!selectedBusiness?.id) { setLoading(false); return; }
     Promise.all([
       apiRequest("GET", `/api/analytics/dashboard/${selectedBusiness.id}?period=week`).then(r => r.json()),
-      apiRequest("GET", "/api/orders/business").then(r => r.json()),
+      apiRequest("GET", "/api/orders").then(r => r.json()),
     ]).then(([statsData, ordersData]) => {
       setStats(statsData.dashboard || statsData);
       setOrders((ordersData.orders || []).slice(0, 10));
@@ -63,7 +63,7 @@ export default function BusinessDashboardScreen() {
       {/* SIDEBAR */}
       <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={s.sideHeader}>
-          <Text style={[s.sideLogoText, { color: PRIMARY }]}>🐰 ComeYa</Text>
+          <Text style={[s.sideLogoText, { color: PRIMARY }]}>ComeYa</Text>
           <Text style={[s.sideBizName, { color: text }]} numberOfLines={1}>{selectedBusiness?.name || "Mi Negocio"}</Text>
           <Text style={[s.sideRole, { color: sub }]}>Panel de negocio</Text>
         </View>
