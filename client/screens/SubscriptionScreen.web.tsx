@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator, Modal, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,13 @@ import { apiRequest } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
 
 const PRIMARY = '#DC2626';
+
+const PAYMENT_METHODS = [
+  { id: 'stripe_card',  icon: 'credit-card', color: '#635BFF', label: 'Tarjeta',           sub: 'Visa, Mastercard — pago instantáneo',    instant: true },
+  { id: 'stripe_bizum', icon: 'smartphone',  color: '#00ADEF', label: 'Bizum (Stripe)',     sub: 'Pago instantáneo desde tu app bancaria', instant: true },
+  { id: 'bizum_manual', icon: 'smartphone',  color: '#00ADEF', label: 'Bizum (manual)',     sub: 'Transferencia + subir comprobante',       instant: false },
+  { id: 'sepa',         icon: 'credit-card', color: '#1A56DB', label: 'Transferencia SEPA', sub: 'IBAN — transferencia + subir comprobante', instant: false },
+];
 
 const PLANS = [
   {
@@ -45,6 +52,25 @@ export default function SubscriptionScreen() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [selectedPlan, setSelectedPlan] = useState<'premium' | 'business'>('premium');
+  const [paymentModal, setPaymentModal] = useState<{ plan: 'premium' | 'business'; amount: number; subscriptionId: string } | null>(null);
+
+  const handlePaymentMethodSelect = (methodId: string) => {
+    if (!paymentModal) return;
+    const { plan, amount, subscriptionId } = paymentModal;
+    setPaymentModal(null);
+    if (methodId === 'stripe_card' || methodId === 'stripe_bizum') {
+      navigation.navigate('StripePayment' as never, {
+        orderId: subscriptionId, amount, subtotal: amount, deliveryFee: 0,
+        businessId: '', isSubscription: true, subscriptionId,
+      } as never);
+    } else {
+      navigation.navigate('PaymentProof' as never, {
+        orderId: subscriptionId, amount,
+        paymentMethod: methodId === 'sepa' ? 'sepa' : 'bizum',
+        subscriptionId,
+      } as never);
+    }
+  };
 
   const bg     = isDark ? '#111'    : '#f7f7f7';
   const card   = isDark ? '#1e1e1e' : '#fff';
@@ -77,12 +103,11 @@ export default function SubscriptionScreen() {
       const res = await apiRequest('POST', '/api/subscriptions/subscribe', { plan, billingCycle: 'monthly' });
       return res.json();
     },
-    onSuccess: (data) => {
-      if (data.success) {
-        showToast('¡Suscripción activada!', 'success');
-        queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    onSuccess: (data, plan) => {
+      if (data.success && data.subscriptionId) {
+        setPaymentModal({ plan, amount: plan === 'premium' ? 1500 : 3000, subscriptionId: data.subscriptionId });
       } else {
-        showToast(data.error || 'Error al suscribirse', 'error');
+        showToast(data.error || 'Error al iniciar suscripción', 'error');
       }
     },
   });
@@ -99,7 +124,8 @@ export default function SubscriptionScreen() {
   });
 
   const currentPlan = subscriptionData?.plan || 'free';
-  const isActive    = subscriptionData?.status === 'active';
+  const isActive       = subscriptionData?.status === 'active';
+  const isPending      = subscriptionData?.status === 'pending_payment';
 
   const NAV_ITEMS = [
     { id: 'premium',  label: 'Plan Premium',  icon: 'star'    },
@@ -186,6 +212,19 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
+        {/* Pago pendiente banner */}
+        {isPending && (
+          <View style={[s.currentBanner, { backgroundColor: '#FEF3C715', borderColor: '#F59E0B40' }]}>
+            <Feather name="clock" size={20} color="#F59E0B" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[s.currentBannerTitle, { color: text }]}>⏳ Verificando pago</Text>
+              <Text style={[s.currentBannerSub, { color: sub }]}>
+                Plan {currentPlan === 'premium' ? 'Premium' : 'Business'} — pendiente de activación (5-15 min)
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Cards de planes */}
         <View style={s.plansRow}>
           {PLANS.map(plan => {
@@ -225,6 +264,11 @@ export default function SubscriptionScreen() {
                       <Feather name="check" size={16} color="#10B981" />
                       <Text style={{ color: '#10B981', fontWeight: '700', marginLeft: 6 }}>Plan actual</Text>
                     </View>
+                  ) : isPending ? (
+                    <View style={[s.ctaBtn, { backgroundColor: '#FEF3C7' }]}>
+                      <Feather name="clock" size={16} color="#F59E0B" />
+                      <Text style={{ color: '#F59E0B', fontWeight: '700', marginLeft: 6 }}>Verificando pago...</Text>
+                    </View>
                   ) : (
                     <Pressable
                       onPress={() => subscribeMutation.mutate(plan.id as any)}
@@ -235,7 +279,7 @@ export default function SubscriptionScreen() {
                         ? <ActivityIndicator size="small" color="#fff" />
                         : <>
                             <Feather name="zap" size={16} color="#fff" />
-                            <Text style={{ color: '#fff', fontWeight: '700', marginLeft: 6 }}>Suscribirme</Text>
+                            <Text style={{ color: '#fff', fontWeight: '700', marginLeft: 6 }}>Suscribirme — Pagar {plan.price}</Text>
                           </>
                       }
                     </Pressable>
@@ -267,6 +311,37 @@ export default function SubscriptionScreen() {
         </View>
 
       </ScrollView>
+
+      {/* Modal selector de método de pago */}
+      <Modal visible={!!paymentModal} transparent animationType="slide" onRequestClose={() => setPaymentModal(null)}>
+        <TouchableOpacity style={ms.overlay} activeOpacity={1} onPress={() => setPaymentModal(null)}>
+          <View style={[ms.sheet, { backgroundColor: card }]}>
+            <View style={ms.handle} />
+            <Text style={[ms.title, { color: text }]}>¿Cómo quieres pagar?</Text>
+            <Text style={[ms.subtitle, { color: sub }]}>
+              Plan {paymentModal?.plan === 'premium' ? 'Premium' : 'Business'} — €{((paymentModal?.amount || 0) / 100).toFixed(2)}/mes
+            </Text>
+            {PAYMENT_METHODS.map(m => (
+              <TouchableOpacity key={m.id} style={[ms.row, { borderBottomColor: border }]} onPress={() => handlePaymentMethodSelect(m.id)}>
+                <View style={[ms.icon, { backgroundColor: m.color + '18' }]}>
+                  <Feather name={m.icon as any} size={22} color={m.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[ms.label, { color: text }]}>{m.label}</Text>
+                  <Text style={[ms.msub, { color: sub }]}>{m.sub}</Text>
+                </View>
+                {m.instant && (
+                  <View style={ms.badge}><Text style={ms.badgeText}>Instantáneo</Text></View>
+                )}
+                <Feather name="chevron-right" size={18} color="#ccc" />
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={ms.cancel} onPress={() => setPaymentModal(null)}>
+              <Text style={{ color: sub, fontSize: 15 }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -311,4 +386,19 @@ const s = StyleSheet.create({
   infoCardTitle:      { fontSize: 16, fontWeight: '700' },
   infoRow:            { flexDirection: 'row', alignItems: 'center', gap: 10 },
   infoText:           { fontSize: 14, flex: 1 },
+});
+
+const ms = StyleSheet.create({
+  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  sheet:     { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  handle:    { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  title:     { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  subtitle:  { fontSize: 14, marginBottom: 20 },
+  row:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, gap: 12 },
+  icon:      { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  label:     { fontSize: 15, fontWeight: '600' },
+  msub:      { fontSize: 12, marginTop: 2 },
+  badge:     { backgroundColor: '#D1FAE5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  badgeText: { fontSize: 11, color: '#065F46', fontWeight: '600' },
+  cancel:    { marginTop: 16, alignItems: 'center', paddingVertical: 12 },
 });
