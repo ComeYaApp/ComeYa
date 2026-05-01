@@ -119,7 +119,7 @@ export default function SubscriptionScreen() {
 
   const renderSubscribeButton = (plan: 'premium' | 'business', price: string) => {
     if (currentPlan === plan && isActive) return null;
-    if (isPendingPayment) return null;
+    if (isPendingPayment && currentPlan === plan) return null;
     return (
       <TouchableOpacity
         style={styles.subscribeButton}

@@ -264,7 +264,7 @@ export default function SubscriptionScreen() {
                       <Feather name="check" size={16} color="#10B981" />
                       <Text style={{ color: '#10B981', fontWeight: '700', marginLeft: 6 }}>Plan actual</Text>
                     </View>
-                  ) : isPending ? (
+                  ) : isPending && currentPlan === plan.id ? (
                     <View style={[s.ctaBtn, { backgroundColor: '#FEF3C7' }]}>
                       <Feather name="clock" size={16} color="#F59E0B" />
                       <Text style={{ color: '#F59E0B', fontWeight: '700', marginLeft: 6 }}>Verificando pago...</Text>
