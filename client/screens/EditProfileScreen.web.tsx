@@ -60,6 +60,7 @@ export default function EditProfileScreen() {
 
   // Cambio de teléfono
   const [showPhoneModal,  setShowPhoneModal]  = useState(false);
+  const [showPassModal,   setShowPassModal]   = useState(false);
   const [newPhone,        setNewPhone]        = useState("");
   const [otpCode,         setOtpCode]         = useState("");
   const [otpSent,         setOtpSent]         = useState(false);
@@ -200,71 +201,67 @@ export default function EditProfileScreen() {
     </View>
   );
 
-  // Accesos rápidos según rol
-  const quickLinks = [
-    ...(isCustomer ? [
-      { icon: "package", label: "Mis pedidos", onPress: () => navigation.navigate("Orders") },
-      { icon: "map-pin", label: "Mis direcciones", onPress: () => navigation.navigate("SavedAddresses") },
-      { icon: "credit-card", label: "Métodos de pago", onPress: () => navigation.navigate("PaymentWalletSetup") },
-      { icon: "gift", label: "Mis puntos y recompensas", onPress: () => navigation.navigate("Gamification") },
-      { icon: "tag", label: "Mis gift cards", onPress: () => navigation.navigate("GiftCards") },
-    ] : []),
-    ...(isDriver ? [
-      { icon: "truck", label: "Mis entregas", onPress: () => navigation.navigate("DeliveryEarnings") },
-      { icon: "dollar-sign", label: "Mis ganancias", onPress: () => navigation.navigate("DeliveryEarnings") },
-    ] : []),
-    ...(isBusiness ? [
-      { icon: "bar-chart-2", label: "Analytics", onPress: () => navigation.navigate("BusinessAnalytics") },
-      { icon: "settings", label: "Configurar negocio", onPress: () => navigation.navigate("BusinessManage") },
-    ] : []),
-    { icon: "bell", label: "Notificaciones", onPress: () => showToast("Próximamente", "info") },
-    { icon: "shield", label: "Privacidad y seguridad", onPress: () => showToast("Próximamente", "info") },
-    { icon: "help-circle", label: "Soporte", onPress: () => navigation.navigate("Support") },
-  ];
+  const getRoleLabel = () => {
+    switch (user?.role) {
+      case "customer": return "Cliente";
+      case "business_owner": return "Negocio";
+      case "delivery_driver": return "Repartidor";
+      default: return "Admin";
+    }
+  };
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar */}
+      {/* Sidebar — igual al de ProfileScreen */}
       <MobileSidebarWrapper title="Mi Perfil" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <Pressable style={s.avatarWrap} onPress={pickImage} disabled={isUploadingImage}>
-          {profileImage ? (
-            <Image source={{ uri: profileImage }} style={s.avatar} contentFit="cover" />
-          ) : (
-            <View style={[s.avatar, { backgroundColor: ComeYaColors.primary + "20", justifyContent: "center", alignItems: "center" }]}>
-              <Feather name="user" size={40} color={ComeYaColors.primary} />
+        {/* Header */}
+        <View style={[s.sideHeader, { borderBottomColor: border }]}>
+          <Pressable style={s.avatarWrap} onPress={pickImage} disabled={isUploadingImage}>
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={s.avatar} contentFit="cover" />
+            ) : (
+              <View style={[s.avatar, { backgroundColor: ComeYaColors.primary + "20", justifyContent: "center", alignItems: "center" }]}>
+                <Feather name="user" size={40} color={ComeYaColors.primary} />
+              </View>
+            )}
+            <View style={[s.cameraBadge, { backgroundColor: ComeYaColors.primary }]}>
+              {isUploadingImage ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="camera" size={14} color="#fff" />}
+            </View>
+          </Pressable>
+          <Text style={[s.userName, { color: text }]}>{user?.name || "Usuario"}</Text>
+          <Text style={[s.userPhone, { color: sub }]}>{user?.phone || ""}</Text>
+          <View style={[s.roleBadge, { backgroundColor: ComeYaColors.primary + "15" }]}>
+            <Text style={[s.roleBadgeText, { color: ComeYaColors.primary }]}>{getRoleLabel()}</Text>
+          </View>
+          {(isDriver || isBusiness) && (
+            <View style={[s.statusBadge, { backgroundColor: statusColor + "20", marginTop: 6 }]}>
+              <Feather name={verificationStatus === "verified" ? "check-circle" : "clock"} size={13} color={statusColor} />
+              <Text style={[s.statusText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
           )}
-          <View style={[s.cameraBadge, { backgroundColor: ComeYaColors.primary }]}>
-            {isUploadingImage ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="camera" size={14} color="#fff" />}
-          </View>
-        </Pressable>
-
-        <Text style={[s.userName, { color: text }]}>{user?.name || "Usuario"}</Text>
-        <Text style={[s.userPhone, { color: sub }]}>{user?.phone || ""}</Text>
-        <Text style={[s.userRole, { color: sub }]}>
-          {user?.role === "customer" ? "Cliente" : user?.role === "business_owner" ? "Negocio" : user?.role === "delivery_driver" ? "Repartidor" : "Admin"}
-        </Text>
-
-        {(isDriver || isBusiness) && (
-          <View style={[s.statusBadge, { backgroundColor: statusColor + "20" }]}>
-            <Feather name={verificationStatus === "verified" ? "check-circle" : "clock"} size={14} color={statusColor} />
-            <Text style={[s.statusText, { color: statusColor }]}>{statusLabel}</Text>
-          </View>
-        )}
-
-        {/* Accesos rápidos en sidebar */}
-        <View style={[s.divider, { backgroundColor: border }]} />
-        {quickLinks.map((link, i) => (
-          <Pressable key={i} onPress={link.onPress} style={s.sideLink}>
-            <Feather name={link.icon as any} size={16} color={sub} />
-            <Text style={[s.sideLinkText, { color: text }]}>{link.label}</Text>
+        </View>
+        {/* Nav */}
+        <View style={s.sideNav}>
+          <Pressable onPress={() => navigation.goBack()} style={[s.navItem, s.navItemActive]}>
+            <Feather name="edit" size={18} color={ComeYaColors.primary} />
+            <Text style={[s.navItemText, { color: ComeYaColors.primary }]}>Editar perfil</Text>
           </Pressable>
-        ))}
-
-        <Pressable onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="arrow-left" size={16} color={text} />
-          <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-        </Pressable>
+          <Pressable onPress={() => navigation.navigate("Profile")} style={s.navItem}>
+            <Feather name="user" size={18} color={sub} />
+            <Text style={[s.navItemText, { color: text }]}>Cuenta</Text>
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate("Support")} style={s.navItem}>
+            <Feather name="help-circle" size={18} color={sub} />
+            <Text style={[s.navItemText, { color: text }]}>Soporte</Text>
+          </Pressable>
+        </View>
+        {/* Footer */}
+        <View style={[s.sideFooter, { borderTopColor: border }]}>
+          <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
+            <Feather name="arrow-left" size={16} color={sub} />
+            <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
+          </Pressable>
+        </View>
       </MobileSidebarWrapper>
 
       {/* Main */}
@@ -300,6 +297,31 @@ export default function EditProfileScreen() {
           </Text>
         </View>
 
+        {/* Seguridad */}
+        {user?.email && (
+          <>
+            <Text style={[s.sectionTitle, { color: text }]}>Seguridad</Text>
+            <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
+              <View style={s.phoneRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.label, { color: sub }]}>CONTRASEÑA</Text>
+                  <Text style={[s.phoneValue, { color: text }]}>••••••••</Text>
+                </View>
+                <Pressable
+                  onPress={() => setShowPassModal(true)}
+                  style={[s.changePhoneBtn, { backgroundColor: ComeYaColors.primary + "15", borderColor: ComeYaColors.primary }]}
+                >
+                  <Feather name="lock" size={14} color={ComeYaColors.primary} />
+                  <Text style={[s.changePhoneBtnText, { color: ComeYaColors.primary }]}>Cambiar</Text>
+                </Pressable>
+              </View>
+              <Text style={[s.phoneHint, { color: sub }]}>
+                Tu cuenta tiene acceso con email y contraseña además del SMS.
+              </Text>
+            </View>
+          </>
+        )}
+
         {/* Vehículo (solo driver) */}
         {isDriver && (
           <>
@@ -333,27 +355,7 @@ export default function EditProfileScreen() {
           {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={s.saveBtnText}>Guardar cambios</Text>}
         </Pressable>
 
-        {/* Accesos rápidos en mobile (cuando no hay sidebar) */}
-        {isMobile && (
-          <>
-            <Text style={[s.sectionTitle, { color: text, marginTop: 24 }]}>Accesos rápidos</Text>
-            <View style={[s.card, { backgroundColor: card, borderColor: border, padding: 0 }]}>
-              {quickLinks.map((link, i) => (
-                <Pressable
-                  key={i}
-                  onPress={link.onPress}
-                  style={[s.quickLinkRow, { borderBottomColor: border, borderBottomWidth: i < quickLinks.length - 1 ? 1 : 0 }]}
-                >
-                  <View style={[s.quickLinkIcon, { backgroundColor: ComeYaColors.primary + "15" }]}>
-                    <Feather name={link.icon as any} size={18} color={ComeYaColors.primary} />
-                  </View>
-                  <Text style={[s.quickLinkText, { color: text }]}>{link.label}</Text>
-                  <Feather name="chevron-right" size={16} color={sub} />
-                </Pressable>
-              ))}
-            </View>
-          </>
-        )}
+
       </ScrollView>
 
       {/* Modal cambio de teléfono */}
@@ -423,23 +425,27 @@ export default function EditProfileScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, flexDirection: "row", flexWrap: "wrap" },
-  sidebar: { width: 260, padding: 24, borderRightWidth: 1, alignItems: "center", paddingTop: 40 },
+  root: { flex: 1, flexDirection: "row", overflow: "hidden" as any },
+  sidebar: { width: 280, borderRightWidth: 1, flexDirection: "column" as any },
+  sideHeader: { padding: 24, alignItems: "center", borderBottomWidth: 1 },
   avatarWrap: { position: "relative", marginBottom: 12 },
-  avatar: { width: 88, height: 88, borderRadius: 44 },
-  cameraBadge: { position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff" },
-  userName: { fontSize: 17, fontWeight: "700", marginBottom: 2, textAlign: "center" },
-  userPhone: { fontSize: 13, marginBottom: 2, textAlign: "center" },
-  userRole: { fontSize: 12, marginBottom: 10 },
-  statusBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 12 },
+  avatar: { width: 80, height: 80, borderRadius: 40 },
+  cameraBadge: { position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff" },
+  userName: { fontSize: 17, fontWeight: "700", marginBottom: 4, textAlign: "center" },
+  userPhone: { fontSize: 13, marginBottom: 10, textAlign: "center" },
+  roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  roleBadgeText: { fontSize: 11, fontWeight: "700" },
+  statusBadge: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   statusText: { fontSize: 12, fontWeight: "700" },
-  divider: { width: "100%", height: 1, marginVertical: 12 },
-  sideLink: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, width: "100%" },
-  sideLinkText: { fontSize: 13, fontWeight: "500" },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, marginTop: 12 },
+  sideNav: { flex: 1, paddingVertical: 16 },
+  navItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
+  navItemActive: { backgroundColor: "#DC262610", borderRightWidth: 3, borderRightColor: "#DC2626" },
+  navItemText: { fontSize: 14, fontWeight: "600" },
+  sideFooter: { borderTopWidth: 1, padding: 16 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
   backBtnText: { fontSize: 14, fontWeight: "600" },
-  main: { flex: 1 },
-  content: { padding: 32, maxWidth: 720 },
+  main: { flex: 1, height: "100vh" as any },
+  content: { padding: 32, maxWidth: 720, paddingBottom: 80 },
   sectionTitle: { fontSize: 18, fontWeight: "800", marginBottom: 12, marginTop: 4 },
   card: { borderRadius: 16, padding: 20, borderWidth: 1, marginBottom: 20 },
   field: { marginBottom: 14 },
@@ -454,9 +460,6 @@ const s = StyleSheet.create({
   vehicleChip: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, alignItems: "center" },
   saveBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 4 },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  quickLinkRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  quickLinkIcon: { width: 36, height: 36, borderRadius: 18, justifyContent: "center", alignItems: "center" },
-  quickLinkText: { flex: 1, fontSize: 15, fontWeight: "500" },
   // Modal
   modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.5)" },
   modalCard: { width: "90%", maxWidth: 420, borderRadius: 20, padding: 28 },

@@ -118,74 +118,52 @@ export class GamificationService {
 
   // Verificar y desbloquear achievements
   private static async checkAchievements(userId: string) {
-    // Obtener pedidos del usuario
-    const userOrders = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.userId, userId));
-
+    const userOrders = await db.select().from(orders).where(eq(orders.userId, userId));
     const completedOrders = userOrders.filter((o) => o.status === 'delivered');
+    const orderCount = completedOrders.length;
+    const totalSpent = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
 
-    // Achievement: Primera orden
-    if (completedOrders.length === 1) {
-      await this.unlockAchievement(userId, 'first_order');
-    }
+    const allAchievements = await db.select().from(achievements).where(eq(achievements.isActive, true));
 
-    // Achievement: 10 órdenes
-    if (completedOrders.length === 10) {
-      await this.unlockAchievement(userId, '10_orders');
-    }
-
-    // Achievement: 50 órdenes
-    if (completedOrders.length === 50) {
-      await this.unlockAchievement(userId, '50_orders');
-    }
-
-    // Achievement: 100 órdenes
-    if (completedOrders.length === 100) {
-      await this.unlockAchievement(userId, '100_orders');
+    for (const achievement of allAchievements) {
+      let qualifies = false;
+      if (achievement.requirementType === 'order_count')  qualifies = orderCount  >= achievement.requirementValue;
+      if (achievement.requirementType === 'total_spent')  qualifies = totalSpent  >= achievement.requirementValue;
+      // review_count se chequea desde reviewService al crear reseña
+      if (qualifies) await this.unlockAchievement(userId, achievement.id);
     }
   }
 
-  // Desbloquear achievement
-  private static async unlockAchievement(userId: string, achievementKey: string) {
-    // Buscar achievement
+  // Desbloquear achievement por ID
+  private static async unlockAchievement(userId: string, achievementId: string) {
     const [achievement] = await db
       .select()
       .from(achievements)
-      .where(eq(achievements.name, achievementKey))
+      .where(eq(achievements.id, achievementId))
       .limit(1);
 
     if (!achievement) return;
 
-    // Verificar si ya lo tiene
     const [existing] = await db
       .select()
       .from(userAchievements)
-      .where(
-        and(
-          eq(userAchievements.userId, userId),
-          eq(userAchievements.achievementId, achievement.id)
-        )
-      )
+      .where(and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievementId)))
       .limit(1);
 
     if (existing) return;
 
-    // Desbloquear
     await db.insert(userAchievements).values({
       id: crypto.randomUUID(),
       userId,
-      achievementId: achievement.id,
+      achievementId,
     });
 
-    // Otorgar puntos de recompensa
     if (achievement.rewardPoints > 0) {
       await this.awardPoints({
         userId,
         points: achievement.rewardPoints,
         type: 'achievement',
-        description: `Achievement desbloqueado: ${achievement.name}`,
+        description: `Logro desbloqueado: ${achievement.name}`,
       });
     }
   }

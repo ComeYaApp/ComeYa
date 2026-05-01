@@ -77,6 +77,24 @@ export class EnhancedReviewService {
       await this.updateDriverRating(deliveryPersonId);
     }
 
+    // Verificar achievements de resenas
+    try {
+      const { GamificationService } = await import('./gamificationService');
+      const { count: countFn } = await import('drizzle-orm');
+      const { achievements: achTable } = await import('@shared/schema-mysql');
+      const [{ value: reviewCount }] = await db
+        .select({ value: countFn() })
+        .from(reviews)
+        .where(eq(reviews.userId, userId));
+      const reviewAchievements = await db.select().from(achTable)
+        .where(eq(achTable.requirementType, 'review_count'));
+      for (const ach of reviewAchievements) {
+        if (Number(reviewCount) >= ach.requirementValue) {
+          await (GamificationService as any).unlockAchievement(userId, ach.id);
+        }
+      }
+    } catch {}
+
     return { success: true, reviewId };
   }
 

@@ -227,7 +227,7 @@ export default function HomeScreen() {
             </Pressable>
           )}
           {!isMobile && (
-            <Pressable style={s.navBtn} onPress={() => navigation.navigate("OrderTracking" as any, { orderId: "" })}>
+            <Pressable style={s.navBtn} onPress={() => navigation.navigate("OrdersTab" as any)}>
               <Feather name="package" size={16} color={text} />
               <Text style={[s.navBtnText, { color: text }]}>Pedidos</Text>
             </Pressable>

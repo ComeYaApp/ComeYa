@@ -35,8 +35,8 @@ export class LoyaltyService {
    */
   static async awardPointsForOrder(userId: string, orderId: string, orderTotal: number) {
     try {
-      // 1 punto por cada Bs. 10 gastados
-      const points = Math.floor(orderTotal / 1000);
+      // 1 punto por cada euro gastado (orderTotal en centimos)
+      const points = Math.floor(orderTotal / 100);
       
       if (points <= 0) return;
       

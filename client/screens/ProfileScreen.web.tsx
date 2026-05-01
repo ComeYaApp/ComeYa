@@ -366,6 +366,7 @@ function AccountSection({ user, navigation, driverStats, theme }: any) {
           <>
             <SettingItem icon="map-pin" label="Direcciones guardadas" onPress={() => navigation.navigate("SavedAddresses")} theme={theme} />
             <SettingItem icon="credit-card" label="Métodos de pago" value="Bizum · Tarjeta · PayPal" onPress={() => navigation.navigate("PaymentWalletSetup")} theme={theme} />
+            <SettingItem icon="gift" label="Mis puntos y recompensas" onPress={() => navigation.navigate("Gamification")} theme={theme} />
           </>
         )}
         {user?.role === "delivery_driver" && (

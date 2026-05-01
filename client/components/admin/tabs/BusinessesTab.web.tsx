@@ -110,6 +110,14 @@ export const BusinessesTab: React.FC<Props> = () => {
     } catch {}
   };
 
+  const toggleFeatured = async (biz: any) => {
+    try {
+      await apiRequest("PUT", `/api/admin/businesses/${biz.id}`, { isFeatured: !biz.isFeatured });
+      setBusinesses(prev => prev.map(b => b.id === biz.id ? { ...b, isFeatured: !b.isFeatured } : b));
+      if (selected?.id === biz.id) setSelected((p: any) => ({ ...p, isFeatured: !p.isFeatured }));
+    } catch {}
+  };
+
   // ── Detail panel ──────────────────────────────────────────────────────────
   if (selected) {
     const level = LEVEL_META[selected.partnerLevel] ?? null;
@@ -143,15 +151,26 @@ export const BusinessesTab: React.FC<Props> = () => {
               <Text style={[det.bizName, { color: text }]}>{selected.name}</Text>
               <Text style={[det.bizType, { color: sub }]}>{TYPE_LABEL[selected.type] ?? selected.type}</Text>
             </View>
-            <TouchableOpacity
-              onPress={() => toggleActive(selected)}
-              style={[det.toggleBtn, { backgroundColor: selected.isActive ? "#10B98115" : "#EF444415", borderColor: selected.isActive ? "#10B981" : "#EF4444" }]}
-            >
-              <View style={[det.toggleDot, { backgroundColor: selected.isActive ? "#10B981" : "#EF4444" }]} />
-              <Text style={[det.toggleTxt, { color: selected.isActive ? "#10B981" : "#EF4444" }]}>
-                {selected.isActive ? "Activo" : "Inactivo"}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => toggleFeatured(selected)}
+                style={[det.toggleBtn, { backgroundColor: selected.isFeatured ? "#FFB80015" : "transparent", borderColor: selected.isFeatured ? "#FFB800" : border }]}
+              >
+                <Feather name="star" size={12} color={selected.isFeatured ? "#FFB800" : sub} />
+                <Text style={[det.toggleTxt, { color: selected.isFeatured ? "#FFB800" : sub }]}>
+                  {selected.isFeatured ? "Destacado" : "No destacado"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => toggleActive(selected)}
+                style={[det.toggleBtn, { backgroundColor: selected.isActive ? "#10B98115" : "#EF444415", borderColor: selected.isActive ? "#10B981" : "#EF4444" }]}
+              >
+                <View style={[det.toggleDot, { backgroundColor: selected.isActive ? "#10B981" : "#EF4444" }]} />
+                <Text style={[det.toggleTxt, { color: selected.isActive ? "#10B981" : "#EF4444" }]}>
+                  {selected.isActive ? "Activo" : "Inactivo"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Info cards row */}

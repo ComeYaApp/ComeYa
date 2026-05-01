@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
-
-import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/Button";
-import { ConfirmModal } from "@/components/ConfirmModal";
+import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
-import { apiRequest } from "@/lib/query-client";
-import { ComeYaLogo } from "@/components/ComeYaLogo";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
-import { useResponsive } from "@/hooks/useResponsive";
+import { ComeYaColors } from "@/constants/theme";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
+import { ConfirmModal } from "@/components/ConfirmModal";
+
+const PRIMARY = "#DC2626";
 
 interface Address {
   id: string;
@@ -27,56 +23,52 @@ interface Address {
   isDefault: boolean;
 }
 
-type Nav = NativeStackNavigationProp<ProfileStackParamList>;
-
-const PRIMARY = "#DC2626";
+function resolveProfileImageUrl(img: string): string {
+  if (img.startsWith("data:image/")) return img;
+  const base = getApiUrl().replace(/\/+$/, "");
+  if (/^https?:\/\//i.test(img)) return img;
+  return `${base}${img.startsWith("/") ? "" : "/"}${img}`;
+}
 
 export default function SavedAddressesScreen() {
-  const navigation = useNavigation<Nav>();
-  const { theme } = useTheme();
+  const navigation = useNavigation<any>();
+  const { isDark } = useTheme();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const bg      = isDark ? "#111"    : "#f7f7f7";
+  const card    = isDark ? "#1e1e1e" : "#fff";
+  const border  = isDark ? "#333"    : "#e8e8e8";
+  const text    = isDark ? "#fff"    : "#1a1a1a";
+  const sub     = isDark ? "#aaa"    : "#666";
+  const cardBg  = isDark ? "#2a2a2a" : "#f9fafb";
+
+  const [addresses, setAddresses]           = useState<Address[]>([]);
+  const [loading, setLoading]               = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState<string | null>(null);
-  const { isMobile } = useResponsive();
+  const [profileImage, setProfileImage]     = useState<string | null>(null);
 
   useEffect(() => {
-    loadAddresses();
-  }, []);
+    if (user?.profileImage) setProfileImage(resolveProfileImageUrl(user.profileImage));
+  }, [user?.profileImage]);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      loadAddresses();
-    }, []),
-  );
+  useFocusEffect(React.useCallback(() => { loadAddresses(); }, []));
 
   const loadAddresses = async () => {
     try {
-      const response = await apiRequest("GET", `/api/users/${user?.id}/addresses`);
-      const data = await response.json();
+      const res = await apiRequest("GET", `/api/users/${user?.id}/addresses`);
+      const data = await res.json();
       setAddresses(data.addresses || []);
-    } catch (error) {
-      console.error("Error loading addresses:", error);
-    } finally {
-      setLoading(false);
-    }
+    } catch { } finally { setLoading(false); }
   };
 
-  const handleSetDefault = async (addressId: string) => {
+  const handleSetDefault = async (id: string) => {
     try {
-      await apiRequest("PUT", `/api/users/${user?.id}/addresses/${addressId}/default`);
+      await apiRequest("PUT", `/api/users/${user?.id}/addresses/${id}/default`);
       await loadAddresses();
       showToast("Dirección predeterminada actualizada", "success");
-    } catch (error) {
-      showToast("Error al actualizar dirección", "error");
-    }
-  };
-
-  const handleDelete = (addressId: string) => {
-    setAddressToDelete(addressId);
-    setShowDeleteModal(true);
+    } catch { showToast("Error al actualizar dirección", "error"); }
   };
 
   const confirmDelete = async () => {
@@ -85,419 +77,177 @@ export default function SavedAddressesScreen() {
       await apiRequest("DELETE", `/api/users/${user?.id}/addresses/${addressToDelete}`);
       await loadAddresses();
       showToast("Dirección eliminada", "success");
-    } catch (error) {
-      showToast("Error al eliminar dirección", "error");
-    } finally {
-      setShowDeleteModal(false);
-      setAddressToDelete(null);
+    } catch { showToast("Error al eliminar dirección", "error"); }
+    finally { setShowDeleteModal(false); setAddressToDelete(null); }
+  };
+
+  const getRoleLabel = () => {
+    switch (user?.role) {
+      case "customer": return "Cliente";
+      case "business_owner": return "Negocio";
+      case "delivery_driver": return "Repartidor";
+      default: return "Admin";
     }
   };
 
   return (
-    <>
-    <ScrollView style={{ flex: 1, backgroundColor: "#FAFAFA" }} contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap" as any }}>
-      {/* LEFT: Hero Section — oculto en móvil */}
-      {!isMobile && <View style={styles.heroSection}>
-        <View style={styles.heroContent}>
-          {/* Logo */}
-          <Pressable onPress={() => navigation.goBack()} style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <ComeYaLogo size={48} />
-            </View>
-            <ThemedText type="h2" style={styles.logoText}>ComeYa</ThemedText>
-          </Pressable>
-
-          {/* Headline */}
-          <View style={styles.heroTextContainer}>
-            <ThemedText type="h1" style={styles.heroTitle}>
-              Tus direcciones
-            </ThemedText>
-            <ThemedText type="body" style={styles.heroSubtitle}>
-              Gestiona las direcciones donde recibes tus pedidos
-            </ThemedText>
-          </View>
-
-          {/* Stats Card */}
-          <View style={styles.heroCard}>
-            <View style={styles.heroCardHeader}>
-              <Feather name="map-pin" size={24} color={PRIMARY} />
-              <ThemedText type="h4" style={{ marginLeft: 12 }}>Resumen</ThemedText>
-            </View>
-            <View style={styles.heroCardDivider} />
-            <View style={styles.statRow}>
-              <ThemedText type="body" style={{ color: "#6B7280" }}>
-                Total de direcciones
-              </ThemedText>
-              <ThemedText type="h3" style={{ color: PRIMARY }}>
-                {addresses.length}
-              </ThemedText>
-            </View>
-            <View style={styles.statRow}>
-              <ThemedText type="body" style={{ color: "#6B7280" }}>
-                Predeterminada
-              </ThemedText>
-              <ThemedText type="body" style={{ fontWeight: "600" }}>
-                {addresses.find(a => a.isDefault)?.label || "Ninguna"}
-              </ThemedText>
-            </View>
-          </View>
-
-          {/* Tips */}
-          <View style={styles.tipsContainer}>
-            <View style={styles.tipItem}>
-              <Feather name="info" size={16} color="rgba(255,255,255,0.8)" />
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.8)", marginLeft: 8 }}>
-                La dirección predeterminada se usará automáticamente
-              </ThemedText>
-            </View>
-            <View style={styles.tipItem}>
-              <Feather name="info" size={16} color="rgba(255,255,255,0.8)" />
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.8)", marginLeft: 8 }}>
-                Puedes tener múltiples direcciones guardadas
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-      </View>}
-
-      {/* RIGHT: Content Section */}
-      <View style={[styles.contentSection, isMobile && { padding: 16, justifyContent: 'flex-start' }]}>
-        <View style={[styles.contentCard, isMobile && { padding: 20, borderRadius: 16 }]}>
-            {loading ? (
-              <View style={styles.emptyState}>
-                <ThemedText type="body" style={{ color: "#6B7280" }}>
-                  Cargando...
-                </ThemedText>
-              </View>
-            ) : addresses.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Feather name="map-pin" size={64} color="#D1D5DB" />
-                <ThemedText type="h3" style={{ marginTop: 24, color: "#1F2937" }}>
-                  No tienes direcciones guardadas
-                </ThemedText>
-                <ThemedText type="body" style={{ color: "#6B7280", marginTop: 12, textAlign: "center" }}>
-                  Agrega una dirección para hacer tus pedidos más rápido
-                </ThemedText>
-                <Pressable
-                  onPress={() => navigation.navigate("AddAddress")}
-                  style={styles.emptyStateButton}
-                >
-                  <Feather name="plus" size={20} color="#FFF" />
-                  <ThemedText type="body" style={{ color: "#FFF", marginLeft: 12, fontWeight: "600" }}>
-                    Agregar primera dirección
-                  </ThemedText>
-                </Pressable>
-              </View>
+    <View style={[s.root, { backgroundColor: bg }]}>
+      {/* Sidebar — igual al de ProfileScreen */}
+      <MobileSidebarWrapper title="Mis Direcciones" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+        <View style={[s.sideHeader, { borderBottomColor: border }]}>
+          <Pressable style={s.avatarWrap} onPress={() => navigation.navigate("EditProfile")}>
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={s.avatar} contentFit="cover" />
             ) : (
-              <>
-                {addresses.map((address) => (
-                  <View key={address.id} style={styles.addressCard}>
-                    <View style={styles.addressHeader}>
-                      <View style={styles.addressLabelRow}>
-                        <View style={styles.iconCircle}>
-                          <Feather
-                            name={
-                              address.label === "Casa"
-                                ? "home"
-                                : address.label === "Trabajo"
-                                  ? "briefcase"
-                                  : "map-pin"
-                            }
-                            size={20}
-                            color={PRIMARY}
-                          />
-                        </View>
-                        <ThemedText type="h4" style={{ marginLeft: 12 }}>
-                          {address.label}
-                        </ThemedText>
-                      </View>
-                      {address.isDefault && (
-                        <View style={styles.defaultBadge}>
-                          <Feather name="check-circle" size={14} color="#059669" />
-                          <ThemedText type="small" style={{ color: "#059669", marginLeft: 6, fontWeight: "600" }}>
-                            Predeterminada
-                          </ThemedText>
-                        </View>
-                      )}
-                    </View>
-
-                    <ThemedText type="body" style={{ color: "#6B7280", marginTop: 12 }}>
-                      {address.street}
-                    </ThemedText>
-                    <ThemedText type="small" style={{ color: "#9CA3AF", marginTop: 4 }}>
-                      {address.city}, {address.state} {address.zipCode}
-                    </ThemedText>
-
-                    <View style={styles.addressActions}>
-                      <Pressable
-                        style={styles.actionButton}
-                        onPress={() => navigation.navigate("AddAddress", { address })}
-                      >
-                        <Feather name="edit-2" size={16} color={PRIMARY} />
-                        <ThemedText type="small" style={{ color: PRIMARY, marginLeft: 8, fontWeight: "600" }}>
-                          Editar
-                        </ThemedText>
-                      </Pressable>
-                      {!address.isDefault && (
-                        <Pressable
-                          style={styles.actionButton}
-                          onPress={() => handleSetDefault(address.id)}
-                        >
-                          <Feather name="check" size={16} color={PRIMARY} />
-                          <ThemedText type="small" style={{ color: PRIMARY, marginLeft: 8, fontWeight: "600" }}>
-                            Predeterminada
-                          </ThemedText>
-                        </Pressable>
-                      )}
-                      <Pressable
-                        style={[styles.actionButton, styles.deleteButton]}
-                        onPress={() => handleDelete(address.id)}
-                      >
-                        <Feather name="trash-2" size={16} color="#DC2626" />
-                        <ThemedText type="small" style={{ color: "#DC2626", marginLeft: 8, fontWeight: "600" }}>
-                          Eliminar
-                        </ThemedText>
-                      </Pressable>
-                    </View>
-                  </View>
-                ))}
-
-                {/* Add New Button */}
-                <Pressable
-                  onPress={() => navigation.navigate("AddAddress")}
-                  style={styles.addNewButton}
-                >
-                  <Feather name="plus" size={20} color={PRIMARY} />
-                  <ThemedText type="body" style={{ color: PRIMARY, marginLeft: 12, fontWeight: "600" }}>
-                    Agregar nueva dirección
-                  </ThemedText>
-                </Pressable>
-              </>
+              <View style={[s.avatar, { backgroundColor: PRIMARY + "20", justifyContent: "center", alignItems: "center" }]}>
+                <Feather name="user" size={40} color={PRIMARY} />
+              </View>
             )}
+          </Pressable>
+          <Text style={[s.userName, { color: text }]}>{user?.name || "Usuario"}</Text>
+          <Text style={[s.userPhone, { color: sub }]}>{user?.phone || ""}</Text>
+          <View style={[s.roleBadge, { backgroundColor: PRIMARY + "15" }]}>
+            <Text style={[s.roleBadgeText, { color: PRIMARY }]}>{getRoleLabel()}</Text>
           </View>
         </View>
-    </ScrollView>
+        <View style={s.sideNav}>
+          <Pressable onPress={() => navigation.navigate("Profile")} style={s.navItem}>
+            <Feather name="user" size={18} color={sub} />
+            <Text style={[s.navItemText, { color: text }]}>Cuenta</Text>
+          </Pressable>
+          <Pressable style={[s.navItem, s.navItemActive]}>
+            <Feather name="map-pin" size={18} color={PRIMARY} />
+            <Text style={[s.navItemText, { color: PRIMARY }]}>Mis direcciones</Text>
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate("PaymentWalletSetup")} style={s.navItem}>
+            <Feather name="credit-card" size={18} color={sub} />
+            <Text style={[s.navItemText, { color: text }]}>Métodos de pago</Text>
+          </Pressable>
+          <Pressable onPress={() => navigation.navigate("Support")} style={s.navItem}>
+            <Feather name="help-circle" size={18} color={sub} />
+            <Text style={[s.navItemText, { color: text }]}>Soporte</Text>
+          </Pressable>
+        </View>
+        <View style={[s.sideFooter, { borderTopColor: border }]}>
+          <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
+            <Feather name="arrow-left" size={16} color={sub} />
+            <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
+          </Pressable>
+        </View>
+      </MobileSidebarWrapper>
 
-      {/* Delete Confirmation Modal */}
+      {/* Main */}
+      <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        <View style={s.titleRow}>
+          <Text style={[s.pageTitle, { color: text }]}>Mis direcciones</Text>
+          <Pressable
+            onPress={() => navigation.navigate("AddAddress")}
+            style={[s.addBtn, { backgroundColor: PRIMARY }]}
+          >
+            <Feather name="plus" size={16} color="#fff" />
+            <Text style={s.addBtnText}>Añadir</Text>
+          </Pressable>
+        </View>
+
+        {loading ? (
+          <ActivityIndicator color={PRIMARY} style={{ marginTop: 40 }} />
+        ) : addresses.length === 0 ? (
+          <View style={[s.emptyCard, { backgroundColor: card, borderColor: border }]}>
+            <Feather name="map-pin" size={48} color={sub} />
+            <Text style={[s.emptyTitle, { color: text }]}>Sin direcciones guardadas</Text>
+            <Text style={[s.emptyHint, { color: sub }]}>Agrega una dirección para hacer tus pedidos más rápido</Text>
+            <Pressable onPress={() => navigation.navigate("AddAddress")} style={[s.addBtn, { backgroundColor: PRIMARY, marginTop: 20 }]}>
+              <Feather name="plus" size={16} color="#fff" />
+              <Text style={s.addBtnText}>Agregar dirección</Text>
+            </Pressable>
+          </View>
+        ) : (
+          addresses.map(addr => (
+            <View key={addr.id} style={[s.addrCard, { backgroundColor: card, borderColor: addr.isDefault ? PRIMARY : border }]}>
+              <View style={s.addrHeader}>
+                <View style={[s.addrIcon, { backgroundColor: PRIMARY + "15" }]}>
+                  <Feather name={addr.label === "Casa" ? "home" : addr.label === "Trabajo" ? "briefcase" : "map-pin"} size={20} color={PRIMARY} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[s.addrLabel, { color: text }]}>{addr.label}</Text>
+                  <Text style={[s.addrStreet, { color: sub }]}>{addr.street}</Text>
+                  <Text style={[s.addrCity, { color: sub }]}>{addr.city}, {addr.state}{addr.zipCode ? ` ${addr.zipCode}` : ""}</Text>
+                </View>
+                {addr.isDefault && (
+                  <View style={s.defaultBadge}>
+                    <Feather name="check-circle" size={13} color="#059669" />
+                    <Text style={s.defaultBadgeText}>Predeterminada</Text>
+                  </View>
+                )}
+              </View>
+              <View style={[s.addrActions, { borderTopColor: border }]}>
+                <Pressable onPress={() => navigation.navigate("AddAddress", { address: addr })} style={s.actionBtn}>
+                  <Feather name="edit-2" size={14} color={PRIMARY} />
+                  <Text style={[s.actionBtnText, { color: PRIMARY }]}>Editar</Text>
+                </Pressable>
+                {!addr.isDefault && (
+                  <Pressable onPress={() => handleSetDefault(addr.id)} style={s.actionBtn}>
+                    <Feather name="check" size={14} color={PRIMARY} />
+                    <Text style={[s.actionBtnText, { color: PRIMARY }]}>Predeterminar</Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={() => { setAddressToDelete(addr.id); setShowDeleteModal(true); }} style={[s.actionBtn, { backgroundColor: "#FEE2E2", borderColor: "#FCA5A5" }]}>
+                  <Feather name="trash-2" size={14} color="#DC2626" />
+                  <Text style={[s.actionBtnText, { color: "#DC2626" }]}>Eliminar</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+
       <ConfirmModal
         visible={showDeleteModal}
         title="Eliminar dirección"
         message="¿Estás seguro de eliminar esta dirección?"
         onConfirm={confirmDelete}
-        onCancel={() => {
-          setShowDeleteModal(false);
-          setAddressToDelete(null);
-        }}
+        onCancel={() => { setShowDeleteModal(false); setAddressToDelete(null); }}
         confirmText="Eliminar"
       />
-    </>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  webContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#FAFAFA",
-    minHeight: "100vh",
-    flexWrap: "wrap" as any,
-    ...Platform.select({
-      web: {
-        height: "100vh",
-        overflow: "hidden",
-      },
-    }),
-  },
-  // LEFT: Hero Section
-  heroSection: {
-    flex: 1,
-    minWidth: 300,
-    maxWidth: 600,
-    backgroundColor: PRIMARY,
-    padding: 48,
-    justifyContent: "center",
-  },
-  heroContent: {
-    maxWidth: 480,
-  },
-  logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  logoText: {
-    color: "#FFF",
-    marginLeft: 16,
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  heroTextContainer: {
-    marginBottom: 48,
-  },
-  heroTitle: {
-    fontSize: 48,
-    fontWeight: "800",
-    color: "#FFF",
-    marginBottom: 16,
-    lineHeight: 56,
-  },
-  heroSubtitle: {
-    fontSize: 18,
-    color: "rgba(255,255,255,0.9)",
-    lineHeight: 28,
-  },
-  heroCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 32,
-    marginBottom: 32,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-      },
-    }),
-  },
-  heroCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  heroCardDivider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginBottom: 16,
-  },
-  statRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  tipsContainer: {
-    gap: 16,
-  },
-  tipItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  // RIGHT: Content Section
-  contentSection: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 48,
-  },
-  contentScrollView: {
-    flex: 1,
-    width: "100%",
-  },
-  contentScrollContent: {
-    alignItems: "center",
-    paddingVertical: 48,
-  },
-  contentCard: {
-    width: "100%",
-    maxWidth: 720,
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 48,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-      },
-    }),
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 64,
-  },
-  emptyStateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: PRIMARY,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 16,
-    marginTop: 32,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
-      },
-    }),
-  },
-  addressCard: {
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 16,
-  },
-  addressHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  addressLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: PRIMARY + "15",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  defaultBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ECFDF5",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  addressActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 20,
-    flexWrap: "wrap",
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  deleteButton: {
-    backgroundColor: "#FEE2E2",
-    borderColor: "#FCA5A5",
-  },
-  addNewButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFF",
-    borderWidth: 2,
-    borderColor: PRIMARY,
-    borderStyle: "dashed",
-    paddingVertical: 20,
-    borderRadius: 16,
-    marginTop: 8,
-  },
+const s = StyleSheet.create({
+  root:           { flex: 1, flexDirection: "row", overflow: "hidden" as any },
+  sidebar:        { width: 280, borderRightWidth: 1, flexDirection: "column" as any },
+  sideHeader:     { padding: 24, alignItems: "center", borderBottomWidth: 1 },
+  avatarWrap:     { position: "relative", marginBottom: 12 },
+  avatar:         { width: 80, height: 80, borderRadius: 40 },
+  userName:       { fontSize: 17, fontWeight: "700", marginBottom: 4, textAlign: "center" },
+  userPhone:      { fontSize: 13, marginBottom: 10, textAlign: "center" },
+  roleBadge:      { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  roleBadgeText:  { fontSize: 11, fontWeight: "700" },
+  sideNav:        { flex: 1, paddingVertical: 16 },
+  navItem:        { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
+  navItemActive:  { backgroundColor: "#DC262610", borderRightWidth: 3, borderRightColor: "#DC2626" },
+  navItemText:    { fontSize: 14, fontWeight: "600" },
+  sideFooter:     { borderTopWidth: 1, padding: 16 },
+  backBtn:        { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
+  backBtnText:    { fontSize: 14, fontWeight: "600" },
+  main:           { flex: 1, height: "100vh" as any },
+  content:        { padding: 32, maxWidth: 720, paddingBottom: 80 },
+  titleRow:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 },
+  pageTitle:      { fontSize: 22, fontWeight: "800" },
+  addBtn:         { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  addBtnText:     { color: "#fff", fontSize: 14, fontWeight: "700" },
+  emptyCard:      { borderRadius: 16, borderWidth: 1, padding: 48, alignItems: "center" },
+  emptyTitle:     { fontSize: 18, fontWeight: "700", marginTop: 16, marginBottom: 8 },
+  emptyHint:      { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  addrCard:       { borderRadius: 16, borderWidth: 1.5, marginBottom: 16, overflow: "hidden" },
+  addrHeader:     { flexDirection: "row", alignItems: "flex-start", padding: 20 },
+  addrIcon:       { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" },
+  addrLabel:      { fontSize: 15, fontWeight: "700", marginBottom: 4 },
+  addrStreet:     { fontSize: 14, marginBottom: 2 },
+  addrCity:       { fontSize: 12 },
+  defaultBadge:   { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#ECFDF5", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  defaultBadgeText: { fontSize: 11, fontWeight: "700", color: "#059669" },
+  addrActions:    { flexDirection: "row", gap: 8, padding: 12, borderTopWidth: 1, flexWrap: "wrap" },
+  actionBtn:      { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: "#e8e8e8", backgroundColor: "transparent" },
+  actionBtnText:  { fontSize: 13, fontWeight: "600" },
 });

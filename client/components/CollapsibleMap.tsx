@@ -202,9 +202,9 @@ export function CollapsibleMap({
             {isValidLocation(businessLocation) && (
               <Marker coordinate={businessLocation} title="Negocio" anchor={{ x: 0.5, y: 1 }}>
                 <PinMarker 
-                  color="#FFF3E0" 
-                  icon={isPickup ? "shopping-bag" : "utensils"} 
-                  iconColor="#FF6B35"
+                  color="#FF6B35" 
+                  icon={isPickup ? "shopping-bag" : "coffee"} 
+                  iconColor="#FFFFFF"
                 />
               </Marker>
             )}
@@ -234,9 +234,16 @@ export function CollapsibleMap({
           </MapView>
         ) : (
           <View style={[styles.mapFallback, { backgroundColor: theme.backgroundSecondary }]}>
-            <Feather name="map-pin" size={40} color={theme.textSecondary} />
-            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}>
-              {!mapAvailable ? "Mapa no disponible" : "Esperando ubicación del pedido..."}
+            <View style={[styles.mapFallbackIcon, { backgroundColor: ComeYaColors.primary + '15' }]}>
+              <Feather name="map-pin" size={32} color={ComeYaColors.primary} />
+            </View>
+            <ThemedText type="h4" style={{ marginTop: Spacing.md, color: theme.text }}>
+              {statusInfo.label}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs, textAlign: "center", paddingHorizontal: Spacing.xl }}>
+              {!mapAvailable 
+                ? "El mapa solo está disponible en la app móvil" 
+                : "Ubicación GPS no disponible aún"}
             </ThemedText>
           </View>
         )}
@@ -357,6 +364,14 @@ const styles = StyleSheet.create({
   },
   mapFallback: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  mapFallbackIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
   },

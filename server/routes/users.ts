@@ -208,6 +208,28 @@ router.put("/profile", authenticateToken, async (req, res) => {
       .set(updates)
       .where(eq(users.id, req.user!.id));
 
+    // Sincronizar con tabla addresses si se envió dirección
+    if (address) {
+      const { addresses } = await import("@shared/schema-mysql");
+      const existing = await db.select().from(addresses)
+        .where(eq(addresses.userId, req.user!.id))
+        .limit(10);
+      const defaultAddr = existing.find(a => a.isDefault) || existing[0];
+      if (defaultAddr) {
+        await db.update(addresses).set({ street: address }).where(eq(addresses.id, defaultAddr.id));
+      } else {
+        await db.insert(addresses).values({
+          id: crypto.randomUUID(),
+          userId: req.user!.id,
+          label: "Casa",
+          street: address,
+          city: "Soria",
+          state: "Castilla y León",
+          isDefault: true,
+        });
+      }
+    }
+
     res.json({ success: true, message: "Perfil actualizado" });
   } catch (error: any) {
     console.error("Update profile error:", error);
