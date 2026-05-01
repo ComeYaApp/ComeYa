@@ -181,13 +181,29 @@ export default function StripePaymentScreen() {
   const { isMobile } = useResponsive();
 
   const params = route.params as any;
-  const { orderId, amount, subtotal, deliveryFee, businessId } = params || {};
+  const { orderId, amount, subtotal, deliveryFee, businessId, giftCardId, isGiftCard } = params || {};
 
   useEffect(() => {
     getStripePromise().then(() => setStripeReady(true));
   }, []);
 
   const handleSuccess = async () => {
+    if (isGiftCard && giftCardId) {
+      // Activar gift card tras pago Stripe confirmado
+      try {
+        await apiRequest('POST', `/api/gift-cards/${giftCardId}/stripe-success`, {});
+      } catch (e) {
+        console.error('Error activating gift card:', e);
+      }
+      navigation.reset({
+        index: 0,
+        routes: [
+          { name: 'Main' as never },
+          { name: 'GiftCards' as never },
+        ],
+      });
+      return;
+    }
     await clearCart();
     navigation.reset({
       index: 0,
@@ -237,8 +253,8 @@ export default function StripePaymentScreen() {
 
           <View style={styles.heroCard}>
             <View style={styles.heroCardHeader}>
-              <Feather name="credit-card" size={24} color={PRIMARY} />
-              <ThemedText type="h4" style={{ marginLeft: 12 }}>Total a pagar</ThemedText>
+              <Feather name={isGiftCard ? 'gift' : 'credit-card'} size={24} color={PRIMARY} />
+              <ThemedText type="h4" style={{ marginLeft: 12 }}>{isGiftCard ? 'Gift Card' : 'Total a pagar'}</ThemedText>
             </View>
             <View style={styles.heroCardDivider} />
             <ThemedText type="h1" style={{ color: PRIMARY, fontSize: 48, fontWeight: "800" }}>
