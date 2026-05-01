@@ -141,7 +141,7 @@ export default function BusinessMapScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await apiRequest("GET", "/api/businesses");
+        const res = await apiRequest("GET", "/api/business");
         const data = await res.json();
         const raw = data.businesses || [];
         const pins: BusinessPin[] = raw
@@ -173,17 +173,22 @@ export default function BusinessMapScreen() {
     if (user?.role !== "customer") return;
     const fetch = async () => {
       try {
-        const res = await apiRequest("GET", "/api/orders?status=active");
+        const res = await apiRequest("GET", "/api/orders");
         const data = await res.json();
-        const orders = (data.orders || []).map((o: any) => ({
-          id: o.id,
-          businessName: o.businessName || "Negocio",
-          status: o.status,
-          eta: o.estimatedDelivery
-            ? Math.max(0, Math.round((new Date(o.estimatedDelivery).getTime() - Date.now()) / 60000))
-            : undefined,
-        }));
-        setActiveOrders(orders);
+        const allOrders = data.orders || [];
+        const active = allOrders
+          .filter((o: any) => ['pending','confirmed','preparing','ready','on_the_way'].includes(
+            o.order?.status || o.status
+          ))
+          .map((o: any) => ({
+            id: o.order?.id || o.id,
+            businessName: o.order?.businessName || o.businessName || 'Negocio',
+            status: o.order?.status || o.status,
+            eta: (o.order?.estimatedDelivery || o.estimatedDelivery)
+              ? Math.max(0, Math.round((new Date(o.order?.estimatedDelivery || o.estimatedDelivery).getTime() - Date.now()) / 60000))
+              : undefined,
+          }));
+        setActiveOrders(active);
       } catch {}
     };
     fetch();

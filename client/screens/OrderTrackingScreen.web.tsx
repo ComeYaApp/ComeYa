@@ -80,6 +80,8 @@ export default function OrderTrackingScreen() {
       try {
         const res = await apiRequest("GET", `/api/orders/${orderId}`);
         const data = await res.json();
+        const apiOrder = data.order || data;
+
         // Extraer lat/lng del JSON de delivery_address si los campos separados son null
         if ((!apiOrder.deliveryLatitude || !apiOrder.deliveryLongitude) && apiOrder.deliveryAddress) {
           try {
@@ -91,29 +93,8 @@ export default function OrderTrackingScreen() {
           } catch {}
         }
 
-        // Si aún no hay coordenadas del cliente, geocodificar la dirección de texto
-        if ((!apiOrder.deliveryLatitude || !apiOrder.deliveryLongitude) && apiOrder.deliveryAddress) {
-          try {
-            await loadGoogleMaps();
-            const google = (window as any).google;
-            const geocoder = new google.maps.Geocoder();
-            const addressText = typeof apiOrder.deliveryAddress === 'string'
-              ? apiOrder.deliveryAddress
-              : (apiOrder.deliveryAddress?.street || '') + ', Soria, España';
-            await new Promise<void>((resolve) => {
-              geocoder.geocode({ address: addressText + (addressText.includes('Soria') ? '' : ', Soria, España') }, (results: any, status: any) => {
-                if (status === 'OK' && results[0]) {
-                  apiOrder.deliveryLatitude = String(results[0].geometry.location.lat());
-                  apiOrder.deliveryLongitude = String(results[0].geometry.location.lng());
-                }
-                resolve();
-              });
-            });
-          } catch {}
-        }
-
         setOrder(apiOrder);
-        
+
         if (apiOrder?.estimatedDelivery) {
           setEta(Math.max(0, Math.round((new Date(apiOrder.estimatedDelivery).getTime() - Date.now()) / 60000)));
         }
@@ -365,7 +346,7 @@ export default function OrderTrackingScreen() {
     <View style={[s.webContainer, { backgroundColor: theme.backgroundRoot }]}>
       {/* IZQUIERDA: Mapa fijo a pantalla completa */}
       <View style={s.mapSection}>
-        <div ref={mapRef} style={{ width: "100%", height: "100%" }} />
+        <div ref={mapRef} style={{ width: "100%", height: "100%", minHeight: "100vh" } as any} />
         {(!mapsReady || loading) && (
           <View style={s.mapLoading}>
             <ActivityIndicator size="large" color={PRIMARY} />
