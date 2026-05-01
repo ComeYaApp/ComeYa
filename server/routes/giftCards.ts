@@ -6,7 +6,9 @@ const router = express.Router();
 
 router.post('/purchase', authenticateToken, async (req, res) => {
   try {
-    const { amount, recipientEmail, recipientPhone, message, design } = req.body;
+    const { amount, recipientEmail, recipientPhone, message, design, paymentMethod } = req.body;
+    // paymentMethod: 'stripe' = activa inmediatamente tras pago
+    // paymentMethod: 'bizum_manual' | 'sepa' = queda pending_payment hasta que admin apruebe
     const result = await GiftCardService.purchaseGiftCard({
       purchasedBy: req.user!.id,
       amount: Math.round(amount * 100),
@@ -14,6 +16,7 @@ router.post('/purchase', authenticateToken, async (req, res) => {
       recipientPhone,
       message,
       design,
+      activateImmediately: false, // siempre false aquí; Stripe activa via webhook
     });
     res.json(result);
   } catch (error: any) {
@@ -21,8 +24,17 @@ router.post('/purchase', authenticateToken, async (req, res) => {
   }
 });
 
-// Subir comprobante de pago para activar gift card
-router.post('/:giftCardId/payment-proof', authenticateToken, async (req, res) => {
+// POST /api/gift-cards/:giftCardId/stripe-success — llamado tras pago Stripe confirmado
+router.post('/:giftCardId/stripe-success', authenticateToken, async (req, res) => {
+  try {
+    const result = await GiftCardService.activateGiftCard(req.params.giftCardId, req.user!.id);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/gift-cards/:giftCardId/payment-proof
   try {
     const { giftCardId } = req.params;
     const { paymentProvider, proofImageUrl, referenceNumber, amount } = req.body;

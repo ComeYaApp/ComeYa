@@ -40,8 +40,9 @@ export default function GiftCardsScreen() {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [message, setMessage]               = useState('');
   const [selectedDesign, setSelectedDesign] = useState('default');
+  const [paymentMethod, setPaymentMethod]   = useState<'stripe' | 'bizum_manual' | 'sepa'>('stripe');
 
-  // Comprobante de pago
+  // Comprobante de pago (solo para métodos manuales)
   const [proofCardId, setProofCardId]       = useState<string | null>(null);
   const [proofProvider, setProofProvider]   = useState('bizum');
   const [proofRef, setProofRef]             = useState('');
@@ -69,13 +70,23 @@ export default function GiftCardsScreen() {
       recipientEmail: recipientEmail.trim() || undefined,
       message: message.trim() || undefined,
       design: selectedDesign,
+      paymentMethod,
     })).json(),
     onSuccess: (data) => {
       if (data.success) {
-        showToast('Gift Card creada. Ahora sube el comprobante de pago.', 'success');
         queryClient.invalidateQueries({ queryKey: ['/api/gift-cards/my-cards'] });
-        setProofCardId(data.giftCard.id);
-        setActiveTab('my-cards');
+        if (paymentMethod === 'stripe') {
+          // Redirigir a Stripe igual que un pedido
+          navigation.navigate('StripePayment' as never, {
+            giftCardId: data.giftCard.id,
+            amount: Math.round(parseFloat(amount) * 100),
+            isGiftCard: true,
+          } as never);
+        } else {
+          showToast('Gift Card creada. Ahora sube el comprobante de pago.', 'success');
+          setProofCardId(data.giftCard.id);
+          setActiveTab('my-cards');
+        }
         setAmount('25'); setRecipientEmail(''); setMessage('');
       } else showToast(data.error || 'Error al crear gift card', 'error');
     },
@@ -202,11 +213,38 @@ export default function GiftCardsScreen() {
               </View>
             )}
 
+            {/* Método de pago */}
+            <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
+              <View style={s.cardHeader}>
+                <Feather name="credit-card" size={18} color={PRIMARY} />
+                <Text style={[s.cardTitle, { color: text }]}>Método de pago</Text>
+              </View>
+              <View style={{ gap: 8 }}>
+                {[
+                  { id: 'stripe',       label: 'Tarjeta / Bizum (Stripe)', icon: 'zap',      desc: 'Pago instantáneo — gift card activa al momento' },
+                  { id: 'bizum_manual', label: 'Bizum manual',             icon: 'smartphone', desc: 'Transfieres tú — admin activa en breve' },
+                  { id: 'sepa',         label: 'Transferencia SEPA',       icon: 'send',      desc: 'Transfieres tú — admin activa en breve' },
+                ].map(m => (
+                  <Pressable key={m.id} onPress={() => setPaymentMethod(m.id as any)}
+                    style={[s.methodRow, { borderColor: paymentMethod === m.id ? PRIMARY : border, backgroundColor: paymentMethod === m.id ? PRIMARY + '08' : cardBg }]}>
+                    <View style={[s.methodIcon, { backgroundColor: paymentMethod === m.id ? PRIMARY + '15' : border + '40' }]}>
+                      <Feather name={m.icon as any} size={16} color={paymentMethod === m.id ? PRIMARY : sub} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.methodLabel, { color: text }]}>{m.label}</Text>
+                      <Text style={[s.methodDesc, { color: sub }]}>{m.desc}</Text>
+                    </View>
+                    {paymentMethod === m.id && <Feather name="check-circle" size={18} color={PRIMARY} />}
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
             <Pressable onPress={() => purchaseMutation.mutate()} disabled={!canBuy}
               style={[s.ctaBtn, { backgroundColor: PRIMARY, opacity: canBuy ? 1 : 0.5 }]}>
               {purchaseMutation.isPending
                 ? <ActivityIndicator color="#fff" />
-                : <><Feather name="gift" size={18} color="#fff" /><Text style={s.ctaBtnText}>Crear Gift Card €{amount}</Text></>
+                : <><Feather name="gift" size={18} color="#fff" /><Text style={s.ctaBtnText}>{paymentMethod === 'stripe' ? `Pagar con Stripe €${amount}` : `Crear Gift Card €${amount}`}</Text></>
               }
             </Pressable>
           </>
@@ -344,6 +382,10 @@ const s = StyleSheet.create({
   designName:       { fontSize: 11, marginTop: 4, textAlign: 'center' },
   ctaBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 14, borderRadius: 12 },
   ctaBtnText:       { color: '#fff', fontSize: 15, fontWeight: '700' },
+  methodRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: 12, padding: 14, marginBottom: 8 },
+  methodIcon:       { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  methodLabel:      { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  methodDesc:       { fontSize: 12 },
   sectionTitle:     { fontSize: 18, fontWeight: '700', marginBottom: 16 },
   empty:            { borderRadius: 16, borderWidth: 1, padding: 48, alignItems: 'center', gap: 10 },
   emptyTitle:       { fontSize: 16, fontWeight: '600' },

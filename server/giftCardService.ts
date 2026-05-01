@@ -15,7 +15,7 @@ export class GiftCardService {
     return code;
   }
 
-  // Crear gift card en estado pending_payment
+  // Crear gift card tras pago confirmado (llamado desde webhook Stripe o aprobación manual)
   static async purchaseGiftCard(data: {
     purchasedBy: string;
     amount: number;
@@ -23,29 +23,40 @@ export class GiftCardService {
     recipientPhone?: string;
     message?: string;
     design?: string;
+    activateImmediately?: boolean; // true = pago Stripe ya confirmado
   }) {
-    const { purchasedBy, amount, recipientEmail, recipientPhone, message, design = 'default' } = data;
+    const { purchasedBy, amount, recipientEmail, recipientPhone, message, design = 'default', activateImmediately = false } = data;
 
     if (amount < 1000) return { success: false, error: 'Monto mínimo: €10' };
 
     const code = this.generateCode();
     const giftCardId = crypto.randomUUID();
+    const expiresAt = activateImmediately ? new Date(Date.now() + this.EXPIRY_DAYS * 24 * 60 * 60 * 1000) : null;
 
     await db.insert(giftCards).values({
       id: giftCardId,
       code,
       amount,
-      balance: 0, // saldo 0 hasta que admin active
-      status: 'pending_payment',
+      balance: activateImmediately ? amount : 0,
+      status: activateImmediately ? 'active' : 'pending_payment',
       purchasedBy,
       recipientEmail: recipientEmail || null,
       recipientPhone: recipientPhone || null,
       message: message || null,
       design,
-      expiresAt: null, // se asigna al activar
+      expiresAt,
     });
 
-    return { success: true, giftCard: { id: giftCardId, code, amount: amount / 100 } };
+    if (activateImmediately) {
+      await db.insert(giftCardTransactions).values({
+        id: crypto.randomUUID(),
+        giftCardId,
+        amount,
+        balanceAfter: amount,
+      });
+    }
+
+    return { success: true, giftCard: { id: giftCardId, code, amount: amount / 100, status: activateImmediately ? 'active' : 'pending_payment', expiresAt } };
   }
 
   // Subir comprobante de pago para una gift card
