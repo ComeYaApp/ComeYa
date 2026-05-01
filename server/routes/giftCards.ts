@@ -4,105 +4,85 @@ import { GiftCardService } from '../giftCardService';
 
 const router = express.Router();
 
-// POST /api/gift-cards/purchase - Comprar gift card
 router.post('/purchase', authenticateToken, async (req, res) => {
   try {
-    const {
-      amount,
-      recipientEmail,
-      recipientPhone,
-      recipientName,
-      message,
-      design,
-    } = req.body;
-
+    const { amount, recipientEmail, recipientPhone, message, design } = req.body;
     const result = await GiftCardService.purchaseGiftCard({
       purchasedBy: req.user!.id,
-      amount: Math.round(amount * 100), // convertir a centavos
+      amount: Math.round(amount * 100),
       recipientEmail,
       recipientPhone,
-      recipientName,
       message,
       design,
     });
-
     res.json(result);
   } catch (error: any) {
-    console.error('Purchase gift card error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST /api/gift-cards/validate - Validar gift card
+// Subir comprobante de pago para activar gift card
+router.post('/:giftCardId/payment-proof', authenticateToken, async (req, res) => {
+  try {
+    const { giftCardId } = req.params;
+    const { paymentProvider, proofImageUrl, referenceNumber, amount } = req.body;
+    if (!paymentProvider || !proofImageUrl || !amount) {
+      return res.status(400).json({ success: false, error: 'Datos incompletos' });
+    }
+    const result = await GiftCardService.submitPaymentProof({
+      giftCardId,
+      userId: req.user!.id,
+      paymentProvider,
+      proofImageUrl,
+      referenceNumber,
+      amount: Math.round(amount * 100),
+    });
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/validate', authenticateToken, async (req, res) => {
   try {
     const { code } = req.body;
-
-    if (!code) {
-      return res.status(400).json({ success: false, error: 'Código requerido' });
-    }
-
-    const result = await GiftCardService.validateGiftCard(code);
-    res.json(result);
+    if (!code) return res.status(400).json({ success: false, error: 'Código requerido' });
+    res.json(await GiftCardService.validateGiftCard(code));
   } catch (error: any) {
-    console.error('Validate gift card error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST /api/gift-cards/redeem - Canjear gift card
 router.post('/redeem', authenticateToken, async (req, res) => {
   try {
     const { code, orderId, amountToUse } = req.body;
-
-    if (!code || !orderId || !amountToUse) {
-      return res.status(400).json({ success: false, error: 'Datos incompletos' });
-    }
-
-    const result = await GiftCardService.redeemGiftCard({
-      code,
-      orderId,
-      userId: req.user!.id,
-      amountToUse: Math.round(amountToUse * 100),
-    });
-
-    res.json(result);
+    if (!code || !orderId || !amountToUse) return res.status(400).json({ success: false, error: 'Datos incompletos' });
+    res.json(await GiftCardService.redeemGiftCard({ code, orderId, userId: req.user!.id, amountToUse: Math.round(amountToUse * 100) }));
   } catch (error: any) {
-    console.error('Redeem gift card error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET /api/gift-cards/my-cards - Obtener gift cards del usuario
 router.get('/my-cards', authenticateToken, async (req, res) => {
   try {
-    const result = await GiftCardService.getUserGiftCards(req.user!.id);
-    res.json(result);
+    res.json(await GiftCardService.getUserGiftCards(req.user!.id));
   } catch (error: any) {
-    console.error('Get user gift cards error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET /api/gift-cards/designs - Obtener diseños disponibles
 router.get('/designs', async (req, res) => {
   try {
-    const result = await GiftCardService.getDesigns();
-    res.json(result);
+    res.json(await GiftCardService.getDesigns());
   } catch (error: any) {
-    console.error('Get designs error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// GET /api/gift-cards/:giftCardId/history - Historial de transacciones
 router.get('/:giftCardId/history', authenticateToken, async (req, res) => {
   try {
-    const { giftCardId } = req.params;
-    const result = await GiftCardService.getTransactionHistory(giftCardId);
-    res.json(result);
+    res.json(await GiftCardService.getTransactionHistory(req.params.giftCardId));
   } catch (error: any) {
-    console.error('Get transaction history error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

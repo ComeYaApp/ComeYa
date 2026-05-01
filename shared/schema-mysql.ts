@@ -754,7 +754,8 @@ export const paymentMethods = mysqlTable("payment_methods", {
 // Payment Proofs - Comprobantes de pago
 export const paymentProofs = mysqlTable("payment_proofs", {
   id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
-  orderId: varchar("order_id", { length: 255 }).notNull(),
+  orderId: varchar("order_id", { length: 255 }),
+  giftCardId: varchar("gift_card_id", { length: 255 }),
   userId: varchar("user_id", { length: 255 }).notNull(),
   paymentProvider: varchar("payment_provider", { length: 50 }).notNull(),
   proofImageUrl: varchar("proof_image_url", { length: 500 }),

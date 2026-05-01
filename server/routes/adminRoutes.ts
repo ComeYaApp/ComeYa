@@ -824,3 +824,37 @@ router.get("/bank-account", authenticateToken, requireRole("admin", "super_admin
     res.status(500).json({ error: error.message });
   }
 });
+
+// ── Gift Cards admin ────────────────────────────────────────────────────────
+
+// GET /api/admin/gift-cards/pending
+router.get("/gift-cards/pending", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { GiftCardService } = await import("../giftCardService");
+    res.json(await GiftCardService.getPendingGiftCards());
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/gift-cards/:id/activate
+router.post("/gift-cards/:id/activate", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { GiftCardService } = await import("../giftCardService");
+    res.json(await GiftCardService.activateGiftCard(req.params.id, req.user!.id));
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/gift-cards/:id/reject
+router.post("/gift-cards/:id/reject", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ success: false, error: 'Razón requerida' });
+    const { GiftCardService } = await import("../giftCardService");
+    res.json(await GiftCardService.rejectGiftCard(req.params.id, req.user!.id, reason));
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
