@@ -81,6 +81,18 @@ export default function OrderTrackingScreen() {
         const res = await apiRequest("GET", `/api/orders/${orderId}`);
         const data = await res.json();
         const apiOrder = data.order || data;
+
+        // Extraer lat/lng del JSON de delivery_address si los campos separados son null
+        if ((!apiOrder.deliveryLatitude || !apiOrder.deliveryLongitude) && apiOrder.deliveryAddress) {
+          try {
+            const addr = typeof apiOrder.deliveryAddress === 'string'
+              ? JSON.parse(apiOrder.deliveryAddress)
+              : apiOrder.deliveryAddress;
+            if (addr?.latitude) apiOrder.deliveryLatitude = String(addr.latitude);
+            if (addr?.longitude) apiOrder.deliveryLongitude = String(addr.longitude);
+          } catch {}
+        }
+
         setOrder(apiOrder);
         
         if (apiOrder?.estimatedDelivery) {

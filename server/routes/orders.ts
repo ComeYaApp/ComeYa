@@ -184,6 +184,17 @@ router.post("/", authenticateToken, async (req, res) => {
     // SIEMPRE usar el total del cliente - NO recalcular
     const total = clientTotal;
 
+    // Extraer lat/lng del JSON de deliveryAddress si no vienen como campos separados
+    let finalDeliveryLat = deliveryLatitude || null;
+    let finalDeliveryLng = deliveryLongitude || null;
+    if ((!finalDeliveryLat || !finalDeliveryLng) && deliveryAddress) {
+      try {
+        const addrObj = typeof deliveryAddress === 'string' ? JSON.parse(deliveryAddress) : deliveryAddress;
+        if (addrObj?.latitude) finalDeliveryLat = String(addrObj.latitude);
+        if (addrObj?.longitude) finalDeliveryLng = String(addrObj.longitude);
+      } catch {}
+    }
+
     // Create order
     const orderId = crypto.randomUUID();
     const newOrder = {
@@ -202,8 +213,8 @@ router.post("/", authenticateToken, async (req, res) => {
       paymentMethod: paymentMethod || "cash",
       orderType: validOrderType,
       deliveryAddress: deliveryAddress || "",
-      deliveryLatitude: deliveryLatitude || null,
-      deliveryLongitude: deliveryLongitude || null,
+      deliveryLatitude: finalDeliveryLat,
+      deliveryLongitude: finalDeliveryLng,
       notes: notes || null,
       substitutionPreference: substitutionPreference || "refund",
       itemSubstitutionPreferences: itemSubstitutionPreferences || null,
