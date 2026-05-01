@@ -280,18 +280,28 @@ export default function OrderTrackingScreen() {
           lng: parseFloat(data.location.longitude),
         };
 
-        // Crear o mover marcador del repartidor
+        // Crear o mover marcador del repartidor con foto de perfil
+        const driverIconSvg = driverPhoto
+          ? `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="72"><defs><clipPath id="c"><circle cx="28" cy="28" r="24"/></clipPath></defs><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><circle cx="28" cy="28" r="27" fill="#10B981" opacity="0.3" stroke="none"/><image href="${driverPhoto}" x="4" y="4" width="48" height="48" clip-path="url(#c)" preserveAspectRatio="xMidYMid slice"/><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="72"><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><path d="M18 32c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M21 34a3 3 0 106 0M35 34a3 3 0 106 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 27l3-6h6l2 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`;
+
         if (driverMarkerRef.current) {
           driverMarkerRef.current.setPosition(driverPos);
+          // Actualizar icono si ya existe (por si la foto cargó después)
+          driverMarkerRef.current.setIcon({
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverIconSvg)}`,
+            scaledSize: new google.maps.Size(64, 72),
+            anchor: new google.maps.Point(28, 72),
+          });
         } else {
           driverMarkerRef.current = new google.maps.Marker({
             position: driverPos,
             map: gmap.current,
             title: order.deliveryPersonName || 'Repartidor',
             icon: {
-              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><circle cx="28" cy="28" r="26" fill="#10B981" stroke="white" stroke-width="4"/><circle cx="28" cy="28" r="22" fill="#10B981" opacity="0.25"/><path d="M18 32c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M21 34a3 3 0 106 0M35 34a3 3 0 106 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 27l3-6h6l2 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')}`,
-              scaledSize: new google.maps.Size(56, 56),
-              anchor: new google.maps.Point(28, 28),
+              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverIconSvg)}`,
+              scaledSize: new google.maps.Size(64, 72),
+              anchor: new google.maps.Point(28, 72),
             },
             zIndex: 999,
             animation: google.maps.Animation.DROP,
