@@ -56,9 +56,9 @@ export class SubscriptionService {
       };
     }
 
-    // Verificar si está vencida
+    // Verificar si está vencida (usando endDate)
     const now = new Date();
-    if (subscription.currentPeriodEnd < now && subscription.status === 'active') {
+    if (subscription.endDate && subscription.endDate < now && subscription.status === 'active') {
       await db
         .update(subscriptions)
         .set({ status: 'expired' })
@@ -109,10 +109,8 @@ export class SubscriptionService {
         .set({
           plan,
           status: 'active',
-          price: planData.price,
-          billingCycle,
-          currentPeriodStart: now,
-          currentPeriodEnd: periodEnd,
+          startDate: now,
+          endDate: periodEnd,
           autoRenew: true,
         })
         .where(eq(subscriptions.id, existing.id));
@@ -124,10 +122,8 @@ export class SubscriptionService {
         userId,
         plan,
         status: 'active',
-        price: planData.price,
-        billingCycle,
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
+        startDate: now,
+        endDate: periodEnd,
         autoRenew: true,
       });
 
@@ -211,8 +207,8 @@ export class SubscriptionService {
     const renewed = [];
     
     for (const sub of expiredSubs) {
-      if (sub.currentPeriodEnd < now) {
-        const newPeriodEnd = new Date(sub.currentPeriodEnd);
+      if (sub.endDate && sub.endDate < now) {
+        const newPeriodEnd = new Date(sub.endDate);
         
         if (sub.billingCycle === 'monthly') {
           newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
@@ -223,8 +219,8 @@ export class SubscriptionService {
         await db
           .update(subscriptions)
           .set({
-            currentPeriodStart: sub.currentPeriodEnd,
-            currentPeriodEnd: newPeriodEnd,
+            startDate: sub.endDate ?? now,
+            endDate: newPeriodEnd,
           })
           .where(eq(subscriptions.id, sub.id));
 
