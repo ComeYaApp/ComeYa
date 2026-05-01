@@ -187,10 +187,11 @@ router.put("/profile", authenticateToken, async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     
-    const { name, email, profileImage, dni, address } = req.body;
+    const { name, email, profileImage, dni, address, phone } = req.body;
     
     const updates: any = {};
     if (name) updates.name = name;
+    if (phone !== undefined) updates.phone = phone || null;
     if (email !== undefined) updates.email = email || null;
     if (profileImage) updates.profileImage = profileImage;
     if (dni !== undefined) updates.dni = dni || null;
@@ -413,6 +414,60 @@ router.get("/:id/verification-status", authenticateToken, async (req, res) => {
       .from(users).where(eq(users.id, req.params.id)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     res.json({ success: true, ...user });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/users/change-phone — solicitar cambio de teléfono via OTP
+router.post("/change-phone", authenticateToken, async (req, res) => {
+  try {
+    const { newPhone } = req.body;
+    if (!newPhone) return res.status(400).json({ error: "Teléfono requerido" });
+
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    // Verificar que no esté en uso
+    const [existing] = await db.select().from(users).where(eq(users.phone, newPhone)).limit(1);
+    if (existing && existing.id !== req.user!.id) {
+      return res.status(400).json({ error: "Este teléfono ya está registrado" });
+    }
+
+    // Enviar OTP al nuevo teléfono via Twilio
+    const twilio = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await twilio.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID).verifications.create({
+      to: newPhone,
+      channel: "sms",
+    });
+
+    res.json({ success: true, message: "Código enviado al nuevo teléfono" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/users/verify-phone-change — verificar OTP y confirmar cambio
+router.post("/verify-phone-change", authenticateToken, async (req, res) => {
+  try {
+    const { newPhone, code } = req.body;
+    if (!newPhone || !code) return res.status(400).json({ error: "Teléfono y código requeridos" });
+
+    const twilio = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    const check = await twilio.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID).verificationChecks.create({
+      to: newPhone,
+      code,
+    });
+
+    if (check.status !== "approved") {
+      return res.status(400).json({ error: "Código incorrecto" });
+    }
+
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    await db.update(users).set({ phone: newPhone, updatedAt: new Date() }).where(eq(users.id, req.user!.id));
+
+    res.json({ success: true, message: "Teléfono actualizado correctamente" });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
