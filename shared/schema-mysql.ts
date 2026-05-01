@@ -1063,9 +1063,7 @@ export const giftCardTransactions = mysqlTable("gift_card_transactions", {
   giftCardId: varchar("gift_card_id", { length: 255 }).notNull(),
   orderId: varchar("order_id", { length: 255 }),
   amount: int("amount").notNull(),
-  balanceBefore: int("balance_before").notNull(),
   balanceAfter: int("balance_after").notNull(),
-  transactionType: varchar("transaction_type", { length: 50 }).notNull(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 

@@ -60,9 +60,7 @@ export class GiftCardService {
       id: crypto.randomUUID(),
       giftCardId,
       amount,
-      balanceBefore: 0,
       balanceAfter: amount,
-      transactionType: 'purchase',
     });
 
     return {
@@ -161,9 +159,7 @@ export class GiftCardService {
       giftCardId: giftCard.id,
       orderId,
       amount: -amountToUse,
-      balanceBefore: giftCard.balance,
       balanceAfter: newBalance,
-      transactionType: 'redeem',
     });
 
     return {
@@ -223,7 +219,6 @@ export class GiftCardService {
       transactions: transactions.map((t) => ({
         ...t,
         amount: t.amount / 100,
-        balanceBefore: t.balanceBefore / 100,
         balanceAfter: t.balanceAfter / 100,
       })),
     };
