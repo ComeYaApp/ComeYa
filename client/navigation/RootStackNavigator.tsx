@@ -129,8 +129,8 @@ export type RootStackParamList = {
   ReportIssue: { orderId: string; orderNumber?: string };
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
   DigitalPaymentMethod: { orderTotal: number };
-  PaymentProof: { orderId: string; amount: number; paymentMethod: string };
-  StripePayment: { orderId: string; amount: number; subtotal: number; deliveryFee: number; businessId: string };
+  PaymentProof: { orderId: string; amount: number; paymentMethod: string; subscriptionId?: string };
+  StripePayment: { orderId: string; amount: number; subtotal: number; deliveryFee: number; businessId: string; isSubscription?: boolean; subscriptionId?: string };
   AdminPaymentAccounts: undefined;
   PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };

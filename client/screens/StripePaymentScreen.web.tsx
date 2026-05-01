@@ -32,7 +32,7 @@ const getStripePromise = async () => {
   return stripePromise;
 };
 
-function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, onSuccess, onCancel }: any) {
+function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, onSuccess, onCancel, isSubscription, subscriptionId }: any) {
   const stripe = useStripe();
   const elements = useElements();
   const { theme } = useTheme();
@@ -44,13 +44,13 @@ function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, onSuc
     // Crear Payment Intent en el backend
     const createPaymentIntent = async () => {
       try {
-        const response = await apiRequest('POST', '/api/stripe/create-payment-intent', {
-          orderId,
-          amount,
-          businessId,
-          subtotal,
-          deliveryFee,
-        });
+        const endpoint = isSubscription
+          ? '/api/stripe/create-subscription-payment-intent'
+          : '/api/stripe/create-payment-intent';
+        const body = isSubscription
+          ? { subscriptionId, amount }
+          : { orderId, amount, businessId, subtotal, deliveryFee };
+        const response = await apiRequest('POST', endpoint, body);
         const data = await response.json();
         if (data.clientSecret) {
           setClientSecret(data.clientSecret);
@@ -181,13 +181,28 @@ export default function StripePaymentScreen() {
   const { isMobile } = useResponsive();
 
   const params = route.params as any;
-  const { orderId, amount, subtotal, deliveryFee, businessId, giftCardId, isGiftCard } = params || {};
+  const { orderId, amount, subtotal, deliveryFee, businessId, giftCardId, isGiftCard, isSubscription, subscriptionId } = params || {};
 
   useEffect(() => {
     getStripePromise().then(() => setStripeReady(true));
   }, []);
 
   const handleSuccess = async () => {
+    if (isSubscription && subscriptionId) {
+      try {
+        await apiRequest('POST', `/api/stripe/confirm-subscription/${subscriptionId}`, {});
+      } catch (e) {
+        console.error('Error activating subscription:', e);
+      }
+      navigation.reset({
+        index: 0,
+        routes: [
+          { name: 'Main' as never },
+          { name: 'Subscriptions' as never },
+        ],
+      });
+      return;
+    }
     if (isGiftCard && giftCardId) {
       // Activar gift card tras pago Stripe confirmado
       try {
@@ -292,6 +307,8 @@ export default function StripePaymentScreen() {
             businessId={businessId}
             subtotal={subtotal}
             deliveryFee={deliveryFee}
+            isSubscription={isSubscription}
+            subscriptionId={subscriptionId}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />

@@ -79,6 +79,38 @@ export class SubscriptionService {
     };
   }
 
+  // Iniciar suscripción — crea registro pending_payment, el usuario debe pagar y subir comprobante
+  static async initSubscription(userId: string, plan: 'premium' | 'business', billingCycle: 'monthly' | 'yearly' = 'monthly') {
+    const planData = this.PLANS[plan];
+    if (!planData) throw new Error('Plan inválido');
+
+    const [existing] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
+
+    if (existing) {
+      await db.update(subscriptions).set({
+        plan,
+        status: 'pending_payment',
+        price: planData.price,
+        billingCycle,
+        autoRenew: true,
+      }).where(eq(subscriptions.id, existing.id));
+      return { success: true, subscriptionId: existing.id, amount: planData.price, plan };
+    } else {
+      const { v4: uuidv4 } = await import('uuid');
+      const id = uuidv4();
+      await db.insert(subscriptions).values({
+        id,
+        userId,
+        plan,
+        status: 'pending_payment' as any,
+        price: planData.price,
+        billingCycle,
+        autoRenew: true,
+      });
+      return { success: true, subscriptionId: id, amount: planData.price, plan };
+    }
+  }
+
   // Crear o actualizar suscripción
   static async subscribe(userId: string, plan: 'premium' | 'business', billingCycle: 'monthly' | 'yearly' = 'monthly') {
     const planData = this.PLANS[plan];

@@ -419,6 +419,78 @@ router.post("/confirm-delivery/:orderId", authenticateToken, async (req, res) =>
   }
 });
 
+// POST /api/stripe/create-subscription-payment-intent — PaymentIntent para suscripción
+router.post("/create-subscription-payment-intent", authenticateToken, async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(503).json({ error: "Stripe no configurado" });
+    }
+    const { subscriptionId, amount } = req.body;
+    if (!subscriptionId || !amount || amount <= 0) {
+      return res.status(400).json({ error: "subscriptionId y amount son requeridos" });
+    }
+
+    const { subscriptions } = await import("@shared/schema-mysql");
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, subscriptionId)).limit(1);
+    if (!sub || sub.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Suscripción no encontrada" });
+    }
+
+    const stripe = getStripe();
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount),
+      currency: "eur",
+      automatic_payment_methods: { enabled: true },
+      metadata: { userId: req.user!.id, subscriptionId, plan: sub.plan },
+    });
+
+    // Guardar paymentIntentId en la suscripción para verificar después
+    const { sql } = await import("drizzle-orm");
+    await db.execute(
+      sql`UPDATE subscriptions SET stripe_payment_intent_id = ${paymentIntent.id} WHERE id = ${subscriptionId}`
+    );
+
+    res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/stripe/confirm-subscription/:subscriptionId — activar suscripción tras pago Stripe
+router.post("/confirm-subscription/:subscriptionId", authenticateToken, async (req, res) => {
+  try {
+    const { subscriptionId } = req.params;
+    const { subscriptions } = await import("@shared/schema-mysql");
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, subscriptionId)).limit(1);
+    if (!sub || sub.userId !== req.user!.id) {
+      return res.status(404).json({ error: "Suscripción no encontrada" });
+    }
+
+    const now = new Date();
+    const periodEnd = new Date(now);
+    sub.billingCycle === "yearly" ? periodEnd.setFullYear(periodEnd.getFullYear() + 1) : periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    await db.update(subscriptions).set({
+      status: "active",
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd,
+    }).where(eq(subscriptions.id, subscriptionId));
+
+    try {
+      const { sendPushToUser } = await import("../enhancedPushService");
+      await sendPushToUser(sub.userId, {
+        title: "✅ Suscripción activada",
+        body: `Tu plan ${sub.plan} ya está activo. ¡Disfruta los beneficios!`,
+        data: { screen: "Subscriptions" },
+      });
+    } catch {}
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/stripe/cards — tarjetas guardadas del usuario
 router.get("/cards", authenticateToken, async (req, res) => {
   try {

@@ -80,9 +80,11 @@ export default function PaymentProofScreen() {
   const { theme } = useTheme();
   const { showToast } = useToast();
 
-  const { orderId, amount, paymentMethod } = route.params;
+  const { orderId, amount, paymentMethod, subscriptionId } = route.params;
   const amountEur = (amount / 100).toFixed(2);
-  const shortId = orderId.slice(-6).toUpperCase();
+  const shortId = subscriptionId
+    ? subscriptionId.slice(-6).toUpperCase()
+    : orderId.slice(-6).toUpperCase();
 
   const [paymentInfo, setPaymentInfo] = useState({ bizum: "600 000 000", iban: "ES00 0000 0000 0000 0000 0000", paypalEmail: "pagos@comeya.es", titular: "ComeYa S.L.", banco: "Banco Santander" });
 
@@ -222,12 +224,11 @@ export default function PaymentProofScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Subir imagen al servidor que la sube a Cloudinary
       const formData = new FormData();
       formData.append("file", {
         uri: proofImage,
         type: "image/jpeg",
-        name: `proof_${orderId}.jpg`,
+        name: `proof_${subscriptionId || orderId}.jpg`,
       } as any);
 
       const { getApiUrl, getAuthToken } = await import("@/lib/query-client");
@@ -241,23 +242,34 @@ export default function PaymentProofScreen() {
       if (!uploadData.success) throw new Error(uploadData.error || "Error al subir imagen");
       const imageUrl = uploadData.url;
 
-      // Enviar comprobante al servidor
-      const res = await apiRequest("POST", "/api/payments/submit-proof", {
-        orderId,
-        imageUrl,
-        referenceNumber: referenceNumber.trim(),
-        senderName: senderName.trim(),
-        amount,
-        paymentMethod,
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setStep("success");
+      if (subscriptionId) {
+        // Flujo suscripción
+        const res = await apiRequest("POST", "/api/subscriptions/submit-proof", {
+          subscriptionId,
+          imageUrl,
+          referenceNumber: referenceNumber.trim(),
+          senderName: senderName.trim(),
+          amount,
+          paymentMethod,
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "Error al enviar comprobante");
       } else {
-        throw new Error(data.error || "Error al enviar comprobante");
+        // Flujo pedido normal
+        const res = await apiRequest("POST", "/api/payments/submit-proof", {
+          orderId,
+          imageUrl,
+          referenceNumber: referenceNumber.trim(),
+          senderName: senderName.trim(),
+          amount,
+          paymentMethod,
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || "Error al enviar comprobante");
       }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setStep("success");
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       showToast(error.message || "Error al enviar comprobante", "error");
@@ -278,6 +290,7 @@ export default function PaymentProofScreen() {
 
   // STEP: SUCCESS
   if (step === "success") {
+    const isSubscription = !!subscriptionId;
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
         <View style={[styles.successContainer]}>
@@ -285,10 +298,12 @@ export default function PaymentProofScreen() {
             <Feather name="check-circle" size={64} color={ComeYaColors.success} />
           </View>
           <ThemedText type="h2" style={{ textAlign: "center", marginTop: Spacing.xl }}>
-            ¡Comprobante enviado!
+            {isSubscription ? "¡Comprobante enviado!" : "¡Comprobante enviado!"}
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.md, lineHeight: 22 }}>
-            Hemos recibido tu comprobante de pago. Nuestro equipo lo verificará en los próximos minutos y tu pedido será confirmado.
+            {isSubscription
+              ? "Hemos recibido tu comprobante. Tu suscripción se activará en cuanto nuestro equipo lo verifique (5-15 min)."
+              : "Hemos recibido tu comprobante de pago. Nuestro equipo lo verificará en los próximos minutos y tu pedido será confirmado."}
           </ThemedText>
           <View style={[styles.infoBox, { backgroundColor: theme.card, marginTop: Spacing.xl }]}>
             <Feather name="clock" size={18} color={ComeYaColors.warning} />
@@ -297,12 +312,12 @@ export default function PaymentProofScreen() {
             </ThemedText>
           </View>
           <Pressable
-            onPress={handleGoToTracking}
+            onPress={() => isSubscription ? navigation.navigate("Subscriptions") : handleGoToTracking()}
             style={[styles.primaryBtn, { backgroundColor: ComeYaColors.primary, marginTop: Spacing.xl }]}
           >
-            <Feather name="package" size={20} color="#fff" />
+            <Feather name={isSubscription ? "star" : "package"} size={20} color="#fff" />
             <ThemedText type="body" style={{ color: "#fff", fontWeight: "700", marginLeft: Spacing.sm }}>
-              Ver mi pedido
+              {isSubscription ? "Ver mi suscripción" : "Ver mi pedido"}
             </ThemedText>
           </Pressable>
         </View>

@@ -51,10 +51,14 @@ export const PaymentProofsTab: React.FC<Props> = ({ theme, showToast }) => {
     if (!selected) return;
     setProcessing(selected.id);
     try {
-      const res  = await apiRequest("POST", `/api/payments/proofs/${selected.id}/approve`, {});
+      const isSubscription = selected.order_id?.startsWith('sub_');
+      const endpoint = isSubscription
+        ? `/api/subscriptions/proofs/${selected.id}/approve`
+        : `/api/payments/proofs/${selected.id}/approve`;
+      const res  = await apiRequest("POST", endpoint, {});
       const data = await res.json();
       if (data.success) {
-        showToast("✅ Comprobante aprobado — pedido confirmado", "success");
+        showToast(isSubscription ? "✅ Suscripción activada" : "✅ Comprobante aprobado — pedido confirmado", "success");
         setSelected(null);
         load();
       } else {
@@ -68,7 +72,11 @@ export const PaymentProofsTab: React.FC<Props> = ({ theme, showToast }) => {
     if (!selected) return;
     setProcessing(selected.id);
     try {
-      const res  = await apiRequest("POST", `/api/payments/proofs/${selected.id}/reject`, { reason: rejectReason });
+      const isSubscription = selected.order_id?.startsWith('sub_');
+      const endpoint = isSubscription
+        ? `/api/subscriptions/proofs/${selected.id}/reject`
+        : `/api/payments/proofs/${selected.id}/reject`;
+      const res  = await apiRequest("POST", endpoint, { reason: rejectReason });
       const data = await res.json();
       if (data.success) {
         showToast("❌ Comprobante rechazado — cliente notificado", "success");
@@ -199,7 +207,7 @@ export const PaymentProofsTab: React.FC<Props> = ({ theme, showToast }) => {
             </View>
             <Text style={[s.name, { color: theme.text }]}>{proof.user_name ?? "Cliente"}</Text>
             <Text style={[s.sub, { color: theme.textSecondary }]}>
-              Ref: {proof.reference_number ?? "—"} · {proof.business_name ?? ""}
+              {proof.order_id?.startsWith('sub_') ? '🌟 Suscripción Premium/Business' : `Ref: ${proof.reference_number ?? "—"} · ${proof.business_name ?? ""}`}
             </Text>
             <Text style={[s.sub, { color: theme.textSecondary }]}>
               {new Date(proof.submitted_at).toLocaleString("es-ES")}
