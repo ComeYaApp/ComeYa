@@ -44,35 +44,51 @@ export default function AdminMapScreen() {
       styles: isDark ? DARK_STYLE : [],
     });
 
-    // Cargar negocios
-    apiRequest("GET", "/api/businesses").then(r => r.json()).then(data => {
-      const businesses = (data.businesses || []).filter((b: any) => b.latitude && b.longitude);
-      setStats(s => ({ ...s, businesses: businesses.length }));
-      businesses.forEach((b: any) => {
-        new google.maps.Marker({
-          position: { lat: parseFloat(b.latitude), lng: parseFloat(b.longitude) },
-          map: gmap.current,
-          title: b.name,
-          icon: {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><circle cx="18" cy="18" r="16" fill="${b.isOpen ?? b.is_open ? ComeYaColors.primary : '#9E9E9E'}" stroke="white" stroke-width="2"/><text x="18" y="23" text-anchor="middle" font-size="16">🏪</text></svg>`)}`,
-            scaledSize: new google.maps.Size(36, 36),
-            anchor: new google.maps.Point(18, 18),
-          },
+    const BIZ_SVG = (color: string) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><circle cx="18" cy="18" r="16" fill="' + color + '" stroke="white" stroke-width="2"/><path d="M11 14h14M13 14v-2a1 1 0 011-1h8a1 1 0 011 1v2M11 18h14l-1 7H12l-1-7z" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>')}` ;
+    const DRIVER_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><circle cx="18" cy="18" r="16" fill="#10B981" stroke="white" stroke-width="2"/><path d="M10 20c0-2 1-3 2-4l4-2 3 2c2 1 3 2 3 4M13 22a2 2 0 104 0M21 22a2 2 0 104 0" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M13 18l2-4h5l2 3" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>')}` ;
+
+    const loadData = () => {
+      // Negocios
+      apiRequest("GET", "/api/business").then(r => r.json()).then(data => {
+        const businesses = (data.businesses || []).filter((b: any) => b.latitude && b.longitude);
+        setStats(s => ({ ...s, businesses: businesses.length }));
+        businesses.forEach((b: any) => {
+          const color = (b.isOpen ?? b.is_open) ? ComeYaColors.primary : "#9E9E9E";
+          new google.maps.Marker({
+            position: { lat: parseFloat(b.latitude), lng: parseFloat(b.longitude) },
+            map: gmap.current,
+            title: b.name,
+            icon: { url: BIZ_SVG(color), scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) },
+          });
         });
-      });
-    }).catch(console.error);
+      }).catch(console.error);
 
-    // Cargar repartidores activos
-    apiRequest("GET", "/api/admin/drivers").then(r => r.json()).then(data => {
-      const drivers = (data.drivers || []).filter((d: any) => d.isOnline);
-      setStats(s => ({ ...s, drivers: drivers.length }));
-    }).catch(console.error);
+      // Repartidores con ubicación en tiempo real
+      apiRequest("GET", "/api/admin/drivers").then(r => r.json()).then(data => {
+        const drivers = (data.drivers || []);
+        const online = drivers.filter((d: any) => d.currentLatitude && d.currentLongitude);
+        setStats(s => ({ ...s, drivers: online.length }));
+        online.forEach((d: any) => {
+          new google.maps.Marker({
+            position: { lat: parseFloat(d.currentLatitude), lng: parseFloat(d.currentLongitude) },
+            map: gmap.current,
+            title: d.name || "Repartidor",
+            icon: { url: DRIVER_SVG, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 18) },
+            zIndex: 999,
+          });
+        });
+      }).catch(console.error);
 
-    // Cargar pedidos activos
-    apiRequest("GET", "/api/admin/orders").then(r => r.json()).then(data => {
-      const active = (data.orders || []).filter((o: any) => ["pending","preparing","on_the_way"].includes(o.status));
-      setStats(s => ({ ...s, orders: active.length }));
-    }).catch(console.error);
+      // Pedidos activos
+      apiRequest("GET", "/api/admin/orders").then(r => r.json()).then(data => {
+        const active = (data.orders || []).filter((o: any) => ["pending","preparing","on_the_way"].includes(o.status));
+        setStats(s => ({ ...s, orders: active.length }));
+      }).catch(console.error);
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 15000);
+    return () => clearInterval(interval);
   }, [mapsReady]);
 
   return (

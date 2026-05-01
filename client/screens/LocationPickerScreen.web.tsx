@@ -59,7 +59,7 @@ export default function LocationPickerScreen() {
       draggable: true,
       title: "Arrastra para ajustar",
       icon: {
-        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><rect x="2" y="2" width="36" height="36" rx="18" fill="${ComeYaColors.primary}" stroke="white" stroke-width="2"/><text x="20" y="26" text-anchor="middle" font-size="20">📍</text><polygon points="14,38 26,38 20,48" fill="${ComeYaColors.primary}"/></svg>`)}`,
+        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="' + ComeYaColors.primary + '" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><circle cx="20" cy="20" r="3" fill="' + ComeYaColors.primary + '"/><polygon points="14,38 26,38 20,48" fill="' + ComeYaColors.primary + '"/></svg>')}`,
         scaledSize: new google.maps.Size(40, 48),
         anchor: new google.maps.Point(20, 48),
       },

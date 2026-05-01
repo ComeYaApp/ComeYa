@@ -205,23 +205,21 @@ export default function BusinessMapScreen() {
       : businesses.filter(b => b.type === categoryFilter);
 
     filtered.forEach((b) => {
-      const icon = b.type === "market" ? "🛒" : b.type === "pharmacy" ? "💊" : "🍽️";
       const color = b.isOpen ? ComeYaColors.primary : "#9E9E9E";
+      const iconPath = b.type === "market"
+        ? "M9 6h10l1 2H8L9 6zM7 8l1 10h8l1-10H7zm3 3v4m4-4v4"
+        : b.type === "pharmacy"
+        ? "M12 5v14M5 12h14"
+        : "M8 10h8M10 10V8a1 1 0 011-1h2a1 1 0 011 1v2M8 14h8l-1 5H9l-1-5z";
+
+      const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="52"><rect x="2" y="2" width="136" height="38" rx="19" fill="${b.isOpen ? "#fff" : "#f0f0f0"}" stroke="${color}" stroke-width="2"/><circle cx="22" cy="21" r="11" fill="${color}"/><path d="${iconPath}" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" transform="translate(10,9)"/><text x="40" y="24" font-size="11" font-weight="bold" fill="${b.isOpen ? "#1a1a1a" : "#9E9E9E"}" font-family="Arial">${b.name.slice(0, 12)}${b.name.length > 12 ? "\u2026" : ""}</text><text x="40" y="36" font-size="9" fill="${color}" font-family="Arial">${b.isOpen ? b.deliveryTime : "Cerrado"}</text><polygon points="65,40 75,40 70,50" fill="${color}"/></svg>`;
 
       const marker = new google.maps.Marker({
         position: { lat: b.latitude, lng: b.longitude },
         map: gmap.current,
         title: b.name,
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="140" height="52">
-              <rect x="2" y="2" width="136" height="38" rx="19" fill="${b.isOpen ? "#fff" : "#f0f0f0"}" stroke="${color}" stroke-width="2"/>
-              <text x="14" y="26" font-size="18" font-family="Arial">${icon}</text>
-              <text x="40" y="24" font-size="11" font-weight="bold" fill="${b.isOpen ? "#1a1a1a" : "#9E9E9E"}" font-family="Arial">${b.name.slice(0, 12)}${b.name.length > 12 ? "…" : ""}</text>
-              <text x="40" y="36" font-size="9" fill="${color}" font-family="Arial">${b.isOpen ? b.deliveryTime : "Cerrado"}</text>
-              <polygon points="65,40 75,40 70,50" fill="${color}"/>
-            </svg>
-          `)}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgIcon)}`,
           scaledSize: new google.maps.Size(140, 52),
           anchor: new google.maps.Point(70, 52),
         },

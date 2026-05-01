@@ -110,9 +110,7 @@ export default function DriverMapScreen({ orderId, destLat, destLng, onBack }: P
             position: loc,
             map: gmap.current,
             icon: {
-              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-                `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><circle cx="24" cy="24" r="22" fill="${GREEN}" stroke="white" stroke-width="3"/><text x="24" y="30" text-anchor="middle" font-size="22">🛵</text></svg>`
-              )}`,
+              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><circle cx="24" cy="24" r="22" fill="' + GREEN + '" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="18" fill="' + GREEN + '" opacity="0.3"/><path d="M14 28c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M17 30a2.5 2.5 0 105 0M27 30a2.5 2.5 0 105 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M17 24l2-5h6l2 3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')}`,
               scaledSize: new google.maps.Size(48, 48),
               anchor: new google.maps.Point(24, 24),
             },
@@ -157,9 +155,7 @@ export default function DriverMapScreen({ orderId, destLat, destLng, onBack }: P
         map: gmap.current,
         title: "Destino de entrega",
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><rect x="2" y="2" width="36" height="36" rx="18" fill="${ComeYaColors.primary}" stroke="white" stroke-width="2"/><text x="20" y="26" text-anchor="middle" font-size="20">🏠</text><polygon points="14,38 26,38 20,48" fill="${ComeYaColors.primary}"/></svg>`
-          )}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="' + ComeYaColors.primary + '" stroke="white" stroke-width="3"/><path d="M10 20l10-8 10 8M12 20v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="14,38 26,38 20,48" fill="' + ComeYaColors.primary + '"/></svg>')}`,
           scaledSize: new google.maps.Size(40, 48),
           anchor: new google.maps.Point(20, 48),
         },
