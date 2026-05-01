@@ -677,7 +677,7 @@ router.post("/", authenticateToken, requireRole("business_owner"), async (req, r
     const { businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { CloudinaryService } = await import("../cloudinaryService");
-    const { name, description, type, image, address, phone, categories } = req.body;
+    const { name, description, type, image, address, phone, categories, latitude, longitude } = req.body;
 
     if (!name) return res.status(400).json({ error: "El nombre del negocio es requerido" });
 
@@ -697,6 +697,8 @@ router.post("/", authenticateToken, requireRole("business_owner"), async (req, r
       address: address || null,
       phone: phone || null,
       categories: categories || null,
+      latitude: latitude || null,
+      longitude: longitude || null,
       isActive: true,
       isOpen: false,
       rating: 0,
@@ -757,7 +759,7 @@ router.put("/:id", authenticateToken, requireRole("business_owner"), async (req,
 
     if (!business) return res.status(404).json({ error: "Negocio no encontrado" });
 
-    const allowed = ["name", "description", "type", "image", "address", "phone", "categories", "isOpen", "deliveryTime", "deliveryFee", "minOrder"];
+    const allowed = ["name", "description", "type", "image", "address", "phone", "categories", "isOpen", "deliveryTime", "deliveryFee", "minOrder", "latitude", "longitude"];
     const updates: any = {};
     for (const field of allowed) {
       if (req.body[field] !== undefined) {
@@ -777,6 +779,41 @@ router.put("/:id", authenticateToken, requireRole("business_owner"), async (req,
 
     await db.update(businesses).set(updates).where(eq(businesses.id, req.params.id));
     res.json({ success: true, message: "Negocio actualizado" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/business/:id/geocode — geocodificar negocio por su dirección
+router.post("/:id/geocode", authenticateToken, requireRole("business_owner", "admin", "super_admin"), async (req, res) => {
+  try {
+    const { businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { sql } = await import("drizzle-orm");
+
+    const [business] = await db.select().from(businesses)
+      .where(and(eq(businesses.id, req.params.id), eq(businesses.ownerId, req.user!.id)))
+      .limit(1);
+    if (!business) return res.status(404).json({ error: "Negocio no encontrado" });
+    if (!business.address) return res.status(400).json({ error: "El negocio no tiene dirección" });
+
+    const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+    if (!GMAPS_KEY) return res.status(500).json({ error: "Google Maps API key no configurada" });
+
+    const query = encodeURIComponent(`${business.address}, Soria, España`);
+    const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`);
+    const geoData = await geoRes.json();
+
+    if (geoData.status !== "OK" || !geoData.results[0]) {
+      return res.status(400).json({ error: "No se pudo geocodificar la dirección" });
+    }
+
+    const { lat, lng } = geoData.results[0].geometry.location;
+    await db.update(businesses)
+      .set({ latitude: String(lat), longitude: String(lng) })
+      .where(eq(businesses.id, req.params.id));
+
+    res.json({ success: true, latitude: lat, longitude: lng });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

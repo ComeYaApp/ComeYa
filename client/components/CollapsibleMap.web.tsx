@@ -174,13 +174,7 @@ export function CollapsibleMap({
         map: gmap.current,
         title: businessLocation.title || "Negocio",
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="48">
-              <circle cx="20" cy="20" r="18" fill="#FF6B35" stroke="white" stroke-width="3"/>
-              <text x="20" y="28" text-anchor="middle" font-size="20">${isPickup ? '🏪' : '🍽️'}</text>
-              <polygon points="14,38 26,38 20,48" fill="#FF6B35"/>
-            </svg>
-          `)}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#FF6B35" stroke="white" stroke-width="3"/><path d="M13 16h14M15 16v-2a1 1 0 011-1h8a1 1 0 011 1v2M13 20h14l-1 8H14l-1-8z" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="14,38 26,38 20,48" fill="#FF6B35"/></svg>')}`,
           scaledSize: new google.maps.Size(40, 48),
           anchor: new google.maps.Point(20, 48),
         },
@@ -205,13 +199,7 @@ export function CollapsibleMap({
         map: gmap.current,
         title: "Tu ubicación",
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="48">
-              <circle cx="20" cy="20" r="18" fill="#3B82F6" stroke="white" stroke-width="3"/>
-              <text x="20" y="28" text-anchor="middle" font-size="20">🏠</text>
-              <polygon points="14,38 26,38 20,48" fill="#3B82F6"/>
-            </svg>
-          `)}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#3B82F6" stroke="white" stroke-width="3"/><path d="M10 20l10-8 10 8M12 20v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="14,38 26,38 20,48" fill="#3B82F6"/></svg>')}`,
           scaledSize: new google.maps.Size(40, 48),
           anchor: new google.maps.Point(20, 48),
         },
@@ -244,13 +232,7 @@ export function CollapsibleMap({
         map: gmap.current,
         title: driverName || "Repartidor",
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56">
-              <circle cx="28" cy="28" r="26" fill="#10B981" stroke="white" stroke-width="4"/>
-              <circle cx="28" cy="28" r="22" fill="#10B981" opacity="0.3"/>
-              <text x="28" y="34" text-anchor="middle" font-size="24">🛵</text>
-            </svg>
-          `)}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><circle cx="28" cy="28" r="26" fill="#10B981" stroke="white" stroke-width="4"/><circle cx="28" cy="28" r="22" fill="#10B981" opacity="0.3"/><path d="M18 32c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M21 34a3 3 0 106 0M35 34a3 3 0 106 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 27l3-6h6l2 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')}`,
           scaledSize: new google.maps.Size(56, 56),
           anchor: new google.maps.Point(28, 28),
         },

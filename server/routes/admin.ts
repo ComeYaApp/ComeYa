@@ -529,4 +529,57 @@ router.get("/health", authenticateToken, requireRole("admin", "super_admin"), as
   }
 });
 
+// POST /api/admin/businesses/geocode — geocodificar negocios sin coordenadas
+router.post("/businesses/geocode", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { db } = await import("../db");
+    const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+    if (!GMAPS_KEY) return res.status(500).json({ error: "Google Maps API key no configurada" });
+
+    const [rows] = await db.execute(sql`
+      SELECT id, name, address FROM businesses
+      WHERE is_active = 1 AND (latitude IS NULL OR longitude IS NULL) AND address IS NOT NULL
+    `) as any;
+
+    const businesses = rows as any[];
+    let updated = 0;
+    let failed = 0;
+
+    for (const biz of businesses) {
+      try {
+        const query = encodeURIComponent(`${biz.address}, Soria, España`);
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`;
+        const geoRes = await fetch(url);
+        const geoData = await geoRes.json();
+        if (geoData.status === "OK" && geoData.results[0]) {
+          const { lat, lng } = geoData.results[0].geometry.location;
+          await db.execute(sql`UPDATE businesses SET latitude = ${String(lat)}, longitude = ${String(lng)} WHERE id = ${biz.id}`);
+          updated++;
+        } else {
+          failed++;
+        }
+      } catch { failed++; }
+    }
+
+    res.json({ success: true, total: businesses.length, updated, failed });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/admin/businesses/:id — actualizar negocio (admin)
+router.put("/businesses/:id", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const allowed = ["name", "description", "isActive", "isOpen", "latitude", "longitude", "address", "phone"];
+    const updates: any = { updatedAt: new Date() };
+    for (const field of allowed) {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    }
+    await db.update(businesses).set(updates).where(eq(businesses.id, req.params.id));
+    res.json({ success: true, message: "Negocio actualizado" });
+  } catch (error: any) { res.status(500).json({ error: error.message }); }
+});
+
 export default router;

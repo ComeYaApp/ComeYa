@@ -11,7 +11,7 @@ import { apiRequest } from '@/lib/query-client';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PRIMARY = "#DC2626";
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 function loadGoogleMaps(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -62,6 +62,8 @@ export default function OrderTrackingScreen() {
   const [tipSent, setTipSent] = useState(false);
   const [sendingTip, setSendingTip] = useState(false);
 
+  const businessMarkerRef = useRef<any>(null);
+
   const tipOptions = [10, 20, 30, 50];
 
   useEffect(() => {
@@ -90,6 +92,17 @@ export default function OrderTrackingScreen() {
             const biz = bizData.business;
             if (biz?.latitude && biz?.longitude) {
               setBusinessLocation({ lat: parseFloat(biz.latitude), lng: parseFloat(biz.longitude) });
+            } else if (biz?.address) {
+              // Geocodificar la dirección si no hay coordenadas
+              await loadGoogleMaps();
+              const google = (window as any).google;
+              const geocoder = new google.maps.Geocoder();
+              geocoder.geocode({ address: biz.address + ", Soria, España" }, (results: any, status: any) => {
+                if (status === "OK" && results[0]) {
+                  const loc = results[0].geometry.location;
+                  setBusinessLocation({ lat: loc.lat(), lng: loc.lng() });
+                }
+              });
             }
           } catch {}
         }
@@ -128,15 +141,11 @@ export default function OrderTrackingScreen() {
     return () => clearInterval(interval);
   }, [orderId, order?.status]);
 
-  // Inicializar mapa cuando esté listo el pedido
+  // Inicializar mapa (solo una vez)
   useEffect(() => {
     if (!mapsReady || !mapRef.current || !order || gmap.current) return;
     const google = (window as any).google;
-
-    const center = order.deliveryLatitude && order.deliveryLongitude
-      ? { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) }
-      : businessLocation || { lat: 41.7636, lng: -2.4677 };
-
+    const center = businessLocation || { lat: 41.7636, lng: -2.4677 };
     gmap.current = new google.maps.Map(mapRef.current, {
       center, zoom: 14,
       disableDefaultUI: false,
@@ -147,26 +156,37 @@ export default function OrderTrackingScreen() {
       styles: isDark ? DARK_STYLE : [],
       gestureHandling: "greedy",
     });
+  }, [mapsReady, order]);
 
-    // Marcador del negocio (restaurante)
-    if (businessLocation) {
-      new google.maps.Marker({
+  // Marcador del negocio — se actualiza cuando llega businessLocation
+  useEffect(() => {
+    if (!gmap.current || !businessLocation) return;
+    const google = (window as any).google;
+    if (businessMarkerRef.current) {
+      businessMarkerRef.current.setPosition(businessLocation);
+    } else {
+      businessMarkerRef.current = new google.maps.Marker({
         position: businessLocation,
         map: gmap.current,
-        title: order.businessName || "Negocio",
+        title: order?.businessName || "Negocio",
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="48">
-              <rect x="2" y="2" width="36" height="36" rx="18" fill="#8B5CF6" stroke="white" stroke-width="3"/>
-              <text x="20" y="28" text-anchor="middle" font-size="20">🏪</text>
-              <polygon points="14,38 26,38 20,48" fill="#8B5CF6"/>
-            </svg>
-          `)}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#FF6B35" stroke="white" stroke-width="3"/><path d="M13 16h14M15 16v-2a1 1 0 011-1h8a1 1 0 011 1v2M13 20h14l-1 8H14l-1-8z" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="14,38 26,38 20,48" fill="#FF6B35"/></svg>')}`,
           scaledSize: new google.maps.Size(40, 48),
           anchor: new google.maps.Point(20, 48),
         },
+        zIndex: 100,
       });
     }
+    // Centrar mapa en el negocio si no hay ubicación del cliente
+    if (!order?.deliveryLatitude) {
+      gmap.current.setCenter(businessLocation);
+    }
+  }, [businessLocation, gmap.current]);
+
+  // Marcador del cliente + repartidor
+  useEffect(() => {
+    if (!mapsReady || !gmap.current || !order) return;
+    const google = (window as any).google;
 
     // Marcador del destino (cliente)
     if (order.deliveryLatitude && order.deliveryLongitude) {
@@ -175,44 +195,40 @@ export default function OrderTrackingScreen() {
         map: gmap.current,
         title: "Tu dirección",
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="48">
-              <rect x="2" y="2" width="36" height="36" rx="18" fill="${PRIMARY}" stroke="white" stroke-width="3"/>
-              <text x="20" y="28" text-anchor="middle" font-size="20">🏠</text>
-              <polygon points="14,38 26,38 20,48" fill="${PRIMARY}"/>
-            </svg>
-          `)}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><path d="M10 20l10-8 10 8M12 20v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
           scaledSize: new google.maps.Size(40, 48),
           anchor: new google.maps.Point(20, 48),
         },
       });
     }
 
-    // Actualizar posición del repartidor cada 10s con animación
+    // Ajustar bounds con los puntos disponibles
+    const bounds = new google.maps.LatLngBounds();
+    let hasPoints = false;
+    if (businessLocation) { bounds.extend(businessLocation); hasPoints = true; }
+    if (order.deliveryLatitude && order.deliveryLongitude) {
+      bounds.extend({ lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) });
+      hasPoints = true;
+    }
+    if (hasPoints) gmap.current.fitBounds(bounds, { top: 80, right: 80, bottom: 80, left: 80 });
+
+    // Actualizar posición del repartidor cada 10s
+    if (order.status !== "on_the_way" && order.status !== "ready") return;
     const updateDriver = async () => {
       try {
         const res = await apiRequest("GET", `/api/delivery/location/${orderId}`);
         const data = await res.json();
         if (data.location?.latitude && data.location?.longitude) {
           const pos = { lat: parseFloat(data.location.latitude), lng: parseFloat(data.location.longitude) };
-          
           if (driverMarkerRef.current) {
-            // Animar movimiento del marcador
             driverMarkerRef.current.setPosition(pos);
           } else {
-            // Crear marcador del repartidor
             driverMarkerRef.current = new google.maps.Marker({
               position: pos,
               map: gmap.current,
               title: order.deliveryPersonName || "Repartidor",
               icon: {
-                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-                  <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56">
-                    <circle cx="28" cy="28" r="26" fill="#4CAF50" stroke="white" stroke-width="4"/>
-                    <circle cx="28" cy="28" r="22" fill="#4CAF50" opacity="0.3"/>
-                    <text x="28" y="34" text-anchor="middle" font-size="24">🛵</text>
-                  </svg>
-                `)}`,
+                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><circle cx="28" cy="28" r="26" fill="#10B981" stroke="white" stroke-width="4"/><circle cx="28" cy="28" r="22" fill="#10B981" opacity="0.3"/><path d="M18 32c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M21 34a3 3 0 106 0M35 34a3 3 0 106 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 27l3-6h6l2 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')}`,
                 scaledSize: new google.maps.Size(56, 56),
                 anchor: new google.maps.Point(28, 28),
               },
@@ -220,24 +236,17 @@ export default function OrderTrackingScreen() {
               animation: google.maps.Animation.DROP,
             });
           }
-          
-          // Ajustar vista para mostrar todos los marcadores
-          const bounds = new google.maps.LatLngBounds();
-          if (businessLocation) bounds.extend(businessLocation);
-          if (order.deliveryLatitude && order.deliveryLongitude) {
-            bounds.extend({ lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) });
-          }
-          bounds.extend(pos);
-          gmap.current.fitBounds(bounds, { top: 50, right: 50, bottom: 50, left: 50 });
+          const b = new google.maps.LatLngBounds();
+          if (businessLocation) b.extend(businessLocation);
+          if (order.deliveryLatitude && order.deliveryLongitude) b.extend({ lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) });
+          b.extend(pos);
+          gmap.current.fitBounds(b, { top: 50, right: 50, bottom: 50, left: 50 });
         }
       } catch {}
     };
-
-    if (order.status === "on_the_way" || order.status === "ready") {
-      updateDriver();
-      const interval = setInterval(updateDriver, 10000);
-      return () => clearInterval(interval);
-    }
+    updateDriver();
+    const interval = setInterval(updateDriver, 10000);
+    return () => clearInterval(interval);
   }, [mapsReady, order, businessLocation]);
 
   const currentStep = order ? STATUS_STEPS.indexOf(order.status) : 0;
