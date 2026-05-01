@@ -11,7 +11,7 @@ import { apiRequest } from '@/lib/query-client';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PRIMARY = "#DC2626";
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
 
 function loadGoogleMaps(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -20,7 +20,7 @@ function loadGoogleMaps(): Promise<void> {
     if (existing) { existing.addEventListener("load", () => resolve()); return; }
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=directions`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
@@ -63,6 +63,9 @@ export default function OrderTrackingScreen() {
   const [sendingTip, setSendingTip] = useState(false);
 
   const businessMarkerRef = useRef<any>(null);
+  const customerMarkerRef = useRef<any>(null);
+  const routeLineRef = useRef<any>(null);
+  const driverRouteLineRef = useRef<any>(null);
 
   const tipOptions = [10, 20, 30, 50];
 
@@ -158,7 +161,73 @@ export default function OrderTrackingScreen() {
     });
   }, [mapsReady, order]);
 
-  // Marcador del negocio — se actualiza cuando llega businessLocation
+  // ── Marcador del cliente ── se crea una vez cuando llega order con coordenadas
+  useEffect(() => {
+    if (!mapsReady || !gmap.current || !order?.deliveryLatitude || !order?.deliveryLongitude) return;
+    if (customerMarkerRef.current) return; // ya existe
+    const google = (window as any).google;
+    const pos = { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) };
+    customerMarkerRef.current = new google.maps.Marker({
+      position: pos,
+      map: gmap.current,
+      title: "Tu dirección",
+      icon: {
+        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><path d="M10 20l10-8 10 8M12 20v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
+        scaledSize: new google.maps.Size(40, 48),
+        anchor: new google.maps.Point(20, 48),
+      },
+      zIndex: 90,
+    });
+  }, [mapsReady, order?.deliveryLatitude, order?.deliveryLongitude, gmap.current]);
+
+  // ── Ruta roja negocio→cliente (pending / confirmed / preparing / ready) ──
+  // Se dibuja siempre que tengamos negocio + cliente y NO haya repartidor en camino
+  useEffect(() => {
+    if (!mapsReady || !gmap.current) return;
+    if (!businessLocation || !order?.deliveryLatitude || !order?.deliveryLongitude) return;
+    if (order.status === 'on_the_way' || order.status === 'delivered' || order.status === 'cancelled') return;
+    const google = (window as any).google;
+
+    // Limpiar ruta anterior
+    if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+
+    const clientPos = { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) };
+
+    // Intentar ruta real con DirectionsService
+    const directionsService = new google.maps.DirectionsService();
+    directionsService.route({
+      origin: businessLocation,
+      destination: clientPos,
+      travelMode: google.maps.TravelMode.DRIVING,
+    }, (result: any, status: any) => {
+      if (status === 'OK') {
+        routeLineRef.current = new google.maps.DirectionsRenderer({
+          map: gmap.current,
+          directions: result,
+          suppressMarkers: true,
+          polylineOptions: { strokeColor: '#DC2626', strokeWeight: 4, strokeOpacity: 0.75 },
+        });
+      } else {
+        // Fallback: línea recta roja
+        routeLineRef.current = new google.maps.Polyline({
+          path: [businessLocation, clientPos],
+          geodesic: true,
+          strokeColor: '#DC2626',
+          strokeOpacity: 0.75,
+          strokeWeight: 4,
+          map: gmap.current,
+        });
+      }
+    });
+
+    // Ajustar bounds
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(businessLocation);
+    bounds.extend(clientPos);
+    gmap.current.fitBounds(bounds, { top: 80, right: 80, bottom: 80, left: 80 });
+  }, [mapsReady, businessLocation, order?.deliveryLatitude, order?.deliveryLongitude, order?.status, gmap.current]);
+
+  // ── Marcador del negocio ── se actualiza cuando llega businessLocation
   useEffect(() => {
     if (!gmap.current || !businessLocation) return;
     const google = (window as any).google;
@@ -177,73 +246,99 @@ export default function OrderTrackingScreen() {
         zIndex: 100,
       });
     }
-    // Centrar mapa en el negocio si no hay ubicación del cliente
-    if (!order?.deliveryLatitude) {
-      gmap.current.setCenter(businessLocation);
-    }
+    if (!order?.deliveryLatitude) gmap.current.setCenter(businessLocation);
   }, [businessLocation, gmap.current]);
 
-  // Marcador del cliente + repartidor
+  // ── useEffect principal de rutas y repartidor ──
   useEffect(() => {
     if (!mapsReady || !gmap.current || !order) return;
     const google = (window as any).google;
+    // ── Repartidor en camino: polling GPS cada 10s con ruta verde ──
+    if (order.status !== 'on_the_way') return;
 
-    // Marcador del destino (cliente)
-    if (order.deliveryLatitude && order.deliveryLongitude) {
-      new google.maps.Marker({
-        position: { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) },
-        map: gmap.current,
-        title: "Tu dirección",
-        icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><path d="M10 20l10-8 10 8M12 20v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
-          scaledSize: new google.maps.Size(40, 48),
-          anchor: new google.maps.Point(20, 48),
-        },
-      });
+    // Limpiar ruta roja previa
+    if (routeLineRef.current) {
+      if (typeof routeLineRef.current.setMap === 'function') routeLineRef.current.setMap(null);
+      else if (typeof routeLineRef.current.setDirections === 'function') routeLineRef.current.setMap(null);
+      routeLineRef.current = null;
     }
 
-    // Ajustar bounds con los puntos disponibles
-    const bounds = new google.maps.LatLngBounds();
-    let hasPoints = false;
-    if (businessLocation) { bounds.extend(businessLocation); hasPoints = true; }
-    if (order.deliveryLatitude && order.deliveryLongitude) {
-      bounds.extend({ lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) });
-      hasPoints = true;
-    }
-    if (hasPoints) gmap.current.fitBounds(bounds, { top: 80, right: 80, bottom: 80, left: 80 });
-
-    // Actualizar posición del repartidor cada 10s
-    if (order.status !== "on_the_way" && order.status !== "ready") return;
     const updateDriver = async () => {
       try {
-        const res = await apiRequest("GET", `/api/delivery/location/${orderId}`);
+        const res = await apiRequest('GET', `/api/delivery/location/${orderId}`);
         const data = await res.json();
-        if (data.location?.latitude && data.location?.longitude) {
-          const pos = { lat: parseFloat(data.location.latitude), lng: parseFloat(data.location.longitude) };
-          if (driverMarkerRef.current) {
-            driverMarkerRef.current.setPosition(pos);
-          } else {
-            driverMarkerRef.current = new google.maps.Marker({
-              position: pos,
-              map: gmap.current,
-              title: order.deliveryPersonName || "Repartidor",
-              icon: {
-                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><circle cx="28" cy="28" r="26" fill="#10B981" stroke="white" stroke-width="4"/><circle cx="28" cy="28" r="22" fill="#10B981" opacity="0.3"/><path d="M18 32c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M21 34a3 3 0 106 0M35 34a3 3 0 106 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 27l3-6h6l2 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')}`,
-                scaledSize: new google.maps.Size(56, 56),
-                anchor: new google.maps.Point(28, 28),
-              },
-              zIndex: 999,
-              animation: google.maps.Animation.DROP,
-            });
-          }
+        if (!data.location?.latitude || !data.location?.longitude) return;
+
+        const driverPos = {
+          lat: parseFloat(data.location.latitude),
+          lng: parseFloat(data.location.longitude),
+        };
+
+        // Crear o mover marcador del repartidor
+        if (driverMarkerRef.current) {
+          driverMarkerRef.current.setPosition(driverPos);
+        } else {
+          driverMarkerRef.current = new google.maps.Marker({
+            position: driverPos,
+            map: gmap.current,
+            title: order.deliveryPersonName || 'Repartidor',
+            icon: {
+              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56"><circle cx="28" cy="28" r="26" fill="#10B981" stroke="white" stroke-width="4"/><circle cx="28" cy="28" r="22" fill="#10B981" opacity="0.25"/><path d="M18 32c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M21 34a3 3 0 106 0M35 34a3 3 0 106 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 27l3-6h6l2 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')}`,
+              scaledSize: new google.maps.Size(56, 56),
+              anchor: new google.maps.Point(28, 28),
+            },
+            zIndex: 999,
+            animation: google.maps.Animation.DROP,
+          });
+        }
+
+        // Ruta verde repartidor→cliente con DirectionsService
+        if (order.deliveryLatitude && order.deliveryLongitude) {
+          const clientPos = {
+            lat: parseFloat(order.deliveryLatitude),
+            lng: parseFloat(order.deliveryLongitude),
+          };
+          const directionsService = new google.maps.DirectionsService();
+          directionsService.route({
+            origin: driverPos,
+            destination: clientPos,
+            travelMode: google.maps.TravelMode.DRIVING,
+          }, (result: any, status: any) => {
+            // Limpiar ruta verde anterior
+            if (driverRouteLineRef.current) {
+              driverRouteLineRef.current.setMap(null);
+              driverRouteLineRef.current = null;
+            }
+            if (status === 'OK') {
+              driverRouteLineRef.current = new google.maps.DirectionsRenderer({
+                map: gmap.current,
+                directions: result,
+                suppressMarkers: true,
+                polylineOptions: { strokeColor: '#10B981', strokeWeight: 5, strokeOpacity: 0.9 },
+              });
+            } else {
+              // Fallback: línea recta verde
+              driverRouteLineRef.current = new google.maps.Polyline({
+                path: [driverPos, clientPos],
+                geodesic: true,
+                strokeColor: '#10B981',
+                strokeOpacity: 0.9,
+                strokeWeight: 5,
+                map: gmap.current,
+              });
+            }
+          });
+
+          // Ajustar bounds: repartidor + cliente
           const b = new google.maps.LatLngBounds();
+          b.extend(driverPos);
+          b.extend(clientPos);
           if (businessLocation) b.extend(businessLocation);
-          if (order.deliveryLatitude && order.deliveryLongitude) b.extend({ lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) });
-          b.extend(pos);
-          gmap.current.fitBounds(b, { top: 50, right: 50, bottom: 50, left: 50 });
+          gmap.current.fitBounds(b, { top: 60, right: 60, bottom: 60, left: 60 });
         }
       } catch {}
     };
+
     updateDriver();
     const interval = setInterval(updateDriver, 10000);
     return () => clearInterval(interval);
