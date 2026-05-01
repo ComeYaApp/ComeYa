@@ -20,7 +20,7 @@ function loadGoogleMaps(): Promise<void> {
     if (existing) { existing.addEventListener("load", () => resolve()); return; }
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=directions`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
