@@ -3,7 +3,7 @@ import { AdminShell, AdminSection } from "@/components/admin/AdminShell.web";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
-import { GiftCardsAdminTab } from "@/components/admin/tabs/GiftCardsAdminTab.web";
+import { GiftCardsAdminTab } from "../components/admin/tabs/GiftCardsAdminTab.web";
 
 import { apiRequest } from "@/lib/query-client";
 import { useEffect } from "react";
