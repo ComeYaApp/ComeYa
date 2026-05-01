@@ -367,6 +367,10 @@ function AccountSection({ user, navigation, driverStats, theme }: any) {
             <SettingItem icon="map-pin" label="Direcciones guardadas" onPress={() => navigation.navigate("SavedAddresses")} theme={theme} />
             <SettingItem icon="credit-card" label="Métodos de pago" value="Bizum · Tarjeta · PayPal" onPress={() => navigation.navigate("PaymentWalletSetup")} theme={theme} />
             <SettingItem icon="gift" label="Mis puntos y recompensas" onPress={() => navigation.navigate("Gamification")} theme={theme} />
+            <SettingItem icon="star" label="Suscripciones" onPress={() => navigation.navigate("Subscriptions")} theme={theme} />
+            <SettingItem icon="tag" label="Mis Gift Cards" onPress={() => navigation.navigate("GiftCards")} theme={theme} />
+            <SettingItem icon="users" label="Pedido grupal" onPress={() => navigation.navigate("GroupOrder")} theme={theme} />
+            <SettingItem icon="clock" label="Pedidos programados" onPress={() => navigation.navigate("ScheduledOrders")} theme={theme} />
           </>
         )}
         {user?.role === "delivery_driver" && (
@@ -523,7 +527,7 @@ function SettingItem({ icon, label, value, onPress, theme }: any) {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 280, borderRightWidth: 1, flexDirection: "column" },
+  sidebar: { width: 280, borderRightWidth: 1, flexDirection: "column" as any },
   sideHeader: { padding: 24, alignItems: "center", borderBottomWidth: 1 },
   businessHeader: { flexDirection: "row", alignItems: "center", gap: 16, padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 24 },
   avatarContainer: { position: "relative" },
@@ -534,11 +538,11 @@ const s = StyleSheet.create({
   badges: { flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "center" },
   roleBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   roleBadgeText: { fontSize: 11, fontWeight: "700" },
-  sideNav: { flex: 1, paddingVertical: 16 },
+  sideNav: { paddingVertical: 16 },
   navItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
   navItemActive: { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY },
   navItemText: { fontSize: 14, fontWeight: "600" },
-  sideFooter: { borderTopWidth: 1, borderTopColor: "#e0e0e0", padding: 16 },
+  sideFooter: { borderTopWidth: 1, borderTopColor: "#e0e0e0", padding: 16, paddingBottom: 32 },
   logoutBtn: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 12 },
   logoutBtnText: { fontSize: 14, fontWeight: "600" },
   main: { flex: 1 },

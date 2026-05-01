@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Colors } from '../constants/Colors';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest } from '@/lib/query-client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+const PRIMARY = '#DC2626';
 
 export default function ScheduledOrdersScreen() {
   const { user } = useAuth();
@@ -34,8 +35,8 @@ export default function ScheduledOrdersScreen() {
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return {
-      date: date.toLocaleDateString('es-VE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-      time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+      date: date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      time: date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
     };
   };
 
@@ -163,31 +164,31 @@ export default function ScheduledOrdersScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
+  container: { flex: 1, backgroundColor: '#f7f7f7' },
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', paddingVertical: 20 },
   tabContainer: { flexDirection: 'row', marginHorizontal: 20, backgroundColor: 'white', borderRadius: 12, padding: 4 },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8 },
-  activeTab: { backgroundColor: Colors.light.tint },
-  tabText: { fontSize: 14, color: Colors.light.tabIconDefault },
+  activeTab: { backgroundColor: PRIMARY },
+  tabText: { fontSize: 14, color: '#888' },
   activeTabText: { color: 'white', fontWeight: '600' },
   content: { flex: 1, padding: 20 },
   emptyState: { alignItems: 'center', padding: 40, backgroundColor: 'white', borderRadius: 12, marginTop: 20 },
   emptyTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: Colors.light.tabIconDefault, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: '#888', textAlign: 'center' },
   orderCard: { backgroundColor: 'white', borderRadius: 12, padding: 16, marginBottom: 12 },
   businessName: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
   scheduleDate: { fontSize: 14, marginBottom: 4 },
   scheduleTime: { fontSize: 14, marginBottom: 4 },
-  recurring: { fontSize: 12, color: Colors.light.tint, fontStyle: 'italic', marginBottom: 8 },
+  recurring: { fontSize: 12, color: PRIMARY, fontStyle: 'italic', marginBottom: 8 },
   items: { marginVertical: 8 },
-  item: { fontSize: 14, color: Colors.light.tabIconDefault, marginBottom: 2 },
-  moreItems: { fontSize: 12, color: Colors.light.tabIconDefault, fontStyle: 'italic' },
+  item: { fontSize: 14, color: '#666', marginBottom: 2 },
+  moreItems: { fontSize: 12, color: '#888', fontStyle: 'italic' },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
-  total: { fontSize: 18, fontWeight: 'bold', color: Colors.light.tint },
+  total: { fontSize: 18, fontWeight: 'bold', color: PRIMARY },
   cancelButton: { backgroundColor: '#FF5252', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   cancelText: { color: 'white', fontSize: 12, fontWeight: '600' },
   historyCard: { backgroundColor: 'white', borderRadius: 12, padding: 16, marginBottom: 12 },
-  historyDate: { fontSize: 14, color: Colors.light.tabIconDefault, marginBottom: 4 },
+  historyDate: { fontSize: 14, color: '#888', marginBottom: 4 },
   status: { fontSize: 12, fontWeight: '600', marginTop: 4 },
   loadingText: { fontSize: 18, textAlign: 'center', marginTop: 50 },
 });

@@ -33,6 +33,10 @@ import MyBusinessesScreen from "@/screens/MyBusinessesScreen";
 import BusinessStripeSetupScreen from "@/screens/BusinessStripeSetupScreen";
 import EditProfileScreen from "@/screens/EditProfileScreen";
 import GamificationScreen from "@/screens/GamificationScreen";
+import SubscriptionScreen from "@/screens/SubscriptionScreen";
+import GiftCardsScreen from "@/screens/GiftCardsScreen";
+import GroupOrderScreen from "@/screens/GroupOrderScreen";
+import ScheduledOrdersScreen from "@/screens/ScheduledOrdersScreen";
 import AddressesScreen from "@/screens/AddressesScreen";
 import SavedAddressesScreen from "@/screens/SavedAddressesScreen";
 import AddAddressScreen from "@/screens/AddAddressScreen";
@@ -105,6 +109,10 @@ export type RootStackParamList = {
   BusinessStats: undefined;
   EditProfile: undefined;
   Gamification: undefined;
+  Subscriptions: undefined;
+  GiftCards: undefined;
+  GroupOrder: { businessId?: string } | undefined;
+  ScheduledOrders: undefined;
   Addresses: undefined;
   SavedAddresses: undefined;
   AddAddress: { address?: any; fromCheckout?: boolean } | undefined;
@@ -266,11 +274,11 @@ export default function RootStackNavigator() {
             component={BusinessStatsScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen
-            name="Gamification"
-            component={GamificationScreen}
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="Gamification" component={GamificationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Subscriptions" component={SubscriptionScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="GiftCards" component={GiftCardsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="GroupOrder" component={GroupOrderScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ScheduledOrders" component={ScheduledOrdersScreen} options={{ headerShown: false }} />
           <Stack.Screen
             name="EditProfile"
             component={EditProfileScreen}

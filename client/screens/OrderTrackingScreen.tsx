@@ -315,7 +315,7 @@ export default function OrderTrackingScreen() {
         console.error("Error loading order from storage:", error);
         // Fallback to mock orders
         const foundOrder = mockOrders.find((o) => o.id === orderId);
-        setOrder(foundOrder || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg');
+        setOrder(foundOrder || null);
       }
     };
 
@@ -383,14 +383,14 @@ export default function OrderTrackingScreen() {
     ? `${dynamicETA.minutes} min` 
     : getStatusMinutes(order.status) 
     ? `${getStatusMinutes(order.status)!.min}-${getStatusMinutes(order.status)!.max} min` 
-    :  'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg';
+    : null;
 
   const estimatedTime = order.estimatedDelivery
     ? new Date(order.estimatedDelivery).toLocaleTimeString("es-ES", {
         hour: "2-digit",
         minute: "2-digit",
       })
-    :  'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg';
+    : null;
 
   const nemyCommission = order.nemyCommission
     ? order.nemyCommission / 100

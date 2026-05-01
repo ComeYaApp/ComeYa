@@ -312,9 +312,11 @@ export const VerificationsTab: React.FC<Props> = () => {
               <Section title="DOCUMENTOS" isDark={isDark}>
                 <DocDetailRow label="DNI/NIE"            url={selected.idDocumentUrl}       text={text} sub={sub} />
                 <DocDetailRow label="Cert. autónomo/empresa" url={selected.autonomoDocumentUrl} text={text} sub={sub} />
-                {dd?.vehiclePhoto    && <DocDetailRow label="Foto vehículo"   url={dd.vehiclePhoto}    text={text} sub={sub} />}
-                {dd?.vehicleDocument && <DocDetailRow label="Perm. circulación" url={dd.vehicleDocument} text={text} sub={sub} />}
-                {dd?.insuranceDocument && <DocDetailRow label="Seguro"         url={dd.insuranceDocument} text={text} sub={sub} />}
+                {dd?.vehiclePhoto       && <DocDetailRow label="Foto vehículo"      url={dd.vehiclePhoto}         text={text} sub={sub} />}
+                {dd?.vehiclePlatePhoto   && <DocDetailRow label="Foto matrícula"     url={dd.vehiclePlatePhoto}    text={text} sub={sub} />}
+                {dd?.vehicleItvPhoto     && <DocDetailRow label="ITV"                url={dd.vehicleItvPhoto}      text={text} sub={sub} />}
+                {dd?.vehicleInsurancePhoto && <DocDetailRow label="Seguro"           url={dd.vehicleInsurancePhoto} text={text} sub={sub} />}
+                {dd?.vehicleLicensePhoto && <DocDetailRow label="Carnet de conducir" url={dd.vehicleLicensePhoto}  text={text} sub={sub} />}
               </Section>
 
               {/* Nota admin */}

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { Colors } from '../constants/Colors';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest } from '@/lib/query-client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+
+const PRIMARY = '#DC2626';
 
 export default function SubscriptionScreen() {
   const { user } = useAuth();
@@ -196,27 +197,27 @@ export default function SubscriptionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.light.background },
+  container: { flex: 1, backgroundColor: '#f7f7f7' },
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', paddingVertical: 20 },
   content: { flex: 1, padding: 20 },
   currentPlanCard: { backgroundColor: 'white', borderRadius: 12, padding: 20, marginBottom: 20, alignItems: 'center' },
-  currentPlanTitle: { fontSize: 14, color: Colors.light.tabIconDefault, marginBottom: 8 },
+  currentPlanTitle: { fontSize: 14, color: '#888', marginBottom: 8 },
   currentPlanName: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
-  currentPlanPrice: { fontSize: 18, color: Colors.light.tint, marginBottom: 16 },
+  currentPlanPrice: { fontSize: 18, color: PRIMARY, marginBottom: 16 },
   cancelButton: { backgroundColor: '#FF5252', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   cancelButtonText: { color: 'white', fontWeight: '600' },
   planCard: { backgroundColor: 'white', borderRadius: 12, marginBottom: 20, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
-  planCardSelected: { borderColor: Colors.light.tint },
+  planCardSelected: { borderColor: PRIMARY },
   planGradient: { padding: 24, alignItems: 'center' },
   planName: { fontSize: 28, fontWeight: 'bold', color: 'white', marginBottom: 8 },
   planPrice: { fontSize: 32, fontWeight: 'bold', color: 'white' },
   planBenefits: { padding: 20 },
   benefit: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   benefitIcon: { fontSize: 16, marginRight: 12 },
-  benefitText: { fontSize: 14, color: Colors.light.text, flex: 1 },
-  subscribeButton: { backgroundColor: Colors.light.tint, margin: 20, paddingVertical: 16, borderRadius: 8, alignItems: 'center' },
+  benefitText: { fontSize: 14, color: '#333', flex: 1 },
+  subscribeButton: { backgroundColor: PRIMARY, margin: 20, paddingVertical: 16, borderRadius: 8, alignItems: 'center' },
   subscribeButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
   comparisonCard: { backgroundColor: 'white', borderRadius: 12, padding: 20, marginTop: 20 },
   comparisonTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
-  comparisonText: { fontSize: 14, color: Colors.light.tabIconDefault, marginBottom: 8 },
+  comparisonText: { fontSize: 14, color: '#888', marginBottom: 8 },
 });

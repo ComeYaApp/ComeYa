@@ -61,7 +61,7 @@ export function MobileSidebarWrapper({ children, title = "Filtros", sidebarStyle
 }
 
 const s = StyleSheet.create({
-  desktopSidebar: { borderRightWidth: 1, height: "100vh" as any, overflowY: "auto" as any, flexDirection: "column" as any },
+  desktopSidebar: { borderRightWidth: 1, height: "100vh" as any, overflowY: "auto" as any, flexDirection: "column" as any, display: "flex" as any },
   hamburger: {
     position: "absolute" as any,
     bottom: 24,
