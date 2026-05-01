@@ -20,7 +20,7 @@ function loadGoogleMaps(): Promise<void> {
     if (existing) { existing.addEventListener("load", () => resolve()); return; }
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=routes,geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
@@ -206,30 +206,18 @@ export default function OrderTrackingScreen() {
     const clientPos = { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) };
 
     // Intentar ruta real con DirectionsService
-    const routesLib = new google.maps.routes.RoutesLibrary();
-    routesLib.computeRoutes({
-      origin: { location: { latLng: { latitude: businessLocation.lat, longitude: businessLocation.lng } } },
-      destination: { location: { latLng: { latitude: clientPos.lat, longitude: clientPos.lng } } },
-      travelMode: 'DRIVE',
-      routingPreference: 'TRAFFIC_AWARE',
-    }).then((result: any) => {
+    const directionsService = new google.maps.DirectionsService();
+    directionsService.route({
+      origin: businessLocation,
+      destination: clientPos,
+      travelMode: google.maps.TravelMode.DRIVING,
+    }, (result: any, status: any) => {
       if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
-      const encoded = result?.routes?.[0]?.polyline?.encodedPolyline;
-      const path = encoded
-        ? google.maps.geometry.encoding.decodePath(encoded)
+      const path = status === 'OK'
+        ? result.routes[0].overview_path
         : [businessLocation, clientPos];
       routeLineRef.current = new google.maps.Polyline({
         path,
-        geodesic: true,
-        strokeColor: '#DC2626',
-        strokeOpacity: 0.85,
-        strokeWeight: 5,
-        map: gmap.current,
-      });
-    }).catch(() => {
-      if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
-      routeLineRef.current = new google.maps.Polyline({
-        path: [businessLocation, clientPos],
         geodesic: true,
         strokeColor: '#DC2626',
         strokeOpacity: 0.85,
@@ -316,30 +304,18 @@ export default function OrderTrackingScreen() {
             lat: parseFloat(order.deliveryLatitude),
             lng: parseFloat(order.deliveryLongitude),
           };
-          const routesLib2 = new google.maps.routes.RoutesLibrary();
-          routesLib2.computeRoutes({
-            origin: { location: { latLng: { latitude: driverPos.lat, longitude: driverPos.lng } } },
-            destination: { location: { latLng: { latitude: clientPos.lat, longitude: clientPos.lng } } },
-            travelMode: 'DRIVE',
-            routingPreference: 'TRAFFIC_AWARE',
-          }).then((result: any) => {
+          const directionsService = new google.maps.DirectionsService();
+          directionsService.route({
+            origin: driverPos,
+            destination: clientPos,
+            travelMode: google.maps.TravelMode.DRIVING,
+          }, (result: any, status: any) => {
             if (driverRouteLineRef.current) { driverRouteLineRef.current.setMap(null); driverRouteLineRef.current = null; }
-            const encoded = result?.routes?.[0]?.polyline?.encodedPolyline;
-            const path = encoded
-              ? google.maps.geometry.encoding.decodePath(encoded)
+            const path = status === 'OK'
+              ? result.routes[0].overview_path
               : [driverPos, clientPos];
             driverRouteLineRef.current = new google.maps.Polyline({
               path,
-              geodesic: true,
-              strokeColor: '#10B981',
-              strokeOpacity: 0.9,
-              strokeWeight: 5,
-              map: gmap.current,
-            });
-          }).catch(() => {
-            if (driverRouteLineRef.current) { driverRouteLineRef.current.setMap(null); driverRouteLineRef.current = null; }
-            driverRouteLineRef.current = new google.maps.Polyline({
-              path: [driverPos, clientPos],
               geodesic: true,
               strokeColor: '#10B981',
               strokeOpacity: 0.9,
