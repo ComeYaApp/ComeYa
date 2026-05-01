@@ -77,7 +77,7 @@ export default function BusinessManageScreen() {
           />
         </View>
 
-        {/* Stats rápidas */}}
+        {/* Stats rápidas */}
         <View style={[s.quickStats, { borderColor: border }]}>
           <View style={s.quickStat}>
             <Text style={[s.quickStatValue, { color: ComeYaColors.success }]}>{available.length}</Text>
