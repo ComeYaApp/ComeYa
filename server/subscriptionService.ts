@@ -48,15 +48,15 @@ export class SubscriptionService {
       .where(eq(subscriptions.userId, userId))
       .limit(1);
 
-    if (!subscription) {
+    if (!subscription || subscription.status === 'pending_payment') {
       return {
-        plan: 'free',
-        status: 'active',
+        plan: subscription?.plan || 'free',
+        status: subscription?.status || 'active',
         benefits: this.PLANS.free.benefits,
       };
     }
 
-    // Verificar si está vencida (usando currentPeriodEnd)
+    // Verificar si está vencida
     const now = new Date();
     if (subscription.currentPeriodEnd && subscription.currentPeriodEnd < now && subscription.status === 'active') {
       await db
@@ -71,7 +71,10 @@ export class SubscriptionService {
       };
     }
 
-    const planBenefits = this.PLANS[subscription.plan as keyof typeof this.PLANS]?.benefits || this.PLANS.free.benefits;
+    // Solo aplicar beneficios si está activa
+    const planBenefits = subscription.status === 'active'
+      ? (this.PLANS[subscription.plan as keyof typeof this.PLANS]?.benefits || this.PLANS.free.benefits)
+      : this.PLANS.free.benefits;
 
     return {
       ...subscription,
@@ -111,60 +114,10 @@ export class SubscriptionService {
     }
   }
 
-  // Crear o actualizar suscripción
-  static async subscribe(userId: string, plan: 'premium' | 'business', billingCycle: 'monthly' | 'yearly' = 'monthly') {
-    const planData = this.PLANS[plan];
-    if (!planData) {
-      throw new Error('Plan inválido');
-    }
-
-    const now = new Date();
-    const periodEnd = new Date(now);
-    
-    if (billingCycle === 'monthly') {
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-    } else {
-      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-    }
-
-    // Verificar si ya tiene suscripción
-    const [existing] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.userId, userId))
-      .limit(1);
-
-    if (existing) {
-      // Actualizar suscripción existente
-      await db
-        .update(subscriptions)
-        .set({
-          plan,
-          status: 'active',
-          price: planData.price,
-          billingCycle,
-          currentPeriodStart: now,
-          currentPeriodEnd: periodEnd,
-          autoRenew: true,
-        })
-        .where(eq(subscriptions.id, existing.id));
-
-      return { success: true, subscriptionId: existing.id };
-    } else {
-      // Crear nueva suscripción
-      await db.insert(subscriptions).values({
-        userId,
-        plan,
-        status: 'active',
-        price: planData.price,
-        billingCycle,
-        currentPeriodStart: now,
-        currentPeriodEnd: periodEnd,
-        autoRenew: true,
-      });
-
-      return { success: true, message: 'Suscripción creada' };
-    }
+  // ELIMINADO: subscribe() activaba sin cobrar. Usar initSubscription() + confirmación de pago.
+  // El método se mantiene solo para compatibilidad interna pero lanza error si se llama directamente.
+  static async subscribe(_userId: string, _plan: string, _billingCycle?: string): Promise<never> {
+    throw new Error('Uso incorrecto: usa initSubscription() y confirma el pago antes de activar.');
   }
 
   // Cancelar suscripción
