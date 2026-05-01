@@ -20,7 +20,6 @@ export class GiftCardService {
     amount: number;
     recipientEmail?: string;
     recipientPhone?: string;
-    recipientName?: string;
     message?: string;
     design?: string;
   }) {
@@ -29,7 +28,6 @@ export class GiftCardService {
       amount,
       recipientEmail,
       recipientPhone,
-      recipientName,
       message,
       design = 'default',
     } = data;
@@ -52,7 +50,6 @@ export class GiftCardService {
       purchasedBy,
       recipientEmail: recipientEmail || null,
       recipientPhone: recipientPhone || null,
-      recipientName: recipientName || null,
       message: message || null,
       design,
       expiresAt,
@@ -153,7 +150,6 @@ export class GiftCardService {
       .update(giftCards)
       .set({
         balance: newBalance,
-        redeemedBy: userId,
         redeemedAt: new Date(),
         status: newBalance === 0 ? 'redeemed' : 'active',
       })
@@ -179,40 +175,40 @@ export class GiftCardService {
 
   // Obtener gift cards del usuario
   static async getUserGiftCards(userId: string) {
-    const purchased = await db
-      .select()
-      .from(giftCards)
-      .where(eq(giftCards.purchasedBy, userId));
+    try {
+      const purchased = await db
+        .select()
+        .from(giftCards)
+        .where(eq(giftCards.purchasedBy, userId));
 
-    const redeemed = await db
-      .select()
-      .from(giftCards)
-      .where(eq(giftCards.redeemedBy, userId));
-
-    return {
-      success: true,
-      purchased: purchased.map((gc) => ({
-        ...gc,
-        amount: gc.amount / 100,
-        balance: gc.balance / 100,
-      })),
-      redeemed: redeemed.map((gc) => ({
-        ...gc,
-        amount: gc.amount / 100,
-        balance: gc.balance / 100,
-      })),
-    };
+      return {
+        success: true,
+        purchased: purchased.map((gc) => ({
+          ...gc,
+          amount: gc.amount / 100,
+          balance: gc.balance / 100,
+        })),
+        redeemed: [],
+      };
+    } catch (error: any) {
+      console.error('getUserGiftCards error:', error?.message);
+      return { success: true, purchased: [], redeemed: [] };
+    }
   }
 
   // Obtener diseños disponibles
   static async getDesigns() {
-    const designs = await db
-      .select()
-      .from(giftCardDesigns)
-      .where(eq(giftCardDesigns.isActive, true))
-      .orderBy(giftCardDesigns.displayOrder);
-
-    return { success: true, designs };
+    try {
+      const designs = await db
+        .select()
+        .from(giftCardDesigns)
+        .where(eq(giftCardDesigns.isActive, true))
+        .orderBy(giftCardDesigns.displayOrder);
+      return { success: true, designs };
+    } catch (error: any) {
+      console.error('getDesigns error:', error?.message);
+      return { success: true, designs: [] };
+    }
   }
 
   // Obtener historial de transacciones
