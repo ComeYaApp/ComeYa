@@ -444,12 +444,6 @@ router.post("/create-subscription-payment-intent", authenticateToken, async (req
       metadata: { userId: req.user!.id, subscriptionId, plan: sub.plan },
     });
 
-    // Guardar paymentIntentId en la suscripción para verificar después
-    const { sql } = await import("drizzle-orm");
-    await db.execute(
-      sql`UPDATE subscriptions SET stripe_payment_intent_id = ${paymentIntent.id} WHERE id = ${subscriptionId}`
-    );
-
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
