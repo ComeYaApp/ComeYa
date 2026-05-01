@@ -80,8 +80,6 @@ export default function OrderTrackingScreen() {
       try {
         const res = await apiRequest("GET", `/api/orders/${orderId}`);
         const data = await res.json();
-        const apiOrder = data.order || data;
-
         // Extraer lat/lng del JSON de delivery_address si los campos separados son null
         if ((!apiOrder.deliveryLatitude || !apiOrder.deliveryLongitude) && apiOrder.deliveryAddress) {
           try {
@@ -90,6 +88,27 @@ export default function OrderTrackingScreen() {
               : apiOrder.deliveryAddress;
             if (addr?.latitude) apiOrder.deliveryLatitude = String(addr.latitude);
             if (addr?.longitude) apiOrder.deliveryLongitude = String(addr.longitude);
+          } catch {}
+        }
+
+        // Si aún no hay coordenadas del cliente, geocodificar la dirección de texto
+        if ((!apiOrder.deliveryLatitude || !apiOrder.deliveryLongitude) && apiOrder.deliveryAddress) {
+          try {
+            await loadGoogleMaps();
+            const google = (window as any).google;
+            const geocoder = new google.maps.Geocoder();
+            const addressText = typeof apiOrder.deliveryAddress === 'string'
+              ? apiOrder.deliveryAddress
+              : (apiOrder.deliveryAddress?.street || '') + ', Soria, España';
+            await new Promise<void>((resolve) => {
+              geocoder.geocode({ address: addressText + (addressText.includes('Soria') ? '' : ', Soria, España') }, (results: any, status: any) => {
+                if (status === 'OK' && results[0]) {
+                  apiOrder.deliveryLatitude = String(results[0].geometry.location.lat());
+                  apiOrder.deliveryLongitude = String(results[0].geometry.location.lng());
+                }
+                resolve();
+              });
+            });
           } catch {}
         }
 

@@ -1,719 +1,520 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/navigation/RootStackNavigator';
 import { Feather } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-
 import { ThemedText } from '@/components/ThemedText';
-import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiRequest } from '@/lib/query-client';
-import { isInCoverageArea, SORIA_CENTER } from '@/utils/coverage';
-import { checkDuplicateAddress, suggestSimilarAddresses, Address } from '@/utils/addressValidation';
-import { useDebounce, usePerformanceMonitor } from '@/hooks/usePerformance';
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { ComeYaLogo } from '@/components/ComeYaLogo';
-import * as Location from 'expo-location';
 import { useResponsive } from '@/hooks/useResponsive';
+import { Spacing, BorderRadius, ComeYaColors } from '@/constants/theme';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddAddress'>;
 
-const PRIMARY = "#DC2626";
+const PRIMARY = '#DC2626';
+const SORIA = { lat: 41.7636, lng: -2.4677 };
+const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || '';
+
+function loadGoogleMaps(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as any).google?.maps) { resolve(); return; }
+    const existing = document.getElementById('gmap-script');
+    if (existing) { existing.addEventListener('load', () => resolve()); return; }
+    const script = document.createElement('script');
+    script.id = 'gmap-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&libraries=places`;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+const LABEL_OPTIONS = ['Casa', 'Trabajo', 'Otro'];
 
 export default function AddAddressScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
-  const { theme } = useTheme();
   const { user } = useAuth();
-  usePerformanceMonitor('AddAddressScreen');
+  const { isMobile } = useResponsive();
 
-  const existingAddress = (route.params as any)?.address as Partial<Address> | undefined;
+  const existingAddress = (route.params as any)?.address as any;
   const fromCheckout = Boolean((route.params as any)?.fromCheckout);
 
-  const { data: addressesData } = useQuery<{ addresses: Address[] }>({
-    queryKey: ['/api/users', user?.id, 'addresses'],
-    enabled: !!user?.id,
-  });
-  const existingAddresses = addressesData?.addresses || [];
+  const mapRef = useRef<HTMLDivElement>(null);
+  const gmap = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const autocompleteRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const [label, setLabel] = useState(existingAddress?.label || '');
+  const [mapsReady, setMapsReady] = useState(false);
+  const [label, setLabel] = useState(existingAddress?.label || 'Casa');
   const [street, setStreet] = useState(existingAddress?.street || '');
   const [city, setCity] = useState(existingAddress?.city || 'Soria');
-  const [state, setState] = useState(existingAddress?.state || 'España');
   const [zipCode, setZipCode] = useState(existingAddress?.zipCode || '');
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number }>({
+    lat: existingAddress?.latitude ? parseFloat(existingAddress.latitude) : SORIA.lat,
+    lng: existingAddress?.longitude ? parseFloat(existingAddress.longitude) : SORIA.lng,
+  });
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [touched, setTouched] = useState(false);
-  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
-    existingAddress?.latitude && existingAddress?.longitude &&
-    isInCoverageArea(existingAddress.latitude, existingAddress.longitude)
-      ? { latitude: existingAddress.latitude, longitude: existingAddress.longitude }
-      : null,
-  );
-  const [duplicateWarning, setDuplicateWarning] = useState<Address | null>(null);
-  const [suggestions, setSuggestions] = useState<Address[]>([]);
-  const { isMobile } = useResponsive();
 
-  const debouncedStreet = useDebounce(street, 300);
-
+  // Cargar Google Maps con Places
   useEffect(() => {
-    if (coordinates && street && existingAddresses.length > 0) {
-      const duplicate = checkDuplicateAddress(
-        { latitude: coordinates.latitude, longitude: coordinates.longitude, street },
-        existingAddresses,
-      );
-      setDuplicateWarning(duplicate);
-    } else {
-      setDuplicateWarning(null);
-    }
-  }, [coordinates?.latitude, coordinates?.longitude, street, existingAddresses.length]);
-
-  useEffect(() => {
-    if (debouncedStreet.length >= 3 && existingAddresses.length > 0) {
-      const similar = suggestSimilarAddresses(debouncedStreet, existingAddresses);
-      setSuggestions(similar);
-    } else {
-      setSuggestions([]);
-    }
-  }, [debouncedStreet, existingAddresses.length]);
-
-  const handleSuggestionSelect = useCallback((addr: Address) => {
-    setStreet(addr.street);
-    setLabel(addr.label);
-    setCoordinates({ latitude: addr.latitude, longitude: addr.longitude });
-    setSuggestions([]);
+    loadGoogleMaps().then(() => setMapsReady(true)).catch(console.error);
   }, []);
 
+  // Inicializar mapa + marcador arrastrable + autocomplete
+  useEffect(() => {
+    if (!mapsReady || !mapRef.current || gmap.current) return;
+    const google = (window as any).google;
+
+    gmap.current = new google.maps.Map(mapRef.current, {
+      center: coordinates,
+      zoom: 16,
+      disableDefaultUI: true,
+      zoomControl: true,
+      gestureHandling: 'greedy',
+    });
+
+    // Marcador arrastrable
+    markerRef.current = new google.maps.Marker({
+      position: coordinates,
+      map: gmap.current,
+      draggable: true,
+      title: 'Arrastra para ajustar',
+      icon: {
+        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
+        scaledSize: new google.maps.Size(40, 48),
+        anchor: new google.maps.Point(20, 48),
+      },
+    });
+
+    // Al arrastrar el marcador → geocodificación inversa
+    markerRef.current.addListener('dragend', (e: any) => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      setCoordinates({ lat, lng });
+      reverseGeocode(lat, lng);
+    });
+
+    // Al hacer click en el mapa → mover marcador
+    gmap.current.addListener('click', (e: any) => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      markerRef.current.setPosition(e.latLng);
+      setCoordinates({ lat, lng });
+      reverseGeocode(lat, lng);
+    });
+
+    // Autocomplete en el input de calle
+    if (inputRef.current) {
+      autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
+        componentRestrictions: { country: 'es' },
+        fields: ['geometry', 'address_components', 'formatted_address'],
+        bounds: new google.maps.LatLngBounds(
+          { lat: 41.72, lng: -2.52 },
+          { lat: 41.82, lng: -2.42 }
+        ),
+        strictBounds: false,
+      });
+
+      autocompleteRef.current.addListener('place_changed', () => {
+        const place = autocompleteRef.current.getPlace();
+        if (!place.geometry?.location) return;
+
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        const pos = { lat, lng };
+
+        setCoordinates(pos);
+        gmap.current.panTo(pos);
+        gmap.current.setZoom(17);
+        markerRef.current.setPosition(pos);
+
+        // Extraer componentes de la dirección
+        const components = place.address_components || [];
+        const getComp = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name || '';
+        const streetNum = getComp('street_number');
+        const route = getComp('route');
+        const locality = getComp('locality') || getComp('administrative_area_level_2');
+        const postal = getComp('postal_code');
+
+        if (route) setStreet(`${route}${streetNum ? ' ' + streetNum : ''}`);
+        if (locality) setCity(locality);
+        if (postal) setZipCode(postal);
+      });
+    }
+  }, [mapsReady]);
+
+  const reverseGeocode = useCallback((lat: number, lng: number) => {
+    const google = (window as any).google;
+    if (!google) return;
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+      if (status !== 'OK' || !results[0]) return;
+      const components = results[0].address_components || [];
+      const getComp = (type: string) => components.find((c: any) => c.types.includes(type))?.long_name || '';
+      const streetNum = getComp('street_number');
+      const routeName = getComp('route');
+      const locality = getComp('locality') || getComp('administrative_area_level_2');
+      const postal = getComp('postal_code');
+      if (routeName) setStreet(`${routeName}${streetNum ? ' ' + streetNum : ''}`);
+      if (locality) setCity(locality);
+      if (postal) setZipCode(postal);
+    });
+  }, []);
+
+  const handleMyLocation = () => {
+    setLocating(true);
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const position = { lat, lng };
+        setCoordinates(position);
+        gmap.current?.panTo(position);
+        gmap.current?.setZoom(17);
+        markerRef.current?.setPosition(position);
+        reverseGeocode(lat, lng);
+        setLocating(false);
+      },
+      () => {
+        setError('No se pudo obtener tu ubicación');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
   const handleSave = async () => {
-    setTouched(true);
     setError(null);
-
     if (!label.trim() || !street.trim()) {
-      setError('Por favor completa todos los campos requeridos');
+      setError('Completa la etiqueta y la calle');
       return;
     }
-
-    const finalCoordinates = coordinates || (Platform.OS === 'web' ? SORIA_CENTER : null);
-
-    if (!finalCoordinates) {
-      setError('Por favor selecciona la ubicación en el mapa');
-      return;
-    }
-
-    const coordsToValidate = (Platform.OS === 'web' && !coordinates) ? SORIA_CENTER : finalCoordinates;
-    if (!isInCoverageArea(coordsToValidate.latitude, coordsToValidate.longitude)) {
-      setError('La ubicación está fuera de nuestra zona de cobertura');
-      return;
-    }
-
     setLoading(true);
     try {
       const payload = {
         label: label.trim(),
         street: street.trim(),
-        city: city.trim(),
-        state: state.trim(),
+        city: city.trim() || 'Soria',
+        state: 'España',
         zipCode: zipCode.trim(),
-        latitude: finalCoordinates.latitude,
-        longitude: finalCoordinates.longitude,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
       };
-
       const response = existingAddress?.id
         ? await apiRequest('PUT', `/api/users/${user?.id}/addresses/${existingAddress.id}`, payload)
         : await apiRequest('POST', `/api/users/${user?.id}/addresses`, payload);
 
       if (response.ok) {
-        const responseData = await response.json().catch(() => ({}));
-        const savedId = (responseData as any)?.address?.id || (responseData as any)?.id || existingAddress?.id;
+        const data = await response.json().catch(() => ({}));
+        const savedId = (data as any)?.address?.id || (data as any)?.id || existingAddress?.id;
         setSuccess(true);
         setTimeout(() => {
           if (fromCheckout && savedId) {
-            navigation.navigate('Checkout' as never, {
-              addressRefreshToken: Date.now(),
-              selectedAddressId: savedId,
-            } as never);
+            navigation.navigate('Checkout' as never, { addressRefreshToken: Date.now(), selectedAddressId: savedId } as never);
           } else {
             navigation.goBack();
           }
         }, 500);
       } else {
-        setError('No se pudo guardar la dirección. Intenta de nuevo.');
+        setError('No se pudo guardar la dirección');
       }
     } catch {
-      setError('Error de conexión. Verifica tu internet.');
+      setError('Error de conexión');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#FAFAFA" }} contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap" as any }}>
-      {/* LEFT: Hero Section — oculto en móvil */}
-      {!isMobile && <View style={styles.heroSection}>
-        <View style={styles.heroContent}>
-          {/* Logo */}
-          <Pressable onPress={() => navigation.goBack()} style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <ComeYaLogo size={48} />
+    <ScrollView style={{ flex: 1, backgroundColor: '#FAFAFA' }} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap' as any }}>
+      {/* LEFT: Hero */}
+      {!isMobile && (
+        <View style={s.hero}>
+          <Pressable onPress={() => navigation.goBack()} style={s.logoRow}>
+            <View style={s.logoCircle}><ComeYaLogo size={48} /></View>
+            <ThemedText type="h2" style={s.logoText}>ComeYa</ThemedText>
+          </Pressable>
+          <ThemedText type="h1" style={s.heroTitle}>
+            {existingAddress?.id ? 'Editar dirección' : 'Nueva dirección'}
+          </ThemedText>
+          <ThemedText type="body" style={s.heroSub}>
+            Mueve el pin en el mapa para ajustar tu ubicación exacta
+          </ThemedText>
+          <View style={s.heroCard}>
+            <Feather name="map-pin" size={20} color={PRIMARY} />
+            <ThemedText type="body" style={{ marginLeft: 12, color: '#6B7280', flex: 1 }}>
+              Entregamos en toda Soria y alrededores
+            </ThemedText>
+          </View>
+          <View style={s.tipRow}>
+            <Feather name="info" size={14} color="rgba(255,255,255,0.8)" />
+            <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 8 }}>
+              Escribe tu calle y el mapa se ajustará automáticamente
+            </ThemedText>
+          </View>
+          <View style={s.tipRow}>
+            <Feather name="info" size={14} color="rgba(255,255,255,0.8)" />
+            <ThemedText type="small" style={{ color: 'rgba(255,255,255,0.8)', marginLeft: 8 }}>
+              También puedes arrastrar el pin rojo para precisar
+            </ThemedText>
+          </View>
+        </View>
+      )}
+
+      {/* RIGHT: Form + Map */}
+      <View style={[s.formSection, isMobile && { padding: 16 }]}>
+        <View style={[s.card, isMobile && { padding: 20, borderRadius: 16 }]}>
+
+          {/* Mapa interactivo */}
+          <View style={s.mapWrapper}>
+            <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: 16 } as any} />
+            {!mapsReady && (
+              <View style={s.mapLoading}>
+                <ActivityIndicator color={PRIMARY} />
+              </View>
+            )}
+            {/* Instrucción flotante */}
+            <View style={s.mapHint}>
+              <Feather name="move" size={13} color="#FFF" />
+              <ThemedText type="caption" style={{ color: '#FFF', marginLeft: 6 }}>
+                Toca el mapa o arrastra el pin
+              </ThemedText>
             </View>
-            <ThemedText type="h2" style={styles.logoText}>ComeYa</ThemedText>
+          </View>
+
+          {/* Botón mi ubicación */}
+          <Pressable onPress={handleMyLocation} disabled={locating} style={[s.gpsBtn, locating && { opacity: 0.7 }]}>
+            {locating
+              ? <ActivityIndicator size="small" color="#FFF" />
+              : <Feather name="navigation" size={18} color="#FFF" />}
+            <ThemedText type="body" style={{ color: '#FFF', fontWeight: '600', marginLeft: 10 }}>
+              {locating ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual'}
+            </ThemedText>
           </Pressable>
 
-          {/* Headline */}
-          <View style={styles.heroTextContainer}>
-            <ThemedText type="h1" style={styles.heroTitle}>
-              {existingAddress?.id ? 'Editar dirección' : 'Nueva dirección'}
-            </ThemedText>
-            <ThemedText type="body" style={styles.heroSubtitle}>
-              {existingAddress?.id 
-                ? 'Actualiza los datos de tu dirección de entrega'
-                : 'Agrega una nueva dirección para recibir tus pedidos'}
-            </ThemedText>
-          </View>
-
-          {/* Info Cards */}
-          <View style={styles.heroCard}>
-            <View style={styles.heroCardHeader}>
-              <Feather name="map-pin" size={24} color={PRIMARY} />
-              <ThemedText type="h4" style={{ marginLeft: 12 }}>Zona de cobertura</ThemedText>
-            </View>
-            <View style={styles.heroCardDivider} />
-            <ThemedText type="body" style={{ color: "#6B7280", marginBottom: 16 }}>
-              Actualmente entregamos en toda la ciudad de Soria y alrededores.
-            </ThemedText>
-            <View style={styles.coverageBadge}>
-              <Feather name="check-circle" size={16} color="#059669" />
-              <ThemedText type="small" style={{ color: "#059669", marginLeft: 8 }}>
-                Soria centro y alrededores
-              </ThemedText>
+          {/* Calle con autocomplete */}
+          <View style={s.fieldGroup}>
+            <ThemedText type="body" style={s.label}>Calle y número *</ThemedText>
+            <View style={s.inputRow}>
+              <Feather name="map-pin" size={18} color="#9CA3AF" style={s.inputIcon} />
+              <input
+                ref={inputRef}
+                type="text"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                placeholder="Ej: Calle Mayor 12"
+                style={inputStyle}
+              />
             </View>
           </View>
 
-          {/* Tips */}
-          <View style={styles.tipsContainer}>
-            <View style={styles.tipItem}>
-              <Feather name="info" size={16} color="rgba(255,255,255,0.8)" />
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.8)", marginLeft: 8 }}>
-                Asegúrate de incluir el número de portal
-              </ThemedText>
-            </View>
-            <View style={styles.tipItem}>
-              <Feather name="info" size={16} color="rgba(255,255,255,0.8)" />
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.8)", marginLeft: 8 }}>
-                Puedes usar el GPS para ubicación exacta
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-      </View>}
-
-      {/* RIGHT: Form Section */}
-      <View style={[styles.formSection, isMobile && { padding: 16, justifyContent: 'flex-start' }]}>
-        <View style={[styles.formCard, isMobile && { padding: 20, borderRadius: 16 }]}>
-            {/* Error banner */}
-            {error && (
-              <View style={styles.errorBanner}>
-                <Feather name="alert-circle" size={20} color="#DC2626" />
-                <ThemedText type="body" style={{ color: "#DC2626", flex: 1, marginLeft: 12 }}>
-                  {error}
-                </ThemedText>
-              </View>
-            )}
-
-            {/* Success banner */}
-            {success && (
-              <View style={styles.successBanner}>
-                <Feather name="check-circle" size={20} color="#059669" />
-                <ThemedText type="body" style={{ color: "#059669", flex: 1, marginLeft: 12 }}>
-                  {existingAddress?.id ? 'Dirección actualizada' : 'Dirección guardada correctamente'}
-                </ThemedText>
-              </View>
-            )}
-
-            {/* GPS Button */}
-            <Pressable
-              style={[styles.gpsButton, locating && { opacity: 0.7 }]}
-              onPress={async () => {
-                setLocating(true);
-                setError(null);
-                try {
-                  const { status } = await Location.requestForegroundPermissionsAsync();
-                  if (status !== 'granted') {
-                    setError('Se necesita permiso de ubicación para usar el GPS');
-                    return;
-                  }
-                  const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-                  const { latitude, longitude } = pos.coords;
-                  setCoordinates({ latitude, longitude });
-                  const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
-                  if (place) {
-                    const streetParts = [place.street, place.streetNumber].filter(Boolean);
-                    if (streetParts.length > 0) setStreet(streetParts.join(' '));
-                    if (place.postalCode) setZipCode(place.postalCode);
-                    if (place.city) setCity(place.city);
-                    if (place.region) setState(place.region);
-                  }
-                } catch {
-                  setError('No se pudo obtener la ubicación. Intenta de nuevo.');
-                } finally {
-                  setLocating(false);
-                }
-              }}
-              disabled={locating}
-            >
-              {locating
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Feather name="navigation" size={20} color="#fff" />}
-              <ThemedText type="body" style={{ color: '#fff', fontWeight: '600', marginLeft: 12 }}>
-                {locating ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual'}
-              </ThemedText>
-            </Pressable>
-
-            {/* Street Input */}
-            <View style={styles.inputGroup}>
-              <ThemedText type="body" style={styles.inputLabel}>
-                Calle y número *
-              </ThemedText>
-              <View style={styles.inputWrapper}>
-                <Feather name="map-pin" size={20} color="#6B7280" style={styles.inputIcon} />
-                <input
-                  type="text"
-                  value={street}
-                  onChange={(e) => { setStreet(e.target.value); setError(null); }}
-                  onBlur={() => setTouched(true)}
-                  placeholder="Ej: Calle Mayor 12"
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 16,
-                    color: '#1F2937',
-                    backgroundColor: 'transparent',
-                    paddingLeft: 40,
-                  }}
-                />
-              </View>
-            </View>
-
-            {/* Suggestions */}
-            {suggestions.length > 0 && (
-              <View style={styles.suggestionsBox}>
-                <ThemedText type="small" style={{ color: "#6B7280", marginBottom: 12 }}>
-                  Direcciones similares:
-                </ThemedText>
-                {suggestions.map((addr) => (
-                  <Pressable
-                    key={addr.id}
-                    style={styles.suggestionItem}
-                    onPress={() => handleSuggestionSelect(addr)}
-                  >
-                    <ThemedText type="body" style={{ color: PRIMARY, fontWeight: '600', marginBottom: 4 }}>
-                      {addr.label}
-                    </ThemedText>
-                    <ThemedText type="small" style={{ color: "#6B7280" }}>
-                      {addr.street}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            {/* Duplicate warning */}
-            {duplicateWarning && (
-              <View style={styles.warningBanner}>
-                <Feather name="alert-triangle" size={20} color="#F59E0B" />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <ThemedText type="body" style={{ color: "#F59E0B", fontWeight: '600', marginBottom: 4 }}>
-                    Similar a "{duplicateWarning.label}"
+          {/* Etiqueta */}
+          <View style={s.fieldGroup}>
+            <ThemedText type="body" style={s.label}>Etiqueta *</ThemedText>
+            <View style={s.labelRow}>
+              {LABEL_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt}
+                  onPress={() => setLabel(opt)}
+                  style={[s.labelChip, label === opt && s.labelChipActive]}
+                >
+                  <ThemedText type="small" style={{ color: label === opt ? '#FFF' : '#374151', fontWeight: '600' }}>
+                    {opt}
                   </ThemedText>
-                  <ThemedText type="small" style={{ color: "#F59E0B" }}>
-                    {duplicateWarning.street}
-                  </ThemedText>
+                </Pressable>
+              ))}
+              {!LABEL_OPTIONS.includes(label) && (
+                <View style={[s.labelChip, s.labelChipActive]}>
+                  <ThemedText type="small" style={{ color: '#FFF', fontWeight: '600' }}>{label}</ThemedText>
                 </View>
-              </View>
-            )}
-
-            {/* Label Input */}
-            <View style={styles.inputGroup}>
-              <ThemedText type="body" style={styles.inputLabel}>
-                Etiqueta *
-              </ThemedText>
-              <View style={styles.inputWrapper}>
-                <Feather name="tag" size={20} color="#6B7280" style={styles.inputIcon} />
-                <input
-                  type="text"
-                  value={label}
-                  onChange={(e) => setLabel(e.target.value)}
-                  onBlur={() => setTouched(true)}
-                  placeholder="Casa, Trabajo, etc."
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 16,
-                    color: '#1F2937',
-                    backgroundColor: 'transparent',
-                    paddingLeft: 40,
-                  }}
-                />
-              </View>
-              {touched && !label.trim() && (
-                <ThemedText type="small" style={{ color: "#DC2626", marginTop: 8 }}>
-                  Necesitamos una etiqueta para identificar la dirección
-                </ThemedText>
               )}
             </View>
-
-            {/* City Input */}
-            <View style={styles.inputGroup}>
-              <ThemedText type="body" style={styles.inputLabel}>
-                Ciudad
-              </ThemedText>
-              <View style={styles.inputWrapper}>
-                <Feather name="map" size={20} color="#6B7280" style={styles.inputIcon} />
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 16,
-                    color: '#1F2937',
-                    backgroundColor: 'transparent',
-                    paddingLeft: 40,
-                  }}
-                />
-              </View>
+            <View style={[s.inputRow, { marginTop: 8 }]}>
+              <Feather name="tag" size={18} color="#9CA3AF" style={s.inputIcon} />
+              <input
+                type="text"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Casa, Trabajo, etc."
+                style={inputStyle}
+              />
             </View>
-
-            {/* State Input */}
-            <View style={styles.inputGroup}>
-              <ThemedText type="body" style={styles.inputLabel}>
-                Provincia
-              </ThemedText>
-              <View style={styles.inputWrapper}>
-                <Feather name="flag" size={20} color="#6B7280" style={styles.inputIcon} />
-                <input
-                  type="text"
-                  value={state}
-                  onChange={(e) => setState(e.target.value)}
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 16,
-                    color: '#1F2937',
-                    backgroundColor: 'transparent',
-                    paddingLeft: 40,
-                  }}
-                />
-              </View>
-            </View>
-
-            {/* Zip Code Input */}
-            <View style={styles.inputGroup}>
-              <ThemedText type="body" style={styles.inputLabel}>
-                Código Postal
-              </ThemedText>
-              <View style={styles.inputWrapper}>
-                <Feather name="hash" size={20} color="#6B7280" style={styles.inputIcon} />
-                <input
-                  type="text"
-                  value={zipCode}
-                  onChange={(e) => setZipCode(e.target.value)}
-                  placeholder="42001"
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 16,
-                    color: '#1F2937',
-                    backgroundColor: 'transparent',
-                    paddingLeft: 40,
-                  }}
-                />
-              </View>
-            </View>
-
-            {/* Web Notice */}
-            <View style={styles.infoBanner}>
-              <Feather name="globe" size={20} color={PRIMARY} />
-              <ThemedText type="small" style={{ color: PRIMARY, flex: 1, marginLeft: 12 }}>
-                En la versión web se usará la ubicación del centro de Soria por defecto.
-              </ThemedText>
-            </View>
-
-            {/* Save Button */}
-            <Pressable
-              onPress={handleSave}
-              disabled={loading || success}
-              style={[styles.saveButton, (loading || success) && { opacity: 0.6 }]}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <ThemedText type="h4" style={{ color: "#FFF", fontWeight: "600" }}>
-                  {success ? 'Guardado ✓' : existingAddress?.id ? 'Actualizar dirección' : 'Guardar dirección'}
-                </ThemedText>
-              )}
-            </Pressable>
           </View>
+
+          {/* Ciudad y CP en fila */}
+          <View style={s.rowFields}>
+            <View style={[s.fieldGroup, { flex: 2, marginRight: 12 }]}>
+              <ThemedText type="body" style={s.label}>Ciudad</ThemedText>
+              <View style={s.inputRow}>
+                <Feather name="map" size={18} color="#9CA3AF" style={s.inputIcon} />
+                <input type="text" value={city} onChange={(e) => setCity(e.target.value)} style={inputStyle} />
+              </View>
+            </View>
+            <View style={[s.fieldGroup, { flex: 1 }]}>
+              <ThemedText type="body" style={s.label}>C.P.</ThemedText>
+              <View style={s.inputRow}>
+                <input type="text" value={zipCode} onChange={(e) => setZipCode(e.target.value)} placeholder="42001" style={{ ...inputStyle, paddingLeft: 12 }} />
+              </View>
+            </View>
+          </View>
+
+          {/* Coordenadas confirmadas */}
+          <View style={s.coordsBadge}>
+            <Feather name="check-circle" size={14} color="#059669" />
+            <ThemedText type="caption" style={{ color: '#059669', marginLeft: 6 }}>
+              Ubicación: {coordinates.lat.toFixed(5)}, {coordinates.lng.toFixed(5)}
+            </ThemedText>
+          </View>
+
+          {/* Error */}
+          {error && (
+            <View style={s.errorBanner}>
+              <Feather name="alert-circle" size={16} color="#DC2626" />
+              <ThemedText type="small" style={{ color: '#DC2626', marginLeft: 8 }}>{error}</ThemedText>
+            </View>
+          )}
+
+          {/* Guardar */}
+          <Pressable onPress={handleSave} disabled={loading || success} style={[s.saveBtn, (loading || success) && { opacity: 0.6 }]}>
+            {loading
+              ? <ActivityIndicator color="#FFF" size="small" />
+              : <ThemedText type="h4" style={{ color: '#FFF', fontWeight: '700' }}>
+                  {success ? '✓ Guardado' : existingAddress?.id ? 'Actualizar dirección' : 'Guardar dirección'}
+                </ThemedText>
+            }
+          </Pressable>
         </View>
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  webContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#FAFAFA",
-    minHeight: "100vh",
-    flexWrap: "wrap" as any,
-    ...Platform.select({
-      web: {
-        height: "100vh",
-        overflow: "hidden",
-      },
-    }),
-  },
-  // LEFT: Hero Section
-  heroSection: {
+const inputStyle: React.CSSProperties = {
+  flex: 1,
+  height: 46,
+  border: 'none',
+  outline: 'none',
+  fontSize: 15,
+  color: '#1F2937',
+  backgroundColor: 'transparent',
+  paddingLeft: 36,
+  width: '100%',
+};
+
+const s = StyleSheet.create({
+  hero: {
     flex: 1,
     minWidth: 300,
-    maxWidth: 600,
-    backgroundColor: PRIMARY,
-    padding: 48,
-    justifyContent: "center",
-  },
-  heroContent: {
-    maxWidth: 480,
-  },
-  logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  logoText: {
-    color: "#FFF",
-    marginLeft: 16,
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  heroTextContainer: {
-    marginBottom: 48,
-  },
-  heroTitle: {
-    fontSize: 48,
-    fontWeight: "800",
-    color: "#FFF",
-    marginBottom: 16,
-    lineHeight: 56,
-  },
-  heroSubtitle: {
-    fontSize: 18,
-    color: "rgba(255,255,255,0.9)",
-    lineHeight: 28,
-  },
-  heroCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 32,
-    marginBottom: 32,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-      },
-    }),
-  },
-  heroCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  heroCardDivider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginBottom: 16,
-  },
-  coverageBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ECFDF5",
-    padding: 12,
-    borderRadius: 12,
-  },
-  tipsContainer: {
-    gap: 16,
-  },
-  tipItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  // RIGHT: Form Section
-  formSection: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 48,
-  },
-  formScrollView: {
-    flex: 1,
-    width: "100%",
-  },
-  formScrollContent: {
-    alignItems: "center",
-    paddingVertical: 48,
-  },
-  formCard: {
-    width: "100%",
     maxWidth: 520,
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 48,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-      },
-    }),
-  },
-  errorBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEE2E2",
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  successBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#ECFDF5",
-    borderWidth: 1,
-    borderColor: "#6EE7B7",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  warningBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#FEF3C7",
-    borderWidth: 1,
-    borderColor: "#FCD34D",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  infoBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: PRIMARY + "15",
-    borderWidth: 1,
-    borderColor: PRIMARY + "40",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  gpsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: PRIMARY,
+    padding: 48,
+    justifyContent: 'center',
+  },
+  logoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 40 },
+  logoCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  logoText: { color: '#FFF', marginLeft: 14, fontSize: 26, fontWeight: '700' },
+  heroTitle: { fontSize: 40, fontWeight: '800', color: '#FFF', marginBottom: 12, lineHeight: 48 },
+  heroSub: { fontSize: 16, color: 'rgba(255,255,255,0.85)', lineHeight: 24, marginBottom: 32 },
+  heroCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 24 },
+  tipRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  formSection: { flex: 1, minWidth: 300, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  card: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 40,
+    ...Platform.select({ web: { boxShadow: '0 4px 24px rgba(0,0,0,0.09)' } }),
+  },
+  mapWrapper: {
+    height: 260,
     borderRadius: 16,
-    padding: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    position: 'relative',
+    ...Platform.select({ web: { boxShadow: '0 2px 12px rgba(0,0,0,0.12)' } }),
+  } as any,
+  mapLoading: { position: 'absolute', inset: 0, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.8)', zIndex: 10 } as any,
+  mapHint: {
+    position: 'absolute',
+    bottom: 10,
+    left: '50%',
+    transform: [{ translateX: -80 }],
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    zIndex: 5,
+  } as any,
+  gpsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: PRIMARY,
+    borderRadius: 14,
+    paddingVertical: 14,
     marginBottom: 24,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
-      },
-    }),
+    ...Platform.select({ web: { boxShadow: '0 4px 12px rgba(220,38,38,0.3)' } }),
   },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  inputLabel: {
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
+  fieldGroup: { marginBottom: 20 },
+  label: { fontWeight: '600', color: '#374151', marginBottom: 8, fontSize: 14 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
     borderWidth: 1.5,
-    borderColor: "#D1D5DB",
+    borderColor: '#D1D5DB',
     borderRadius: 12,
     height: 48,
-    position: "relative",
-    ...Platform.select({
-      web: {
-        display: "flex",
-      },
-    }),
+    position: 'relative',
+    ...Platform.select({ web: { display: 'flex' } }),
   },
-  inputIcon: {
-    position: "absolute",
-    left: 12,
-    zIndex: 1,
+  inputIcon: { position: 'absolute', left: 10, zIndex: 1 },
+  labelRow: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
+  labelChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
-  suggestionsBox: {
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+  labelChipActive: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  rowFields: { flexDirection: 'row' },
+  coordsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 20,
   },
-  suggestionItem: {
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 8,
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: 10,
     padding: 12,
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  saveButton: {
-    height: 56,
+  saveBtn: {
+    height: 54,
     backgroundColor: PRIMARY,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
-      },
-    }),
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({ web: { boxShadow: '0 4px 12px rgba(220,38,38,0.3)' } }),
   },
 });
