@@ -14,6 +14,13 @@ type Period = "today" | "week" | "month";
 
 export default function BusinessDashboardScreen() {
   const navigation = useNavigation<any>();
+  const navigateTo = (screen: string, params?: object) => {
+    try {
+      const parent = navigation.getParent();
+      if (parent) parent.navigate(screen as any, params);
+      else navigation.navigate(screen as any, params);
+    } catch { navigation.navigate(screen as any, params); }
+  };
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const { selectedBusiness } = useBusiness();
@@ -134,7 +141,7 @@ export default function BusinessDashboardScreen() {
             {/* ── Pedidos recientes ── */}
             <View style={s.sectionHeader}>
               <Text style={[s.sectionTitle, { color: text }]}>Pedidos recientes</Text>
-              <Pressable onPress={() => navigation.navigate("BusinessOrders")}>
+              <Pressable onPress={() => navigateTo("BusinessOrders")}>
                 <Text style={[s.sectionLink, { color: PRIMARY }]}>Ver todos →</Text>
               </Pressable>
             </View>
@@ -168,7 +175,7 @@ export default function BusinessDashboardScreen() {
                 { label: "Horarios",            icon: "clock",    screen: "BusinessHours",    color: "#8B5CF6" },
                 { label: "Configuración",       icon: "settings", screen: "BusinessManage",   color: "#F59E0B" },
               ].map(a => (
-                <Pressable key={a.label} style={[s.actionCard, { backgroundColor: card, borderColor: border }]} onPress={() => navigation.navigate(a.screen)}>
+                <Pressable key={a.label} style={[s.actionCard, { backgroundColor: card, borderColor: border }]} onPress={() => navigateTo(a.screen)}>
                   <View style={[s.actionIcon, { backgroundColor: a.color + "15" }]}>
                     <Feather name={a.icon as any} size={22} color={a.color} />
                   </View>

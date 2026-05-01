@@ -27,6 +27,8 @@ import OrderChatScreen from "@/screens/OrderChatScreen";
 import DeliveryEarningsScreen from "@/screens/DeliveryEarningsScreen";
 import BusinessManageScreen from "@/screens/BusinessManageScreen";
 import BusinessStatsScreen from "@/screens/BusinessStatsScreen";
+import BusinessOrdersScreen from "@/screens/BusinessOrdersScreen";
+import BusinessProductsScreen from "@/screens/BusinessProductsScreen";
 import BusinessHoursScreen from "@/screens/BusinessHoursScreen";
 import BusinessCategoriesScreen from "@/screens/BusinessCategoriesScreen";
 import MyBusinessesScreen from "@/screens/MyBusinessesScreen";
@@ -107,6 +109,8 @@ export type RootStackParamList = {
   DeliveryEarnings: undefined;
   BusinessManage: undefined;
   BusinessStats: undefined;
+  BusinessOrders: undefined;
+  BusinessProducts: undefined;
   EditProfile: undefined;
   Gamification: undefined;
   Subscriptions: undefined;
@@ -272,6 +276,16 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="BusinessStats"
             component={BusinessStatsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BusinessOrders"
+            component={BusinessOrdersScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BusinessProducts"
+            component={BusinessProductsScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen name="Gamification" component={GamificationScreen} options={{ headerShown: false }} />

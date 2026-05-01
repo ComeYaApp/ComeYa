@@ -51,6 +51,19 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
   const activeName = route.name;
   const isProfileActive = activeName === "BusinessProfile";
 
+  // En web el tab de negocio es un único Tab.Screen (BusinessTab).
+  // Las rutas de negocio viven en el RootStackNavigator (padre).
+  // Intentamos navegar en el padre; si falla, usamos el navigator actual.
+  const navigateTo = (screen: string, params?: object) => {
+    try {
+      const parent = navigation.getParent();
+      if (parent) { parent.navigate(screen as any, params); }
+      else { navigation.navigate(screen as any, params); }
+    } catch {
+      navigation.navigate(screen as any, params);
+    }
+  };
+
   return (
     <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
       {/* Logo + negocio */}
@@ -73,7 +86,7 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
           return (
             <View key={item.id}>
               <Pressable
-                onPress={() => navigation.navigate(item.id)}
+                onPress={() => navigateTo(item.id)}
                 style={[s.navItem, isActive && { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY }]}
               >
                 <Feather name={item.icon as any} size={18} color={isActive ? PRIMARY : sub} />
