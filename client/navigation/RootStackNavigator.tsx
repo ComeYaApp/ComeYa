@@ -29,6 +29,7 @@ import BusinessManageScreen from "@/screens/BusinessManageScreen";
 import BusinessStatsScreen from "@/screens/BusinessStatsScreen";
 import BusinessOrdersScreen from "@/screens/BusinessOrdersScreen";
 import BusinessProductsScreen from "@/screens/BusinessProductsScreen";
+import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import BusinessHoursScreen from "@/screens/BusinessHoursScreen";
 import BusinessCategoriesScreen from "@/screens/BusinessCategoriesScreen";
 import MyBusinessesScreen from "@/screens/MyBusinessesScreen";
@@ -111,6 +112,7 @@ export type RootStackParamList = {
   BusinessStats: undefined;
   BusinessOrders: undefined;
   BusinessProducts: undefined;
+  BusinessDashboard: undefined;
   EditProfile: undefined;
   Gamification: undefined;
   Subscriptions: undefined;
@@ -286,6 +288,11 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="BusinessProducts"
             component={BusinessProductsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BusinessDashboard"
+            component={BusinessDashboardScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen name="Gamification" component={GamificationScreen} options={{ headerShown: false }} />

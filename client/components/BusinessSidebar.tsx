@@ -55,6 +55,8 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
   // Las rutas de negocio viven en el RootStackNavigator (padre).
   // Intentamos navegar en el padre; si falla, usamos el navigator actual.
   const navigateTo = (screen: string, params?: object) => {
+    // BusinessProfile es un sub-menú interno, no una ruta navegable
+    if (screen === 'BusinessProfile') return;
     try {
       const parent = navigation.getParent();
       if (parent) { parent.navigate(screen as any, params); }
