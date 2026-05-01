@@ -200,24 +200,18 @@ export default function OrderTrackingScreen() {
       destination: clientPos,
       travelMode: google.maps.TravelMode.DRIVING,
     }, (result: any, status: any) => {
-      if (status === 'OK') {
-        routeLineRef.current = new google.maps.DirectionsRenderer({
-          map: gmap.current,
-          directions: result,
-          suppressMarkers: true,
-          polylineOptions: { strokeColor: '#DC2626', strokeWeight: 4, strokeOpacity: 0.75 },
-        });
-      } else {
-        // Fallback: línea recta roja
-        routeLineRef.current = new google.maps.Polyline({
-          path: [businessLocation, clientPos],
-          geodesic: true,
-          strokeColor: '#DC2626',
-          strokeOpacity: 0.75,
-          strokeWeight: 4,
-          map: gmap.current,
-        });
-      }
+      if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+      const path = status === 'OK'
+        ? result.routes[0].overview_path
+        : [businessLocation, clientPos];
+      routeLineRef.current = new google.maps.Polyline({
+        path,
+        geodesic: true,
+        strokeColor: '#DC2626',
+        strokeOpacity: 0.85,
+        strokeWeight: 5,
+        map: gmap.current,
+      });
     });
 
     // Ajustar bounds
@@ -304,29 +298,18 @@ export default function OrderTrackingScreen() {
             destination: clientPos,
             travelMode: google.maps.TravelMode.DRIVING,
           }, (result: any, status: any) => {
-            // Limpiar ruta verde anterior
-            if (driverRouteLineRef.current) {
-              driverRouteLineRef.current.setMap(null);
-              driverRouteLineRef.current = null;
-            }
-            if (status === 'OK') {
-              driverRouteLineRef.current = new google.maps.DirectionsRenderer({
-                map: gmap.current,
-                directions: result,
-                suppressMarkers: true,
-                polylineOptions: { strokeColor: '#10B981', strokeWeight: 5, strokeOpacity: 0.9 },
-              });
-            } else {
-              // Fallback: línea recta verde
-              driverRouteLineRef.current = new google.maps.Polyline({
-                path: [driverPos, clientPos],
-                geodesic: true,
-                strokeColor: '#10B981',
-                strokeOpacity: 0.9,
-                strokeWeight: 5,
-                map: gmap.current,
-              });
-            }
+            if (driverRouteLineRef.current) { driverRouteLineRef.current.setMap(null); driverRouteLineRef.current = null; }
+            const path = status === 'OK'
+              ? result.routes[0].overview_path
+              : [driverPos, clientPos];
+            driverRouteLineRef.current = new google.maps.Polyline({
+              path,
+              geodesic: true,
+              strokeColor: '#10B981',
+              strokeOpacity: 0.9,
+              strokeWeight: 5,
+              map: gmap.current,
+            });
           });
 
           // Ajustar bounds: repartidor + cliente
