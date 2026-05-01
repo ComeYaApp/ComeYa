@@ -36,6 +36,7 @@ router.post('/:giftCardId/stripe-success', authenticateToken, async (req, res) =
 
 // POST /api/gift-cards/:giftCardId/payment-proof
 router.post('/:giftCardId/payment-proof', authenticateToken, async (req, res) => {
+  try {
     const { giftCardId } = req.params;
     const { paymentProvider, proofImageUrl, referenceNumber, amount } = req.body;
     if (!paymentProvider || !proofImageUrl || !amount) {
