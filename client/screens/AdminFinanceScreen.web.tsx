@@ -3,7 +3,8 @@ import { AdminShell, AdminSection } from "@/components/admin/AdminShell.web";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
-import { useToast } from "@/contexts/ToastContext";
+import { GiftCardsAdminTab } from "@/components/admin/tabs/GiftCardsAdminTab.web";
+
 import { apiRequest } from "@/lib/query-client";
 import { useEffect } from "react";
 
@@ -19,6 +20,7 @@ export default function AdminFinanceScreen() {
 
   const renderContent = () => {
     switch (section) {
+      case "finance_giftcards":  return <GiftCardsAdminTab />;
       case "finance":
       case "finance_earnings": return <FinanceTab defaultTab="earnings" />;
       case "finance_payouts":  return <FinanceTab defaultTab="payouts" />;

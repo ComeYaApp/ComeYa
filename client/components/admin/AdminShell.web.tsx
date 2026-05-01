@@ -13,7 +13,7 @@ export type AdminSection =
   | "businesses" | "businesses_list" | "businesses_zones" | "businesses_categories"
   | "drivers" | "drivers_list" | "drivers_map"
   | "users"
-  | "finance" | "finance_payouts" | "finance_proofs" | "finance_accounts" | "finance_earnings"
+  | "finance" | "finance_payouts" | "finance_proofs" | "finance_accounts" | "finance_earnings" | "finance_giftcards"
   | "marketing" | "coupons"
   | "support" | "support_tickets" | "support_verifications"
   | "settings" | "delivery_config";
@@ -58,10 +58,11 @@ const NAV: NavItem[] = [
   {
     id: "finance", label: "Finanzas", icon: "dollar-sign", color: "#06B6D4",
     children: [
-      { id: "finance_earnings",  label: "Ganancias",    icon: "trending-up" },
-      { id: "finance_payouts",   label: "Payouts",      icon: "send"        },
-      { id: "finance_proofs",    label: "Comprobantes", icon: "file-text"   },
-      { id: "finance_accounts",  label: "Cuentas",      icon: "credit-card" },
+      { id: "finance_earnings",   label: "Ganancias",    icon: "trending-up" },
+      { id: "finance_payouts",    label: "Payouts",      icon: "send"        },
+      { id: "finance_proofs",     label: "Comprobantes", icon: "file-text"   },
+      { id: "finance_giftcards",  label: "Gift Cards",   icon: "gift"        },
+      { id: "finance_accounts",   label: "Cuentas",      icon: "credit-card" },
     ],
   },
   {

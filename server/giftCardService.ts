@@ -3,7 +3,7 @@ import { giftCards, giftCardTransactions, giftCardDesigns, paymentProofs } from 
 import { eq, and, or } from 'drizzle-orm';
 
 export class GiftCardService {
-  static readonly EXPIRY_DAYS = 365;
+  static readonly EXPIRY_DAYS = 30;
 
   private static generateCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
