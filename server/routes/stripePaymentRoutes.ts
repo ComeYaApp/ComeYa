@@ -116,30 +116,24 @@ router.post("/create-payment-intent", authenticateToken, async (req, res) => {
       return res.status(503).json({ message: "Stripe no está configurado" });
     }
 
-    const { amount, businessId, orderId, subtotal, deliveryFee } = req.body;
-    if (!amount || amount <= 0 || !businessId || !orderId) {
-      console.error("Invalid payment intent data", {
-        amount,
-        businessId,
-        orderId,
-        userId: req.user?.id,
-      });
+    const { amount, businessId, orderId, subtotal, deliveryFee, isGiftCard, isSubscription } = req.body;
+    if (!amount || amount <= 0 || !orderId) {
+      console.error("Invalid payment intent data", { amount, businessId, orderId, userId: req.user?.id });
+      return res.status(400).json({ message: "Datos de pago incompletos" });
+    }
+    // businessId solo es obligatorio para pedidos normales
+    if (!isGiftCard && !isSubscription && !businessId) {
       return res.status(400).json({ message: "Datos de pago incompletos" });
     }
 
-    // Get business Stripe Connect account
-    const { businesses } = await import("@shared/schema-mysql");
-    const [business] = await db
-      .select()
-      .from(businesses)
-      .where(eq(businesses.id, businessId))
-      .limit(1);
-
-    if (!business) {
-      return res.status(404).json({ message: "Negocio no encontrado" });
+    // Get business Stripe Connect account (solo para pedidos normales)
+    let business = null;
+    if (businessId && !isGiftCard && !isSubscription) {
+      const { businesses } = await import("@shared/schema-mysql");
+      const [b] = await db.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+      if (!b) return res.status(404).json({ message: "Negocio no encontrado" });
+      business = b;
     }
-
-    // stripeAccountId es opcional - si no tiene, el dinero queda en ComeYa y se distribuye manualmente
 
     const stripe = getStripe();
     const amountInCents = Math.round(amount);

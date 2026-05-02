@@ -22,6 +22,7 @@ export class SubscriptionService {
       for (const plan of plans) {
         const planBenefits = benefits.filter(b => b.plan === plan.planKey);
         const discountBenefit = planBenefits.find(b => b.benefitType === 'discount');
+        const active = (b: typeof planBenefits[0]) => (b.benefitValue ?? 0) > 0;
         result[plan.planKey] = {
           name: plan.name,
           price: plan.price,
@@ -29,11 +30,11 @@ export class SubscriptionService {
           color: plan.color,
           icon: plan.icon,
           benefits: {
-            freeDelivery:       planBenefits.some(b => b.benefitType === 'free_delivery' && (b.benefitValue ?? 0) > 0),
+            freeDelivery:       planBenefits.some(b => b.benefitType === 'free_delivery' && active(b)),
             discountPercentage: discountBenefit ? (discountBenefit.benefitValue ?? 0) : 0,
-            prioritySupport:    planBenefits.some(b => b.benefitType === 'priority_support' && (b.benefitValue ?? 0) > 0),
-            exclusiveDeals:     planBenefits.some(b => b.benefitType === 'exclusive_deals' && (b.benefitValue ?? 0) > 0),
-            noMinimumOrder:     planBenefits.some(b => b.benefitType === 'no_minimum' && (b.benefitValue ?? 0) > 0),
+            prioritySupport:    planBenefits.some(b => b.benefitType === 'priority_support' && active(b)),
+            exclusiveDeals:     planBenefits.some(b => b.benefitType === 'exclusive_deals' && active(b)),
+            noMinimumOrder:     planBenefits.some(b => b.benefitType === 'no_minimum' && active(b)),
           },
           benefitsList: planBenefits.map(b => ({ id: b.id, type: b.benefitType, value: b.benefitValue, description: b.description })),
         };
@@ -137,25 +138,47 @@ export class SubscriptionService {
     const subscription = await this.getUserSubscription(userId);
 
     if (subscription.plan === 'free' || subscription.status !== 'active') {
-      return { discount: 0, deliveryFee, appliedBenefits: [] };
+      return { discount: 0, deliveryFee, appliedBenefits: [], freeDelivery: false, discountPercentage: 0 };
     }
 
-    const benefits = subscription.benefits;
+    // Leer beneficios directamente de BD para que sean dinámicos
+    const benefits = await db.select().from(subscriptionBenefits)
+      .where(eq(subscriptionBenefits.plan, subscription.plan));
+
     const appliedBenefits: string[] = [];
     let finalDeliveryFee = deliveryFee;
     let discount = 0;
+    let discountPercentage = 0;
+    let freeDelivery = false;
 
-    if (benefits.freeDelivery) {
-      finalDeliveryFee = 0;
-      appliedBenefits.push('Envío gratis (Premium)');
+    for (const b of benefits) {
+      const val = b.benefitValue ?? 0;
+      if (val <= 0) continue;
+
+      switch (b.benefitType) {
+        case 'free_delivery':
+          finalDeliveryFee = 0;
+          freeDelivery = true;
+          appliedBenefits.push(b.description || 'Envío gratis');
+          break;
+        case 'discount':
+        case 'discount_percentage':
+          discountPercentage = val;
+          discount = Math.round(orderTotal * (val / 100));
+          appliedBenefits.push(b.description || `${val}% descuento`);
+          break;
+        // Beneficios informativos (no afectan al precio, se muestran al cliente)
+        case 'priority_support':
+        case 'exclusive_deals':
+        case 'no_minimum':
+        case 'analytics':
+        default:
+          if (b.description) appliedBenefits.push(b.description);
+          break;
+      }
     }
 
-    if (benefits.discountPercentage > 0) {
-      discount = Math.round(orderTotal * (benefits.discountPercentage / 100));
-      appliedBenefits.push(`${benefits.discountPercentage}% descuento (Premium)`);
-    }
-
-    return { discount, deliveryFee: finalDeliveryFee, appliedBenefits };
+    return { discount, deliveryFee: finalDeliveryFee, appliedBenefits, freeDelivery, discountPercentage };
   }
 
   // Renovar suscripciones vencidas (cron job)

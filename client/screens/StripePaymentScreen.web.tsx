@@ -41,12 +41,20 @@ function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, isSub
   useEffect(() => {
     const init = async () => {
       try {
+        if (!isSubscription && (!orderId || !amount || amount <= 0 || !businessId)) {
+          showToast('Datos de pago incompletos', 'error');
+          return;
+        }
+        if (isSubscription && (!subscriptionId || !amount || amount <= 0)) {
+          showToast('Datos de suscripción incompletos', 'error');
+          return;
+        }
         const endpoint = isSubscription
           ? '/api/stripe/create-subscription-payment-intent'
           : '/api/stripe/create-payment-intent';
         const body = isSubscription
           ? { subscriptionId, amount }
-          : { orderId, amount, businessId, subtotal, deliveryFee };
+          : { orderId, amount: Math.round(amount), businessId, subtotal: Math.round(subtotal || 0), deliveryFee: Math.round(deliveryFee || 0), isGiftCard: !!isGiftCard, isSubscription: !!isSubscription };
         const res = await apiRequest('POST', endpoint, body);
         const data = await res.json();
         if (data.clientSecret) {

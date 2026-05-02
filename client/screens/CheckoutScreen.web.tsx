@@ -323,6 +323,7 @@ export default function CheckoutScreen({ route }: any) {
       if (paymentMethod === "stripe_card" || paymentMethod === "stripe_bizum") {
         // En web, redirigir a pantalla de pago Stripe
         if (Platform.OS === 'web') {
+          console.log('[Checkout→Stripe]', { orderId, totalAmount, subtotalCents, deliveryFeeCents, businessId: cart.businessId });
           navigation.navigate('StripePayment' as never, {
             orderId,
             amount: totalAmount,
