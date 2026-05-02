@@ -400,6 +400,15 @@ router.post("/confirm-delivery/:orderId", authenticateToken, async (req, res) =>
       updatedAt: new Date(),
     }).where(eq(orders.id, order.id));
 
+    // Agregar puntos de lealtad al cliente
+    try {
+      const { LoyaltyService } = await import("../loyaltyService");
+      await LoyaltyService.awardPointsForOrder(order.userId, order.id, order.total);
+      console.log(`✅ Puntos de lealtad awarded para orden ${order.id.slice(-6)}`);
+    } catch (loyaltyError) {
+      console.error('⚠️ Error agregando puntos de lealtad:', loyaltyError);
+    }
+
     res.json({ 
       success: true, 
       message: hasStripeConnect ? "Fondos transferidos automaticamente" : "Pedido confirmado. Pago pendiente de transferencia manual.",

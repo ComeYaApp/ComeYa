@@ -42,11 +42,20 @@ export default function GiftCardsScreen() {
   const [selectedDesign, setSelectedDesign] = useState('default');
   const [paymentMethod, setPaymentMethod]   = useState<'stripe' | 'bizum_manual' | 'sepa'>('stripe');
 
-  // Comprobante de pago (solo para métodos manuales)
   const [proofCardId, setProofCardId]       = useState<string | null>(null);
   const [proofProvider, setProofProvider]   = useState('bizum');
   const [proofRef, setProofRef]             = useState('');
   const [proofUrl, setProofUrl]             = useState('');
+  const [proofUploading, setProofUploading] = useState(false);
+
+  const handlePickProof = async () => {
+    setProofUploading(true);
+    try {
+      const { pickAndUploadImage } = await import('@/utils/uploadImageWeb');
+      const url = await pickAndUploadImage('comprobantes');
+      if (url) setProofUrl(url);
+    } finally { setProofUploading(false); }
+  };
 
   const bg     = isDark ? '#111'    : '#f7f7f7';
   const card   = isDark ? '#1e1e1e' : '#fff';
@@ -111,7 +120,7 @@ export default function GiftCardsScreen() {
   const designs  = designsData?.designs || [];
   const myCards  = myCardsData?.purchased || [];
   const canBuy   = !!amount && parseFloat(amount) >= 10 && !purchaseMutation.isPending;
-  const canProof = proofUrl.trim().length > 0 && !proofMutation.isPending;
+  const canProof = !!proofUrl.trim() && !proofMutation.isPending;
 
   const TABS = [
     { id: 'buy',      label: 'Comprar',      icon: 'gift' },
@@ -322,10 +331,15 @@ export default function GiftCardsScreen() {
                               placeholder="Referencia / número de operación"
                               placeholderTextColor={sub}
                               style={[s.input, { backgroundColor: cardBg, color: text, borderColor: border }]} />
-                            <TextInput value={proofUrl} onChangeText={setProofUrl}
-                              placeholder="URL del comprobante (foto subida a Cloudinary, etc.)"
-                              placeholderTextColor={sub} autoCapitalize="none"
-                              style={[s.input, { backgroundColor: cardBg, color: text, borderColor: border }]} />
+                            <Pressable onPress={handlePickProof} disabled={proofUploading}
+                              style={[s.input, { backgroundColor: cardBg, borderColor: border, height: proofUrl ? 120 : 46, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: proofUploading ? 0.6 : 1 }]}>
+                              {proofUploading
+                                ? <ActivityIndicator size="small" color={PRIMARY} />
+                                : proofUrl
+                                  ? <img src={proofUrl} style={{ width: '100%', height: 112, objectFit: 'cover', borderRadius: 8 }} />
+                                  : <><Feather name="image" size={18} color={sub} /><Text style={{ color: sub, fontSize: 14 }}>Seleccionar imagen del comprobante</Text></>
+                              }
+                            </Pressable>
                             <Pressable onPress={() => proofMutation.mutate(c.id)} disabled={!canProof}
                               style={[s.ctaBtn, { backgroundColor: '#F59E0B', opacity: canProof ? 1 : 0.5 }]}>
                               {proofMutation.isPending

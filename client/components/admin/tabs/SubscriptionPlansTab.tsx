@@ -13,13 +13,13 @@ interface Props {
 }
 
 const BENEFIT_TYPES = [
-  { key: 'free_delivery',    label: 'Envío gratis',           icon: 'truck',        hint: 'Valor: 100 = activo, 0 = inactivo' },
-  { key: 'discount',        label: 'Descuento (%)',          icon: 'percent',      hint: 'Valor: número (ej: 10 = 10%)' },
-  { key: 'priority_support',label: 'Soporte prioritario',    icon: 'headphones',   hint: 'Valor: 1 = activo' },
-  { key: 'exclusive_deals', label: 'Ofertas exclusivas',     icon: 'tag',          hint: 'Valor: 1 = activo' },
-  { key: 'no_minimum',      label: 'Sin mínimo de pedido',   icon: 'minus-circle', hint: 'Valor: 1 = activo' },
-  { key: 'analytics',       label: 'Analytics avanzados',    icon: 'bar-chart-2',  hint: 'Valor: 1 = activo' },
-  { key: 'custom',          label: 'Personalizado',          icon: 'star',         hint: 'Valor numérico libre' },
+  { key: 'free_delivery',    label: 'Envío gratis',           icon: 'truck',        hint: 'Valor: 100 = activo — ✅ Se aplica automáticamente al precio' },
+  { key: 'discount',        label: 'Descuento (%)',          icon: 'percent',      hint: 'Valor: número (ej: 10 = 10%) — ✅ Se aplica automáticamente al precio' },
+  { key: 'priority_support',label: 'Soporte prioritario',    icon: 'headphones',   hint: 'Valor: 1 = activo — ℹ️ Solo informativo, se muestra al cliente' },
+  { key: 'exclusive_deals', label: 'Ofertas exclusivas',     icon: 'tag',          hint: 'Valor: 1 = activo — ℹ️ Solo informativo' },
+  { key: 'no_minimum',      label: 'Sin mínimo de pedido',   icon: 'minus-circle', hint: 'Valor: 1 = activo — ℹ️ Solo informativo' },
+  { key: 'analytics',       label: 'Analytics avanzados',    icon: 'bar-chart-2',  hint: 'Valor: 1 = activo — ℹ️ Solo informativo' },
+  { key: 'custom',          label: 'Personalizado',          icon: 'star',         hint: 'Valor numérico libre — ℹ️ Solo informativo' },
 ];
 
 export const SubscriptionPlansTab: React.FC<Props> = ({ theme, showToast }) => {
@@ -242,7 +242,7 @@ export const SubscriptionPlansTab: React.FC<Props> = ({ theme, showToast }) => {
             <Text style={[s.modalTitle, { color: theme.text }]}>Añadir beneficio — {addingBenefit}</Text>
 
             <Text style={[s.inputLabel, { color: theme.textSecondary }]}>Tipo de beneficio</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
               {BENEFIT_TYPES.map(t => (
                 <TouchableOpacity
                   key={t.key}
@@ -254,6 +254,11 @@ export const SubscriptionPlansTab: React.FC<Props> = ({ theme, showToast }) => {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            {benefitForm.benefitType && (
+              <Text style={{ fontSize: 11, color: BENEFIT_TYPES.find(t => t.key === benefitForm.benefitType)?.hint?.includes('✅') ? '#10B981' : '#6B7280', marginBottom: 12 }}>
+                {BENEFIT_TYPES.find(t => t.key === benefitForm.benefitType)?.hint}
+              </Text>
+            )}
 
             <Text style={[s.inputLabel, { color: theme.textSecondary }]}>
               Valor {benefitForm.benefitType === 'discount' ? '(número, ej: 10 = 10%)' : '(100 = activo, 0 = inactivo)'}

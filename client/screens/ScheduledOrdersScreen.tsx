@@ -84,7 +84,13 @@ export default function ScheduledOrdersScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No tienes pedidos programados</Text>
               <Text style={styles.emptySubtitle}>
-                Programa tus pedidos favoritos para que lleguen cuando los necesites
+                Para programar un pedido:
+              </Text>
+              <Text style={[styles.emptySubtitle, { marginTop: 8, fontSize: 14 }]}>
+                1. Elige un negocio{'\n'}
+                2. Agrega productos al carrito{'\n'}
+                3. En el checkout, busca "Programar"{'\n'}
+                4. Selecciona fecha y hora
               </Text>
             </View>
           ) : (

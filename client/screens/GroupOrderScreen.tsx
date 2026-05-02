@@ -43,8 +43,11 @@ export default function GroupOrderScreen() {
 
   const { groupOrderId, shareToken } = route.params || {};
 
+  // Si no hay groupOrderId, mostrar opciones para crear uno
+  const isNewGroup = !groupOrderId && !shareToken;
+
   // Cargar detalles del grupo
-  const { data: groupData, refetch } = useQuery({
+  const { data: groupData, refetch, isLoading: isLoadingGroup } = useQuery({
     queryKey: ['/api/group-orders', groupOrderId],
     queryFn: async () => {
       if (!groupOrderId) return null;
@@ -57,6 +60,70 @@ export default function GroupOrderScreen() {
   const group = groupData?.groupOrder;
   const isCreator = group?.creatorId === user?.id;
   const isOpen = group?.status === 'open';
+
+  // Crear nuevo grupo
+  const createGroupMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', '/api/group-orders/create', {
+        businessId: route.params?.businessId || '',
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast('Grupo creado! Comparte el enlace.', 'success');
+        refetch();
+      } else {
+        showToast(data.error || 'Error al crear grupo', 'error');
+      }
+    },
+  });
+
+  // Si es un nuevo grupo sin ID, mostrar opciones
+  if (isNewGroup) {
+    return (
+      <View style={[styles.container, { padding: Spacing.lg, paddingTop: insets.top + 20 }]}>
+        <ThemedText type="h1" style={styles.title}>🍽️ Pedidos Grupales</ThemedText>
+        
+        <View style={[styles.card, { backgroundColor: theme.card, marginTop: Spacing.lg }]}>
+          <Feather name="users" size={48} color={ComeYaColors.primary} />
+          <ThemedText type="h3" style={{ marginTop: Spacing.md, textAlign: 'center' }}>
+            ¿Quieres pedir con amigos o familia?
+          </ThemedText>
+          <ThemedText style={{ textAlign: 'center', marginTop: Spacing.sm, color: theme.textSecondary }}>
+            Crea un pedido grupal, comparte el enlace y cada persona elige lo que quiere.
+          </ThemedText>
+          
+          <Pressable
+            style={[styles.button, { backgroundColor: ComeYaColors.primary, marginTop: Spacing.lg }]}
+            onPress={() => createGroupMutation.mutate()}
+            disabled={createGroupMutation.isPending}
+          >
+            <ThemedText style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
+              {createGroupMutation.isPending ? 'Creando...' : 'Crear Pedido Grupal'}
+            </ThemedText>
+          </Pressable>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: theme.card, marginTop: Spacing.md }]}>
+          <Feather name="info" size={32} color={ComeYaColors.secondary} />
+          <ThemedText style={{ marginTop: Spacing.sm, color: theme.textSecondary }}>
+            Para crear un pedido grupal, primero agrega productos al carrito desde un negocio y luego selecciona "Pedido Grupal" en el checkout.
+          </ThemedText>
+        </View>
+      </View>
+    );
+  }
+
+  // Mientras carga el grupo
+  if (isLoadingGroup) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ThemedText>Cargando...</ThemedText>
+      </View>
+    );
+  }
 
   // Cerrar grupo y crear pedido
   const lockMutation = useMutation({

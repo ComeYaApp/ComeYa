@@ -1,6 +1,6 @@
 {
   "name": "my-app",
-  "main": "client/index.js",
+  "main": "client/index.ts",
   "version": "1.0.0",
   "scripts": {
     "expo:dev": "npx expo start --localhost",

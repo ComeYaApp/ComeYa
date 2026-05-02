@@ -4,6 +4,7 @@ import { fundReleaseService } from "../fundReleaseService";
 import { authenticateToken } from "../authMiddleware";
 import { requireRole } from "../authMiddleware";
 import { createPayoutsForOrder } from "../payoutService";
+import { LoyaltyService } from "../loyaltyService";
 
 const router = Router();
 
@@ -35,6 +36,21 @@ router.post("/confirm-delivery", authenticateToken, async (req, res) => {
 
     // Cliente confirmó entrega → crear payouts para negocio y repartidor
     await createPayoutsForOrder(orderId);
+
+    // Agregar puntos de lealtad al cliente
+    try {
+      const { orders } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+      const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+      
+      if (order?.userId) {
+        await LoyaltyService.awardPointsForOrder(order.userId, orderId, order.total);
+        console.log(`✅ Puntos de lealtad awarded para orden ${orderId.slice(-6)}`);
+      }
+    } catch (loyaltyError) {
+      console.error('⚠️ Error agregando puntos de lealtad:', loyaltyError);
+    }
 
     res.json(result);
   } catch (error: any) {

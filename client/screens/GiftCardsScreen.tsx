@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, TextInput, ActivityIndicator, Platform } from 'react-native';
+import { Image as RNImage } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
@@ -43,6 +44,24 @@ export default function GiftCardsScreen() {
   const [proofProvider, setProofProvider]   = useState('bizum');
   const [proofRef, setProofRef]             = useState('');
   const [proofUrl, setProofUrl]             = useState('');
+  const [proofUploading, setProofUploading] = useState(false);
+
+  const handlePickProof = async () => {
+    setProofUploading(true);
+    try {
+      if (Platform.OS === 'web') {
+        const { pickAndUploadImage } = await import('@/utils/uploadImageWeb');
+        const url = await pickAndUploadImage('comprobantes');
+        if (url) setProofUrl(url);
+      } else {
+        const ImagePicker = await import('expo-image-picker');
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') { showToast('Permiso de galería requerido', 'error'); return; }
+        const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+        if (!result.canceled && result.assets[0]) setProofUrl(result.assets[0].uri);
+      }
+    } finally { setProofUploading(false); }
+  };
 
   const { data: designsData } = useQuery({
     queryKey: ['/api/gift-cards/designs'],
@@ -229,9 +248,15 @@ export default function GiftCardsScreen() {
                           <TextInput value={proofRef} onChangeText={setProofRef} placeholder="Referencia / nº operación"
                             placeholderTextColor={theme.textSecondary}
                             style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]} />
-                          <TextInput value={proofUrl} onChangeText={setProofUrl} placeholder="URL del comprobante"
-                            placeholderTextColor={theme.textSecondary} autoCapitalize="none"
-                            style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]} />
+                          <Pressable onPress={handlePickProof} disabled={proofUploading}
+                            style={[styles.input, { backgroundColor: theme.backgroundSecondary, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, opacity: proofUploading ? 0.6 : 1 }]}>
+                            {proofUploading
+                              ? <ActivityIndicator size="small" color={ComeYaColors.primary} />
+                              : proofUrl
+                                ? <RNImage source={{ uri: proofUrl }} style={{ width: '100%', height: 120, borderRadius: 8 }} resizeMode="cover" />
+                                : <><Feather name="image" size={18} color={theme.textSecondary} /><ThemedText type="caption" style={{ color: theme.textSecondary }}>Seleccionar imagen del comprobante</ThemedText></>
+                            }
+                          </Pressable>
                           <Pressable onPress={() => proofMutation.mutate(card.id)}
                             disabled={!proofUrl.trim() || proofMutation.isPending}
                             style={[styles.purchaseButton, { backgroundColor: '#F59E0B', opacity: proofUrl.trim() ? 1 : 0.5 }]}>

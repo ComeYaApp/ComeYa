@@ -307,7 +307,7 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 12,
-    background: "linear-gradient(to top, rgba(0,0,0,0.7), transparent)" as any,
+    backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.7), transparent)" as any,
   },
   bizName: { 
     fontSize: 14, 
