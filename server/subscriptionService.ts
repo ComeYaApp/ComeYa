@@ -90,9 +90,14 @@ export class SubscriptionService {
     const [existing] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
 
     if (existing) {
+      // Si ya está activa con ese plan, no hacer nada
+      if (existing.status === 'active' && existing.plan === plan) {
+        return { success: true, subscriptionId: existing.id, amount: planData.price, plan, alreadyActive: true };
+      }
+      // Actualizar a pending_payment con el nuevo plan
       await db.update(subscriptions).set({
         plan,
-        status: 'pending_payment',
+        status: 'pending_payment' as any,
         price: planData.price,
         billingCycle,
         autoRenew: true,
@@ -102,9 +107,7 @@ export class SubscriptionService {
       const { v4: uuidv4 } = await import('uuid');
       const id = uuidv4();
       await db.insert(subscriptions).values({
-        id,
-        userId,
-        plan,
+        id, userId, plan,
         status: 'pending_payment' as any,
         price: planData.price,
         billingCycle,

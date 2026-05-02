@@ -455,9 +455,17 @@ router.post("/confirm-subscription/:subscriptionId", authenticateToken, async (r
   try {
     const { subscriptionId } = req.params;
     const { subscriptions } = await import("@shared/schema-mysql");
-    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, subscriptionId)).limit(1);
+    const { sql } = await import("drizzle-orm");
+
+    // Buscar por id O por userId (por si el subscriptionId cambio al sobreescribir)
+    let [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, subscriptionId)).limit(1);
+    
+    // Si no encontramos por id exacto, buscar la suscripcion activa/pending del usuario
     if (!sub || sub.userId !== req.user!.id) {
-      return res.status(404).json({ error: "Suscripción no encontrada" });
+      const [byUser] = await db.select().from(subscriptions)
+        .where(eq(subscriptions.userId, req.user!.id)).limit(1);
+      if (!byUser) return res.status(404).json({ error: "Suscripción no encontrada" });
+      sub = byUser;
     }
 
     const now = new Date();
@@ -468,7 +476,7 @@ router.post("/confirm-subscription/:subscriptionId", authenticateToken, async (r
       status: "active",
       currentPeriodStart: now,
       currentPeriodEnd: periodEnd,
-    }).where(eq(subscriptions.id, subscriptionId));
+    }).where(eq(subscriptions.userId, req.user!.id));
 
     try {
       const { sendPushToUser } = await import("../enhancedPushService");
@@ -479,7 +487,7 @@ router.post("/confirm-subscription/:subscriptionId", authenticateToken, async (r
       });
     } catch {}
 
-    res.json({ success: true });
+    res.json({ success: true, plan: sub.plan });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

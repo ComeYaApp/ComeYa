@@ -184,6 +184,24 @@ router.post('/proofs/:proofId/reject', authenticateToken, requireRole('admin', '
   }
 });
 
+// POST /api/subscriptions/cancel-pending — cancelar pago pendiente
+router.post('/cancel-pending', authenticateToken, async (req, res) => {
+  try {
+    const { db } = await import('../db');
+    const { subscriptions } = await import('../../shared/schema-mysql');
+    const { eq, and } = await import('drizzle-orm');
+    const { sql: drizzleSql } = await import('drizzle-orm');
+
+    await db.update(subscriptions)
+      .set({ status: 'cancelled' as any, cancelledAt: new Date() })
+      .where(drizzleSql`user_id = ${req.user!.id} AND status = 'pending_payment'`);
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Cancelar suscripción
 router.post('/cancel', authenticateToken, async (req, res) => {
   try {

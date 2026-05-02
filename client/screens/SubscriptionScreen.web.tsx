@@ -222,6 +222,16 @@ export default function SubscriptionScreen() {
                 Plan {currentPlan === 'premium' ? 'Premium' : 'Business'} — pendiente de activación (5-15 min)
               </Text>
             </View>
+            <Pressable
+              style={[s.cancelBannerBtn, { borderColor: '#6B7280' }]}
+              onPress={async () => {
+                await apiRequest('POST', '/api/subscriptions/cancel-pending');
+                queryClient.invalidateQueries({ queryKey: ['subscription'] });
+                showToast('Pago pendiente cancelado', 'success');
+              }}
+            >
+              <Text style={{ color: '#6B7280', fontSize: 13, fontWeight: '600' }}>Cancelar</Text>
+            </Pressable>
           </View>
         )}
 

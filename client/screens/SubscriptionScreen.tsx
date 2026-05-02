@@ -173,6 +173,20 @@ export default function SubscriptionScreen() {
             <Text style={{ fontSize: 13, color: '#888', textAlign: 'center', marginTop: 8 }}>
               Recibirás una notificación cuando se active (5-15 min).
             </Text>
+            <TouchableOpacity
+              style={[styles.cancelButton, { marginTop: 12, backgroundColor: '#6B7280' }]}
+              onPress={() =>
+                Alert.alert('Cancelar pago pendiente', '¿Seguro? Podrás suscribirte de nuevo cuando quieras.', [
+                  { text: 'No', style: 'cancel' },
+                  { text: 'Sí, cancelar', onPress: async () => {
+                    await apiRequest('POST', '/api/subscriptions/cancel-pending');
+                    queryClient.invalidateQueries({ queryKey: ['subscription'] });
+                  }},
+                ])
+              }
+            >
+              <Text style={styles.cancelButtonText}>Cancelar pago pendiente</Text>
+            </TouchableOpacity>
           </View>
         )}
 
