@@ -20,8 +20,8 @@ export class SubscriptionService {
 
       const result: Record<string, any> = {};
       for (const plan of plans) {
-        const planBenefits = benefits.filter(b => b.plan === plan.planKey && b.isActive);
-        const discountBenefit = planBenefits.find(b => b.benefitType === 'discount_percentage');
+        const planBenefits = benefits.filter(b => b.plan === plan.planKey);
+        const discountBenefit = planBenefits.find(b => b.benefitType === 'discount');
         result[plan.planKey] = {
           name: plan.name,
           price: plan.price,
@@ -29,11 +29,11 @@ export class SubscriptionService {
           color: plan.color,
           icon: plan.icon,
           benefits: {
-            freeDelivery:        planBenefits.some(b => b.benefitType === 'free_delivery' && b.benefitValue === 'true'),
-            discountPercentage:  discountBenefit ? parseInt(discountBenefit.benefitValue) : 0,
-            prioritySupport:     planBenefits.some(b => b.benefitType === 'priority_support' && b.benefitValue === 'true'),
-            exclusiveDeals:      planBenefits.some(b => b.benefitType === 'exclusive_deals' && b.benefitValue === 'true'),
-            noMinimumOrder:      planBenefits.some(b => b.benefitType === 'no_minimum_order' && b.benefitValue === 'true'),
+            freeDelivery:       planBenefits.some(b => b.benefitType === 'free_delivery' && (b.benefitValue ?? 0) > 0),
+            discountPercentage: discountBenefit ? (discountBenefit.benefitValue ?? 0) : 0,
+            prioritySupport:    planBenefits.some(b => b.benefitType === 'priority_support' && (b.benefitValue ?? 0) > 0),
+            exclusiveDeals:     planBenefits.some(b => b.benefitType === 'exclusive_deals' && (b.benefitValue ?? 0) > 0),
+            noMinimumOrder:     planBenefits.some(b => b.benefitType === 'no_minimum' && (b.benefitValue ?? 0) > 0),
           },
           benefitsList: planBenefits.map(b => ({ id: b.id, type: b.benefitType, value: b.benefitValue, description: b.description })),
         };

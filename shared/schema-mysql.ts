@@ -1032,9 +1032,8 @@ export const subscriptionBenefits = mysqlTable("subscription_benefits", {
   id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
   plan: varchar("plan", { length: 50 }).notNull(),
   benefitType: varchar("benefit_type", { length: 50 }).notNull(),
-  benefitValue: varchar("benefit_value", { length: 255 }).notNull(),
+  benefitValue: int("benefit_value"),
   description: text("description"),
-  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 

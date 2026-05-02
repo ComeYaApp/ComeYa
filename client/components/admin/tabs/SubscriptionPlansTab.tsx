@@ -13,13 +13,13 @@ interface Props {
 }
 
 const BENEFIT_TYPES = [
-  { key: 'free_delivery',       label: 'Envío gratis',           icon: 'truck' },
-  { key: 'discount_percentage', label: 'Descuento (%)',          icon: 'percent' },
-  { key: 'priority_support',    label: 'Soporte prioritario',    icon: 'headphones' },
-  { key: 'exclusive_deals',     label: 'Ofertas exclusivas',     icon: 'tag' },
-  { key: 'no_minimum_order',    label: 'Sin mínimo de pedido',   icon: 'minus-circle' },
-  { key: 'business_invoicing',  label: 'Facturación empresarial',icon: 'file-text' },
-  { key: 'custom',              label: 'Personalizado',          icon: 'star' },
+  { key: 'free_delivery',    label: 'Envío gratis',           icon: 'truck',        hint: 'Valor: 100 = activo, 0 = inactivo' },
+  { key: 'discount',        label: 'Descuento (%)',          icon: 'percent',      hint: 'Valor: número (ej: 10 = 10%)' },
+  { key: 'priority_support',label: 'Soporte prioritario',    icon: 'headphones',   hint: 'Valor: 1 = activo' },
+  { key: 'exclusive_deals', label: 'Ofertas exclusivas',     icon: 'tag',          hint: 'Valor: 1 = activo' },
+  { key: 'no_minimum',      label: 'Sin mínimo de pedido',   icon: 'minus-circle', hint: 'Valor: 1 = activo' },
+  { key: 'analytics',       label: 'Analytics avanzados',    icon: 'bar-chart-2',  hint: 'Valor: 1 = activo' },
+  { key: 'custom',          label: 'Personalizado',          icon: 'star',         hint: 'Valor numérico libre' },
 ];
 
 export const SubscriptionPlansTab: React.FC<Props> = ({ theme, showToast }) => {
@@ -32,7 +32,7 @@ export const SubscriptionPlansTab: React.FC<Props> = ({ theme, showToast }) => {
 
   // Form states
   const [planForm, setPlanForm] = useState({ name: '', description: '', price: '', color: '' });
-  const [benefitForm, setBenefitForm] = useState({ benefitType: 'free_delivery', benefitValue: 'true', description: '' });
+  const [benefitForm, setBenefitForm] = useState({ benefitType: 'free_delivery', benefitValue: '100', description: '' });
 
   const load = useCallback(async () => {
     try {
@@ -256,11 +256,11 @@ export const SubscriptionPlansTab: React.FC<Props> = ({ theme, showToast }) => {
             </ScrollView>
 
             <Text style={[s.inputLabel, { color: theme.textSecondary }]}>
-              Valor {benefitForm.benefitType === 'discount_percentage' ? '(número, ej: 10)' : '(true/false o texto)'}
+              Valor {benefitForm.benefitType === 'discount' ? '(número, ej: 10 = 10%)' : '(100 = activo, 0 = inactivo)'}
             </Text>
             <TextInput style={[s.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
               value={benefitForm.benefitValue} onChangeText={v => setBenefitForm(f => ({ ...f, benefitValue: v }))}
-              placeholder={benefitForm.benefitType === 'discount_percentage' ? '10' : 'true'} />
+              placeholder={benefitForm.benefitType === 'discount' ? '10' : '100'} />
 
             <Text style={[s.inputLabel, { color: theme.textSecondary }]}>Descripción visible al cliente</Text>
             <TextInput style={[s.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundSecondary }]}
