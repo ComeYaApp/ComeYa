@@ -45,6 +45,7 @@ export default function ProfileScreen() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [driverStats, setDriverStats] = useState<any>(null);
   const [activeSection, setActiveSection] = useState("account");
+  const [subscription, setSubscription] = useState<any>(null);
 
   const isBusiness = user?.role === "business_owner";
   const { isMobile } = useResponsive();
@@ -90,6 +91,13 @@ export default function ProfileScreen() {
           updateUser({ profileImage: img });
         }
       }).catch(console.error);
+
+      // Cargar suscripción
+      if (user.role === 'customer') {
+        apiRequest('GET', '/api/subscriptions/my-subscription').then(r => r.json()).then(data => {
+          if (data.success) setSubscription(data.subscription);
+        }).catch(() => {});
+      }
     }
   }, []);
 
@@ -164,6 +172,12 @@ export default function ProfileScreen() {
       : { text: "En revisión", variant: "warning" as const }
     : null;
 
+  const subBadge = subscription?.status === 'active' && subscription?.plan !== 'free'
+    ? subscription.plan === 'business'
+      ? { label: '💼 Business', bg: '#7C3AED20', color: '#7C3AED' }
+      : { label: '⭐ Premium', bg: '#F59E0B20', color: '#D97706' }
+    : null;
+
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar: BusinessSidebar para business_owner, propio para el resto */}
@@ -189,6 +203,11 @@ export default function ProfileScreen() {
               <View style={[s.roleBadge, { backgroundColor: PRIMARY + "15" }]}>
                 <Text style={[s.roleBadgeText, { color: PRIMARY }]}>{getRoleLabel()}</Text>
               </View>
+              {subBadge && (
+                <View style={[s.roleBadge, { backgroundColor: subBadge.bg }]}>
+                  <Text style={[s.roleBadgeText, { color: subBadge.color }]}>{subBadge.label}</Text>
+                </View>
+              )}
               {approvalStatus && (
                 <View style={[s.roleBadge, { backgroundColor: approvalStatus.variant === "success" ? "#4CAF5020" : "#F59E0B20" }]}>
                   <Text style={[s.roleBadgeText, { color: approvalStatus.variant === "success" ? "#4CAF50" : "#F59E0B" }]}>{approvalStatus.text}</Text>
@@ -238,6 +257,11 @@ export default function ProfileScreen() {
               <View style={[s.roleBadge, { backgroundColor: PRIMARY + "15" }]}>
                 <Text style={[s.roleBadgeText, { color: PRIMARY }]}>{getRoleLabel()}</Text>
               </View>
+              {subBadge && (
+                <View style={[s.roleBadge, { backgroundColor: subBadge.bg }]}>
+                  <Text style={[s.roleBadgeText, { color: subBadge.color }]}>{subBadge.label}</Text>
+                </View>
+              )}
               {approvalStatus && (
                 <View style={[s.roleBadge, { backgroundColor: approvalStatus.variant === "success" ? "#4CAF5020" : "#F59E0B20" }]}>
                   <Text style={[s.roleBadgeText, { color: approvalStatus.variant === "success" ? "#4CAF50" : "#F59E0B" }]}>{approvalStatus.text}</Text>
@@ -339,7 +363,7 @@ export default function ProfileScreen() {
           </View>
         )}
         {activeSection === "account" && (
-          <AccountSection user={user} navigation={navigation} driverStats={driverStats} theme={{ bg, card, text, sub, border }} />
+          <AccountSection user={user} navigation={navigation} driverStats={driverStats} subscription={subscription} theme={{ bg, card, text, sub, border }} />
         )}
         {activeSection === "payments" && isBusiness && (
           <PaymentsSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
@@ -356,9 +380,72 @@ export default function ProfileScreen() {
 }
 
 // Componentes de secciones (continuará en siguiente parte)
-function AccountSection({ user, navigation, driverStats, theme }: any) {
+function AccountSection({ user, navigation, driverStats, subscription, theme }: any) {
+  const isActiveSub = subscription?.status === 'active' && subscription?.plan !== 'free';
+  const isPremium = subscription?.plan === 'premium';
+  const isBusiness = subscription?.plan === 'business';
+  const renewDate = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
+  const BENEFITS: Record<string, { icon: string; label: string; value: string }[]> = {
+    premium: [
+      { icon: 'truck',      label: 'Envío gratis',          value: 'Ilimitado en todos tus pedidos' },
+      { icon: 'percent',   label: '10% descuento',          value: 'En todos los pedidos' },
+      { icon: 'headphones',label: 'Soporte prioritario',    value: 'Atención 24/7' },
+      { icon: 'tag',       label: 'Ofertas exclusivas',     value: 'Acceso anticipado a promociones' },
+    ],
+    business: [
+      { icon: 'truck',      label: 'Envío gratis',          value: 'Ilimitado en todos tus pedidos' },
+      { icon: 'percent',   label: '15% descuento',          value: 'En todos los pedidos' },
+      { icon: 'headphones',label: 'Soporte prioritario',    value: 'Atención 24/7' },
+      { icon: 'tag',       label: 'Ofertas exclusivas',     value: 'Acceso anticipado a promociones' },
+      { icon: 'minus-circle', label: 'Sin mínimo de pedido', value: 'Pide cualquier importe' },
+      { icon: 'file-text', label: 'Facturación empresarial', value: 'Facturas para tu empresa' },
+    ],
+  };
+
   return (
     <View>
+      {/* Card suscripción activa */}
+      {isActiveSub && (
+        <View style={[s.settingsCard, { backgroundColor: theme.card, borderWidth: 2, borderColor: isPremium ? '#F59E0B40' : '#7C3AED40', marginBottom: 20 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+            <View style={[s.settingIcon, { backgroundColor: isPremium ? '#F59E0B20' : '#7C3AED20', width: 44, height: 44, borderRadius: 22 }]}>
+              <Text style={{ fontSize: 20 }}>{isPremium ? '⭐' : '💼'}</Text>
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[s.cardTitle, { color: theme.text, marginBottom: 2 }]}>
+                Plan {isPremium ? 'Premium' : 'Business'} activo
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.sub }}>
+                {isPremium ? '€15/mes' : '€30/mes'}{renewDate ? ` · Renueva el ${renewDate}` : ''}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => navigation.navigate('Subscriptions')}
+              style={{ backgroundColor: isPremium ? '#F59E0B' : '#7C3AED', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Gestionar</Text>
+            </Pressable>
+          </View>
+          <View style={{ gap: 10 }}>
+            {(BENEFITS[subscription.plan] || []).map((b: any) => (
+              <View key={b.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={[s.settingIcon, { backgroundColor: '#10B98120', width: 32, height: 32, borderRadius: 16 }]}>
+                  <Feather name={b.icon as any} size={15} color="#10B981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>{b.label}</Text>
+                  <Text style={{ fontSize: 11, color: theme.sub }}>{b.value}</Text>
+                </View>
+                <Feather name="check" size={16} color="#10B981" />
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       <Text style={[s.sectionTitle, { color: theme.text }]}>Cuenta</Text>
       <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
         <SettingItem icon="user" label="Editar mi perfil" onPress={() => navigation.navigate("EditProfile")} theme={theme} />
@@ -367,7 +454,13 @@ function AccountSection({ user, navigation, driverStats, theme }: any) {
             <SettingItem icon="map-pin" label="Direcciones guardadas" onPress={() => navigation.navigate("SavedAddresses")} theme={theme} />
             <SettingItem icon="credit-card" label="Métodos de pago" value="Bizum · Tarjeta · PayPal" onPress={() => navigation.navigate("PaymentWalletSetup")} theme={theme} />
             <SettingItem icon="gift" label="Mis puntos y recompensas" onPress={() => navigation.navigate("Gamification")} theme={theme} />
-            <SettingItem icon="star" label="Suscripciones" onPress={() => navigation.navigate("Subscriptions")} theme={theme} />
+            <SettingItem
+              icon="star"
+              label="Suscripciones"
+              value={isActiveSub ? (isPremium ? '⭐ Premium activo' : '💼 Business activo') : 'Plan gratuito'}
+              onPress={() => navigation.navigate("Subscriptions")}
+              theme={theme}
+            />
             <SettingItem icon="tag" label="Mis Gift Cards" onPress={() => navigation.navigate("GiftCards")} theme={theme} />
             <SettingItem icon="users" label="Pedido grupal" onPress={() => navigation.navigate("GroupOrder")} theme={theme} />
             <SettingItem icon="clock" label="Pedidos programados" onPress={() => navigation.navigate("ScheduledOrders")} theme={theme} />
