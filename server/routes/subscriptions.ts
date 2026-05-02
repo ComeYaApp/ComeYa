@@ -25,6 +25,29 @@ router.get('/plans', async (req, res) => {
   }
 });
 
+// GET /api/subscriptions/benefits-preview — muestra qué beneficios se aplicarán al usuario
+router.get('/benefits-preview', authenticateToken, async (req, res) => {
+  try {
+    const { subtotal = 0, deliveryFee = 0 } = req.query;
+    const benefits = await SubscriptionService.applySubscriptionBenefits(
+      req.user!.id,
+      parseInt(subtotal as string),
+      parseInt(deliveryFee as string)
+    );
+    const sub = await SubscriptionService.getUserSubscription(req.user!.id);
+    res.json({
+      success: true,
+      plan: sub.plan,
+      isActive: sub.status === 'active' && sub.plan !== 'free',
+      discount: benefits.discount,
+      deliveryFee: benefits.deliveryFee,
+      appliedBenefits: benefits.appliedBenefits,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Iniciar suscripción — crea registro pending_payment y devuelve subscriptionId para pagar
 router.post('/subscribe', authenticateToken, async (req, res) => {
   try {

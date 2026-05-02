@@ -133,16 +133,11 @@ export class SubscriptionService {
     return { success: true, message: 'Suscripción cancelada. Seguirás teniendo acceso hasta el final del período' };
   }
 
-  // Aplicar beneficios de suscripción a un pedido
   static async applySubscriptionBenefits(userId: string, orderTotal: number, deliveryFee: number) {
     const subscription = await this.getUserSubscription(userId);
 
     if (subscription.plan === 'free' || subscription.status !== 'active') {
-      return {
-        discount: 0,
-        deliveryFee,
-        appliedBenefits: [],
-      };
+      return { discount: 0, deliveryFee, appliedBenefits: [] };
     }
 
     const benefits = subscription.benefits;
@@ -150,23 +145,17 @@ export class SubscriptionService {
     let finalDeliveryFee = deliveryFee;
     let discount = 0;
 
-    // Envío gratis
     if (benefits.freeDelivery) {
       finalDeliveryFee = 0;
-      appliedBenefits.push('Envío gratis');
+      appliedBenefits.push('Envío gratis (Premium)');
     }
 
-    // Descuento porcentual
     if (benefits.discountPercentage > 0) {
       discount = Math.round(orderTotal * (benefits.discountPercentage / 100));
-      appliedBenefits.push(`${benefits.discountPercentage}% descuento`);
+      appliedBenefits.push(`${benefits.discountPercentage}% descuento (Premium)`);
     }
 
-    return {
-      discount,
-      deliveryFee: finalDeliveryFee,
-      appliedBenefits,
-    };
+    return { discount, deliveryFee: finalDeliveryFee, appliedBenefits };
   }
 
   // Renovar suscripciones vencidas (cron job)

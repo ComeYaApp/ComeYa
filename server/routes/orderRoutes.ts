@@ -73,12 +73,23 @@ router.post("/", authenticateToken, validateOrderFinancials, async (req, res) =>
     // No necesitamos calcular productosBase ni nemyCommission por separado
     const subtotal = req.body.subtotal; // Productos con comisión incluida
     const couponDiscount = req.body.couponDiscount || 0;
+
+    // Aplicar beneficios de suscripcion Premium/Business
+    const { SubscriptionService } = await import('../subscriptionService');
+    const rawDeliveryFee = req.body.orderType === 'pickup' ? 0 : (deliveryFee || 0);
+    const subBenefits = await SubscriptionService.applySubscriptionBenefits(
+      req.user!.id,
+      req.body.subtotal || 0,
+      rawDeliveryFee
+    );
+    const subDiscount = subBenefits.discount;
+    const subDeliveryFee = subBenefits.deliveryFee;
     
     // Para pickup, deliveryFee = 0
-    const finalDeliveryFee = req.body.orderType === 'pickup' ? 0 : deliveryFee;
+    const finalDeliveryFee = req.body.orderType === 'pickup' ? 0 : subDeliveryFee;
     
     // Total = subtotal (ya con comisión) + delivery - descuentos
-    const calculatedTotal = subtotal + finalDeliveryFee - couponDiscount;
+    const calculatedTotal = Math.max(0, subtotal + finalDeliveryFee - couponDiscount - subDiscount);
 
     const orderData = {
       userId: req.user!.id,
