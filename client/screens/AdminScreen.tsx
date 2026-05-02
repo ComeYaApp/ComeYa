@@ -33,7 +33,7 @@ import {
   ZonesTab,
   SettingsTab,
 } from "@/components/admin/tabs";
-import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab";
+import { SubscriptionPlansTab } from "@/components/admin/tabs/SubscriptionPlansTab";\r\nimport { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab";
 import type {
   AdminUser,
   AdminOrder,

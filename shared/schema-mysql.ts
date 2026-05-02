@@ -1038,8 +1038,24 @@ export const subscriptionBenefits = mysqlTable("subscription_benefits", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  planKey: varchar("plan_key", { length: 50 }).notNull().unique(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  price: int("price").notNull().default(0),
+  billingCycle: varchar("billing_cycle", { length: 20 }).default("monthly"),
+  isActive: boolean("is_active").notNull().default(true),
+  displayOrder: int("display_order").default(0),
+  color: varchar("color", { length: 20 }).default("#DC2626"),
+  icon: varchar("icon", { length: 50 }).default("star"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+});
+
 export type Subscription = typeof subscriptions.$inferSelect;
 export type SubscriptionBenefit = typeof subscriptionBenefits.$inferSelect;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 
 // Gift Cards - Tarjetas regalo
 export const giftCards = mysqlTable("gift_cards", {

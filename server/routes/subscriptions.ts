@@ -15,12 +15,14 @@ router.get('/my-subscription', authenticateToken, async (req, res) => {
   }
 });
 
-// Obtener planes disponibles
+// Obtener planes disponibles (lee de BD)
 router.get('/plans', async (req, res) => {
-  res.json({
-    success: true,
-    plans: SubscriptionService.PLANS,
-  });
+  try {
+    const plans = await SubscriptionService.getPlansFromDB();
+    res.json({ success: true, plans });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Iniciar suscripción — crea registro pending_payment y devuelve subscriptionId para pagar

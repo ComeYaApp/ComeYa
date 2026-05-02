@@ -1,90 +1,77 @@
 import { db } from './db';
-import { subscriptions, subscriptionBenefits, users } from '@shared/schema-mysql';
+import { subscriptions, subscriptionBenefits, subscriptionPlans, users } from '@shared/schema-mysql';
 import { eq, and } from 'drizzle-orm';
 
 export class SubscriptionService {
-  // Planes disponibles
-  static readonly PLANS = {
-    free: {
-      name: 'Free',
-      price: 0,
-      benefits: {
-        freeDelivery: false,
-        discountPercentage: 0,
-        prioritySupport: false,
-        exclusiveDeals: false,
-        noMinimumOrder: false,
-      },
-    },
-    premium: {
-      name: 'Premium',
-      price: 1500, // Bs. 15/mes en centavos
-      benefits: {
-        freeDelivery: true,
-        discountPercentage: 10,
-        prioritySupport: true,
-        exclusiveDeals: true,
-        noMinimumOrder: false,
-      },
-    },
-    business: {
-      name: 'Business',
-      price: 3000, // Bs. 30/mes en centavos
-      benefits: {
-        freeDelivery: true,
-        discountPercentage: 15,
-        prioritySupport: true,
-        exclusiveDeals: true,
-        noMinimumOrder: true,
-      },
-    },
+  // Planes hardcoded como fallback si la BD no tiene datos
+  static readonly PLANS_FALLBACK = {
+    free:     { name: 'Free',     price: 0,    benefits: { freeDelivery: false, discountPercentage: 0,  prioritySupport: false, exclusiveDeals: false, noMinimumOrder: false } },
+    premium:  { name: 'Premium',  price: 1500, benefits: { freeDelivery: true,  discountPercentage: 10, prioritySupport: true,  exclusiveDeals: true,  noMinimumOrder: false } },
+    business: { name: 'Business', price: 3000, benefits: { freeDelivery: true,  discountPercentage: 15, prioritySupport: true,  exclusiveDeals: true,  noMinimumOrder: true  } },
   };
+
+  // Leer planes desde BD (con fallback)
+  static async getPlansFromDB() {
+    try {
+      const plans = await db.select().from(subscriptionPlans).orderBy(subscriptionPlans.displayOrder);
+      const benefits = await db.select().from(subscriptionBenefits);
+
+      if (!plans.length) return this.PLANS_FALLBACK;
+
+      const result: Record<string, any> = {};
+      for (const plan of plans) {
+        const planBenefits = benefits.filter(b => b.plan === plan.planKey && b.isActive);
+        const discountBenefit = planBenefits.find(b => b.benefitType === 'discount_percentage');
+        result[plan.planKey] = {
+          name: plan.name,
+          price: plan.price,
+          description: plan.description,
+          color: plan.color,
+          icon: plan.icon,
+          benefits: {
+            freeDelivery:        planBenefits.some(b => b.benefitType === 'free_delivery' && b.benefitValue === 'true'),
+            discountPercentage:  discountBenefit ? parseInt(discountBenefit.benefitValue) : 0,
+            prioritySupport:     planBenefits.some(b => b.benefitType === 'priority_support' && b.benefitValue === 'true'),
+            exclusiveDeals:      planBenefits.some(b => b.benefitType === 'exclusive_deals' && b.benefitValue === 'true'),
+            noMinimumOrder:      planBenefits.some(b => b.benefitType === 'no_minimum_order' && b.benefitValue === 'true'),
+          },
+          benefitsList: planBenefits.map(b => ({ id: b.id, type: b.benefitType, value: b.benefitValue, description: b.description })),
+        };
+      }
+      return result;
+    } catch {
+      return this.PLANS_FALLBACK;
+    }
+  }
+
+  // Compatibilidad: PLANS como getter que devuelve fallback (para código que lo usa síncronamente)
+  static get PLANS() { return this.PLANS_FALLBACK; }
 
   // Obtener suscripción del usuario
   static async getUserSubscription(userId: string) {
-    const [subscription] = await db
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.userId, userId))
-      .limit(1);
+    const [subscription] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
 
     if (!subscription || subscription.status === 'pending_payment') {
-      return {
-        plan: subscription?.plan || 'free',
-        status: subscription?.status || 'active',
-        benefits: this.PLANS.free.benefits,
-      };
+      return { plan: subscription?.plan || 'free', status: subscription?.status || 'active', benefits: this.PLANS_FALLBACK.free.benefits };
     }
 
-    // Verificar si está vencida
     const now = new Date();
     if (subscription.currentPeriodEnd && subscription.currentPeriodEnd < now && subscription.status === 'active') {
-      await db
-        .update(subscriptions)
-        .set({ status: 'expired' })
-        .where(eq(subscriptions.id, subscription.id));
-
-      return {
-        plan: 'free',
-        status: 'expired',
-        benefits: this.PLANS.free.benefits,
-      };
+      await db.update(subscriptions).set({ status: 'expired' }).where(eq(subscriptions.id, subscription.id));
+      return { plan: 'free', status: 'expired', benefits: this.PLANS_FALLBACK.free.benefits };
     }
 
-    // Solo aplicar beneficios si está activa
-    const planBenefits = subscription.status === 'active'
-      ? (this.PLANS[subscription.plan as keyof typeof this.PLANS]?.benefits || this.PLANS.free.benefits)
-      : this.PLANS.free.benefits;
+    const plans = await this.getPlansFromDB();
+    const planData = plans[subscription.plan as string] || plans['free'];
+    const planBenefits = subscription.status === 'active' ? planData.benefits : this.PLANS_FALLBACK.free.benefits;
 
-    return {
-      ...subscription,
-      benefits: planBenefits,
-    };
+    return { ...subscription, benefits: planBenefits, planDetails: planData };
   }
 
   // Iniciar suscripción — crea registro pending_payment, el usuario debe pagar y subir comprobante
   static async initSubscription(userId: string, plan: 'premium' | 'business', billingCycle: 'monthly' | 'yearly' = 'monthly') {
-    const planData = this.PLANS[plan];
+    const plans = await this.getPlansFromDB();
+    const planData = plans[plan];
     if (!planData) throw new Error('Plan inválido');
 
     const [existing] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
