@@ -84,7 +84,7 @@ function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, isSub
         setLoading(false);
       } else if (paymentIntent?.status === 'succeeded') {
         showToast('¡Pago exitoso!', 'success');
-        onSuccess();
+        onSuccess(paymentIntent.id);
       }
     } catch (err: any) {
       showToast('Error al procesar el pago', 'error');
@@ -159,14 +159,14 @@ export default function StripePaymentScreen() {
 
   useEffect(() => { getStripePromise().then(() => setStripeReady(true)); }, []);
 
-  const handleSuccess = async () => {
+  const handleSuccess = async (paymentIntentId?: string) => {
     if (isSubscription && subscriptionId) {
       try { await apiRequest('POST', `/api/stripe/confirm-subscription/${subscriptionId}`, {}); } catch {}
       navigation.reset({ index: 0, routes: [{ name: 'Main' }, { name: 'Subscriptions' }] });
       return;
     }
     if (isGiftCard && giftCardId) {
-      try { await apiRequest('POST', `/api/gift-cards/${giftCardId}/stripe-success`, {}); } catch {}
+      try { await apiRequest('POST', `/api/gift-cards/${giftCardId}/stripe-success`, { paymentIntentId }); } catch {}
       navigation.reset({ index: 0, routes: [{ name: 'Main' }, { name: 'GiftCards' }] });
       return;
     }

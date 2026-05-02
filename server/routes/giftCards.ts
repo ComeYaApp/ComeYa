@@ -27,6 +27,29 @@ router.post('/purchase', authenticateToken, async (req, res) => {
 // POST /api/gift-cards/:giftCardId/stripe-success — llamado tras pago Stripe confirmado
 router.post('/:giftCardId/stripe-success', authenticateToken, async (req, res) => {
   try {
+    const { db } = await import('../db');
+    const { giftCards } = await import('@shared/schema-mysql');
+    const { eq } = await import('drizzle-orm');
+    const { getStripe } = await import('../stripeClient');
+
+    const [gc] = await db.select().from(giftCards)
+      .where(eq(giftCards.id, req.params.giftCardId)).limit(1);
+
+    if (!gc) return res.status(404).json({ success: false, error: 'Gift card no encontrada' });
+    if (gc.purchasedBy !== req.user!.id) return res.status(403).json({ success: false, error: 'No autorizado' });
+    if (gc.status === 'active') return res.json({ success: true, message: 'Ya estaba activa' });
+    if (gc.status !== 'pending_payment') return res.status(400).json({ success: false, error: 'Estado inválido' });
+
+    // Verificar que el paymentIntent de Stripe realmente se completó
+    const { paymentIntentId } = req.body;
+    if (paymentIntentId && process.env.STRIPE_SECRET_KEY) {
+      const stripe = getStripe();
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (pi.status !== 'succeeded') {
+        return res.status(400).json({ success: false, error: 'El pago no se ha completado' });
+      }
+    }
+
     const result = await GiftCardService.activateGiftCard(req.params.giftCardId, req.user!.id);
     res.json(result);
   } catch (error: any) {
