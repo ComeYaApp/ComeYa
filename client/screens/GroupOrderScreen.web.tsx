@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
@@ -19,7 +19,29 @@ export default function GroupOrderScreen() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  const { groupOrderId } = route.params || {};
+  const routeGroupOrderId = route.params?.groupOrderId;
+  const shareToken = route.params?.shareToken;
+
+  const [resolvedGroupOrderId, setResolvedGroupOrderId] = useState<string | null>(routeGroupOrderId || null);
+
+  useEffect(() => {
+    const resolveGroupOrder = async () => {
+      if (shareToken && !resolvedGroupOrderId) {
+        try {
+          const response = await apiRequest('GET', `/api/group-orders/by-token/${shareToken}`);
+          const data = await response.json();
+          if (data.success && data.groupOrder) {
+            setResolvedGroupOrderId(data.groupOrder.id);
+          }
+        } catch (error) {
+          console.error('Error resolving group order:', error);
+        }
+      }
+    };
+    resolveGroupOrder();
+  }, [shareToken]);
+
+  const groupOrderId = resolvedGroupOrderId;
 
   const bg     = isDark ? '#111'    : '#f7f7f7';
   const card   = isDark ? '#1e1e1e' : '#fff';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -41,7 +41,30 @@ export default function GroupOrderScreen() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
-  const { groupOrderId, shareToken } = route.params || {};
+  const { groupOrderId: routeGroupOrderId, shareToken } = route.params || {};
+
+  const [resolvedGroupOrderId, setResolvedGroupOrderId] = useState<string | null>(routeGroupOrderId || null);
+
+  useEffect(() => {
+    const resolveGroupOrder = async () => {
+      if (shareToken && !resolvedGroupOrderId) {
+        try {
+          const response = await apiRequest('GET', `/api/group-orders/by-token/${shareToken}`);
+          const data = await response.json();
+          if (data.success && data.groupOrder) {
+            setResolvedGroupOrderId(data.groupOrder.id);
+          } else {
+            showToast(data.error || 'Grupo no encontrado', 'error');
+          }
+        } catch (error) {
+          console.error('Error resolving group order:', error);
+        }
+      }
+    };
+    resolveGroupOrder();
+  }, [shareToken]);
+
+  const groupOrderId = resolvedGroupOrderId;
 
   // Si no hay groupOrderId, mostrar opciones para crear uno
   const isNewGroup = !groupOrderId && !shareToken;

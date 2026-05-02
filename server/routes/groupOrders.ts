@@ -1,6 +1,9 @@
 import express from 'express';
 import { authenticateToken } from '../authMiddleware';
 import { GroupOrderService } from '../groupOrderService';
+import { db } from '../db';
+import { groupOrders } from '@shared/schema-mysql';
+import { eq } from 'drizzle-orm';
 
 const router = express.Router();
 
@@ -62,6 +65,29 @@ router.get('/:groupOrderId', authenticateToken, async (req, res) => {
     res.json(result);
   } catch (error: any) {
     console.error('Get group order error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/group-orders/by-token/:shareToken - Obtener detalles del grupo por shareToken
+router.get('/by-token/:shareToken', authenticateToken, async (req, res) => {
+  try {
+    const { shareToken } = req.params;
+
+    const [group] = await db
+      .select()
+      .from(groupOrders)
+      .where(eq(groupOrders.shareToken, shareToken))
+      .limit(1);
+
+    if (!group) {
+      return res.json({ success: false, error: 'Grupo no encontrado' });
+    }
+
+    const result = await GroupOrderService.getGroupOrder(group.id);
+    res.json(result);
+  } catch (error: any) {
+    console.error('Get group order by token error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
