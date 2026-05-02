@@ -92,8 +92,8 @@ export class SubscriptionService {
       }).where(eq(subscriptions.id, existing.id));
       return { success: true, subscriptionId: existing.id, amount: planData.price, plan };
     } else {
-      const { v4: uuidv4 } = await import('uuid');
-      const id = uuidv4();
+      const { randomUUID } = await import('crypto');
+      const id = randomUUID();
       await db.insert(subscriptions).values({
         id, userId, plan,
         status: 'pending_payment' as any,

@@ -3,7 +3,7 @@ import { authenticateToken, requireRole } from '../authMiddleware';
 import { db } from '../db';
 import { subscriptionPlans, subscriptionBenefits } from '@shared/schema-mysql';
 import { eq } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 
 const router = express.Router();
 
@@ -41,7 +41,7 @@ router.post('/subscription-benefits', authenticateToken, requireRole('admin', 's
   try {
     const { plan, benefitType, benefitValue, description } = req.body;
     if (!plan || !benefitType) return res.status(400).json({ error: 'plan y benefitType son requeridos' });
-    const id = uuidv4();
+    const id = randomUUID();
     await db.insert(subscriptionBenefits).values({
       id, plan, benefitType,
       benefitValue: parseInt(benefitValue) || 0,

@@ -79,7 +79,7 @@ router.post("/submit-proof", authenticateToken, async (req, res) => {
 
     const { db } = await import("../db");
     const { orders, paymentProofs } = await import("../../shared/schema-mysql");
-    const { v4: uuidv4 } = await import("uuid");
+    const { randomUUID } = await import("crypto");
 
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
@@ -93,7 +93,7 @@ router.post("/submit-proof", authenticateToken, async (req, res) => {
       return res.status(409).json({ error: "Este comprobante ya fue enviado anteriormente" });
     }
 
-    const proofId = uuidv4();
+    const proofId = randomUUID();
     await db.insert(paymentProofs).values({
       id: proofId,
       orderId,

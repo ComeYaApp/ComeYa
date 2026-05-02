@@ -158,10 +158,10 @@ router.post(
     try {
       const { supportChats, supportMessages } = await import("@shared/schema-mysql");
       const { db } = await import("./db");
-      const { v4: uuidv4 } = await import("uuid");
+      const { randomUUID } = await import("crypto");
 
       const { message, subject, priority } = req.body;
-      const chatId = uuidv4();
+      const chatId = randomUUID();
 
       await db.insert(supportChats).values({
         id: chatId,
@@ -170,7 +170,7 @@ router.post(
       });
 
       await db.insert(supportMessages).values({
-        id: uuidv4(),
+        id: randomUUID(),
         chatId,
         userId: req.user!.id,
         message: subject || message,
@@ -228,7 +228,7 @@ router.post(
     try {
       const { supportMessages, supportChats } = await import("@shared/schema-mysql");
       const { db } = await import("./db");
-      const { v4: uuidv4 } = await import("uuid");
+      const { randomUUID } = await import("crypto");
       const { eq } = await import("drizzle-orm");
 
       // Verificar que el ticket pertenece al usuario
@@ -247,7 +247,7 @@ router.post(
       const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
 
       const newMessage = {
-        id: uuidv4(),
+        id: randomUUID(),
         chatId: req.params.id,
         userId: req.user!.id,
         message,
@@ -273,10 +273,10 @@ router.post(
     try {
       const { supportChats, supportMessages } = await import("@shared/schema-mysql");
       const { db } = await import("./db");
-      const { v4: uuidv4 } = await import("uuid");
+      const { randomUUID } = await import("crypto");
 
       const { message, subject, category } = req.body;
-      const chatId = uuidv4();
+      const chatId = randomUUID();
 
       // Create chat
       await db.insert(supportChats).values({
@@ -290,7 +290,7 @@ router.post(
 
       // Create first message
       await db.insert(supportMessages).values({
-        id: uuidv4(),
+        id: randomUUID(),
         chatId,
         userId: req.user!.id,
         message,

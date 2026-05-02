@@ -376,7 +376,7 @@ router.post("/products", authenticateToken, requireRole("business_owner"), async
     const { products, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
-    const { v4: uuidv4 } = await import("uuid");
+    const { randomUUID } = await import("crypto");
 
     const { businessId, name, description, price, image, category, isAvailable } = req.body;
 
@@ -392,7 +392,7 @@ router.post("/products", authenticateToken, requireRole("business_owner"), async
     }
 
     const productData = {
-      id: uuidv4(),
+      id: randomUUID(),
       businessId,
       name,
       description: description || null,
