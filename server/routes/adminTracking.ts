@@ -2,7 +2,7 @@ import express from 'express';
 import { authenticateToken, requireRole } from '../authMiddleware';
 import { db } from '../db';
 import { orders, users, businesses, deliveryDrivers } from '@shared/schema-mysql';
-import { eq, ne, isNull, and, desc } from 'drizzle-orm';
+import { eq, or, and, desc } from 'drizzle-orm';
 
 const router = express.Router();
 
@@ -10,24 +10,26 @@ router.get('/tracking/global', authenticateToken, requireRole('admin', 'super_ad
   try {
     console.log('[adminTracking] Fetching orders...');
     
-    const allOrders = await db
+    const activeOrders = await db
       .select()
       .from(orders)
       .where(
-        and(
-          ne(orders.status, 'delivered'),
-          ne(orders.status, 'cancelled'),
-          ne(orders.status, 'refunded')
+        or(
+          eq(orders.status, 'pending'),
+          eq(orders.status, 'accepted'),
+          eq(orders.status, 'preparing'),
+          eq(orders.status, 'on_the_way'),
+          eq(orders.status, 'arrived')
         )
       )
       .orderBy(desc(orders.createdAt))
       .limit(50);
 
-    console.log('[adminTracking] Found orders:', allOrders.length);
+    console.log('[adminTracking] Found orders:', activeOrders.length);
 
     const result = [];
     
-    for (const order of allOrders) {
+    for (const order of activeOrders) {
       const item: any = {
         id: order.id,
         orderNumber: order.orderNumber,
