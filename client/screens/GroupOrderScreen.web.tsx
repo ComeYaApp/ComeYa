@@ -96,27 +96,33 @@ export default function GroupOrderScreen() {
   const totalParticipants = group?.participants?.length || 0;
   const totalAmount = (group?.totalAmount || 0) / 100;
 
-  // If no groupOrderId and no shareToken, show empty state
+  // If no groupOrderId and no shareToken, show empty state with sidebar
   if (!groupOrderId && !shareToken) {
     return (
       <View style={[s.root, { backgroundColor: bg }]}>
-        <View style={[s.main, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
-          <View style={[s.card, { backgroundColor: card, borderColor: border, maxWidth: 400, width: '100%' }]}>
-            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15', alignSelf: 'center', marginBottom: 16 }]}>
+        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+          <View style={[s.sideHeader, { borderBottomColor: border }]}>
+            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
               <Feather name="users" size={32} color={PRIMARY} />
             </View>
-            <Text style={[s.sideTitle, { color: text, textAlign: 'center' }]}>Pedido Grupal</Text>
-            <Text style={{ color: sub, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>
+            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
+          </View>
+          <View style={s.sideStats}>
+            <Text style={{ color: sub, textAlign: 'center', paddingHorizontal: 16 }}>
               Usa el enlace compartido para unirte a un pedido grupal existente.
             </Text>
+          </View>
+          <View style={[s.sideFooter, { borderTopColor: border }]}>
             <Pressable 
               onPress={() => navigation.navigate('Main')} 
-              style={[s.shareBtn, { backgroundColor: PRIMARY }]}
+              style={[s.backBtn, { backgroundColor: PRIMARY }]}
             >
-              <Text style={s.shareBtnText}>Volver al inicio</Text>
+              <Feather name="home" size={16} color="#fff" />
+              <Text style={[s.backBtnText, { color: '#fff' }]}>Volver al inicio</Text>
             </Pressable>
           </View>
-        </View>
+        </MobileSidebarWrapper>
+        <View style={s.main} />
       </View>
     );
   }
@@ -124,9 +130,29 @@ export default function GroupOrderScreen() {
   // If still loading after having a groupOrderId
   if (!group && isLoadingGroup) {
     return (
-      <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={PRIMARY} />
-        <Text style={[s.loadingText, { color: sub }]}>Cargando pedido grupal...</Text>
+      <View style={[s.root, { backgroundColor: bg }]}>
+        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+          <View style={[s.sideHeader, { borderBottomColor: border }]}>
+            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
+              <Feather name="users" size={32} color={PRIMARY} />
+            </View>
+            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
+          </View>
+          <View style={s.sideStats}>
+            <ActivityIndicator size="large" color={PRIMARY} />
+            <Text style={[s.loadingText, { color: sub, marginTop: 12 }]}>Cargando pedido grupal...</Text>
+          </View>
+          <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable 
+              onPress={() => navigation.goBack()} 
+              style={s.backBtn}
+            >
+              <Feather name="arrow-left" size={16} color={sub} />
+              <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
+            </Pressable>
+          </View>
+        </MobileSidebarWrapper>
+        <View style={s.main} />
       </View>
     );
   }
@@ -134,29 +160,58 @@ export default function GroupOrderScreen() {
   // If group order not found
   if (groupOrderId && !group && !isLoadingGroup) {
     return (
-      <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
-        <View style={[s.card, { backgroundColor: card, borderColor: border, maxWidth: 400, margin: 20 }]}>
-          <Feather name="alert-circle" size={48} color="#EF4444" style={{ alignSelf: 'center' }} />
-          <Text style={[s.sideTitle, { color: text, textAlign: 'center', marginTop: 16 }]}>Grupo no encontrado</Text>
-          <Text style={{ color: sub, textAlign: 'center', marginTop: 8 }}>
-            Este enlace ya expiró o no existe.
-          </Text>
-          <Pressable 
-            onPress={() => navigation.goBack()} 
-            style={[s.shareBtn, { backgroundColor: PRIMARY, marginTop: 20 }]}
-          >
-            <Text style={s.shareBtnText}>Volver</Text>
-          </Pressable>
-        </View>
+      <View style={[s.root, { backgroundColor: bg }]}>
+        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+          <View style={[s.sideHeader, { borderBottomColor: border }]}>
+            <View style={[s.sideIconWrap, { backgroundColor: '#EF444420' }]}>
+              <Feather name="alert-circle" size={32} color="#EF4444" />
+            </View>
+            <Text style={[s.sideTitle, { color: text }]}>Grupo no encontrado</Text>
+          </View>
+          <View style={s.sideStats}>
+            <Text style={{ color: sub, textAlign: 'center', paddingHorizontal: 16 }}>
+              Este enlace ya expiró o no existe.
+            </Text>
+          </View>
+          <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable 
+              onPress={() => navigation.navigate('Main')} 
+              style={[s.backBtn, { backgroundColor: PRIMARY }]}
+            >
+              <Feather name="home" size={16} color="#fff" />
+              <Text style={[s.backBtnText, { color: '#fff' }]}>Volver al inicio</Text>
+            </Pressable>
+          </View>
+        </MobileSidebarWrapper>
+        <View style={s.main} />
       </View>
     );
   }
 
   if (!group) {
     return (
-      <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={PRIMARY} />
-        <Text style={[s.loadingText, { color: sub }]}>Cargando pedido grupal...</Text>
+      <View style={[s.root, { backgroundColor: bg }]}>
+        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+          <View style={[s.sideHeader, { borderBottomColor: border }]}>
+            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
+              <Feather name="users" size={32} color={PRIMARY} />
+            </View>
+            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
+          </View>
+          <View style={s.sideStats}>
+            <ActivityIndicator size="large" color={PRIMARY} />
+          </View>
+          <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable 
+              onPress={() => navigation.goBack()} 
+              style={s.backBtn}
+            >
+              <Feather name="arrow-left" size={16} color={sub} />
+              <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
+            </Pressable>
+          </View>
+        </MobileSidebarWrapper>
+        <View style={s.main} />
       </View>
     );
   }
@@ -294,7 +349,7 @@ const s = StyleSheet.create({
   sideIconWrap:      { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   sideTitle:         { fontSize: 16, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
   statusBadge:       { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  sideStats:         { flexDirection: 'row', gap: 10, padding: 16 },
+  sideStats:         { flex: 1, justifyContent: 'center', padding: 16 },
   statBox:           { flex: 1, borderRadius: 10, padding: 12, alignItems: 'center' },
   statNum:           { fontSize: 20, fontWeight: '800' },
   statLabel:         { fontSize: 11, marginTop: 2 },
