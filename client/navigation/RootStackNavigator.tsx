@@ -151,6 +151,20 @@ export default function RootStackNavigator() {
   const { isAuthenticated, isLoading, pendingVerificationPhone, user } = useAuth();
   const navigationRef = useRef<any>(null);
 
+  function getPathFromUrl(url: string): string {
+    if (typeof URL !== 'undefined') {
+      try {
+        const parsed = new URL(url);
+        return parsed.pathname.replace(/^\/+/, '');
+      } catch {
+        // fallback
+      }
+    }
+    // Fallback: extract path after "://"
+    const match = url.match(/:\/\/[^/]+(.+)/);
+    return match ? match[1].replace(/^\/+/, '') : '';
+  }
+
   useEffect(() => {
     const handleURL = (event: { url: string }) => {
       const incomingUrl = event.url;
@@ -159,7 +173,8 @@ export default function RootStackNavigator() {
       console.log('Deep link received:', incomingUrl);
       
       // Parse deep link manually for comeya://group-order/xxx
-      const match = incomingUrl.match(/group-order\/([^/?]+)/);
+      const path = getPathFromUrl(incomingUrl);
+      const match = path.match(/group-order\/([^/?]+)/);
       if (match && match[1]) {
         const shareToken = match[1];
         if (navigationRef.current) {
