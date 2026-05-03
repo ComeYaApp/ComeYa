@@ -1,11 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, StyleSheet, Pressable, ActivityIndicator, Text } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator, Text, ScrollView } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
+
+export default function OrderConfirmationScreen() {
+  const navigation = useNavigation<any>();
+  const route = useRoute() as any;
+  const { theme, isDark } = useTheme();
+const { showToast } = useToast();
+
+const PRIMARY = "#DC2626";
 
 export default function OrderConfirmationScreen() {
   const navigation = useNavigation<any>();
@@ -73,86 +81,126 @@ export default function OrderConfirmationScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
-        {/* Icono animado */}
-        <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
-          <Feather name="check" size={48} color={ComeYaColors.primary} />
-        </View>
-
-        <Text style={[s.title, { color: text }]}>
-          {isConfirmed ? "Pedido Confirmado" : "Pedido Recibido"}
-        </Text>
-
-        {!isConfirmed ? (
-          <>
-            <Text style={[s.subtitle, { color: sub }]}>
-              Tienes {secondsRemaining} segundos para cancelar sin penalización
+      <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
+          {/* Header */}
+          <View style={[s.header, { borderBottomColor: border }]}>
+            <Text style={[s.headerTitle, { color: text }]}>Confirma tu pedido</Text>
+            <Text style={[s.headerSubtitle, { color: sub }]}>
+              Revisa los detalles y completa tu compra de forma segura
             </Text>
-
-            <View style={[s.timerCard, { backgroundColor: isDark ? "#2a2a2a" : "#f9f9f9", borderColor: border }]}>
-              <View style={s.timerHeader}>
-                <Feather name="clock" size={18} color={ComeYaColors.primary} />
-                <Text style={[s.timerLabel, { color: text }]}>Tiempo de arrepentimiento</Text>
-              </View>
-              <Text style={[s.timerNumber, { color: ComeYaColors.primary }]}>{secondsRemaining}</Text>
-              <Text style={[s.timerSub, { color: sub }]}>segundos</Text>
-
-              {/* Progress bar */}
-              <View style={[s.progressBar, { backgroundColor: isDark ? "#333" : "#e0e0e0" }]}>
-                <View style={[s.progressFill, { width: `${progress}%` as any, backgroundColor: ComeYaColors.primary }]} />
-              </View>
-
-              <Text style={[s.timerNote, { color: sub }]}>
-                El restaurante aún no ha sido notificado. Puedes cancelar sin costo.
-              </Text>
-            </View>
-
-            <Pressable
-              onPress={handleCancel}
-              disabled={isCancelling}
-              style={[s.cancelBtn, { borderColor: ComeYaColors.error, backgroundColor: ComeYaColors.error + "10" }]}
-            >
-              {isCancelling
-                ? <ActivityIndicator color={ComeYaColors.error} size="small" />
-                : <>
-                    <Feather name="x" size={18} color={ComeYaColors.error} />
-                    <Text style={[s.cancelBtnText, { color: ComeYaColors.error }]}>Cancelar ahora</Text>
-                  </>
-              }
-            </Pressable>
-
-            <Pressable onPress={() => confirmOrder()} style={s.skipLink}>
-              <Text style={{ color: ComeYaColors.primary, fontSize: 14 }}>Saltar y confirmar pedido</Text>
-              <Feather name="arrow-right" size={14} color={ComeYaColors.primary} />
-            </Pressable>
-          </>
-        ) : (
-          <View style={s.confirmedState}>
-            <ActivityIndicator color={ComeYaColors.primary} size="large" />
-            <Text style={[s.subtitle, { color: sub, marginTop: 16 }]}>Notificando al restaurante...</Text>
           </View>
-        )}
-      </View>
+
+          {/* Tu pedido */}
+          <View style={[s.section, { borderBottomColor: border }]}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: text }]}>Tu pedido</Text>
+              <Pressable onPress={() => navigation.navigate('OrderTracking', { orderId })}>
+                <Feather name="arrow-right" size={18} color={sub} />
+              </Pressable>
+            </View>
+            <Text style={[s.businessName, { color: PRIMARY }]}>Mercado Central</Text>
+            <View style={s.itemRow}>
+              <Text style={[s.itemName, { color: text }]}>1x Aguacate</Text>
+              <Text style={[s.itemPrice, { color: text }]}>€2.07</Text>
+            </View>
+          </View>
+
+          {/* Total */}
+          <View style={[s.section, { borderBottomColor: border }]}>
+            <View style={s.rowBetween}>
+              <Text style={[s.label, { color: sub }]}>Subtotal</Text>
+              <Text style={[s.value, { color: text }]}>€2.07</Text>
+            </View>
+            <View style={s.rowBetween}>
+              <Text style={[s.label, { color: sub }]}>Envío (~22 min)</Text>
+              <Text style={[s.value, { color: text }]}>€2.50</Text>
+            </View>
+            <View style={[s.totalRow, { borderTopColor: border }]}>
+              <Text style={[s.totalLabel, { color: text }]}>Total</Text>
+              <Text style={[s.totalValue, { color: PRIMARY }]}>€4.57</Text>
+            </View>
+          </View>
+
+          {!isConfirmed && (
+            <View style={s.actionSection}>
+              <Text style={[s.actionLabel, { color: sub }]}>
+                Tienes {secondsRemaining} segundos para cancelar sin penalización
+              </Text>
+              
+              <View style={[s.timerBox, { backgroundColor: isDark ? '#2a2a2a' : '#f9f9f9', borderColor: border }]}>
+                <Text style={[s.timerValue, { color: PRIMARY }]}>{secondsRemaining}</Text>
+                <Text style={[s.timerLabel, { color: sub }]}>segundos</Text>
+                <View style={[s.progressBarBg, { backgroundColor: isDark ? '#333' : '#e0e0e0' }]}>
+                  <View style={[s.progressBarFill, { width: `${progress}%`, backgroundColor: PRIMARY }]} />
+                </View>
+              </View>
+
+              <Pressable 
+                onPress={() => confirmOrder()} 
+                style={[s.confirmBtn, { backgroundColor: PRIMARY }]}
+              >
+                <Text style={s.confirmBtnText}>Confirmar pedido</Text>
+              </Pressable>
+
+              <Pressable 
+                onPress={handleCancel} 
+                disabled={isCancelling}
+                style={[s.cancelBtn, { borderColor: '#EF4444' }]}
+              >
+                {isCancelling
+                  ? <ActivityIndicator color="#EF4444" size="small" />
+                  : <Text style={[s.cancelBtnText, { color: '#EF4444' }]}>Cancelar pedido</Text>
+                }
+              </Pressable>
+            </View>
+          )}
+
+          {isConfirmed && (
+            <View style={s.confirmedBox}>
+              <Feather name="check-circle" size={48} color="#10B981" />
+              <Text style={[s.confirmedText, { color: text }]}>Pedido confirmado</Text>
+              <Text style={[s.confirmedSubtext, { color: sub }]}>Notificando al restaurante...</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, justifyContent: "center", alignItems: "center" },
-  card: { width: 480, padding: 48, borderRadius: 24, borderWidth: 1, alignItems: "center" },
-  iconCircle: { width: 100, height: 100, borderRadius: 50, justifyContent: "center", alignItems: "center", marginBottom: 24 },
-  title: { fontSize: 28, fontWeight: "800", marginBottom: 8, textAlign: "center" },
-  subtitle: { fontSize: 15, textAlign: "center", marginBottom: 24, lineHeight: 22 },
-  timerCard: { width: "100%", padding: 24, borderRadius: 16, borderWidth: 1, alignItems: "center", marginBottom: 24 },
-  timerHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  timerLabel: { fontSize: 15, fontWeight: "600" },
-  timerNumber: { fontSize: 72, fontWeight: "900", lineHeight: 80 },
-  timerSub: { fontSize: 14, marginBottom: 16 },
-  progressBar: { width: "100%", height: 8, borderRadius: 4, overflow: "hidden", marginBottom: 12 },
-  progressFill: { height: "100%", borderRadius: 4 },
-  timerNote: { fontSize: 13, textAlign: "center", lineHeight: 18 },
-  cancelBtn: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, borderWidth: 2, marginBottom: 12 },
-  cancelBtnText: { fontSize: 15, fontWeight: "700" },
-  skipLink: { flexDirection: "row", alignItems: "center", gap: 6, padding: 8 },
-  confirmedState: { alignItems: "center", paddingVertical: 24 },
+  root: { flex: 1, backgroundColor: bg, justifyContent: "center", alignItems: "center" },
+  content: { padding: 24, justifyContent: "center", alignItems: "center", maxWidth: 480, width: "100%" },
+  card: { width: "100%", padding: 0, borderRadius: 16, borderWidth: 1, backgroundColor: card },
+  header: { padding: 20, borderBottomWidth: 1 },
+  headerTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4 },
+  headerSubtitle: { fontSize: 14, color: sub },
+  section: { padding: 20, borderBottomWidth: 1 },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  sectionTitle: { fontSize: 14, fontWeight: "700", color: text },
+  businessName: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
+  itemRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
+  itemName: { fontSize: 14, color: text },
+  itemPrice: { fontSize: 14, fontWeight: "600" },
+  rowBetween: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  label: { fontSize: 14 },
+  value: { fontSize: 14, fontWeight: "600" },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", paddingTop: 12, marginTop: 8, borderTopWidth: 1 },
+  totalLabel: { fontSize: 16, fontWeight: "700" },
+  totalValue: { fontSize: 18, fontWeight: "800" },
+  actionSection: { padding: 20 },
+  actionLabel: { fontSize: 14, textAlign: "center", marginBottom: 16 },
+  timerBox: { padding: 16, borderRadius: 12, borderWidth: 1, alignItems: "center", marginBottom: 20 },
+  timerValue: { fontSize: 36, fontWeight: "900" },
+  timerLabel: { fontSize: 12, color: sub, marginBottom: 8 },
+  progressBarBg: { width: "100%", height: 6, borderRadius: 3, overflow: "hidden" },
+  progressBarFill: { height: "100%", borderRadius: 3 },
+  confirmBtn: { paddingVertical: 16, borderRadius: 12, alignItems: "center", marginBottom: 12 },
+  confirmBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  cancelBtn: { paddingVertical: 14, borderRadius: 12, borderWidth: 2, alignItems: "center" },
+  cancelBtnText: { fontSize: 14, fontWeight: "700" },
+  confirmedBox: { padding: 32, alignItems: "center" },
+  confirmedText: { fontSize: 18, fontWeight: "700", marginTop: 12 },
+  confirmedSubtext: { fontSize: 14, color: sub, marginTop: 4 },
 });
