@@ -15,15 +15,15 @@ router.get('/tracking/global', authenticateToken, requireRole('admin', 'super_ad
         orderNumber: orders.orderNumber,
         status: orders.status,
         businessId: orders.businessId,
-        businessName: businesses.name,
-        businessLatitude: businesses.latitude,
-        businessLongitude: businesses.longitude,
-        deliveryLatitude: orders.deliveryLatitude,
-        deliveryLongitude: orders.deliveryLongitude,
+        bName: businesses.name,
+        bLat: businesses.latitude,
+        bLng: businesses.longitude,
+        deliveryLat: orders.deliveryLatitude,
+        deliveryLng: orders.deliveryLongitude,
         deliveryPersonId: orders.deliveryPersonId,
-        driverName: users.name,
-        driverLatitude: deliveryDrivers.currentLatitude,
-        driverLongitude: deliveryDrivers.currentLongitude,
+        dName: users.name,
+        dLat: deliveryDrivers.currentLatitude,
+        dLng: deliveryDrivers.currentLongitude,
         estimatedDeliveryTime: orders.estimatedDeliveryTime,
         createdAt: orders.createdAt,
       })
@@ -40,30 +40,39 @@ router.get('/tracking/global', authenticateToken, requireRole('admin', 'super_ad
       .orderBy(sql`${orders.createdAt} DESC`)
       .limit(100);
 
-    const result = activeOrders.map(o => ({
-      id: o.id,
-      orderNumber: o.orderNumber,
-      status: o.status,
-      business: o.businessName ? {
-        name: o.businessName,
-        lat: o.businessLatitude ? parseFloat(o.businessLatitude) : null,
-        lng: o.businessLongitude ? parseFloat(o.businessLongitude) : null,
-      } : null,
-      delivery: o.deliveryLatitude && o.deliveryLongitude ? {
-        lat: parseFloat(o.deliveryLatitude),
-        lng: parseFloat(o.deliveryLongitude),
-      } : null,
-      driver: o.driverName ? {
-        name: o.driverName,
-        lat: o.driverLatitude ? parseFloat(o.driverLatitude) : null,
-        lng: o.driverLongitude ? parseFloat(o.driverLongitude) : null,
-      } : null,
-      estimatedDeliveryTime: o.estimatedDeliveryTime,
-      createdAt: o.createdAt,
-    }));
+    const result = activeOrders.map((o: any) => {
+      const business = o.bLat && o.bLng ? {
+        name: o.bName || 'Negocio',
+        lat: parseFloat(o.bLat),
+        lng: parseFloat(o.bLng),
+      } : null;
+
+      const delivery = o.deliveryLat && o.deliveryLng ? {
+        lat: parseFloat(o.deliveryLat),
+        lng: parseFloat(o.deliveryLng),
+      } : null;
+
+      const driver = o.dLat && o.dLng && o.dName ? {
+        name: o.dName,
+        lat: parseFloat(o.dLat),
+        lng: parseFloat(o.dLng),
+      } : null;
+
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        business,
+        delivery,
+        driver,
+        estimatedDeliveryTime: o.estimatedDeliveryTime,
+        createdAt: o.createdAt,
+      };
+    });
 
     res.json({ success: true, orders: result });
   } catch (error: any) {
+    console.error('[adminTracking] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
