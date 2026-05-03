@@ -2,34 +2,24 @@ import express from 'express';
 import { authenticateToken, requireRole } from '../authMiddleware';
 import { db } from '../db';
 import { orders, users, businesses, deliveryDrivers } from '@shared/schema-mysql';
-import { eq, or, and, desc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 const router = express.Router();
 
 router.get('/tracking/global', authenticateToken, requireRole('admin', 'super_admin'), async (req, res) => {
   try {
-    console.log('[adminTracking] Fetching orders...');
-    
-    const activeOrders = await db
+    const allOrders = await db
       .select()
       .from(orders)
-      .where(
-        or(
-          eq(orders.status, 'pending'),
-          eq(orders.status, 'accepted'),
-          eq(orders.status, 'preparing'),
-          eq(orders.status, 'on_the_way'),
-          eq(orders.status, 'arrived')
-        )
-      )
       .orderBy(desc(orders.createdAt))
       .limit(50);
 
-    console.log('[adminTracking] Found orders:', activeOrders.length);
-
     const result = [];
     
-    for (const order of activeOrders) {
+    for (const order of allOrders) {
+      if (!order.businessId) continue;
+      if (order.status === 'delivered' || order.status === 'cancelled' || order.status === 'refunded') continue;
+
       const item: any = {
         id: order.id,
         orderNumber: order.orderNumber,
@@ -40,20 +30,18 @@ router.get('/tracking/global', authenticateToken, requireRole('admin', 'super_ad
       };
 
       // Get business
-      if (order.businessId) {
-        const [biz] = await db
-          .select({ name: businesses.name, latitude: businesses.latitude, longitude: businesses.longitude })
-          .from(businesses)
-          .where(eq(businesses.id, order.businessId))
-          .limit(1);
-        
-        if (biz && biz.latitude && biz.longitude) {
-          item.business = {
-            name: biz.name || 'Negocio',
-            lat: parseFloat(biz.latitude),
-            lng: parseFloat(biz.longitude),
-          };
-        }
+      const [biz] = await db
+        .select({ name: businesses.name, latitude: businesses.latitude, longitude: businesses.longitude })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      
+      if (biz && biz.latitude && biz.longitude) {
+        item.business = {
+          name: biz.name || 'Negocio',
+          lat: parseFloat(biz.latitude),
+          lng: parseFloat(biz.longitude),
+        };
       }
 
       // Get delivery location
@@ -90,10 +78,8 @@ router.get('/tracking/global', authenticateToken, requireRole('admin', 'super_ad
       result.push(item);
     }
 
-    console.log('[adminTracking] Result count:', result.length);
     res.json({ success: true, orders: result });
   } catch (error: any) {
-    console.error('[adminTracking] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
