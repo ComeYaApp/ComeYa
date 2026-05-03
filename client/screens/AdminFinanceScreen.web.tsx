@@ -1,12 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminShell, AdminSection } from "@/components/admin/AdminShell.web";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
 import { GiftCardsAdminTab } from "../components/admin/tabs/GiftCardsAdminTab.web";
-
+import { useToast } from "@/contexts/ToastContext";
 import { apiRequest } from "@/lib/query-client";
-import { useEffect } from "react";
 
 export default function AdminFinanceScreen() {
   const { showToast } = useToast();

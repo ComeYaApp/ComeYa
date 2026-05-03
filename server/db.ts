@@ -157,6 +157,11 @@ if (isTest && useDbStubs) {
   // });
 
   if (!isTest) {
+    // Import and run gamification seed
+    import('./gamificationSeed').then(({ seedGamification }) => {
+      setTimeout(() => seedGamification(), 2000);
+    }).catch(() => {});
+
     // Test connection on startup and run migrations
     connection.getConnection()
       .then(async (conn) => {

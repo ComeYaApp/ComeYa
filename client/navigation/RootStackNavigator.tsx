@@ -35,6 +35,7 @@ import BusinessCategoriesScreen from "@/screens/BusinessCategoriesScreen";
 import MyBusinessesScreen from "@/screens/MyBusinessesScreen";
 import BusinessStripeSetupScreen from "@/screens/BusinessStripeSetupScreen";
 import EditProfileScreen from "@/screens/EditProfileScreen";
+import ProfileScreen from "@/screens/ProfileScreen";
 import GamificationScreen from "@/screens/GamificationScreen";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
 import GiftCardsScreen from "@/screens/GiftCardsScreen";
@@ -114,6 +115,7 @@ export type RootStackParamList = {
   BusinessProducts: undefined;
   BusinessDashboard: undefined;
   EditProfile: undefined;
+  Profile: undefined;
   Gamification: undefined;
   Subscriptions: undefined;
   GiftCards: undefined;
@@ -360,6 +362,11 @@ export default function RootStackNavigator() {
             name="EditProfile"
             component={EditProfileScreen}
             options={{ headerTitle: "Editar perfil" }}
+          />
+          <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ headerTitle: "Mi perfil" }}
           />
           <Stack.Screen
             name="Addresses"
