@@ -3,22 +3,15 @@ import { View, StyleSheet, Pressable, ActivityIndicator, Text, ScrollView } from
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
-import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
-
-export default function OrderConfirmationScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute() as any;
-  const { theme, isDark } = useTheme();
-const { showToast } = useToast();
 
 const PRIMARY = "#DC2626";
 
 export default function OrderConfirmationScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute() as any;
-  const { theme, isDark } = useTheme();
+  const { isDark } = useTheme();
   const { showToast } = useToast();
 
   const { orderId, regretPeriodEndsAt } = route.params || {};
@@ -83,7 +76,6 @@ export default function OrderConfirmationScreen() {
     <View style={[s.root, { backgroundColor: bg }]}>
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
-          {/* Header */}
           <View style={[s.header, { borderBottomColor: border }]}>
             <Text style={[s.headerTitle, { color: text }]}>Confirma tu pedido</Text>
             <Text style={[s.headerSubtitle, { color: sub }]}>
@@ -91,7 +83,6 @@ export default function OrderConfirmationScreen() {
             </Text>
           </View>
 
-          {/* Tu pedido */}
           <View style={[s.section, { borderBottomColor: border }]}>
             <View style={s.sectionHeader}>
               <Text style={[s.sectionTitle, { color: text }]}>Tu pedido</Text>
@@ -106,7 +97,6 @@ export default function OrderConfirmationScreen() {
             </View>
           </View>
 
-          {/* Total */}
           <View style={[s.section, { borderBottomColor: border }]}>
             <View style={s.rowBetween}>
               <Text style={[s.label, { color: sub }]}>Subtotal</Text>
@@ -170,37 +160,37 @@ export default function OrderConfirmationScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: bg, justifyContent: "center", alignItems: "center" },
-  content: { padding: 24, justifyContent: "center", alignItems: "center", maxWidth: 480, width: "100%" },
-  card: { width: "100%", padding: 0, borderRadius: 16, borderWidth: 1, backgroundColor: card },
-  header: { padding: 20, borderBottomWidth: 1 },
-  headerTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4 },
-  headerSubtitle: { fontSize: 14, color: sub },
-  section: { padding: 20, borderBottomWidth: 1 },
+  root: { flex: 1, backgroundColor: "#f7f7f7" },
+  content: { padding: 24, alignItems: "center", maxWidth: 480, width: "100%" },
+  card: { width: "100%", borderRadius: 16, borderWidth: 1, backgroundColor: "#fff", borderColor: "#e8e8e8" },
+  header: { padding: 20, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
+  headerTitle: { fontSize: 20, fontWeight: "800", marginBottom: 4, color: "#1a1a1a" },
+  headerSubtitle: { fontSize: 14, color: "#666" },
+  section: { padding: 20, borderBottomWidth: 1, borderBottomColor: "#e8e8e8" },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  sectionTitle: { fontSize: 14, fontWeight: "700", color: text },
-  businessName: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
+  sectionTitle: { fontSize: 14, fontWeight: "700", color: "#1a1a1a" },
+  businessName: { fontSize: 16, fontWeight: "700", marginBottom: 8, color: PRIMARY },
   itemRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
-  itemName: { fontSize: 14, color: text },
-  itemPrice: { fontSize: 14, fontWeight: "600" },
+  itemName: { fontSize: 14, color: "#1a1a1a" },
+  itemPrice: { fontSize: 14, fontWeight: "600", color: "#1a1a1a" },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  label: { fontSize: 14 },
-  value: { fontSize: 14, fontWeight: "600" },
-  totalRow: { flexDirection: "row", justifyContent: "space-between", paddingTop: 12, marginTop: 8, borderTopWidth: 1 },
-  totalLabel: { fontSize: 16, fontWeight: "700" },
-  totalValue: { fontSize: 18, fontWeight: "800" },
+  label: { fontSize: 14, color: "#666" },
+  value: { fontSize: 14, fontWeight: "600", color: "#1a1a1a" },
+  totalRow: { flexDirection: "row", justifyContent: "space-between", paddingTop: 12, marginTop: 8, borderTopWidth: 1, borderTopColor: "#e8e8e8" },
+  totalLabel: { fontSize: 16, fontWeight: "700", color: "#1a1a1a" },
+  totalValue: { fontSize: 18, fontWeight: "800", color: PRIMARY },
   actionSection: { padding: 20 },
-  actionLabel: { fontSize: 14, textAlign: "center", marginBottom: 16 },
-  timerBox: { padding: 16, borderRadius: 12, borderWidth: 1, alignItems: "center", marginBottom: 20 },
-  timerValue: { fontSize: 36, fontWeight: "900" },
-  timerLabel: { fontSize: 12, color: sub, marginBottom: 8 },
-  progressBarBg: { width: "100%", height: 6, borderRadius: 3, overflow: "hidden" },
-  progressBarFill: { height: "100%", borderRadius: 3 },
-  confirmBtn: { paddingVertical: 16, borderRadius: 12, alignItems: "center", marginBottom: 12 },
+  actionLabel: { fontSize: 14, textAlign: "center", marginBottom: 16, color: "#666" },
+  timerBox: { padding: 16, borderRadius: 12, borderWidth: 1, borderColor: "#e8e8e8", alignItems: "center", marginBottom: 20, backgroundColor: "#f9f9f9" },
+  timerValue: { fontSize: 36, fontWeight: "900", color: PRIMARY },
+  timerLabel: { fontSize: 12, color: "#666", marginBottom: 8 },
+  progressBarBg: { width: "100%", height: 6, borderRadius: 3, overflow: "hidden", backgroundColor: "#e0e0e0" },
+  progressBarFill: { height: "100%", borderRadius: 3, backgroundColor: PRIMARY },
+  confirmBtn: { paddingVertical: 16, borderRadius: 12, alignItems: "center", marginBottom: 12, backgroundColor: PRIMARY },
   confirmBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
-  cancelBtn: { paddingVertical: 14, borderRadius: 12, borderWidth: 2, alignItems: "center" },
-  cancelBtnText: { fontSize: 14, fontWeight: "700" },
+  cancelBtn: { paddingVertical: 14, borderRadius: 12, borderWidth: 2, alignItems: "center", borderColor: "#EF4444" },
+  cancelBtnText: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
   confirmedBox: { padding: 32, alignItems: "center" },
-  confirmedText: { fontSize: 18, fontWeight: "700", marginTop: 12 },
-  confirmedSubtext: { fontSize: 14, color: sub, marginTop: 4 },
+  confirmedText: { fontSize: 18, fontWeight: "700", marginTop: 12, color: "#1a1a1a" },
+  confirmedSubtext: { fontSize: 14, color: "#666", marginTop: 4 },
 });
