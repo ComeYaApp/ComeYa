@@ -14,6 +14,7 @@ export type AdminSection =
   | "drivers" | "drivers_list" | "drivers_map"
   | "users"
   | "finance" | "finance_payouts" | "finance_proofs" | "finance_accounts" | "finance_earnings" | "finance_giftcards"
+  | "premiums"
   | "marketing" | "coupons"
   | "support" | "support_tickets" | "support_verifications"
   | "settings" | "delivery_config";
@@ -62,6 +63,7 @@ const NAV: NavItem[] = [
       { id: "finance_payouts",    label: "Payouts",      icon: "send"        },
       { id: "finance_proofs",     label: "Comprobantes", icon: "file-text"   },
       { id: "finance_giftcards",  label: "Gift Cards",   icon: "gift"        },
+      { id: "premiums",         label: "Suscripciones", icon: "star"        },
       { id: "finance_accounts",   label: "Cuentas",      icon: "credit-card" },
     ],
   },

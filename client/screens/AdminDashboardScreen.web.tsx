@@ -20,6 +20,8 @@ import { DriversTab }       from "@/components/admin/tabs/DriversTab.web";
 import { UsersTab }         from "@/components/admin/tabs/UsersTab.web";
 import { FinanceTab }       from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
+import { GiftCardsAdminTab } from "@/components/admin/tabs/GiftCardsAdminTab.web";
+import { PremiumSubsTab } from "@/components/admin/tabs/PremiumSubsTab.web";
 import { CouponsTab }       from "@/components/admin/tabs/CouponsTab.web";
 import { SupportTab }       from "@/components/admin/tabs/SupportTab.web";
 import { SettingsTab }      from "@/components/admin/tabs/SettingsTab.web";
@@ -163,8 +165,13 @@ export default function AdminDashboardScreen() {
         return <FinanceTab defaultTab="payouts" />;
       case "finance_proofs":
         return <PaymentProofsTab />;
+      case "finance_giftcards":
+        return <GiftCardsAdminTab />;
       case "finance_accounts":
         return <AdminPaymentAccountsPanel />;
+
+      case "premiums":
+        return <PremiumSubsTab />;
 
       // ── Marketing ──
       case "marketing":
