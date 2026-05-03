@@ -99,15 +99,23 @@ export default function GroupOrderScreen() {
   // If no groupOrderId and no shareToken, show empty state
   if (!groupOrderId && !shareToken) {
     return (
-      <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
-        <View style={[s.card, { backgroundColor: card, borderColor: border, maxWidth: 400, margin: 20 }]}>
-          <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15', alignSelf: 'center', marginBottom: 16 }]}>
-            <Feather name="users" size={32} color={PRIMARY} />
+      <View style={[s.root, { backgroundColor: bg }]}>
+        <View style={[s.main, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+          <View style={[s.card, { backgroundColor: card, borderColor: border, maxWidth: 400, width: '100%' }]}>
+            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15', alignSelf: 'center', marginBottom: 16 }]}>
+              <Feather name="users" size={32} color={PRIMARY} />
+            </View>
+            <Text style={[s.sideTitle, { color: text, textAlign: 'center' }]}>Pedido Grupal</Text>
+            <Text style={{ color: sub, textAlign: 'center', marginTop: 8, marginBottom: 20 }}>
+              Usa el enlace compartido para unirte a un pedido grupal existente.
+            </Text>
+            <Pressable 
+              onPress={() => navigation.navigate('Main')} 
+              style={[s.shareBtn, { backgroundColor: PRIMARY }]}
+            >
+              <Text style={s.shareBtnText}>Volver al inicio</Text>
+            </Pressable>
           </View>
-          <Text style={[s.sideTitle, { color: text, textAlign: 'center' }]}>Pedido Grupal</Text>
-          <Text style={{ color: sub, textAlign: 'center', marginTop: 8 }}>
-            Usa el enlace compartida para unirte a un pedido grupal existente.
-          </Text>
         </View>
       </View>
     );
