@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Platform } from "react-native";
+import { Platform, Linking } from "react-native";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import MainTabNavigatorWeb from "@/navigation/MainTabNavigator.web";
 // Note: Platform already imported above — no duplicate needed
@@ -117,7 +117,7 @@ export type RootStackParamList = {
   Gamification: undefined;
   Subscriptions: undefined;
   GiftCards: undefined;
-  GroupOrder: { businessId?: string } | undefined;
+  GroupOrder: { businessId?: string; groupOrderId?: string; shareToken?: string } | undefined;
   ScheduledOrders: undefined;
   Addresses: undefined;
   SavedAddresses: undefined;
@@ -149,6 +149,37 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function RootStackNavigator() {
   const screenOptions = useScreenOptions();
   const { isAuthenticated, isLoading, pendingVerificationPhone, user } = useAuth();
+  const navigationRef = useRef<any>(null);
+
+  useEffect(() => {
+    const handleURL = (event: { url: string }) => {
+      const incomingUrl = event.url;
+      if (!incomingUrl) return;
+      
+      console.log('Deep link received:', incomingUrl);
+      
+      // Parse deep link manually for comeya://group-order/xxx
+      const match = incomingUrl.match(/group-order\/([^/?]+)/);
+      if (match && match[1]) {
+        const shareToken = match[1];
+        if (navigationRef.current) {
+          navigationRef.current.navigate('GroupOrder', { shareToken });
+        }
+      }
+    };
+
+    const subscription = Linking.addEventListener('url', handleURL);
+    
+    Linking.getInitialURL().then(initialUrl => {
+      if (initialUrl) {
+        handleURL({ url: initialUrl });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   if (isLoading) {
     return null;
@@ -166,7 +197,10 @@ export default function RootStackNavigator() {
   };
 
   return (
-    <Stack.Navigator screenOptions={screenOptions}>
+    <Stack.Navigator 
+      screenOptions={screenOptions}
+      ref={navigationRef}
+    >
       {isAuthenticated ? (
         <>
           <Stack.Screen
