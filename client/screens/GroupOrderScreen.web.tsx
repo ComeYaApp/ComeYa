@@ -50,7 +50,7 @@ export default function GroupOrderScreen() {
   const sub    = isDark ? '#aaa'    : '#666';
   const cardBg = isDark ? '#2a2a2a' : '#f9fafb';
 
-  const { data: groupData, refetch } = useQuery({
+  const { data: groupData, refetch, isLoading: isLoadingGroup } = useQuery({
     queryKey: ['/api/group-orders', groupOrderId],
     queryFn: async () => {
       if (!groupOrderId) return null;
@@ -95,6 +95,54 @@ export default function GroupOrderScreen() {
   const isExpired = group ? new Date(group.expiresAt) < new Date() : false;
   const totalParticipants = group?.participants?.length || 0;
   const totalAmount = (group?.totalAmount || 0) / 100;
+
+  // If no groupOrderId and no shareToken, show empty state
+  if (!groupOrderId && !shareToken) {
+    return (
+      <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <View style={[s.card, { backgroundColor: card, borderColor: border, maxWidth: 400, margin: 20 }]}>
+          <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15', alignSelf: 'center', marginBottom: 16 }]}>
+            <Feather name="users" size={32} color={PRIMARY} />
+          </View>
+          <Text style={[s.sideTitle, { color: text, textAlign: 'center' }]}>Pedido Grupal</Text>
+          <Text style={{ color: sub, textAlign: 'center', marginTop: 8 }}>
+            Usa el enlace compartida para unirte a un pedido grupal existente.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // If still loading after having a groupOrderId
+  if (!group && isLoadingGroup) {
+    return (
+      <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+        <Text style={[s.loadingText, { color: sub }]}>Cargando pedido grupal...</Text>
+      </View>
+    );
+  }
+
+  // If group order not found
+  if (groupOrderId && !group && !isLoadingGroup) {
+    return (
+      <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
+        <View style={[s.card, { backgroundColor: card, borderColor: border, maxWidth: 400, margin: 20 }]}>
+          <Feather name="alert-circle" size={48} color="#EF4444" style={{ alignSelf: 'center' }} />
+          <Text style={[s.sideTitle, { color: text, textAlign: 'center', marginTop: 16 }]}>Grupo no encontrado</Text>
+          <Text style={{ color: sub, textAlign: 'center', marginTop: 8 }}>
+            Este enlace ya expiró o no existe.
+          </Text>
+          <Pressable 
+            onPress={() => navigation.goBack()} 
+            style={[s.shareBtn, { backgroundColor: PRIMARY, marginTop: 20 }]}
+          >
+            <Text style={s.shareBtnText}>Volver</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (!group) {
     return (
