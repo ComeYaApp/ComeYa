@@ -227,7 +227,7 @@ export default function AddAddressScreen() {
           </View>
         </View>
         <View style={s.sideNav}>
-          <Pressable onPress={() => navigation.navigate('Profile')} style={s.navItem}>
+          <Pressable onPress={() => navigation.getParent()?.navigate('Main', { screen: 'ProfileTab' })} style={s.navItem}>
             <Feather name="user" size={18} color={sub} />
             <Text style={[s.navItemText, { color: text }]}>Cuenta</Text>
           </Pressable>
