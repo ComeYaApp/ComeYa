@@ -166,13 +166,14 @@ export default function RootStackNavigator() {
   }
 
   useEffect(() => {
-    const handleURL = (event: { url: string }) => {
-      const incomingUrl = event.url;
+    const handleURL = (event?: { url?: string }) => {
+      // Support both Linking events and direct URL
+      const incomingUrl = event?.url || (typeof window !== 'undefined' ? window.location.href : '');
       if (!incomingUrl) return;
       
       console.log('Deep link received:', incomingUrl);
       
-      // Parse deep link manually for comeya://group-order/xxx
+      // Parse deep link manually for comeya://group-order/xxx or /group-order/xxx
       const path = getPathFromUrl(incomingUrl);
       const match = path.match(/group-order\/([^/?]+)/);
       if (match && match[1]) {
@@ -183,6 +184,12 @@ export default function RootStackNavigator() {
       }
     };
 
+    // For web: check initial URL on load
+    if (typeof window !== 'undefined') {
+      handleURL();
+    }
+
+    // Listen for Linking events (for mobile deep links)
     const subscription = Linking.addEventListener('url', handleURL);
     
     Linking.getInitialURL().then(initialUrl => {
