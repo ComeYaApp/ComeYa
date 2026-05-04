@@ -812,6 +812,56 @@ router.put("/verifications/:userId", authenticateToken, requireRole("admin", "su
   }
 });
 
+// Admin profile stats
+router.get("/profile/stats", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { db } = await import("../db");
+    const adminId = req.user!.id;
+
+    const result = await db.execute(sql`
+      SELECT
+        COUNT(*) as totalActions,
+        SUM(action LIKE 'verify%') as verificationsProcessed,
+        SUM(entity_type = 'payout') as payoutsProcessed,
+        SUM(entity_type = 'payment_proof') as proofsReviewed,
+        MAX(created_at) as lastActionAt
+      FROM audit_logs
+      WHERE user_id = ${adminId}
+    `);
+
+    const rows = Array.isArray(result[0]) ? result[0] : result;
+    const stats = (rows as any[])[0] || {};
+
+    // Pending counts for quick access
+    const pending = await db.execute(sql`
+      SELECT
+        (SELECT COUNT(*) FROM payment_proofs WHERE status = 'pending') as pendingProofs,
+        (SELECT COUNT(*) FROM payouts WHERE status = 'pending') as pendingPayouts,
+        (SELECT COUNT(*) FROM orders WHERE status IN ('pending','confirmed','preparing','on_the_way')) as activeOrders
+    `);
+    const pendingRows = Array.isArray(pending[0]) ? pending[0] : pending;
+    const pendingData = (pendingRows as any[])[0] || {};
+
+    res.json({
+      success: true,
+      stats: {
+        totalActions: Number(stats.totalActions) || 0,
+        verificationsProcessed: Number(stats.verificationsProcessed) || 0,
+        payoutsProcessed: Number(stats.payoutsProcessed) || 0,
+        proofsReviewed: Number(stats.proofsReviewed) || 0,
+        lastActionAt: stats.lastActionAt || null,
+      },
+      pending: {
+        proofs: Number(pendingData.pendingProofs) || 0,
+        payouts: Number(pendingData.pendingPayouts) || 0,
+        orders: Number(pendingData.activeOrders) || 0,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Bank account (placeholder)
 router.get("/bank-account", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {

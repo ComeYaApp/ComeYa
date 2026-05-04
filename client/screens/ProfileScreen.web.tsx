@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator, Platform, Modal, TextInput, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -46,7 +46,14 @@ export default function ProfileScreen() {
   const [driverStats, setDriverStats] = useState<any>(null);
   const [activeSection, setActiveSection] = useState("account");
   const [subscription, setSubscription] = useState<any>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editName, setEditName] = useState(user?.name || "");
+  const [editEmail, setEditEmail] = useState(user?.email || "");
+  const [editDni, setEditDni] = useState((user as any)?.dni || "");
+  const [editAddress, setEditAddress] = useState((user as any)?.address || "");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isBusiness = user?.role === "business_owner";
   const { isMobile } = useResponsive();
 
@@ -180,7 +187,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* Sidebar: BusinessSidebar para business_owner, propio para el resto */}
+      <EditProfileModal visible={showEditModal} onClose={() => setShowEditModal(false)} />
       {isBusiness ? (
         <MobileSidebarWrapper title="Mi Perfil" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
           <View style={[s.sideHeader, { borderBottomColor: border }]}>
@@ -362,8 +369,11 @@ export default function ProfileScreen() {
             )}
           </View>
         )}
-        {activeSection === "account" && (
-          <AccountSection user={user} navigation={navigation} driverStats={driverStats} subscription={subscription} theme={{ bg, card, text, sub, border }} />
+        {activeSection === "account" && isAdmin && (
+          <AdminProfileSection user={user} navigation={navigation} theme={{ bg, card, text, sub, border }} onEditProfile={() => setShowEditModal(true)} />
+        )}
+        {activeSection === "account" && !isAdmin && (
+          <AccountSection user={user} navigation={navigation} driverStats={driverStats} subscription={subscription} theme={{ bg, card, text, sub, border }} onEditProfile={() => setShowEditModal(true)} />
         )}
         {activeSection === "payments" && isBusiness && (
           <PaymentsSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
@@ -380,7 +390,7 @@ export default function ProfileScreen() {
 }
 
 // Componentes de secciones (continuará en siguiente parte)
-function AccountSection({ user, navigation, driverStats, subscription, theme }: any) {
+function AccountSection({ user, navigation, driverStats, subscription, theme, onEditProfile }: any) {
   const isActiveSub = subscription?.status === 'active' && subscription?.plan !== 'free';
   const isPremium = subscription?.plan === 'premium';
   const isBusiness = subscription?.plan === 'business';
@@ -448,7 +458,7 @@ function AccountSection({ user, navigation, driverStats, subscription, theme }: 
 
       <Text style={[s.sectionTitle, { color: theme.text }]}>Cuenta</Text>
       <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
-        <SettingItem icon="user" label="Editar mi perfil" onPress={() => navigation.navigate("EditProfile")} theme={theme} />
+        <SettingItem icon="user" label="Editar mi perfil" onPress={onEditProfile} theme={theme} />
         {user?.role === "customer" && (
           <>
             <SettingItem icon="map-pin" label="Direcciones guardadas" onPress={() => navigation.navigate("SavedAddresses")} theme={theme} />
@@ -499,6 +509,137 @@ function AccountSection({ user, navigation, driverStats, subscription, theme }: 
           )}
         </View>
       )}
+    </View>
+  );
+}
+
+function AdminProfileSection({ user, navigation, theme, onEditProfile }: any) {
+  const [adminStats, setAdminStats] = useState<any>(null);
+
+  useEffect(() => {
+    apiRequest("GET", "/api/admin/profile/stats").then(r => r.json()).then(data => {
+      if (data.success) setAdminStats(data);
+    }).catch(() => {});
+  }, []);
+
+  const isSuperAdmin = user?.role === "super_admin";
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("es-ES", { month: "long", year: "numeric" })
+    : null;
+
+  const quickLinks = [
+    { label: "Comprobantes", icon: "file-text", color: "#06B6D4", count: adminStats?.pending?.proofs, section: "finance_proofs" },
+    { label: "Payouts", icon: "send", color: "#10B981", count: adminStats?.pending?.payouts, section: "finance_payouts" },
+    { label: "Pedidos activos", icon: "shopping-bag", color: "#3B82F6", count: adminStats?.pending?.orders, section: "orders_active" },
+  ];
+
+  return (
+    <View>
+      {/* Identity card */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Mi Perfil</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card, borderLeftWidth: 4, borderLeftColor: isSuperAdmin ? "#7C3AED" : PRIMARY }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: (isSuperAdmin ? "#7C3AED" : PRIMARY) + "20", justifyContent: "center", alignItems: "center" }}>
+            <Text style={{ fontSize: 22, fontWeight: "900", color: isSuperAdmin ? "#7C3AED" : PRIMARY }}>
+              {user?.name?.charAt(0).toUpperCase() ?? "A"}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontWeight: "800", color: theme.text }}>{user?.name}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 }}>
+              <View style={{ backgroundColor: (isSuperAdmin ? "#7C3AED" : PRIMARY) + "15", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: isSuperAdmin ? "#7C3AED" : PRIMARY }}>
+                  {isSuperAdmin ? "⚡ Super Admin" : "🛡️ Admin"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+        <View style={{ gap: 8 }}>
+          {user?.email ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Feather name="mail" size={14} color={theme.sub} />
+              <Text style={{ fontSize: 13, color: theme.sub }}>{user.email}</Text>
+            </View>
+          ) : null}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Feather name="phone" size={14} color={theme.sub} />
+            <Text style={{ fontSize: 13, color: theme.sub }}>{user?.phone || "Sin teléfono"}</Text>
+          </View>
+          {memberSince ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Feather name="calendar" size={14} color={theme.sub} />
+              <Text style={{ fontSize: 13, color: theme.sub }}>Miembro desde {memberSince}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Pressable
+          onPress={onEditProfile}
+          style={{ marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: PRIMARY + "12", paddingVertical: 10, borderRadius: 10 }}
+        >
+          <Feather name="edit-2" size={14} color={PRIMARY} />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: PRIMARY }}>Editar perfil</Text>
+        </Pressable>
+      </View>
+
+      {/* Quick access */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Acceso rápido</Text>
+      <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+        {quickLinks.map(link => (
+          <Pressable
+            key={link.section}
+            onPress={() => navigation.navigate("AdminPanel", { section: link.section })}
+            style={[s.settingsCard, { flex: 1, backgroundColor: theme.card, alignItems: "center", paddingVertical: 18, marginBottom: 0 }]}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: link.color + "20", justifyContent: "center", alignItems: "center", marginBottom: 8 }}>
+              <Feather name={link.icon as any} size={18} color={link.color} />
+            </View>
+            {link.count !== undefined ? (
+              <Text style={{ fontSize: 20, fontWeight: "900", color: link.count > 0 ? link.color : theme.sub }}>{link.count}</Text>
+            ) : (
+              <Text style={{ fontSize: 20, fontWeight: "900", color: theme.sub }}>—</Text>
+            )}
+            <Text style={{ fontSize: 11, color: theme.sub, marginTop: 2, textAlign: "center" }}>{link.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {/* Stats */}
+      {adminStats?.stats && (
+        <>
+          <Text style={[s.sectionTitle, { color: theme.text }]}>Mi actividad</Text>
+          <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              {[
+                { label: "Acciones totales", value: adminStats.stats.totalActions, icon: "activity", color: PRIMARY },
+                { label: "Verificaciones", value: adminStats.stats.verificationsProcessed, icon: "user-check", color: "#10B981" },
+                { label: "Comprobantes", value: adminStats.stats.proofsReviewed, icon: "file-text", color: "#06B6D4" },
+                { label: "Payouts", value: adminStats.stats.payoutsProcessed, icon: "send", color: "#8B5CF6" },
+              ].map(stat => (
+                <View key={stat.label} style={{ flex: 1, minWidth: 120, backgroundColor: theme.bg, borderRadius: 12, padding: 14, alignItems: "center" }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: stat.color + "20", justifyContent: "center", alignItems: "center", marginBottom: 6 }}>
+                    <Feather name={stat.icon as any} size={15} color={stat.color} />
+                  </View>
+                  <Text style={{ fontSize: 22, fontWeight: "900", color: theme.text }}>{stat.value}</Text>
+                  <Text style={{ fontSize: 11, color: theme.sub, marginTop: 2, textAlign: "center" }}>{stat.label}</Text>
+                </View>
+              ))}
+            </View>
+            {adminStats.stats.lastActionAt ? (
+              <Text style={{ fontSize: 11, color: theme.sub, marginTop: 12, textAlign: "center" }}>
+                Última acción: {new Date(adminStats.stats.lastActionAt).toLocaleString("es-ES")}
+              </Text>
+            ) : null}
+          </View>
+        </>
+      )}
+
+      {/* Config shortcuts */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Configuración</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+        <SettingItem icon="sliders" label="Configuración de plataforma" onPress={() => navigation.navigate("AdminPanel", { section: "settings" })} theme={theme} />
+        <SettingItem icon="shield" label="Logs de auditoría" onPress={() => navigation.navigate("AdminPanel", { section: "settings" })} theme={theme} />
+      </View>
     </View>
   );
 }
@@ -617,6 +758,102 @@ function SettingItem({ icon, label, value, onPress, theme }: any) {
     </Pressable>
   );
 }
+
+function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { user, updateUser } = useAuth();
+  const { showToast } = useToast();
+  const [name, setName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [dni, setDni] = useState((user as any)?.dni || "");
+  const [address, setAddress] = useState((user as any)?.address || "");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setName(user?.name || "");
+      setEmail(user?.email || "");
+      setDni((user as any)?.dni || "");
+      setAddress((user as any)?.address || "");
+    }
+  }, [visible, user]);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      showToast({ type: "error", message: "El nombre es obligatorio" });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await apiRequest("PUT", "/api/users/profile", { name, email, dni, address });
+      const data = await res.json();
+      if (data.success || res.ok) {
+        updateUser({ ...user, name, email, dni, address });
+        showToast({ type: "success", message: "Perfil actualizado" });
+        onClose();
+      } else {
+        showToast({ type: "error", message: data.error || "Error al guardar" });
+      }
+    } catch (e) {
+      showToast({ type: "error", message: "Error de conexión" });
+    }
+    setIsSaving(false);
+  };
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={modalStyles.overlay}>
+        <View style={[modalStyles.container, { backgroundColor: card }]}>
+          <View style={modalStyles.header}>
+            <Text style={[modalStyles.title, { color: text }]}>Editar perfil</Text>
+            <Pressable onPress={onClose}><Feather name="x" size={24} color={sub} /></Pressable>
+          </View>
+          <ScrollView style={modalStyles.content}>
+            <Text style={[modalStyles.label, { color: sub }]}>Nombre completo *</Text>
+            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={name} onChangeText={setName} placeholder="Tu nombre" placeholderTextColor={sub} />
+            
+            <Text style={[modalStyles.label, { color: sub }]}>DNI / NIE</Text>
+            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={dni} onChangeText={setDni} placeholder="12345678A" placeholderTextColor={sub} />
+            
+            <Text style={[modalStyles.label, { color: sub }]}>Email (opcional)</Text>
+            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={email} onChangeText={setEmail} placeholder="tu@email.com" placeholderTextColor={sub} keyboardType="email-address" autoCapitalize="none" />
+            
+            <Text style={[modalStyles.label, { color: sub }]}>Dirección</Text>
+            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={address} onChangeText={setAddress} placeholder="Tu dirección" placeholderTextColor={sub} />
+          </ScrollView>
+          <View style={modalStyles.footer}>
+            <TouchableOpacity style={[modalStyles.cancelBtn, { borderColor: border }]} onPress={onClose}>
+              <Text style={[modalStyles.cancelBtnText, { color: text }]}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[modalStyles.saveBtn, { opacity: isSaving ? 0.6 : 1 }]} onPress={handleSave} disabled={isSaving}>
+              {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={modalStyles.saveBtnText}>Guardar cambios</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const card = "#fff";
+const text = "#111";
+const sub = "#666";
+const border = "#e0e0e0";
+const inputBg = "#f5f5f5";
+
+const modalStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
+  container: { borderRadius: 16, width: "100%", maxWidth: 480, maxHeight: "85%", paddingBottom: 24 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: "#e0e0e0" },
+  title: { fontSize: 18, fontWeight: "700" },
+  content: { padding: 20 },
+  label: { fontSize: 12, fontWeight: "600", marginBottom: 6, marginTop: 12 },
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14 },
+  footer: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 10 },
+  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, borderWidth: 1, alignItems: "center" },
+  cancelBtnText: { fontSize: 14, fontWeight: "600" },
+  saveBtn: { flex: 1, backgroundColor: PRIMARY, paddingVertical: 14, borderRadius: 10, alignItems: "center" },
+  saveBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+});
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },

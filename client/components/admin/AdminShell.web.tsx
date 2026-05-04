@@ -156,7 +156,12 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[sh.userName, { color: text }]} numberOfLines={1}>{user?.name}</Text>
-            <Text style={[sh.userRole, { color: sub }]}>Administrador</Text>
+            <Text style={[sh.userRole, { color: sub }]} numberOfLines={1}>
+              {user?.role === "super_admin" ? "Super Admin" : "Administrador"}
+            </Text>
+            {user?.email ? (
+              <Text style={[sh.userEmail, { color: sub }]} numberOfLines={1}>{user.email}</Text>
+            ) : null}
           </View>
         </View>
 
@@ -294,7 +299,7 @@ const sh = StyleSheet.create({
   childItem: { flexDirection: "row", alignItems: "center", gap: 9, paddingVertical: 7, paddingLeft: 42, paddingRight: 14 },
   childDot:  { width: 22, height: 22, borderRadius: 6, justifyContent: "center", alignItems: "center" },
   childLabel:{ flex: 1, fontSize: 12, fontWeight: "500" },
-  footer:    { borderTopWidth: 1, padding: 14 },
+  userEmail: { fontSize: 9, marginTop: 1, opacity: 0.7 },
   logoutBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 8 },
   logoutTxt: { fontSize: 13, fontWeight: "600", color: "#EF4444" },
 });
