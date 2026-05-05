@@ -649,6 +649,21 @@ function AdminProfileSection({ user, navigation, theme, onEditProfile }: any) {
 }
 
 function BusinessProfileSection({ user, navigation, theme, onEditProfile }: any) {
+  // En web, las pantallas de negocio están en BusinessTab stack
+  // Hay que navegar al tab correcto para mantener el tab bar
+  const goToBusiness = (screen: string) => {
+    try {
+      // Intentar navegar al tab padre primero
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.navigate('BusinessTab', { screen });
+      } else {
+        navigation.navigate('BusinessTab', { screen } as any);
+      }
+    } catch {
+      navigation.navigate(screen as any);
+    }
+  };
   const [bizData, setBizData] = useState<any>(null);
   const [partnerLevel, setPartnerLevel] = useState<any>(null);
   const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
@@ -793,11 +808,11 @@ function BusinessProfileSection({ user, navigation, theme, onEditProfile }: any)
                 </Text>
               </View>
             </View>
-            <SettingItem icon="shopping-bag" label="Gestionar pedidos" onPress={() => navigation.navigate("BusinessOrders")} theme={theme} />
-            <SettingItem icon="package" label="Gestionar productos" onPress={() => navigation.navigate("BusinessProducts")} theme={theme} />
-            <SettingItem icon="clock" label="Horarios de atención" onPress={() => navigation.navigate("BusinessHours")} theme={theme} />
-            <SettingItem icon="bar-chart-2" label="Estadísticas" onPress={() => navigation.navigate("BusinessStats")} theme={theme} />
-            <SettingItem icon="map" label="Supervisión GPS en tiempo real" onPress={() => navigation.navigate("BusinessDeliveryMap")} theme={theme} />
+            <SettingItem icon="shopping-bag" label="Gestionar pedidos" onPress={() => goToBusiness("BusinessOrders")} theme={theme} />
+            <SettingItem icon="package" label="Gestionar productos" onPress={() => goToBusiness("BusinessProducts")} theme={theme} />
+            <SettingItem icon="clock" label="Horarios de atención" onPress={() => goToBusiness("BusinessHours")} theme={theme} />
+            <SettingItem icon="bar-chart-2" label="Estadísticas" onPress={() => goToBusiness("BusinessStats")} theme={theme} />
+            <SettingItem icon="map" label="Supervisión GPS en tiempo real" onPress={() => navigation.navigate("MapTab")} theme={theme} />
           </View>
         </>
       )}

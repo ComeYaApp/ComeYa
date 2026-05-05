@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeStackNavigator    from "@/navigation/HomeStackNavigator";
 import OrdersStackNavigator  from "@/navigation/OrdersStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import ProfileStackNavigatorWeb from "@/navigation/ProfileStackNavigator.web";
 import BusinessMapScreen     from "@/screens/BusinessMapScreen";
 import AdminDashboardScreen  from "@/screens/AdminDashboardScreen.web";
 import AdminMapScreen        from "@/screens/AdminMapScreen.web";
@@ -227,7 +228,7 @@ export default function MainTabNavigator() {
       )}
 
       {!isAdmin && !isDelivery && (
-        <Tab.Screen name="ProfileTab" component={ProfileStackNavigator}
+        <Tab.Screen name="ProfileTab" component={isBusiness ? ProfileStackNavigatorWeb : ProfileStackNavigator}
           options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }} />
       )}
     </Tab.Navigator>
