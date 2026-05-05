@@ -32,7 +32,19 @@ import BusinessOrdersScreenWeb    from "@/screens/BusinessOrdersScreen.web";
 import BusinessProductsScreenWeb  from "@/screens/BusinessProductsScreen.web";
 import BusinessHoursScreenWeb     from "@/screens/BusinessHoursScreen.web";
 import BusinessStatsScreenWeb     from "@/screens/BusinessStatsScreen.web";
+import BusinessDeliveryMapScreen from "@/screens/BusinessDeliveryMapScreen.web";
+
 import ProfileScreenWeb           from "@/screens/ProfileScreen.web";
+
+// Stack GPS del negocio
+const BusinessMapStack = createNativeStackNavigator();
+function BusinessMapStackNavigator() {
+  return (
+    <BusinessMapStack.Navigator screenOptions={{ headerShown: false }}>
+      <BusinessMapStack.Screen name="BusinessDeliveryMapMain" component={BusinessDeliveryMapScreen} />
+    </BusinessMapStack.Navigator>
+  );
+}
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -45,7 +57,6 @@ function MapStackNavigator() {
   );
 }
 
-// Stack interno del business — todas las pantallas dentro del tab, el tab bar nunca desaparece
 const BusinessStack = createNativeStackNavigator();
 function BusinessStackNavigator() {
   return (
@@ -206,8 +217,12 @@ export default function MainTabNavigator() {
       )}
 
       {isBusiness && (
-        <Tab.Screen name="BusinessTab" component={BusinessStackNavigator}
-          options={{ title: "Mi Negocio", tabBarIcon: ({ color, size }) => <Feather name="briefcase" size={size} color={color} /> }} />
+        <>
+          <Tab.Screen name="BusinessTab" component={BusinessStackNavigator}
+            options={{ title: "Mi Negocio", tabBarIcon: ({ color, size }) => <Feather name="briefcase" size={size} color={color} /> }} />
+          <Tab.Screen name="MapTab" component={BusinessMapStackNavigator}
+            options={{ title: "Mapa GPS", tabBarIcon: ({ color, size }) => <Feather name="map" size={size} color={color} /> }} />
+        </>
       )}
 
       {!isAdmin && !isDelivery && (
