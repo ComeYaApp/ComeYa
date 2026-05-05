@@ -215,16 +215,17 @@ router.get("/active-deliveries", authenticateToken, requireRole("business_owner"
     // Pedidos activos
     const [rows] = await db.execute(sql`
       SELECT
-        o.id, o.status, o.subtotal, o.delivery_fee, o.total, o.created_at, o.updated_at,
-        o.business_id, o.delivery_address, o.items, o.payment_method,
+        o.id, o.status, o.subtotal, o.delivery_fee, o.total, o.created_at,
+        o.business_id, o.delivery_address, o.payment_method,
         u.name  AS customer_name,  u.phone AS customer_phone,
-        d.id    AS driver_id,       d.name  AS driver_name,  d.phone AS driver_phone,
-        d.current_latitude AS driver_lat, d.current_longitude AS driver_lng,
-        d.vehicle_type, d.rating AS driver_rating,
+        dd.id   AS driver_id,      dd.vehicle_type, dd.rating AS driver_rating,
+        dd.current_latitude AS driver_lat, dd.current_longitude AS driver_lng,
+        du.name AS driver_name,    du.phone AS driver_phone,
         b.name  AS business_name
       FROM orders o
-      LEFT JOIN users u  ON o.user_id = u.id
-      LEFT JOIN delivery_drivers d ON o.driver_id = d.id
+      LEFT JOIN users u   ON o.user_id = u.id
+      LEFT JOIN delivery_drivers dd ON o.delivery_person_id = dd.id
+      LEFT JOIN users du  ON dd.user_id = du.id
       LEFT JOIN businesses b ON o.business_id = b.id
       WHERE o.business_id IN (${sql.join(businessIds.map(id => sql`${id}`), sql`, `)})
         AND o.status IN ('pending','accepted','preparing','ready','on_the_way')
