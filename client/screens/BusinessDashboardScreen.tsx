@@ -333,7 +333,7 @@ export default function BusinessDashboardScreen() {
                 style={styles.businessSelector}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  navigation.navigate("MyBusinesses");
+                  navigation.navigate("BusinessMore" as any);
                 }}
               >
                 <ThemedText type="caption" style={{ color: ComeYaColors.primary }}>

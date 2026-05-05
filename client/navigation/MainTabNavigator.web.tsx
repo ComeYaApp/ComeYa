@@ -26,6 +26,14 @@ import AdminDashboardScreenMobile from "@/screens/AdminDashboardScreen";
 import AdminFinanceScreen         from "@/screens/AdminFinanceScreen";
 import AdminMapScreenMobile       from "@/screens/AdminMapScreen";
 
+// Pantallas web del business
+import BusinessDashboardScreenWeb from "@/screens/BusinessDashboardScreen.web";
+import BusinessOrdersScreenWeb    from "@/screens/BusinessOrdersScreen.web";
+import BusinessProductsScreenWeb  from "@/screens/BusinessProductsScreen.web";
+import BusinessHoursScreenWeb     from "@/screens/BusinessHoursScreen.web";
+import BusinessStatsScreenWeb     from "@/screens/BusinessStatsScreen.web";
+import ProfileScreenWeb           from "@/screens/ProfileScreen.web";
+
 const MOBILE_BREAKPOINT = 768;
 
 const MapStack = createNativeStackNavigator();
@@ -34,6 +42,22 @@ function MapStackNavigator() {
     <MapStack.Navigator screenOptions={{ headerShown: false }}>
       <MapStack.Screen name="BusinessMapMain" component={BusinessMapScreen} />
     </MapStack.Navigator>
+  );
+}
+
+// Stack interno del business — todas las pantallas dentro del tab, el tab bar nunca desaparece
+const BusinessStack = createNativeStackNavigator();
+function BusinessStackNavigator() {
+  return (
+    <BusinessStack.Navigator screenOptions={{ headerShown: false }}>
+      <BusinessStack.Screen name="BusinessDashboard" component={BusinessDashboardScreenWeb} />
+      <BusinessStack.Screen name="BusinessOrders"    component={BusinessOrdersScreenWeb} />
+      <BusinessStack.Screen name="BusinessProducts"  component={BusinessProductsScreenWeb} />
+      <BusinessStack.Screen name="BusinessHours"     component={BusinessHoursScreenWeb} />
+      <BusinessStack.Screen name="BusinessStats"     component={BusinessStatsScreenWeb} />
+      <BusinessStack.Screen name="BusinessProfile"   component={ProfileScreenWeb} />
+      <BusinessStack.Screen name="MyBusinesses"      component={BusinessDashboardScreenWeb} />
+    </BusinessStack.Navigator>
   );
 }
 
@@ -182,7 +206,7 @@ export default function MainTabNavigator() {
       )}
 
       {isBusiness && (
-        <Tab.Screen name="BusinessTab" component={BusinessDashboardScreen}
+        <Tab.Screen name="BusinessTab" component={BusinessStackNavigator}
           options={{ title: "Mi Negocio", tabBarIcon: ({ color, size }) => <Feather name="briefcase" size={size} color={color} /> }} />
       )}
 

@@ -28,6 +28,7 @@ import { SettingsTab }      from "@/components/admin/tabs/SettingsTab.web";
 import { ZonesTab }         from "@/components/admin/tabs/ZonesTab.web";
 import { CategoriesTab }    from "@/components/admin/tabs/CategoriesTab.web";
 import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab.web";
+import { AuditLogsTab }     from "@/components/admin/tabs/AuditLogsTab.web";
 
 // Web-specific screens embedded as panels
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
@@ -114,10 +115,18 @@ function TabWrap({ children }: { children: React.ReactNode }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function AdminDashboardScreen() {
+export default function AdminDashboardScreen({ route }: any) {
   const { showToast } = useToast();
-  const [section, setSection] = useState<AdminSection>("dashboard");
+  const initialSection = (route?.params?.section as AdminSection) || "dashboard";
+  const [section, setSection] = useState<AdminSection>(initialSection);
   const [metrics, setMetrics] = useState<any>(null);
+
+  // Reaccionar a cambios de params (navegación desde perfil)
+  useEffect(() => {
+    if (route?.params?.section) {
+      setSection(route.params.section as AdminSection);
+    }
+  }, [route?.params?.section]);
 
   useEffect(() => {
     apiRequest("GET", "/api/admin/dashboard/metrics")
@@ -184,6 +193,10 @@ export default function AdminDashboardScreen() {
         return <SupportTab />;
       case "support_verifications":
         return <VerificationsTab />;
+
+      case "logs":
+      case "audit_logs":
+        return <AuditLogsTab />;
 
       // ── Configuración ──
       case "settings":

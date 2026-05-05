@@ -50,6 +50,7 @@ import WalletScreen from "@/screens/WalletScreen";
 import ReportIssueScreen from "@/screens/ReportIssueScreen";
 import OrderConfirmationScreen from "@/screens/OrderConfirmationScreen";
 import BusinessMapScreen from "@/screens/BusinessMapScreen";
+import BusinessDeliveryMapScreen from "@/screens/BusinessDeliveryMapScreen";
 import BecomeDriverScreen from "@/screens/BecomeDriverScreen";
 import TermsScreen from "@/screens/TermsScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
@@ -136,6 +137,7 @@ export type RootStackParamList = {
   AdminPaymentAccounts: undefined;
   PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };
+  BusinessDeliveryMap: undefined;
   BusinessMap: undefined;
   BecomeDriver: undefined;
   BusinessHours: undefined;
@@ -406,6 +408,11 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="OrderConfirmation"
             component={OrderConfirmationScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BusinessDeliveryMap"
+            component={BusinessDeliveryMapScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

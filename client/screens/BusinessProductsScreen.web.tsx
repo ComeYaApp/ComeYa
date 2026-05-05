@@ -121,7 +121,7 @@ export default function BusinessProductsScreen() {
           <View style={s.toolbarLeft}>
             <Text style={[s.toolbarTitle, { color: text }]}>Productos</Text>
             {selectedBusiness && (
-              <Pressable onPress={() => navigation.navigate("MyBusinesses")} style={[s.bizChip, { backgroundColor: ComeYaColors.primary + "15", borderColor: ComeYaColors.primary + "30" }]}>
+              <Pressable onPress={() => navigation.navigate("BusinessManage" as any)} style={[s.bizChip, { backgroundColor: ComeYaColors.primary + "15", borderColor: ComeYaColors.primary + "30" }]}>
                 <Text style={[s.bizChipText, { color: ComeYaColors.primary }]} numberOfLines={1}>{selectedBusiness.name}</Text>
                 <Feather name="chevron-down" size={12} color={ComeYaColors.primary} />
               </Pressable>

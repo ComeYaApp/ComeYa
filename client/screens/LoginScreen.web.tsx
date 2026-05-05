@@ -13,6 +13,7 @@ import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { useTheme } from "@/hooks/useTheme";
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, "Login"> };
 
@@ -30,6 +31,16 @@ export default function LoginScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [featuredBusinesses, setFeaturedBusinesses] = useState<any[]>([]);
   const { isMobile } = useResponsive();
+  const { isDark, themeMode, setThemeMode } = useTheme();
+
+  const bg       = isDark ? "#111" : "#fff";
+  const cardBg   = isDark ? "#1e1e1e" : "#fff";
+  const rightBg  = isDark ? "#0a0a0a" : "#fafafa";
+  const textCol  = isDark ? "#fff" : "#1a1a1a";
+  const subCol   = isDark ? "#aaa" : "#666";
+  const borderCol= isDark ? "#333" : "#e0e0e0";
+  const inputBg  = isDark ? "#2a2a2a" : "#fff";
+  const prefixBg = isDark ? "#222" : "#f8f8f8";
 
   useEffect(() => {
     apiRequest("GET", "/api/business/featured").then(r => r.json())
@@ -72,8 +83,13 @@ export default function LoginScreen({ navigation }: Props) {
     } finally { setLoading(false); }
   };
 
+  const cycleTheme = () => {
+    const next = themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'system' : 'light';
+    setThemeMode(next);
+  };
+
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.root}>
+    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={[s.root, { backgroundColor: bg }]}>
       {/* IZQUIERDA/ARRIBA — Branding Hero */}
       <View style={s.left}>
         <View style={s.leftInner}>
@@ -112,19 +128,26 @@ export default function LoginScreen({ navigation }: Props) {
       </View>
 
       {/* ABAJO/DERECHA — Formulario */}
-      <View style={s.right}>
+      <View style={[s.right, { backgroundColor: rightBg }]}>
         <View style={s.formContainer}>
-          <View style={s.formCard}>
-            <Text style={s.formTitle}>Bienvenido de vuelta</Text>
-            <Text style={s.formSub}>
+          {/* Toggle tema */}
+          <Pressable onPress={cycleTheme} style={s.themeToggle}>
+            <Feather name={isDark ? "sun" : "moon"} size={18} color={subCol} />
+            <Text style={{ fontSize: 12, color: subCol, marginLeft: 6, fontWeight: '600' }}>
+              {themeMode === 'light' ? 'Claro' : themeMode === 'dark' ? 'Oscuro' : 'Sistema'}
+            </Text>
+          </Pressable>
+          <View style={[s.formCard, { backgroundColor: cardBg, shadowColor: isDark ? '#000' : '#000' }]}>
+            <Text style={[s.formTitle, { color: textCol }]}>Bienvenido de vuelta</Text>
+            <Text style={[s.formSub, { color: subCol }]}>
               {mode === "sms" ? "Ingresa tu número para recibir un código" : "Ingresa tus credenciales"}
             </Text>
 
             {/* Toggle modo */}
-            <View style={s.modeRow}>
+            <View style={[s.modeRow, { backgroundColor: isDark ? '#222' : '#f5f5f5' }]}>
               {(["sms", "password"] as const).map((m) => (
-                <Pressable key={m} onPress={() => setMode(m)} style={[s.modeBtn, mode === m && s.modeBtnActive]}>
-                  <Text style={[s.modeBtnText, mode === m && s.modeBtnTextActive]}>
+                <Pressable key={m} onPress={() => setMode(m)} style={[s.modeBtn, mode === m && [s.modeBtnActive, { backgroundColor: cardBg }]]}>
+                  <Text style={[s.modeBtnText, { color: subCol }, mode === m && s.modeBtnTextActive]}>
                     {m === "sms" ? "📱 SMS" : "🔑 Contraseña"}
                   </Text>
                 </Pressable>
@@ -133,13 +156,13 @@ export default function LoginScreen({ navigation }: Props) {
 
             {mode === "sms" ? (
               <View style={s.field}>
-                <Text style={s.label}>Número de teléfono</Text>
-                <View style={s.inputRow}>
-                  <View style={s.prefix}><Text style={s.prefixText}>🇪🇸 +34</Text></View>
+                <Text style={[s.label, { color: textCol }]}>Número de teléfono</Text>
+                <View style={[s.inputRow, { borderColor: borderCol, backgroundColor: inputBg }]}>
+                  <View style={[s.prefix, { backgroundColor: prefixBg, borderRightColor: borderCol }]}><Text style={[s.prefixText, { color: textCol }]}>🇪🇸 +34</Text></View>
                   <TextInput
-                    style={s.input}
+                    style={[s.input, { color: textCol, backgroundColor: inputBg }]}
                     placeholder="612 345 678"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={subCol}
                     value={phone}
                     onChangeText={setPhone}
                     keyboardType="phone-pad"
@@ -149,11 +172,11 @@ export default function LoginScreen({ navigation }: Props) {
             ) : (
               <>
                 <View style={s.field}>
-                  <Text style={s.label}>Correo electrónico o teléfono</Text>
+                  <Text style={[s.label, { color: textCol }]}>Correo electrónico o teléfono</Text>
                   <TextInput
-                    style={[s.input, s.inputFull]}
+                    style={[s.input, s.inputFull, { borderColor: borderCol, backgroundColor: inputBg, color: textCol }]}
                     placeholder="correo@ejemplo.com"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={subCol}
                     value={identifier}
                     onChangeText={setIdentifier}
                     autoCapitalize="none"
@@ -162,22 +185,22 @@ export default function LoginScreen({ navigation }: Props) {
                 </View>
                 <View style={s.field}>
                   <View style={s.labelRow}>
-                    <Text style={s.label}>Contraseña</Text>
+                    <Text style={[s.label, { color: textCol }]}>Contraseña</Text>
                     <Pressable onPress={() => {}}>
                       <Text style={s.forgotLink}>¿Olvidaste tu contraseña?</Text>
                     </Pressable>
                   </View>
-                  <View style={s.inputRow}>
+                  <View style={[s.inputRow, { borderColor: borderCol, backgroundColor: inputBg }]}>
                     <TextInput
-                      style={[s.input, { flex: 1 }]}
+                      style={[s.input, { flex: 1, color: textCol, backgroundColor: inputBg }]}
                       placeholder="Tu contraseña"
-                      placeholderTextColor="#999"
+                      placeholderTextColor={subCol}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPass}
                     />
                     <Pressable onPress={() => setShowPass(!showPass)} style={s.eyeBtn}>
-                      <Feather name={showPass ? "eye-off" : "eye"} size={20} color="#666" />
+                      <Feather name={showPass ? "eye-off" : "eye"} size={20} color={subCol} />
                     </Pressable>
                   </View>
                 </View>
@@ -201,8 +224,8 @@ export default function LoginScreen({ navigation }: Props) {
               <View style={s.divLine} />
             </View>
 
-            <Pressable style={s.registerBtn} onPress={() => navigation.navigate("Signup")}>
-              <Text style={s.registerText}>Crear cuenta nueva</Text>
+            <Pressable style={[s.registerBtn, { borderColor: borderCol, backgroundColor: cardBg }]} onPress={() => navigation.navigate("Signup")}>
+              <Text style={[s.registerText, { color: textCol }]}>Crear cuenta nueva</Text>
             </Pressable>
 
             <Text style={s.legal}>
@@ -221,8 +244,7 @@ export default function LoginScreen({ navigation }: Props) {
 const s = StyleSheet.create({
   root: { 
     flex: 1, 
-    flexDirection: "row", 
-    backgroundColor: "#fff", 
+    flexDirection: "row",
     minHeight: "100vh" as any,
     flexWrap: "wrap" as any,
   },
@@ -344,10 +366,19 @@ const s = StyleSheet.create({
   right: { 
     flex: 1,
     minWidth: 300,
-    backgroundColor: "#fafafa",
     display: "flex" as any,
     alignItems: "center" as any,
     justifyContent: "center" as any,
+  },
+  themeToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end" as any,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(128,128,128,0.1)",
   },
   formContainer: {
     width: "100%" as any,
@@ -355,7 +386,6 @@ const s = StyleSheet.create({
     padding: 32,
   },
   formCard: {
-    backgroundColor: "#fff",
     borderRadius: 24,
     padding: 48,
     shadowColor: "#000",

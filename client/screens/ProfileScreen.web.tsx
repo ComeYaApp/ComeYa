@@ -224,9 +224,10 @@ export default function ProfileScreen() {
           </View>
           <View style={s.sideNav}>
             {[
-              { id: "account", label: "Cuenta", icon: "user" },
-              { id: "preferences", label: "Preferencias", icon: "settings" },
-              { id: "more", label: "Más", icon: "grid" },
+              { id: "account",     label: "Cuenta",      icon: "user"        },
+              { id: "payments",    label: "Pagos",        icon: "credit-card" },
+              { id: "preferences", label: "Preferencias", icon: "settings"    },
+              { id: "more",        label: "Más",          icon: "grid"        },
             ].map(item => (
               <Pressable key={item.id} onPress={() => setActiveSection(item.id)} style={[s.navItem, activeSection === item.id && s.navItemActive]}>
                 <Feather name={item.icon as any} size={18} color={activeSection === item.id ? PRIMARY : sub} />
@@ -372,11 +373,14 @@ export default function ProfileScreen() {
         {activeSection === "account" && isAdmin && (
           <AdminProfileSection user={user} navigation={navigation} theme={{ bg, card, text, sub, border }} onEditProfile={() => setShowEditModal(true)} />
         )}
-        {activeSection === "account" && !isAdmin && (
+        {activeSection === "account" && isBusiness && (
+          <BusinessProfileSection user={user} navigation={navigation} theme={{ bg, card, text, sub, border }} onEditProfile={() => setShowEditModal(true)} />
+        )}
+        {activeSection === "account" && !isAdmin && !isBusiness && (
           <AccountSection user={user} navigation={navigation} driverStats={driverStats} subscription={subscription} theme={{ bg, card, text, sub, border }} onEditProfile={() => setShowEditModal(true)} />
         )}
         {activeSection === "payments" && isBusiness && (
-          <PaymentsSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
+          <BusinessPaymentsSection navigation={navigation} theme={{ bg, card, text, sub, border }} />
         )}
         {activeSection === "preferences" && (
           <PreferencesSection themeMode={themeMode} setThemeMode={setThemeMode} settings={settings} updateSettings={updateSettings} showToast={showToast} theme={{ bg, card, text, sub, border }} />
@@ -528,9 +532,9 @@ function AdminProfileSection({ user, navigation, theme, onEditProfile }: any) {
     : null;
 
   const quickLinks = [
-    { label: "Comprobantes", icon: "file-text", color: "#06B6D4", count: adminStats?.pending?.proofs, section: "finance_proofs" },
-    { label: "Payouts", icon: "send", color: "#10B981", count: adminStats?.pending?.payouts, section: "finance_payouts" },
-    { label: "Pedidos activos", icon: "shopping-bag", color: "#3B82F6", count: adminStats?.pending?.orders, section: "orders_active" },
+    { label: "Comprobantes", icon: "file-text", color: "#06B6D4", count: adminStats?.pending?.proofs, screen: "DashboardTab", params: { section: "finance_proofs" } },
+    { label: "Payouts", icon: "send", color: "#10B981", count: adminStats?.pending?.payouts, screen: "DashboardTab", params: { section: "finance_payouts" } },
+    { label: "Pedidos activos", icon: "shopping-bag", color: "#3B82F6", count: adminStats?.pending?.orders, screen: "DashboardTab", params: { section: "orders_active" } },
   ];
 
   return (
@@ -587,8 +591,8 @@ function AdminProfileSection({ user, navigation, theme, onEditProfile }: any) {
       <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
         {quickLinks.map(link => (
           <Pressable
-            key={link.section}
-            onPress={() => navigation.navigate("AdminPanel", { section: link.section })}
+            key={link.params.section}
+            onPress={() => navigation.navigate(link.screen, link.params)}
             style={[s.settingsCard, { flex: 1, backgroundColor: theme.card, alignItems: "center", paddingVertical: 18, marginBottom: 0 }]}
           >
             <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: link.color + "20", justifyContent: "center", alignItems: "center", marginBottom: 8 }}>
@@ -637,8 +641,310 @@ function AdminProfileSection({ user, navigation, theme, onEditProfile }: any) {
       {/* Config shortcuts */}
       <Text style={[s.sectionTitle, { color: theme.text }]}>Configuración</Text>
       <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
-        <SettingItem icon="sliders" label="Configuración de plataforma" onPress={() => navigation.navigate("AdminPanel", { section: "settings" })} theme={theme} />
-        <SettingItem icon="shield" label="Logs de auditoría" onPress={() => navigation.navigate("AdminPanel", { section: "settings" })} theme={theme} />
+        <SettingItem icon="sliders" label="Configuración de plataforma" onPress={() => navigation.navigate("DashboardTab", { section: "settings" })} theme={theme} />
+        <SettingItem icon="shield" label="Logs de auditoría" onPress={() => navigation.navigate("DashboardTab", { section: "logs" })} theme={theme} />
+      </View>
+    </View>
+  );
+}
+
+function BusinessProfileSection({ user, navigation, theme, onEditProfile }: any) {
+  const [bizData, setBizData] = useState<any>(null);
+  const [partnerLevel, setPartnerLevel] = useState<any>(null);
+  const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      apiRequest("GET", "/api/business/my-businesses").then(r => r.json()),
+      apiRequest("GET", "/api/business/partner-level").then(r => r.json()),
+      apiRequest("GET", "/api/payouts/accounts").then(r => r.json()),
+    ]).then(([biz, level, accounts]) => {
+      setBizData(biz.businesses?.[0] || null);
+      setPartnerLevel(level.success ? level : null);
+      setPaymentAccounts(accounts.accounts || []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const LEVEL_COLORS: Record<string, string> = {
+    bronze: "#CD7F32", silver: "#9E9E9E", gold: "#FFD700", platinum: "#E5E4E2",
+  };
+  const LEVEL_ICONS: Record<string, string> = {
+    bronze: "award", silver: "award", gold: "star", platinum: "zap",
+  };
+  const level = partnerLevel?.level || "bronze";
+  const levelColor = LEVEL_COLORS[level] || "#CD7F32";
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })
+    : null;
+
+  return (
+    <View>
+      {/* ── Identidad ── */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Mi Perfil</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card, borderLeftWidth: 4, borderLeftColor: levelColor }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: levelColor + "20", justifyContent: "center", alignItems: "center" }}>
+            <Text style={{ fontSize: 24, fontWeight: "900", color: levelColor }}>
+              {user?.name?.charAt(0).toUpperCase() ?? "N"}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontWeight: "800", color: theme.text }}>{user?.name}</Text>
+            <Text style={{ fontSize: 13, color: theme.sub, marginTop: 2 }}>{user?.phone}</Text>
+            {user?.email ? <Text style={{ fontSize: 12, color: theme.sub }}>{user.email}</Text> : null}
+          </View>
+          <View style={{ backgroundColor: levelColor + "20", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: levelColor + "40" }}>
+            <Text style={{ fontSize: 12, fontWeight: "700", color: levelColor, textTransform: "capitalize" }}>
+              {level}
+            </Text>
+          </View>
+        </View>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          {memberSince ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+              <Feather name="calendar" size={13} color={theme.sub} />
+              <Text style={{ fontSize: 12, color: theme.sub }}>Desde {memberSince}</Text>
+            </View>
+          ) : null}
+          {user?.isActive ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#10B98115", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+              <Feather name="check-circle" size={12} color="#10B981" />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#10B981" }}>Aprobado</Text>
+            </View>
+          ) : (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#F59E0B15", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+              <Feather name="clock" size={12} color="#F59E0B" />
+              <Text style={{ fontSize: 11, fontWeight: "700", color: "#F59E0B" }}>En revisión</Text>
+            </View>
+          )}
+        </View>
+        <Pressable
+          onPress={onEditProfile}
+          style={{ marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: PRIMARY + "12", paddingVertical: 10, borderRadius: 10 }}
+        >
+          <Feather name="edit-2" size={14} color={PRIMARY} />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: PRIMARY }}>Editar datos personales</Text>
+        </Pressable>
+      </View>
+
+      {/* ── Nivel de Partner ── */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Nivel de Partner</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+        {loading ? (
+          <ActivityIndicator color={PRIMARY} />
+        ) : (
+          <>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: levelColor + "20", justifyContent: "center", alignItems: "center" }}>
+                <Feather name={LEVEL_ICONS[level] as any} size={24} color={levelColor} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: levelColor, textTransform: "capitalize" }}>{level}</Text>
+                <Text style={{ fontSize: 12, color: theme.sub, marginTop: 2 }}>
+                  {partnerLevel?.totalOrders || 0} pedidos · €{((partnerLevel?.totalRevenue || 0) / 100).toFixed(0)} generados
+                </Text>
+              </View>
+            </View>
+            {/* Barra de progreso al siguiente nivel */}
+            {partnerLevel?.nextLevel && (
+              <View style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+                  <Text style={{ fontSize: 12, color: theme.sub }}>Progreso hacia {partnerLevel.nextLevel.level}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: levelColor }}>{Math.round((partnerLevel.progress || 0) * 100)}%</Text>
+                </View>
+                <View style={{ height: 8, backgroundColor: theme.bg || "#f0f0f0", borderRadius: 4, overflow: "hidden" }}>
+                  <View style={{ height: 8, width: `${Math.min((partnerLevel.progress || 0) * 100, 100)}%` as any, backgroundColor: levelColor, borderRadius: 4 }} />
+                </View>
+                <Text style={{ fontSize: 11, color: theme.sub, marginTop: 4 }}>
+                  {partnerLevel.nextLevel.ordersNeeded} pedidos y €{(partnerLevel.nextLevel.revenueNeeded / 100).toFixed(0)} más para {partnerLevel.nextLevel.level}
+                </Text>
+              </View>
+            )}
+            {/* Beneficios activos */}
+            <View style={{ gap: 8 }}>
+              {(partnerLevel?.benefits || []).map((b: string, i: number) => (
+                <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Feather name="check" size={14} color={levelColor} />
+                  <Text style={{ fontSize: 13, color: theme.text }}>{b}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+      </View>
+
+      {/* ── Mi Negocio ── */}
+      {bizData && (
+        <>
+          <Text style={[s.sectionTitle, { color: theme.text }]}>Mi Negocio</Text>
+          <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 12, backgroundColor: PRIMARY + "15", justifyContent: "center", alignItems: "center" }}>
+                <Feather name="briefcase" size={22} color={PRIMARY} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: theme.text }}>{bizData.name}</Text>
+                <Text style={{ fontSize: 12, color: theme.sub }}>{bizData.address || "Sin dirección"}</Text>
+              </View>
+              <View style={{ backgroundColor: bizData.isOpen ? "#10B98115" : "#EF444415", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: bizData.isOpen ? "#10B981" : "#EF4444" }}>
+                  {bizData.isOpen ? "Abierto" : "Cerrado"}
+                </Text>
+              </View>
+            </View>
+            <SettingItem icon="shopping-bag" label="Gestionar pedidos" onPress={() => navigation.navigate("BusinessOrders")} theme={theme} />
+            <SettingItem icon="package" label="Gestionar productos" onPress={() => navigation.navigate("BusinessProducts")} theme={theme} />
+            <SettingItem icon="clock" label="Horarios de atención" onPress={() => navigation.navigate("BusinessHours")} theme={theme} />
+            <SettingItem icon="bar-chart-2" label="Estadísticas" onPress={() => navigation.navigate("BusinessStats")} theme={theme} />
+            <SettingItem icon="map" label="Supervisión GPS en tiempo real" onPress={() => navigation.navigate("BusinessDeliveryMap")} theme={theme} />
+          </View>
+        </>
+      )}
+
+      {/* ── Cuentas de cobro (resumen) ── */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Cuentas de Cobro</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+        {paymentAccounts.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 16, gap: 8 }}>
+            <Feather name="alert-circle" size={28} color="#F59E0B" />
+            <Text style={{ fontSize: 14, color: theme.sub, textAlign: "center" }}>No tienes cuentas configuradas</Text>
+            <Text style={{ fontSize: 12, color: theme.sub, textAlign: "center" }}>Necesitas configurar una cuenta para recibir tus pagos</Text>
+          </View>
+        ) : (
+          paymentAccounts.slice(0, 3).map((acc: any, i: number) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: i < paymentAccounts.length - 1 ? 1 : 0, borderBottomColor: theme.border }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: PRIMARY + "15", justifyContent: "center", alignItems: "center" }}>
+                <Feather name={acc.type === "bizum" ? "smartphone" : acc.type === "iban" ? "credit-card" : "dollar-sign"} size={16} color={PRIMARY} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: theme.text, textTransform: "capitalize" }}>{acc.type}</Text>
+                <Text style={{ fontSize: 12, color: theme.sub }}>{acc.accountNumber || acc.phone || acc.iban || "Configurado"}</Text>
+              </View>
+              <Feather name="check-circle" size={16} color="#10B981" />
+            </View>
+          ))
+        )}
+        <Pressable
+          onPress={() => navigation.navigate("PaymentWalletSetup")}
+          style={{ marginTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: PRIMARY + "12", paddingVertical: 10, borderRadius: 10 }}
+        >
+          <Feather name="settings" size={14} color={PRIMARY} />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: PRIMARY }}>Gestionar cuentas de cobro</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function BusinessPaymentsSection({ navigation, theme }: any) {
+  const [finances, setFinances] = useState<any>(null);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      apiRequest("GET", "/api/business/finances").then(r => r.json()),
+      apiRequest("GET", "/api/business/payouts").then(r => r.json()),
+      apiRequest("GET", "/api/payouts/accounts").then(r => r.json()),
+    ]).then(([fin, pay, acc]) => {
+      setFinances(fin.finances || fin);
+      setPayouts(pay.payouts || []);
+      setPaymentAccounts(acc.accounts || []);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const STATUS_COLOR: Record<string, string> = { pending: "#F59E0B", paid: "#10B981", processing: "#3B82F6" };
+  const STATUS_LABEL: Record<string, string> = { pending: "Pendiente", paid: "Pagado", processing: "Procesando" };
+
+  return (
+    <View>
+      {/* ── Resumen financiero ── */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Resumen Financiero</Text>
+      {loading ? (
+        <View style={[s.settingsCard, { backgroundColor: theme.card, alignItems: "center", paddingVertical: 32 }]}>
+          <ActivityIndicator color={PRIMARY} />
+        </View>
+      ) : (
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+          {[
+            { label: "Balance disponible", value: `€${((finances?.availableBalance || 0) / 100).toFixed(2)}`, icon: "check-circle", color: "#10B981" },
+            { label: "Pendiente de cobro", value: `€${((finances?.pendingBalance || 0) / 100).toFixed(2)}`, icon: "clock", color: "#F59E0B" },
+            { label: "Total generado", value: `€${((finances?.totalEarnings || 0) / 100).toFixed(2)}`, icon: "trending-up", color: "#3B82F6" },
+          ].map(item => (
+            <View key={item.label} style={[s.settingsCard, { flex: 1, backgroundColor: theme.card, alignItems: "center", paddingVertical: 20, marginBottom: 0 }]}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: item.color + "20", justifyContent: "center", alignItems: "center", marginBottom: 8 }}>
+                <Feather name={item.icon as any} size={18} color={item.color} />
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: "900", color: item.color }}>{item.value}</Text>
+              <Text style={{ fontSize: 11, color: theme.sub, marginTop: 4, textAlign: "center" }}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* ── Cuentas de cobro ── */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Cuentas de Cobro</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+        {paymentAccounts.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 20, gap: 10 }}>
+            <Feather name="alert-circle" size={32} color="#F59E0B" />
+            <Text style={{ fontSize: 14, fontWeight: "600", color: theme.text }}>Sin cuentas configuradas</Text>
+            <Text style={{ fontSize: 12, color: theme.sub, textAlign: "center" }}>Configura tu Bizum o IBAN para recibir los pagos de tus pedidos</Text>
+          </View>
+        ) : (
+          paymentAccounts.map((acc: any, i: number) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: i < paymentAccounts.length - 1 ? 1 : 0, borderBottomColor: theme.border }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY + "15", justifyContent: "center", alignItems: "center" }}>
+                <Feather name={acc.type === "bizum" ? "smartphone" : "credit-card"} size={18} color={PRIMARY} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: theme.text, textTransform: "capitalize" }}>{acc.type}</Text>
+                <Text style={{ fontSize: 12, color: theme.sub }}>{acc.accountNumber || acc.phone || acc.iban || "Configurado"}</Text>
+                {acc.holderName ? <Text style={{ fontSize: 11, color: theme.sub }}>{acc.holderName}</Text> : null}
+              </View>
+              <View style={{ backgroundColor: "#10B98115", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "#10B981" }}>Activa</Text>
+              </View>
+            </View>
+          ))
+        )}
+        <Pressable
+          onPress={() => navigation.navigate("PaymentWalletSetup")}
+          style={{ marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: PRIMARY, paddingVertical: 12, borderRadius: 10 }}
+        >
+          <Feather name="plus" size={15} color="#fff" />
+          <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }}>Añadir / Editar cuenta</Text>
+        </Pressable>
+      </View>
+
+      {/* ── Historial de payouts ── */}
+      <Text style={[s.sectionTitle, { color: theme.text }]}>Historial de Pagos</Text>
+      <View style={[s.settingsCard, { backgroundColor: theme.card }]}>
+        {payouts.length === 0 ? (
+          <View style={{ alignItems: "center", paddingVertical: 20, gap: 8 }}>
+            <Feather name="inbox" size={32} color={theme.sub} />
+            <Text style={{ fontSize: 14, color: theme.sub }}>No hay pagos registrados</Text>
+          </View>
+        ) : (
+          payouts.slice(0, 8).map((p: any, i: number) => (
+            <View key={p.id || i} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: i < Math.min(payouts.length, 8) - 1 ? 1 : 0, borderBottomColor: theme.border }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: (STATUS_COLOR[p.status] || "#999") + "20", justifyContent: "center", alignItems: "center" }}>
+                <Feather name="send" size={16} color={STATUS_COLOR[p.status] || "#999"} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: theme.text }}>€{((p.amount || 0) / 100).toFixed(2)}</Text>
+                <Text style={{ fontSize: 12, color: theme.sub }}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString("es-ES") : ""}</Text>
+              </View>
+              <View style={{ backgroundColor: (STATUS_COLOR[p.status] || "#999") + "20", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: STATUS_COLOR[p.status] || "#999" }}>
+                  {STATUS_LABEL[p.status] || p.status}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
       </View>
     </View>
   );
@@ -762,26 +1068,36 @@ function SettingItem({ icon, label, value, onPress, theme }: any) {
 function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
+  const [tab, setTab] = useState<'datos' | 'seguridad'>('datos');
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [dni, setDni] = useState((user as any)?.dni || "");
   const [address, setAddress] = useState((user as any)?.address || "");
   const [isSaving, setIsSaving] = useState(false);
+  // Cambio de contraseña
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  // Cambio de teléfono
+  const [newPhone, setNewPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
 
   useEffect(() => {
     if (visible) {
+      setTab('datos');
       setName(user?.name || "");
       setEmail(user?.email || "");
       setDni((user as any)?.dni || "");
       setAddress((user as any)?.address || "");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      setNewPhone(""); setPhoneCode(""); setCodeSent(false);
     }
   }, [visible, user]);
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      showToast({ type: "error", message: "El nombre es obligatorio" });
-      return;
-    }
+    if (!name.trim()) { showToast({ type: "error", message: "El nombre es obligatorio" }); return; }
     setIsSaving(true);
     try {
       const res = await apiRequest("PUT", "/api/users/profile", { name, email, dni, address });
@@ -793,9 +1109,58 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
       } else {
         showToast({ type: "error", message: data.error || "Error al guardar" });
       }
-    } catch (e) {
-      showToast({ type: "error", message: "Error de conexión" });
-    }
+    } catch { showToast({ type: "error", message: "Error de conexión" }); }
+    setIsSaving(false);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword) { showToast({ type: "error", message: "Rellena todos los campos" }); return; }
+    if (newPassword.length < 8) { showToast({ type: "error", message: "Mínimo 8 caracteres" }); return; }
+    if (newPassword !== confirmPassword) { showToast({ type: "error", message: "Las contraseñas no coinciden" }); return; }
+    setIsSaving(true);
+    try {
+      const res = await apiRequest("PUT", "/api/auth/change-password", { currentPassword, newPassword });
+      const data = await res.json();
+      if (data.success) {
+        showToast({ type: "success", message: "Contraseña actualizada" });
+        setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      } else {
+        showToast({ type: "error", message: data.error || "Error al cambiar contraseña" });
+      }
+    } catch { showToast({ type: "error", message: "Error de conexión" }); }
+    setIsSaving(false);
+  };
+
+  const handleSendPhoneCode = async () => {
+    if (!newPhone.trim()) { showToast({ type: "error", message: "Introduce el nuevo teléfono" }); return; }
+    setIsSendingCode(true);
+    try {
+      const res = await apiRequest("POST", "/api/auth/send-code", { phone: newPhone });
+      const data = await res.json();
+      if (data.userNotFound || data.success) {
+        setCodeSent(true);
+        showToast({ type: "success", message: "Código enviado al nuevo número" });
+      } else {
+        showToast({ type: "error", message: data.error || "Error al enviar código" });
+      }
+    } catch { showToast({ type: "error", message: "Error de conexión" }); }
+    setIsSendingCode(false);
+  };
+
+  const handleChangePhone = async () => {
+    if (!phoneCode.trim()) { showToast({ type: "error", message: "Introduce el código" }); return; }
+    setIsSaving(true);
+    try {
+      const res = await apiRequest("PUT", "/api/auth/change-phone", { newPhone, code: phoneCode });
+      const data = await res.json();
+      if (data.success) {
+        updateUser({ ...user, phone: newPhone });
+        showToast({ type: "success", message: "Teléfono actualizado" });
+        setNewPhone(""); setPhoneCode(""); setCodeSent(false);
+      } else {
+        showToast({ type: "error", message: data.error || "Error al cambiar teléfono" });
+      }
+    } catch { showToast({ type: "error", message: "Error de conexión" }); }
     setIsSaving(false);
   };
 
@@ -807,25 +1172,83 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
             <Text style={[modalStyles.title, { color: text }]}>Editar perfil</Text>
             <Pressable onPress={onClose}><Feather name="x" size={24} color={sub} /></Pressable>
           </View>
+
+          {/* Tabs */}
+          <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: border }}>
+            {(['datos', 'seguridad'] as const).map(t => (
+              <Pressable key={t} onPress={() => setTab(t)}
+                style={{ flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: tab === t ? PRIMARY : 'transparent' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: tab === t ? PRIMARY : sub, textTransform: 'capitalize' }}>
+                  {t === 'datos' ? 'Datos personales' : 'Seguridad'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <ScrollView style={modalStyles.content}>
-            <Text style={[modalStyles.label, { color: sub }]}>Nombre completo *</Text>
-            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={name} onChangeText={setName} placeholder="Tu nombre" placeholderTextColor={sub} />
-            
-            <Text style={[modalStyles.label, { color: sub }]}>DNI / NIE</Text>
-            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={dni} onChangeText={setDni} placeholder="12345678A" placeholderTextColor={sub} />
-            
-            <Text style={[modalStyles.label, { color: sub }]}>Email (opcional)</Text>
-            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={email} onChangeText={setEmail} placeholder="tu@email.com" placeholderTextColor={sub} keyboardType="email-address" autoCapitalize="none" />
-            
-            <Text style={[modalStyles.label, { color: sub }]}>Dirección</Text>
-            <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={address} onChangeText={setAddress} placeholder="Tu dirección" placeholderTextColor={sub} />
+            {tab === 'datos' && (
+              <>
+                <Text style={[modalStyles.label, { color: sub }]}>Nombre completo *</Text>
+                <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={name} onChangeText={setName} placeholder="Tu nombre" placeholderTextColor={sub} />
+                <Text style={[modalStyles.label, { color: sub }]}>DNI / NIE</Text>
+                <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={dni} onChangeText={setDni} placeholder="12345678A" placeholderTextColor={sub} />
+                <Text style={[modalStyles.label, { color: sub }]}>Email (opcional)</Text>
+                <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={email} onChangeText={setEmail} placeholder="tu@email.com" placeholderTextColor={sub} keyboardType="email-address" autoCapitalize="none" />
+                <Text style={[modalStyles.label, { color: sub }]}>Dirección</Text>
+                <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={address} onChangeText={setAddress} placeholder="Tu dirección" placeholderTextColor={sub} />
+                <TouchableOpacity style={[modalStyles.saveBtn, { opacity: isSaving ? 0.6 : 1, marginTop: 20 }]} onPress={handleSave} disabled={isSaving}>
+                  {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={modalStyles.saveBtnText}>Guardar cambios</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {tab === 'seguridad' && (
+              <>
+                {/* Cambio de contraseña */}
+                <Text style={{ fontSize: 14, fontWeight: '700', color: text, marginTop: 8, marginBottom: 12 }}>Cambiar contraseña</Text>
+                <Text style={[modalStyles.label, { color: sub }]}>Contraseña actual</Text>
+                <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={currentPassword} onChangeText={setCurrentPassword} placeholder="••••••••" placeholderTextColor={sub} secureTextEntry />
+                <Text style={[modalStyles.label, { color: sub }]}>Nueva contraseña</Text>
+                <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={newPassword} onChangeText={setNewPassword} placeholder="Mínimo 8 caracteres" placeholderTextColor={sub} secureTextEntry />
+                <Text style={[modalStyles.label, { color: sub }]}>Confirmar nueva contraseña</Text>
+                <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repite la contraseña" placeholderTextColor={sub} secureTextEntry />
+                <TouchableOpacity style={[modalStyles.saveBtn, { opacity: isSaving ? 0.6 : 1, marginTop: 12 }]} onPress={handleChangePassword} disabled={isSaving}>
+                  {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={modalStyles.saveBtnText}>Cambiar contraseña</Text>}
+                </TouchableOpacity>
+
+                {/* Separador */}
+                <View style={{ height: 1, backgroundColor: border, marginVertical: 24 }} />
+
+                {/* Cambio de teléfono */}
+                <Text style={{ fontSize: 14, fontWeight: '700', color: text, marginBottom: 4 }}>Cambiar número de teléfono</Text>
+                <Text style={{ fontSize: 12, color: sub, marginBottom: 12 }}>Teléfono actual: {user?.phone}</Text>
+                <Text style={[modalStyles.label, { color: sub }]}>Nuevo número</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput style={[modalStyles.input, { flex: 1, backgroundColor: inputBg, color: text, borderColor: border }]} value={newPhone} onChangeText={setNewPhone} placeholder="+34 6XX XXX XXX" placeholderTextColor={sub} keyboardType="phone-pad" editable={!codeSent} />
+                  <TouchableOpacity
+                    onPress={handleSendPhoneCode}
+                    disabled={isSendingCode || codeSent}
+                    style={{ backgroundColor: codeSent ? '#10B981' : PRIMARY, paddingHorizontal: 14, borderRadius: 10, justifyContent: 'center', opacity: (isSendingCode || codeSent) ? 0.7 : 1 }}
+                  >
+                    {isSendingCode ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{codeSent ? '✓ Enviado' : 'Enviar código'}</Text>}
+                  </TouchableOpacity>
+                </View>
+                {codeSent && (
+                  <>
+                    <Text style={[modalStyles.label, { color: sub }]}>Código de verificación</Text>
+                    <TextInput style={[modalStyles.input, { backgroundColor: inputBg, color: text, borderColor: border }]} value={phoneCode} onChangeText={setPhoneCode} placeholder="123456" placeholderTextColor={sub} keyboardType="number-pad" maxLength={6} />
+                    <TouchableOpacity style={[modalStyles.saveBtn, { opacity: isSaving ? 0.6 : 1, marginTop: 12 }]} onPress={handleChangePhone} disabled={isSaving}>
+                      {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={modalStyles.saveBtnText}>Confirmar nuevo teléfono</Text>}
+                    </TouchableOpacity>
+                  </>
+                )}
+              </>
+            )}
           </ScrollView>
-          <View style={modalStyles.footer}>
+
+          <View style={[modalStyles.footer, { borderTopWidth: 1, borderTopColor: border }]}>
             <TouchableOpacity style={[modalStyles.cancelBtn, { borderColor: border }]} onPress={onClose}>
-              <Text style={[modalStyles.cancelBtnText, { color: text }]}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[modalStyles.saveBtn, { opacity: isSaving ? 0.6 : 1 }]} onPress={handleSave} disabled={isSaving}>
-              {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={modalStyles.saveBtnText}>Guardar cambios</Text>}
+              <Text style={[modalStyles.cancelBtnText, { color: text }]}>Cerrar</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -15,11 +15,7 @@ type Period = "today" | "week" | "month";
 export default function BusinessDashboardScreen() {
   const navigation = useNavigation<any>();
   const navigateTo = (screen: string, params?: object) => {
-    try {
-      const parent = navigation.getParent();
-      if (parent) parent.navigate(screen as any, params);
-      else navigation.navigate(screen as any, params);
-    } catch { navigation.navigate(screen as any, params); }
+    navigation.navigate(screen as any, params);
   };
   const { theme, isDark } = useTheme();
   const { user } = useAuth();

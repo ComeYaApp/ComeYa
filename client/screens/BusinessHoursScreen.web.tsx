@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Text, Switch, ActivityIndicator } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { useToast } from "@/contexts/ToastContext";
-import { ComeYaColors, Spacing } from "@/constants/theme";
+import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
-import { useResponsive } from "@/hooks/useResponsive";
-import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
+import { BusinessSidebar } from "@/components/BusinessSidebar";
+import { useNavigation } from "@react-navigation/native";
 
 interface Shift { open: string; close: string; }
 interface DayHours { day: string; dayKey: string; isOpen: boolean; morning: Shift; hasEvening: boolean; evening: Shift; }
@@ -33,7 +32,6 @@ export default function BusinessHoursScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
   const { showToast } = useToast();
-  const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -101,44 +99,20 @@ export default function BusinessHoursScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <MobileSidebarWrapper title="Horarios" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
-          <Feather name="clock" size={28} color={ComeYaColors.primary} />
-        </View>
-        <Text style={[s.sideTitle, { color: text }]}>Horarios</Text>
-        <Text style={[s.sideSub, { color: sub }]}>Configura cuándo está abierto tu negocio</Text>
-
-        <View style={[s.legend, { borderColor: border }]}>
-          <View style={s.legendItem}>
-            <View style={[s.legendDot, { backgroundColor: ComeYaColors.success }]} />
-            <Text style={[s.legendText, { color: sub }]}>Abierto</Text>
-          </View>
-          <View style={s.legendItem}>
-            <View style={[s.legendDot, { backgroundColor: ComeYaColors.error }]} />
-            <Text style={[s.legendText, { color: sub }]}>Cerrado</Text>
-          </View>
-          <View style={s.legendItem}>
-            <View style={[s.legendDot, { backgroundColor: "#3F51B5" }]} />
-            <Text style={[s.legendText, { color: sub }]}>Turno noche</Text>
-          </View>
-        </View>
-
-        <Pressable
-          onPress={handleSave}
-          disabled={saving}
-          style={[s.saveBtn, { backgroundColor: ComeYaColors.primary, opacity: saving ? 0.6 : 1 }]}
-        >
-          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Guardar horarios</Text>}
-        </Pressable>
-
-        <Pressable onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="arrow-left" size={16} color={text} />
-          <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-        </Pressable>
-      </MobileSidebarWrapper>
+      <BusinessSidebar />
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        {/* Botón guardar */}
+        <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 20 }}>
+          <Pressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[s.saveBtn, { backgroundColor: ComeYaColors.primary, opacity: saving ? 0.6 : 1 }]}
+          >
+            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Guardar horarios</Text>}
+          </Pressable>
+        </View>
         {loading ? (
           <View style={s.loading}><ActivityIndicator color={ComeYaColors.primary} size="large" /></View>
         ) : (
@@ -235,21 +209,11 @@ export default function BusinessHoursScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
-  sidebar: { width: 260, minWidth: 260, maxWidth: 260, padding: 24, borderRightWidth: 1, paddingTop: 40 },
-  iconCircle: { width: 72, height: 72, borderRadius: 36, justifyContent: "center", alignItems: "center", alignSelf: "center", marginBottom: 12 },
-  sideTitle: { fontSize: 20, fontWeight: "800", textAlign: "center", marginBottom: 6 },
-  sideSub: { fontSize: 12, textAlign: "center", marginBottom: 20, lineHeight: 18 },
-  legend: { borderTopWidth: 1, paddingTop: 16, marginBottom: 20, gap: 8 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 8 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 13 },
-  saveBtn: { paddingVertical: 12, borderRadius: 12, alignItems: "center", marginBottom: 8 },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, justifyContent: "center" },
-  backBtnText: { fontSize: 14, fontWeight: "600" },
   main: { flex: 1 },
   content: { padding: 32, maxWidth: 720 },
   loading: { paddingVertical: 80, alignItems: "center" },
+  saveBtn: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", flexDirection: "row" },
+  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   dayCard: { padding: 20, borderRadius: 14, borderWidth: 1, marginBottom: 12 },
   dayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   dayName: { fontSize: 16, fontWeight: "700" },

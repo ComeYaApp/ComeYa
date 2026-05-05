@@ -231,6 +231,34 @@ router.put("/change-password", authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/auth/change-phone  (requiere verificar nuevo número con OTP)
+router.put("/change-phone", authenticateToken, async (req, res) => {
+  try {
+    const { newPhone, code } = req.body;
+    if (!newPhone || !code) return res.status(400).json({ error: "Faltan campos" });
+
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const [existing] = await db.select().from(users).where(eq(users.phone, newPhone)).limit(1);
+    if (existing && existing.id !== req.user!.id) return res.status(400).json({ error: "Ese teléfono ya está en uso" });
+
+    let isValid = false;
+    if (process.env.TWILIO_ACCOUNT_SID) {
+      const { verifyCode } = await import("../smsService");
+      isValid = await verifyCode(newPhone, code);
+    } else {
+      isValid = code === "123456" || code === "1234";
+    }
+    if (!isValid) return res.status(400).json({ error: "Código inválido" });
+
+    await db.update(users).set({ phone: newPhone } as any).where(eq(users.id, req.user!.id));
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/auth/logout
 router.post("/logout", authenticateToken, async (req, res) => {
   res.json({ success: true, message: "Sesión cerrada" });

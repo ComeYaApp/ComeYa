@@ -1,17 +1,15 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
+import { BusinessSidebar } from '@/components/BusinessSidebar';
 
 const PRIMARY = '#DC2626';
 type Period = 'today' | 'week' | 'month';
 
 export default function BusinessStatsScreen() {
-  const navigation = useNavigation<any>();
   const { isDark } = useTheme();
   const { user } = useAuth();
   const [period, setPeriod] = useState<Period>('week');
@@ -46,34 +44,7 @@ export default function BusinessStatsScreen() {
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <MobileSidebarWrapper title="Estadísticas" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <View style={[s.sideHeader, { borderBottomColor: border }]}>
-          <View style={[s.sideIconWrap, { backgroundColor: '#4CAF5015' }]}>
-            <Feather name="bar-chart-2" size={32} color="#4CAF50" />
-          </View>
-          <Text style={[s.sideTitle, { color: text }]}>Estadísticas</Text>
-          <Text style={[s.sideSub, { color: sub }]}>Rendimiento de tu negocio</Text>
-          <View style={[s.totalBadge, { backgroundColor: '#4CAF5015', borderColor: '#4CAF5030' }]}>
-            <Text style={{ color: '#4CAF50', fontSize: 13, fontWeight: '700' }}>
-              €{(revenue.total / 100).toFixed(2)} total
-            </Text>
-          </View>
-        </View>
-        <View style={s.sideNav}>
-          {(['today', 'week', 'month'] as Period[]).map(p => (
-            <Pressable key={p} onPress={() => setPeriod(p)} style={[s.navItem, period === p && s.navItemActive]}>
-              <Feather name="calendar" size={18} color={period === p ? PRIMARY : sub} />
-              <Text style={[s.navItemText, { color: period === p ? PRIMARY : text }]}>{PERIOD_LABELS[p]}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <View style={[s.sideFooter, { borderTopColor: border }]}>
-          <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-            <Feather name="arrow-left" size={16} color={sub} />
-            <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-          </Pressable>
-        </View>
-      </MobileSidebarWrapper>
+      <BusinessSidebar />
 
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         {isLoading ? (
@@ -148,19 +119,6 @@ export default function BusinessStatsScreen() {
 
 const s = StyleSheet.create({
   root:          { flex: 1, flexDirection: 'row', overflow: 'hidden' as any },
-  sidebar:       { width: 280, borderRightWidth: 1, flexDirection: 'column' as any },
-  sideHeader:    { padding: 24, alignItems: 'center', borderBottomWidth: 1 },
-  sideIconWrap:  { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  sideTitle:     { fontSize: 17, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
-  sideSub:       { fontSize: 12, textAlign: 'center', marginBottom: 10 },
-  totalBadge:    { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
-  sideNav:       { flex: 1, paddingVertical: 16 },
-  navItem:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
-  navItemActive: { backgroundColor: '#DC262610', borderRightWidth: 3, borderRightColor: PRIMARY },
-  navItemText:   { fontSize: 14, fontWeight: '600' },
-  sideFooter:    { borderTopWidth: 1, padding: 16 },
-  backBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
-  backBtnText:   { fontSize: 14, fontWeight: '600' },
   main:          { flex: 1, height: '100vh' as any },
   content:       { padding: 32, maxWidth: 800, paddingBottom: 80 },
   loadingWrap:   { alignItems: 'center', paddingTop: 60 },

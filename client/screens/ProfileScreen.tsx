@@ -568,7 +568,7 @@ export default function ProfileScreen() {
                 label="Mis Negocios"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  navigation.navigate("MyBusinesses");
+                  navigation.navigate("BusinessMore" as any);
                 }}
               />
               <SettingsItem
@@ -576,7 +576,7 @@ export default function ProfileScreen() {
                 label="Horarios de atención"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  navigation.navigate("BusinessHours");
+                  navigation.navigate("BusinessMore" as any);
                 }}
               />
             </>

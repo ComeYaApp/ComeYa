@@ -8,8 +8,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
-import { useResponsive } from "@/hooks/useResponsive";
-import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
+import { BusinessSidebar } from "@/components/BusinessSidebar";
 
 interface Product { id: string; name: string; price: number; image: string; category: string; isAvailable: boolean; }
 interface Business { id: string; name: string; isOpen: boolean; products: Product[]; }
@@ -19,7 +18,6 @@ export default function BusinessManageScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { isMobile } = useResponsive();
   const [activeTab, setActiveTab] = useState<"products" | "settings">("products");
 
   const bg = isDark ? "#111" : "#f7f7f7";
@@ -52,69 +50,15 @@ export default function BusinessManageScreen() {
   const unavailable = products.filter(p => !p.isAvailable);
 
   const settingItems = [
-    { icon: "clock", label: "Horarios de apertura", sub: "Configura tus turnos", onPress: () => navigation.navigate("BusinessHours") },
-    { icon: "tag", label: "Categorías", sub: "Organiza tu menú", onPress: () => navigation.navigate("BusinessCategories") },
-    { icon: "bar-chart-2", label: "Estadísticas", sub: "Ventas y métricas", onPress: () => navigation.navigate("BusinessStats") },
-    { icon: "credit-card", label: "Cuentas de cobro", sub: "Bizum, IBAN, PayPal", onPress: () => navigation.navigate("PaymentWalletSetup") },
+    { icon: "clock", label: "Horarios de apertura", sub: "Configura tus turnos", onPress: () => navigation.navigate("BusinessHours" as any) },
+    { icon: "tag", label: "Categorías", sub: "Organiza tu menú", onPress: () => navigation.navigate("BusinessDashboard" as any) },
+    { icon: "bar-chart-2", label: "Estadísticas", sub: "Ventas y métricas", onPress: () => navigation.navigate("BusinessStats" as any) },
+    { icon: "credit-card", label: "Cuentas de cobro", sub: "Bizum, IBAN, PayPal", onPress: () => navigation.navigate("BusinessProfile" as any) },
   ];
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      <MobileSidebarWrapper title="Mi Negocio" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <Text style={[s.sideTitle, { color: text }]}>{business?.name || "Mi Negocio"}</Text>
-
-        {/* Estado abierto/cerrado */}
-        <View style={[s.statusCard, { backgroundColor: (business?.isOpen ? ComeYaColors.success : ComeYaColors.error) + "15", borderColor: (business?.isOpen ? ComeYaColors.success : ComeYaColors.error) + "40" }]}>
-          <View style={[s.statusDot, { backgroundColor: business?.isOpen ? ComeYaColors.success : ComeYaColors.error }]} />
-          <Text style={[s.statusText, { color: business?.isOpen ? ComeYaColors.success : ComeYaColors.error }]}>
-            {business?.isOpen ? "Abierto" : "Cerrado"}
-          </Text>
-          <Switch
-            value={business?.isOpen ?? false}
-            onValueChange={v => business && toggleBusinessMutation.mutate({ businessId: business.id, isOpen: v })}
-            trackColor={{ false: ComeYaColors.error, true: ComeYaColors.success }}
-            thumbColor="#fff"
-          />
-        </View>
-
-        {/* Stats rápidas */}
-        <View style={[s.quickStats, { borderColor: border }]}>
-          <View style={s.quickStat}>
-            <Text style={[s.quickStatValue, { color: ComeYaColors.success }]}>{available.length}</Text>
-            <Text style={[s.quickStatLabel, { color: sub }]}>Disponibles</Text>
-          </View>
-          <View style={[s.quickStatDivider, { backgroundColor: border }]} />
-          <View style={s.quickStat}>
-            <Text style={[s.quickStatValue, { color: ComeYaColors.error }]}>{unavailable.length}</Text>
-            <Text style={[s.quickStatLabel, { color: sub }]}>Agotados</Text>
-          </View>
-          <View style={[s.quickStatDivider, { backgroundColor: border }]} />
-          <View style={s.quickStat}>
-            <Text style={[s.quickStatValue, { color: text }]}>{products.length}</Text>
-            <Text style={[s.quickStatLabel, { color: sub }]}>Total</Text>
-          </View>
-        </View>
-
-        {/* Tabs */}
-        {[
-          { id: "products", label: "Productos", icon: "package" },
-          { id: "settings", label: "Ajustes", icon: "settings" },
-        ].map(tab => (
-          <Pressable
-            key={tab.id}
-            onPress={() => setActiveTab(tab.id as any)}
-            style={[s.tabBtn, { backgroundColor: activeTab === tab.id ? ComeYaColors.primary + "15" : "transparent", borderColor: activeTab === tab.id ? ComeYaColors.primary : border }]}
-          >
-            <Feather name={tab.icon as any} size={18} color={activeTab === tab.id ? ComeYaColors.primary : sub} />
-            <Text style={[s.tabBtnText, { color: activeTab === tab.id ? ComeYaColors.primary : text }]}>{tab.label}</Text>
-          </Pressable>
-        ))}
-
-        <Pressable onPress={() => navigation.goBack()} style={[s.backBtn, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="arrow-left" size={16} color={text} />
-          <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-        </Pressable>
-      </MobileSidebarWrapper>
+      <BusinessSidebar />
 
       {/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>

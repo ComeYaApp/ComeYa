@@ -234,9 +234,11 @@ export default function AdminDashboardScreen() {
           color={ComeYaColors.success} width={cardW} trend={todayTrend} />
         <KpiCard icon="dollar-sign" label="Ingresos hoy" value={fmt(metrics?.todayRevenue ?? 0)}
           color={ComeYaColors.primary} width={cardW} trend={revTrend} />
-        <KpiCard icon="clock" label="Pedidos activos" value={metrics?.pendingOrders ?? 0}
-          color={ComeYaColors.warning} width={cardW}
-          sub="en proceso" />
+        <Pressable onPress={() => navigation.navigate("Orders")}> 
+          <KpiCard icon="clock" label="Pedidos activos" value={metrics?.pendingOrders ?? 0}
+            color={ComeYaColors.warning} width={cardW}
+            sub="en proceso" />
+        </Pressable>
         <KpiCard icon="alert-circle" label="Pagos pendientes" value={metrics?.pendingPayments ?? 0}
           color={ComeYaColors.error} width={cardW}
           sub="por verificar" />

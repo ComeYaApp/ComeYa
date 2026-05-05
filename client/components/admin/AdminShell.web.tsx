@@ -17,7 +17,7 @@ export type AdminSection =
   | "premiums"
   | "marketing" | "coupons"
   | "support" | "support_tickets" | "support_verifications"
-  | "settings" | "delivery_config";
+  | "settings" | "delivery_config" | "logs";
 
 interface NavItem {
   id: AdminSection;

@@ -12,10 +12,11 @@ import { useBusiness } from "@/contexts/BusinessContext";
 const PRIMARY = "#DC2626";
 
 const NAV_ITEMS = [
-  { id: "BusinessDashboard", label: "Dashboard",    icon: "bar-chart-2", sub: null },
-  { id: "BusinessOrders",    label: "Pedidos",       icon: "package",     sub: null },
-  { id: "BusinessProducts",  label: "Productos",     icon: "grid",        sub: null },
-  { id: "MyBusinesses",      label: "Mis Negocios",  icon: "briefcase",   sub: null },
+  { id: "BusinessDashboard", label: "Dashboard",  icon: "bar-chart-2", sub: null },
+  { id: "BusinessOrders",    label: "Pedidos",     icon: "package",     sub: null },
+  { id: "BusinessProducts",  label: "Productos",   icon: "grid",        sub: null },
+  { id: "BusinessHours",     label: "Horarios",    icon: "clock",       sub: null },
+  { id: "BusinessStats",     label: "Estadísticas", icon: "bar-chart-2", sub: null },
   {
     id: "BusinessProfile",
     label: "Perfil",
@@ -51,19 +52,12 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
   const activeName = route.name;
   const isProfileActive = activeName === "BusinessProfile";
 
-  // En web el tab de negocio es un único Tab.Screen (BusinessTab).
-  // Las rutas de negocio viven en el RootStackNavigator (padre).
-  // Intentamos navegar en el padre; si falla, usamos el navigator actual.
   const navigateTo = (screen: string, params?: object) => {
-    // BusinessProfile es un sub-menú interno, no una ruta navegable
-    if (screen === 'BusinessProfile') return;
-    try {
-      const parent = navigation.getParent();
-      if (parent) { parent.navigate(screen as any, params); }
-      else { navigation.navigate(screen as any, params); }
-    } catch {
-      navigation.navigate(screen as any, params);
+    if (screen === "BusinessProfile") {
+      navigation.navigate("BusinessProfile" as any, params);
+      return;
     }
+    navigation.navigate(screen as any, params);
   };
 
   return (

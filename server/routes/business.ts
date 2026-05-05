@@ -198,6 +198,90 @@ router.get("/limits", authenticateToken, requireRole("business_owner", "admin", 
   });
 });
 
+// GET /api/business/active-deliveries — mapa de supervisión para el dueño
+router.get("/active-deliveries", authenticateToken, requireRole("business_owner", "admin", "super_admin"), async (req, res) => {
+  try {
+    const { businesses, orders, users, deliveryDrivers } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { sql, inArray } = await import("drizzle-orm");
+
+    // Obtener negocios del owner
+    const ownerBusinesses = await db.select({ id: businesses.id, name: businesses.name, latitude: businesses.latitude, longitude: businesses.longitude })
+      .from(businesses).where(eq(businesses.ownerId, req.user!.id));
+    if (!ownerBusinesses.length) return res.json({ success: true, deliveries: [], stats: {} });
+
+    const businessIds = ownerBusinesses.map(b => b.id);
+
+    // Pedidos activos
+    const [rows] = await db.execute(sql`
+      SELECT
+        o.id, o.status, o.subtotal, o.delivery_fee, o.total, o.created_at, o.updated_at,
+        o.business_id, o.delivery_address, o.items, o.payment_method,
+        u.name  AS customer_name,  u.phone AS customer_phone,
+        u.latitude AS customer_lat, u.longitude AS customer_lng,
+        d.id    AS driver_id,       d.name  AS driver_name,  d.phone AS driver_phone,
+        d.current_latitude AS driver_lat, d.current_longitude AS driver_lng,
+        d.vehicle_type, d.rating AS driver_rating,
+        b.name  AS business_name
+      FROM orders o
+      LEFT JOIN users u  ON o.user_id = u.id
+      LEFT JOIN delivery_drivers d ON o.driver_id = d.id
+      LEFT JOIN businesses b ON o.business_id = b.id
+      WHERE o.business_id IN (${sql.join(businessIds.map(id => sql`${id}`), sql`, `)})
+        AND o.status IN ('pending','accepted','preparing','ready','on_the_way')
+      ORDER BY o.created_at DESC
+    `) as any;
+
+    const deliveries = rows.map((r: any) => {
+      let address: any = null;
+      try { address = typeof r.delivery_address === 'string' ? JSON.parse(r.delivery_address) : r.delivery_address; } catch {}
+      const minutesActive = Math.round((Date.now() - new Date(r.created_at).getTime()) / 60000);
+      return {
+        orderId:       r.id,
+        status:        r.status,
+        subtotal:      r.subtotal,
+        deliveryFee:   r.delivery_fee,
+        total:         r.total,
+        paymentMethod: r.payment_method,
+        minutesActive,
+        businessId:    r.business_id,
+        businessName:  r.business_name,
+        customer: {
+          name:  r.customer_name,
+          phone: r.customer_phone,
+          lat:   r.customer_lat   ? parseFloat(r.customer_lat)   : null,
+          lng:   r.customer_lng   ? parseFloat(r.customer_lng)   : null,
+          address: address?.street || address?.formatted || null,
+        },
+        driver: r.driver_id ? {
+          id:          r.driver_id,
+          name:        r.driver_name,
+          phone:       r.driver_phone,
+          lat:         r.driver_lat  ? parseFloat(r.driver_lat)  : null,
+          lng:         r.driver_lng  ? parseFloat(r.driver_lng)  : null,
+          vehicleType: r.vehicle_type,
+          rating:      r.driver_rating ? (r.driver_rating / 10).toFixed(1) : null,
+        } : null,
+      };
+    });
+
+    // Stats rápidas
+    const stats = {
+      totalActive:   deliveries.length,
+      pending:       deliveries.filter((d: any) => d.status === 'pending').length,
+      preparing:     deliveries.filter((d: any) => ['accepted','preparing'].includes(d.status)).length,
+      onTheWay:      deliveries.filter((d: any) => d.status === 'on_the_way').length,
+      avgMinutes:    deliveries.length ? Math.round(deliveries.reduce((s: number, d: any) => s + d.minutesActive, 0) / deliveries.length) : 0,
+      pendingRevenue: deliveries.reduce((s: number, d: any) => s + (d.subtotal || 0), 0),
+    };
+
+    res.json({ success: true, deliveries, businesses: ownerBusinesses, stats });
+  } catch (err: any) {
+    console.error('active-deliveries error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/business/my-businesses
 router.get("/my-businesses", authenticateToken, requireRole("business_owner"), async (req, res) => {
   try {
