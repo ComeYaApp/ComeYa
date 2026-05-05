@@ -56,6 +56,13 @@ function loadGoogleMaps(): Promise<void> {
   });
 }
 
+interface BusinessPin {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 export default function BusinessDeliveryMapScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
@@ -68,6 +75,7 @@ export default function BusinessDeliveryMapScreen() {
 
   const [mapsReady,    setMapsReady]    = useState(false);
   const [deliveries,   setDeliveries]   = useState<Delivery[]>([]);
+  const [businesses,   setBusinesses]   = useState<BusinessPin[]>([]);
   const [stats,        setStats]        = useState<Stats | null>(null);
   const [selected,     setSelected]     = useState<Delivery | null>(null);
   const [loading,      setLoading]      = useState(true);
@@ -102,6 +110,16 @@ export default function BusinessDeliveryMapScreen() {
         setDeliveries(data.deliveries || []);
         setStats(data.stats || null);
         setLastUpdated(new Date());
+        // Guardar negocios con coordenadas
+        const bizPins: BusinessPin[] = (data.businesses || []).filter(
+          (b: any) => b.latitude && b.longitude
+        ).map((b: any) => ({
+          id: b.id,
+          name: b.name,
+          lat: parseFloat(b.latitude),
+          lng: parseFloat(b.longitude),
+        }));
+        setBusinesses(bizPins);
       }
     } catch (e) {
       console.error("Error fetching deliveries:", e);
@@ -121,21 +139,95 @@ export default function BusinessDeliveryMapScreen() {
     if (!mapsReady || !gmap.current) return;
     const google = (window as any).google;
 
-    // Limpiar markers y líneas anteriores
+    // Limpiar todo
     Object.values(markers.current).forEach((m: any) => m.setMap(null));
     Object.values(lines.current).forEach((l: any) => l.setMap(null));
     markers.current = {};
     lines.current   = {};
 
+    // ── Pin del negocio (tienda) ──────────────────────────────────────────
+    businesses.forEach((biz) => {
+      const bizSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48">
+        <circle cx="24" cy="24" r="22" fill="#DC2626" stroke="#fff" stroke-width="3"/>
+        <text x="24" y="30" text-anchor="middle" font-size="20" fill="white">🏪</text>
+      </svg>`;
+      const bizMarker = new google.maps.Marker({
+        position: { lat: biz.lat, lng: biz.lng },
+        map: gmap.current,
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(bizSvg)}`,
+          scaledSize: new google.maps.Size(48, 48),
+          anchor: new google.maps.Point(24, 24),
+        },
+        title: biz.name,
+        zIndex: 30,
+      });
+      markers.current[`biz_${biz.id}`] = bizMarker;
+    });
+
     deliveries.forEach((d) => {
       const cfg   = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
       const color = cfg.color;
+      const isOnTheWay = d.status === 'on_the_way';
 
-      // Marker repartidor
+      // ── Pin cliente (siempre visible si tiene coords) ─────────────────
+      if (d.customer.lat && d.customer.lng) {
+        const customerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48">
+          <ellipse cx="20" cy="18" rx="18" ry="18" fill="${color}" stroke="#fff" stroke-width="2.5"/>
+          <text x="20" y="24" text-anchor="middle" font-size="16" fill="white">🏠</text>
+          <polygon points="12,34 28,34 20,48" fill="${color}"/>
+        </svg>`;
+        const customerMarker = new google.maps.Marker({
+          position: { lat: d.customer.lat, lng: d.customer.lng },
+          map: gmap.current,
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(customerSvg)}`,
+            scaledSize: new google.maps.Size(40, 48),
+            anchor: new google.maps.Point(20, 48),
+          },
+          title: `Cliente: ${d.customer.name}`,
+          zIndex: 10,
+        });
+        customerMarker.addListener("click", () => setSelected(d));
+        markers.current[`customer_${d.orderId}`] = customerMarker;
+
+        // ── Línea negocio → cliente (roja punteada) cuando no hay driver en camino
+        const biz = businesses.find(b =>
+          deliveries.some(del => del.orderId === d.orderId)
+        ) || businesses[0];
+
+        if (biz && !isOnTheWay) {
+          const lineToCustomer = new google.maps.Polyline({
+            path: [
+              { lat: biz.lat, lng: biz.lng },
+              { lat: d.customer.lat, lng: d.customer.lng },
+            ],
+            geodesic: true,
+            strokeColor: color,
+            strokeOpacity: 0,
+            strokeWeight: 0,
+            icons: [{
+              icon: {
+                path: 'M 0,-1 0,1',
+                strokeOpacity: 0.8,
+                strokeColor: color,
+                strokeWeight: 3,
+                scale: 4,
+              },
+              offset: '0',
+              repeat: '20px',
+            }],
+            map: gmap.current,
+          });
+          lines.current[`biz_to_customer_${d.orderId}`] = lineToCustomer;
+        }
+      }
+
+      // ── Pin repartidor + línea verde sólida cuando está en camino ─────
       if (d.driver?.lat && d.driver?.lng) {
         const driverSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44">
-          <circle cx="22" cy="22" r="20" fill="${color}" stroke="#fff" stroke-width="3"/>
-          <text x="22" y="27" text-anchor="middle" font-size="16" fill="white">🛵</text>
+          <circle cx="22" cy="22" r="20" fill="${isOnTheWay ? '#10B981' : color}" stroke="#fff" stroke-width="3"/>
+          <text x="22" y="28" text-anchor="middle" font-size="18" fill="white">🛵</text>
         </svg>`;
         const driverMarker = new google.maps.Marker({
           position: { lat: d.driver.lat, lng: d.driver.lng },
@@ -150,46 +242,25 @@ export default function BusinessDeliveryMapScreen() {
         });
         driverMarker.addListener("click", () => setSelected(d));
         markers.current[`driver_${d.orderId}`] = driverMarker;
-      }
 
-      // Marker cliente
-      if (d.customer.lat && d.customer.lng) {
-        const customerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-          <circle cx="18" cy="18" r="16" fill="#fff" stroke="${color}" stroke-width="2.5"/>
-          <text x="18" y="23" text-anchor="middle" font-size="14" fill="${color}">📍</text>
-        </svg>`;
-        const customerMarker = new google.maps.Marker({
-          position: { lat: d.customer.lat, lng: d.customer.lng },
-          map: gmap.current,
-          icon: {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(customerSvg)}`,
-            scaledSize: new google.maps.Size(36, 36),
-            anchor: new google.maps.Point(18, 36),
-          },
-          title: `Cliente: ${d.customer.name}`,
-          zIndex: 10,
-        });
-        customerMarker.addListener("click", () => setSelected(d));
-        markers.current[`customer_${d.orderId}`] = customerMarker;
-      }
-
-      // Línea repartidor → cliente
-      if (d.driver?.lat && d.driver?.lng && d.customer.lat && d.customer.lng) {
-        const line = new google.maps.Polyline({
-          path: [
-            { lat: d.driver.lat, lng: d.driver.lng },
-            { lat: d.customer.lat, lng: d.customer.lng },
-          ],
-          geodesic: true,
-          strokeColor: color,
-          strokeOpacity: 0.6,
-          strokeWeight: 2,
-          map: gmap.current,
-        });
-        lines.current[`line_${d.orderId}`] = line;
+        // Línea verde sólida driver → cliente cuando está en camino
+        if (d.customer.lat && d.customer.lng) {
+          const driverLine = new google.maps.Polyline({
+            path: [
+              { lat: d.driver.lat, lng: d.driver.lng },
+              { lat: d.customer.lat, lng: d.customer.lng },
+            ],
+            geodesic: true,
+            strokeColor: '#10B981',
+            strokeOpacity: 0.9,
+            strokeWeight: 4,
+            map: gmap.current,
+          });
+          lines.current[`driver_to_customer_${d.orderId}`] = driverLine;
+        }
       }
     });
-  }, [mapsReady, deliveries]);
+  }, [mapsReady, deliveries, businesses]);
 
   // ── Centrar mapa en entrega seleccionada ────────────────────────────────────
   const focusDelivery = useCallback((d: Delivery) => {
@@ -373,12 +444,22 @@ export default function BusinessDeliveryMapScreen() {
 
         {/* Leyenda */}
         <View style={[s.legend, { backgroundColor: card, bottom: insets.bottom + 16 }]}>
-          {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-            <View key={key} style={s.legendItem}>
-              <View style={[s.legendDot, { backgroundColor: cfg.color }]} />
-              <ThemedText type="caption" style={{ color: sub, fontSize: 10 }}>{cfg.label}</ThemedText>
-            </View>
-          ))}
+          <View style={s.legendItem}>
+            <View style={[s.legendDot, { backgroundColor: '#DC2626' }]} />
+            <ThemedText type="caption" style={{ color: sub, fontSize: 10 }}>🏪 Negocio</ThemedText>
+          </View>
+          <View style={s.legendItem}>
+            <View style={[s.legendDot, { backgroundColor: '#3B82F6' }]} />
+            <ThemedText type="caption" style={{ color: sub, fontSize: 10 }}>🏠 Cliente</ThemedText>
+          </View>
+          <View style={s.legendItem}>
+            <View style={[s.legendDot, { backgroundColor: '#10B981' }]} />
+            <ThemedText type="caption" style={{ color: sub, fontSize: 10 }}>🛵 En camino</ThemedText>
+          </View>
+          <View style={s.legendItem}>
+            <View style={[s.legendDot, { backgroundColor: '#F59E0B', borderRadius: 0 }]} />
+            <ThemedText type="caption" style={{ color: sub, fontSize: 10 }}>- - Ruta pendiente</ThemedText>
+          </View>
         </View>
 
         {/* Panel detalle pedido seleccionado */}
