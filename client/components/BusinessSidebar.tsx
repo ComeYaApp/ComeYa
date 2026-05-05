@@ -1,47 +1,32 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/contexts/ToastContext";
 import { confirm } from "@/hooks/useWebDialog";
 import { useBusiness } from "@/contexts/BusinessContext";
 
 const PRIMARY = "#DC2626";
 
 const NAV_ITEMS = [
-  { id: "BusinessDashboard", label: "Dashboard",  icon: "bar-chart-2", sub: null },
-  { id: "BusinessOrders",    label: "Pedidos",     icon: "package",     sub: null },
-  { id: "BusinessProducts",  label: "Productos",   icon: "grid",        sub: null },
-  { id: "BusinessHours",     label: "Horarios",    icon: "clock",       sub: null },
-  { id: "BusinessStats",     label: "Estadísticas", icon: "bar-chart-2", sub: null },
-  {
-    id: "BusinessProfile",
-    label: "Perfil",
-    icon: "user",
-    sub: [
-      { id: "account",     label: "Cuenta",       icon: "user"        },
-      { id: "payments",    label: "Pagos",         icon: "credit-card" },
-      { id: "preferences", label: "Preferencias", icon: "sliders"     },
-      { id: "more",        label: "Más",           icon: "grid"        },
-    ],
-  },
+  { id: "BusinessDashboard",  label: "Dashboard",       icon: "bar-chart-2" },
+  { id: "BusinessOrders",     label: "Pedidos",          icon: "package"     },
+  { id: "BusinessProducts",   label: "Productos",        icon: "grid"        },
+  { id: "BusinessHours",      label: "Horarios",         icon: "clock"       },
+  { id: "BusinessStats",      label: "Estadísticas",     icon: "trending-up" },
 ];
 
 interface Props {
-  /** Sección activa dentro de Perfil (account | preferences | more) */
-  activeSubSection?: string;
-  onSubSectionChange?: (id: string) => void;
+  activeSection?: string;
 }
 
-export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props) {
+export function BusinessSidebar({ activeSection }: Props) {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { theme, isDark } = useTheme();
   const { user, logout } = useAuth();
-  const { showToast } = useToast();
   const { selectedBusiness } = useBusiness();
 
   const card   = isDark ? "#1e1e1e" : "#fff";
@@ -49,16 +34,7 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
   const text   = isDark ? "#fff"    : "#1a1a1a";
   const sub    = isDark ? "#aaa"    : "#666";
 
-  const activeName = route.name;
-  const isProfileActive = activeName === "BusinessProfile";
-
-  const navigateTo = (screen: string, params?: object) => {
-    if (screen === "BusinessProfile") {
-      navigation.navigate("BusinessProfile" as any, params);
-      return;
-    }
-    navigation.navigate(screen as any, params);
-  };
+  const activeName = activeSection || route.name;
 
   return (
     <View style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
@@ -80,34 +56,14 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
         {NAV_ITEMS.map(item => {
           const isActive = activeName === item.id;
           return (
-            <View key={item.id}>
-              <Pressable
-                onPress={() => navigateTo(item.id)}
-                style={[s.navItem, isActive && { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY }]}
-              >
-                <Feather name={item.icon as any} size={18} color={isActive ? PRIMARY : sub} />
-                <Text style={[s.navText, { color: isActive ? PRIMARY : text }]}>{item.label}</Text>
-              </Pressable>
-
-              {/* Subitems de Perfil — solo visibles cuando Perfil está activo */}
-              {item.sub && isProfileActive && (
-                <View style={[s.subItems, { borderLeftColor: border }]}>
-                  {item.sub.map(subItem => {
-                    const isSubActive = activeSubSection === subItem.id;
-                    return (
-                      <Pressable
-                        key={subItem.id}
-                        onPress={() => onSubSectionChange?.(subItem.id)}
-                        style={[s.subItem, isSubActive && { backgroundColor: PRIMARY + "08" }]}
-                      >
-                        <Feather name={subItem.icon as any} size={15} color={isSubActive ? PRIMARY : sub} />
-                        <Text style={[s.subItemText, { color: isSubActive ? PRIMARY : sub }]}>{subItem.label}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+            <Pressable
+              key={item.id}
+              onPress={() => navigation.navigate(item.id as any)}
+              style={[s.navItem, isActive && { backgroundColor: PRIMARY + "10", borderRightWidth: 3, borderRightColor: PRIMARY }]}
+            >
+              <Feather name={item.icon as any} size={18} color={isActive ? PRIMARY : sub} />
+              <Text style={[s.navText, { color: isActive ? PRIMARY : text }]}>{item.label}</Text>
+            </Pressable>
           );
         })}
       </View>
@@ -130,7 +86,7 @@ export function BusinessSidebar({ activeSubSection, onSubSectionChange }: Props)
 }
 
 const s = StyleSheet.create({
-  sidebar: { width: 240, borderRightWidth: 1, flexDirection: "column" },
+  sidebar: { width: 240, borderRightWidth: 1, flexDirection: "column" as any },
   header: { padding: 24, paddingBottom: 16 },
   logo: { width: 100, height: 32, marginBottom: 12 },
   bizName: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
@@ -138,8 +94,5 @@ const s = StyleSheet.create({
   nav: { flex: 1 },
   navItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, paddingHorizontal: 20 },
   navText: { fontSize: 14, fontWeight: "600" },
-  subItems: { marginLeft: 20, borderLeftWidth: 1, paddingLeft: 8, marginBottom: 4 },
-  subItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 8 },
-  subItemText: { fontSize: 13, fontWeight: "500" },
   footer: { borderTopWidth: 1 },
 });

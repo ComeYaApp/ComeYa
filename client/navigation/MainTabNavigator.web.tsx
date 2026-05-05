@@ -68,6 +68,7 @@ function BusinessStackNavigator() {
       <BusinessStack.Screen name="BusinessStats"     component={BusinessStatsScreenWeb} />
       <BusinessStack.Screen name="BusinessProfile"   component={ProfileScreenWeb} />
       <BusinessStack.Screen name="MyBusinesses"      component={BusinessDashboardScreenWeb} />
+      <BusinessStack.Screen name="BusinessManage"    component={BusinessDashboardScreenWeb} />
     </BusinessStack.Navigator>
   );
 }

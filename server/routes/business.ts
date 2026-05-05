@@ -217,6 +217,8 @@ router.get("/active-deliveries", authenticateToken, requireRole("business_owner"
       SELECT
         o.id, o.status, o.subtotal, o.delivery_fee, o.total, o.created_at,
         o.business_id, o.delivery_address, o.payment_method,
+        o.delivery_latitude  AS customer_lat,
+        o.delivery_longitude AS customer_lng,
         u.name  AS customer_name,  u.phone AS customer_phone,
         dd.id   AS driver_id,      dd.vehicle_type, dd.rating AS driver_rating,
         dd.current_latitude AS driver_lat, dd.current_longitude AS driver_lng,
@@ -247,11 +249,11 @@ router.get("/active-deliveries", authenticateToken, requireRole("business_owner"
         businessId:    r.business_id,
         businessName:  r.business_name,
         customer: {
-          name:  r.customer_name,
-          phone: r.customer_phone,
-          lat:   address?.latitude  ? parseFloat(address.latitude)  : null,
-          lng:   address?.longitude ? parseFloat(address.longitude) : null,
-          address: address?.street || address?.formatted || address?.address || null,
+          name:    r.customer_name,
+          phone:   r.customer_phone,
+          lat:     r.customer_lat  ? parseFloat(r.customer_lat)  : null,
+          lng:     r.customer_lng  ? parseFloat(r.customer_lng)  : null,
+          address: r.delivery_address || null,
         },
         driver: r.driver_id ? {
           id:          r.driver_id,
