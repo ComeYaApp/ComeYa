@@ -422,7 +422,7 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    
     </View>
     </WebLayout>
   );

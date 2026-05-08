@@ -261,7 +261,7 @@ export default function ScheduledOrdersScreen() {
           )
         )}
       </ScrollView>
-    </View>
+    
     </View>
     </WebLayout>
   );

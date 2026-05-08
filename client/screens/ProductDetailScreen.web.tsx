@@ -231,7 +231,7 @@ export default function ProductDetailScreen() {
           </View>
         </ScrollView>
       </View>
-    </View>
+    
     </View>
     </WebLayout>
   );

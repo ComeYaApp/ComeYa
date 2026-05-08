@@ -239,7 +239,6 @@ router.post("/", authenticateToken, async (req, res) => {
       itemSubstitutionPreferences: itemSubstitutionPreferences || null,
       cashPaymentAmount: cashPaymentAmount || null,
       cashChangeAmount: cashChangeAmount || null,
-      createdAt: new Date(),
     };
 
     await db.insert(orders).values(newOrder);

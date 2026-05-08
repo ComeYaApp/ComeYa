@@ -191,7 +191,7 @@ export default function PaymentMethodsScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    
     </View>
     </WebLayout>
   );

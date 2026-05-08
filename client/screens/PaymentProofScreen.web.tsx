@@ -141,7 +141,7 @@ export default function PaymentProofScreen() {
             <Text style={s.primaryBtnText}>Ver mi pedido</Text>
           </Pressable>
         </View>
-      </View>
+      
       </View>
       </WebLayout>
     );
@@ -289,7 +289,7 @@ export default function PaymentProofScreen() {
           </View>
         </ScrollView>
       </View>
-    </View>
+    
     </View>
     </WebLayout>
   );

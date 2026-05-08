@@ -354,7 +354,7 @@ export default function SubscriptionScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    
     </View>
     </WebLayout>
   );

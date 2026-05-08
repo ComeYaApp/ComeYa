@@ -741,7 +741,7 @@ export default function OrderTrackingScreen() {
         )}
       </ScrollView>
       </View>
-    </View>
+    
     </View>
     </WebLayout>
   );

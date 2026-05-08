@@ -25,7 +25,6 @@ import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import { calculateDistance, calculateDeliveryFee, estimateDeliveryTime } from "@/utils/distance";
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
-import { ComeYaLogo } from "@/components/ComeYaLogo";
 import { useResponsive } from "@/hooks/useResponsive";
 import { WebLayout } from "@/components/WebLayout";
 
@@ -399,86 +398,27 @@ export default function CheckoutScreen({ route }: any) {
     );
   }
 
+  const { isDark } = useTheme();
+  const bg     = isDark ? "#111" : "#f7f7f7";
+  const border = isDark ? "#333" : "#e8e8e8";
+
   return (
     <>
     <WebLayout>
-    <ScrollView style={{ flex: 1, backgroundColor: theme.backgroundRoot }} contentContainerStyle={styles.webContainer}>
-      {/* LEFT: Hero Section — oculto en móvil */}
-      {!isMobile && <View style={styles.heroSection}>
-        <View style={styles.heroContent}>
-          {/* Logo */}
-          <Pressable onPress={() => navigation.navigate("Main" as never)} style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <ComeYaLogo size={48} />
-            </View>
-            <ThemedText type="h2" style={styles.logoText}>ComeYa</ThemedText>
-          </Pressable>
+    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={styles.pageContent}>
+      {/* Header */}
+      <View style={[styles.pageHeader, { borderBottomColor: border }]}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={20} color={isDark ? "#fff" : "#1a1a1a"} />
+        </Pressable>
+        <ThemedText type="h3">Confirmar pedido</ThemedText>
+        <View style={{ width: 40 }} />
+      </View>
 
-          {/* Headline */}
-          <View style={styles.heroTextContainer}>
-            <ThemedText type="h1" style={styles.heroTitle}>
-              Confirma tu pedido
-            </ThemedText>
-            <ThemedText type="body" style={styles.heroSubtitle}>
-              Revisa los detalles y completa tu compra de forma segura
-            </ThemedText>
-          </View>
-
-          {/* Order Summary Card */}
-          <View style={styles.heroCard}>
-            <View style={styles.heroCardHeader}>
-              <Feather name="shopping-bag" size={24} color={PRIMARY} />
-              <ThemedText type="h4" style={{ marginLeft: 12 }}>Tu pedido</ThemedText>
-            </View>
-            <View style={styles.heroCardDivider} />
-            <ThemedText type="body" style={{ color: "#6B7280", marginBottom: 16 }}>
-              {cart.businessName}
-            </ThemedText>
-            {cart.items.slice(0, 3).map((item) => (
-              <View key={item.id} style={styles.heroOrderItem}>
-                <ThemedText type="small" style={{ flex: 1 }}>
-                  {item.quantity}x {item.product.name}
-                </ThemedText>
-                <ThemedText type="small" style={{ fontWeight: "600" }}>
-                  €{(item.product.price * item.quantity).toFixed(2)}
-                </ThemedText>
-              </View>
-            ))}
-            {cart.items.length > 3 && (
-              <ThemedText type="caption" style={{ color: "#6B7280", marginTop: 8 }}>
-                +{cart.items.length - 3} productos más
-              </ThemedText>
-            )}
-            <View style={[styles.heroCardDivider, { marginVertical: 16 }]} />
-            <View style={styles.heroOrderItem}>
-              <ThemedText type="body" style={{ fontWeight: "600" }}>Total</ThemedText>
-              <ThemedText type="h4" style={{ color: PRIMARY }}>€{total.toFixed(2)}</ThemedText>
-            </View>
-          </View>
-
-          {/* Trust Badges */}
-          <View style={styles.trustBadges}>
-            <View style={styles.trustBadge}>
-              <Feather name="shield" size={20} color={PRIMARY} />
-              <ThemedText type="caption" style={{ marginLeft: 8, color: "#6B7280" }}>
-                Pago seguro
-              </ThemedText>
-            </View>
-            <View style={styles.trustBadge}>
-              <Feather name="lock" size={20} color={PRIMARY} />
-              <ThemedText type="caption" style={{ marginLeft: 8, color: "#6B7280" }}>
-                Datos protegidos
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-      </View>}
-
-      {/* RIGHT: Form Section */}
-      <View style={[styles.formSection, isMobile && styles.formSectionMobile]}>
-        <View style={[styles.formCard, { backgroundColor: theme.card }, isMobile && { padding: 20, borderRadius: 16 }]}>
+      <View style={styles.centerWrap}>
+        <View style={[styles.formCard, { backgroundColor: theme.card }]}>
             {/* Address Section */}
-            <View style={styles.formSection}>
+            <View style={styles.section}>
               <View style={styles.formSectionHeader}>
                 <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
                   <Feather name="map-pin" size={20} color={PRIMARY} />
@@ -550,7 +490,7 @@ export default function CheckoutScreen({ route }: any) {
             <View style={styles.divider} />
 
             {/* Payment Method Section */}
-            <View style={styles.formSection}>
+            <View style={styles.section}>
               <View style={styles.formSectionHeader}>
                 <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
                   <Feather name="credit-card" size={20} color={PRIMARY} />
@@ -600,7 +540,7 @@ export default function CheckoutScreen({ route }: any) {
 
             <View style={styles.divider} />
             {/* Coupon Section */}
-            <View style={styles.formSection}>
+            <View style={styles.section}>
               <View style={styles.formSectionHeader}>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Feather name="tag" size={20} color={PRIMARY} />
@@ -655,7 +595,7 @@ export default function CheckoutScreen({ route }: any) {
             <View style={styles.divider} />
 
             {/* Substitution Section */}
-            <View style={styles.formSection}>
+            <View style={styles.section}>
               <View style={styles.formSectionHeader}>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Feather name="refresh-cw" size={20} color={PRIMARY} />
@@ -753,7 +693,7 @@ export default function CheckoutScreen({ route }: any) {
             <View style={styles.divider} />
 
             {/* Tip Section */}
-            <View style={styles.formSection}>
+            <View style={styles.section}>
               <View style={styles.formSectionHeader}>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Feather name="heart" size={20} color={PRIMARY} />
@@ -791,7 +731,7 @@ export default function CheckoutScreen({ route }: any) {
 
             <View style={styles.divider} />
             {/* Final Summary */}
-            <View style={styles.formSection}>
+            <View style={styles.section}>
               <View style={styles.summaryRow}>
                 <ThemedText type="body" style={{ color: "#6B7280" }}>Subtotal</ThemedText>
                 <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
@@ -944,122 +884,18 @@ export default function CheckoutScreen({ route }: any) {
 }
 
 const styles = StyleSheet.create({
-  webContainer: {
-    flex: 1,
-    flexDirection: "row",
-    flexWrap: "wrap" as any,
-  },
-  // LEFT: Hero Section
-  heroSection: {
-    flex: 1,
-    minWidth: 300,
-    maxWidth: 600,
-    backgroundColor: PRIMARY,
-    padding: 48,
-    justifyContent: "center",
-  },
-  heroContent: {
-    maxWidth: 480,
-  },
-  logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  logoText: {
-    color: "#FFF",
-    marginLeft: 16,
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  heroTextContainer: {
-    marginBottom: 48,
-  },
-  heroTitle: {
-    fontSize: 48,
-    fontWeight: "800",
-    color: "#FFF",
-    marginBottom: 16,
-    lineHeight: 56,
-  },
-  heroSubtitle: {
-    fontSize: 18,
-    color: "rgba(255,255,255,0.9)",
-    lineHeight: 28,
-  },
-  heroCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 32,
-    marginBottom: 32,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-      },
-    }),
-  },
-  heroCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  heroCardDivider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginBottom: 16,
-  },
-  heroOrderItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  trustBadges: {
-    flexDirection: "row",
-    gap: 24,
-  },
-  trustBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  // RIGHT: Form Section
-  formSection: {
-    flex: 1,
-    minWidth: 300,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 48,
-  },
-  formSectionMobile: {
-    padding: 16,
-  },
-  formScrollView: {
-    flex: 1,
-    width: "100%",
-  },
-  formScrollContent: {
-    alignItems: "center",
-    paddingVertical: 48,
-  },
+  pageContent:   { flexGrow: 1 },
+  pageHeader:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1 },
+  backBtn:        { width: 40, height: 40, justifyContent: "center" },
+  centerWrap:     { flex: 1, alignItems: "center", paddingVertical: 32, paddingHorizontal: 16 },
   formCard: {
     width: "100%",
-    maxWidth: 520,
-    borderRadius: 24,
-    padding: 48,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-      },
-    }),
+    maxWidth: 640,
+    borderRadius: 16,
+    padding: 32,
+    ...Platform.select({ web: { boxShadow: "0 4px 20px rgba(0,0,0,0.08)" } }),
   },
+  section:        { marginBottom: 0 },
   formSectionHeader: {
     flexDirection: "row",
     alignItems: "center",

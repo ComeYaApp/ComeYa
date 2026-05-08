@@ -186,7 +186,7 @@ export default function AddressesScreen() {
           ))
         )}
       </ScrollView>
-    </View>
+    
     </View>
     </WebLayout>
   );

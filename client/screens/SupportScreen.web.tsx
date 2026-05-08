@@ -179,7 +179,7 @@ export default function SupportScreen() {
           </>
         )}
       </ScrollView>
-    </View>
+    
     </View>
     </WebLayout>
   );

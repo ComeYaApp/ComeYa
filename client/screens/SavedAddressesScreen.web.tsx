@@ -211,7 +211,7 @@ export default function SavedAddressesScreen() {
         onCancel={() => { setShowDeleteModal(false); setAddressToDelete(null); }}
         confirmText="Eliminar"
       />
-    </View>
+    
     </View>
     </WebLayout>
   );

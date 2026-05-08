@@ -107,7 +107,6 @@ export default function MarketsScreen() {
         )}
       </ScrollView>
     </View>
-    </View>
     </WebLayout>
   );
 }

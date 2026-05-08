@@ -244,7 +244,7 @@ export default function ReviewScreenEnhanced() {
           }
         </Pressable>
       </ScrollView>
-    </View>
+    
     </View>
     </WebLayout>
   );

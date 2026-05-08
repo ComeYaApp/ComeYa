@@ -12,6 +12,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useResponsive } from "@/hooks/useResponsive";
+import { useTheme } from "@/hooks/useTheme";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Signup">;
@@ -30,6 +31,7 @@ export default function SignupScreen({ navigation, route }: Props) {
   const { signup } = useAuth();
   const { showToast } = useToast();
   const { isMobile } = useResponsive();
+  const { isDark } = useTheme();
   const [role, setRole] = useState("customer");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState(route.params?.phone?.replace("+34", "") || "");
@@ -56,6 +58,7 @@ export default function SignupScreen({ navigation, route }: Props) {
   };
 
   return (
+    <View style={[s.page, { backgroundColor: isDark ? '#111' : '#fff' }]}>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.root}>
       {/* IZQUIERDA/ARRIBA — Hero */}
       <View style={s.left}>
@@ -209,14 +212,18 @@ export default function SignupScreen({ navigation, route }: Props) {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
+  page: {
+    flex: 1,
+    minHeight: "100vh" as any,
+  },
   root: { 
     flex: 1, 
     flexDirection: "row", 
-    backgroundColor: "#fff",
     minHeight: "100vh" as any,
     flexWrap: "wrap" as any,
   },
@@ -224,7 +231,7 @@ const s = StyleSheet.create({
   // IZQUIERDA/ARRIBA — Hero
   left: { 
     flex: 1,
-    minWidth: "100%" as any,
+    minWidth: 300,
     maxWidth: 600,
     backgroundColor: PRIMARY,
     position: "relative" as any,
