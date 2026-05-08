@@ -37,6 +37,13 @@ interface ActiveOrder {
   businessName: string;
   status: string;
   eta?: number;
+  deliveryPersonId?: string;
+  deliveryPersonName?: string;
+  deliveryPersonPhone?: string;
+  deliveryPersonPhoto?: string;
+  vehicleType?: string;
+  deliveryLatitude?: string;
+  deliveryLongitude?: string;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -80,6 +87,9 @@ export default function BusinessMapScreen() {
   const gmap = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const userMarkerRef = useRef<any>(null);
+  const driverMarkerRef = useRef<any>(null);
+  const homeMarkerRef = useRef<any>(null);
+  const routeLineRef = useRef<any>(null);
 
   const [businesses, setBusinesses] = useState<BusinessPin[]>([]);
   const [selected, setSelected] = useState<BusinessPin | null>(null);
@@ -88,6 +98,7 @@ export default function BusinessMapScreen() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showDriverPanel, setShowDriverPanel] = useState(false);
 
   // Cargar Google Maps
   useEffect(() => {
@@ -184,6 +195,12 @@ export default function BusinessMapScreen() {
             id: o.order?.id || o.id,
             businessName: o.order?.businessName || o.businessName || 'Negocio',
             status: o.order?.status || o.status,
+            deliveryPersonId: o.order?.deliveryPersonId || o.deliveryPersonId,
+            deliveryPersonName: o.order?.deliveryPersonName || o.deliveryPersonName,
+            deliveryPersonPhone: o.order?.deliveryPersonPhone || o.deliveryPersonPhone,
+            vehicleType: o.order?.vehicleType || o.vehicleType,
+            deliveryLatitude: o.order?.deliveryLatitude || o.deliveryLatitude,
+            deliveryLongitude: o.order?.deliveryLongitude || o.deliveryLongitude,
             eta: (o.order?.estimatedDelivery || o.estimatedDelivery)
               ? Math.max(0, Math.round((new Date(o.order?.estimatedDelivery || o.estimatedDelivery).getTime() - Date.now()) / 60000))
               : undefined,
@@ -195,6 +212,90 @@ export default function BusinessMapScreen() {
     const interval = setInterval(fetch, 15000);
     return () => clearInterval(interval);
   }, [user]);
+
+  // Polling GPS del repartidor cuando hay pedido on_the_way
+  useEffect(() => {
+    if (!mapsReady || !gmap.current) return;
+    const order = activeOrders.find(o => o.status === 'on_the_way');
+    if (!order) {
+      // Limpiar markers de repartidor si no hay pedido en camino
+      if (driverMarkerRef.current) { driverMarkerRef.current.setMap(null); driverMarkerRef.current = null; }
+      if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+      return;
+    }
+
+    // Mostrar pin de casa (destino)
+    if (order.deliveryLatitude && order.deliveryLongitude && !homeMarkerRef.current) {
+      const google = (window as any).google;
+      const homePos = { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) };
+      const homeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="56"><circle cx="24" cy="22" r="20" fill="#DC2626" stroke="white" stroke-width="3"/><path d="M14 22l10-8 10 8M16 22v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="16,42 32,42 24,56" fill="#DC2626"/></svg>`;
+      homeMarkerRef.current = new google.maps.Marker({
+        position: homePos, map: gmap.current, title: 'Tu dirección',
+        icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(homeSvg)}`, scaledSize: new google.maps.Size(48, 56), anchor: new google.maps.Point(24, 56) },
+        zIndex: 90,
+      });
+    }
+
+    const pollDriver = async () => {
+      try {
+        const res = await apiRequest('GET', `/api/delivery/location/${order.id}`);
+        const data = await res.json();
+        if (!data.location?.latitude || !data.location?.longitude) return;
+        const google = (window as any).google;
+        const driverPos = { lat: parseFloat(data.location.latitude), lng: parseFloat(data.location.longitude) };
+
+        // Cargar foto del repartidor si no la tenemos
+        let driverPhoto = order.deliveryPersonPhoto || null;
+        if (!driverPhoto && order.deliveryPersonId) {
+          try {
+            const dr = await apiRequest('GET', `/api/users/${order.deliveryPersonId}`);
+            const dd = await dr.json();
+            driverPhoto = dd.user?.profilePicture || null;
+            setActiveOrders(prev => prev.map(o => o.id === order.id ? { ...o, deliveryPersonPhoto: driverPhoto || undefined } : o));
+          } catch {}
+        }
+
+        const vehicleIcon = order.vehicleType === 'car' ? '🚗' : order.vehicleType === 'bike' ? '🚲' : '🛵';
+        const driverSvg = driverPhoto
+          ? `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="72"><defs><clipPath id="dc"><circle cx="28" cy="28" r="24"/></clipPath></defs><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><image href="${driverPhoto}" x="4" y="4" width="48" height="48" clip-path="url(#dc)" preserveAspectRatio="xMidYMid slice"/><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="72"><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><text x="28" y="36" text-anchor="middle" font-size="24">${vehicleIcon}</text><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`;
+
+        if (driverMarkerRef.current) {
+          driverMarkerRef.current.setPosition(driverPos);
+          driverMarkerRef.current.setIcon({ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`, scaledSize: new google.maps.Size(64, 72), anchor: new google.maps.Point(28, 72) });
+        } else {
+          driverMarkerRef.current = new google.maps.Marker({
+            position: driverPos, map: gmap.current,
+            title: order.deliveryPersonName || 'Repartidor',
+            icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`, scaledSize: new google.maps.Size(64, 72), anchor: new google.maps.Point(28, 72) },
+            zIndex: 999,
+          });
+          driverMarkerRef.current.addListener('click', () => setShowDriverPanel(true));
+        }
+
+        // Ruta verde repartidor → casa
+        if (order.deliveryLatitude && order.deliveryLongitude) {
+          const destPos = { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) };
+          const ds = new google.maps.DirectionsService();
+          ds.route({ origin: driverPos, destination: destPos, travelMode: google.maps.TravelMode.DRIVING },
+            (result: any, status: any) => {
+              if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+              const path = status === 'OK' ? result.routes[0].overview_path : [driverPos, destPos];
+              routeLineRef.current = new google.maps.Polyline({ path, geodesic: true, strokeColor: '#10B981', strokeOpacity: 0.9, strokeWeight: 5, map: gmap.current });
+            });
+          // Ajustar bounds
+          const b = new google.maps.LatLngBounds();
+          b.extend(driverPos); b.extend(destPos);
+          gmap.current.fitBounds(b, { top: 80, right: 80, bottom: 200, left: 80 });
+        }
+        setShowDriverPanel(true);
+      } catch {}
+    };
+
+    pollDriver();
+    const interval = setInterval(pollDriver, 10000);
+    return () => clearInterval(interval);
+  }, [mapsReady, activeOrders]);
 
   // Renderizar pins en el mapa
   useEffect(() => {
@@ -384,6 +485,49 @@ export default function BusinessMapScreen() {
         </Pressable>
       )}
 
+      {/* Panel repartidor en camino */}
+      {showDriverPanel && activeOrders.find(o => o.status === 'on_the_way') && (() => {
+        const order = activeOrders.find(o => o.status === 'on_the_way')!;
+        const vehicleLabel = order.vehicleType === 'car' ? 'Coche 🚗' : order.vehicleType === 'bike' ? 'Bicicleta 🚲' : 'Moto 🛵';
+        return (
+          <View style={[s.driverPanel, { backgroundColor: theme.card, bottom: insets.bottom + 16 }]}>
+            <View style={s.driverPanelHeader}>
+              <View style={[s.driverPanelDot, { backgroundColor: '#10B981' }]} />
+              <ThemedText type="small" style={{ color: '#10B981', fontWeight: '700', flex: 1 }}>En camino 🛵</ThemedText>
+              <Pressable onPress={() => setShowDriverPanel(false)} style={s.driverPanelClose}>
+                <Feather name="x" size={16} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+            <View style={s.driverRow}>
+              {order.deliveryPersonPhoto ? (
+                <Image source={{ uri: order.deliveryPersonPhoto }} style={s.driverPhoto} contentFit="cover" />
+              ) : (
+                <View style={[s.driverPhotoPlaceholder, { backgroundColor: '#10B98120' }]}>
+                  <Feather name="user" size={22} color="#10B981" />
+                </View>
+              )}
+              <View style={s.driverInfo}>
+                <ThemedText type="body" style={{ fontWeight: '700' }}>{order.deliveryPersonName || 'Repartidor'}</ThemedText>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>{vehicleLabel}</ThemedText>
+                {order.eta !== undefined && (
+                  <ThemedText type="caption" style={{ color: '#10B981', fontWeight: '600' }}>Llega en ~{order.eta} min</ThemedText>
+                )}
+              </View>
+              <View style={s.driverActions}>
+                {order.deliveryPersonPhone && (
+                  <Pressable onPress={() => (window as any).open(`tel:${order.deliveryPersonPhone}`, '_self')} style={[s.driverBtn, { backgroundColor: '#DC2626' }]}>
+                    <Feather name="phone" size={16} color="#fff" />
+                  </Pressable>
+                )}
+                <Pressable onPress={() => navigation.navigate('OrderTracking', { orderId: order.id })} style={[s.driverBtn, { backgroundColor: '#10B981', marginTop: 6 }]}>
+                  <Feather name="map" size={16} color="#fff" />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        );
+      })()}
+
       {/* Banner pedido activo */}
       {activeOrders.length > 0 && !selected && (
         <Pressable
@@ -504,4 +648,19 @@ const s = StyleSheet.create({
     zIndex: 10,
   },
   orderBannerDot: { width: 10, height: 10, borderRadius: 5 },
+  driverPanel: {
+    position: 'absolute', left: Spacing.lg, right: Spacing.lg,
+    borderRadius: BorderRadius.lg, padding: Spacing.md,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18, shadowRadius: 10, elevation: 10, zIndex: 10,
+  },
+  driverPanelHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
+  driverPanelDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
+  driverPanelClose: { padding: 4 },
+  driverRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  driverPhoto: { width: 52, height: 52, borderRadius: 26 },
+  driverPhotoPlaceholder: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
+  driverInfo: { flex: 1, gap: 2 },
+  driverActions: { alignItems: 'center' },
+  driverBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
 });
