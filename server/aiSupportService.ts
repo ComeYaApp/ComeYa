@@ -47,7 +47,7 @@ SOPORTE:
 - Usa emojis ocasionalmente
 - Si no sabes algo, ofrece contactar a soporte humano
 - Siempre en espanol
-- Email de soporte: support@comeyaa.com
+- Email de soporte: support@comeya.es
 `;
 
 const FAQS = `
@@ -79,7 +79,7 @@ Como me convierto en repartidor?
 - Espera aprobacion del equipo
 
 Como registro mi negocio?
-- Contacta al equipo en negocios@comeyaa.com
+- Contacta al equipo en negocios@comeya.es
 - Configura tu menu y horarios desde la app
 - Conecta tu cuenta bancaria (IBAN) para recibir pagos
 `;
@@ -150,7 +150,7 @@ export async function sendSupportMessage(
     return botResponse;
   } catch (error) {
     console.error('Error generating AI response:', error);
-    const fallback = 'Disculpa, estoy teniendo problemas tecnicos. Contacta a support@comeyaa.com o intenta mas tarde.';
+    const fallback = 'Disculpa, estoy teniendo problemas tecnicos. Contacta a support@comeya.es o intenta mas tarde.';
     await db.insert(supportMessages).values({
       id: crypto.randomUUID(),
       chatId,

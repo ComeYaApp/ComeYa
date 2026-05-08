@@ -35,7 +35,7 @@ const PROVIDERS = [
     color: '#003087',
     icon: 'dollar-sign' as const,
     fields: [
-      { key: 'email', label: 'Email de PayPal', placeholder: 'pagos@comeyaa.com', keyboard: 'email-address' as const },
+      { key: 'email', label: 'Email de PayPal', placeholder: 'pagos@comeya.es', keyboard: 'email-address' as const },
     ],
   },
 ];
