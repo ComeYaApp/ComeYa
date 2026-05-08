@@ -26,7 +26,7 @@ export default function VerifyPhoneScreen() {
   const text = isDark ? "#fff" : "#1a1a1a";
   const sub = isDark ? "#aaa" : "#666";
 
-  const [code, setCode] = useState(["", "", "", ""]);
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +49,7 @@ export default function VerifyPhoneScreen() {
     newCode[index] = digit;
     setCode(newCode);
     setError("");
-    if (digit && index < 3) inputRefs.current[index + 1]?.focus();
+    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
   };
 
   const handleKeyDown = (e: any, index: number) => {
@@ -60,7 +60,7 @@ export default function VerifyPhoneScreen() {
 
   const handleVerify = async () => {
     const fullCode = code.join("");
-    if (fullCode.length !== 4) { setError("Ingresa el código completo"); return; }
+    if (fullCode.length !== 6) { setError("Ingresa el código completo"); return; }
     setIsLoading(true);
     try {
       const verifiedUser = await verifyPhone(phone, fullCode);
@@ -82,7 +82,7 @@ export default function VerifyPhoneScreen() {
       }
     } catch (err: any) {
       setError(err.message || "Código incorrecto");
-      setCode(["", "", "", ""]);
+      setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
       setIsLoading(false);
@@ -117,7 +117,7 @@ export default function VerifyPhoneScreen() {
         </View>
         <Text style={[s.title, { color: text }]}>Verifica tu teléfono</Text>
         <Text style={[s.subtitle, { color: sub }]}>
-          Enviamos un código de 4 dígitos a{"\n"}
+          Enviamos un código de 6 dígitos a{"\n"}
           <Text style={{ fontWeight: "700", color: text }}>{phone}</Text>
         </Text>
 
@@ -146,7 +146,7 @@ export default function VerifyPhoneScreen() {
 
         <Pressable
           onPress={handleVerify}
-          disabled={isLoading || code.some(d => !d)}
+          disabled={isLoading || code.some(d => !d) || code.join("").length !== 6}
           style={[s.btn, { backgroundColor: ComeYaColors.primary, opacity: isLoading || code.some(d => !d) ? 0.5 : 1 }]}
         >
           {isLoading

@@ -41,7 +41,7 @@ export default function VerifyPhoneScreen({
   const insets = useSafeAreaInsets();
   const phone = route.params?.phone || "";
 
-  const [code, setCode] = useState(["", "", "", ""]);
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState("");
@@ -61,15 +61,15 @@ export default function VerifyPhoneScreen({
 
   const handleCodeChange = (value: string, index: number) => {
     if (value.length > 1) {
-      const digits = value.replace(/\D/g, "").slice(0, 4).split("");
+      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
       const newCode = [...code];
       digits.forEach((digit, i) => {
-        if (index + i < 4) {
+        if (index + i < 6) {
           newCode[index + i] = digit;
         }
       });
       setCode(newCode);
-      const lastFilledIndex = Math.min(index + digits.length - 1, 3);
+      const lastFilledIndex = Math.min(index + digits.length - 1, 5);
       inputRefs.current[lastFilledIndex]?.focus();
       return;
     }
@@ -79,7 +79,7 @@ export default function VerifyPhoneScreen({
     setCode(newCode);
     setError("");
 
-    if (value && index < 3) {
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -88,11 +88,12 @@ export default function VerifyPhoneScreen({
     if (key === "Backspace" && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
+
   };
 
   const handleVerify = async () => {
     const fullCode = code.join("");
-    if (fullCode.length !== 4) {
+    if (fullCode.length !== 6) {
       setError("Ingresa el código completo");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -137,7 +138,7 @@ export default function VerifyPhoneScreen({
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setError(error.message || "Código incorrecto");
-      setCode(["", "", "", ""]);
+      setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {
       setIsLoading(false);
@@ -202,7 +203,7 @@ export default function VerifyPhoneScreen({
           type="body"
           style={[styles.subtitle, { color: theme.textSecondary }]}
         >
-          Enviamos un código de 4 dígitos a{"\n"}
+          Enviamos un código de 6 dígitos a{"\n"}
           <ThemedText type="body" style={{ fontWeight: "600" }}>
             {formatPhone(phone)}
           </ThemedText>
@@ -251,7 +252,7 @@ export default function VerifyPhoneScreen({
 
         <Button
           onPress={handleVerify}
-          disabled={isLoading || code.some((d) => !d)}
+          disabled={isLoading || code.some((d) => !d) || code.join("").length !== 6}
           style={styles.verifyButton}
         >
           {isLoading ? (
