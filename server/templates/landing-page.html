@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MOUZO - Delivery en Autlán</title>
-  <meta name="description" content="MOUZO - Plataforma de delivery que conecta negocios locales con la comunidad de Autlán, Jalisco." />
-  <meta name="theme-color" content="#FF8C00" />
-  <meta property="og:title" content="MOUZO - Delivery en Autlán" />
-  <meta property="og:description" content="Conectando negocios locales con la comunidad" />
+  <title>ComeYa - Delivery en Soria</title>
+  <meta name="description" content="ComeYa - Plataforma de delivery que conecta negocios locales con la comunidad de Soria, España." />
+  <meta name="theme-color" content="#DC2626" />
+  <meta property="og:title" content="ComeYa - Delivery en Soria" />
+  <meta property="og:description" content="Conectando negocios locales con la comunidad de Soria" />
   <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://comeya.es" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%);
+      background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -24,158 +25,100 @@
       background: white;
       border-radius: 24px;
       padding: 40px 32px;
-      max-width: 400px;
+      max-width: 420px;
       width: 100%;
       text-align: center;
       box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     }
-    .logo {
-      font-size: 48px;
-      font-weight: 800;
-      color: #FF8C00;
-      margin-bottom: 8px;
-    }
-    .tagline {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 32px;
-    }
-    .meaning {
-      font-style: italic;
-      color: #999;
-      font-size: 12px;
-      margin-bottom: 24px;
-    }
-    h2 {
-      font-size: 20px;
-      color: #333;
-      margin-bottom: 16px;
-    }
-    .features {
-      text-align: left;
-      margin-bottom: 32px;
-    }
+    .logo { font-size: 48px; font-weight: 900; color: #DC2626; margin-bottom: 4px; letter-spacing: -1px; }
+    .rabbit { font-size: 32px; margin-bottom: 8px; }
+    .tagline { color: #666; font-size: 14px; margin-bottom: 32px; }
+    h2 { font-size: 20px; color: #333; margin-bottom: 16px; }
+    .features { text-align: left; margin-bottom: 28px; }
     .feature {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding: 12px;
-      background: #FFF8F0;
-      border-radius: 12px;
+      display: flex; align-items: flex-start; gap: 12px;
+      margin-bottom: 12px; padding: 12px;
+      background: #FEF2F2; border-radius: 12px;
     }
     .feature-icon {
-      width: 32px;
-      height: 32px;
-      background: #FF8C00;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 16px;
-      flex-shrink: 0;
+      width: 32px; height: 32px; background: #DC2626;
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; color: white; font-size: 16px; flex-shrink: 0;
     }
-    .feature-text h3 {
-      font-size: 14px;
-      color: #333;
-      margin-bottom: 4px;
-    }
-    .feature-text p {
-      font-size: 12px;
-      color: #666;
-    }
+    .feature-text h3 { font-size: 14px; color: #333; margin-bottom: 2px; }
+    .feature-text p { font-size: 12px; color: #666; }
     .roles {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 32px;
-      flex-wrap: wrap;
-      justify-content: center;
+      display: flex; gap: 8px; margin-bottom: 28px;
+      flex-wrap: wrap; justify-content: center;
     }
-    .role {
-      padding: 8px 16px;
-      background: #f5f5f5;
-      border-radius: 20px;
-      font-size: 12px;
-      color: #555;
-    }
+    .role { padding: 6px 14px; background: #f5f5f5; border-radius: 20px; font-size: 12px; color: #555; }
     .cta {
-      background: #FF8C00;
-      color: white;
-      border: none;
-      padding: 16px 32px;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 16px;
+      background: #DC2626; color: white; border: none;
+      padding: 16px 32px; border-radius: 12px; font-size: 16px;
+      font-weight: 700; cursor: pointer; width: 100%; margin-bottom: 12px;
+      text-decoration: none; display: block;
     }
-    .cta:hover {
-      background: #E67E00;
+    .cta:hover { background: #B91C1C; }
+    .cta-secondary {
+      background: transparent; color: #DC2626; border: 2px solid #DC2626;
+      padding: 14px 32px; border-radius: 12px; font-size: 15px;
+      font-weight: 600; cursor: pointer; width: 100%; margin-bottom: 20px;
+      text-decoration: none; display: block;
     }
-    .api-status {
-      font-size: 12px;
-      color: #999;
-    }
-    .api-status span {
-      color: #22C55E;
-    }
-    .footer {
-      margin-top: 24px;
-      font-size: 11px;
-      color: #999;
-    }
+    .cta-secondary:hover { background: #FEF2F2; }
+    .api-status { font-size: 12px; color: #999; }
+    .api-status span { color: #22C55E; font-weight: 600; }
+    .footer { margin-top: 20px; font-size: 11px; color: #999; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="logo">MOUZO</div>
-    <div class="tagline">Delivery Local en Autlán</div>
-    <div class="meaning">"Del náhuatl: vivir" - Vivir es conectar</div>
-    
+    <div class="rabbit">🐰</div>
+    <div class="logo">ComeYa</div>
+    <div class="tagline">Delivery local en Soria, España</div>
+
     <h2>Conectamos tu comunidad</h2>
-    
+
     <div class="features">
       <div class="feature">
         <div class="feature-icon">🍔</div>
         <div class="feature-text">
           <h3>Restaurantes Locales</h3>
-          <p>Pide de tus restaurantes favoritos de Autlán</p>
+          <p>Pide de tus restaurantes favoritos de Soria</p>
         </div>
       </div>
       <div class="feature">
         <div class="feature-icon">🛒</div>
         <div class="feature-text">
-          <h3>Mercado a Domicilio</h3>
-          <p>Productos frescos del mercado local con especificaciones</p>
+          <h3>Negocios de Proximidad</h3>
+          <p>Apoya el comercio local soriano desde casa</p>
         </div>
       </div>
       <div class="feature">
-        <div class="feature-icon">🚴</div>
+        <div class="feature-icon">🛵</div>
         <div class="feature-text">
           <h3>Repartidores Locales</h3>
           <p>Genera ingresos entregando pedidos en tu ciudad</p>
         </div>
       </div>
     </div>
-    
+
     <div class="roles">
-      <span class="role">Clientes</span>
-      <span class="role">Negocios</span>
-      <span class="role">Repartidores</span>
+      <span class="role">👤 Clientes</span>
+      <span class="role">🏪 Negocios</span>
+      <span class="role">🛵 Repartidores</span>
     </div>
-    
-    <a href="/api/health" style="text-decoration: none;">
-      <button class="cta">Ver Estado del Sistema</button>
-    </a>
-    
+
+    <a href="https://app.comeya.es" class="cta">Abrir la App</a>
+    <a href="mailto:support@comeya.es" class="cta-secondary">Contactar soporte</a>
+
     <div class="api-status">
-      API Backend: <span>Activo</span>
+      Backend: <span>✓ Activo</span>
     </div>
-    
+
     <div class="footer">
-      MOUZO &copy; 2026 - Autlán, Jalisco, México
+      ComeYa &copy; 2026 · Soria, Castilla y León, España<br/>
+      <a href="https://comeya.es" style="color:#DC2626;">comeya.es</a>
     </div>
   </div>
 </body>
