@@ -26,7 +26,7 @@ const getStripePromise = async () => {
   return stripePromise;
 };
 
-function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, isSubscription, subscriptionId, onSuccess, onCancel }: any) {
+function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, isSubscription, subscriptionId, isGiftCard, onSuccess, onCancel }: any) {
   const stripe = useStripe();
   const elements = useElements();
   const { isDark } = useTheme();
@@ -41,6 +41,7 @@ function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, isSub
   useEffect(() => {
     const init = async () => {
       try {
+        console.log('[Stripe] Init params:', { orderId, amount, businessId, isSubscription, subscriptionId, isGiftCard });
         if (!isSubscription && (!orderId || !amount || amount <= 0 || !businessId)) {
           showToast('Datos de pago incompletos', 'error');
           return;
@@ -60,7 +61,8 @@ function PaymentForm({ orderId, amount, businessId, subtotal, deliveryFee, isSub
         if (data.clientSecret) {
           setClientSecret(data.clientSecret);
         } else {
-          showToast('Error al inicializar el pago', 'error');
+          console.error('[Stripe] No clientSecret:', data);
+          showToast(data.message || data.error || 'Error al inicializar el pago', 'error');
         }
       } catch (e: any) {
         showToast('Error al conectar con el servidor de pagos', 'error');
@@ -273,6 +275,7 @@ export default function StripePaymentScreen() {
                 deliveryFee={deliveryFee}
                 isSubscription={isSubscription}
                 subscriptionId={subscriptionId}
+                isGiftCard={isGiftCard}
                 onSuccess={handleSuccess}
                 onCancel={() => navigation.goBack()}
               />
