@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiRequest } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 
@@ -101,6 +102,7 @@ export default function ReviewScreenEnhanced() {
   const avg = avgRating.length ? (avgRating.reduce((a, b) => a + b, 0) / avgRating.length).toFixed(1) : '—';
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       <MobileSidebarWrapper title="Calificar pedido" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.sideHeader, { borderBottomColor: border }]}>
@@ -243,6 +245,8 @@ export default function ReviewScreenEnhanced() {
         </Pressable>
       </ScrollView>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

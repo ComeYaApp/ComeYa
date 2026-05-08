@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 import { useAuth } from '@/contexts/AuthContext';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = "#DC2626";
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
@@ -353,6 +354,7 @@ export default function OrderTrackingScreen() {
   const statusInfo = STATUS_LABELS[order?.status] || { label: "Procesando...", color: "#888", icon: "clock" };
 
   return (
+    <WebLayout>
     <View style={[s.webContainer, { backgroundColor: theme.backgroundRoot }]}>
       {/* IZQUIERDA: Mapa fijo a pantalla completa */}
       <View style={s.mapSection}>
@@ -740,6 +742,8 @@ export default function OrderTrackingScreen() {
       </ScrollView>
       </View>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 
@@ -759,7 +763,7 @@ const s = StyleSheet.create({
   webContainer: {
     flex: 1,
     flexDirection: "row",
-    height: "100vh" as any,
+    height: "calc(100vh - 58px)" as any,
   },
   
   // IZQUIERDA: Mapa fijo

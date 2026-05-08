@@ -10,6 +10,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { apiRequest } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
 
+import { WebLayout } from '@/components/WebLayout';
+
 const PRIMARY = '#DC2626';
 const PRESETS = [10, 25, 50, 100];
 
@@ -130,6 +132,7 @@ export default function GiftCardsScreen() {
   const PROVIDERS = ['bizum', 'transferencia', 'stripe'];
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       <MobileSidebarWrapper title="Gift Cards" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.sideHeader, { borderBottomColor: border }]}>
@@ -359,6 +362,7 @@ export default function GiftCardsScreen() {
         )}
       </ScrollView>
     </View>
+    </WebLayout>
   );
 }
 

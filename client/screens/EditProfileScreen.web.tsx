@@ -10,6 +10,7 @@ import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
+import { WebLayout } from "@/components/WebLayout";
 
 function resolveProfileImageUrl(img: string): string {
   if (img.startsWith("data:image/")) return img;
@@ -211,6 +212,7 @@ export default function EditProfileScreen() {
   };
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar — igual al de ProfileScreen */}
       <MobileSidebarWrapper title="Mi Perfil" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
@@ -421,6 +423,8 @@ export default function EditProfileScreen() {
         </View>
       </Modal>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

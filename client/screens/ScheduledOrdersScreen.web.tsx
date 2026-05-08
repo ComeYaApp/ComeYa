@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiRequest } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 
@@ -80,6 +81,7 @@ export default function ScheduledOrdersScreen() {
   ];
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar */}
       <MobileSidebarWrapper
@@ -260,6 +262,8 @@ export default function ScheduledOrdersScreen() {
         )}
       </ScrollView>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

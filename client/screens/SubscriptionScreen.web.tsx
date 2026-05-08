@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiRequest } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 
@@ -133,6 +134,7 @@ export default function SubscriptionScreen() {
   ];
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar */}
       <MobileSidebarWrapper
@@ -353,6 +355,8 @@ export default function SubscriptionScreen() {
         </TouchableOpacity>
       </Modal>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

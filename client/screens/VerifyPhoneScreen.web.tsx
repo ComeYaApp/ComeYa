@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Text } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Text, useWindowDimensions } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -19,6 +19,8 @@ export default function VerifyPhoneScreen() {
   const { theme, isDark } = useTheme();
   const { verifyPhone, resendVerification } = useAuth();
   const phone = route.params?.phone || "";
+  const { width: screenWidth } = useWindowDimensions();
+  const isMobile = screenWidth < 500;
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -132,11 +134,14 @@ export default function VerifyPhoneScreen() {
               maxLength={1}
               inputMode="numeric"
               style={{
-                width: 56, height: 64, borderRadius: 12,
+                width: isMobile ? Math.floor((screenWidth - 80) / 6) : 56,
+                height: isMobile ? Math.floor((screenWidth - 80) / 6) : 64,
+                borderRadius: 12,
                 border: `2px solid ${error ? ComeYaColors.error : digit ? ComeYaColors.primary : border}`,
                 backgroundColor: card, color: text,
-                fontSize: 28, fontWeight: "700", textAlign: "center",
+                fontSize: isMobile ? 20 : 28, fontWeight: "700", textAlign: "center",
                 outline: "none", transition: "border-color 0.2s",
+                flexShrink: 0,
               }}
             />
           ))}
@@ -179,13 +184,13 @@ export default function VerifyPhoneScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, justifyContent: "center", alignItems: "center" },
-  card: { width: 420, padding: 48, borderRadius: 24, borderWidth: 1, alignItems: "center" },
+  root: { flex: 1, justifyContent: "center", alignItems: "center", padding: 16 },
+  card: { width: "100%" as any, maxWidth: 420, padding: 32, borderRadius: 24, borderWidth: 1, alignItems: "center" },
   logo: { width: 80, height: 40, marginBottom: 24 },
   iconCircle: { width: 80, height: 80, borderRadius: 40, justifyContent: "center", alignItems: "center", marginBottom: 20 },
   title: { fontSize: 26, fontWeight: "800", marginBottom: 8 },
   subtitle: { fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 32 },
-  codeRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
+  codeRow: { flexDirection: "row", gap: 8, marginBottom: 16, justifyContent: "center", width: "100%" as any },
   error: { fontSize: 13, marginBottom: 12, textAlign: "center" },
   btn: { width: "100%", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 8 },
   btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },

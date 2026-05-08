@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiRequest } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 
@@ -59,6 +60,7 @@ export default function PaymentMethodsScreen() {
   ];
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       <MobileSidebarWrapper title="Métodos de Pago" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.sideHeader, { borderBottomColor: border }]}>
@@ -190,6 +192,8 @@ export default function PaymentMethodsScreen() {
         )}
       </ScrollView>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

@@ -10,6 +10,7 @@ import { ComeYaColors } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import { WebLayout } from "@/components/WebLayout";
 
 const PRIMARY = "#DC2626";
 
@@ -91,6 +92,7 @@ export default function SavedAddressesScreen() {
   };
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar — igual al de ProfileScreen */}
       <MobileSidebarWrapper title="Mis Direcciones" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
@@ -210,6 +212,8 @@ export default function SavedAddressesScreen() {
         confirmText="Eliminar"
       />
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

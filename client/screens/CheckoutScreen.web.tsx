@@ -27,6 +27,7 @@ import { calculateDistance, calculateDeliveryFee, estimateDeliveryTime } from "@
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
 import { useResponsive } from "@/hooks/useResponsive";
+import { WebLayout } from "@/components/WebLayout";
 
 type SubstitutionOption = "refund" | "call" | "substitute";
 type PaymentMethod = "stripe_card" | "stripe_bizum" | "paypal" | "bizum_manual" | "sepa" | "binance";
@@ -400,6 +401,7 @@ export default function CheckoutScreen({ route }: any) {
 
   return (
     <>
+    <WebLayout>
     <ScrollView style={{ flex: 1, backgroundColor: theme.backgroundRoot }} contentContainerStyle={styles.webContainer}>
       {/* LEFT: Hero Section — oculto en móvil */}
       {!isMobile && <View style={styles.heroSection}>
@@ -862,6 +864,7 @@ export default function CheckoutScreen({ route }: any) {
         </View>
       </View>
     </ScrollView>
+    </WebLayout>
 
     {/* Address Picker Modal */}
     <Modal

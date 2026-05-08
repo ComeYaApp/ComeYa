@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiRequest } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 
@@ -17,28 +18,18 @@ export default function GroupOrderScreen() {
   const { isDark } = useTheme();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
 
   const routeGroupOrderId = route.params?.groupOrderId;
   const shareToken = route.params?.shareToken;
-
   const [resolvedGroupOrderId, setResolvedGroupOrderId] = useState<string | null>(routeGroupOrderId || null);
 
   useEffect(() => {
-    const resolveGroupOrder = async () => {
-      if (shareToken && !resolvedGroupOrderId) {
-        try {
-          const response = await apiRequest('GET', `/api/group-orders/by-token/${shareToken}`);
-          const data = await response.json();
-          if (data.success && data.groupOrder) {
-            setResolvedGroupOrderId(data.groupOrder.id);
-          }
-        } catch (error) {
-          console.error('Error resolving group order:', error);
-        }
-      }
-    };
-    resolveGroupOrder();
+    if (shareToken && !resolvedGroupOrderId) {
+      apiRequest('GET', `/api/group-orders/by-token/${shareToken}`)
+        .then(r => r.json())
+        .then(data => { if (data.success && data.groupOrder) setResolvedGroupOrderId(data.groupOrder.id); })
+        .catch(console.error);
+    }
   }, [shareToken]);
 
   const groupOrderId = resolvedGroupOrderId;
@@ -50,7 +41,7 @@ export default function GroupOrderScreen() {
   const sub    = isDark ? '#aaa'    : '#666';
   const cardBg = isDark ? '#2a2a2a' : '#f9fafb';
 
-  const { data: groupData, refetch, isLoading: isLoadingGroup } = useQuery({
+  const { data: groupData, isLoading: isLoadingGroup } = useQuery({
     queryKey: ['/api/group-orders', groupOrderId],
     queryFn: async () => {
       if (!groupOrderId) return null;
@@ -96,326 +87,219 @@ export default function GroupOrderScreen() {
   const totalParticipants = group?.participants?.length || 0;
   const totalAmount = (group?.totalAmount || 0) / 100;
 
-// If no groupOrderId and no shareToken, show empty state with sidebar
+  const Sidebar = ({ children }: { children: React.ReactNode }) => (
+    <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
+      {children}
+    </MobileSidebarWrapper>
+  );
+
+  // No groupOrderId and no shareToken
   if (!groupOrderId && !shareToken) {
     return (
-      <View style={[s.root, { backgroundColor: bg }]}>
-        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-          <View style={[s.sideHeader, { borderBottomColor: border }]}>
-            <View style={[s.avatarWrap, { backgroundColor: PRIMARY + '15' }]}>
-              <Feather name="users" size={28} color={PRIMARY} />
+      <WebLayout>
+        <View style={[s.root, { backgroundColor: bg }]}>
+          <Sidebar>
+            <View style={[s.sideHeader, { borderBottomColor: border }]}>
+              <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
+                <Feather name="users" size={28} color={PRIMARY} />
+              </View>
+              <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
             </View>
-            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
-          </View>
-          <View style={s.sideContent}>
-            <Text style={[s.sideText, { color: sub }]}>
-              Usa el enlace compartido para unirte a un pedido grupal existente.
-            </Text>
-          </View>
-          <View style={[s.sideFooter, { borderTopColor: border }]}>
-            <Pressable onPress={() => navigation.navigate('Main')} style={s.backBtn}>
-              <Feather name="home" size={18} color={PRIMARY} />
-              <Text style={[s.backBtnText, { color: PRIMARY }]}>Volver al inicio</Text>
-            </Pressable>
-          </View>
-        </MobileSidebarWrapper>
-        <View style={s.main} />
-      </View>
+            <View style={s.sideContent}>
+              <Text style={[s.sideText, { color: sub }]}>Usa el enlace compartido para unirte a un pedido grupal existente.</Text>
+            </View>
+            <View style={[s.sideFooter, { borderTopColor: border }]}>
+              <Pressable onPress={() => navigation.navigate('Main')} style={s.backBtn}>
+                <Feather name="home" size={18} color={PRIMARY} />
+                <Text style={[s.backBtnText, { color: PRIMARY }]}>Volver al inicio</Text>
+              </Pressable>
+            </View>
+          </Sidebar>
+          <View style={s.main} />
+        </View>
+      </WebLayout>
     );
   }
 
-  // If still loading after having a groupOrderId
+  // Loading
   if (!group && isLoadingGroup) {
     return (
-      <View style={[s.root, { backgroundColor: bg }]}>
-        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-          <View style={[s.sideHeader, { borderBottomColor: border }]}>
-            <View style={[s.avatarWrap, { backgroundColor: PRIMARY + '15' }]}>
-              <Feather name="users" size={28} color={PRIMARY} />
+      <WebLayout>
+        <View style={[s.root, { backgroundColor: bg }]}>
+          <Sidebar>
+            <View style={[s.sideHeader, { borderBottomColor: border }]}>
+              <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
+                <Feather name="users" size={28} color={PRIMARY} />
+              </View>
+              <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
             </View>
-            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
-          </View>
-          <View style={s.sideContent}>
-            <ActivityIndicator size="large" color={PRIMARY} />
-            <Text style={[s.loadingText, { color: sub, marginTop: 12 }]}>Cargando...</Text>
-          </View>
-          <View style={[s.sideFooter, { borderTopColor: border }]}>
-            <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-              <Feather name="arrow-left" size={18} color={sub} />
-              <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-            </Pressable>
-          </View>
-        </MobileSidebarWrapper>
-        <View style={s.main} />
-      </View>
+            <View style={s.sideContent}>
+              <ActivityIndicator size="large" color={PRIMARY} />
+              <Text style={[s.sideText, { color: sub, marginTop: 12 }]}>Cargando...</Text>
+            </View>
+            <View style={[s.sideFooter, { borderTopColor: border }]}>
+              <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
+                <Feather name="arrow-left" size={18} color={sub} />
+                <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
+              </Pressable>
+            </View>
+          </Sidebar>
+          <View style={s.main} />
+        </View>
+      </WebLayout>
     );
   }
 
-  // If group order not found
+  // Not found
   if (groupOrderId && !group && !isLoadingGroup) {
     return (
-      <View style={[s.root, { backgroundColor: bg }]}>
-        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-          <View style={[s.sideHeader, { borderBottomColor: border }]}>
-            <View style={[s.avatarWrap, { backgroundColor: '#EF444420' }]}>
-              <Feather name="alert-circle" size={28} color="#EF4444" />
+      <WebLayout>
+        <View style={[s.root, { backgroundColor: bg }]}>
+          <Sidebar>
+            <View style={[s.sideHeader, { borderBottomColor: border }]}>
+              <View style={[s.sideIconWrap, { backgroundColor: '#EF444420' }]}>
+                <Feather name="alert-circle" size={28} color="#EF4444" />
+              </View>
+              <Text style={[s.sideTitle, { color: text }]}>Grupo no encontrado</Text>
             </View>
-            <Text style={[s.sideTitle, { color: text }]}>Grupo no encontrado</Text>
-          </View>
-          <View style={s.sideContent}>
-            <Text style={[s.sideText, { color: sub }]}>
-              Este enlace ya expiró o no existe.
-            </Text>
-          </View>
-          <View style={[s.sideFooter, { borderTopColor: border }]}>
-            <Pressable onPress={() => navigation.navigate('Main')} style={s.backBtn}>
-              <Feather name="home" size={18} color={PRIMARY} />
-              <Text style={[s.backBtnText, { color: PRIMARY }]}>Volver al inicio</Text>
-            </Pressable>
-          </View>
-        </MobileSidebarWrapper>
-        <View style={s.main} />
-      </View>
+            <View style={s.sideContent}>
+              <Text style={[s.sideText, { color: sub }]}>Este enlace ya expiró o no existe.</Text>
+            </View>
+            <View style={[s.sideFooter, { borderTopColor: border }]}>
+              <Pressable onPress={() => navigation.navigate('Main')} style={s.backBtn}>
+                <Feather name="home" size={18} color={PRIMARY} />
+                <Text style={[s.backBtnText, { color: PRIMARY }]}>Volver al inicio</Text>
+              </Pressable>
+            </View>
+          </Sidebar>
+          <View style={s.main} />
+        </View>
+      </WebLayout>
     );
   }
 
-  if (!group) {
-    return (
-      <View style={[s.root, { backgroundColor: bg }]}>
-        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-          <View style={[s.sideHeader, { borderBottomColor: border }]}>
-            <View style={[s.avatarWrap, { backgroundColor: PRIMARY + '15' }]}>
-              <Feather name="users" size={28} color={PRIMARY} />
-            </View>
-            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
-          </View>
-          <View style={s.sideContent}>
-            <ActivityIndicator size="large" color={PRIMARY} />
-          </View>
-          <View style={[s.sideFooter, { borderTopColor: border }]}>
-            <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-              <Feather name="arrow-left" size={18} color={sub} />
-              <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-            </Pressable>
-          </View>
-        </MobileSidebarWrapper>
-        <View style={s.main} />
-      </View>
-    );
-  }
-
-  // If still loading after having a groupOrderId
-  if (!group && isLoadingGroup) {
-    return (
-      <View style={[s.root, { backgroundColor: bg }]}>
-        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-          <View style={[s.sideHeader, { borderBottomColor: border }]}>
-            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
-              <Feather name="users" size={32} color={PRIMARY} />
-            </View>
-            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
-          </View>
-          <View style={s.sideStats}>
-            <ActivityIndicator size="large" color={PRIMARY} />
-            <Text style={[s.loadingText, { color: sub, marginTop: 12 }]}>Cargando pedido grupal...</Text>
-          </View>
-          <View style={[s.sideFooter, { borderTopColor: border }]}>
-            <Pressable 
-              onPress={() => navigation.goBack()} 
-              style={s.backBtn}
-            >
-              <Feather name="arrow-left" size={16} color={sub} />
-              <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-            </Pressable>
-          </View>
-        </MobileSidebarWrapper>
-        <View style={s.main} />
-      </View>
-    );
-  }
-
-  // If group order not found
-  if (groupOrderId && !group && !isLoadingGroup) {
-    return (
-      <View style={[s.root, { backgroundColor: bg }]}>
-        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-          <View style={[s.sideHeader, { borderBottomColor: border }]}>
-            <View style={[s.sideIconWrap, { backgroundColor: '#EF444420' }]}>
-              <Feather name="alert-circle" size={32} color="#EF4444" />
-            </View>
-            <Text style={[s.sideTitle, { color: text }]}>Grupo no encontrado</Text>
-          </View>
-          <View style={s.sideStats}>
-            <Text style={{ color: sub, textAlign: 'center', paddingHorizontal: 16 }}>
-              Este enlace ya expiró o no existe.
-            </Text>
-          </View>
-          <View style={[s.sideFooter, { borderTopColor: border }]}>
-            <Pressable 
-              onPress={() => navigation.navigate('Main')} 
-              style={[s.backBtn, { backgroundColor: PRIMARY }]}
-            >
-              <Feather name="home" size={16} color="#fff" />
-              <Text style={[s.backBtnText, { color: '#fff' }]}>Volver al inicio</Text>
-            </Pressable>
-          </View>
-        </MobileSidebarWrapper>
-        <View style={s.main} />
-      </View>
-    );
-  }
-
-  if (!group) {
-    return (
-      <View style={[s.root, { backgroundColor: bg }]}>
-        <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-          <View style={[s.sideHeader, { borderBottomColor: border }]}>
-            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
-              <Feather name="users" size={32} color={PRIMARY} />
-            </View>
-            <Text style={[s.sideTitle, { color: text }]}>Pedido Grupal</Text>
-          </View>
-          <View style={s.sideStats}>
-            <ActivityIndicator size="large" color={PRIMARY} />
-          </View>
-          <View style={[s.sideFooter, { borderTopColor: border }]}>
-            <Pressable 
-              onPress={() => navigation.goBack()} 
-              style={s.backBtn}
-            >
-              <Feather name="arrow-left" size={16} color={sub} />
-              <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-            </Pressable>
-          </View>
-        </MobileSidebarWrapper>
-        <View style={s.main} />
-      </View>
-    );
-  }
+  if (!group) return null;
 
   return (
-    <View style={[s.root, { backgroundColor: bg }]}>
-      <MobileSidebarWrapper title="Pedido Grupal" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
-        <View style={[s.sideHeader, { borderBottomColor: border }]}>
-          <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
-            <Feather name="users" size={32} color={PRIMARY} />
-          </View>
-          <Text style={[s.sideTitle, { color: text }]}>{group.businessName}</Text>
-          <View style={[s.statusBadge, { backgroundColor: isOpen ? '#10B98120' : '#F59E0B20', borderColor: isOpen ? '#10B98140' : '#F59E0B40' }]}>
-            <Feather name={isOpen ? 'unlock' : 'lock'} size={13} color={isOpen ? '#10B981' : '#F59E0B'} />
-            <Text style={{ color: isOpen ? '#10B981' : '#F59E0B', fontSize: 12, fontWeight: '600' }}>
-              {isOpen ? 'Abierto' : 'Cerrado'}
-            </Text>
-          </View>
-        </View>
-        <View style={s.sideStats}>
-          <View style={[s.statBox, { backgroundColor: cardBg }]}>
-            <Text style={[s.statNum, { color: PRIMARY }]}>{totalParticipants}</Text>
-            <Text style={[s.statLabel, { color: sub }]}>Participantes</Text>
-          </View>
-          <View style={[s.statBox, { backgroundColor: cardBg }]}>
-            <Text style={[s.statNum, { color: text }]}>€{totalAmount.toFixed(2)}</Text>
-            <Text style={[s.statLabel, { color: sub }]}>Total</Text>
-          </View>
-        </View>
-        <View style={[s.sideFooter, { borderTopColor: border }]}>
-          <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
-            <Feather name="arrow-left" size={16} color={sub} />
-            <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
-          </Pressable>
-        </View>
-      </MobileSidebarWrapper>
-
-      <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-
-        {/* Info del grupo */}
-        <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
-          <View style={s.cardHeader}>
-            <Feather name="info" size={18} color={PRIMARY} />
-            <Text style={[s.cardTitle, { color: text }]}>Detalles del grupo</Text>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={[s.infoLabel, { color: sub }]}>Estado</Text>
-            <Text style={[s.infoValue, { color: isOpen ? '#10B981' : '#F59E0B' }]}>{isOpen ? 'Abierto' : 'Cerrado'}</Text>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={[s.infoLabel, { color: sub }]}>Expira</Text>
-            <Text style={[s.infoValue, { color: isExpired ? '#EF4444' : text }]}>
-              {new Date(group.expiresAt).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
-            </Text>
-          </View>
-          <View style={s.infoRow}>
-            <Text style={[s.infoLabel, { color: sub }]}>Total acumulado</Text>
-            <Text style={[s.infoValue, { color: PRIMARY }]}>€{totalAmount.toFixed(2)}</Text>
-          </View>
-        </View>
-
-        {/* Share */}
-        {isOpen && isCreator && (
-          <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
-            <View style={s.cardHeader}>
-              <Feather name="share-2" size={18} color={PRIMARY} />
-              <Text style={[s.cardTitle, { color: text }]}>Invita a tus amigos</Text>
+    <WebLayout>
+      <View style={[s.root, { backgroundColor: bg }]}>
+        <Sidebar>
+          <View style={[s.sideHeader, { borderBottomColor: border }]}>
+            <View style={[s.sideIconWrap, { backgroundColor: PRIMARY + '15' }]}>
+              <Feather name="users" size={32} color={PRIMARY} />
             </View>
-            <View style={[s.linkBox, { backgroundColor: cardBg, borderColor: border }]}>
-              <Text style={[s.linkText, { color: sub }]} numberOfLines={1}>
-                {`${typeof window !== 'undefined' ? window.location.origin : ''}/group-order/${group.shareToken}`}
+            <Text style={[s.sideTitle, { color: text }]}>{group.businessName}</Text>
+            <View style={[s.statusBadge, { backgroundColor: isOpen ? '#10B98120' : '#F59E0B20', borderColor: isOpen ? '#10B98140' : '#F59E0B40' }]}>
+              <Feather name={isOpen ? 'unlock' : 'lock'} size={13} color={isOpen ? '#10B981' : '#F59E0B'} />
+              <Text style={{ color: isOpen ? '#10B981' : '#F59E0B', fontSize: 12, fontWeight: '600' }}>
+                {isOpen ? 'Abierto' : 'Cerrado'}
               </Text>
             </View>
-            <View style={s.shareRow}>
-              <Pressable onPress={handleShare} style={[s.shareBtn, { backgroundColor: PRIMARY }]}>
-                <Feather name="share-2" size={16} color="#fff" />
-                <Text style={s.shareBtnText}>Compartir</Text>
-              </Pressable>
-              <Pressable onPress={handleCopyLink} style={[s.shareBtn, { backgroundColor: cardBg, borderWidth: 1, borderColor: border }]}>
-                <Feather name="copy" size={16} color={text} />
-                <Text style={[s.shareBtnText, { color: text }]}>Copiar link</Text>
-              </Pressable>
+          </View>
+          <View style={s.sideStats}>
+            <View style={[s.statBox, { backgroundColor: cardBg }]}>
+              <Text style={[s.statNum, { color: PRIMARY }]}>{totalParticipants}</Text>
+              <Text style={[s.statLabel, { color: sub }]}>Participantes</Text>
+            </View>
+            <View style={[s.statBox, { backgroundColor: cardBg }]}>
+              <Text style={[s.statNum, { color: text }]}>€{totalAmount.toFixed(2)}</Text>
+              <Text style={[s.statLabel, { color: sub }]}>Total</Text>
             </View>
           </View>
-        )}
-
-        {/* Participantes */}
-        <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
-          <View style={s.cardHeader}>
-            <Feather name="users" size={18} color={PRIMARY} />
-            <Text style={[s.cardTitle, { color: text }]}>Participantes ({totalParticipants})</Text>
-            <Text style={[s.totalBadge, { color: PRIMARY }]}>€{totalAmount.toFixed(2)}</Text>
+          <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
+              <Feather name="arrow-left" size={16} color={sub} />
+              <Text style={[s.backBtnText, { color: text }]}>Volver</Text>
+            </Pressable>
           </View>
-          {group.participants?.map((p: any) => (
-            <View key={p.id} style={[s.participantRow, { borderBottomColor: border }]}>
-              <View style={[s.participantAvatar, { backgroundColor: PRIMARY + '20' }]}>
-                <Feather name="user" size={18} color={PRIMARY} />
+        </Sidebar>
+
+        <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+          <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
+            <View style={s.cardHeader}>
+              <Feather name="info" size={18} color={PRIMARY} />
+              <Text style={[s.cardTitle, { color: text }]}>Detalles del grupo</Text>
+            </View>
+            <View style={s.infoRow}>
+              <Text style={[s.infoLabel, { color: sub }]}>Estado</Text>
+              <Text style={[s.infoValue, { color: isOpen ? '#10B981' : '#F59E0B' }]}>{isOpen ? 'Abierto' : 'Cerrado'}</Text>
+            </View>
+            <View style={s.infoRow}>
+              <Text style={[s.infoLabel, { color: sub }]}>Expira</Text>
+              <Text style={[s.infoValue, { color: isExpired ? '#EF4444' : text }]}>
+                {new Date(group.expiresAt).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+              </Text>
+            </View>
+            <View style={s.infoRow}>
+              <Text style={[s.infoLabel, { color: sub }]}>Total acumulado</Text>
+              <Text style={[s.infoValue, { color: PRIMARY }]}>€{totalAmount.toFixed(2)}</Text>
+            </View>
+          </View>
+
+          {isOpen && isCreator && (
+            <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
+              <View style={s.cardHeader}>
+                <Feather name="share-2" size={18} color={PRIMARY} />
+                <Text style={[s.cardTitle, { color: text }]}>Invita a tus amigos</Text>
               </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[s.participantName, { color: text }]}>
-                  {p.userName}{p.userId === group.creatorId ? ' 👑' : ''}
+              <View style={[s.linkBox, { backgroundColor: cardBg, borderColor: border }]}>
+                <Text style={[s.linkText, { color: sub }]} numberOfLines={1}>
+                  {`${typeof window !== 'undefined' ? window.location.origin : ''}/group-order/${group.shareToken}`}
                 </Text>
-                <Text style={[s.participantItems, { color: sub }]}>{p.items?.length || 0} productos</Text>
               </View>
-              <View style={s.participantRight}>
-                <Text style={[s.participantAmount, { color: text }]}>€{(p.subtotal / 100).toFixed(2)}</Text>
-                {p.paymentStatus === 'paid' && <Feather name="check-circle" size={16} color="#10B981" />}
+              <View style={s.shareRow}>
+                <Pressable onPress={handleShare} style={[s.shareBtn, { backgroundColor: PRIMARY }]}>
+                  <Feather name="share-2" size={16} color="#fff" />
+                  <Text style={s.shareBtnText}>Compartir</Text>
+                </Pressable>
+                <Pressable onPress={handleCopyLink} style={[s.shareBtn, { backgroundColor: cardBg, borderWidth: 1, borderColor: border }]}>
+                  <Feather name="copy" size={16} color={text} />
+                  <Text style={[s.shareBtnText, { color: text }]}>Copiar link</Text>
+                </Pressable>
               </View>
             </View>
-          ))}
-        </View>
+          )}
 
-        {/* Cerrar grupo */}
-        {isCreator && isOpen && !isExpired && totalParticipants > 0 && (
-          <Pressable
-            onPress={() => lockMutation.mutate()}
-            disabled={lockMutation.isPending}
-            style={[s.lockBtn, { backgroundColor: PRIMARY, opacity: lockMutation.isPending ? 0.6 : 1 }]}
-          >
-            {lockMutation.isPending
-              ? <ActivityIndicator color="#fff" />
-              : <><Feather name="lock" size={18} color="#fff" /><Text style={s.lockBtnText}>Cerrar grupo y crear pedido</Text></>
-            }
-          </Pressable>
-        )}
-      </ScrollView>
-    </View>
+          <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
+            <View style={s.cardHeader}>
+              <Feather name="users" size={18} color={PRIMARY} />
+              <Text style={[s.cardTitle, { color: text }]}>Participantes ({totalParticipants})</Text>
+              <Text style={[s.totalBadge, { color: PRIMARY }]}>€{totalAmount.toFixed(2)}</Text>
+            </View>
+            {group.participants?.map((p: any) => (
+              <View key={p.id} style={[s.participantRow, { borderBottomColor: border }]}>
+                <View style={[s.participantAvatar, { backgroundColor: PRIMARY + '20' }]}>
+                  <Feather name="user" size={18} color={PRIMARY} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[s.participantName, { color: text }]}>
+                    {p.userName}{p.userId === group.creatorId ? ' 👑' : ''}
+                  </Text>
+                  <Text style={[s.participantItems, { color: sub }]}>{p.items?.length || 0} productos</Text>
+                </View>
+                <View style={s.participantRight}>
+                  <Text style={[s.participantAmount, { color: text }]}>€{(p.subtotal / 100).toFixed(2)}</Text>
+                  {p.paymentStatus === 'paid' && <Feather name="check-circle" size={16} color="#10B981" />}
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {isCreator && isOpen && !isExpired && totalParticipants > 0 && (
+            <Pressable
+              onPress={() => lockMutation.mutate()}
+              disabled={lockMutation.isPending}
+              style={[s.lockBtn, { backgroundColor: PRIMARY, opacity: lockMutation.isPending ? 0.6 : 1 }]}
+            >
+              {lockMutation.isPending
+                ? <ActivityIndicator color="#fff" />
+                : <><Feather name="lock" size={18} color="#fff" /><Text style={s.lockBtnText}>Cerrar grupo y crear pedido</Text></>
+              }
+            </Pressable>
+          )}
+        </ScrollView>
+      </View>
+    </WebLayout>
   );
 }
 
@@ -423,7 +307,6 @@ const s = StyleSheet.create({
   root:              { flex: 1, flexDirection: 'row', overflow: 'hidden' as any },
   sidebar:           { width: 280, borderRightWidth: 1, flexDirection: 'column' as any },
   sideHeader:        { padding: 24, alignItems: 'center', borderBottomWidth: 1 },
-  avatarWrap:        { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   sideIconWrap:      { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   sideTitle:         { fontSize: 16, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
   sideContent:       { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -458,5 +341,4 @@ const s = StyleSheet.create({
   participantAmount: { fontSize: 15, fontWeight: '700' },
   lockBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, borderRadius: 12 },
   lockBtnText:       { color: '#fff', fontSize: 16, fontWeight: '700' },
-  loadingText:       { marginTop: 12, fontSize: 14 },
 });

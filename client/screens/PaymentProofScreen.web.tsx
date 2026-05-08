@@ -7,6 +7,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useToast } from '@/contexts/ToastContext';
 import { apiRequest, getApiUrl, getAuthToken } from '@/lib/query-client';
 import { RootStackParamList } from '@/navigation/RootStackNavigator';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 type Route = RouteProp<RootStackParamList, 'PaymentProof'>;
@@ -120,6 +121,7 @@ export default function PaymentProofScreen() {
 
   if (step === 'success') {
     return (
+      <WebLayout>
       <View style={[s.root, { backgroundColor: bg, justifyContent: 'center', alignItems: 'center' }]}>
         <View style={[s.successCard, { backgroundColor: card, borderColor: border }]}>
           <View style={[s.successIcon, { backgroundColor: '#10B98120' }]}>
@@ -140,10 +142,13 @@ export default function PaymentProofScreen() {
           </Pressable>
         </View>
       </View>
+      </View>
+      </WebLayout>
     );
   }
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Header */}
       <View style={[s.header, { backgroundColor: card, borderBottomColor: border }]}>
@@ -285,6 +290,8 @@ export default function PaymentProofScreen() {
         </ScrollView>
       </View>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

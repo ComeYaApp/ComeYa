@@ -10,6 +10,7 @@ import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
+import { WebLayout } from "@/components/WebLayout";
 
 interface Address {
   id: string; label: string; street: string; city: string;
@@ -84,6 +85,7 @@ export default function AddressesScreen() {
   };
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       <MobileSidebarWrapper title="Direcciones" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
         <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
@@ -185,6 +187,8 @@ export default function AddressesScreen() {
         )}
       </ScrollView>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

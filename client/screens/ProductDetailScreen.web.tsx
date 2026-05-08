@@ -10,6 +10,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useToast } from '@/contexts/ToastContext';
 import { apiRequest } from '@/lib/query-client';
 import { RootStackParamList } from '@/navigation/RootStackNavigator';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 type Route = RouteProp<RootStackParamList, 'ProductDetail'>;
@@ -105,6 +106,7 @@ export default function ProductDetailScreen() {
   const isFav = (favData as any)?.isFavorite;
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Change business modal */}
       {showChangeModal && (
@@ -230,6 +232,8 @@ export default function ProductDetailScreen() {
         </ScrollView>
       </View>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 

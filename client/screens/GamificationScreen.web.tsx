@@ -10,6 +10,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { apiRequest, getApiUrl } from '@/lib/query-client';
 import { MobileSidebarWrapper } from '@/components/MobileSidebarWrapper';
 
+import { WebLayout } from '@/components/WebLayout';
+
 const PRIMARY = '#DC2626';
 
 const TIER_COLORS = { bronze: '#CD7F32', silver: '#9CA3AF', gold: '#F59E0B', platinum: '#8B5CF6' };
@@ -100,6 +102,7 @@ export default function GamificationScreen() {
   ];
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Sidebar */}
       <MobileSidebarWrapper title="Mis puntos" sidebarStyle={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}>
@@ -282,6 +285,7 @@ export default function GamificationScreen() {
         )}
       </ScrollView>
     </View>
+    </WebLayout>
   );
 }
 

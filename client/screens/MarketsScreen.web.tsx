@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/useTheme';
 import { apiRequest } from '@/lib/query-client';
+import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = '#DC2626';
 
@@ -34,6 +35,7 @@ export default function MarketsScreen() {
   }, []);
 
   return (
+    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* Header */}
       <View style={[s.header, { backgroundColor: card, borderBottomColor: border }]}>
@@ -105,6 +107,8 @@ export default function MarketsScreen() {
         )}
       </ScrollView>
     </View>
+    </View>
+    </WebLayout>
   );
 }
 
