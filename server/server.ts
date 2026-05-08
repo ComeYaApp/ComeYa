@@ -31,8 +31,13 @@ app.use(cors({ origin: true, credentials: true }));
 
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: isProduction ? 100 : 10000,
+  max: isProduction ? 500 : 10000,
   message: 'Too many requests from this IP',
+  skip: (req) => {
+    // No aplicar rate limit a endpoints de polling frecuente con auth
+    const skipPaths = ['/api/orders', '/api/delivery/location', '/api/tracking'];
+    return skipPaths.some(p => req.path.startsWith(p.replace('/api', '')));
+  },
 }));
 
 app.use((req, res, next) => {

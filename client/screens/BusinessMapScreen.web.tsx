@@ -185,6 +185,7 @@ export default function BusinessMapScreen() {
     const fetch = async () => {
       try {
         const res = await apiRequest("GET", "/api/orders");
+        if (!res.ok) return; // silenciar 429 y otros errores
         const data = await res.json();
         const allOrders = data.orders || [];
         const active = allOrders
@@ -209,7 +210,7 @@ export default function BusinessMapScreen() {
       } catch {}
     };
     fetch();
-    const interval = setInterval(fetch, 15000);
+    const interval = setInterval(fetch, 30000); // 30s en vez de 15s
     return () => clearInterval(interval);
   }, [user]);
 
