@@ -6,7 +6,7 @@ import { useTheme } from '../hooks/useTheme';
 import { apiRequest } from '../lib/query-client';
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from '../constants/theme';
 import { ThemedText } from '@/components/ThemedText';
-import { ComeYaLogo } from '@/components/ComeYaLogo';
+import { WebLayout } from '@/components/WebLayout';
 import { useResponsive } from '@/hooks/useResponsive';
 
 interface PaymentMethod {
@@ -141,77 +141,35 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
     });
   };
 
+  const { isDark } = useTheme();
+  const bg     = isDark ? '#111' : '#f7f7f7';
+  const border = isDark ? '#333' : '#e8e8e8';
+
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.backgroundRoot }]}>
-        <ActivityIndicator size="large" color={PRIMARY} />
-      </View>
+      <WebLayout>
+        <View style={[styles.center, { backgroundColor: bg }]}>
+          <ActivityIndicator size="large" color={PRIMARY} />
+        </View>
+      </WebLayout>
     );
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#FAFAFA" }} contentContainerStyle={styles.webContainer}>
-      {/* LEFT: Hero Section — oculto en móvil */}
-      {!isMobile && <View style={styles.heroSection}>
-        <View style={styles.heroContent}>
-          {/* Logo */}
-          <Pressable onPress={() => navigation.goBack()} style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <ComeYaLogo size={48} />
-            </View>
-            <ThemedText type="h2" style={styles.logoText}>ComeYa</ThemedText>
-          </Pressable>
+    <WebLayout>
+    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={styles.pageContent}>
+      {/* Header */}
+      <View style={[styles.pageHeader, { borderBottomColor: border }]}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Feather name="arrow-left" size={20} color={isDark ? '#fff' : '#1a1a1a'} />
+        </Pressable>
+        <ThemedText type="h3">Método de pago</ThemedText>
+        <View style={{ width: 40 }} />
+      </View>
 
-          {/* Headline */}
-          <View style={styles.heroTextContainer}>
-            <ThemedText type="h1" style={styles.heroTitle}>
-              Método de pago
-            </ThemedText>
-            <ThemedText type="body" style={styles.heroSubtitle}>
-              Elige cómo quieres pagar tu pedido de forma segura
-            </ThemedText>
-          </View>
-
-          {/* Total Card */}
-          <View style={styles.heroCard}>
-            <View style={styles.heroCardHeader}>
-              <Feather name="credit-card" size={24} color={PRIMARY} />
-              <ThemedText type="h4" style={{ marginLeft: 12 }}>Total a pagar</ThemedText>
-            </View>
-            <View style={styles.heroCardDivider} />
-            <ThemedText type="h1" style={{ color: PRIMARY, fontSize: 48, fontWeight: "800" }}>
-              €{orderTotal.toFixed(2)}
-            </ThemedText>
-          </View>
-
-          {/* Security Badges */}
-          <View style={styles.securityContainer}>
-            <View style={styles.securityBadge}>
-              <Feather name="shield" size={20} color="rgba(255,255,255,0.9)" />
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.9)", marginLeft: 8 }}>
-                Pago 100% seguro
-              </ThemedText>
-            </View>
-            <View style={styles.securityBadge}>
-              <Feather name="lock" size={20} color="rgba(255,255,255,0.9)" />
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.9)", marginLeft: 8 }}>
-                Datos encriptados
-              </ThemedText>
-            </View>
-            <View style={styles.securityBadge}>
-              <Feather name="check-circle" size={20} color="rgba(255,255,255,0.9)" />
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.9)", marginLeft: 8 }}>
-                Sin cargos ocultos
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-      </View>}
-
-      {/* RIGHT: Methods Section */}
-      <View style={[styles.methodsSection, isMobile && { padding: 16, justifyContent: 'flex-start' }]}>
-        <View style={[styles.methodsCard, isMobile && { padding: 20, borderRadius: 16 }]}>
-            <ThemedText type="h3" style={{ marginBottom: 24, color: "#1F2937" }}>
+      <View style={styles.centerWrap}>
+        <View style={[styles.methodsCard, { backgroundColor: isDark ? '#1e1e1e' : '#fff' }]}>
+            <ThemedText type="h3" style={{ marginBottom: 24 }}>
               Selecciona tu método de pago
             </ThemedText>
 
@@ -275,124 +233,22 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
           </View>
       </View>
     </ScrollView>
+    </WebLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  webContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#FAFAFA",
-    flexWrap: "wrap" as any,
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  // LEFT: Hero Section
-  heroSection: {
-    flex: 1,
-    minWidth: 300,
-    maxWidth: 600,
-    backgroundColor: PRIMARY,
-    padding: 48,
-    justifyContent: "center",
-  },
-  heroContent: {
-    maxWidth: 480,
-  },
-  logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  logoText: {
-    color: "#FFF",
-    marginLeft: 16,
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  heroTextContainer: {
-    marginBottom: 48,
-  },
-  heroTitle: {
-    fontSize: 48,
-    fontWeight: "800",
-    color: "#FFF",
-    marginBottom: 16,
-    lineHeight: 56,
-  },
-  heroSubtitle: {
-    fontSize: 18,
-    color: "rgba(255,255,255,0.9)",
-    lineHeight: 28,
-  },
-  heroCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 32,
-    marginBottom: 32,
-    alignItems: "center",
-    ...Platform.select({
-      web: {
-        boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
-      },
-    }),
-  },
-  heroCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  heroCardDivider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginBottom: 24,
-    width: "100%",
-  },
-  securityContainer: {
-    gap: 16,
-  },
-  securityBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  // RIGHT: Methods Section
-  methodsSection: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 48,
-  },
-  methodsScrollView: {
-    flex: 1,
-    width: "100%",
-  },
-  methodsScrollContent: {
-    alignItems: "center",
-    paddingVertical: 48,
-  },
+  pageContent:  { flexGrow: 1 },
+  pageHeader:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 1 },
+  backBtn:      { width: 40, height: 40, justifyContent: 'center' },
+  centerWrap:   { flex: 1, alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+  center:       { flex: 1, justifyContent: 'center', alignItems: 'center' },
   methodsCard: {
-    width: "100%",
+    width: '100%',
     maxWidth: 600,
-    backgroundColor: "#FFF",
-    borderRadius: 24,
-    padding: 48,
-    ...Platform.select({
-      web: {
-        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-      },
-    }),
+    borderRadius: 16,
+    padding: 32,
+    ...Platform.select({ web: { boxShadow: '0 4px 20px rgba(0,0,0,0.08)' } }),
   },
   methodCard: {
     flexDirection: "row",
