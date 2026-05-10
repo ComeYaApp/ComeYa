@@ -9,7 +9,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 import { useAuth } from '@/contexts/AuthContext';
-import { WebLayout } from '@/components/WebLayout';
 
 const PRIMARY = "#DC2626";
 function loadGoogleMaps(): Promise<void> {
@@ -353,7 +352,7 @@ export default function OrderTrackingScreen() {
   const statusInfo = STATUS_LABELS[order?.status] || { label: "Procesando...", color: "#888", icon: "clock" };
 
   return (
-    <WebLayout>
+    <View style={[s.root, { backgroundColor: theme.backgroundRoot }]}>
     <View style={[s.webContainer, { backgroundColor: theme.backgroundRoot }]}>
       {/* IZQUIERDA: Mapa fijo a pantalla completa */}
       <View style={s.mapSection}>
@@ -742,7 +741,24 @@ export default function OrderTrackingScreen() {
       </View>
     
     </View>
-    </WebLayout>
+
+      {/* Bottom Tab Bar — cliente */}
+      <View style={[s.tabBar, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+        {[
+          { icon: 'home',         label: 'Inicio',   route: 'HomeTab'   },
+          { icon: 'shopping-bag', label: 'Pedidos',  route: 'OrdersTab' },
+          { icon: 'map-pin',      label: 'Mapa',     route: 'MapTab'    },
+          { icon: 'user',         label: 'Perfil',   route: 'ProfileTab'},
+        ].map(tab => (
+          <Pressable key={tab.route} onPress={() => (navigation as any).navigate(tab.route)} style={s.tabItem}>
+            <Feather name={tab.icon as any} size={22} color={tab.route === 'OrdersTab' ? PRIMARY : theme.textSecondary} />
+            <ThemedText type="caption" style={{ color: tab.route === 'OrdersTab' ? PRIMARY : theme.textSecondary, fontSize: 10, marginTop: 2, fontWeight: tab.route === 'OrdersTab' ? '700' : '500' }}>
+              {tab.label}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -759,10 +775,21 @@ const DARK_STYLE = [
 ];
 
 const s = StyleSheet.create({
+  root:          { flex: 1, flexDirection: 'column' },
   webContainer: {
     flex: 1,
     flexDirection: "row",
-    height: "calc(100vh - 58px)" as any,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    height: 58,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
   },
   
   // IZQUIERDA: Mapa fijo
