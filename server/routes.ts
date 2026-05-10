@@ -54,6 +54,11 @@ import businessCategoriesRoutes from "./routes/businessCategories";
 
 const router = express.Router();
 
+// ─── Public config (keys para el frontend) ───────────────────────────────────
+router.get("/config/maps-key", (_req, res) => {
+  res.json({ key: process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "" });
+});
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 router.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString(), environment: process.env.NODE_ENV });

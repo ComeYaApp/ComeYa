@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
+const GOOGLE_MAPS_API_KEY = "";
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 
 interface BusinessPin {
@@ -63,13 +63,13 @@ const CATEGORIES = [
 
 // Inyectar Google Maps script una sola vez
 function loadGoogleMaps(): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if ((window as any).google?.maps) { resolve(); return; }
     const existing = document.getElementById("gmap-script");
     if (existing) { existing.addEventListener("load", () => resolve()); return; }
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+    const k = await fetch((process.env.EXPO_PUBLIC_BACKEND_URL||"")+"/api/config/maps-key").then(r=>r.json()).then(d=>d.key).catch(()=>GOOGLE_MAPS_API_KEY); script.src = `https://maps.googleapis.com/maps/api/js?key=${k}&libraries=geometry`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
@@ -281,6 +281,7 @@ export default function BusinessMapScreen() {
           ds.route({ origin: driverPos, destination: destPos, travelMode: google.maps.TravelMode.DRIVING },
             (result: any, status: any) => {
               if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+              // Si Directions falla (API no habilitada), dibujar línea recta
               const path = status === 'OK' ? result.routes[0].overview_path : [driverPos, destPos];
               routeLineRef.current = new google.maps.Polyline({ path, geodesic: true, strokeColor: '#10B981', strokeOpacity: 0.9, strokeWeight: 5, map: gmap.current });
             });
