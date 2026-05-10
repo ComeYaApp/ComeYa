@@ -14,7 +14,7 @@ let tokenCache: string | null = null;
 let tokenCacheTime = 0;
 const TOKEN_CACHE_DURATION = 5000; // 5 seconds
 
-async function getAuthToken(): Promise<string | null> {
+export async function getAuthToken(): Promise<string | null> {
   // Use cache if recent
   if (tokenCache && Date.now() - tokenCacheTime < TOKEN_CACHE_DURATION) {
     return tokenCache;
