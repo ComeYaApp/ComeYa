@@ -59,6 +59,67 @@ router.get("/config/maps-key", (_req, res) => {
   res.json({ key: process.env.GOOGLE_MAPS_WEB_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "" });
 });
 
+// ─── Upload endpoints (Cloudinary) ──────────────────────────────────────────
+router.post("/upload/payment-proof", authenticateToken, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ error: "image requerida" });
+    const { CloudinaryService } = await import("./cloudinaryService");
+    const url = await CloudinaryService.uploadImage(image, "comprobantes", `proof-${req.user!.id}-${Date.now()}`);
+    res.json({ success: true, url, imageUrl: url, proofUrl: url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/upload/business-image", authenticateToken, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ error: "image requerida" });
+    const { CloudinaryService } = await import("./cloudinaryService");
+    const url = await CloudinaryService.uploadImage(image, "businesses", `biz-${req.user!.id}-${Date.now()}`);
+    res.json({ success: true, url, imageUrl: url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/upload/product-image", authenticateToken, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ error: "image requerida" });
+    const { CloudinaryService } = await import("./cloudinaryService");
+    const url = await CloudinaryService.uploadImage(image, "products", `prod-${req.user!.id}-${Date.now()}`);
+    res.json({ success: true, url, imageUrl: url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/upload/review-image", authenticateToken, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ error: "image requerida" });
+    const { CloudinaryService } = await import("./cloudinaryService");
+    const url = await CloudinaryService.uploadImage(image, "reviews", `review-${req.user!.id}-${Date.now()}`);
+    res.json({ success: true, url, imageUrl: url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/upload/delivery-proof", authenticateToken, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image) return res.status(400).json({ error: "image requerida" });
+    const { CloudinaryService } = await import("./cloudinaryService");
+    const url = await CloudinaryService.uploadImage(image, "delivery-proofs", `delivery-${req.user!.id}-${Date.now()}`);
+    res.json({ success: true, url, imageUrl: url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.post("/upload/image", authenticateToken, async (req, res) => {
+  try {
+    const { image, folder = "misc" } = req.body;
+    if (!image) return res.status(400).json({ error: "image requerida" });
+    const { CloudinaryService } = await import("./cloudinaryService");
+    const url = await CloudinaryService.uploadImage(image, folder, `img-${req.user!.id}-${Date.now()}`);
+    res.json({ success: true, url, imageUrl: url });
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 router.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString(), environment: process.env.NODE_ENV });
