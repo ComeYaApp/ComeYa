@@ -56,7 +56,7 @@ const router = express.Router();
 
 // ─── Public config (keys para el frontend) ───────────────────────────────────
 router.get("/config/maps-key", (_req, res) => {
-  res.json({ key: process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "" });
+  res.json({ key: process.env.GOOGLE_MAPS_WEB_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "" });
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────────
