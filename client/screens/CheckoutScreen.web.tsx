@@ -75,7 +75,11 @@ export default function CheckoutScreen({ route }: any) {
   const [tip, setTip] = useState(0);
   const { isMobile } = useResponsive();
 
-  const deliveryFee = confirmedOrderType === 'pickup' ? 0 : (route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5)));
+  const deliveryFee = confirmedOrderType === 'pickup' ? 0 : (
+    route?.params?.calculatedDeliveryFee != null
+      ? route.params.calculatedDeliveryFee / 100
+      : (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5))
+  );
   const effectiveDeliveryFee = subDeliveryFee !== null ? subDeliveryFee / 100 : deliveryFee;
   const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
 
