@@ -8,47 +8,15 @@ import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
-const SORIA = { lat: 41.7636, lng: -2.4677 };
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  pending:    { label: "Esperando",  color: "#F59E0B", icon: "clock"       },
-  accepted:   { label: "Aceptado",   color: "#3B82F6", icon: "check"       },
-  preparing:  { label: "Preparando", color: "#8B5CF6", icon: "package"     },
-  ready:      { label: "Listo",      color: "#10B981", icon: "check-circle"},
-  on_the_way: { label: "En camino",  color: "#DC2626", icon: "truck"       },
-};
-
-interface Delivery {
-  orderId: string;
-  status: string;
-  subtotal: number;
-  deliveryFee: number;
-  total: number;
-  paymentMethod: string;
-  minutesActive: number;
-  businessName: string;
-  customer: { name: string; phone: string; lat: number | null; lng: number | null; address: string | null };
-  driver: { id: string; name: string; phone: string; lat: number | null; lng: number | null; vehicleType: string; rating: string | null } | null;
-}
-
-interface Stats {
-  totalActive: number;
-  pending: number;
-  preparing: number;
-  onTheWay: number;
-  avgMinutes: number;
-  pendingRevenue: number;
-}
-
 function loadGoogleMaps(): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if ((window as any).google?.maps) { resolve(); return; }
     const existing = document.getElementById("gmap-script");
     if (existing) { existing.addEventListener("load", () => resolve()); return; }
+    const key = await fetch((process.env.EXPO_PUBLIC_BACKEND_URL||"")+"/api/config/maps-key").then(r=>r.json()).then(d=>d.key).catch(()=>"");
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;

@@ -6,17 +6,15 @@ import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/hooks/useTheme';
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
-const SORIA = { lat: 41.7636, lng: -2.4677 };
-
 function loadGoogleMaps(): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if ((window as any).google?.maps) { resolve(); return; }
     const existing = document.getElementById("gmap-script");
     if (existing) { existing.addEventListener("load", () => resolve()); return; }
+    const key = await fetch((process.env.EXPO_PUBLIC_BACKEND_URL||"")+"/api/config/maps-key").then(r=>r.json()).then(d=>d.key).catch(()=>"");
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geocoding`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geocoding`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
