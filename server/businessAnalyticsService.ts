@@ -47,24 +47,27 @@ export class BusinessAnalyticsService {
         )
       ) : [];
 
-    // Calcular métricas
-    const totalOrders = periodOrders.length;
-    const previousTotalOrders = previousOrders.length;
-    const ordersChange = previousTotalOrders > 0 
-      ? ((totalOrders - previousTotalOrders) / previousTotalOrders) * 100 
-      : 0;
-
+    // Todos los pedidos del negocio (para métricas globales)
+    const allOrders = startDate ? await db.select().from(orders).where(eq(orders.businessId, businessId)) : periodOrders;
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayOrders = allOrders.filter(o => o.createdAt && new Date(o.createdAt) >= todayStart);
     const completedOrders = periodOrders.filter(o => o.status === 'delivered');
-    const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.businessEarnings || 0), 0);
+    const cancelledOrders = periodOrders.filter(o => o.status === 'cancelled');
+    // businessEarnings puede ser null si no se calculó al crear la orden.
+    // Fallback: subtotal (precio base productos, sin comisión ni delivery)
+    const getBusinessRevenue = (o: any) => o.businessEarnings ?? o.subtotal ?? 0;
+    const totalRevenue = completedOrders.reduce((sum, o) => sum + getBusinessRevenue(o), 0);
     const previousRevenue = previousOrders
       .filter(o => o.status === 'delivered')
-      .reduce((sum, o) => sum + (o.businessEarnings || 0), 0);
-    const revenueChange = previousRevenue > 0 
-      ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 
+      .reduce((sum, o) => sum + getBusinessRevenue(o), 0);
+    const revenueChange = previousRevenue > 0
+      ? ((totalRevenue - previousRevenue) / previousRevenue) * 100
       : 0;
-
-    const avgOrderValue = completedOrders.length > 0 
-      ? totalRevenue / completedOrders.length 
+    const avgOrderValue = completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
+    const totalOrders = periodOrders.length;
+    const previousTotalOrders = previousOrders.length;
+    const ordersChange = previousTotalOrders > 0
+      ? ((totalOrders - previousTotalOrders) / previousTotalOrders) * 100
       : 0;
 
     // Rating promedio
@@ -82,11 +85,20 @@ export class BusinessAnalyticsService {
         period,
         totalOrders,
         ordersChange: Math.round(ordersChange * 10) / 10,
-        totalRevenue: totalRevenue / 100, // convertir a bolívares
+        totalRevenue: totalRevenue,
         revenueChange: Math.round(revenueChange * 10) / 10,
-        avgOrderValue: avgOrderValue / 100,
+        avgOrderValue,
+        averageTicket: avgOrderValue,
         rating,
+        averageRating: (business?.rating || 0),
         totalReviews: business?.totalRatings || 0,
+        // Campos que espera el frontend
+        todayOrders: todayOrders.length,
+        completedOrders: completedOrders.length,
+        cancelledOrders: cancelledOrders.length,
+        todayRevenue: todayOrders.filter(o => o.status === 'delivered').reduce((s, o) => s + getBusinessRevenue(o), 0),
+        weekRevenue: totalRevenue,
+        monthRevenue: totalRevenue,
       },
     };
   }
@@ -110,21 +122,22 @@ export class BusinessAnalyticsService {
     const productCounts: Record<string, { name: string; count: number; revenue: number }> = {};
 
     for (const order of recentOrders) {
-      const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-      
-      for (const item of items) {
-        const productId = item.product?.id || item.id;
-        const productName = item.product?.name || item.name || 'Producto';
-        const quantity = item.quantity || 1;
-        const price = item.product?.price || item.price || 0;
+      try {
+        const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+        for (const item of items) {
+          const productId = item.productId || item.product?.id || item.id || 'unknown';
+          const productName = item.product?.name || item.name || 'Producto';
+          const quantity = item.quantity || 1;
+          // price está en centavos en la BD
+          const price = item.price || item.product?.price || 0;
 
-        if (!productCounts[productId]) {
-          productCounts[productId] = { name: productName, count: 0, revenue: 0 };
+          if (!productCounts[productId]) {
+            productCounts[productId] = { name: productName, count: 0, revenue: 0 };
+          }
+          productCounts[productId].count += quantity;
+          productCounts[productId].revenue += price * quantity;
         }
-
-        productCounts[productId].count += quantity;
-        productCounts[productId].revenue += price * quantity;
-      }
+      } catch { /* item malformado, ignorar */ }
     }
 
     // Ordenar por cantidad vendida
@@ -203,7 +216,7 @@ export class BusinessAnalyticsService {
       }
 
       dailySales[date].orders++;
-      dailySales[date].revenue += order.businessEarnings || 0;
+      dailySales[date].revenue += order.businessEarnings ?? order.subtotal ?? 0;
     }
 
     const chartData = Object.entries(dailySales)

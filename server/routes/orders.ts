@@ -183,6 +183,8 @@ router.post("/", authenticateToken, async (req, res) => {
     
     // SIEMPRE usar el total del cliente - NO recalcular
     const total = clientTotal;
+    // Calcular ganancias del negocio = subtotal base (sin comisión ComeYa ni delivery)
+    const businessEarnings = productosBase ?? finalSubtotal;
 
     // Extraer lat/lng del JSON de deliveryAddress si no vienen como campos separados
     let finalDeliveryLat = deliveryLatitude || null;
@@ -239,6 +241,7 @@ router.post("/", authenticateToken, async (req, res) => {
       itemSubstitutionPreferences: itemSubstitutionPreferences || null,
       cashPaymentAmount: cashPaymentAmount || null,
       cashChangeAmount: cashChangeAmount || null,
+      businessEarnings: businessEarnings,
     };
 
     await db.insert(orders).values(newOrder);

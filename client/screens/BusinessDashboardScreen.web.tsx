@@ -58,10 +58,11 @@ export default function BusinessDashboardScreen() {
     today: (stats.todayRevenue || 0) / 100,
     week:  (stats.weekRevenue  || 0) / 100,
     month: (stats.monthRevenue || 0) / 100,
+    all:   (stats.totalRevenue || 0) / 100,
     total: (stats.totalRevenue || 0) / 100,
-  } : { today: 0, week: 0, month: 0, total: 0 };
+  } : { today: 0, week: 0, month: 0, all: 0, total: 0 };
 
-  const periodRevenue = revenue[selectedPeriod];
+  const periodRevenue = revenue[selectedPeriod] ?? 0;
 
   const metrics = stats ? [
     { label: "Pedidos hoy",  value: stats.todayOrders  || 0,                                icon: "package",      color: "#3B82F6" },
