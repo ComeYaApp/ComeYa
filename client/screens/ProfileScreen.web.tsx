@@ -14,7 +14,6 @@ import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { confirm } from "@/hooks/useWebDialog";
-import { WebLayout } from "@/components/WebLayout";
 
 const PRIMARY = "#DC2626";
 
@@ -187,7 +186,6 @@ export default function ProfileScreen() {
     : null;
 
   return (
-    <WebLayout>
     <View style={[s.root, { backgroundColor: bg }]}>
       <EditProfileModal visible={showEditModal} onClose={() => setShowEditModal(false)} />
       {isBusiness ? (
@@ -392,7 +390,6 @@ export default function ProfileScreen() {
         )}
       </ScrollView>
     </View>
-    </WebLayout>
   );
 }
 

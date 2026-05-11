@@ -10,7 +10,7 @@ import { useBusiness } from "@/contexts/BusinessContext";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
 
 const PRIMARY = "#DC2626";
-type Period = "today" | "week" | "month";
+type Period = "today" | "week" | "month" | "all";
 
 export default function BusinessDashboardScreen() {
   const navigation = useNavigation<any>();
@@ -35,7 +35,7 @@ export default function BusinessDashboardScreen() {
   useEffect(() => {
     if (!selectedBusiness?.id) { setLoading(false); return; }
     Promise.all([
-      apiRequest("GET", `/api/analytics/dashboard/${selectedBusiness.id}?period=week`).then(r => r.json()),
+      apiRequest("GET", `/api/analytics/dashboard/${selectedBusiness.id}?period=${selectedPeriod}`).then(r => r.json()),
       apiRequest("GET", "/api/orders").then(r => r.json()),
     ]).then(([statsData, ordersData]) => {
       setStats(statsData.dashboard || statsData);
@@ -52,7 +52,7 @@ export default function BusinessDashboardScreen() {
     ready: "Listo", on_the_way: "En camino", delivered: "Entregado", cancelled: "Cancelado",
   };
 
-  const periodLabels: Record<Period, string> = { today: "Hoy", week: "Esta semana", month: "Este mes" };
+  const periodLabels: Record<Period, string> = { today: "Hoy", week: "Esta semana", month: "Este mes", all: "Todo" };
 
   const revenue = stats ? {
     today: (stats.todayRevenue || 0) / 100,
@@ -85,7 +85,7 @@ export default function BusinessDashboardScreen() {
           <>
             {/* ── Selector de período ── */}
             <View style={s.periodRow}>
-              {(["today", "week", "month"] as Period[]).map(p => (
+              {(["today", "week", "month", "all"] as Period[]).map(p => (
                 <Pressable
                   key={p}
                   onPress={() => setSelectedPeriod(p)}

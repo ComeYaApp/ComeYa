@@ -4,9 +4,9 @@ import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 
 export class BusinessAnalyticsService {
   // Dashboard principal con métricas en tiempo real
-  static async getDashboard(businessId: string, period: 'today' | 'week' | 'month' = 'week') {
+  static async getDashboard(businessId: string, period: 'today' | 'week' | 'month' | 'all' = 'week') {
     const now = new Date();
-    let startDate: Date;
+    let startDate: Date | null = null;
 
     switch (period) {
       case 'today':
@@ -18,6 +18,9 @@ export class BusinessAnalyticsService {
       case 'month':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
+      case 'all':
+        startDate = null;
+        break;
     }
 
     // Pedidos del período
@@ -25,16 +28,15 @@ export class BusinessAnalyticsService {
       .select()
       .from(orders)
       .where(
-        and(
-          eq(orders.businessId, businessId),
-          gte(orders.createdAt, startDate)
-        )
+        startDate
+          ? and(eq(orders.businessId, businessId), gte(orders.createdAt, startDate))
+          : eq(orders.businessId, businessId)
       );
 
     // Pedidos del período anterior (para comparación)
-    const periodLength = now.getTime() - startDate.getTime();
-    const previousStartDate = new Date(startDate.getTime() - periodLength);
-    const previousOrders = await db
+    const periodLength = startDate ? now.getTime() - startDate.getTime() : 0;
+    const previousStartDate = startDate ? new Date(startDate.getTime() - periodLength) : null;
+    const previousOrders = (startDate && previousStartDate) ? await db
       .select()
       .from(orders)
       .where(
@@ -43,7 +45,7 @@ export class BusinessAnalyticsService {
           gte(orders.createdAt, previousStartDate),
           lte(orders.createdAt, startDate)
         )
-      );
+      ) : [];
 
     // Calcular métricas
     const totalOrders = periodOrders.length;
