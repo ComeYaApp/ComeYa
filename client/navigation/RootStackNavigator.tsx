@@ -64,9 +64,11 @@ import StripePaymentScreen from "@/screens/StripePaymentScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 
+import AuthCallbackScreen from "@/screens/AuthCallbackScreen";
 import LocationPickerScreen from "@/screens/LocationPickerScreen";
 
 export type RootStackParamList = {
+  AuthCallback: undefined;
   Main: undefined;
   Login: undefined;
   Signup: { phone?: string } | undefined;
@@ -170,6 +172,15 @@ export default function RootStackNavigator() {
   }
 
   useEffect(() => {
+    // En web: detectar /auth-callback en la URL
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      if (window.location.pathname === '/auth-callback' || window.location.search.includes('token=')) {
+        if (navigationRef.current) {
+          navigationRef.current.navigate('AuthCallback');
+        }
+      }
+    }
+
     const handleURL = (event?: { url?: string }) => {
       // Support both Linking events and direct URL
       const incomingUrl = event?.url || (typeof window !== 'undefined' ? window.location.href : '');
@@ -227,6 +238,11 @@ export default function RootStackNavigator() {
       screenOptions={screenOptions}
       ref={navigationRef}
     >
+      <Stack.Screen
+        name="AuthCallback"
+        component={AuthCallbackScreen}
+        options={{ headerShown: false }}
+      />
       {isAuthenticated ? (
         <>
           <Stack.Screen

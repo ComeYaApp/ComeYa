@@ -128,6 +128,32 @@ a{text-decoration:none;color:inherit}
 .fb3{bottom:100px;left:-50px}
 </style>
 
+<style>
+/* LOGIN CARD */
+.login-card{background:#fff;border-radius:20px;padding:28px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,.12)}
+.login-tabs{display:flex;background:#f5f5f5;border-radius:10px;padding:4px;margin-bottom:20px;gap:4px}
+.login-tab{flex:1;padding:9px;border:none;background:transparent;border-radius:8px;font-size:.9rem;font-weight:600;cursor:pointer;color:#666;transition:all .2s}
+.login-tab.active{background:#fff;color:#DC2626;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.auth-msg{padding:10px 14px;border-radius:8px;font-size:.875rem;font-weight:500;margin-bottom:14px}
+.auth-error{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
+.auth-success{background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0}
+.input-row{display:flex;align-items:center;border:1.5px solid #e0e0e0;border-radius:10px;background:#fff;height:48px;overflow:hidden;margin-bottom:12px}
+.input-prefix{padding:0 12px;font-size:.875rem;font-weight:600;color:#1a1a1a;background:#f8f8f8;border-right:1.5px solid #e0e0e0;height:100%;display:flex;align-items:center;white-space:nowrap}
+.login-input{width:100%;height:48px;border:1.5px solid #e0e0e0;border-radius:10px;padding:0 14px;font-size:.95rem;font-family:inherit;outline:none;color:#1a1a1a;margin-bottom:12px}
+.input-row .login-input{border:none;height:100%;margin:0;border-radius:0}
+.eye-btn{background:none;border:none;padding:0 12px;cursor:pointer;font-size:1rem;height:100%}
+.login-submit{width:100%;height:48px;background:#DC2626;color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:4px;transition:background .2s}
+.login-submit:hover{background:#B91C1C}
+.login-submit:disabled{opacity:.6;cursor:not-allowed}
+.login-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:#999;font-size:.85rem}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:#e0e0e0}
+.login-register{display:block;text-align:center;height:48px;line-height:48px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:.95rem;font-weight:600;color:#1a1a1a;transition:border-color .2s}
+.login-register:hover{border-color:#DC2626;color:#DC2626}
+.login-legal{font-size:.75rem;color:#999;text-align:center;margin-top:14px;line-height:1.5}
+.login-legal a{color:#DC2626;font-weight:600}
+.app-btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+</style>
+
 <!-- HERO -->
 <section class="hero" id="inicio">
   <div class="container">
@@ -137,18 +163,60 @@ a{text-decoration:none;color:inherit}
         <h1 class="hero-title">Tu comida favorita,<br><span class="hl">en tu puerta</span></h1>
         <p class="hero-sub">ComeYa conecta los mejores restaurantes y negocios locales de Soria contigo. Pide en segundos, sigue tu pedido en tiempo real y apoya el comercio local.</p>
         <div class="hero-actions">
-          <a href="#descargar" class="store-btn">
-            <svg viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-            <div class="store-btn-text"><small>Descargar en</small><strong>App Store</strong></div>
-          </a>
-          <a href="#descargar" class="store-btn">
-            <svg viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.64.22.99.14l12.12-6.99-2.54-2.54-10.57 9.39zm-1.7-20.1C1.18 4.04 1 4.53 1 5.14v13.72c0 .61.18 1.1.48 1.48l.08.07 7.69-7.69v-.18L1.56 3.59l-.08.07zm17.52 8.95l-2.17-1.25-2.85 2.85 2.85 2.85 2.19-1.26c.62-.36.62-.94 0-1.19zM4.17.24L16.29 7.23l-2.54 2.54L3.18.38C3.53.3 3.87.07 4.17.24z"/></svg>
-            <div class="store-btn-text"><small>Disponible en</small><strong>Google Play</strong></div>
-          </a>
-          <a href="https://app.comeya.es" class="store-btn" style="background:var(--primary)">
-            <svg viewBox="0 0 24 24" fill="white" width="24" height="24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
-            <div class="store-btn-text"><small>Usar ahora en</small><strong>Navegador Web</strong></div>
-          </a>
+          <!-- FORMULARIO DE LOGIN -->
+          <div class="login-card" id="login-card">
+            <div class="login-tabs">
+              <button id="mode-sms"  class="login-tab active" onclick="setMode('sms')">&#x1F4F1; SMS</button>
+              <button id="mode-pass" class="login-tab"        onclick="setMode('password')">&#x1F511; Contrase&ntilde;a</button>
+            </div>
+
+            <div id="auth-error"   class="auth-msg auth-error"   style="display:none"></div>
+            <div id="auth-success" class="auth-msg auth-success" style="display:none"></div>
+
+            <!-- Campo tel&eacute;fono SMS -->
+            <div id="field-sms">
+              <div class="input-row">
+                <span class="input-prefix">&#x1F1EA;&#x1F1F8; +34</span>
+                <input id="input-phone" type="tel" placeholder="612 345 678" class="login-input" />
+              </div>
+            </div>
+
+            <!-- Campo OTP (oculto hasta enviar SMS) -->
+            <div id="field-otp" style="display:none">
+              <input id="input-otp" type="text" placeholder="C&oacute;digo de 6 d&iacute;gitos" class="login-input" maxlength="6" inputmode="numeric" />
+            </div>
+
+            <!-- Campos contrase&ntilde;a -->
+            <div id="field-password" style="display:none">
+              <input id="input-identifier" type="email" placeholder="correo@ejemplo.com" class="login-input" style="margin-bottom:10px" />
+              <div class="input-row">
+                <input id="input-password" type="password" placeholder="Contrase&ntilde;a" class="login-input" style="flex:1;border:none;outline:none;background:transparent" />
+                <button onclick="togglePass()" class="eye-btn">&#x1F441;</button>
+              </div>
+            </div>
+
+            <button id="submit-btn" class="login-submit" onclick="handleSubmit()">Enviar c&oacute;digo</button>
+
+            <div class="login-divider"><span>o</span></div>
+
+            <a href="https://app.comeya.es/signup" class="login-register">Crear cuenta nueva</a>
+
+            <p class="login-legal">
+              Al continuar aceptas los <a href="https://app.comeya.es/terms">T&eacute;rminos</a> y la <a href="https://app.comeya.es/privacy">Privacidad</a>
+            </p>
+          </div>
+
+          <!-- Botones app -->
+          <div class="app-btns">
+            <a href="#descargar" class="store-btn">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              <div class="store-btn-text"><small>Descargar en</small><strong>App Store</strong></div>
+            </a>
+            <a href="#descargar" class="store-btn">
+              <svg viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.64.22.99.14l12.12-6.99-2.54-2.54-10.57 9.39zm-1.7-20.1C1.18 4.04 1 4.53 1 5.14v13.72c0 .61.18 1.1.48 1.48l.08.07 7.69-7.69v-.18L1.56 3.59l-.08.07zm17.52 8.95l-2.17-1.25-2.85 2.85 2.85 2.85 2.19-1.26c.62-.36.62-.94 0-1.19zM4.17.24L16.29 7.23l-2.54 2.54L3.18.38C3.53.3 3.87.07 4.17.24z"/></svg>
+              <div class="store-btn-text"><small>Disponible en</small><strong>Google Play</strong></div>
+            </a>
+          </div>
         </div>
         <div class="hero-stats">
           <div class="hero-stat"><span class="hero-stat-n">50+</span><span class="hero-stat-l">Negocios locales</span></div>
@@ -553,5 +621,6 @@ function toggleMenu(){
   if(isAndroid && btns[1]) btns[1].style.background='#FF6B35';
 })();
 </script>
+<script src="/js/auth.js"></script>
 </body>
 </html>
