@@ -205,6 +205,9 @@ export const businesses = mysqlTable("businesses", {
   pagoMovilCedula: text("pago_movil_cedula"),
   verificationCode: text("verification_code"),
   verificationExpires: timestamp("verification_expires"),
+  // Stripe Connect
+  stripeAccountId: varchar("stripe_account_id", { length: 255 }),
+  stripeAccountStatus: varchar("stripe_account_status", { length: 50 }).default("not_connected"), // not_connected, pending, active
   // Niveles de partner
   partnerLevel: varchar("partner_level", { length: 20 }).default("bronze"), // bronze, silver, gold, platinum
   partnerLevelUpdatedAt: timestamp("partner_level_updated_at"),
@@ -416,9 +419,10 @@ export const payouts = mysqlTable("payouts", {
   method: varchar("method", { length: 50 }), // pago_movil, binance, zinli, zelle, cash
   // Snapshot de la cuenta destino al momento del pago
   accountSnapshot: text("account_snapshot"), // JSON con datos de la cuenta usada
-  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, paid
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, paid, stripe_auto
   paidBy: varchar("paid_by", { length: 255 }), // admin que marcó como pagado
   paidAt: timestamp("paid_at"),
+  stripeTransferId: varchar("stripe_transfer_id", { length: 255 }), // ID del transfer de Stripe
   notes: text("notes"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -455,6 +459,9 @@ export const deliveryDrivers = mysqlTable("delivery_drivers", {
   totalDistanceTraveled: int("total_distance_traveled").default(0), // metros totales
   averageSpeed: int("average_speed").default(0), // km/h promedio
   gpsAccuracyAverage: int("gps_accuracy_average").default(0), // precisión promedio en metros
+  // Stripe Connect
+  stripeAccountId: varchar("stripe_account_id", { length: 255 }),
+  stripeAccountStatus: varchar("stripe_account_status", { length: 50 }).default("not_connected"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 

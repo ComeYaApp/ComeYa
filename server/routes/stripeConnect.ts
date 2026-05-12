@@ -16,14 +16,17 @@ async function getStripeAccountId(userId: string): Promise<string | null> {
   return rows[0]?.stripe_account_id || null;
 }
 
-async function saveStripeAccountId(userId: string, accountId: string) {
-  await db.execute(
-    sql`UPDATE users SET stripe_account_id = ${accountId} WHERE id = ${userId}`
-  );
-  // También actualizar en businesses si es business_owner
-  await db.execute(
-    sql`UPDATE businesses SET stripe_account_id = ${accountId} WHERE owner_id = ${userId}`
-  );
+async function saveStripeAccountId(userId: string, accountId: string, role: string) {
+  // Guardar en users (legacy)
+  await db.execute(sql`UPDATE users SET stripe_account_id = ${accountId} WHERE id = ${userId}`);
+  // Guardar en businesses si es business_owner
+  if (role === "business_owner") {
+    await db.execute(sql`UPDATE businesses SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE owner_id = ${userId}`);
+  }
+  // Guardar en delivery_drivers si es repartidor
+  if (role === "delivery_driver") {
+    await db.execute(sql`UPDATE delivery_drivers SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE user_id = ${userId}`);
+  }
 }
 
 // ── Endpoints compartidos (negocio y repartidor) ──────────────────────────────
@@ -81,11 +84,7 @@ router.post("/onboard", authenticateToken, async (req, res) => {
         metadata: { userId: req.user!.id, role: req.user!.role },
       });
       accountId = account.id;
-      await saveStripeAccountId(req.user!.id, accountId);
-    }
-
-    // Crear link de onboarding
-    const returnUrl  = `${process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL}/api/connect/return?userId=${req.user!.id}`;
+      await saveStripeAccountId(req.user!.id, accountId, req.user!.role);
     const refreshUrl = `${process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL}/api/connect/refresh?accountId=${accountId}`;
 
     const accountLink = await stripe.accountLinks.create({
@@ -125,8 +124,29 @@ router.post("/refresh-onboarding", authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/connect/return — callback tras completar onboarding (redirige a la app)
+// GET /api/connect/return — callback tras completar onboarding
 router.get("/return", async (req, res) => {
+  const { userId } = req.query as { userId?: string };
+
+  // Marcar cuenta como activa si el onboarding está completo
+  if (userId) {
+    try {
+      const stripe = getStripe();
+      const [userRows]: any = await db.execute(sql`SELECT stripe_account_id, role FROM users WHERE id = ${userId} LIMIT 1`);
+      const user = userRows[0];
+      if (user?.stripe_account_id) {
+        const account = await stripe.accounts.retrieve(user.stripe_account_id);
+        if (account.details_submitted && account.payouts_enabled) {
+          if (user.role === "business_owner") {
+            await db.execute(sql`UPDATE businesses SET stripe_account_status = 'active' WHERE owner_id = ${userId}`);
+          } else if (user.role === "delivery_driver") {
+            await db.execute(sql`UPDATE delivery_drivers SET stripe_account_status = 'active' WHERE user_id = ${userId}`);
+          }
+        }
+      }
+    } catch (e) { /* no bloquear el redirect */ }
+  }
+
   const deepLink = `comeya://stripe-connect-complete`;
   res.send(`
     <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
@@ -208,7 +228,7 @@ router.post("/business/connect", authenticateToken, async (req, res) => {
         metadata: { userId: req.user!.id, role: "business_owner" },
       });
       accountId = account.id;
-      await saveStripeAccountId(req.user!.id, accountId);
+      await saveStripeAccountId(req.user!.id, accountId, "business_owner");
     }
 
     const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL;

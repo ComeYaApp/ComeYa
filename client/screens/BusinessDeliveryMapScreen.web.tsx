@@ -8,6 +8,42 @@ import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
+const SORIA = { lat: 41.7636, lng: -2.4677 };
+
+interface Delivery {
+  orderId: string;
+  status: string;
+  minutesActive: number;
+  total: number;
+  subtotal: number;
+  deliveryFee: number;
+  paymentMethod: string;
+  customer: { name: string; phone: string; address?: string; lat?: number; lng?: number };
+  driver?: { name: string; phone: string; vehicleType?: string; rating?: number; lat?: number; lng?: number } | null;
+}
+
+interface Stats {
+  totalActive: number;
+  pending: number;
+  onTheWay: number;
+  avgMinutes: number;
+  pendingRevenue: number;
+}
+
+const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
+  pending:        { color: "#F59E0B", label: "Pendiente"   },
+  accepted:       { color: "#3B82F6", label: "Aceptado"    },
+  preparing:      { color: "#8B5CF6", label: "Preparando"  },
+  ready:          { color: "#10B981", label: "Listo"        },
+  assigned_driver:{ color: "#06B6D4", label: "Asignado"    },
+  picked_up:      { color: "#22C55E", label: "Recogido"    },
+  on_the_way:     { color: "#DC2626", label: "En camino"   },
+  in_transit:     { color: "#DC2626", label: "En tránsito" },
+  arriving:       { color: "#EF4444", label: "Llegando"    },
+  delivered:      { color: "#6B7280", label: "Entregado"   },
+  cancelled:      { color: "#EF4444", label: "Cancelado"   },
+};
+
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
     if ((window as any).google?.maps) { resolve(); return; }
