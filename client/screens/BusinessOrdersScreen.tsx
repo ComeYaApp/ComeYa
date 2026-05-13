@@ -113,8 +113,7 @@ export default function BusinessOrdersScreen() {
 
   useEffect(() => {
     loadOrders();
-    // Polling reducido a 30s como fallback
-    const interval = setInterval(loadOrders, 30000);
+    const interval = setInterval(loadOrders, 15000);
     return () => clearInterval(interval);
   }, []);
 

@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
+import { useReorder } from "@/hooks/useReorder";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import { OrderProgressBar } from "@/components/OrderProgressBar";
 
 const PRIMARY = "#DC2626";
 
@@ -25,10 +28,13 @@ export default function OrdersScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
+  const { showToast } = useToast();
+  const { reorder } = useReorder();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
   const [tab, setTab] = useState<"active" | "history">("active");
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
@@ -37,16 +43,42 @@ export default function OrdersScreen() {
   const sub = isDark ? "#aaa" : "#666";
   const border = isDark ? "#333" : "#e8e8e8";
 
-  useEffect(() => {
-    apiRequest("GET", "/api/orders").then(r => r.json()).then(d => {
-      setOrders(d.orders || []);
-      const active = (d.orders || []).find((o: any) => !["delivered", "cancelled"].includes(o.status));
-      if (active) setSelected(active);
-    }).catch(console.error).finally(() => setLoading(false));
+  const loadOrders = useCallback(async () => {
+    try {
+      const d = await apiRequest("GET", "/api/orders").then(r => r.json());
+      const mapped = (d.orders || []).map((row: any) => {
+        const o = row.order ?? row;
+        const b = row.business;
+        return { ...o, businessName: o.businessName || b?.name || "", businessImage: o.businessImage || b?.image || "",
+          items: typeof o.items === "string" ? JSON.parse(o.items) : (o.items ?? []) };
+      }).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setOrders(mapped);
+      if (!selected) {
+        const active = mapped.find((o: any) => !["delivered", "cancelled"].includes(o.status));
+        if (active) setSelected(active);
+      }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, []);
 
-  const activeOrders = orders.filter(o => !["delivered", "cancelled"].includes(o.status));
-  const historyOrders = orders.filter(o => ["delivered", "cancelled"].includes(o.status));
+  useFocusEffect(useCallback(() => { loadOrders(); }, [loadOrders]));
+
+  const handleConfirmDelivery = async (orderId: string) => {
+    setConfirmingId(orderId);
+    try {
+      const res = await apiRequest("POST", `/api/fund-release/confirm-delivery`, { orderId });
+      const data = await res.json();
+      if (data.success) {
+        showToast("✅ Entrega confirmada. ¡Gracias!", "success");
+        loadOrders();
+      } else {
+        showToast(data.error || "Error al confirmar", "error");
+      }
+    } catch { showToast("Error de conexión", "error"); }
+    finally { setConfirmingId(null); }
+  };
+
+  const activeOrders = orders.filter(o => !(o.status === "cancelled" || (o.status === "delivered" && o.confirmedByCustomer)));
+  const historyOrders = orders.filter(o => o.status === "cancelled" || (o.status === "delivered" && o.confirmedByCustomer));
   const displayOrders = tab === "active" ? activeOrders : historyOrders;
 
   return (
@@ -101,8 +133,15 @@ export default function OrdersScreen() {
                     <Text style={[s.orderMeta, { color: sub }]}>
                       #{order.id?.slice(0, 8).toUpperCase()} · {new Date(order.createdAt).toLocaleDateString("es-ES")}
                     </Text>
-                    <View style={[s.statusBadge, { backgroundColor: st.color + "15" }]}>
-                      <Text style={[s.statusText, { color: st.color }]}>{st.label}</Text>
+                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 3 }}>
+                      <View style={[s.statusBadge, { backgroundColor: st.color + "15" }]}>
+                        <Text style={[s.statusText, { color: st.color }]}>{st.label}</Text>
+                      </View>
+                      <View style={[s.statusBadge, { backgroundColor: '#e0e0e0' }]}>
+                        <Text style={[s.statusText, { color: '#555' }]}>
+                          {order.orderType === 'pickup' ? '🛍️ Recoger' : '🚚 Delivery'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                   <Text style={[s.orderTotal, { color: text }]}>€{(order.total / 100).toFixed(2)}</Text>
@@ -155,6 +194,38 @@ export default function OrdersScreen() {
                     </Pressable>
                   )}
                 </View>
+
+                {/* Barra de progreso */}
+                {!["delivered", "cancelled"].includes(selected.status) && (
+                  <View style={{ marginBottom: 20 }}>
+                    <OrderProgressBar status={selected.status} orderType={selected.orderType || 'delivery'} />
+                  </View>
+                )}
+
+                {/* Confirmar entrega */}
+                {selected.status === "delivered" && !selected.confirmedByCustomer && (
+                  <Pressable
+                    onPress={() => handleConfirmDelivery(selected.id)}
+                    disabled={confirmingId === selected.id}
+                    style={[s.confirmBtn, { opacity: confirmingId === selected.id ? 0.6 : 1 }]}
+                  >
+                    <Feather name="check-circle" size={18} color="#fff" />
+                    <Text style={s.confirmBtnText}>
+                      {confirmingId === selected.id ? "Confirmando..." : "✅ Confirmar que recibí mi pedido"}
+                    </Text>
+                  </Pressable>
+                )}
+
+                {/* Pedir de nuevo */}
+                {(selected.status === "delivered" || selected.status === "cancelled") && (
+                  <Pressable
+                    onPress={() => reorder(selected)}
+                    style={[s.reorderBtn, { borderColor: PRIMARY + '40' }]}
+                  >
+                    <Feather name="refresh-cw" size={16} color={PRIMARY} />
+                    <Text style={[s.reorderBtnText, { color: PRIMARY }]}>Pedir de nuevo</Text>
+                  </Pressable>
+                )}
 
                 <Text style={[s.detailSectionTitle, { color: text }]}>Productos</Text>
                 {items.map((item: any, i: number) => (
@@ -243,4 +314,8 @@ const s = StyleSheet.create({
   detailTotalValue: { fontSize: 20, fontWeight: "900" },
   detailAddress: { fontSize: 14, lineHeight: 20, marginBottom: 6 },
   detailDate: { fontSize: 12 },
+  confirmBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#4CAF50", paddingVertical: 14, borderRadius: 12, marginBottom: 16 },
+  confirmBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  reorderBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, paddingVertical: 12, borderRadius: 12, marginBottom: 20 },
+  reorderBtnText: { fontSize: 14, fontWeight: "600" },
 });

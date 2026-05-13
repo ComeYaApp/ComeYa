@@ -106,7 +106,7 @@ export default function DriverMapScreen() {
           const coords = { latitude: l.coords.latitude, longitude: l.coords.longitude };
           setDriverLocation(coords);
           // Enviar ubicación al servidor
-          apiRequest("POST", "/api/delivery/location", {
+          apiRequest("PUT", "/api/delivery/location", {
             deliveryPersonId: user?.id,
             latitude: l.coords.latitude.toString(),
             longitude: l.coords.longitude.toString(),

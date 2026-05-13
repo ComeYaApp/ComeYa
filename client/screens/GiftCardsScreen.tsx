@@ -39,6 +39,7 @@ export default function GiftCardsScreen() {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [message, setMessage]               = useState('');
   const [selectedDesign, setSelectedDesign] = useState('default');
+  const [paymentMethod, setPaymentMethod]   = useState<'stripe' | 'bizum_manual' | 'sepa'>('stripe');
 
   const [proofCardId, setProofCardId]       = useState<string | null>(null);
   const [proofProvider, setProofProvider]   = useState('bizum');
@@ -79,14 +80,24 @@ export default function GiftCardsScreen() {
       recipientEmail: recipientEmail.trim() || undefined,
       message: message.trim() || undefined,
       design: selectedDesign,
+      paymentMethod,
     })).json(),
     onSuccess: (data) => {
       if (data.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showToast('Gift Card creada. Sube el comprobante de pago.', 'success');
-        queryClient.invalidateQueries({ queryKey: ['/api/gift-cards/my-cards'] });
-        setProofCardId(data.giftCard.id);
-        setActiveTab('my-cards');
+        if (paymentMethod === 'stripe') {
+          queryClient.invalidateQueries({ queryKey: ['/api/gift-cards/my-cards'] });
+          (navigation as any).navigate('StripePayment', {
+            giftCardId: data.giftCard.id,
+            amount: Math.round(parseFloat(amount) * 100),
+            isGiftCard: true,
+          });
+        } else {
+          showToast('Gift Card creada. Sube el comprobante de pago.', 'success');
+          queryClient.invalidateQueries({ queryKey: ['/api/gift-cards/my-cards'] });
+          setProofCardId(data.giftCard.id);
+          setActiveTab('my-cards');
+        }
         setAmount('25'); setRecipientEmail(''); setMessage('');
       } else {
         showToast(data.error || 'Error al crear gift card', 'error');
@@ -190,6 +201,25 @@ export default function GiftCardsScreen() {
                 </ScrollView>
               </View>
             )}
+
+            {/* Método de pago */}
+            <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
+              <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Método de pago</ThemedText>
+              {[
+                { id: 'stripe',       label: 'Tarjeta / Bizum (Stripe)', desc: 'Pago instantáneo' },
+                { id: 'bizum_manual', label: 'Bizum manual',             desc: 'Transfieres tú — admin activa en breve' },
+                { id: 'sepa',         label: 'Transferencia SEPA',       desc: 'Transfieres tú — admin activa en breve' },
+              ].map(m => (
+                <Pressable key={m.id} onPress={() => setPaymentMethod(m.id as any)}
+                  style={[{ flexDirection: 'row', alignItems: 'center', padding: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 1.5, marginBottom: Spacing.sm, borderColor: paymentMethod === m.id ? ComeYaColors.primary : theme.border, backgroundColor: paymentMethod === m.id ? ComeYaColors.primary + '10' : theme.backgroundSecondary }]}>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText type="body" style={{ fontWeight: '700' }}>{m.label}</ThemedText>
+                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>{m.desc}</ThemedText>
+                  </View>
+                  {paymentMethod === m.id && <Feather name="check-circle" size={18} color={ComeYaColors.primary} />}
+                </Pressable>
+              ))}
+            </View>
 
             <Pressable onPress={() => purchaseMutation.mutate()}
               disabled={!amount || parseFloat(amount) < 10 || purchaseMutation.isPending}
