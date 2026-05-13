@@ -1112,70 +1112,71 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
   }, [visible, user]);
 
   const handleSave = async () => {
-    if (!name.trim()) { showToast({ type: "error", message: "El nombre es obligatorio" }); return; }
+    if (!name.trim()) { showToast("El nombre es obligatorio", "error"); return; }
     setIsSaving(true);
     try {
       const res = await apiRequest("PUT", "/api/users/profile", { name, email, dni, address });
       const data = await res.json();
       if (data.success || res.ok) {
         updateUser({ ...user, name, email, dni, address });
-        showToast({ type: "success", message: "Perfil actualizado" });
+        showToast("Perfil actualizado", "success");
         onClose();
       } else {
-        showToast({ type: "error", message: data.error || "Error al guardar" });
+        showToast(typeof data.error === 'string' ? data.error : "Error al guardar", "error");
       }
-    } catch { showToast({ type: "error", message: "Error de conexión" }); }
+    } catch { showToast("Error de conexión", "error"); }
     setIsSaving(false);
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword) { showToast({ type: "error", message: "Rellena todos los campos" }); return; }
-    if (newPassword.length < 8) { showToast({ type: "error", message: "Mínimo 8 caracteres" }); return; }
-    if (newPassword !== confirmPassword) { showToast({ type: "error", message: "Las contraseñas no coinciden" }); return; }
+    if (!currentPassword || !newPassword) { showToast("Rellena todos los campos", "error"); return; }
+    if (newPassword.length < 8) { showToast("Mínimo 8 caracteres", "error"); return; }
+    if (newPassword !== confirmPassword) { showToast("Las contraseñas no coinciden", "error"); return; }
     setIsSaving(true);
     try {
       const res = await apiRequest("PUT", "/api/auth/change-password", { currentPassword, newPassword });
       const data = await res.json();
       if (data.success) {
-        showToast({ type: "success", message: "Contraseña actualizada" });
+        showToast("Contraseña actualizada", "success");
         setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
       } else {
-        showToast({ type: "error", message: data.error || "Error al cambiar contraseña" });
+        showToast(typeof data.error === 'string' ? data.error : "Error al cambiar contraseña", "error");
       }
-    } catch { showToast({ type: "error", message: "Error de conexión" }); }
+    } catch { showToast("Error de conexión", "error"); }
     setIsSaving(false);
   };
 
   const handleSendPhoneCode = async () => {
-    if (!newPhone.trim()) { showToast({ type: "error", message: "Introduce el nuevo teléfono" }); return; }
+    if (!newPhone.trim()) { showToast("Introduce el nuevo teléfono", "error"); return; }
     setIsSendingCode(true);
     try {
       const res = await apiRequest("POST", "/api/auth/send-code", { phone: newPhone });
       const data = await res.json();
       if (data.userNotFound || data.success) {
         setCodeSent(true);
-        showToast({ type: "success", message: "Código enviado al nuevo número" });
+        showToast("Código enviado al nuevo número", "success");
       } else {
-        showToast({ type: "error", message: data.error || "Error al enviar código" });
+        showToast(typeof data.error === 'string' ? data.error : "Error al enviar código", "error");
       }
-    } catch { showToast({ type: "error", message: "Error de conexión" }); }
+    } catch { showToast("Error de conexión", "error"); }
     setIsSendingCode(false);
   };
 
   const handleChangePhone = async () => {
-    if (!phoneCode.trim()) { showToast({ type: "error", message: "Introduce el código" }); return; }
+    if (!phoneCode.trim()) { showToast("Introduce el código", "error"); return; }
     setIsSaving(true);
     try {
       const res = await apiRequest("PUT", "/api/auth/change-phone", { newPhone, code: phoneCode });
       const data = await res.json();
       if (data.success) {
         updateUser({ ...user, phone: newPhone });
-        showToast({ type: "success", message: "Teléfono actualizado" });
+        showToast("Teléfono actualizado", "success");
         setNewPhone(""); setPhoneCode(""); setCodeSent(false);
+        onClose();
       } else {
-        showToast({ type: "error", message: data.error || "Error al cambiar teléfono" });
+        showToast(typeof data.error === 'string' ? data.error : "Error al cambiar teléfono", "error");
       }
-    } catch { showToast({ type: "error", message: "Error de conexión" }); }
+    } catch { showToast("Error de conexión", "error"); }
     setIsSaving(false);
   };
 

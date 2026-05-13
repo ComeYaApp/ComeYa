@@ -42,7 +42,9 @@ export default function EditProfileScreen() {
   const [phone,   setPhone]   = useState(user?.phone || "");
   const [email,   setEmail]   = useState(user?.email || "");
   const [dni,     setDni]     = useState((user as any)?.dni     || "");
-  const [address, setAddress] = useState((user as any)?.address || "");
+  const [address, setAddress] = useState(
+    typeof (user as any)?.address === 'string' ? (user as any).address : ""
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   // Foto de perfil
@@ -77,7 +79,10 @@ export default function EditProfileScreen() {
         if (vData.success) setVerificationStatus(vData.verificationStatus || "pending");
         if (pData.success) {
           if (pData.dni)          setDni(pData.dni);
-          if (pData.address)      setAddress(pData.address);
+          if (pData.address) {
+            const addr = pData.address;
+            setAddress(typeof addr === 'string' ? addr : (addr?.street || addr?.formatted || JSON.stringify(addr)));
+          }
           if (pData.vehicleType)  setVehicleType(pData.vehicleType);
           if (pData.vehiclePlate) setVehiclePlate(pData.vehiclePlate);
           if (pData.vehicleBrand) setVehicleBrand(pData.vehicleBrand);
@@ -129,7 +134,7 @@ export default function EditProfileScreen() {
         address: address.trim() || undefined,
       });
       const data = await res.json();
-      if (!data.success) throw new Error(data.error);
+      if (!data.success) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
       if (isDriver && (vehicleType || vehiclePlate)) {
         await apiRequest("PUT", "/api/users/vehicle", {
           vehicleType: vehicleType || undefined,
@@ -143,7 +148,8 @@ export default function EditProfileScreen() {
       showToast("Perfil actualizado correctamente", "success");
       navigation.goBack();
     } catch (err: any) {
-      showToast(err.message || "No se pudo actualizar el perfil", "error");
+      const msg = typeof err?.message === 'string' ? err.message : "No se pudo actualizar el perfil";
+      showToast(msg, "error");
     } finally { setIsSaving(false); }
   };
 

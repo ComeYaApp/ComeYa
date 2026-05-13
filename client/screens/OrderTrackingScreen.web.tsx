@@ -11,6 +11,19 @@ import { apiRequest } from '@/lib/query-client';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PRIMARY = "#DC2626";
+
+const DARK_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a1a" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2c2c2c" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212121" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3c3c3c" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+];
+
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
     if ((window as any).google?.maps) { resolve(); return; }
@@ -739,22 +752,10 @@ export default function OrderTrackingScreen() {
         )}
       </ScrollView>
       </View>
-    
     </View>
+  </View>
   );
 }
-
-const DARK_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a1a" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2c2c2c" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3c3c3c" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-];
 
 const s = StyleSheet.create({
   root:          { flex: 1, flexDirection: 'column' },
