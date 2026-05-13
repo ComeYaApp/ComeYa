@@ -3,6 +3,8 @@ import { View, StyleSheet, Pressable, ActivityIndicator, Text } from "react-nati
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
+
+const SORIA = { lat: 41.7636, lng: -2.4677 };
 import { apiRequest } from "@/lib/query-client";
 
 function loadGoogleMaps(): Promise<void> {

@@ -3,6 +3,8 @@ import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
+
+const SORIA = { lat: 41.7636, lng: -2.4677 };
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
