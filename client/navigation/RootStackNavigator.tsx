@@ -64,11 +64,9 @@ import StripePaymentScreen from "@/screens/StripePaymentScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useAuth } from "@/contexts/AuthContext";
 
-import AuthCallbackScreen from "@/screens/AuthCallbackScreen";
 import LocationPickerScreen from "@/screens/LocationPickerScreen";
 
 export type RootStackParamList = {
-  AuthCallback: undefined;
   Main: undefined;
   Login: undefined;
   Signup: { phone?: string } | undefined;
@@ -229,11 +227,6 @@ export default function RootStackNavigator() {
       screenOptions={screenOptions}
       ref={navigationRef}
     >
-      <Stack.Screen
-        name="AuthCallback"
-        component={AuthCallbackScreen}
-        options={{ headerShown: false }}
-      />
       {isAuthenticated ? (
         <>
           <Stack.Screen
