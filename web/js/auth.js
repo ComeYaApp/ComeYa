@@ -43,14 +43,14 @@ function showSuccess(msg) {
 
 // ── Redirect tras login ───────────────────────────────────────────────────────
 function redirectToApp(token, refreshToken, role, userData) {
-  const route = ROLE_ROUTES[role] || '/home';
   const params = new URLSearchParams({
     token,
-    refresh: refreshToken,
+    refresh: refreshToken || '',
     role,
     name: userData.name || '',
   });
-  window.location.href = `${APP_URL}/auth-callback?${params.toString()}`;
+  // Redirigir a la raíz con query params — Expo Web sirve todo desde /
+  window.location.href = `${APP_URL}/?${params.toString()}`;
 }
 
 // ── Login por SMS ─────────────────────────────────────────────────────────────

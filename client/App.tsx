@@ -74,6 +74,7 @@ export default function App() {
       ]).then(() => {
         window.location.replace('/');
       });
+      // No hacer setAuthCallbackHandled(true) — dejamos que el replace recargue
     } else {
       setAuthCallbackHandled(true);
     }
@@ -127,12 +128,12 @@ export default function App() {
     return null;
   }
 
-  if (!onboardingChecked) {
-    return null;
+  if (!authCallbackHandled) {
+    return null; // Guardando token y recargando
   }
 
-  if (!authCallbackHandled) {
-    return null; // Esperando a que se guarde el token y recargue
+  if (!onboardingChecked) {
+    return null;
   }
 
   return (
