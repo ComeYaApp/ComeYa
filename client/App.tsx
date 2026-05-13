@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Platform, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -54,6 +55,29 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [authCallbackHandled, setAuthCallbackHandled] = useState(false);
+
+  // Detectar /auth-callback ANTES de que AuthContext cargue
+  useEffect(() => {
+    if (Platform.OS !== 'web') { setAuthCallbackHandled(true); return; }
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+    const role   = params.get('role');
+    if (token && role) {
+      const refresh = params.get('refresh') || '';
+      const name    = params.get('name')    || '';
+      const userData = { token, refreshToken: refresh, role, name, phoneVerified: true, isActive: true };
+      Promise.all([
+        AsyncStorage.setItem('@ComeYa_user', JSON.stringify(userData)),
+        AsyncStorage.setItem('token', token),
+        refresh ? AsyncStorage.setItem('refreshToken', refresh) : Promise.resolve(),
+      ]).then(() => {
+        window.location.replace('/');
+      });
+    } else {
+      setAuthCallbackHandled(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -105,6 +129,10 @@ export default function App() {
 
   if (!onboardingChecked) {
     return null;
+  }
+
+  if (!authCallbackHandled) {
+    return null; // Esperando a que se guarde el token y recargue
   }
 
   return (
