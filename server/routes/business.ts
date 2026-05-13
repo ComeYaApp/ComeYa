@@ -796,6 +796,25 @@ router.post("/", authenticateToken, requireRole("business_owner"), async (req, r
     };
 
     await db.insert(businesses).values(newBusiness);
+
+    // Geocodificar automáticamente si tiene dirección
+    if (address) {
+      try {
+        const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
+        if (GMAPS_KEY) {
+          const query = encodeURIComponent(`${address}, Soria, España`);
+          const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`);
+          const geoData = await geoRes.json();
+          if (geoData.status === 'OK' && geoData.results[0]) {
+            const { lat, lng } = geoData.results[0].geometry.location;
+            await db.update(businesses).set({ latitude: String(lat), longitude: String(lng) }).where(eq(businesses.id, newBusiness.id));
+            newBusiness.latitude = String(lat);
+            newBusiness.longitude = String(lng);
+          }
+        }
+      } catch { /* geocoding falla silenciosamente */ }
+    }
+
     res.json({ success: true, business: newBusiness });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -864,6 +883,23 @@ router.put("/:id", authenticateToken, requireRole("business_owner"), async (req,
     }
 
     await db.update(businesses).set(updates).where(eq(businesses.id, req.params.id));
+
+    // Si cambió la dirección, geocodificar automáticamente
+    if (req.body.address && req.body.address !== business.address) {
+      try {
+        const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
+        if (GMAPS_KEY) {
+          const query = encodeURIComponent(`${req.body.address}, Soria, España`);
+          const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`);
+          const geoData = await geoRes.json();
+          if (geoData.status === 'OK' && geoData.results[0]) {
+            const { lat, lng } = geoData.results[0].geometry.location;
+            await db.update(businesses).set({ latitude: String(lat), longitude: String(lng) }).where(eq(businesses.id, req.params.id));
+          }
+        }
+      } catch { /* geocoding falla silenciosamente */ }
+    }
+
     res.json({ success: true, message: "Negocio actualizado" });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

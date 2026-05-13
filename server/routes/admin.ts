@@ -368,10 +368,24 @@ router.put("/users/:id", authenticateToken, requireRole("admin", "super_admin"),
 // Drivers
 router.get("/drivers", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    const { users } = await import("@shared/schema-mysql");
+    const { users, deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const drivers = await db.select().from(users).where(eq(users.role, "delivery_driver")).orderBy(desc(users.createdAt));
-    res.json({ success: true, drivers });
+    const { eq } = await import("drizzle-orm");
+    const driverUsers = await db.select().from(users).where(eq(users.role, "delivery_driver")).orderBy(desc(users.createdAt));
+    const enriched = await Promise.all(driverUsers.map(async (u) => {
+      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, u.id)).limit(1);
+      return {
+        ...u,
+        currentLatitude:  dd?.currentLatitude  ?? null,
+        currentLongitude: dd?.currentLongitude ?? null,
+        vehicleType:      dd?.vehicleType      ?? null,
+        vehiclePlate:     dd?.vehiclePlate     ?? null,
+        isBlocked:        dd?.isBlocked        ?? false,
+        totalDeliveries:  dd?.totalDeliveries  ?? 0,
+        rating:           dd?.rating           ?? null,
+      };
+    }));
+    res.json({ success: true, drivers: enriched });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
 

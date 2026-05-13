@@ -130,26 +130,24 @@ router.get("/dashboard/active-orders", authenticateToken, requireRole("admin", "
 // Get online drivers for dashboard
 router.get("/dashboard/online-drivers", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    const { users } = await import("@shared/schema-mysql");
+    const { users, deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
-    const drivers = await db
-      .select()
-      .from(users)
-      .where(eq(users.role, "delivery_driver"));
+    const driverUsers = await db.select().from(users).where(eq(users.role, "delivery_driver"));
 
-    const driversWithDetails = drivers.map(driver => ({
-      id: driver.id,
-      name: driver.name,
-      isOnline: driver.isActive,
-      lastActiveAt: driver.createdAt,
-      location: {
-        latitude: "20.6736",
-        longitude: "-104.3647",
-        updatedAt: new Date().toISOString(),
-      },
-      activeOrder: null,
+    const driversWithDetails = await Promise.all(driverUsers.map(async (driver) => {
+      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, driver.id)).limit(1);
+      return {
+        id: driver.id,
+        name: driver.name,
+        isOnline: driver.isOnline ?? driver.isActive,
+        lastActiveAt: driver.lastActiveAt,
+        currentLatitude: dd?.currentLatitude ?? null,
+        currentLongitude: dd?.currentLongitude ?? null,
+        vehicleType: dd?.vehicleType ?? null,
+        activeOrder: null,
+      };
     }));
 
     res.json({ drivers: driversWithDetails });
