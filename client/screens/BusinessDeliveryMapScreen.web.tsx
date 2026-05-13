@@ -24,8 +24,6 @@ const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   cancelled:       { color: "#EF4444", label: "Cancelado"   },
 };
 
-interface Delivery {
-  orderId: string;
   status: string;
   minutesActive: number;
   total: number;
