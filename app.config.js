@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "ComeYa",
     slug: "comeya",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
