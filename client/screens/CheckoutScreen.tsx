@@ -115,6 +115,8 @@ export default function CheckoutScreen({ route }: any) {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
+  const [subDiscount, setSubDiscount] = useState(0);
+  const [subDeliveryFee, setSubDeliveryFee] = useState<number | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [addressPickerVisible, setAddressPickerVisible] = useState(false);
 
@@ -189,10 +191,28 @@ export default function CheckoutScreen({ route }: any) {
   };
 
   const deliveryFee = confirmedOrderType === 'pickup' ? 0 : (route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5)));
+  const effectiveDeliveryFee = subDeliveryFee !== null ? subDeliveryFee / 100 : deliveryFee;
   
   const [tip, setTip] = useState(0);
-  // Los productos YA incluyen la comisión del 15% en su precio
-  const total = subtotal + deliveryFee - couponDiscount + tip;
+  const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
+
+  // Beneficios de suscripción
+  useEffect(() => {
+    if (!user?.id) return;
+    const subtotalCents = Math.round(subtotal * 100);
+    const deliveryFeeCents = Math.round(deliveryFee * 100);
+    apiRequest('GET', `/api/subscriptions/benefits-preview?subtotal=${subtotalCents}&deliveryFee=${deliveryFeeCents}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.isActive) {
+          setSubDiscount(data.discount / 100);
+          setSubDeliveryFee(data.deliveryFee);
+        } else {
+          setSubDiscount(0);
+          setSubDeliveryFee(null);
+        }
+      }).catch(() => {});
+  }, [subtotal, deliveryFee, user?.id]);
 
   // Calcular delivery fee dinámico cuando cambia la dirección
   useEffect(() => {
@@ -1006,6 +1026,18 @@ export default function CheckoutScreen({ route }: any) {
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>Propina</ThemedText>
             <ThemedText type="body">€{tip.toFixed(2)}</ThemedText>
+          </View>
+        )}
+        {subDiscount > 0 && (
+          <View style={styles.totalRow}>
+            <ThemedText type="body" style={{ color: '#7C3AED' }}>⭐ Descuento Premium</ThemedText>
+            <ThemedText type="body" style={{ color: '#7C3AED' }}>-€{subDiscount.toFixed(2)}</ThemedText>
+          </View>
+        )}
+        {subDeliveryFee === 0 && confirmedOrderType === 'delivery' && (
+          <View style={styles.totalRow}>
+            <ThemedText type="body" style={{ color: '#7C3AED' }}>⭐ Envío gratis Premium</ThemedText>
+            <ThemedText type="body" style={{ color: '#7C3AED' }}>€0.00</ThemedText>
           </View>
         )}
         <View style={[styles.totalRow, styles.grandTotal]}>

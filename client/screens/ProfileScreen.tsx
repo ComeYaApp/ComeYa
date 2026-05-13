@@ -581,59 +581,64 @@ export default function ProfileScreen() {
               />
             </>
           )}
+        {/* Sección cliente: features avanzadas */}
           {user?.role === "customer" && (
-            <SettingsItem
-              icon="map-pin"
-              label="Direcciones guardadas"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate("SavedAddresses");
-              }}
-            />
-          )}
-          {user?.role === "business_owner" && (
-            <SettingsItem
-              icon="credit-card"
-              label="Cuentas para recibir pagos"
-              value="Bizum · Transferencia IBAN"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate("PaymentWalletSetup" as any);
-              }}
-            />
-          )}
-          {user?.role === "customer" && (
-            <SettingsItem
-              icon="credit-card"
-              label="Métodos de pago"
-              value="Bizum · Tarjeta · PayPal"
-              onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
-            />
-          )}
-          {user?.role === "delivery_driver" && (
-            <SettingsItem
-              icon="credit-card"
-              label="Cuentas para recibir pagos"
-              value="Bizum · Transferencia IBAN"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate("PaymentWalletSetup" as any);
-              }}
-            />
-          )}
-          {(user?.role === "admin" || user?.role === "super_admin") && (
-            <SettingsItem
-              icon="trending-up"
-              label="Finanzas"
-              value="Ganancias y comisiones"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate('MainTabs' as any, { screen: 'AdminTab' });
-                setTimeout(() => {
-                  showToast("Selecciona 'Finanzas' en el menú admin", "info");
-                }, 500);
-              }}
-            />
+            <>
+              <SettingsItem
+                icon="map-pin"
+                label="Direcciones guardadas"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate("SavedAddresses");
+                }}
+              />
+              <SettingsItem
+                icon="credit-card"
+                label="Métodos de pago"
+                value="Bizum · Tarjeta · PayPal"
+                onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
+              />
+              <SettingsItem
+                icon="gift"
+                label="Mis puntos y recompensas"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate("Gamification" as any);
+                }}
+              />
+              <SettingsItem
+                icon="star"
+                label="Suscripciones"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate("Subscriptions" as any);
+                }}
+              />
+              <SettingsItem
+                icon="tag"
+                label="Mis Gift Cards"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate("GiftCards" as any);
+                }}
+              />
+              <SettingsItem
+                icon="users"
+                label="Pedido grupal"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate("GroupOrder" as any);
+                }}
+              />
+              <SettingsItem
+                icon="clock"
+                label="Pedidos programados"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate("ScheduledOrders" as any);
+                }}
+              />
+            </>
           )}
         </View>
 

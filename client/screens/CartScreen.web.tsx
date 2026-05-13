@@ -1,50 +1,81 @@
 import React from "react";
-import { View, StyleSheet, ScrollView, Pressable, Text } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
-import { ComeYaColors } from "@/constants/theme";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 
-// Rojo para versión web
 const PRIMARY = "#DC2626";
 
 export default function CartScreen() {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
-  const { cart, addToCart, removeFromCart, updateQuantity, clearCart } = useCart();
-
+  const { cart, removeFromCart, updateQuantity, clearCart } = useCart();
+  const { user } = useAuth();
   const { isMobile } = useResponsive();
+
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const text = isDark ? "#fff" : "#1a1a1a";
   const sub = isDark ? "#aaa" : "#666";
   const border = isDark ? "#333" : "#e8e8e8";
 
-  // Obtener items del carrito
+  const [orderType, setOrderType] = React.useState<'delivery' | 'pickup'>('delivery');
+  const [calculatedDeliveryFee, setCalculatedDeliveryFee] = React.useState<number>(2.99);
+  const [selectedAddress, setSelectedAddress] = React.useState<any>(null);
+  const [businessData, setBusinessData] = React.useState<any>(null);
+  const [loadingFee, setLoadingFee] = React.useState(false);
+
+  // Cargar negocio
+  React.useEffect(() => {
+    if (!cart?.businessId) return;
+    apiRequest('GET', `/api/businesses/${cart.businessId}`)
+      .then(r => r.json())
+      .then(data => { if (data.success) setBusinessData(data.business); })
+      .catch(() => {});
+  }, [cart?.businessId]);
+
+  // Cargar dirección por defecto
+  React.useEffect(() => {
+    if (!user?.id) return;
+    apiRequest('GET', `/api/users/${user.id}/addresses`)
+      .then(r => r.json())
+      .then(data => {
+        const addrs = data.addresses || [];
+        const def = addrs.find((a: any) => a.isDefault) || addrs[0];
+        setSelectedAddress(def || null);
+      }).catch(() => {});
+  }, [user?.id]);
+
+  // Calcular fee real
+  React.useEffect(() => {
+    if (orderType === 'pickup') { setCalculatedDeliveryFee(0); return; }
+    if (!selectedAddress?.latitude || !businessData?.latitude) {
+      setCalculatedDeliveryFee(businessData?.deliveryFee ? businessData.deliveryFee / 100 : 2.99);
+      return;
+    }
+    setLoadingFee(true);
+    apiRequest('POST', '/api/orders/calculate-delivery', {
+      businessLat: businessData.latitude, businessLng: businessData.longitude,
+      deliveryLat: selectedAddress.latitude, deliveryLng: selectedAddress.longitude,
+    }).then(r => r.json()).then(data => {
+      if (data.success) setCalculatedDeliveryFee(data.deliveryFee / 100);
+    }).catch(() => {}).finally(() => setLoadingFee(false));
+  }, [selectedAddress, businessData, orderType]);
+
   const cartItems = cart?.items || [];
   const subtotal = cartItems.reduce((s: number, i: any) => s + (i.product.price * i.quantity), 0);
-  const deliveryFee = cartItems.length > 0 ? 2.99 : 0;
+  const deliveryFee = orderType === 'pickup' ? 0 : calculatedDeliveryFee;
   const total = subtotal + deliveryFee;
-
-  // Funciones adaptadas
-  const handleIncrement = (item: any) => {
-    updateQuantity(item.id, item.quantity + 1);
-  };
-
-  const handleDecrement = (item: any) => {
-    if (item.quantity > 1) {
-      updateQuantity(item.id, item.quantity - 1);
-    } else {
-      removeFromCart(item.id);
-    }
-  };
+  const minimumOrder = businessData?.minimumOrder || 0;
+  const canProceed = subtotal >= minimumOrder;
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
-      {/* NAVBAR */}
       <View style={[s.navbar, { backgroundColor: card, borderBottomColor: border }]}>
         <Pressable onPress={() => navigation.goBack()} style={s.backBtn}>
           <Feather name="arrow-left" size={20} color={text} />
@@ -55,7 +86,6 @@ export default function CartScreen() {
       </View>
 
       <View style={[s.body, isMobile && s.bodyMobile]}>
-        {/* IZQUIERDA — Productos */}
         <ScrollView style={s.left} contentContainerStyle={[s.leftContent, isMobile && s.leftContentMobile]} showsVerticalScrollIndicator={false}>
           {cartItems.length === 0 ? (
             <View style={s.empty}>
@@ -69,7 +99,7 @@ export default function CartScreen() {
           ) : (
             <>
               <Text style={[s.sectionTitle, { color: text }]}>
-                {cartItems[0]?.product?.name ? cart?.businessName : "Tu pedido"} · {cartItems.reduce((s: number, i: any) => s + i.quantity, 0)} artículos
+                {cart?.businessName} · {cartItems.reduce((s: number, i: any) => s + i.quantity, 0)} artículos
               </Text>
               {cartItems.map((item: any) => (
                 <View key={item.id} style={[s.itemCard, { backgroundColor: card, borderColor: border }]}>
@@ -79,11 +109,11 @@ export default function CartScreen() {
                     <Text style={[s.itemPrice, { color: PRIMARY }]}>€{item.product.price.toFixed(2)} / ud.</Text>
                   </View>
                   <View style={s.qtyRow}>
-                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => handleDecrement(item)}>
+                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => item.quantity > 1 ? updateQuantity(item.id, item.quantity - 1) : removeFromCart(item.id)}>
                       <Feather name="minus" size={14} color={text} />
                     </Pressable>
                     <Text style={[s.qtyText, { color: text }]}>{item.quantity}</Text>
-                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => handleIncrement(item)}>
+                    <Pressable style={[s.qtyBtn, { borderColor: border }]} onPress={() => updateQuantity(item.id, item.quantity + 1)}>
                       <Feather name="plus" size={14} color={text} />
                     </Pressable>
                   </View>
@@ -98,10 +128,37 @@ export default function CartScreen() {
           )}
         </ScrollView>
 
-        {/* RESUMEN — lateral en desktop, debajo en móvil */}
         {cartItems.length > 0 && (
           <View style={[s.summary, { backgroundColor: card }, isMobile ? s.summaryMobile : { borderLeftColor: border }]}>
             <Text style={[s.summaryTitle, { color: text }]}>Resumen del pedido</Text>
+
+            {/* Selector delivery / pickup */}
+            <View style={[s.orderTypeRow, { backgroundColor: isDark ? "#2a2a2a" : "#f0f0f0" }]}>
+              <Pressable
+                onPress={() => setOrderType('delivery')}
+                style={[s.orderTypeBtn, orderType === 'delivery' && { backgroundColor: PRIMARY, borderRadius: 8 }]}
+              >
+                <Feather name="truck" size={14} color={orderType === 'delivery' ? '#fff' : sub} />
+                <Text style={[s.orderTypeTxt, { color: orderType === 'delivery' ? '#fff' : sub }]}>Envío</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setOrderType('pickup')}
+                style={[s.orderTypeBtn, orderType === 'pickup' && { backgroundColor: PRIMARY, borderRadius: 8 }]}
+              >
+                <Feather name="shopping-bag" size={14} color={orderType === 'pickup' ? '#fff' : sub} />
+                <Text style={[s.orderTypeTxt, { color: orderType === 'pickup' ? '#fff' : sub }]}>Recoger</Text>
+              </Pressable>
+            </View>
+
+            {!canProceed && minimumOrder > 0 && (
+              <View style={[s.minOrderBadge, { backgroundColor: '#FFF3E0' }]}>
+                <Feather name="alert-circle" size={14} color="#FF9800" />
+                <Text style={{ color: '#E65100', fontSize: 12, marginLeft: 6 }}>
+                  Mín. €{minimumOrder} (faltan €{(minimumOrder - subtotal).toFixed(2)})
+                </Text>
+              </View>
+            )}
+
             <View style={[s.summaryBox, { borderColor: border }]}>
               {cartItems.map((item: any) => (
                 <View key={item.id} style={s.summaryRow}>
@@ -114,16 +171,29 @@ export default function CartScreen() {
               <Text style={[s.summaryLabel, { color: sub }]}>Subtotal</Text>
               <Text style={[s.summaryValue, { color: text }]}>€{subtotal.toFixed(2)}</Text>
             </View>
-            <View style={s.summaryRow}>
-              <Text style={[s.summaryLabel, { color: sub }]}>Envío estimado</Text>
-              <Text style={[s.summaryValue, { color: text }]}>€{deliveryFee.toFixed(2)}</Text>
-            </View>
+            {orderType === 'delivery' && (
+              <View style={s.summaryRow}>
+                <Text style={[s.summaryLabel, { color: sub }]}>Envío {loadingFee ? '...' : ''}</Text>
+                <Text style={[s.summaryValue, { color: text }]}>
+                  {loadingFee ? <ActivityIndicator size="small" color={PRIMARY} /> : `€${deliveryFee.toFixed(2)}`}
+                </Text>
+              </View>
+            )}
+            {orderType === 'pickup' && (
+              <View style={[s.summaryRow, { backgroundColor: '#E8F5E9', padding: 8, borderRadius: 8 }]}>
+                <Text style={{ color: '#2E7D32', fontSize: 12 }}>🎉 Sin coste de envío al recoger</Text>
+              </View>
+            )}
             <View style={[s.summaryRow, s.totalRow, { borderTopColor: border }]}>
               <Text style={[s.totalLabel, { color: text }]}>Total</Text>
               <Text style={[s.totalValue, { color: PRIMARY }]}>€{total.toFixed(2)}</Text>
             </View>
-            <Pressable style={s.checkoutBtn} onPress={() => navigation.navigate("Checkout")}>
-              <Text style={s.checkoutBtnText}>Ir al checkout</Text>
+            <Pressable
+              style={[s.checkoutBtn, !canProceed && { opacity: 0.5 }]}
+              onPress={() => canProceed && navigation.navigate("Checkout", { calculatedDeliveryFee: deliveryFee, orderType } as any)}
+              disabled={!canProceed}
+            >
+              <Text style={s.checkoutBtnText}>{canProceed ? 'Ir al checkout' : `Mínimo €${minimumOrder}`}</Text>
               <Feather name="arrow-right" size={18} color="#fff" />
             </Pressable>
             <Text style={[s.secureText, { color: sub }]}>🔒 Pago 100% seguro</Text>
@@ -175,4 +245,8 @@ const s = StyleSheet.create({
   checkoutBtn: { backgroundColor: PRIMARY, borderRadius: 12, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16, marginBottom: 10 },
   checkoutBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   secureText: { fontSize: 12, textAlign: "center" },
+  orderTypeRow: { flexDirection: "row", padding: 4, borderRadius: 10, marginBottom: 14 },
+  orderTypeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8 },
+  orderTypeTxt: { fontSize: 13, fontWeight: "600" },
+  minOrderBadge: { flexDirection: "row", alignItems: "center", padding: 8, borderRadius: 8, marginBottom: 10 },
 });
