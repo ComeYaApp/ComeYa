@@ -2,7 +2,11 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  FlatList,`r`n  Pressable,`r`n  RefreshControl,`r`n  Switch,`r`n  TextInput,
+FlatList,
+  Pressable,
+  RefreshControl,
+  Switch,
+  TextInput,
   Modal,
   ScrollView,
   Platform,
@@ -30,12 +34,15 @@ export default function BusinessProductsScreen() {
   const { theme } = useTheme();
   const { selectedBusiness, businesses } = useBusiness();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [products, setProducts] = useState([]);
+const [products, setProducts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [showModal, setShowModal] = useState(false);`r`n  const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [search, setSearch] = useState("");
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const filteredProducts = products.filter((p: any) => !search || p.name.toLowerCase().includes(search.toLowerCase()));`r`n`r`n  const [form, setForm] = useState({
+  const filteredProducts = products.filter((p: any) => !search || p.name.toLowerCase().includes(search.toLowerCase()));
+
+  const [form, setForm] = useState({
     name: "",
     description: "",
     price: "",
@@ -190,7 +197,7 @@ export default function BusinessProductsScreen() {
 
   const handleDelete = async (productId: string) => {
     if (typeof window !== 'undefined' && window.confirm) {
-      if (!window.confirm('¿Eliminar este producto?')) return;
+      if (!window.confirm('ï¿½Eliminar este producto?')) return;
     }
     
     try {
@@ -226,7 +233,7 @@ export default function BusinessProductsScreen() {
           {item.description}
         </ThemedText>
         <ThemedText type="h4" style={{ color: ComeYaColors.primary, marginTop: Spacing.xs }}>
-          €{(item.price / 100).toFixed(2)}
+          ï¿½{(item.price / 100).toFixed(2)}
         </ThemedText>
       </Pressable>
       <View style={styles.productActions}>
@@ -282,7 +289,18 @@ export default function BusinessProductsScreen() {
         </Pressable>
       </View>
 
-      <View style={[styles.searchBar, { backgroundColor: theme.backgroundSecondary }]}>`r`n        <Feather name="search size={16} color={theme.textSecondary} />`r`n <TextInput`r`n style={[styles.searchInput, { color: theme.text }]}`r`n value={search}`r`n onChangeText={setSearch}`r`n placeholder=Buscar producto...`r`n placeholderTextColor={theme.textSecondary}`r`n />`r`n </View>`r`n <FlatList`r`n data={filteredProducts}
+<View style={[styles.searchBar, { backgroundColor: theme.backgroundSecondary }]}>
+        <Feather name="search" size={16} color={theme.textSecondary} />
+        <TextInput
+          style={[styles.searchInput, { color: theme.text }]}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Buscar producto..."
+          placeholderTextColor={theme.textSecondary}
+        />
+      </View>
+      <FlatList
+        data={filteredProducts}
         keyExtractor={(item: any) => item.id}
         renderItem={renderProduct}
         contentContainerStyle={styles.listContent}
@@ -328,7 +346,7 @@ export default function BusinessProductsScreen() {
                 placeholderTextColor={theme.textSecondary}
               />
 
-              <ThemedText type="small" style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}>Descripción</ThemedText>
+              <ThemedText type="small" style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}>Descripciï¿½n</ThemedText>
               <TextInput
                 value={form.description}
                 onChangeText={(text) => setForm({ ...form, description: text })}
@@ -356,14 +374,14 @@ export default function BusinessProductsScreen() {
                   style={[styles.imageButton, { backgroundColor: theme.background }]}
                 >
                   <Feather name="camera" size={20} color={theme.text} />
-                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>Cámara</ThemedText>
+                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>Cï¿½mara</ThemedText>
                 </Pressable>
                 <Pressable
                   onPress={() => pickImage(false)}
                   style={[styles.imageButton, { backgroundColor: theme.background }]}
                 >
                   <Feather name="image" size={20} color={theme.text} />
-                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>Galería</ThemedText>
+                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>Galerï¿½a</ThemedText>
                 </Pressable>
               </View>
               {isUploadingImage ? (
@@ -452,7 +470,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginLeft: Spacing.sm,
   },
-  searchBar: { flexDirection: "row, alignItems: center, gap: 8, paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, marginBottom: 8, borderRadius: 10 },`r`n searchInput: { flex: 1, fontSize: 15 },`r`n emptyState: {
+searchBar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, marginBottom: 8, borderRadius: 10 },
+  searchInput: { flex: 1, fontSize: 15 },
+  emptyState: {
     alignItems: "center",
     paddingVertical: Spacing["4xl"],
   },
