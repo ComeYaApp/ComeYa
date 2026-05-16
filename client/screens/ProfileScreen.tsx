@@ -154,7 +154,7 @@ export default function ProfileScreen() {
   const [editCurrentPassword, setEditCurrentPassword] = useState("");
   const [editNewPassword, setEditNewPassword] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [notificationStatus, setNotificationStatus] = useState<Notifications.PermissionStatus>("undetermined");
+const [notificationStatus, setNotificationStatus] = useState<Notifications.PermissionStatus>("undetermined" as Notifications.PermissionStatus);
 
   const approvalStatus =
     user?.role === "business_owner" || user?.role === "delivery_driver"
