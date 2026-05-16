@@ -7,8 +7,8 @@ export default function WalletScreen() {
   const { user } = useAuth();
 
   // Configure wallet features based on user role
-  const showWithdrawals = user?.role === 'driver' || user?.role === 'business';
-  const showConnectSetup = user?.role === 'driver' || user?.role === 'business';
+  const showWithdrawals = user?.role === 'delivery_driver' || user?.role === 'business_owner';
+  const showConnectSetup = user?.role === 'delivery_driver' || user?.role === 'business_owner';
 
   return (
     <View style={styles.container}>

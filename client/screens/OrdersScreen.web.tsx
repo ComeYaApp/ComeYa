@@ -15,13 +15,19 @@ import { OrderProgressBar } from "@/components/OrderProgressBar";
 const PRIMARY = "#DC2626";
 
 const STATUS: Record<string, { label: string; color: string; icon: string }> = {
-  pending:    { label: "Pendiente",       color: "#F59E0B", icon: "clock" },
-  confirmed:  { label: "Confirmado",      color: "#3B82F6", icon: "check-circle" },
-  preparing:  { label: "Preparando",      color: "#8B5CF6", icon: "package" },
-  ready:      { label: "Listo",           color: "#10B981", icon: "check-square" },
-  on_the_way: { label: "En camino",       color: "#22C55E", icon: "truck" },
-  delivered:  { label: "Entregado",       color: "#6B7280", icon: "check-circle" },
-  cancelled:  { label: "Cancelado",       color: "#EF4444", icon: "x-circle" },
+  pending:         { label: "Pendiente",            color: "#F59E0B", icon: "clock" },
+  accepted:        { label: "Aceptado",             color: "#3B82F6", icon: "check" },
+  confirmed:       { label: "Confirmado",           color: "#3B82F6", icon: "check-circle" },
+  preparing:       { label: "Preparando",           color: "#8B5CF6", icon: "package" },
+  ready:           { label: "Listo",                color: "#10B981", icon: "check-square" },
+  assigned_driver: { label: "Repartidor asignado",  color: "#6366F1", icon: "user" },
+  picked_up:       { label: "Recogido",             color: "#8B5CF6", icon: "shopping-bag" },
+  on_the_way:      { label: "En camino",            color: "#22C55E", icon: "truck" },
+  in_transit:      { label: "En tránsito",          color: "#22C55E", icon: "navigation" },
+  arriving:        { label: "Llegando",             color: "#10B981", icon: "map-pin" },
+  delivered:       { label: "Entregado",            color: "#6B7280", icon: "check-circle" },
+  cancelled:       { label: "Cancelado",            color: "#EF4444", icon: "x-circle" },
+  refunded:        { label: "Reembolsado",          color: "#6B7280", icon: "rotate-ccw" },
 };
 
 export default function OrdersScreen() {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Text, ActivityIndicator, Switch } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
@@ -25,6 +25,8 @@ export default function BusinessDashboardScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("week");
+  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   const bg     = isDark ? "#111"     : "#f7f7f7";
   const card   = isDark ? "#1e1e1e"  : "#fff";
@@ -38,7 +40,9 @@ export default function BusinessDashboardScreen() {
       apiRequest("GET", `/api/analytics/dashboard/${selectedBusiness.id}?period=${selectedPeriod}`).then(r => r.json()),
       apiRequest("GET", "/api/orders").then(r => r.json()),
     ]).then(([statsData, ordersData]) => {
-      setStats(statsData.dashboard || statsData);
+      const dashData = statsData.dashboard || statsData;
+      setStats(dashData);
+      setIsOpen(dashData?.isOpen ?? selectedBusiness?.isOpen ?? true);
       setOrders((ordersData.orders || []).slice(0, 8));
     }).catch(console.error).finally(() => setLoading(false));
   }, [selectedBusiness?.id]);
@@ -53,6 +57,19 @@ export default function BusinessDashboardScreen() {
   };
 
   const periodLabels: Record<Period, string> = { today: "Hoy", week: "Esta semana", month: "Este mes", all: "Todo" };
+
+  const toggleBusinessStatus = async () => {
+    if (!selectedBusiness?.id || togglingStatus) return;
+    setTogglingStatus(true);
+    try {
+      const res = await apiRequest("PUT", `/api/business/${selectedBusiness.id}/toggle-status`).then(r => r.json());
+      setIsOpen(res.isOpen ?? !isOpen);
+    } catch (e) {
+      console.error("Error toggling business status", e);
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
 
   const revenue = stats ? {
     today: (stats.todayRevenue || 0) / 100,
@@ -95,6 +112,28 @@ export default function BusinessDashboardScreen() {
                   <Text style={[s.periodBtnText, { color: selectedPeriod === p ? "#fff" : text }]}>{periodLabels[p]}</Text>
                 </Pressable>
               ))}
+            </View>
+
+            {/* ── Toggle estado del negocio ── */}
+            <View style={[s.toggleCard, { backgroundColor: card, borderColor: border }]}>
+              <View style={s.toggleLeft}>
+                <View style={[s.toggleDot, { backgroundColor: isOpen ? "#4CAF50" : "#EF4444" }]} />
+                <View>
+                  <Text style={[s.toggleTitle, { color: text }]}>
+                    {isOpen ? "Negocio abierto" : "Negocio cerrado"}
+                  </Text>
+                  <Text style={[s.toggleSub, { color: sub }]}>
+                    {isOpen ? "Recibiendo pedidos" : "No recibe pedidos"}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={isOpen}
+                onValueChange={toggleBusinessStatus}
+                disabled={togglingStatus}
+                trackColor={{ false: "#EF4444", true: "#4CAF50" }}
+                thumbColor="#fff"
+              />
             </View>
 
             {/* ── Card de ingresos del período ── */}
@@ -193,6 +232,11 @@ const s = StyleSheet.create({
   content: { padding: 32, maxWidth: 1000 },
   loading: { paddingVertical: 80, alignItems: "center" },
 
+  toggleCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 16, borderRadius: 14, borderWidth: 1, marginBottom: 20 },
+  toggleLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  toggleDot: { width: 12, height: 12, borderRadius: 6 },
+  toggleTitle: { fontSize: 15, fontWeight: "700" },
+  toggleSub: { fontSize: 12, marginTop: 2 },
   periodRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
   periodBtn: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: 20, borderWidth: 1.5 },
   periodBtnText: { fontSize: 13, fontWeight: "700" },

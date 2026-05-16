@@ -10,6 +10,7 @@ import {
   Switch,
   ActivityIndicator,
   Platform,
+  TextInput,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -145,6 +146,14 @@ export default function ProfileScreen() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAddressesModal, setShowAddressesModal] = useState(false);
+  const [subscription, setSubscription] = useState<any>(null);
+  const [editTab, setEditTab] = useState<"datos" | "seguridad">("datos");
+  const [editName, setEditName] = useState(user?.name || "");
+  const [editEmail, setEditEmail] = useState(user?.email || "");
+  const [editDni, setEditDni] = useState((user as any)?.dni || "");
+  const [editCurrentPassword, setEditCurrentPassword] = useState("");
+  const [editNewPassword, setEditNewPassword] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<Notifications.PermissionStatus>("undetermined");
 
   const approvalStatus =
@@ -156,6 +165,70 @@ export default function ProfileScreen() {
   const [driverStrikes, setDriverStrikes] = useState(0);
   const maxStrikes = 3;
   const [driverStats, setDriverStats] = useState<{ rating: number; totalDeliveries: number; vehicleType: string | null; vehiclePlate: string | null; verificationStatus: string } | null>(null);
+
+  useEffect(() => {
+    const loadSubscription = async () => {
+      try {
+        const res = await apiRequest("GET", "/api/subscriptions/my-subscription");
+        const data = await res.json();
+        if (data.subscription) setSubscription(data.subscription);
+      } catch { /* silencioso */ }
+    };
+    loadSubscription();
+  }, []);
+
+  const saveProfile = async () => {
+    if (!editName.trim()) { showToast("El nombre es requerido", "error"); return; }
+    setIsSavingProfile(true);
+    try {
+      const res = await apiRequest("PUT", "/api/users/profile", {
+        name: editName.trim(),
+        email: editEmail.trim(),
+        dni: editDni.trim(),
+      });
+      const data = await res.json();
+      if (data.success || data.user) {
+        await updateUser({ name: editName.trim(), email: editEmail.trim() });
+        showToast("Perfil actualizado correctamente", "success");
+        setShowEditProfileModal(false);
+      } else {
+        showToast(data.message || "Error al actualizar perfil", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const changePassword = async () => {
+    if (!editCurrentPassword || !editNewPassword) {
+      showToast("Completa todos los campos", "error"); return;
+    }
+    if (editNewPassword.length < 6) {
+      showToast("La nueva contraseña debe tener al menos 6 caracteres", "error"); return;
+    }
+    setIsSavingProfile(true);
+    try {
+      const res = await apiRequest("PUT", "/api/auth/change-password", {
+        currentPassword: editCurrentPassword,
+        newPassword: editNewPassword,
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Contraseña cambiada correctamente", "success");
+        setEditCurrentPassword("");
+        setEditNewPassword("");
+        setShowEditProfileModal(false);
+      } else {
+        showToast(data.message || "Error al cambiar contraseña", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     const loadDriverStatus = async () => {
@@ -545,6 +618,14 @@ export default function ProfileScreen() {
               style={{ marginTop: Spacing.xs }}
             />
           ) : null}
+          {subscription && (
+            <View style={{ flexDirection: "row", alignItems: "center", marginTop: Spacing.sm, backgroundColor: ComeYaColors.primary + "18", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
+              <Feather name="star" size={13} color={ComeYaColors.primary} />
+              <ThemedText type="caption" style={{ color: ComeYaColors.primary, fontWeight: "700", marginLeft: 4 }}>
+                {subscription.planName || "Premium"} activo
+              </ThemedText>
+            </View>
+          )}
         </View>
 
         <View
@@ -558,7 +639,13 @@ export default function ProfileScreen() {
             label="Editar mi perfil"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("EditProfile");
+              setEditName(user?.name || "");
+              setEditEmail(user?.email || "");
+              setEditDni((user as any)?.dni || "");
+              setEditCurrentPassword("");
+              setEditNewPassword("");
+              setEditTab("datos");
+              setShowEditProfileModal(true);
             }}
           />
           {user?.role === "business_owner" && (
@@ -1396,48 +1483,108 @@ export default function ProfileScreen() {
       <Modal
         visible={showEditProfileModal}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowEditProfileModal(false)}
       >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowEditProfileModal(false)}
-        >
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <View
-              style={[
-                styles.modalIcon,
-                { backgroundColor: theme.backgroundSecondary },
-              ]}
-            >
-              <Feather name="user" size={28} color={ComeYaColors.primary} />
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowEditProfileModal(false)} />
+          <View style={[styles.editModalCard, { backgroundColor: theme.card }]}>
+            {/* Header */}
+            <View style={[styles.editModalHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText type="h3">Editar perfil</ThemedText>
+              <Pressable onPress={() => setShowEditProfileModal(false)} style={styles.editModalClose}>
+                <Feather name="x" size={22} color={theme.text} />
+              </Pressable>
             </View>
-            <ThemedText type="h3" style={styles.modalTitle}>
-              Editar perfil
-            </ThemedText>
-            <ThemedText
-              type="body"
-              style={[styles.modalMessage, { color: theme.textSecondary }]}
-            >
-              Esta función estará disponible próximamente. Podrás editar tu
-              nombre, foto y datos personales.
-            </ThemedText>
-            <Pressable
-              style={[
-                styles.modalButtonFull,
-                { backgroundColor: ComeYaColors.primary },
-              ]}
-              onPress={() => setShowEditProfileModal(false)}
-            >
-              <ThemedText
-                type="body"
-                style={{ color: "#FFFFFF", fontWeight: "600" }}
-              >
-                Entendido
-              </ThemedText>
-            </Pressable>
+            {/* Tabs */}
+            <View style={[styles.editModalTabs, { borderBottomColor: theme.border }]}>
+              {(["datos", "seguridad"] as const).map(tab => (
+                <Pressable
+                  key={tab}
+                  onPress={() => setEditTab(tab)}
+                  style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
+                >
+                  <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
+                    {tab === "datos" ? "Datos personales" : "Seguridad"}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
+              {editTab === "datos" ? (
+                <>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Nombre</ThemedText>
+                  <TextInput
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder="Tu nombre"
+                    placeholderTextColor={theme.textSecondary}
+                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                  />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Email</ThemedText>
+                  <TextInput
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    placeholder="tu@email.com"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                  />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>DNI / Cédula</ThemedText>
+                  <TextInput
+                    value={editDni}
+                    onChangeText={setEditDni}
+                    placeholder="Número de documento"
+                    placeholderTextColor={theme.textSecondary}
+                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                  />
+                  <Pressable
+                    onPress={saveProfile}
+                    disabled={isSavingProfile}
+                    style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingProfile ? 0.7 : 1 }]}
+                  >
+                    {isSavingProfile
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar cambios</ThemedText>
+                    }
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Contraseña actual</ThemedText>
+                  <TextInput
+                    value={editCurrentPassword}
+                    onChangeText={setEditCurrentPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry
+                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                  />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Nueva contraseña</ThemedText>
+                  <TextInput
+                    value={editNewPassword}
+                    onChangeText={setEditNewPassword}
+                    placeholder="Mínimo 6 caracteres"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry
+                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                  />
+                  <Pressable
+                    onPress={changePassword}
+                    disabled={isSavingProfile}
+                    style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingProfile ? 0.7 : 1 }]}
+                  >
+                    {isSavingProfile
+                      ? <ActivityIndicator color="#fff" size="small" />
+                      : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Cambiar contraseña</ThemedText>
+                    }
+                  </Pressable>
+                </>
+              )}
+            </ScrollView>
           </View>
-        </Pressable>
+        </View>
       </Modal>
 
       <Modal
@@ -1674,6 +1821,57 @@ const styles = StyleSheet.create({
   },
   fullScreenContent: {
     flex: 1,
+  },
+  editModalCard: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "85%",
+  },
+  editModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+  },
+  editModalClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editModalTabs: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+  },
+  editModalTab: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+  },
+  editModalBody: {
+    padding: Spacing.lg,
+    paddingBottom: Spacing["4xl"],
+  },
+  editInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    fontSize: 15,
+    marginBottom: 4,
+  },
+  editSaveBtn: {
+    height: 50,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: Spacing.xl,
   },
   placeholderCard: {
     padding: Spacing.xl,
