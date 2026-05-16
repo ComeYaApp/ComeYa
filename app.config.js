@@ -26,11 +26,20 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.comeya.app",
+      versionCode: 2,
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyDLejpcrNJNHzQIduWuot5QAoepitVk2zY"
         }
-      }
+      },
+      permissions: [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     web: {
       output: "single",
@@ -58,6 +67,7 @@ export default {
     experiments: {
       reactCompiler: true
     },
+    privacyPolicyUrl: "https://app.comeya.es/privacy-policy",
     extra: {
       eas: {
         projectId: "8c58541f-bf02-4e36-bcf9-a2e64b126a5b"

@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 const router = express.Router();
 
 const signToken = (userId: string) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET || "mouzo_local_secret_key", { expiresIn: "7d" });
+  jwt.sign({ id: userId }, process.env.JWT_SECRET || "comeya_local_secret_key", { expiresIn: "7d" });
 
 // POST /api/auth/send-code  (inicia login por teléfono O reenvía código)
 router.post("/send-code", async (req, res) => {

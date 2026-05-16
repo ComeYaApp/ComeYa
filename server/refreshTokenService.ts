@@ -3,8 +3,8 @@ import { db } from './db';
 import { refreshTokens } from '../shared/schema-mysql';
 import { eq, and, lt } from 'drizzle-orm';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mouzo-secret-key-change-in-production';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mouzo-refresh-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'comeya-secret-key-change-in-production';
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'comeya-refresh-secret-change-in-production';
 const ACCESS_TOKEN_EXPIRY = '30d'; // 30 días
 const REFRESH_TOKEN_EXPIRY = '90d'; // 90 días
 
@@ -75,7 +75,7 @@ export async function revokeRefreshToken(token: string): Promise<void> {
     .where(eq(refreshTokens.token, token));
 }
 
-export async function revokeAllUserTokens(userId: number): Promise<void> {
+export async function revokeAllUserTokens(userId: string): Promise<void> {
   await db
     .update(refreshTokens)
     .set({ revoked: true })

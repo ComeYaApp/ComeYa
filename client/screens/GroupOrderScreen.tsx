@@ -78,6 +78,7 @@ export default function GroupOrderScreen() {
       return response.json();
     },
     enabled: !!groupOrderId,
+    refetchInterval: 10000,
   });
 
   const group = groupData?.groupOrder;

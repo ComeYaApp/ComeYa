@@ -2,7 +2,7 @@ import express from "express";
 
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || "mouzo_local_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET || "comeya_local_secret_key";
 
 // Phone login
 router.post("/phone-login", async (req, res) => {
@@ -131,21 +131,48 @@ router.post("/login", async (req, res) => {
   try {
     const { identifier, password, phone, code } = req.body;
     
-    // If phone and code provided, use phone login
-    if (phone && code) {
-      req.body = { phone, code };
-      req.url = '/phone-login';
-      return router.handle(req, res);
-    }
-    
     // If identifier and password provided, handle as password login
-    if (identifier && password) {
+    if (identifier && password && !phone) {
       return res.status(400).json({ error: "Password login not implemented. Use phone verification." });
     }
     
-    // Default to phone login
-    req.url = '/phone-login';
-    return router.handle(req, res);
+    // Delegate to phone-login logic inline
+    const loginPhone = phone || identifier;
+    const loginCode = code;
+    
+    if (!loginPhone || !loginCode) {
+      return res.status(400).json({ error: "Phone and code are required" });
+    }
+
+    const { users, deliveryDrivers, wallets } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq, or, like } = await import("drizzle-orm");
+    const jwt = await import("jsonwebtoken");
+
+    const phoneDigits = loginPhone.replace(/[^\d]/g, '');
+    const normalizedPhone = phoneDigits.startsWith('52') ? `+${phoneDigits}` :
+                           phoneDigits.length === 10 ? `+58${phoneDigits}` :
+                           loginPhone.startsWith('+') ? loginPhone : `+58${phoneDigits}`;
+
+    const user = await db.select().from(users).where(
+      or(eq(users.phone, normalizedPhone), eq(users.phone, loginPhone), like(users.phone, `%${phoneDigits.slice(-10)}`))
+    ).limit(1);
+
+    if (user.length === 0) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    if (!user[0].verificationCode || user[0].verificationCode !== loginCode) {
+      return res.status(400).json({ error: "Código inválido" });
+    }
+
+    if (user[0].verificationExpires && new Date() > new Date(user[0].verificationExpires)) {
+      return res.status(400).json({ error: "Código expirado" });
+    }
+
+    await db.update(users).set({ verificationCode: null, verificationExpires: null, phoneVerified: true }).where(eq(users.id, user[0].id));
+
+    const token = jwt.default.sign({ id: user[0].id, phone: user[0].phone, role: user[0].role }, JWT_SECRET, { expiresIn: "7d" });
+
+    res.json({ success: true, token, user: { id: user[0].id, name: user[0].name, phone: user[0].phone, role: user[0].role, phoneVerified: user[0].phoneVerified } });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -256,7 +283,7 @@ router.post("/send-code", async (req, res) => {
         const twilio = await import("twilio");
         const client = twilio.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.messages.create({
-          body: `Tu código MOUZO: ${code}`,
+          body: `Tu código ComeYa: ${code}`,
           from: process.env.TWILIO_PHONE_NUMBER,
           to: normalizedPhone
         });
@@ -277,11 +304,11 @@ router.post("/send-code", async (req, res) => {
   }
 });
 
-// Signup alias
+// Signup alias — delegates to phone-signup logic
 router.post("/signup", async (req, res) => {
-  // Redirect to phone-signup for compatibility
   req.url = '/phone-signup';
-  return router.handle(req, res);
+  // Re-dispatch via next handler
+  return res.redirect(307, '/api/auth/phone-signup');
 });
 
 // Signup
@@ -293,7 +320,7 @@ router.post("/phone-signup", async (req, res) => {
       return res.status(400).json({ error: "Teléfono y nombre requeridos" });
     }
 
-    const { users } = await import("@shared/schema-mysql");
+    const { users, deliveryDrivers, wallets } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq, or, like } = await import("drizzle-orm");
 

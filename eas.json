@@ -18,9 +18,9 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://mouzo-backend.onrender.com",
-        "EXPO_PUBLIC_BACKEND_URL": "https://mouzo-backend.onrender.com",
-        "EXPO_PUBLIC_FRONTEND_URL": "https://mouzo-backend.onrender.com",
+        "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
+        "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
+        "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
         "EXPO_PUBLIC_NODE_ENV": "production"
       }
     }

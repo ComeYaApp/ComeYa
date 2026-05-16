@@ -5,7 +5,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL = "MOUZO <noreply@mouzo.app>";
+const FROM_EMAIL = "ComeYa <noreply@comeya.es>";
 
 // Helper to check if email service is available
 function isEmailServiceAvailable(): boolean {

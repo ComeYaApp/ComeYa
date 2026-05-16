@@ -85,6 +85,12 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(path.join(__dirname, 'uploads')));
 
+// Serve public folder (privacy-policy, logos, etc.) — disponible en todos los entornos
+app.use(express.static(path.join(process.cwd(), 'public'), { index: false }));
+app.get('/privacy-policy', (_req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'privacy-policy.html'));
+});
+
 // Serve client assets (logo, splash, etc.)
 app.use('/assets', express.static(path.join(process.cwd(), 'client/assets')));
 

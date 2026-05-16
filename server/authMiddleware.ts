@@ -46,7 +46,7 @@ export async function authenticateToken(
     }
 
     // Verify JWT
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "mouzo_local_secret_key") as any;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "comeya_local_secret_key") as any;
     // Get user from database
     const [user] = await db
       .select()
