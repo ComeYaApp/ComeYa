@@ -1,4 +1,4 @@
-// Twilio Verify Service for MOUZO - Phone Verification
+// Twilio Verify Service for ComeYa - Phone Verification
 // Uses Twilio Verify API for secure SMS verification
 import twilio from "twilio";
 
@@ -25,22 +25,27 @@ function getVerifyServiceSid(): string | null {
   return serviceSid;
 }
 
+// Normaliza números de teléfono españoles (+34)
 function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, "");
 
-  if (cleaned.startsWith("52")) {
+  // Ya tiene prefijo +
+  if (phone.startsWith("+")) {
+    return phone.replace(/[\s-()]/g, "");
+  }
+
+  // Ya tiene código de España sin +
+  if (cleaned.startsWith("34")) {
     return `+${cleaned}`;
   }
 
-  if (cleaned.length === 10) {
-    return `+58${cleaned}`;
+  // Número español de 9 dígitos (móvil: 6xx/7xx, fijo: 9xx)
+  if (cleaned.length === 9 && (cleaned.startsWith("6") || cleaned.startsWith("7") || cleaned.startsWith("9"))) {
+    return `+34${cleaned}`;
   }
 
-  if (cleaned.startsWith("+")) {
-    return cleaned;
-  }
-
-  return `+${cleaned}`;
+  // Fallback: añadir +34
+  return `+34${cleaned}`;
 }
 
 // Generate a local verification code (kept for backwards compatibility with DB storage)

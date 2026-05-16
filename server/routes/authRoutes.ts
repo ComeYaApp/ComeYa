@@ -19,9 +19,10 @@ router.post("/phone-login", async (req, res) => {
     const jwt = await import("jsonwebtoken");
 
     const phoneDigits = phone.replace(/[^\d]/g, '');
-    const normalizedPhone = phoneDigits.startsWith('52') ? `+${phoneDigits}` : 
-                           phoneDigits.length === 10 ? `+58${phoneDigits}` :
-                           phone.startsWith('+') ? phone : `+58${phoneDigits}`;
+    const normalizedPhone = phone.startsWith('+') ? phone.replace(/[\s-()]/g, '') :
+                           phoneDigits.startsWith('34') ? `+${phoneDigits}` :
+                           phoneDigits.length === 9 ? `+34${phoneDigits}` :
+                           `+34${phoneDigits}`;
 
     let user = await db
       .select()
@@ -30,7 +31,7 @@ router.post("/phone-login", async (req, res) => {
         or(
           eq(users.phone, normalizedPhone),
           eq(users.phone, phone),
-          like(users.phone, `%${phoneDigits.slice(-10)}`)
+          like(users.phone, `%${phoneDigits.slice(-9)}`)
         )
       )
       .limit(1);
@@ -40,10 +41,11 @@ router.post("/phone-login", async (req, res) => {
     }
 
     if (!user[0].verificationCode || user[0].verificationCode !== code) {
-      const testPhones = ["+58 341 234 5678", "+58 341 456 7892", "+583414567892"];
+      // Teléfonos de prueba para desarrollo (España)
+      const testPhones = ["+34 612 345 678", "+34 623 456 789", "+34612345678"];
       const isTestPhone = testPhones.some(testPhone => {
         const testDigits = testPhone.replace(/[^\d]/g, '');
-        return phoneDigits.slice(-10) === testDigits.slice(-10);
+        return phoneDigits.slice(-9) === testDigits.slice(-9);
       });
       
       if (process.env.NODE_ENV === "development" && code === "1234" && isTestPhone) {
@@ -150,9 +152,10 @@ router.post("/login", async (req, res) => {
     const jwt = await import("jsonwebtoken");
 
     const phoneDigits = loginPhone.replace(/[^\d]/g, '');
-    const normalizedPhone = phoneDigits.startsWith('52') ? `+${phoneDigits}` :
-                           phoneDigits.length === 10 ? `+58${phoneDigits}` :
-                           loginPhone.startsWith('+') ? loginPhone : `+58${phoneDigits}`;
+    const normalizedPhone = loginPhone.startsWith('+') ? loginPhone.replace(/[\s-()]/g, '') :
+                           phoneDigits.startsWith('34') ? `+${phoneDigits}` :
+                           phoneDigits.length === 9 ? `+34${phoneDigits}` :
+                           `+34${phoneDigits}`;
 
     const user = await db.select().from(users).where(
       or(eq(users.phone, normalizedPhone), eq(users.phone, loginPhone), like(users.phone, `%${phoneDigits.slice(-10)}`))
@@ -245,7 +248,10 @@ router.post("/send-code", async (req, res) => {
     const { eq, or, like } = await import("drizzle-orm");
 
     const phoneDigits = phone.replace(/[^\d]/g, '');
-    const normalizedPhone = phoneDigits.startsWith('52') ? `+${phoneDigits}` : `+58${phoneDigits}`;
+    const normalizedPhone = phone.startsWith('+') ? phone.replace(/[\s-()]/g, '') :
+                           phoneDigits.startsWith('34') ? `+${phoneDigits}` :
+                           phoneDigits.length === 9 ? `+34${phoneDigits}` :
+                           `+34${phoneDigits}`;
 
     let user = await db
       .select()
@@ -254,7 +260,7 @@ router.post("/send-code", async (req, res) => {
         or(
           eq(users.phone, normalizedPhone),
           eq(users.phone, phone),
-          like(users.phone, `%${phoneDigits.slice(-10)}`)
+          like(users.phone, `%${phoneDigits.slice(-9)}`)
         )
       )
       .limit(1);
@@ -432,7 +438,10 @@ router.post("/biometric-login", async (req, res) => {
     const jwt = await import("jsonwebtoken");
 
     const phoneDigits = phone.replace(/[^\d]/g, '');
-    const normalizedPhone = phoneDigits.startsWith('52') ? `+${phoneDigits}` : `+58${phoneDigits}`;
+    const normalizedPhone = phone.startsWith('+') ? phone.replace(/[\s-()]/g, '') :
+                           phoneDigits.startsWith('34') ? `+${phoneDigits}` :
+                           phoneDigits.length === 9 ? `+34${phoneDigits}` :
+                           `+34${phoneDigits}`;
 
     let user = await db
       .select()
@@ -441,7 +450,7 @@ router.post("/biometric-login", async (req, res) => {
         or(
           eq(users.phone, normalizedPhone),
           eq(users.phone, phone),
-          like(users.phone, `%${phoneDigits.slice(-10)}`)
+          like(users.phone, `%${phoneDigits.slice(-9)}`)
         )
       )
       .limit(1);

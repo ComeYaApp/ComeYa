@@ -69,33 +69,27 @@ export async function verifyCode(
   }
 }
 
-// Format phone number for Spain and developers
+// Normaliza números de teléfono españoles (+34)
 function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, "");
 
-  // Already has + prefix
+  // Ya tiene prefijo +
   if (phone.startsWith("+")) {
-    return phone;
+    return phone.replace(/[\s-()]/g, "");
   }
 
-  // Venezuelan numbers (starts with 58 or 04xx)
-  if (cleaned.startsWith("58")) {
-    return `+${cleaned}`;
-  }
-  if (cleaned.length === 11 && cleaned.startsWith("04")) {
-    return `+58${cleaned.substring(1)}`;
-  }
-
-  // Spanish numbers (starts with 34 or 6/7/9)
+  // Ya tiene código de España sin +
   if (cleaned.startsWith("34")) {
     return `+${cleaned}`;
   }
+
+  // Número español de 9 dígitos (móvil: 6xx/7xx, fijo: 9xx)
   if (cleaned.length === 9 && (cleaned.startsWith("6") || cleaned.startsWith("7") || cleaned.startsWith("9"))) {
     return `+34${cleaned}`;
   }
 
-  // Default: add + prefix
-  return `+${cleaned}`;
+  // Fallback: añadir +34
+  return `+34${cleaned}`;
 }
 
 // Check verification status
@@ -103,9 +97,9 @@ export async function checkVerificationStatus(
   phoneNumber: string,
 ): Promise<{ verified: boolean; error?: string }> {
   try {
-    const verifications = await client.verify.v2
+    const verifications = await (client.verify.v2
       .services(VERIFY_SERVICE_SID!)
-      .verifications.list({
+      .verifications as any).list({
         to: formatPhoneNumber(phoneNumber),
         limit: 1,
       });

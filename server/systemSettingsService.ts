@@ -204,7 +204,7 @@ const DEFAULT_SETTINGS = [
   },
   {
     key: "support_phone",
-    value: "+583171234567",
+    value: "+34612345678",
     type: "string",
     category: "app",
     description: "Teléfono de soporte",
