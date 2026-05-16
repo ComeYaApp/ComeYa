@@ -436,8 +436,8 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
     try {
       await Share.share({
         message:
-          "Descubre ComeYa - Tu delivery local de confianza en Autlan. Pide comida y productos del mercado con un toque. https://ComeYa.replit.app",
-        title: "ComeYa - Delivery Local",
+      "Descubre ComeYa - Tu delivery local de confianza en Soria. Pide comida y productos del mercado con un toque. https://app.comeya.es",
+        title: "ComeYa - Delivery en Soria",
       });
     } catch (error) {
       console.error("Error sharing:", error);
@@ -447,9 +447,9 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
   const shareToSocialMedia = (platform: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const message = encodeURIComponent(
-      "Descubre ComeYa - Tu delivery local de confianza en Autlan. Pide comida y productos del mercado con un toque.",
+      "Descubre ComeYa - Tu delivery local de confianza en Soria. Pide comida y productos del mercado con un toque.",
     );
-    const url = encodeURIComponent("https://ComeYa.replit.app");
+    const url = encodeURIComponent("https://app.comeya.es");
 
     let shareUrl = "";
     switch (platform) {
@@ -604,7 +604,7 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
             {user?.name || "Usuario"}
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            {user?.phone ? user.phone.replace(/^(\+58)+/, '+58') : "Sin teléfono"}
+      {user?.phone || "Sin teléfono"}
           </ThemedText>
           <Badge
             text={getRoleLabel()}
@@ -924,7 +924,7 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
             label="Términos y condiciones"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate('Terms' as any);
+              setShowTermsModal(true);
             }}
           />
           <SettingsItem
@@ -932,7 +932,7 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
             label="Política de privacidad"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate('Privacy' as any);
+              setShowPrivacyModal(true);
             }}
           />
         </View>
@@ -1287,7 +1287,7 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
               Ultima actualizacion: Febrero 2026
             </ThemedText>
             
-            <ThemedText type="body" style={styles.legalText}>
+          <ThemedText type="body" style={styles.legalText}>
               Bienvenido a ComeYa. Al utilizar nuestra aplicacion, aceptas estos terminos y condiciones. Por favor, leelos cuidadosamente.
             </ThemedText>
 
@@ -1302,28 +1302,28 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
               2. Descripcion del Servicio
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa es una plataforma de delivery local que conecta a clientes con negocios locales y repartidores en Soria, España, España. Facilitamos la compra y entrega de alimentos, productos de mercado y otros articulos de negocios participantes.
+              ComeYa es una plataforma de delivery local que conecta a clientes con negocios locales y repartidores en Soria, Espana. Facilitamos la compra y entrega de alimentos, productos de mercado y otros articulos de negocios participantes.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               3. Registro y Cuenta
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para usar ComeYa debes registrarte con un numero de telefono valido. Eres responsable de mantener la confidencialidad de tu cuenta y de todas las actividades que ocurran bajo ella. Debes proporcionar informacion veraz y actualizada.
+              Para usar ComeYa debes registrarte con un numero de telefono valido espanol (+34). Eres responsable de mantener la confidencialidad de tu cuenta y de todas las actividades que ocurran bajo ella. Debes proporcionar informacion veraz y actualizada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               4. Pedidos y Pagos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Los precios mostrados incluyen IVA. Los cargos de envio se calculan segun la distancia y se muestran antes de confirmar tu pedido. Aceptamos pagos con tarjeta de credito/debito y efectivo. Los pedidos pueden cancelarse sin penalizacion dentro de los primeros 60 segundos.
+              Los precios mostrados incluyen IVA. Los cargos de envio se calculan segun la distancia y se muestran antes de confirmar tu pedido. Aceptamos pagos con tarjeta de credito/debito, Bizum y efectivo. Los pedidos pueden cancelarse sin penalizacion dentro de los primeros 60 segundos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               5. Entregas
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Los tiempos de entrega son estimados y pueden variar segun la demanda, condiciones climaticas y trafico. ComeYa no se hace responsable por retrasos fuera de nuestro control. Debes estar disponible para recibir tu pedido en la direccion indicada.
+              Los tiempos de entrega son estimados y pueden variar segun la demanda, condiciones climaticas y trafico en Soria. ComeYa no se hace responsable por retrasos fuera de nuestro control. Debes estar disponible para recibir tu pedido en la direccion indicada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
@@ -1344,7 +1344,7 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
               8. Limitacion de Responsabilidad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa actua como intermediario entre clientes, negocios y repartidores. No somos responsables por la calidad de los productos, alergenos no declarados, o problemas de salud derivados del consumo. Los negocios son responsables de la preparacion y calidad de sus productos.
+              ComeYa actua como intermediario entre clientes, negocios y repartidores en Soria. No somos responsables por la calidad de los productos, alergenos no declarados, o problemas de salud derivados del consumo. Los negocios son responsables de la preparacion y calidad de sus productos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
@@ -1358,7 +1358,7 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
               10. Contacto
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para dudas o comentarios sobre estos terminos, contactanos a traves de la seccion de Ayuda y Soporte en la aplicacion o al correo soporte@ComeYa.mx
+              Para dudas o comentarios sobre estos terminos, contactanos a traves de la seccion de Ayuda y Soporte en la aplicacion o al correo soporte@comeya.es
             </ThemedText>
           </ScrollView>
         </View>
@@ -1404,77 +1404,77 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
             </ThemedText>
 
             <ThemedText type="body" style={styles.legalText}>
-              En ComeYa, tu privacidad es nuestra prioridad. Esta politica describe como recopilamos, usamos y protegemos tu informacion personal.
+              En ComeYa, tu privacidad es nuestra prioridad. Esta politica describe como recopilamos, usamos y protegemos tu informacion personal conforme al Reglamento General de Proteccion de Datos (RGPD).
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              1. Informacion que Recopilamos
+              1. Datos que Recopilamos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Recopilamos: nombre, numero de telefono, direcciones de entrega, historial de pedidos, datos de pago (procesados de forma segura por Stripe), ubicacion (solo cuando usas la app), y preferencias de usuario.
+              Recopilamos: nombre completo, numero de telefono espanol (+34), direcciones de entrega en Soria, historial de pedidos, datos de pago (procesados de forma segura por Stripe), ubicacion GPS (solo repartidores durante entregas activas), y preferencias de usuario.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               2. Uso de la Informacion
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Usamos tu informacion para: procesar y entregar tus pedidos, verificar tu identidad, procesar pagos, enviarte notificaciones sobre tus pedidos, mejorar nuestros servicios, cumplir con obligaciones legales, y comunicarnos contigo sobre promociones (con tu consentimiento).
+              Usamos tu informacion para: procesar y entregar tus pedidos en Soria, verificar tu identidad, procesar pagos, enviarte notificaciones sobre tus pedidos, mejorar nuestros servicios, y cumplir con obligaciones legales en Espana.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              3. Compartir Informacion
+              3. Terceros con Acceso a tus Datos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Compartimos informacion limitada con: negocios (nombre y direccion para preparar y entregar pedidos), repartidores (nombre, telefono y direccion de entrega), procesadores de pago (Stripe), y autoridades cuando la ley lo requiera.
+              Compartimos datos minimos con: negocios locales de Soria (nombre y direccion para preparar pedidos), repartidores (nombre y direccion de entrega), Stripe (pagos), Twilio (SMS de verificacion), Google Maps (rutas), y Cloudinary (imagenes). No vendemos tus datos a terceros.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               4. Seguridad de Datos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Implementamos medidas de seguridad incluyendo: encriptacion de datos en transito y reposo, autenticacion de dos factores via SMS, almacenamiento seguro de contrasenas, y acceso restringido a datos personales.
+              Implementamos: contrasenas cifradas con bcrypt, comunicaciones HTTPS/TLS, tokens JWT con expiracion automatica, rate limiting anti-fuerza bruta, y auditoria de accesos. En caso de brecha, te notificaremos en 72 horas segun el RGPD.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              5. Tus Derechos
+              5. Tus Derechos (RGPD)
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Tienes derecho a: acceder a tus datos personales, corregir informacion inexacta, solicitar la eliminacion de tu cuenta y datos, oponerte al procesamiento de tus datos, y retirar tu consentimiento para comunicaciones promocionales.
+              Como usuario en la Union Europea tienes derecho a: acceder a tus datos, rectificar informacion incorrecta, solicitar la eliminacion ("derecho al olvido"), portabilidad de datos (JSON/CSV), oponerte al tratamiento, y presentar reclamacion ante la AEPD (aepd.es). Respondemos en maximo 30 dias.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               6. Retencion de Datos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Conservamos tus datos mientras tu cuenta este activa y por el periodo requerido por ley. Puedes solicitar la eliminacion de tu cuenta contactando a soporte.
+              Datos de cuenta activa: mientras mantengas tu cuenta. Historial de pedidos: 5 anos (obligacion fiscal). Ubicacion GPS: maximo 30 dias tras la entrega. Cuenta eliminada: datos anonimizados en 30 dias, salvo los requeridos por ley espanola.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              7. Cookies y Tecnologias Similares
+              7. Permisos de la App Android
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Usamos cookies y tecnologias similares para mejorar tu experiencia, recordar preferencias, y analizar el uso de la aplicacion.
+              La app solicita: Ubicacion (para repartidores y mostrar negocios cercanos), Camara (escanear QR y fotos de perfil), Almacenamiento (seleccionar imagenes), Notificaciones (alertas de pedidos). Puedes revocar permisos en Ajustes del dispositivo.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               8. Menores de Edad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa no esta dirigido a menores de 18 anios. No recopilamos intencionalmente informacion de menores. Si eres padre y crees que tu hijo ha proporcionado informacion, contactanos.
+              ComeYa no esta dirigido a menores de 16 anos. No recopilamos intencionalmente informacion de menores. Si eres padre/madre y crees que tu hijo ha proporcionado datos, contactanos para eliminarlos inmediatamente.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               9. Cambios a esta Politica
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Podemos actualizar esta politica periodicamente. Te notificaremos de cambios significativos a traves de la aplicacion o por SMS.
+              Podemos actualizar esta politica periodicamente. Te notificaremos de cambios significativos a traves de la aplicacion o por SMS. El uso continuado implica aceptacion de la politica actualizada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              10. Contacto
+              10. Contacto — Privacidad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para ejercer tus derechos o resolver dudas sobre privacidad, contactanos a traves de Ayuda y Soporte o al correo privacidad@ComeYa.mx
+              Para ejercer tus derechos o resolver dudas sobre privacidad, contactanos a traves de Ayuda y Soporte en la app o al correo: privacidad@comeya.es
             </ThemedText>
           </ScrollView>
         </View>
