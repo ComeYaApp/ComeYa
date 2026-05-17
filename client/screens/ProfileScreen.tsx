@@ -703,12 +703,12 @@ const [driverStrikes, setDriverStrikes] = useState(0);
                   navigation.navigate("BusinessMore" as any);
                 }}
               />
-              <SettingsItem
+<SettingsItem
                 icon="clock"
                 label="Horarios de atención"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  navigation.navigate("BusinessMore" as any);
+                  navigation.navigate("BusinessHours" as any);
                 }}
               />
             </>
