@@ -57,7 +57,7 @@ res.json({
       vehicleBrand, vehicleModel, vehicleColor, vehicleYear,
       vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
       idDocumentUrl: user.idDocumentUrl,
-      // idDocumentBackUrl: temporalmente deshabilitado hasta hacer ALTER TABLE
+      idDocumentBackUrl: (user as any).idDocumentBackUrl,
       autonomoDocumentUrl: user.autonomoDocumentUrl,
     });
   } catch (error: any) {
@@ -524,11 +524,11 @@ router.put("/personal-docs", authenticateToken, async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const { idDocumentUrl, autonomoDocumentUrl } = req.body;
+    const { idDocumentUrl, idDocumentBackUrl, autonomoDocumentUrl } = req.body;
     const updates: any = { verificationStatus: "pending", updatedAt: new Date() };
 
     if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
-    // idDocumentBackUrl deshabilitado temporalmente hasta hacer ALTER TABLE
+    if (idDocumentBackUrl) updates.idDocumentBackUrl = idDocumentBackUrl;
     if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
 
     await db.update(users).set(updates).where(eq(users.id, req.user!.id));
