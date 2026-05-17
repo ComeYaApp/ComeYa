@@ -52,11 +52,14 @@ export default function BusinessDeliveryMapScreen() {
   const { theme, isDark } = useTheme();
   const mapRef = useRef<MapView>(null);
 
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [selected, setSelected] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  
+  // Business locations for markers
+  const [businessLocations, setBusinessLocations] = useState<{id: string; name: string; lat: number; lng: number}[]>([]);
   
   const bg = isDark ? "#111" : "#f5f5f5";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -64,7 +67,7 @@ export default function BusinessDeliveryMapScreen() {
   const sub = isDark ? "#aaa" : "#666";
   const bord = isDark ? "#333" : "#e0e0e0";
 
-  // Fetch active deliveries
+// Fetch active deliveries
   const fetchDeliveries = useCallback(async () => {
     try {
       const res = await apiRequest("GET", "/api/business/active-deliveries");
@@ -73,6 +76,19 @@ export default function BusinessDeliveryMapScreen() {
         setDeliveries(data.deliveries || []);
         setStats(data.stats || null);
         setLastUpdated(new Date());
+        
+        // Extract business locations from the API response
+        if (data.businesses && data.businesses.length > 0) {
+          const locations = data.businesses
+            .filter((b: any) => b.latitude && b.longitude)
+            .map((b: any) => ({
+              id: b.id,
+              name: b.name,
+              lat: parseFloat(b.latitude),
+              lng: parseFloat(b.longitude),
+            }));
+          setBusinessLocations(locations);
+        }
       }
     } catch (e) {
       console.error("Error fetching deliveries:", e);
@@ -124,7 +140,7 @@ export default function BusinessDeliveryMapScreen() {
 
       {/* Map */}
       <View style={styles.mapContainer}>
-        <MapView
+<MapView
           ref={mapRef}
           style={styles.map}
           provider={PROVIDER_GOOGLE}
@@ -132,49 +148,80 @@ export default function BusinessDeliveryMapScreen() {
           showsUserLocation
           showsMyLocationButton
         >
+          {/* Business location markers - show all businesses of the owner */}
+          {businessLocations.map((biz) => (
+            <Marker
+              key={`business_${biz.id}`}
+              coordinate={{ latitude: biz.lat!, longitude: biz.lng! }}
+              title={biz.name}
+              description="Tu negocio"
+              pinColor="#DC2626"
+            >
+              <View style={[styles.businessMarker, { backgroundColor: "#DC2626" }]}>
+                <RNText style={{ fontSize: 16 }}>🏪</RNText>
+              </View>
+            </Marker>
+          ))}
+          
+          {/* Customer and Driver markers */}
           {deliveries.map((d) => {
             const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
             
             // Customer marker
             if (d.customer.lat && d.customer.lng) {
-              <Marker
-                key={`customer_${d.orderId}`}
-                coordinate={{ latitude: d.customer.lat, longitude: d.customer.lng }}
-                title={`Cliente: ${d.customer.name}`}
-                description={d.customer.address || "Sin dirección"}
-                pinColor={cfg.color}
-                onPress={() => focusDelivery(d)}
-              />;
+              return (
+                <Marker
+                  key={`customer_${d.orderId}`}
+                  coordinate={{ latitude: d.customer.lat, longitude: d.customer.lng }}
+                  title={`Cliente: ${d.customer.name}`}
+                  description={d.customer.address || "Sin dirección"}
+                  pinColor={cfg.color}
+                  onPress={() => focusDelivery(d)}
+                />
+              );
             }
+            return null;
+          })}
+          
+          {/* Driver marker - separate iteration to handle null properly */}
+          {deliveries.map((d) => {
+            const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
             
-            // Driver marker
             if (d.driver?.lat && d.driver?.lng) {
-              <Marker
-                key={`driver_${d.orderId}`}
-                coordinate={{ latitude: d.driver.lat, longitude: d.driver.lng }}
-                title={`Repartidor: ${d.driver.name}`}
-                description={d.driver.vehicleType}
-                onPress={() => focusDelivery(d)}
-              >
-                <View style={[styles.driverMarker, { backgroundColor: cfg.color }]}>
-                  <RNText style={{ fontSize: 16 }}>🛵</RNText>
-                </View>
-              </Marker>;
+              return (
+                <Marker
+                  key={`driver_${d.orderId}`}
+                  coordinate={{ latitude: d.driver.lat, longitude: d.driver.lng }}
+                  title={`Repartidor: ${d.driver.name}`}
+                  description={d.driver.vehicleType}
+                  onPress={() => focusDelivery(d)}
+                >
+                  <View style={[styles.driverMarker, { backgroundColor: cfg.color }]}>
+                    <RNText style={{ fontSize: 16 }}>🛵</RNText>
+                  </View>
+                </Marker>
+              );
             }
+            return null;
+          })}
+          
+          {/* Route lines - separate iteration */}
+          {deliveries.map((d) => {
+            const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
             
-            // Route line
             if (d.driver?.lat && d.driver?.lng && d.customer.lat && d.customer.lng) {
-              <Polyline
-                key={`line_${d.orderId}`}
-                coordinates={[
-                  { latitude: d.driver.lat, longitude: d.driver.lng },
-                  { latitude: d.customer.lat, longitude: d.customer.lng },
-                ]}
-                strokeColor={cfg.color}
-                strokeWidth={2}
-              />;
+              return (
+                <Polyline
+                  key={`line_${d.orderId}`}
+                  coordinates={[
+                    { latitude: d.driver.lat, longitude: d.driver.lng },
+                    { latitude: d.customer.lat, longitude: d.customer.lng },
+                  ]}
+                  strokeColor={cfg.color}
+                  strokeWidth={3}
+                />
+              );
             }
-            
             return null;
           })}
         </MapView>
@@ -333,10 +380,19 @@ const styles = StyleSheet.create({
   },
   timeBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
   statusChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  driverMarker: {
+driverMarker: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  businessMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
