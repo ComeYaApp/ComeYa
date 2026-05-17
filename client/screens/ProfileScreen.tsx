@@ -193,7 +193,174 @@ const [driverStrikes, setDriverStrikes] = useState(0);
     vehiclePlate: "",
     vehicleColor: "",
   });
-  const [isSavingVehicle, setIsSavingVehicle] = useState(false);
+const [isSavingVehicle, setIsSavingVehicle] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState<string | null>(null);
+
+  // Upload document image
+  const uploadDocument = async (documentType: string, uri: string) => {
+    setUploadingDocument(documentType);
+    try {
+      let imageData: string;
+      
+      if (Platform.OS === "web") {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        imageData = await new Promise((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        const encoding = (FileSystem as any)?.EncodingType?.Base64 || "base64";
+        const base64 = await FileSystem.readAsStringAsync(uri, { encoding });
+        const extension = uri.split(".").pop()?.toLowerCase() || "jpg";
+        const mimeType = extension === "png" ? "image/png" : "image/jpeg";
+        imageData = `data:${mimeType};base64,${base64}`;
+      }
+
+      const estimatedBytes = Math.ceil(imageData.length * 0.75);
+      if (estimatedBytes > 2 * 1024 * 1024) {
+        throw new Error("La imagen es muy pesada. Usa una foto mas ligera (~2MB max)");
+      }
+
+      const apiResponse = await apiRequest("POST", "/api/users/verification-document", {
+        documentType,
+        image: imageData,
+      });
+
+      const data = await apiResponse.json();
+      if (data.success) {
+// Update local professional data
+        const fieldMap: Record<string, string> = {
+          idDocument: "idDocumentUrl",
+          idDocumentBack: "idDocumentBackUrl",
+          autonomo: "autonomoDocumentUrl",
+          vehicleLicense: "vehicleLicensePhoto",
+          vehiclePlate: "vehiclePlatePhoto",
+          vehicleItv: "vehicleItvPhoto",
+          vehicleInsurance: "vehicleInsurancePhoto",
+          vehiclePhoto: "vehiclePhoto",
+        };
+        const field = fieldMap[documentType];
+        if (field) {
+          setProfessionalData(prev => prev ? { ...prev, [field]: data.url || imageData } : null);
+        }
+        
+        // Reset verification status
+        try {
+          await apiRequest("POST", `/api/users/${user?.id}/reset-verification`);
+        } catch { /* ignore */ }
+        
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showToast("Documento actualizado", "success");
+      } else {
+        throw new Error(data.error || "Error al subir documento");
+      }
+    } catch (error: any) {
+      console.error("Error uploading document:", error?.message || error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      showToast(error?.message || "No se pudo subir el documento", "error");
+    } finally {
+      setUploadingDocument(null);
+    }
+  };
+
+  const pickDocumentImage = async (documentType: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (Platform.OS === "web") {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = async (e: any) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const { fileToBase64 } = await import("@/utils/uploadImageWeb");
+        const base64 = await fileToBase64(file);
+        await uploadDocument(documentType, URL.createObjectURL(file));
+      };
+      input.click();
+      return;
+    }
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      showToast("Permisos de galería denegados", "error");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.5,
+    });
+
+    const asset = result?.assets?.[0];
+    if (!result.canceled && asset?.uri) {
+      await uploadDocument(documentType, asset.uri);
+    } else if (!result.canceled) {
+      showToast("No se pudo leer la imagen seleccionada", "error");
+    }
+  };
+
+  // Document upload button component
+  const DocumentUploadButton = ({ 
+    documentType, 
+    label, 
+    currentUrl,
+  }: { 
+    documentType: string; 
+    label: string; 
+    currentUrl: string | null | undefined;
+  }) => {
+    const isUploading = uploadingDocument === documentType;
+    const hasDocument = !!currentUrl;
+
+    return (
+      <View style={{ marginBottom: Spacing.md }}>
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.xs }}>
+          {hasDocument ? (
+            <Feather name="check-circle" size={16} color={ComeYaColors.success} />
+          ) : (
+            <Feather name="circle" size={16} color={theme.textSecondary} />
+          )}
+          <ThemedText type="body" style={{ marginLeft: Spacing.xs, color: theme.text }}>
+            {label}
+          </ThemedText>
+        </View>
+        <Pressable
+          onPress={() => pickDocumentImage(documentType)}
+          disabled={isUploading}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: Spacing.sm,
+            borderRadius: BorderRadius.md,
+            backgroundColor: isUploading ? theme.backgroundSecondary : ComeYaColors.primaryLight,
+            borderWidth: 1,
+            borderColor: isUploading ? theme.border : ComeYaColors.primary,
+          }}
+        >
+          {isUploading ? (
+            <ActivityIndicator size="small" color={ComeYaColors.primary} />
+          ) : (
+            <>
+              <Feather 
+                name={hasDocument ? "refresh-cw" : "upload"} 
+                size={16} 
+                color={ComeYaColors.primary} 
+              />
+              <ThemedText type="caption" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+                {hasDocument ? "Actualizar" : "Subir"}
+              </ThemedText>
+            </>
+          )}
+        </Pressable>
+      </View>
+    );
+  };
 
   useEffect(() => {
     const loadSubscription = async () => {
@@ -1779,52 +1946,59 @@ useEffect(() => {
                     </>
                   )}
                   
-                  {/* Document status section */}
-                  {(professionalData?.idDocumentUrl || professionalData?.vehiclePlatePhoto || professionalData?.vehicleItvPhoto) && (
+{/* Document upload section - Drivers */}
+                  {user?.role === "delivery_driver" && (
                     <>
-                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Estado de documentos</ThemedText>
+                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos</ThemedText>
                       
-                      {professionalData?.idDocumentUrl && (
-                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
-                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
-                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>DNI / Identificación</ThemedText>
-                        </View>
-                      )}
+                      <DocumentUploadButton 
+                        documentType="idDocument" 
+                        label="DNI / Identificación" 
+                        currentUrl={professionalData?.idDocumentUrl}
+                      />
+                      <DocumentUploadButton 
+                        documentType="vehicleLicense" 
+                        label="Licencia de conducir" 
+                        currentUrl={professionalData?.vehicleLicensePhoto}
+                      />
+                      <DocumentUploadButton 
+                        documentType="vehiclePlate" 
+                        label="Foto matrícula" 
+                        currentUrl={professionalData?.vehiclePlatePhoto}
+                      />
+                      <DocumentUploadButton 
+                        documentType="vehicleItv" 
+                        label="ITV" 
+                        currentUrl={professionalData?.vehicleItvPhoto}
+                      />
+                      <DocumentUploadButton 
+                        documentType="vehicleInsurance" 
+                        label="Seguro del vehículo" 
+                        currentUrl={professionalData?.vehicleInsurancePhoto}
+                      />
+                      <DocumentUploadButton 
+                        documentType="vehiclePhoto" 
+                        label="Foto del vehículo" 
+                        currentUrl={professionalData?.vehiclePhoto}
+                      />
+                    </>
+                  )}
+                  
+                  {/* Document upload section - Business owners */}
+                  {user?.role === "business_owner" && (
+                    <>
+                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos</ThemedText>
                       
-                      {professionalData?.autonomoDocumentUrl && (
-                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
-                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
-                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Documento de Autónomo</ThemedText>
-                        </View>
-                      )}
-                      
-                      {professionalData?.vehicleLicensePhoto && (
-                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
-                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
-                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Licencia de conducir</ThemedText>
-                        </View>
-                      )}
-                      
-                      {professionalData?.vehiclePlatePhoto && (
-                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
-                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
-                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Foto matrícula</ThemedText>
-                        </View>
-                      )}
-                      
-                      {professionalData?.vehicleItvPhoto && (
-                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
-                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
-                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>ITV</ThemedText>
-                        </View>
-                      )}
-                      
-                      {professionalData?.vehicleInsurancePhoto && (
-                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
-                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
-                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Seguro del vehículo</ThemedText>
-                        </View>
-                      )}
+                      <DocumentUploadButton 
+                        documentType="idDocument" 
+                        label="DNI / Identificación" 
+                        currentUrl={professionalData?.idDocumentUrl}
+                      />
+                      <DocumentUploadButton 
+                        documentType="autonomo" 
+                        label="Documento de Autónomo" 
+                        currentUrl={professionalData?.autonomoDocumentUrl}
+                      />
                     </>
                   )}
                   
