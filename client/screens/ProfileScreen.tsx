@@ -188,10 +188,13 @@ const [driverStrikes, setDriverStrikes] = useState(0);
     loadSubscription();
   }, []);
 
-  const saveProfile = async () => {
+const saveProfile = async () => {
     if (!editName.trim()) { showToast("El nombre es requerido", "error"); return; }
     setIsSavingProfile(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
+      const isDriverOrBusiness = user?.role === "delivery_driver" || user?.role === "business_owner";
+      
       const res = await apiRequest("PUT", "/api/users/profile", {
         name: editName.trim(),
         email: editEmail.trim(),
@@ -199,8 +202,18 @@ const [driverStrikes, setDriverStrikes] = useState(0);
       });
       const data = await res.json();
       if (data.success || data.user) {
-        await updateUser({ name: editName.trim(), email: editEmail.trim() });
-        showToast("Perfil actualizado correctamente", "success");
+        // Si es driver o negocio,resetear verificación si cambió información crítica (DNI)
+        if (isDriverOrBusiness && editDni.trim()) {
+          try {
+            await apiRequest("POST", `/api/users/${user?.id}/reset-verification`);
+            showToast("Perfil actualizado. Tu verificación está en revisión.", "success");
+          } catch {
+            showToast("Perfil actualizado. Contacta soporte para re-verificar.", "warning");
+          }
+        } else {
+          await updateUser({ name: editName.trim(), email: editEmail.trim() });
+          showToast("Perfil actualizado correctamente", "success");
+        }
         setShowEditProfileModal(false);
       } else {
         showToast(data.message || "Error al actualizar perfil", "error");
@@ -812,8 +825,15 @@ const [driverStrikes, setDriverStrikes] = useState(0);
               value={driverStats?.vehicleType ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` · ${driverStats.vehiclePlate}` : ""}` : "No registrado"}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                // Navegar a EditProfileScreen para gestionar vehículo y documentos
-                navigation.navigate("EditProfile" as any);
+                // Pre-fill form with existing data
+                setVehicleForm({
+                  vehicleType: driverStats?.vehicleType || "",
+                  vehicleBrand: "",
+                  vehicleModel: "",
+                  vehiclePlate: driverStats?.vehiclePlate || "",
+                  vehicleColor: "",
+                });
+                setShowVehicleModal(true);
               }}
             />
             <View style={styles.strikesContainer}>

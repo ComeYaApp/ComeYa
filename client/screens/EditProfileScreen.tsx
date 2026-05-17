@@ -216,14 +216,15 @@ vehicleColor: vehicleColor.trim() || undefined,
 
       await updateUser({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined });
 
-      // Subir documentos si se seleccionaron (solo si son cambios locales, no URLs)
+// Subir documentos si se seleccionaron (solo si son cambios locales, no URLs)
       const hasPersonalDocs = (idDocUri && !idDocUri.startsWith('http')) || (idDocBackUri && !idDocBackUri.startsWith('http')) || (autonomoDocUri && !autonomoDocUri.startsWith('http'));
+      let needsReverify = false;
       if (needsDocs && hasPersonalDocs) {
         const formData = new FormData();
         // Añadir documentos solo si son nuevos (URI locales, no URLs del servidor)
-        if (idDocUri && !idDocUri.startsWith('http')) formData.append("idDocumentUrl", idDocUri);
-        if (idDocBackUri && !idDocBackUri.startsWith('http')) formData.append("idDocumentBackUrl", idDocBackUri);
-        if (autonomoDocUri && !autonomoDocUri.startsWith('http')) formData.append("autonomoDocumentUrl", autonomoDocUri);
+        if (idDocUri && !idDocUri.startsWith('http')) { formData.append("idDocumentUrl", idDocUri); needsReverify = true; }
+        if (idDocBackUri && !idDocBackUri.startsWith('http')) { formData.append("idDocumentBackUrl", idDocBackUri); needsReverify = true; }
+        if (autonomoDocUri && !autonomoDocUri.startsWith('http')) { formData.append("autonomoDocumentUrl", autonomoDocUri); needsReverify = true; }
         if (formData.has("idDocumentUrl") || formData.has("idDocumentBackUrl") || formData.has("autonomoDocumentUrl")) {
           await apiRequest("POST", `/api/users/${user.id}/verification-documents`, formData);
         }
