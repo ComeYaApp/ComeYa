@@ -175,11 +175,12 @@ router.get("/", authenticateToken, async (req, res) => {
 // Get order by ID — accesible por cliente, repartidor asignado y admin
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const { orders } = await import("@shared/schema-mysql");
+    const { orders, users, deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const { eq } = await import("drizzle-orm");
+    const { eq, sql } = await import("drizzle-orm");
     const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
+    // Get order base data
     const [order] = await db
       .select()
       .from(orders)
@@ -199,7 +200,56 @@ router.get("/:id", authenticateToken, async (req, res) => {
       return res.status(403).json({ error: "No autorizado" });
     }
 
-    res.json({ success: true, order });
+    // Get driver info if assigned - join with delivery_drivers and users tables
+    let driverInfo = null;
+    if (order.deliveryPersonId) {
+      try {
+        const [driverData] = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            phone: users.phone,
+            profileImage: users.profileImage,
+            profilePicture: users.profilePicture,
+            vehicleType: deliveryDrivers.vehicleType,
+            vehiclePlate: deliveryDrivers.vehiclePlate,
+            vehicleBrand: deliveryDrivers.vehicleBrand,
+            vehicleModel: deliveryDrivers.vehicleModel,
+            vehicleColor: deliveryDrivers.vehicleColor,
+            vehiclePhoto: deliveryDrivers.vehiclePhoto,
+          })
+          .from(users)
+          .leftJoin(deliveryDrivers, eq(users.id, deliveryDrivers.userId))
+          .where(eq(users.id, order.deliveryPersonId))
+          .limit(1);
+
+        if (driverData) {
+          driverInfo = {
+            id: driverData.id,
+            name: driverData.name,
+            phone: driverData.phone,
+            profilePhoto: driverData.profileImage || driverData.profilePicture,
+            vehicleType: driverData.vehicleType,
+            vehiclePlate: driverData.vehiclePlate,
+            vehicleBrand: driverData.vehicleBrand,
+            vehicleModel: driverData.vehicleModel,
+            vehicleColor: driverData.vehicleColor,
+            vehiclePhoto: driverData.vehiclePhoto,
+          };
+        }
+      } catch (err) {
+        console.error("Error fetching driver info:", err);
+      }
+    }
+
+    // Return order with driver info included
+    res.json({ 
+      success: true, 
+      order: {
+        ...order,
+        driverInfo
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

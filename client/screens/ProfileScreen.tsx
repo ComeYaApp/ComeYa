@@ -162,9 +162,20 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
         ? { text: "Aprobado", variant: "success" as const }
         : { text: "En revision", variant: "warning" as const }
       : null;
-  const [driverStrikes, setDriverStrikes] = useState(0);
+const [driverStrikes, setDriverStrikes] = useState(0);
   const maxStrikes = 3;
   const [driverStats, setDriverStats] = useState<{ rating: number; totalDeliveries: number; vehicleType: string | null; vehiclePlate: string | null; verificationStatus: string } | null>(null);
+  
+  // Vehicle editing state
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState({
+    vehicleType: "",
+    vehicleBrand: "",
+    vehicleModel: "",
+    vehiclePlate: "",
+    vehicleColor: "",
+  });
+  const [isSavingVehicle, setIsSavingVehicle] = useState(false);
 
   useEffect(() => {
     const loadSubscription = async () => {
@@ -225,8 +236,42 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
       }
     } catch {
       showToast("Error de conexión", "error");
-    } finally {
+} finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const saveVehicle = async () => {
+    if (!vehicleForm.vehicleType) {
+      showToast("Selecciona un tipo de vehículo", "error");
+      return;
+    }
+    setIsSavingVehicle(true);
+    try {
+      const res = await apiRequest("PUT", "/api/users/vehicle", {
+        vehicleType: vehicleForm.vehicleType,
+        vehicleBrand: vehicleForm.vehicleBrand.trim() || null,
+        vehicleModel: vehicleForm.vehicleModel.trim() || null,
+        vehiclePlate: vehicleForm.vehiclePlate.trim().toUpperCase() || null,
+        vehicleColor: vehicleForm.vehicleColor.trim() || null,
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("Vehículo guardado", "success");
+        setShowVehicleModal(false);
+        // Actualizar driverStats local
+        setDriverStats(prev => prev ? {
+          ...prev,
+          vehicleType: vehicleForm.vehicleType,
+          vehiclePlate: vehicleForm.vehiclePlate.trim().toUpperCase(),
+        } : null);
+      } else {
+        showToast(data.message || "Error al guardar vehículo", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    } finally {
+      setIsSavingVehicle(false);
     }
   };
 
@@ -765,28 +810,24 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
               </View>
             )}
 
-            {/* Vehículo */}
-            {driverStats?.vehicleType && (
-              <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: ComeYaColors.primary + "20", justifyContent: "center", alignItems: "center" }}>
-                  <Feather
-                    name={driverStats.vehicleType === "car" ? "truck" : driverStats.vehicleType === "motorcycle" ? "zap" : "wind"}
-                    size={18}
-                    color={ComeYaColors.primary}
-                  />
-                </View>
-                <View style={{ marginLeft: 12 }}>
-                  <ThemedText type="body" style={{ fontWeight: "600" }}>
-                    {driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}
-                  </ThemedText>
-                  {driverStats.vehiclePlate && (
-                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                      Matrícula: {driverStats.vehiclePlate}
-                    </ThemedText>
-                  )}
-                </View>
-              </View>
-            )}
+{/* Vehículo */}
+            <SettingsItem
+              icon="truck"
+              label="Mi vehículo"
+              value={driverStats?.vehicleType ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` · ${driverStats.vehiclePlate}` : ""}` : "No registrado"}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                // Pre-fill form with existing data
+                setVehicleForm({
+                  vehicleType: driverStats?.vehicleType || "",
+                  vehicleBrand: "",
+                  vehicleModel: "",
+                  vehiclePlate: driverStats?.vehiclePlate || "",
+                  vehicleColor: "",
+                });
+                setShowVehicleModal(true);
+              }}
+            />
             <View style={styles.strikesContainer}>
               <View style={styles.strikesHeader}>
                 <View style={styles.strikesIconContainer}>
@@ -1587,7 +1628,7 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
         </View>
       </Modal>
 
-      <Modal
+<Modal
         visible={showAddressesModal}
         transparent
         animationType="fade"
@@ -1632,6 +1673,103 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
             </Pressable>
           </View>
         </Pressable>
+      </Modal>
+
+      {/* Vehicle Modal */}
+      <Modal
+        visible={showVehicleModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowVehicleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowVehicleModal(false)} />
+          <View style={[styles.editModalCard, { backgroundColor: theme.card }]}>
+            <View style={[styles.editModalHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText type="h3">Mi vehículo</ThemedText>
+              <Pressable onPress={() => setShowVehicleModal(false)} style={styles.editModalClose}>
+                <Feather name="x" size={22} color={theme.text} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Tipo de vehículo *</ThemedText>
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+                {["car", "motorcycle", "bicycle"].map(type => (
+                  <Pressable
+                    key={type}
+                    onPress={() => setVehicleForm(f => ({ ...f, vehicleType: type }))}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      backgroundColor: vehicleForm.vehicleType === type ? ComeYaColors.primaryLight : theme.backgroundSecondary,
+                      borderWidth: 2,
+                      borderColor: vehicleForm.vehicleType === type ? ComeYaColors.primary : "transparent",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Feather
+                      name={type === "car" ? "truck" : type === "motorcycle" ? "zap" : "wind"}
+                      size={24}
+                      color={vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.textSecondary}
+                    />
+                    <ThemedText type="caption" style={{ color: vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.text, marginTop: 4 }}>
+                      {type === "car" ? "Coche" : type === "motorcycle" ? "Moto" : "Bici"}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+              
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Marca</ThemedText>
+              <TextInput
+                value={vehicleForm.vehicleBrand}
+                onChangeText={text => setVehicleForm(f => ({ ...f, vehicleBrand: text }))}
+                placeholder="Ej: Toyota, Yamaha, Bianchi"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              />
+              
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Modelo</ThemedText>
+              <TextInput
+                value={vehicleForm.vehicleModel}
+                onChangeText={text => setVehicleForm(f => ({ ...f, vehicleModel: text }))}
+                placeholder="Ej: Corolla, MT-07, Tornado"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              />
+              
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Matrícula</ThemedText>
+              <TextInput
+                value={vehicleForm.vehiclePlate}
+                onChangeText={text => setVehicleForm(f => ({ ...f, vehiclePlate: text }))}
+                placeholder="Ej: 1234ABC"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="characters"
+                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              />
+              
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Color</ThemedText>
+              <TextInput
+                value={vehicleForm.vehicleColor}
+                onChangeText={text => setVehicleForm(f => ({ ...f, vehicleColor: text }))}
+                placeholder="Ej: Blanco, Negro, Rojo"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              />
+              
+              <Pressable
+                onPress={saveVehicle}
+                disabled={isSavingVehicle}
+                style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingVehicle ? 0.7 : 1 }]}
+              >
+                {isSavingVehicle
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar vehículo</ThemedText>
+                }
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </LinearGradient>
   );

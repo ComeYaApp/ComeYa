@@ -13,6 +13,7 @@ import BusinessHoursScreen from "@/screens/BusinessHoursScreen";
 import BusinessAnalyticsScreen from "@/screens/BusinessAnalyticsScreen";
 import BusinessStatsScreen from "@/screens/BusinessStatsScreen";
 import BusinessFinancesScreen from "@/screens/BusinessFinancesScreen";
+import BusinessDeliveryMapScreen from "@/screens/BusinessDeliveryMapScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
 
@@ -72,12 +73,20 @@ export default function BusinessTabNavigator() {
           tabBarIcon: ({ color, size }) => <Feather name="shopping-bag" size={size} color={color} />,
         }}
       />
-      <Tab.Screen
+<Tab.Screen
         name="BusinessProducts"
         component={BusinessProductsScreen}
         options={{
           title: "Productos",
           tabBarIcon: ({ color, size }) => <Feather name="package" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="BusinessGPS"
+        component={BusinessDeliveryMapScreen}
+        options={{
+          title: "GPS",
+          tabBarIcon: ({ color, size }) => <Feather name="map" size={size} color={color} />,
         }}
       />
       <Tab.Screen

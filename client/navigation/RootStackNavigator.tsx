@@ -169,10 +169,18 @@ export default function RootStackNavigator() {
     return match ? match[1].replace(/^\/+/, '') : '';
   }
 
+// Helper to safely get window.location.href (works on web and React Native)
+  const getWindowHref = (): string => {
+    if (typeof window !== 'undefined' && window.location && typeof window.location.href === 'string') {
+      return window.location.href;
+    }
+    return '';
+  };
+
   useEffect(() => {
     const handleURL = (event?: { url?: string }) => {
       // Support both Linking events and direct URL
-      const incomingUrl = event?.url || (typeof window !== 'undefined' ? window.location.href : '');
+      const incomingUrl = event?.url || getWindowHref();
       if (!incomingUrl) return;
       
       console.log('Deep link received:', incomingUrl);
@@ -223,9 +231,8 @@ export default function RootStackNavigator() {
   };
 
   return (
-    <Stack.Navigator 
+<Stack.Navigator 
       screenOptions={screenOptions}
-      ref={navigationRef}
     >
       {isAuthenticated ? (
         <>

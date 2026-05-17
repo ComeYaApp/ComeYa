@@ -108,11 +108,11 @@ export async function sendOrderStatusNotification(
       }
       break;
 
-    case "delivered":
+case "delivered":
       notification = {
         title: "¡Pedido entregado! 🎉",
-        body: "¡Disfruta tu comida! No olvides calificar tu experiencia",
-        data: { orderId, screen: "OrderDetails" },
+        body: "¡Disfruta tu comida! Confirma la entrega para liberar el pago",
+        data: { orderId, screen: "DeliveryConfirmation" },
       };
       break;
 

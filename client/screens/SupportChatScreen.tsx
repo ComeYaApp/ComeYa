@@ -6,6 +6,7 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -65,10 +66,10 @@ function MessageBubble({ message }: { message: Message }) {
               { backgroundColor: ComeYaColors.primary + "20" },
             ]}
           >
-            <Image
+<Image
               source={require("../../assets/images/comeya-logo-final.png")}
               style={{ width: 16, height: 16 }}
-              contentFit="contain"
+              resizeMode="contain"
             />
           </View>
           <ThemedText
@@ -111,10 +112,10 @@ function EmptyState() {
       >
         <Feather name="message-circle" size={48} color={ComeYaColors.primary} />
       </View>
-      <Image
+<Image
         source={require("../../assets/images/comeya-logo-final.png")}
         style={{ width: 80, height: 80, marginTop: Spacing.md }}
-        contentFit="contain"
+        resizeMode="contain"
       />
       <ThemedText
         type="h3"

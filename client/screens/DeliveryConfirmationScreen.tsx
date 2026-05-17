@@ -10,6 +10,7 @@ import {
   Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
@@ -18,17 +19,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
 import { apiRequest } from '@/lib/query-client';
 
-interface Props {
-  orderId: string;
-  orderDetails: {
-    businessName: string;
-    total: number;
-    items: any[];
-    deliveredAt: string;
-  };
-  onConfirmed: () => void;
-  onDisputed: () => void;
-}
+type DeliveryConfirmationRouteProp = RouteProp<{ DeliveryConfirmation: { orderId: string; orderDetails: any } }, 'DeliveryConfirmation'>;
 
 const ISSUES = [
   { id: 'never_arrived', label: 'El pedido nunca llegó',   icon: 'x-circle' },
@@ -39,18 +30,21 @@ const ISSUES = [
   { id: 'other',         label: 'Otro problema',           icon: 'help-circle' },
 ] as const;
 
-export default function DeliveryConfirmationScreen({
-  orderId,
-  orderDetails,
-  onConfirmed,
-  onDisputed,
-}: Props) {
+export default function DeliveryConfirmationScreen() {
+  const navigation = useNavigation();
+  const route = useRoute<DeliveryConfirmationRouteProp>();
+  const { orderId, orderDetails } = route.params || {};
+  
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Handlers for navigation callbacks
+  const handleConfirmed = () => navigation.goBack();
+  const handleDisputed = () => navigation.goBack();
 
   const handleConfirmDelivery = () => {
     Alert.alert(
@@ -65,10 +59,10 @@ export default function DeliveryConfirmationScreen({
             try {
               const res = await apiRequest('POST', '/api/fund-release/confirm-delivery', { orderId });
               const data = await res.json();
-              if (data.success) {
+if (data.success) {
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 Alert.alert('¡Gracias!', 'Tu confirmación ha sido registrada. Los fondos han sido liberados.', [
-                  { text: 'OK', onPress: onConfirmed },
+                  { text: 'OK', onPress: handleConfirmed },
                 ]);
               } else {
                 throw new Error(data.error || data.message || 'Error al confirmar entrega');
@@ -105,10 +99,10 @@ export default function DeliveryConfirmationScreen({
       if (data.success) {
         setShowDisputeModal(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        Alert.alert(
+Alert.alert(
           'Disputa registrada',
           'Tu caso será revisado por nuestro equipo. Te contactaremos pronto.',
-          [{ text: 'OK', onPress: onDisputed }]
+          [{ text: 'OK', onPress: handleDisputed }]
         );
       } else {
         throw new Error(data.error || data.message || 'Error al registrar disputa');
