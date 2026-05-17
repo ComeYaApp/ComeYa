@@ -15,6 +15,22 @@ const BLUE   = "#3B82F6";
 const RED    = "#EF4444";
 const PURPLE = "#8B5CF6";
 
+// ── Documentos personales ───────────────────────────────────────────────────────
+interface DocUpload {
+  label: string;
+  key: string;
+  icon: string;
+  color: string;
+  hint: string;
+  required: boolean;
+}
+
+const PERSONAL_DOCS: DocUpload[] = [
+  { label: "DNI/NIE (anverso)", key: "idDocumentUrl", icon: "credit-card", color: BLUE, hint: "Foto del anverso de tu DNI o NIE", required: true },
+  { label: "DNI/NIE (reverso)", key: "idDocumentBackUrl", icon: "credit-card", color: AMBER, hint: "Foto del reverso de tu DNI o NIE", required: true },
+  { label: "Alta de autónomo", key: "autonomoDocumentUrl", icon: "file-text", color: PURPLE, hint: "Certificado de alta en RETA o vida laboral", required: true },
+];
+
 function resolveImg(img: string): string {
   if (!img) return "";
   if (img.startsWith("data:image/")) return img;
@@ -93,12 +109,19 @@ export function DriverProfileTab() {
   const [verStatus, setVerStatus]   = useState("pending");
   const [msg, setMsg]               = useState<{ ok: boolean; text: string } | null>(null);
 
-  // Datos personales
+// Datos personales
   const [name, setName]       = useState(user?.name ?? "");
   const [phone, setPhone]     = useState(user?.phone ?? "");
   const [email, setEmail]     = useState((user as any)?.email ?? "");
   const [dni, setDni]         = useState("");
   const [address, setAddress] = useState("");
+
+  // Documentos personales (base64 o URL)
+  const [personalDocs, setPersonalDocs] = useState<Record<string, string | null>>({
+    idDocumentUrl: null, idDocumentBackUrl: null, autonomoDocumentUrl: null,
+  });
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const docFileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Contraseña
   const [curPwd, setCurPwd]   = useState("");
@@ -122,9 +145,15 @@ export function DriverProfileTab() {
       .then(([vr, pr]) => Promise.all([vr.json(), pr.json()]))
       .then(([vd, pd]) => {
         if (vd.success) setVerStatus(vd.verificationStatus ?? "pending");
-        if (pd.success) {
+if (pd.success) {
           if (pd.dni)     setDni(pd.dni);
           if (pd.address) setAddress(pd.address);
+          // Cargar documentos personales
+          setPersonalDocs({
+            idDocumentUrl:      pd.idDocumentUrl      ?? null,
+            idDocumentBackUrl: pd.idDocumentBackUrl ?? null,
+            autonomoDocumentUrl: pd.autonomoDocumentUrl ?? null,
+          });
         }
       })
       .catch(() => {})
@@ -161,7 +190,62 @@ export function DriverProfileTab() {
         flash(false, d.error ?? "Error al subir imagen");
       }
     } catch { flash(false, "Error al subir imagen"); }
-    finally { setUploadImg(false); }
+finally { setUploadImg(false); }
+  };
+
+  // ── Manejar carga de documentos personales ──
+  const handleDocUpload = async (key: string, file: File) => {
+    setUploadingDoc(key);
+    try {
+      const reader = new FileReader();
+      const b64: string = await new Promise((res, rej) => {
+        reader.onloadend = () => res(reader.result as string);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      if (Math.ceil(b64.length * 0.75) > 5 * 1024 * 1024) {
+        flash(false, "El archivo supera 5MB"); return;
+      }
+      setPersonalDocs(prev => ({ ...prev, [key]: b64 }));
+      flash(true, "Documento cargado — pulsa Guardar para confirmar");
+    } catch { flash(false, "Error al cargar documento"); }
+    finally { setUploadingDoc(null); }
+  };
+
+  // ── Guardar documentos personales ──
+  const handleSaveDocs = async () => {
+    const missing = PERSONAL_DOCS.filter(d => d.required && !personalDocs[d.key]);
+    if (missing.length > 0) {
+      flash(false, `Faltan documentos obligatorios: ${missing.map(d => d.label).join(", ")}`);
+      return;
+    }
+    setSaving(true);
+    try {
+      // Subir cada documento
+      const updates: Record<string, string> = {};
+      for (const doc of PERSONAL_DOCS) {
+        const b64 = personalDocs[doc.key];
+        if (b64?.startsWith("data:image/")) {
+          const res = await apiRequest("POST", "/api/users/verification-document", {
+            key: doc.key,
+            image: b64,
+          });
+          const data = await res.json();
+          if (data.url) updates[doc.key] = data.url;
+        } else if (b64) {
+          updates[doc.key] = b64;
+        }
+      }
+      // Guardar en perfil
+      const res = await apiRequest("PUT", "/api/users/personal-docs", updates);
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      // Reset verification status to trigger re-review
+      setVerStatus("pending");
+      flash(true, "Documentos guardados. Tu cuenta será revisada nuevamente.");
+    } catch (err: any) {
+      flash(false, err.message ?? "Error al guardar documentos");
+    } finally { setSaving(false); }
   };
 
   // ── Guardar datos personales ──
@@ -287,7 +371,7 @@ export function DriverProfileTab() {
               card={card} border={border} sub={sub} text={text} inputBg={inputBg} />
             <Field label="Email" value={email} onChange={setEmail} placeholder="tu@email.com" type="email"
               card={card} border={border} sub={sub} text={text} inputBg={inputBg} />
-            <Field label="Dirección en Soria" value={address} onChange={setAddress} placeholder="Calle Mayor 12, 42001 Soria"
+<Field label="Dirección en Soria" value={address} onChange={setAddress} placeholder="Calle Mayor 12, 42001 Soria"
               hint="Dirección fiscal para facturación"
               card={card} border={border} sub={sub} text={text} inputBg={inputBg} />
 
@@ -305,7 +389,94 @@ export function DriverProfileTab() {
           </Section>
         </View>
 
-        {/* ── Cambiar contraseña ── */}
+        {/* ── Documentación personal ── */}
+        <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
+          <Section title="Documentación personal" icon="file-text" color={BLUE}>
+            <Text style={[s.docSectionSub, { color: sub }]}>
+              Sube fotos claras de tus documentos. Serán revisados por ComeYa antes de aprobar tu cuenta como repartidor.
+            </Text>
+
+            {PERSONAL_DOCS.map(doc => {
+              const hasDoc = !!personalDocs[doc.key];
+              const isUploading = uploadingDoc === doc.key;
+
+              return (
+                <View key={doc.key} style={[s.docRow, { borderBottomColor: border }]}>
+                  {/* Hidden input */}
+                  <input
+                    ref={el => { docFileRefs.current[doc.key] = el; }}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={e => {
+                      const file = e.target?.files?.[0];
+                      if (file) handleDocUpload(doc.key, file);
+                    }}
+                  />
+
+                  <View style={[s.docIcon, { backgroundColor: doc.color + "15" }]}>
+                    <Feather name={doc.icon as any} size={18} color={doc.color} />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={s.docTitleRow}>
+                      <Text style={[s.docLabel, { color: text }]}>{doc.label}</Text>
+                      {doc.required && (
+                        <View style={[s.reqBadge, { backgroundColor: RED + "15" }]}>
+                          <Text style={[s.reqTxt, { color: RED }]}>Obligatorio</Text>
+                        </View>
+                      )}
+                      {hasDoc && (
+                        <View style={[s.reqBadge, { backgroundColor: GREEN + "15" }]}>
+                          <Feather name="check" size={10} color={GREEN} />
+                          <Text style={[s.reqTxt, { color: GREEN }]}>Subido</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[s.docHint, { color: sub }]}>{doc.hint}</Text>
+
+                    {/* Preview */}
+                    {hasDoc && personalDocs[doc.key]?.startsWith("data:image/") && (
+                      <img
+                        src={personalDocs[doc.key]!}
+                        style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 8, marginTop: 8 } as any}
+                        alt={doc.label}
+                      />
+                    )}
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => docFileRefs.current[doc.key]?.click()}
+                    disabled={isUploading}
+                    style={[s.docBtn, { backgroundColor: hasDoc ? GREEN + "15" : doc.color + "15", borderColor: hasDoc ? GREEN + "40" : doc.color + "40" }]}
+                  >
+                    {isUploading
+                      ? <ActivityIndicator size="small" color={doc.color} />
+                      : <Feather name={hasDoc ? "refresh-cw" : "upload"} size={14} color={hasDoc ? GREEN : doc.color} />
+                    }
+                    <Text style={[s.docBtnTxt, { color: hasDoc ? GREEN : doc.color }]}>
+                      {hasDoc ? "Cambiar" : "Subir"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+
+            <TouchableOpacity
+              onPress={handleSaveDocs}
+              disabled={saving}
+              style={[s.saveBtn, { backgroundColor: BLUE, opacity: saving ? 0.7 : 1, marginTop: 12 }]}
+            >
+              {saving
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Feather name="save" size={15} color="#fff" />
+              }
+              <Text style={s.saveBtnTxt}>{saving ? "Guardando..." : "Guardar documentación"}</Text>
+            </TouchableOpacity>
+          </Section>
+        </View>
+
+{/* ── Cambiar contraseña ── */}
         <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
           <Section title="Cambiar contraseña" icon="lock" color={PURPLE}>
             <View style={[s.pwdInfo, { backgroundColor: AMBER + "12", borderColor: AMBER + "30" }]}>
@@ -436,7 +607,17 @@ const s = StyleSheet.create({
   normBody:        { fontSize: 12, lineHeight: 17 },
   legalNote:       { flexDirection: "row", alignItems: "flex-start", gap: 8, borderRadius: 8, borderWidth: 1, padding: 10, marginTop: 8 },
   legalNoteTxt:    { fontSize: 11, lineHeight: 16, flex: 1 },
-  dangerTxt:       { fontSize: 13, lineHeight: 18, marginBottom: 14 },
+dangerTxt:       { fontSize: 13, lineHeight: 18, marginBottom: 14 },
   dangerBtn:       { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, alignSelf: "flex-start" },
   dangerBtnTxt:    { fontSize: 13, fontWeight: "700" },
+  docSectionSub:   { fontSize: 12, marginBottom: 14, lineHeight: 17 },
+  docRow:          { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#e5e5e5" },
+  docIcon:         { width: 38, height: 38, borderRadius: 10, justifyContent: "center", alignItems: "center", flexShrink: 0 },
+  docTitleRow:     { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 3 },
+  docLabel:        { fontSize: 13, fontWeight: "700" },
+  reqBadge:        { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
+  reqTxt:          { fontSize: 9, fontWeight: "700" },
+  docHint:         { fontSize: 11, lineHeight: 15 },
+  docBtn:          { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, flexShrink: 0 },
+  docBtnTxt:       { fontSize: 12, fontWeight: "700" },
 });

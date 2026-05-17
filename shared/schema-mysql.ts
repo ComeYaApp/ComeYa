@@ -28,8 +28,9 @@ export const users = mysqlTable("users", {
   // Datos personales España
   dni: varchar("dni", { length: 20 }), // DNI/NIE
   address: text("address"), // Dirección completa
-  // Verificación de identidad
-  idDocumentUrl: text("id_document_url"), // Foto DNI/NIE
+// Verificación de identidad
+  idDocumentUrl: text("id_document_url"), // Foto DNI/NIE anverso
+  idDocumentBackUrl: text("id_document_back_url"), // Foto DNI/NIE reverso
   autonomoDocumentUrl: text("autonomo_document_url"), // Cert. autónomo/empresa
   verificationStatus: varchar("verification_status", { length: 20 }).default("pending"), // pending, verified, rejected
   verificationNotes: text("verification_notes"),

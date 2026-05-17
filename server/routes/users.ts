@@ -49,13 +49,16 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
       vehicleLicensePhoto  = (dd as any)?.vehicleLicensePhoto  ?? null;
     }
 
-    res.json({
+res.json({
       success: true,
       dni: user.dni,
       address: user.address,
       vehicleType, vehiclePlate, vehiclePhoto,
       vehicleBrand, vehicleModel, vehicleColor, vehicleYear,
       vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
+      idDocumentUrl: user.idDocumentUrl,
+      idDocumentBackUrl: (user as any).idDocumentBackUrl,
+      autonomoDocumentUrl: user.autonomoDocumentUrl,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -490,6 +493,46 @@ router.post("/verify-phone-change", authenticateToken, async (req, res) => {
     await db.update(users).set({ phone: newPhone, updatedAt: new Date() }).where(eq(users.id, req.user!.id));
 
     res.json({ success: true, message: "Teléfono actualizado correctamente" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/users/verification-document — subir un documento de verificación
+router.post("/verification-document", authenticateToken, async (req, res) => {
+  try {
+    const { key, image } = req.body;
+    if (!key || !image) return res.status(400).json({ error: "key e image requeridos" });
+    if (!image.startsWith("data:image/")) return res.status(400).json({ error: "Formato de imagen inválido" });
+
+    const estimatedBytes = Math.ceil(image.length * 0.75);
+    if (estimatedBytes > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: "El archivo es muy pesado. Máximo 5MB" });
+    }
+
+    const { CloudinaryService } = await import("../cloudinaryService");
+    const url = await CloudinaryService.uploadImage(image, "verification-docs", `driver-${req.user!.id}-${key}`);
+    res.json({ success: true, url });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/users/personal-docs — guardar documentos personales
+router.put("/personal-docs", authenticateToken, async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const { idDocumentUrl, idDocumentBackUrl, autonomoDocumentUrl } = req.body;
+    const updates: any = { verificationStatus: "pending", updatedAt: new Date() };
+
+    if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
+    if (idDocumentBackUrl) updates.idDocumentBackUrl = idDocumentBackUrl;
+    if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
+
+    await db.update(users).set(updates).where(eq(users.id, req.user!.id));
+    res.json({ success: true, message: "Documentos guardados. Tu cuenta será revisada nuevamente." });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
