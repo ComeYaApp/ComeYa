@@ -155,8 +155,8 @@ router.get("/", authenticateToken, async (req, res) => {
         .where(
           eq(orders.userId, req.user!.id)
         );
-      // Filtrar en memoria para incluir solo estados activos
-      userOrders = userOrders.filter(o => 
+// Filtrar en memoria para incluir solo estados activos
+      userOrders = userOrders.filter((o: { status: string }) => 
         ['pending', 'confirmed', 'preparing', 'ready', 'on_the_way'].includes(o.status)
       );
     } else {
@@ -204,13 +204,12 @@ router.get("/:id", authenticateToken, async (req, res) => {
     let driverInfo = null;
     if (order.deliveryPersonId) {
       try {
-        const [driverData] = await db
+const [driverData] = await db
           .select({
             id: users.id,
             name: users.name,
             phone: users.phone,
             profileImage: users.profileImage,
-            profilePicture: users.profilePicture,
             vehicleType: deliveryDrivers.vehicleType,
             vehiclePlate: deliveryDrivers.vehiclePlate,
             vehicleBrand: deliveryDrivers.vehicleBrand,
@@ -223,12 +222,12 @@ router.get("/:id", authenticateToken, async (req, res) => {
           .where(eq(users.id, order.deliveryPersonId))
           .limit(1);
 
-        if (driverData) {
+if (driverData) {
           driverInfo = {
             id: driverData.id,
             name: driverData.name,
             phone: driverData.phone,
-            profilePhoto: driverData.profileImage || driverData.profilePicture,
+            profilePhoto: driverData.profileImage,
             vehicleType: driverData.vehicleType,
             vehiclePlate: driverData.vehiclePlate,
             vehicleBrand: driverData.vehicleBrand,

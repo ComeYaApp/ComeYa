@@ -8,6 +8,13 @@ import { apiRequest } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
 import { useNavigation } from "@react-navigation/native";
 
+interface Business {
+  id: string;
+  name: string;
+  image?: string;
+  address?: string;
+}
+
 interface Shift { open: string; close: string; }
 interface DayHours { day: string; dayKey: string; isOpen: boolean; morning: Shift; hasEvening: boolean; evening: Shift; }
 
@@ -33,12 +40,17 @@ export default function BusinessHoursScreen() {
   const { theme, isDark } = useTheme();
   const { showToast } = useToast();
 
-  const bg = isDark ? "#111" : "#f7f7f7";
+const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
   const border = isDark ? "#333" : "#e8e8e8";
   const text = isDark ? "#fff" : "#1a1a1a";
   const sub = isDark ? "#aaa" : "#666";
   const inputBg = isDark ? "#2a2a2a" : "#f5f5f5";
+
+  // Selector de negocio
+  const [myBusinesses, setMyBusinesses] = useState<Business[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
+  const [loadingBusinesses, setLoadingBusinesses] = useState(true);
 
   const [hours, setHours] = useState<DayHours[]>(DEFAULT_HOURS);
   const [loading, setLoading] = useState(true);
@@ -48,7 +60,34 @@ export default function BusinessHoursScreen() {
   const [pickerValue, setPickerValue] = useState("09:00");
 
   useEffect(() => {
-    apiRequest("GET", "/api/business/hours").then(r => r.json()).then(data => {
+    // Cargar negocios del usuario
+    apiRequest("GET", "/api/business/my-businesses")
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.businesses) {
+          setMyBusinesses(data.businesses);
+          if (data.businesses.length > 0) {
+            setSelectedBusinessId(data.businesses[0].id);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingBusinesses(false));
+  }, []);
+
+  // Cargar horarios cuando cambie el negocio
+  useEffect(() => {
+    if (selectedBusinessId) {
+      loadHours();
+    }
+  }, [selectedBusinessId]);
+
+  const loadHours = async () => {
+    if (!selectedBusinessId) return;
+    setLoading(true);
+    try {
+      const res = await apiRequest("GET", `/api/business/hours?businessId=${selectedBusinessId}`);
+      const data = await res.json();
       if (data.success && data.hours) {
         setHours(DAYS.map(d => {
           const v = data.hours[d.key];
@@ -56,8 +95,12 @@ export default function BusinessHoursScreen() {
           return { day: d.label, dayKey: d.key, isOpen: true, morning: { open: v.open || "09:00", close: v.close || "16:00" }, hasEvening: !!v.eveningOpen, evening: { open: v.eveningOpen || "20:00", close: v.eveningClose || "23:00" } };
         }));
       }
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+    } catch (e) {
+      console.error("Error loading hours:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const update = (i: number, patch: Partial<DayHours>) => setHours(prev => prev.map((h, idx) => idx === i ? { ...h, ...patch } : h));
   const updateShift = (i: number, shift: "morning" | "evening", field: "open" | "close", value: string) =>
@@ -74,7 +117,8 @@ export default function BusinessHoursScreen() {
     setPickerOpen(false);
   };
 
-  const handleSave = async () => {
+const handleSave = async () => {
+    if (!selectedBusinessId) return;
     setSaving(true);
     try {
       const hoursObj = hours.reduce((acc: any, h) => {
@@ -83,7 +127,10 @@ export default function BusinessHoursScreen() {
           : { closed: true };
         return acc;
       }, {});
-      await apiRequest("PUT", "/api/business/hours", { hours: hoursObj });
+      await apiRequest("PUT", "/api/business/hours", { 
+        businessId: selectedBusinessId,
+        hours: hoursObj 
+      });
       showToast("Horarios guardados correctamente", "success");
       navigation.goBack();
     } catch { showToast("Error al guardar horarios", "error"); }
@@ -101,8 +148,47 @@ export default function BusinessHoursScreen() {
     <View style={[s.root, { backgroundColor: bg }]}>
       <BusinessSidebar />
 
-      {/* Main */}
+{/* Main */}
       <ScrollView style={s.main} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        
+        {/* Selector de negocio */}
+        {loadingBusinesses ? (
+          <View style={[s.businessSelectorLoading, { paddingVertical: 20, alignItems: "center" }]}>
+            <ActivityIndicator color={ComeYaColors.primary} size="small" />
+          </View>
+        ) : myBusinesses.length > 1 ? (
+          <View style={[s.businessSelector, { backgroundColor: card, borderColor: border, marginBottom: 20 }]}>
+            <Text style={[s.businessSelectorLabel, { color: sub }]}>Selecciona un negocio</Text>
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+              {myBusinesses.map((biz) => (
+                <Pressable
+                  key={biz.id}
+                  onPress={() => setSelectedBusinessId(biz.id)}
+                  style={[s.businessChip, { 
+                    backgroundColor: selectedBusinessId === biz.id ? ComeYaColors.primary : inputBg,
+                    borderColor: selectedBusinessId === biz.id ? ComeYaColors.primary : border
+                  }]}
+                >
+                  <Text style={{ 
+                    color: selectedBusinessId === biz.id ? "#fff" : text,
+                    fontWeight: "600",
+                    fontSize: 13
+                  }}>
+                    {biz.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : myBusinesses.length === 1 ? (
+          <View style={[s.singleBusinessBadge, { backgroundColor: ComeYaColors.primary + "15", marginBottom: 20 }]}>
+            <Feather name="map-pin" size={14} color={ComeYaColors.primary} />
+            <Text style={[s.singleBusinessText, { color: ComeYaColors.primary, fontWeight: "600", marginLeft: 4 }]}>
+              {myBusinesses[0].name}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Botón guardar */}
         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 20 }}>
           <Pressable
@@ -211,6 +297,13 @@ const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
   main: { flex: 1 },
   content: { padding: 32, maxWidth: 720 },
+  // Selector de negocio
+  businessSelectorLoading: { paddingVertical: 20 },
+  businessSelector: { padding: 20, borderRadius: 14, borderWidth: 1 },
+  businessSelectorLabel: { fontSize: 12, fontWeight: "700", marginBottom: 10, textTransform: "uppercase" },
+businessChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5 },
+  singleBusinessBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  singleBusinessText: { fontSize: 14 },
   loading: { paddingVertical: 80, alignItems: "center" },
   saveBtn: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 12, alignItems: "center", flexDirection: "row" },
   saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },

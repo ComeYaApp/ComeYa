@@ -14,6 +14,13 @@ import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme"
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
+interface Business {
+  id: string;
+  name: string;
+  image?: string;
+  address?: string;
+}
+
 interface Shift {
   open: string;
   close: string;
@@ -61,6 +68,11 @@ export default function BusinessHoursScreen() {
   const { theme } = useTheme();
   const { showToast } = useToast();
 
+  // Selector de negocio
+  const [myBusinesses, setMyBusinesses] = useState<Business[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
+  const [loadingBusinesses, setLoadingBusinesses] = useState(true);
+
   const [hours, setHours] = useState<DayHours[]>(DEFAULT_HOURS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,11 +86,38 @@ export default function BusinessHoursScreen() {
   } | null>(null);
   const [pickerValue, setPickerValue] = useState("09:00");
 
-  useEffect(() => { loadHours(); }, []);
+useEffect(() => { loadMyBusinesses(); }, []);
+
+  const loadMyBusinesses = async () => {
+    try {
+      const res = await apiRequest("GET", "/api/business/my-businesses");
+      const data = await res.json();
+      if (data.success && data.businesses) {
+        setMyBusinesses(data.businesses);
+        if (data.businesses.length > 0) {
+          // Seleccionar el primer negocio por defecto
+          setSelectedBusinessId(data.businesses[0].id);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading businesses:", e);
+    } finally {
+      setLoadingBusinesses(false);
+    }
+  };
+
+  // Cargar horarios cuando cambie el negocio seleccionado
+  useEffect(() => {
+    if (selectedBusinessId) {
+      loadHours();
+    }
+  }, [selectedBusinessId]);
 
   const loadHours = async () => {
+    if (!selectedBusinessId) return;
+    setLoading(true);
     try {
-      const res = await apiRequest("GET", "/api/business/hours");
+      const res = await apiRequest("GET", `/api/business/hours?businessId=${selectedBusinessId}`);
       const data = await res.json();
       if (data.success && data.hours) {
         const parsed: DayHours[] = DAYS.map((d) => {
@@ -130,7 +169,8 @@ export default function BusinessHoursScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const saveHours = async () => {
+const saveHours = async () => {
+    if (!selectedBusinessId) return;
     setSaving(true);
     try {
       const hoursObject = hours.reduce((acc: any, h) => {
@@ -145,7 +185,10 @@ export default function BusinessHoursScreen() {
         return acc;
       }, {});
 
-      await apiRequest("PUT", "/api/business/hours", { hours: hoursObject });
+      await apiRequest("PUT", "/api/business/hours", { 
+        businessId: selectedBusinessId,
+        hours: hoursObject 
+      });
       showToast("Horarios guardados correctamente", "success");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
@@ -164,7 +207,7 @@ export default function BusinessHoursScreen() {
     );
   }
 
-  return (
+return (
     <LinearGradient
       colors={[theme.gradientStart || "#FFFFFF", theme.gradientEnd || "#F5F5F5"]}
       style={styles.container}
@@ -176,6 +219,54 @@ export default function BusinessHoursScreen() {
         <ThemedText type="h2">Horarios de apertura</ThemedText>
         <View style={{ width: 40 }} />
       </View>
+
+      {/* Selector de negocio */}
+      {loadingBusinesses ? (
+        <View style={[styles.businessSelectorLoading, { padding: Spacing.lg }]}>
+          <ActivityIndicator color={ComeYaColors.primary} size="small" />
+        </View>
+      ) : myBusinesses.length > 1 ? (
+        <View style={[styles.businessSelector, { backgroundColor: theme.card, marginHorizontal: Spacing.lg, marginBottom: Spacing.md }, Shadows.sm]}>
+          <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>
+            Selecciona un negocio
+          </ThemedText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+            <View style={{ flexDirection: "row", gap: Spacing.sm }}>
+              {myBusinesses.map((biz) => (
+                <Pressable
+                  key={biz.id}
+                  onPress={() => { setSelectedBusinessId(biz.id); Haptics.selectionAsync(); }}
+                  style={[
+                    styles.businessChip,
+                    {
+                      backgroundColor: selectedBusinessId === biz.id ? ComeYaColors.primary : theme.backgroundSecondary,
+                      borderColor: selectedBusinessId === biz.id ? ComeYaColors.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: selectedBusinessId === biz.id ? "#FFF" : theme.text,
+                      fontWeight: "600",
+                    }}
+                    numberOfLines={1}
+                  >
+                    {biz.name}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      ) : myBusinesses.length === 1 ? (
+        <View style={[styles.singleBusinessBadge, { backgroundColor: ComeYaColors.primary + "15", marginHorizontal: Spacing.lg, marginBottom: Spacing.md }]}>
+          <Feather name="map-pin" size={14} color={ComeYaColors.primary} />
+          <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: "600", marginLeft: 4 }}>
+            {myBusinesses[0].name}
+          </ThemedText>
+        </View>
+      ) : null}
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
@@ -356,6 +447,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingBottom: Spacing.md },
   backBtn: { width: 40, height: 40, justifyContent: "center" },
+  // Selector de negocio
+  businessSelectorLoading: { alignItems: "center", justifyContent: "center", paddingVertical: Spacing.md },
+  businessSelector: { padding: Spacing.md, borderRadius: BorderRadius.lg },
+  businessChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md, borderWidth: 1.5, maxWidth: 150 },
+  singleBusinessBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.md },
   scrollContent: { padding: Spacing.lg, paddingBottom: 100 },
   dayCard: { padding: Spacing.lg, borderRadius: BorderRadius.lg, marginBottom: Spacing.md },
   dayHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: Spacing.sm },
