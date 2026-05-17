@@ -14,7 +14,7 @@ router.put("/push-token", authenticateToken, async (req, res) => {
     }
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    await db.update(users).set({ pushToken: token, updatedAt: new Date() }).where(eq(users.id, req.user!.id));
+await db.update(users).set({ pushToken: token, updatedAt: new Date() }).where(eq(users.id, req.user!.id as string));
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -27,7 +27,7 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
     const { users, deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const [user] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
+const [user] = await db.select().from(users).where(eq(users.id, req.user!.id as string)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
     let vehicleType = null, vehiclePlate = null, vehiclePhoto = null;
@@ -35,7 +35,7 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
     let vehiclePlatePhoto = null, vehicleItvPhoto = null, vehicleInsurancePhoto = null, vehicleLicensePhoto = null;
 
     if (user.role === "delivery_driver") {
-      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id)).limit(1);
+const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id as string)).limit(1);
       vehicleType          = dd?.vehicleType          ?? null;
       vehiclePlate         = dd?.vehiclePlate         ?? null;
       vehiclePhoto         = dd?.vehiclePhoto         ?? null;
@@ -104,9 +104,9 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
     if (insuranceUrl !== undefined) updates.vehicleInsurancePhoto = insuranceUrl;
     if (licenseUrl   !== undefined) updates.vehicleLicensePhoto   = licenseUrl;
 
-    const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id)).limit(1);
+const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id as string)).limit(1);
     if (existing) {
-      await db.update(deliveryDrivers).set(updates).where(eq(deliveryDrivers.userId, req.user!.id));
+      await db.update(deliveryDrivers).set(updates).where(eq(deliveryDrivers.userId, req.user!.id as string));
     } else {
       await db.insert(deliveryDrivers).values({ id: crypto.randomUUID(), userId: req.user!.id, ...updates });
     }
@@ -126,7 +126,7 @@ router.get("/profile", authenticateToken, async (req, res) => {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, req.user!.id))
+.where(eq(users.id, req.user!.id as string))
       .limit(1);
 
     if (!user) {
@@ -160,7 +160,7 @@ router.get("/:userId", authenticateToken, async (req, res) => {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, req.params.userId))
+.where(eq(users.id, req.params.userId as string))
       .limit(1);
 
     if (!user) {
@@ -208,18 +208,18 @@ router.put("/profile", authenticateToken, async (req, res) => {
 
     await db
       .update(users)
-      .set(updates)
-      .where(eq(users.id, req.user!.id));
+.set(updates)
+      .where(eq(users.id, req.user!.id as string));
 
     // Sincronizar con tabla addresses si se envió dirección
     if (address) {
       const { addresses } = await import("@shared/schema-mysql");
-      const existing = await db.select().from(addresses)
-        .where(eq(addresses.userId, req.user!.id))
+const existing = await db.select().from(addresses)
+        .where(eq(addresses.userId, req.user!.id as string))
         .limit(10);
-      const defaultAddr = existing.find(a => a.isDefault) || existing[0];
-      if (defaultAddr) {
-        await db.update(addresses).set({ street: address }).where(eq(addresses.id, defaultAddr.id));
+const defaultAddr = existing.find((a: { isDefault: boolean }) => a.isDefault) || existing[0];
+if (defaultAddr) {
+        await db.update(addresses).set({ street: address }).where(eq(addresses.id, defaultAddr.id as string));
       } else {
         await db.insert(addresses).values({
           id: crypto.randomUUID(),
@@ -258,16 +258,16 @@ router.post("/profile-image", authenticateToken, async (req, res) => {
     const { db } = await import("../db");
     const { CloudinaryService } = await import("../cloudinaryService");
 
-    // Eliminar imagen anterior si existe
-    const [currentUser] = await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1);
+// Eliminar imagen anterior si existe
+    const [currentUser] = await db.select().from(users).where(eq(users.id, req.user!.id as string)).limit(1);
     if (currentUser?.profileImage && currentUser.profileImage.includes('cloudinary')) {
       const oldPublicId = CloudinaryService.extractPublicId(currentUser.profileImage);
       if (oldPublicId) await CloudinaryService.deleteImage(oldPublicId).catch(() => {});
     }
 
     // Subir nueva imagen
-    const imageUrl = await CloudinaryService.uploadImage(image, 'profiles', `user-${req.user!.id}`);
-    await db.update(users).set({ profileImage: imageUrl }).where(eq(users.id, req.user!.id));
+const imageUrl = await CloudinaryService.uploadImage(image, 'profiles', `user-${req.user!.id}`);
+    await db.update(users).set({ profileImage: imageUrl }).where(eq(users.id, req.user!.id as string));
 
     res.json({ success: true, profileImage: imageUrl, message: "Imagen actualizada" });
   } catch (error: any) {
@@ -281,8 +281,8 @@ const getAddresses = async (req: any, res: any) => {
   try {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const userId = req.params.id || req.user!.id;
-    const list = await db.select().from(addresses).where(eq(addresses.userId, userId));
+const userId = req.params.id || req.user!.id;
+    const list = await db.select().from(addresses).where(eq(addresses.userId, userId as string));
     res.json({ success: true, addresses: list });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 };
@@ -299,14 +299,14 @@ const postAddress = async (req: any, res: any) => {
     const { label, street, city, state, zipCode, latitude, longitude, isDefault } = req.body;
     if (!label || !street) return res.status(400).json({ error: "label y street son requeridos" });
 
-    // Si isDefault, quitar default de las demás
+// Si isDefault, quitar default de las demás
     if (isDefault) {
-      await db.update(addresses).set({ isDefault: false }).where(eq(addresses.userId, userId));
+      await db.update(addresses).set({ isDefault: false }).where(eq(addresses.userId, userId as string));
     }
 
     const id = crypto.randomUUID();
-    await db.insert(addresses).values({
-      id,
+await db.insert(addresses).values({
+      id: id as string,
       userId,
       label,
       street,
@@ -318,7 +318,7 @@ const postAddress = async (req: any, res: any) => {
       isDefault: isDefault || false,
     });
 
-    const [saved] = await db.select().from(addresses).where(eq(addresses.id, id)).limit(1);
+const [saved] = await db.select().from(addresses).where(eq(addresses.id, id as string)).limit(1);
     res.json({ success: true, address: saved });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 };
@@ -340,8 +340,8 @@ router.put("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
     if (zipCode !== undefined) updates.zipCode = zipCode;
     if (latitude !== undefined) updates.latitude = String(latitude);
     if (longitude !== undefined) updates.longitude = String(longitude);
-    if (isDefault !== undefined) updates.isDefault = isDefault;
-    await db.update(addresses).set(updates).where(eq(addresses.id, req.params.addressId));
+if (isDefault !== undefined) updates.isDefault = isDefault;
+    await db.update(addresses).set(updates).where(eq(addresses.id, req.params.addressId as string));
     res.json({ success: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
@@ -351,7 +351,7 @@ router.delete("/:id/addresses/:addressId", authenticateToken, async (req, res) =
   try {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    await db.delete(addresses).where(eq(addresses.id, req.params.addressId));
+    await db.delete(addresses).where(eq(addresses.id, req.params.addressId as string));
     res.json({ success: true });
   } catch (error: any) { res.status(500).json({ error: error.message }); }
 });
@@ -421,9 +421,9 @@ router.post("/:id/verification-documents", authenticateToken, async (req, res) =
     const { idDocumentUrl, autonomoDocumentUrl } = req.body;
     const updates: any = { verificationStatus: "pending" };
     if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
-    if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
+if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
 
-    await db.update(users).set(updates).where(eq(users.id, userId));
+    await db.update(users).set(updates).where(eq(users.id, userId as string));
     res.json({ success: true, message: "Documentos recibidos. Tu cuenta está en revisión." });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -435,8 +435,8 @@ router.get("/:id/verification-status", authenticateToken, async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const [user] = await db.select({ verificationStatus: users.verificationStatus, verificationNotes: users.verificationNotes })
-      .from(users).where(eq(users.id, req.params.id)).limit(1);
+const [user] = await db.select({ verificationStatus: users.verificationStatus, verificationNotes: users.verificationNotes })
+      .from(users).where(eq(users.id, req.params.id as string)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     res.json({ success: true, ...user });
   } catch (error: any) {
@@ -453,8 +453,8 @@ router.post("/change-phone", authenticateToken, async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    // Verificar que no esté en uso
-    const [existing] = await db.select().from(users).where(eq(users.phone, newPhone)).limit(1);
+// Verificar que no esté en uso
+    const [existing] = await db.select().from(users).where(eq(users.phone, newPhone as string)).limit(1);
     if (existing && existing.id !== req.user!.id) {
       return res.status(400).json({ error: "Este teléfono ya está registrado" });
     }
@@ -488,9 +488,9 @@ router.post("/verify-phone-change", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Código incorrecto" });
     }
 
-    const { users } = await import("@shared/schema-mysql");
+const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    await db.update(users).set({ phone: newPhone, updatedAt: new Date() }).where(eq(users.id, req.user!.id));
+    await db.update(users).set({ phone: newPhone, updatedAt: new Date() }).where(eq(users.id, req.user!.id as string));
 
     res.json({ success: true, message: "Teléfono actualizado correctamente" });
   } catch (error: any) {
@@ -528,10 +528,10 @@ router.put("/personal-docs", authenticateToken, async (req, res) => {
     const updates: any = { verificationStatus: "pending", updatedAt: new Date() };
 
     if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
-    if (idDocumentBackUrl) updates.idDocumentBackUrl = idDocumentBackUrl;
+if (idDocumentBackUrl) updates.idDocumentBackUrl = idDocumentBackUrl;
     if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
 
-    await db.update(users).set(updates).where(eq(users.id, req.user!.id));
+    await db.update(users).set(updates).where(eq(users.id, req.user!.id as string));
     res.json({ success: true, message: "Documentos guardados. Tu cuenta será revisada nuevamente." });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

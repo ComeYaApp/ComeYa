@@ -6,7 +6,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export type UploadFolder = 'profiles' | 'businesses' | 'products' | 'comprobantes' | 'reviews' | 'delivery-proofs';
+export type UploadFolder = 'profiles' | 'businesses' | 'products' | 'comprobantes' | 'reviews' | 'delivery-proofs' | 'verification-docs';
 
 export class CloudinaryService {
   /**

@@ -306,7 +306,6 @@ export const insertOrderSchema = createInsertSchema(orders).pick({
   deliveryFee: true,
   total: true,
   paymentMethod: true,
-  paymentIntentId: true,
   deliveryAddress: true,
   notes: true,
   substitutionPreference: true,

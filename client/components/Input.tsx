@@ -6,17 +6,25 @@ interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   containerStyle?: ViewStyle;
+  leftIcon?: string;
 }
 
-export function Input({ label, error, containerStyle, style, ...props }: InputProps) {
+export function Input({ label, error, containerStyle, style, leftIcon, ...props }: InputProps) {
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <TextInput
-        style={[styles.input, error && styles.inputError, style]}
-        placeholderTextColor={theme.colors.text.disabled}
-        {...props}
-      />
+      <View style={styles.inputWrapper}>
+        {leftIcon && (
+          <View style={styles.iconContainer}>
+            <Text style={styles.iconText}>{leftIcon}</Text>
+          </View>
+        )}
+        <TextInput
+          style={[styles.input, leftIcon && styles.inputWithIcon, error && styles.inputError, style]}
+          placeholderTextColor={theme.colors.text.disabled}
+          {...props}
+        />
+      </View>
       {error && <Text style={styles.error}>{error}</Text>}
     </View>
   );
@@ -31,14 +39,36 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
   },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  iconText: {
+    fontSize: 16,
+  },
   input: {
     ...theme.typography.body,
+    flex: 1,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
+  },
+  inputWithIcon: {
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
   },
   inputError: {
     borderColor: theme.colors.error,

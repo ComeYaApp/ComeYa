@@ -91,13 +91,20 @@ export default function EditProfileScreen() {
   const [vehicleColor, setVehicleColor] = useState("");
   const [vehiclePhotoUri, setVehiclePhotoUri] = useState<string | null>(null);
 
-  // Documentos
-  const [idDocUri,       setIdDocUri]       = useState<string | null>(null);
-  const [autonomoDocUri, setAutonomoDocUri] = useState<string | null>(null);
+// Documentos personales
+  const [idDocUri,          setIdDocUri]          = useState<string | null>(null);
+  const [idDocBackUri,      setIdDocBackUri]      = useState<string | null>(null);
+  const [autonomoDocUri,    setAutonomoDocUri]    = useState<string | null>(null);
+
+  // Documentos del vehículo (para moto/coche)
+  const [vehiclePlatePhotoUri,    setVehiclePlatePhotoUri]    = useState<string | null>(null);
+  const [vehicleItvPhotoUri,      setVehicleItvPhotoUri]      = useState<string | null>(null);
+  const [vehicleInsurancePhotoUri, setVehicleInsurancePhotoUri] = useState<string | null>(null);
+  const [vehicleLicensePhotoUri, setVehicleLicensePhotoUri] = useState<string | null>(null);
 
   const [isSaving,        setIsSaving]        = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<string>((user as any)?.verificationStatus || "pending");
+const [verificationStatus, setVerificationStatus] = useState<string>((user as any)?.verificationStatus || "pending");
 
   React.useLayoutEffect(() => {
     navigation.setOptions({ headerTitle: "Editar perfil" });
@@ -123,11 +130,22 @@ export default function EditProfileScreen() {
           if (profileData.vehicleModel) setVehicleModel(profileData.vehicleModel);
           if (profileData.vehicleColor) setVehicleColor(profileData.vehicleColor);
           if (profileData.vehiclePhoto) setVehiclePhotoUri(profileData.vehiclePhoto);
+          
+          // Cargar documentos personales
+          if (profileData.idDocumentUrl) setIdDocUri(profileData.idDocumentUrl);
+          if (profileData.idDocumentBackUrl) setIdDocBackUri(profileData.idDocumentBackUrl);
+          if (profileData.autonomoDocumentUrl) setAutonomoDocUri(profileData.autonomoDocumentUrl);
+          
+          // Cargar documentos del vehículo
+          if (profileData.vehiclePlatePhoto) setVehiclePlatePhotoUri(profileData.vehiclePlatePhoto);
+          if (profileData.vehicleItvPhoto) setVehicleItvPhotoUri(profileData.vehicleItvPhoto);
+          if (profileData.vehicleInsurancePhoto) setVehicleInsurancePhotoUri(profileData.vehicleInsurancePhoto);
+          if (profileData.vehicleLicensePhoto) setVehicleLicensePhotoUri(profileData.vehicleLicensePhoto);
         }
       } catch {}
     };
     if (user?.id) load();
-  }, [user?.id]);
+}, [user?.id]);
 
   const pickDocument = async (setter: (uri: string) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -191,19 +209,45 @@ export default function EditProfileScreen() {
           vehiclePlate: vehiclePlate.trim() || undefined,
           vehicleBrand: vehicleBrand.trim() || undefined,
           vehicleModel: vehicleModel.trim() || undefined,
-          vehicleColor: vehicleColor.trim() || undefined,
+vehicleColor: vehicleColor.trim() || undefined,
           vehiclePhoto: vehiclePhotoUrl,
         });
       }
 
       await updateUser({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined });
 
-      // Subir documentos si se seleccionaron
-      if (needsDocs && (idDocUri || autonomoDocUri)) {
+      // Subir documentos si se seleccionaron (solo si son cambios locales, no URLs)
+      const hasPersonalDocs = (idDocUri && !idDocUri.startsWith('http')) || (idDocBackUri && !idDocBackUri.startsWith('http')) || (autonomoDocUri && !autonomoDocUri.startsWith('http'));
+      if (needsDocs && hasPersonalDocs) {
         const formData = new FormData();
-        if (idDocUri) formData.append("idDocumentUrl", idDocUri);
-        if (autonomoDocUri) formData.append("autonomoDocumentUrl", autonomoDocUri);
-        await apiRequest("POST", `/api/users/${user.id}/verification-documents`, formData);
+        // Añadir documentos solo si son nuevos (URI locales, no URLs del servidor)
+        if (idDocUri && !idDocUri.startsWith('http')) formData.append("idDocumentUrl", idDocUri);
+        if (idDocBackUri && !idDocBackUri.startsWith('http')) formData.append("idDocumentBackUrl", idDocBackUri);
+        if (autonomoDocUri && !autonomoDocUri.startsWith('http')) formData.append("autonomoDocumentUrl", autonomoDocUri);
+        if (formData.has("idDocumentUrl") || formData.has("idDocumentBackUrl") || formData.has("autonomoDocumentUrl")) {
+          await apiRequest("POST", `/api/users/${user.id}/verification-documents`, formData);
+        }
+        setVerificationStatus("pending");
+      }
+      
+      // Subir documentos del vehículo si hay cambios locales
+      const hasVehicleDocs = (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith('http')) || 
+                           (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith('http')) ||
+                           (vehicleInsurancePhotoUri && !vehicleInsurancePhotoUri.startsWith('http')) ||
+                           (vehicleLicensePhotoUri && !vehicleLicensePhotoUri.startsWith('http'));
+      if (isDriver && hasVehicleDocs) {
+        const vehicleFormData = new FormData();
+        if (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith('http')) vehicleFormData.append("vehiclePlatePhoto", vehiclePlatePhotoUri);
+        if (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith('http')) vehicleFormData.append("vehicleItvPhoto", vehicleItvPhotoUri);
+        if (vehicleInsurancePhotoUri && !vehicleInsurancePhotoUri.startsWith('http')) vehicleFormData.append("vehicleInsurancePhoto", vehicleInsurancePhotoUri);
+        if (vehicleLicensePhotoUri && !vehicleLicensePhotoUri.startsWith('http')) vehicleFormData.append("vehicleLicensePhoto", vehicleLicensePhotoUri);
+        
+// Check if FormData has entries (Array.from not available, use forEach)
+        let hasVehicleDocs = false;
+        vehicleFormData.forEach(() => { hasVehicleDocs = true; });
+        if (hasVehicleDocs) {
+          await apiRequest("PUT", "/api/users/vehicle", vehicleFormData);
+        }
         setVerificationStatus("pending");
       }
 
@@ -375,15 +419,23 @@ export default function EditProfileScreen() {
               <SectionTitle icon="file-text" title="Documentos de verificación" />
               <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
                 {verificationStatus === "rejected"
-                  ? "Tus documentos fueron rechazados. Sube nuevas imágenes para volver a solicitar verificación."
+? "Tus documentos fueron rechazados. Sube nuevas imágenes para volver a solicitar verificación."
                   : "Sube documentos actualizados si necesitas renovar tu verificación."}
               </ThemedText>
 
               <DocUpload
-                label="Foto del DNI / NIE *"
-                description="Anverso y reverso en una sola imagen"
+                label="Foto del DNI / NIE (anverso) *"
+                description="Foto del anverso de tu DNI o NIE"
                 uri={idDocUri}
                 onPress={() => pickDocument(setIdDocUri)}
+                theme={theme}
+              />
+
+              <DocUpload
+                label="Foto del DNI / NIE (reverso) *"
+                description="Foto del reverso de tu DNI o NIE"
+                uri={idDocBackUri}
+                onPress={() => pickDocument(setIdDocBackUri)}
                 theme={theme}
               />
 
@@ -394,6 +446,48 @@ export default function EditProfileScreen() {
                 onPress={() => pickDocument(setAutonomoDocUri)}
                 theme={theme}
               />
+
+              {/* Documentos del vehículo (solo para moto y coche) */}
+              {(vehicleType === 'motorcycle' || vehicleType === 'car') && (
+                <>
+                  <SectionTitle icon="file" title="Documentación del vehículo" />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+                    Según la normativa española, los vehículos a motor deben disponer de esta documentación en vigor.
+                  </ThemedText>
+
+                  <DocUpload
+                    label="Foto de matrícula *"
+                    description="Foto clara donde se vea la matrícula completa"
+                    uri={vehiclePlatePhotoUri}
+                    onPress={() => pickDocument(setVehiclePlatePhotoUri)}
+                    theme={theme}
+                  />
+
+                  <DocUpload
+                    label="ITV en vigor"
+                    description="Documento de la ITV vigente (motos y coches)"
+                    uri={vehicleItvPhotoUri}
+                    onPress={() => pickDocument(setVehicleItvPhotoUri)}
+                    theme={theme}
+                  />
+
+                  <DocUpload
+                    label="Seguro de responsabilidad civil"
+                    description="Póliza del seguro obligatorio del vehículo"
+                    uri={vehicleInsurancePhotoUri}
+                    onPress={() => pickDocument(setVehicleInsurancePhotoUri)}
+                    theme={theme}
+                  />
+
+                  <DocUpload
+                    label="Permiso de conducir *"
+                    description="Foto del carnet de conducir (anverso y reverso)"
+                    uri={vehicleLicensePhotoUri}
+                    onPress={() => pickDocument(setVehicleLicensePhotoUri)}
+                    theme={theme}
+                  />
+                </>
+              )}
             </>
           )}
         </View>
