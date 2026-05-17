@@ -649,19 +649,35 @@ function AdminProfileSection({ user, navigation, theme, onEditProfile }: any) {
 }
 
 function BusinessProfileSection({ user, navigation, theme, onEditProfile }: any) {
-  // En web, las pantallas de negocio están en BusinessTab stack
-  // Hay que navegar al tab correcto para mantener el tab bar
+// En web, las pantallas de negocio están en ProfileStackNavigatorWeb
+  // Navegar directamente dentro del mismo stack
   const goToBusiness = (screen: string) => {
     try {
-      // Intentar navegar al tab padre primero
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.navigate('BusinessTab', { screen });
+      // Las pantallas válidas están en ProfileStackNavigatorWeb
+      const validScreens = ['BusinessHours', 'BusinessOrders', 'BusinessProducts', 'BusinessStats', 'BusinessDashboard', 'MyBusinesses', 'BusinessManage'];
+      if (validScreens.includes(screen)) {
+        // Navegar directamente dentro del stack de perfil
+        navigation.navigate(screen as any);
       } else {
-        navigation.navigate('BusinessTab', { screen } as any);
+        // Si no está en la lista, intentar ir altab Negocio
+        const parent = navigation.getParent();
+        if (parent) {
+          parent.navigate('BusinessTab', { screen });
+        } else {
+          // Fallback: intentar navegación directa
+          navigation.navigate('BusinessTab' as any, { screen } as any);
+        }
       }
-    } catch {
-      navigation.navigate(screen as any);
+    } catch (e) {
+      console.log('Navigation error:', e);
+      // Último fallback: navegar a la pantalla de negocio si está disponible
+      const parent = navigation.getParent();
+      try {
+        parent?.navigate('BusinessTab', { screen });
+      } catch {
+        // Si todo falla, simplemente navegar aBusinessDashboard
+        navigation.navigate('BusinessDashboard' as any);
+      }
     }
   };
   const [bizData, setBizData] = useState<any>(null);
