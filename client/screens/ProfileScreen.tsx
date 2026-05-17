@@ -679,18 +679,13 @@ const [driverStrikes, setDriverStrikes] = useState(0);
           <ThemedText type="h4" style={styles.sectionTitle}>
             Cuenta
           </ThemedText>
-          <SettingsItem
+<SettingsItem
             icon="user"
             label="Editar mi perfil"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setEditName(user?.name || "");
-              setEditEmail(user?.email || "");
-              setEditDni((user as any)?.dni || "");
-              setEditCurrentPassword("");
-              setEditNewPassword("");
-              setEditTab("datos");
-              setShowEditProfileModal(true);
+              // Navegar a la pantalla completa de edición de perfil (incluye documentos para drivers/business)
+              navigation.navigate("EditProfile" as any);
             }}
           />
           {user?.role === "business_owner" && (
