@@ -812,15 +812,8 @@ const [driverStrikes, setDriverStrikes] = useState(0);
               value={driverStats?.vehicleType ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` · ${driverStats.vehiclePlate}` : ""}` : "No registrado"}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                // Pre-fill form with existing data
-                setVehicleForm({
-                  vehicleType: driverStats?.vehicleType || "",
-                  vehicleBrand: "",
-                  vehicleModel: "",
-                  vehiclePlate: driverStats?.vehiclePlate || "",
-                  vehicleColor: "",
-                });
-                setShowVehicleModal(true);
+                // Navegar a EditProfileScreen para gestionar vehículo y documentos
+                navigation.navigate("EditProfile" as any);
               }}
             />
             <View style={styles.strikesContainer}>
