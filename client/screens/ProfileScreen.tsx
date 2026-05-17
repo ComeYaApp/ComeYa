@@ -819,14 +819,21 @@ const saveProfile = async () => {
             )}
 
 {/* Vehículo */}
-            <SettingsItem
+<SettingsItem
               icon="truck"
               label="Mi vehículo"
               value={driverStats?.vehicleType ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` · ${driverStats.vehiclePlate}` : ""}` : "No registrado"}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                // Navigate to EditProfileScreen for complete vehicle form with all documents
-                navigation.navigate("EditProfile" as any);
+                // Pre-fill form with existing data
+                setVehicleForm({
+                  vehicleType: driverStats?.vehicleType || "",
+                  vehicleBrand: "",
+                  vehicleModel: "",
+                  vehiclePlate: driverStats?.vehiclePlate || "",
+                  vehicleColor: "",
+                });
+                setShowVehicleModal(true);
               }}
             />
             <View style={styles.strikesContainer}>
