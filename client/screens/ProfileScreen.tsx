@@ -147,7 +147,25 @@ export default function ProfileScreen() {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAddressesModal, setShowAddressesModal] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
-  const [editTab, setEditTab] = useState<"datos" | "seguridad">("datos");
+const [editTab, setEditTab] = useState<"datos" | "seguridad" | "profesion">("datos");
+  
+  // Professional data for drivers/business owners
+  const [professionalData, setProfessionalData] = useState<{
+    vehicleType: string | null;
+    vehiclePlate: string | null;
+    vehicleBrand: string | null;
+    vehicleModel: string | null;
+    vehicleColor: string | null;
+    vehicleYear: string | null;
+    vehiclePhoto: string | null;
+    vehiclePlatePhoto: string | null;
+    vehicleItvPhoto: string | null;
+    vehicleInsurancePhoto: string | null;
+    vehicleLicensePhoto: string | null;
+    idDocumentUrl: string | null;
+    idDocumentBackUrl: string | null;
+    autonomoDocumentUrl: string | null;
+  } | null>(null);
   const [editName, setEditName] = useState(user?.name || "");
   const [editEmail, setEditEmail] = useState(user?.email || "");
   const [editDni, setEditDni] = useState((user as any)?.dni || "");
@@ -541,11 +559,54 @@ const saveProfile = async () => {
     await logout();
   };
 
-  useEffect(() => {
+useEffect(() => {
     if (showNotificationsModal) {
       syncNotificationStatus();
     }
   }, [showNotificationsModal]);
+
+// Load professional data when edit modal opens (for drivers/business owners)
+  useEffect(() => {
+    if (showEditProfileModal && (user?.role === "delivery_driver" || user?.role === "business_owner")) {
+      const loadProfessionalData = async () => {
+        try {
+          const res = await apiRequest("GET", "/api/users/profile/full");
+          const data = await res.json();
+          if (data.success) {
+            setProfessionalData({
+              vehicleType: data.vehicleType,
+              vehiclePlate: data.vehiclePlate,
+              vehicleBrand: data.vehicleBrand,
+              vehicleModel: data.vehicleModel,
+              vehicleColor: data.vehicleColor,
+              vehicleYear: data.vehicleYear,
+              vehiclePhoto: data.vehiclePhoto,
+              vehiclePlatePhoto: data.vehiclePlatePhoto,
+              vehicleItvPhoto: data.vehicleItvPhoto,
+              vehicleInsurancePhoto: data.vehicleInsurancePhoto,
+              vehicleLicensePhoto: data.vehicleLicensePhoto,
+              idDocumentUrl: data.idDocumentUrl,
+              idDocumentBackUrl: data.idDocumentBackUrl,
+              autonomoDocumentUrl: data.autonomoDocumentUrl,
+            });
+            // Pre-fill vehicleForm from professional data (for profesion tab)
+            if (data.vehicleType) {
+              setVehicleForm({
+                vehicleType: data.vehicleType || "",
+                vehicleBrand: data.vehicleBrand || "",
+                vehicleModel: data.vehicleModel || "",
+                vehiclePlate: data.vehiclePlate || "",
+                vehicleColor: data.vehicleColor || "",
+              });
+            }
+          }
+        } catch (error) {
+          console.log("Error loading professional data:", error);
+        }
+      };
+      loadProfessionalData();
+    }
+  }, [showEditProfileModal, user?.role]);
 
   const syncNotificationStatus = async () => {
     try {
@@ -697,8 +758,8 @@ const saveProfile = async () => {
             label="Editar mi perfil"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              // Navegar a la pantalla completa de edición de perfil (incluye documentos para drivers/business)
-              navigation.navigate("EditProfile" as any);
+              // Open modal for profile editing
+              setShowEditProfileModal(true);
             }}
           />
           {user?.role === "business_owner" && (
@@ -1545,21 +1606,25 @@ const saveProfile = async () => {
                 <Feather name="x" size={22} color={theme.text} />
               </Pressable>
             </View>
-            {/* Tabs */}
+{/* Tabs */}
             <View style={[styles.editModalTabs, { borderBottomColor: theme.border }]}>
-              {(["datos", "seguridad"] as const).map(tab => (
-                <Pressable
-                  key={tab}
-                  onPress={() => setEditTab(tab)}
-                  style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
-                >
-                  <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
-                    {tab === "datos" ? "Datos personales" : "Seguridad"}
-                  </ThemedText>
-                </Pressable>
-              ))}
+              {(["datos", "seguridad", "profesion"] as const).map(tab => {
+                // Hide profesion tab for customers
+                if (tab === "profesion" && user?.role === "customer") return null;
+                return (
+                  <Pressable
+                    key={tab}
+                    onPress={() => setEditTab(tab)}
+                    style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
+                  >
+                    <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
+                      {tab === "datos" ? "Datos personales" : tab === "seguridad" ? "Seguridad" : "Profesión"}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
             </View>
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
+<ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
               {editTab === "datos" ? (
                 <>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Nombre</ThemedText>
@@ -1599,7 +1664,7 @@ const saveProfile = async () => {
                     }
                   </Pressable>
                 </>
-              ) : (
+              ) : editTab === "seguridad" ? (
                 <>
                   <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Contraseña actual</ThemedText>
                   <TextInput
@@ -1629,6 +1694,166 @@ const saveProfile = async () => {
                       : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Cambiar contraseña</ThemedText>
                     }
                   </Pressable>
+                </>
+              ) : (
+                // Profesión tab - show vehicle info and document status for drivers/business owners
+                <>
+                  {user?.role === "delivery_driver" && (
+                    <>
+                      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Vehículo</ThemedText>
+                      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+                        {["car", "motorcycle", "bicycle"].map(type => (
+                          <Pressable
+                            key={type}
+                            onPress={() => setVehicleForm(f => ({ ...f, vehicleType: type }))}
+                            style={{
+                              flex: 1,
+                              padding: 12,
+                              borderRadius: 12,
+                              backgroundColor: vehicleForm.vehicleType === type ? ComeYaColors.primaryLight : theme.backgroundSecondary,
+                              borderWidth: 2,
+                              borderColor: vehicleForm.vehicleType === type ? ComeYaColors.primary : "transparent",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Feather
+                              name={type === "car" ? "truck" : type === "motorcycle" ? "zap" : "wind"}
+                              size={24}
+                              color={vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.textSecondary}
+                            />
+                            <ThemedText type="caption" style={{ color: vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.text, marginTop: 4 }}>
+                              {type === "car" ? "Coche" : type === "motorcycle" ? "Moto" : "Bici"}
+                            </ThemedText>
+                          </Pressable>
+                        ))}
+                      </View>
+                      
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Marca</ThemedText>
+                      <TextInput
+                        value={vehicleForm.vehicleBrand}
+                        onChangeText={text => setVehicleForm(f => ({ ...f, vehicleBrand: text }))}
+                        placeholder="Ej: Toyota, Yamaha, Bianchi"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                      />
+                      
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Modelo</ThemedText>
+                      <TextInput
+                        value={vehicleForm.vehicleModel}
+                        onChangeText={text => setVehicleForm(f => ({ ...f, vehicleModel: text }))}
+                        placeholder="Ej: Corolla, MT-07, Tornado"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                      />
+                      
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Matrícula</ThemedText>
+                      <TextInput
+                        value={vehicleForm.vehiclePlate}
+                        onChangeText={text => setVehicleForm(f => ({ ...f, vehiclePlate: text }))}
+                        placeholder="Ej: 1234ABC"
+                        placeholderTextColor={theme.textSecondary}
+                        autoCapitalize="characters"
+                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                      />
+                      
+                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Color</ThemedText>
+                      <TextInput
+                        value={vehicleForm.vehicleColor}
+                        onChangeText={text => setVehicleForm(f => ({ ...f, vehicleColor: text }))}
+                        placeholder="Ej: Blanco, Negro, Rojo"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                      />
+                    </>
+                  )}
+                  
+                  {user?.role === "business_owner" && (
+                    <>
+                      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Documentos</ThemedText>
+                      <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginBottom: Spacing.md }]}>
+                        <Feather name="info" size={16} color={theme.textSecondary} />
+                        <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
+                          Aquí puedes ver el estado de tus documentos. Contacta soporte si necesitas actualizar algo.
+                        </ThemedText>
+                      </View>
+                    </>
+                  )}
+                  
+                  {/* Document status section */}
+                  {(professionalData?.idDocumentUrl || professionalData?.vehiclePlatePhoto || professionalData?.vehicleItvPhoto) && (
+                    <>
+                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Estado de documentos</ThemedText>
+                      
+                      {professionalData?.idDocumentUrl && (
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
+                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
+                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>DNI / Identificación</ThemedText>
+                        </View>
+                      )}
+                      
+                      {professionalData?.autonomoDocumentUrl && (
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
+                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
+                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Documento de Autónomo</ThemedText>
+                        </View>
+                      )}
+                      
+                      {professionalData?.vehicleLicensePhoto && (
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
+                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
+                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Licencia de conducir</ThemedText>
+                        </View>
+                      )}
+                      
+                      {professionalData?.vehiclePlatePhoto && (
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
+                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
+                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Foto matrícula</ThemedText>
+                        </View>
+                      )}
+                      
+                      {professionalData?.vehicleItvPhoto && (
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
+                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
+                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>ITV</ThemedText>
+                        </View>
+                      )}
+                      
+                      {professionalData?.vehicleInsurancePhoto && (
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.sm }}>
+                          <Feather name="check-circle" size={20} color={ComeYaColors.success} />
+                          <ThemedText type="body" style={{ marginLeft: Spacing.sm, color: theme.text }}>Seguro del vehículo</ThemedText>
+                        </View>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* Show save button only for drivers (they can edit vehicle) */}
+                  {user?.role === "delivery_driver" && (
+                    <Pressable
+                      onPress={saveVehicle}
+                      disabled={isSavingVehicle}
+                      style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingVehicle ? 0.7 : 1 }]}
+                    >
+                      {isSavingVehicle
+                        ? <ActivityIndicator color="#fff" size="small" />
+                        : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar vehículo</ThemedText>
+                      }
+                    </Pressable>
+                  )}
+                  
+                  {/* Info for business owners */}
+                  {user?.role === "business_owner" && (
+                    <Pressable
+                      onPress={() => {
+                        setShowEditProfileModal(false);
+                        navigation.navigate("Support" as any);
+                      }}
+                      style={[styles.editSaveBtn, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.lg }]}
+                    >
+                      <ThemedText type="body" style={{ color: theme.text }}>Contactar soporte</ThemedText>
+                    </Pressable>
+                  )}
                 </>
               )}
             </ScrollView>
