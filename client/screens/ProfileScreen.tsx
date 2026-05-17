@@ -147,7 +147,7 @@ export default function ProfileScreen() {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAddressesModal, setShowAddressesModal] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
-const [editTab, setEditTab] = useState<"datos" | "seguridad" | "profesion">("datos");
+const [editTab, setEditTab] = useState<"datos" | "seguridad">("datos");
   
   // Professional data for drivers/business owners
   const [professionalData, setProfessionalData] = useState<{
@@ -1775,21 +1775,17 @@ useEffect(() => {
             </View>
 {/* Tabs */}
             <View style={[styles.editModalTabs, { borderBottomColor: theme.border }]}>
-              {(["datos", "seguridad", "profesion"] as const).map(tab => {
-                // Hide profesion tab for customers
-                if (tab === "profesion" && user?.role === "customer") return null;
-                return (
-                  <Pressable
-                    key={tab}
-                    onPress={() => setEditTab(tab)}
-                    style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
-                  >
-                    <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
-                      {tab === "datos" ? "Datos personales" : tab === "seguridad" ? "Seguridad" : "Profesión"}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
+              {(["datos", "seguridad"] as const).map(tab => (
+                <Pressable
+                  key={tab}
+                  onPress={() => setEditTab(tab)}
+                  style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
+                >
+                  <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
+                    {tab === "datos" ? "Datos personales" : "Seguridad"}
+                  </ThemedText>
+                </Pressable>
+              ))}
             </View>
 <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
               {editTab === "datos" ? (
