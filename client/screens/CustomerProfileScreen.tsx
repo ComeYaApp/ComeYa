@@ -9,6 +9,8 @@ import { ThemedView } from "@/components/ThemedView";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 // Extended styles for customer profile
 const styles = StyleSheet.create({
@@ -85,7 +87,7 @@ const styles = StyleSheet.create({
 export default function CustomerProfileScreen() {
   const { user, logout } = useAuth();
   const { theme, themeMode, setThemeMode } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   
   const [subscription, setSubscription] = useState<any>(null);
   const [profileImageVersion, setProfileImageVersion] = useState(0);
