@@ -80,8 +80,9 @@ export default function EditProfileScreen() {
   const [name,  setName]  = useState(user?.name  || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [email, setEmail] = useState(user?.email || "");
-  const [dni,   setDni]   = useState((user as any)?.dni   || "");
+const [dni,   setDni]   = useState((user as any)?.dni   || "");
   const [address, setAddress] = useState((user as any)?.address || "");
+  const [profession, setProfession] = useState("");
 
   // Solo repartidor
   const [vehicleType,  setVehicleType]  = useState("");
@@ -440,57 +441,24 @@ vehicleColor: vehicleColor.trim() || undefined,
                 theme={theme}
               />
 
-              <DocUpload
+<DocUpload
                 label={isBusiness ? "Certificado de autónomo / empresa *" : "Documento de autónomo *"}
                 description="Alta en Hacienda o certificado de empresa"
                 uri={autonomoDocUri}
                 onPress={() => pickDocument(setAutonomoDocUri)}
                 theme={theme}
               />
-
-              {/* Documentos del vehículo (solo para moto y coche) */}
-              {(vehicleType === 'motorcycle' || vehicleType === 'car') && (
-                <>
-                  <SectionTitle icon="file" title="Documentación del vehículo" />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-                    Según la normativa española, los vehículos a motor deben disponer de esta documentación en vigor.
-                  </ThemedText>
-
-                  <DocUpload
-                    label="Foto de matrícula *"
-                    description="Foto clara donde se vea la matrícula completa"
-                    uri={vehiclePlatePhotoUri}
-                    onPress={() => pickDocument(setVehiclePlatePhotoUri)}
-                    theme={theme}
-                  />
-
-                  <DocUpload
-                    label="ITV en vigor"
-                    description="Documento de la ITV vigente (motos y coches)"
-                    uri={vehicleItvPhotoUri}
-                    onPress={() => pickDocument(setVehicleItvPhotoUri)}
-                    theme={theme}
-                  />
-
-                  <DocUpload
-                    label="Seguro de responsabilidad civil"
-                    description="Póliza del seguro obligatorio del vehículo"
-                    uri={vehicleInsurancePhotoUri}
-                    onPress={() => pickDocument(setVehicleInsurancePhotoUri)}
-                    theme={theme}
-                  />
-
-                  <DocUpload
-                    label="Permiso de conducir *"
-                    description="Foto del carnet de conducir (anverso y reverso)"
-                    uri={vehicleLicensePhotoUri}
-                    onPress={() => pickDocument(setVehicleLicensePhotoUri)}
-                    theme={theme}
-                  />
-                </>
-              )}
             </>
           )}
+        </View>
+
+        <View style={[styles.formSection, { backgroundColor: theme.card }, Shadows.sm]}>
+          {/* ── Profesión ── */}
+          <SectionTitle icon="briefcase" title="Profesión" />
+
+<Input label="Tu profesión" leftIcon="award" value={profession}
+            onChangeText={setProfession}
+            placeholder="Ej: Repartidor, Chef, Comerciante..." autoCapitalize="words" />
         </View>
       </ScrollView>
 

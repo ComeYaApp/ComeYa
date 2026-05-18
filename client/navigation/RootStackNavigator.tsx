@@ -35,7 +35,9 @@ import BusinessCategoriesScreen from "@/screens/BusinessCategoriesScreen";
 import MyBusinessesScreen from "@/screens/MyBusinessesScreen";
 import BusinessStripeSetupScreen from "@/screens/BusinessStripeSetupScreen";
 import EditProfileScreen from "@/screens/EditProfileScreen";
-import ProfileScreen from "@/screens/ProfileScreen";
+import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import { useAuth } from "@/contexts/AuthContext";
+
 import GamificationScreen from "@/screens/GamificationScreen";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
 import GiftCardsScreen from "@/screens/GiftCardsScreen";
@@ -372,9 +374,9 @@ export default function RootStackNavigator() {
             component={EditProfileScreen}
             options={{ headerTitle: "Editar perfil" }}
           />
-          <Stack.Screen
+<Stack.Screen
             name="Profile"
-            component={ProfileScreen}
+            component={ProfileStackNavigator}
             options={{ headerTitle: "Mi perfil" }}
           />
           <Stack.Screen

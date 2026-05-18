@@ -1,7 +1,12 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import ProfileScreen from "@/screens/ProfileScreen";
+import CustomerProfileScreen from "@/screens/CustomerProfileScreen";
+import BusinessProfileScreen from "@/screens/BusinessProfileScreen";
+import DeliveryProfileScreen from "@/screens/DeliveryProfileScreen";
+import AdminProfileScreen from "@/screens/AdminProfileScreen";
+import { useAuth } from "@/contexts/AuthContext";
+
 import SavedAddressesScreen from "@/screens/SavedAddressesScreen";
 import AddAddressScreen from "@/screens/AddAddressScreen";
 import LocationPickerScreen from "@/screens/LocationPickerScreen";
@@ -9,6 +14,24 @@ import PaymentMethodsScreen from "@/screens/PaymentMethodsScreen";
 import TermsScreen from "@/screens/TermsScreen";
 import PrivacyScreen from "@/screens/PrivacyScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+
+// Wrapper component that renders the correct profile screen based on user role
+function RoleBasedProfile() {
+  const { user } = useAuth();
+  
+  switch (user?.role) {
+    case "business_owner":
+      return <BusinessProfileScreen />;
+    case "delivery_driver":
+      return <DeliveryProfileScreen />;
+    case "admin":
+    case "super_admin":
+      return <AdminProfileScreen />;
+    case "customer":
+    default:
+      return <CustomerProfileScreen />;
+  }
+}
 
 export type ProfileStackParamList = {
   Profile: undefined;
@@ -29,9 +52,9 @@ export default function ProfileStackNavigator() {
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
-      <Stack.Screen
+<Stack.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={RoleBasedProfile}
         options={{
           headerTitle: "Mi Perfil",
         }}

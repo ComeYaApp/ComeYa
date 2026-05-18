@@ -12,6 +12,7 @@ const lightTheme = {
   backgroundSecondary: '#F5F5F5',
   card: '#FFFFFF',
   border: '#E0E0E0',
+  divider: theme.colors.divider,
   text: theme.colors.text.primary,
   textSecondary: theme.colors.text.secondary,
 };
@@ -37,6 +38,7 @@ const darkTheme = {
   backgroundSecondary: '#1E1E1E',
   card: '#1E1E1E',
   border: '#333333',
+  divider: '#2A2A2A',
   text: '#FFFFFF',
   textSecondary: '#B0B0B0',
 };
