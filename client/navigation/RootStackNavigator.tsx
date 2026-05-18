@@ -64,7 +64,6 @@ import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import QRScannerScreen from "@/screens/QRScannerScreen";
 import StripePaymentScreen from "@/screens/StripePaymentScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
-import { useAuth } from "@/contexts/AuthContext";
 
 import LocationPickerScreen from "@/screens/LocationPickerScreen";
 
