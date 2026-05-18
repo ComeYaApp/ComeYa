@@ -371,8 +371,8 @@ export default function AdminProfileScreen() {
               showToast("Base de datos coming soon", "info");
             }}
           />
-          <SettingsItem
-            icon="Server"
+<SettingsItem
+            icon="server"
             label="Servicios"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
