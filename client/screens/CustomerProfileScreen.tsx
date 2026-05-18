@@ -157,8 +157,8 @@ const [showLanguageModal, setShowLanguageModal] = useState(false);
     );
   };
 
-  const renderCustomerMenuItems = () => {
-    const items = [
+const renderCustomerMenuItems = () => {
+    const items: { icon: keyof typeof Feather.glyphMap; label: string; onPress: () => void }[] = [
       { icon: "map-pin", label: "Direcciones guardadas", onPress: () => setShowAddressesModal(true) },
       { icon: "credit-card", label: "Métodos de pago", onPress: () => setShowPaymentMethodsModal(true) },
       { icon: "gift", label: "Mis puntos y recompensas", onPress: () => setShowPointsModal(true) },
