@@ -39,7 +39,7 @@ import { apiRequest, getApiUrl } from "@/lib/query-client";
 // =============================================================================
 
 export interface SettingsItemProps {
-  icon: string;
+  icon: keyof typeof Feather.glyphMap;
   label: string;
   value?: string;
   onPress: () => void;
@@ -616,7 +616,8 @@ export const styles = StyleSheet.create({
     alignItems: "flex-start",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
-  },
+},
+
 });
 
-export { styles };
+// Shared styles end
