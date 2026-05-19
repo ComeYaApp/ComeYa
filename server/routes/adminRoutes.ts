@@ -906,3 +906,356 @@ router.post("/gift-cards/:id/reject", authenticateToken, requireRole("admin", "s
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// ==========================================
+// DELIVERY VERIFICATION ADMIN
+// ==========================================
+
+// GET /api/admin/delivery-verifications/pending - Lista de repartidores pendientes
+router.get("/delivery-verifications/pending", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users, deliveryDrivers } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq, or, asc } = await import("drizzle-orm");
+
+    // Obtener usuarios con rol delivery_driver que necesitan verificación
+    const pendingDrivers = await db
+      .select()
+      .from(users)
+      .where(or(
+        eq(users.role, "delivery_driver"),
+        eq(users.verificationStatus, "pending" as any)
+      ))
+      .orderBy(asc(users.createdAt));
+
+    // Enrich con datos de delivery_drivers
+    const enriched = await Promise.all(pendingDrivers.map(async (user) => {
+      const [dd] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, user.id))
+        .limit(1);
+
+      return {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        verificationStatus: user.verificationStatus,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        vehicleInfo: {
+          vehicleType: dd?.vehicleType || null,
+          vehiclePlate: dd?.vehiclePlate || null,
+          vehicleBrand: dd?.vehicleBrand || null,
+          vehicleModel: dd?.vehicleModel || null,
+          vehicleColor: dd?.vehicleColor || null,
+        },
+        documents: {
+          idDocumentUrl: !!user.idDocumentUrl,
+          idDocumentBackUrl: !!(user as any).idDocumentBackUrl,
+          autonomoDocumentUrl: !!user.autonomoDocumentUrl,
+          vehiclePhoto: !!dd?.vehiclePhoto,
+          vehiclePlatePhoto: !!dd?.vehiclePlatePhoto,
+          vehicleItvPhoto: !!dd?.vehicleItvPhoto,
+          vehicleInsurancePhoto: !!dd?.vehicleInsurancePhoto,
+          vehicleLicensePhoto: !!dd?.vehicleLicensePhoto,
+        },
+      };
+    }));
+
+    res.json({ success: true, drivers: enriched });
+  } catch (error: any) {
+    console.error("Error getting pending deliveries:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/admin/delivery-verifications/:userId - Get specific delivery verification details
+router.get("/delivery-verifications/:userId", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users, deliveryDrivers } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.params.userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    const [driver] = await db
+      .select()
+      .from(deliveryDrivers)
+      .where(eq(deliveryDrivers.userId, user.id))
+      .limit(1);
+
+    res.json({
+      success: true,
+      driver: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        verificationStatus: user.verificationStatus,
+        verificationNotes: (user as any).verificationNotes,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        vehicleInfo: {
+          vehicleType: driver?.vehicleType || null,
+          vehiclePlate: driver?.vehiclePlate || null,
+          vehicleBrand: driver?.vehicleBrand || null,
+          vehicleModel: driver?.vehicleModel || null,
+          vehicleColor: driver?.vehicleColor || null,
+          vehicleYear: driver?.vehicleYear || null,
+        },
+        documents: {
+          idDocumentUrl: user.idDocumentUrl,
+          idDocumentBackUrl: (user as any).idDocumentBackUrl,
+          autonomoDocumentUrl: user.autonomoDocumentUrl,
+          vehiclePhoto: driver?.vehiclePhoto || null,
+          vehiclePlatePhoto: driver?.vehiclePlatePhoto || null,
+          vehicleItvPhoto: driver?.vehicleItvPhoto || null,
+          vehicleInsurancePhoto: driver?.vehicleInsurancePhoto || null,
+          vehicleLicensePhoto: driver?.vehicleLicensePhoto || null,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("Error getting delivery details:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/admin/delivery-verifications/:userId/approve - Aprobar repartidor
+router.post("/delivery-verifications/:userId/approve", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users, auditLogs } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const userId = req.params.userId;
+    const adminId = req.user!.id;
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // Actualizar usuario
+    await db
+      .update(users)
+      .set({
+        verificationStatus: "verified" as any,
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    // Log de auditoría
+    await db.insert(auditLogs).values({
+      id: crypto.randomUUID(),
+      userId: adminId,
+      action: "delivery_approved",
+      entityType: "user",
+      entityId: userId,
+      changes: JSON.stringify({
+        verificationStatus: "verified",
+        isActive: true,
+      }),
+      createdAt: new Date(),
+    } as any);
+
+    // Notificar al repartidor
+    try {
+      const { deliveryNotificationService } = await import("../deliveryNotificationService");
+      await deliveryNotificationService.notifyApproved(userId);
+    } catch { /*silencioso*/ }
+
+    res.json({
+      success: true,
+      message: `Repartidor ${user.name} aprobado correctamente`,
+    });
+  } catch (error: any) {
+    console.error("Error approving delivery:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/admin/delivery-verifications/:userId/reject - Rechazar repartidor
+router.post("/delivery-verifications/:userId/reject", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users, auditLogs } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const userId = req.params.userId;
+    const adminId = req.user!.id;
+    const { reason } = req.body;
+
+    if (!reason?.trim()) {
+      return res.status(400).json({ error: "Razón de rechazo requerida" });
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // Actualizar usuario
+    await db
+      .update(users)
+      .set({
+        verificationStatus: "rejected" as any,
+        verificationNotes: reason.trim(),
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    // Log de auditoría
+    await db.insert(auditLogs).values({
+      id: crypto.randomUUID(),
+      userId: adminId,
+      action: "delivery_rejected",
+      entityType: "user",
+      entityId: userId,
+      changes: JSON.stringify({
+        verificationStatus: "rejected",
+        rejectionReason: reason.trim(),
+      }),
+      createdAt: new Date(),
+    } as any);
+
+    // Notificar al repartidor
+    try {
+      const { deliveryNotificationService } = await import("../deliveryNotificationService");
+      await deliveryNotificationService.notifyRejected(userId, reason.trim());
+    } catch { /*silencioso*/ }
+
+    res.json({
+      success: true,
+      message: `Repartidor ${user.name} rechazado`,
+    });
+  } catch (error: any) {
+    console.error("Error rejecting delivery:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/admin/delivery-verifications/:userId/reset - Reiniciar verificación del repartidor
+router.post("/delivery-verifications/:userId/reset", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const userId = req.params.userId;
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // Reiniciar estado
+    await db
+      .update(users)
+      .set({
+        verificationStatus: "pending" as any,
+        verificationNotes: null,
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    res.json({
+      success: true,
+      message: "Verificación reiniciada. El repartidor puede enviar documentos nuevamente.",
+    });
+  } catch (error: any) {
+    console.error("Error resetting verification:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/admin/delivery-verifications/stats - Stats de verificaciones
+router.get("/delivery-verifications/stats", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Contar por estado
+    const [pendingCount] = await db
+      .select({ count: users.id })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "delivery_driver"),
+          eq(users.verificationStatus, "pending" as any)
+        )
+      );
+
+    const [verifiedCount] = await db
+      .select({ count: users.id })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "delivery_driver"),
+          eq(users.verificationStatus, "verified" as any)
+        )
+      );
+
+    const [rejectedCount] = await db
+      .select({ count: users.id })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "delivery_driver"),
+          eq(users.verificationStatus, "rejected" as any)
+        )
+      );
+
+    const [activeDrivers] = await db
+      .select({ count: users.id })
+      .from(users)
+      .where(
+        and(
+          eq(users.role, "delivery_driver"),
+          eq(users.isActive, true)
+        )
+      );
+
+    res.json({
+      success: true,
+      stats: {
+        pending: Number(pendingCount?.count || 0),
+        verified: Number(verifiedCount?.count || 0),
+        rejected: Number(rejectedCount?.count || 0),
+        active: Number(activeDrivers?.count || 0),
+      },
+    });
+  } catch (error: any) {
+    console.error("Error getting verification stats:", error);
+    res.status(500).json({ error: error.message });
+  }
+});

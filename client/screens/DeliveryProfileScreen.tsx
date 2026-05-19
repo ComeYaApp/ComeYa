@@ -10,6 +10,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -43,6 +44,15 @@ interface DriverStats {
   vehicleType?: string;
   vehiclePlate?: string;
   verificationStatus: string;
+  // Personal documents
+  idDocumentUrl?: string | null;
+  idDocumentBackUrl?: string | null;
+  autonomoDocumentUrl?: string | null;
+  // Vehicle documents
+  vehiclePlatePhoto?: string | null;
+  vehicleItvPhoto?: string | null;
+  vehicleInsurancePhoto?: string | null;
+  vehicleLicensePhoto?: string | null;
 }
 
 export default function DeliveryProfileScreen() {
@@ -59,8 +69,29 @@ export default function DeliveryProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [driverStats, setDriverStats] = useState<DriverStats | null>(null);
-  const [driverStrikes, setDriverStrikes] = useState(0);
+const [driverStrikes, setDriverStrikes] = useState(0);
   const maxStrikes = 5;
+
+  // Preview modal state
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // Helper to resolve document URL
+  const resolveDocumentUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    if (url.startsWith('data:image/')) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    const apiBase = getApiUrl().replace(/\/+$/, "");
+    return `${apiBase}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  // Preview handler
+  const handlePreviewDocument = (uri: string | null | undefined) => {
+    if (!uri) return;
+    const resolved = resolveDocumentUrl(uri) || uri;
+    setPreviewImage(resolved);
+    setShowPreviewModal(true);
+  };
 
   // Load driver status on mount
   useEffect(() => {
@@ -86,8 +117,17 @@ export default function DeliveryProfileScreen() {
             rating: statusData.rating || 0,
             totalDeliveries: statusData.totalDeliveries || 0,
             vehicleType: profileData.vehicleType,
-            vehiclePlate: profileData.vehiclePlate,
+vehiclePlate: profileData.vehiclePlate,
             verificationStatus: user?.isActive ? "verified" : "pending",
+            // Personal documents
+            idDocumentUrl: profileData.idDocumentUrl,
+            idDocumentBackUrl: profileData.idDocumentBackUrl,
+            autonomoDocumentUrl: profileData.autonomoDocumentUrl,
+            // Vehicle documents
+            vehiclePlatePhoto: profileData.vehiclePlatePhoto,
+            vehicleItvPhoto: profileData.vehicleItvPhoto,
+            vehicleInsurancePhoto: profileData.vehicleInsurancePhoto,
+            vehicleLicensePhoto: profileData.vehicleLicensePhoto,
           });
         }
       } catch (error) {
@@ -252,12 +292,50 @@ export default function DeliveryProfileScreen() {
       flexDirection: "row",
       gap: 4,
     },
-    strikeIndicator: {
+strikeIndicator: {
       width: 20,
       height: 12,
       borderRadius: 2,
       borderWidth: 1,
     },
+    documentsSection: {
+      marginTop: Spacing.md,
+      paddingTop: Spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    docHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: Spacing.sm,
+    },
+    docGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: Spacing.sm,
+    },
+docItem: {
+      width: "30%",
+      aspectRatio: 1,
+      borderRadius: BorderRadius.md,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: Spacing.sm,
+    },
+    docItemImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: BorderRadius.md,
+    },
+    docItemPlaceholder: {
+      width: "100%",
+      height: "100%",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.9)", paddingTop: insets.top },
+    previewModalImage: { width: "90%", height: "70%", borderRadius: BorderRadius.md },
+    previewModalClose: { position: "absolute", top: insets.top + 10, right: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
   });
 
   const getRoleLabelText = () => {
@@ -362,15 +440,96 @@ export default function DeliveryProfileScreen() {
             </View>
           )}
 
-          <SettingsItem
+<SettingsItem
             icon="truck"
             label="Mi vehículo"
             value={getVehicleLabel()}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showToast("Configuración de vehículo coming soon", "info");
+              navigation.navigate("EditProfile" as any);
             }}
           />
+
+          {/* Documentos personales */}
+          <View style={styles.documentsSection}>
+            <View style={styles.docHeader}>
+              <Feather name="file-text" size={18} color={ComeYaColors.primary} />
+              <ThemedText type="body" style={{ marginLeft: Spacing.sm, fontWeight: "600" }}>
+                Documentos personales
+              </ThemedText>
+            </View>
+<View style={styles.docGrid}>
+              {[
+                { key: "idDocumentUrl", label: "DNI/NIE frente", icon: "credit-card", url: driverStats?.idDocumentUrl },
+                { key: "idDocumentBackUrl", label: "DNI/NIE reverso", icon: "credit-card", url: driverStats?.idDocumentBackUrl },
+                { key: "autonomoDocUrl", label: "Autónomo", icon: "file-text", url: driverStats?.autonomoDocumentUrl },
+              ].map((doc) => {
+                const docUrl = doc.url || undefined;
+                const hasDoc = !!docUrl;
+                const resolvedUrl = hasDoc ? (resolveDocumentUrl(docUrl) || docUrl) : undefined;
+                return (
+                  <Pressable key={doc.key} style={[styles.docItem, { backgroundColor: hasDoc ? ComeYaColors.success + "15" : theme.backgroundSecondary }]} onPress={() => handlePreviewDocument(docUrl)} disabled={!hasDoc}>
+                    {hasDoc && resolvedUrl ? (
+                      <Image source={{ uri: resolvedUrl }} style={styles.docItemImage} contentFit="cover" />
+                    ) : (
+                      <View style={styles.docItemPlaceholder}>
+                        <Feather name={doc.icon as any} size={16} color={theme.textSecondary} />
+                      </View>
+                    )}
+                    <ThemedText type="caption" style={{ marginTop: 4, color: hasDoc ? ComeYaColors.success : theme.textSecondary }}>
+                      {hasDoc ? "Ver" : doc.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Pressable onPress={() => navigation.navigate("EditProfile" as any)}>
+              <ThemedText type="caption" style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}>
+                Ver/Actualizar documentos →
+              </ThemedText>
+            </Pressable>
+          </View>
+
+          {/* Documentos del vehículo */}
+          <View style={styles.documentsSection}>
+            <View style={styles.docHeader}>
+              <Feather name="truck" size={18} color={ComeYaColors.warning} />
+              <ThemedText type="body" style={{ marginLeft: Spacing.sm, fontWeight: "600" }}>
+                Documentos del vehículo
+              </ThemedText>
+            </View>
+<View style={styles.docGrid}>
+              {[
+                { key: "vehiclePlatePhoto", label: "Matrícula", icon: "camera", url: driverStats?.vehiclePlatePhoto },
+                { key: "vehicleItvPhoto", label: "ITV", icon: "check-square", url: driverStats?.vehicleItvPhoto },
+                { key: "vehicleInsurancePhoto", label: "Seguro", icon: "shield", url: driverStats?.vehicleInsurancePhoto },
+                { key: "vehicleLicensePhoto", label: "Licencia", icon: "credit-card", url: driverStats?.vehicleLicensePhoto },
+              ].map((doc) => {
+                const docUrl = doc.url || undefined;
+                const hasDoc = !!docUrl;
+                const resolvedUrl = hasDoc ? (resolveDocumentUrl(docUrl) || docUrl) : undefined;
+                return (
+                  <Pressable key={doc.key} style={[styles.docItem, { backgroundColor: hasDoc ? ComeYaColors.success + "15" : theme.backgroundSecondary }]} onPress={() => handlePreviewDocument(docUrl)} disabled={!hasDoc}>
+                    {hasDoc && resolvedUrl ? (
+                      <Image source={{ uri: resolvedUrl }} style={styles.docItemImage} contentFit="cover" />
+                    ) : (
+                      <View style={styles.docItemPlaceholder}>
+                        <Feather name={doc.icon as any} size={16} color={theme.textSecondary} />
+                      </View>
+                    )}
+                    <ThemedText type="caption" style={{ marginTop: 4, color: hasDoc ? ComeYaColors.success : theme.textSecondary }}>
+                      {hasDoc ? "Ver" : doc.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Pressable onPress={() => navigation.navigate("EditProfile" as any)}>
+              <ThemedText type="caption" style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}>
+                Ver/Actualizar documentos →
+              </ThemedText>
+            </Pressable>
+          </View>
 
           {/* Strikes */}
           <View style={styles.strikesContainer}>
@@ -511,8 +670,20 @@ export default function DeliveryProfileScreen() {
               showToast("Funcionalidad de cierre de sesión coming soon", "info");
             }}
           />
-        </View>
+</View>
       </ScrollView>
+
+      {/* Image Preview Modal */}
+      <Modal visible={showPreviewModal} transparent animationType="fade" onRequestClose={() => setShowPreviewModal(false)}>
+        <View style={styles.previewModalContainer}>
+          {previewImage && (
+            <Image source={{ uri: previewImage }} style={styles.previewModalImage} contentFit="contain" />
+          )}
+          <Pressable style={styles.previewModalClose} onPress={() => setShowPreviewModal(false)}>
+            <Feather name="x" size={24} color="#fff" />
+          </Pressable>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }

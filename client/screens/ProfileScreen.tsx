@@ -147,7 +147,7 @@ export default function ProfileScreen() {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAddressesModal, setShowAddressesModal] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
-const [editTab, setEditTab] = useState<"datos" | "seguridad">("datos");
+const [editTab, setEditTab] = useState<"datos" | "seguridad" | "profesion">("datos");
   
   // Professional data for drivers/business owners
   const [professionalData, setProfessionalData] = useState<{
@@ -224,14 +224,14 @@ const [isSavingVehicle, setIsSavingVehicle] = useState(false);
         throw new Error("La imagen es muy pesada. Usa una foto mas ligera (~2MB max)");
       }
 
-      const apiResponse = await apiRequest("POST", "/api/users/verification-document", {
-        documentType,
+const apiResponse = await apiRequest("POST", "/api/users/verification-document", {
+        key: documentType,
         image: imageData,
       });
 
-      const data = await apiResponse.json();
+const data = await apiResponse.json();
       if (data.success) {
-// Update local professional data
+        // Update local professional data with the URL from server (Cloudinary URL)
         const fieldMap: Record<string, string> = {
           idDocument: "idDocumentUrl",
           idDocumentBack: "idDocumentBackUrl",
@@ -244,16 +244,15 @@ const [isSavingVehicle, setIsSavingVehicle] = useState(false);
         };
         const field = fieldMap[documentType];
         if (field) {
-          setProfessionalData(prev => prev ? { ...prev, [field]: data.url || imageData } : null);
+          // Use the Cloudinary URL returned by server, not the base64
+          setProfessionalData(prev => prev ? { ...prev, [field]: data.url } : null);
         }
         
-        // Reset verification status
-        try {
-          await apiRequest("POST", `/api/users/${user?.id}/reset-verification`);
-        } catch { /* ignore */ }
+        // Note: Server now handles verification status reset automatically
+        // Do NOT call reset-verification here - it would cause unnecessary reset
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        showToast("Documento actualizado", "success");
+        showToast(data.message || "Documento actualizado", "success");
       } else {
         throw new Error(data.error || "Error al subir documento");
       }
@@ -304,7 +303,20 @@ const [isSavingVehicle, setIsSavingVehicle] = useState(false);
     }
   };
 
-  // Document upload button component
+// Document preview modal state
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // Helper to resolve document URL
+  const resolveDocumentUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    if (url.startsWith('data:image/')) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    const apiBase = getApiUrl().replace(/\/+$/, "");
+    return `${apiBase}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
+  // Document upload button component with image preview
   const DocumentUploadButton = ({ 
     documentType, 
     label, 
@@ -316,6 +328,7 @@ const [isSavingVehicle, setIsSavingVehicle] = useState(false);
   }) => {
     const isUploading = uploadingDocument === documentType;
     const hasDocument = !!currentUrl;
+    const documentImageUrl = resolveDocumentUrl(currentUrl);
 
     return (
       <View style={{ marginBottom: Spacing.md }}>
@@ -329,6 +342,24 @@ const [isSavingVehicle, setIsSavingVehicle] = useState(false);
             {label}
           </ThemedText>
         </View>
+        
+        {/* Document thumbnail preview */}
+        {hasDocument && documentImageUrl ? (
+          <Pressable 
+            onPress={() => { setPreviewImage(documentImageUrl); setShowPreviewModal(true); }}
+            style={{ marginBottom: Spacing.sm }}
+          >
+            <Image 
+              source={{ uri: documentImageUrl }}
+              style={{ width: "100%", height: 120, borderRadius: BorderRadius.md }}
+              contentFit="cover"
+            />
+            <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}>
+              <Feather name="maximize-2" size={14} color="#fff" />
+            </View>
+          </Pressable>
+        ) : null}
+        
         <Pressable
           onPress={() => pickDocumentImage(documentType)}
           disabled={isUploading}
@@ -1774,15 +1805,15 @@ useEffect(() => {
               </Pressable>
             </View>
 {/* Tabs */}
-            <View style={[styles.editModalTabs, { borderBottomColor: theme.border }]}>
-              {(["datos", "seguridad"] as const).map(tab => (
+<View style={[styles.editModalTabs, { borderBottomColor: theme.border }]}>
+              {(["datos", "seguridad", "profesion"] as const).map(tab => (
                 <Pressable
                   key={tab}
                   onPress={() => setEditTab(tab)}
                   style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
                 >
                   <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
-                    {tab === "datos" ? "Datos personales" : "Seguridad"}
+                    {tab === "datos" ? "Datos" : tab === "seguridad" ? "Seguridad" : "Profesión"}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -1858,77 +1889,15 @@ useEffect(() => {
                     }
                   </Pressable>
                 </>
-              ) : (
-                // Profesión tab - show vehicle info and document status for drivers/business owners
+) : (
+                // Profesión tab - solo documentos personales para drivers/business owners
+                // Los datos del vehículo están en "Mi vehículo"
                 <>
-                  {user?.role === "delivery_driver" && (
-                    <>
-                      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Vehículo</ThemedText>
-                      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-                        {["car", "motorcycle", "bicycle"].map(type => (
-                          <Pressable
-                            key={type}
-                            onPress={() => setVehicleForm(f => ({ ...f, vehicleType: type }))}
-                            style={{
-                              flex: 1,
-                              padding: 12,
-                              borderRadius: 12,
-                              backgroundColor: vehicleForm.vehicleType === type ? ComeYaColors.primaryLight : theme.backgroundSecondary,
-                              borderWidth: 2,
-                              borderColor: vehicleForm.vehicleType === type ? ComeYaColors.primary : "transparent",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Feather
-                              name={type === "car" ? "truck" : type === "motorcycle" ? "zap" : "wind"}
-                              size={24}
-                              color={vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.textSecondary}
-                            />
-                            <ThemedText type="caption" style={{ color: vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.text, marginTop: 4 }}>
-                              {type === "car" ? "Coche" : type === "motorcycle" ? "Moto" : "Bici"}
-                            </ThemedText>
-                          </Pressable>
-                        ))}
-                      </View>
-                      
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Marca</ThemedText>
-                      <TextInput
-                        value={vehicleForm.vehicleBrand}
-                        onChangeText={text => setVehicleForm(f => ({ ...f, vehicleBrand: text }))}
-                        placeholder="Ej: Toyota, Yamaha, Bianchi"
-                        placeholderTextColor={theme.textSecondary}
-                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                      />
-                      
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Modelo</ThemedText>
-                      <TextInput
-                        value={vehicleForm.vehicleModel}
-                        onChangeText={text => setVehicleForm(f => ({ ...f, vehicleModel: text }))}
-                        placeholder="Ej: Corolla, MT-07, Tornado"
-                        placeholderTextColor={theme.textSecondary}
-                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                      />
-                      
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Matrícula</ThemedText>
-                      <TextInput
-                        value={vehicleForm.vehiclePlate}
-                        onChangeText={text => setVehicleForm(f => ({ ...f, vehiclePlate: text }))}
-                        placeholder="Ej: 1234ABC"
-                        placeholderTextColor={theme.textSecondary}
-                        autoCapitalize="characters"
-                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                      />
-                      
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Color</ThemedText>
-                      <TextInput
-                        value={vehicleForm.vehicleColor}
-                        onChangeText={text => setVehicleForm(f => ({ ...f, vehicleColor: text }))}
-                        placeholder="Ej: Blanco, Negro, Rojo"
-                        placeholderTextColor={theme.textSecondary}
-                        style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                      />
-                    </>
-                  )}
+                  <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+                    {user?.role === "delivery_driver" 
+                      ? "Para gestionar tu vehículo y sus documentos, ve a 'Mi vehículo' en la pantalla de perfil."
+                      : "Gestiona tus documentos de verificación abajo."}
+                  </ThemedText>
                   
                   {user?.role === "business_owner" && (
                     <>
@@ -1942,41 +1911,32 @@ useEffect(() => {
                     </>
                   )}
                   
-{/* Document upload section - Drivers */}
+{/* Document upload section - Drivers - SOLO documentos personales */}
                   {user?.role === "delivery_driver" && (
                     <>
-                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos</ThemedText>
+                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos personales</ThemedText>
                       
                       <DocumentUploadButton 
                         documentType="idDocument" 
-                        label="DNI / Identificación" 
+                        label="DNI / Identificación (frente)" 
                         currentUrl={professionalData?.idDocumentUrl}
                       />
                       <DocumentUploadButton 
-                        documentType="vehicleLicense" 
-                        label="Licencia de conducir" 
-                        currentUrl={professionalData?.vehicleLicensePhoto}
+                        documentType="idDocumentBack" 
+                        label="DNI / Identificación (reverso)" 
+                        currentUrl={professionalData?.idDocumentBackUrl}
                       />
                       <DocumentUploadButton 
-                        documentType="vehiclePlate" 
-                        label="Foto matrícula" 
-                        currentUrl={professionalData?.vehiclePlatePhoto}
+                        documentType="autonomo" 
+                        label="Documento de Autónomo" 
+                        currentUrl={professionalData?.autonomoDocumentUrl}
                       />
-                      <DocumentUploadButton 
-                        documentType="vehicleItv" 
-                        label="ITV" 
-                        currentUrl={professionalData?.vehicleItvPhoto}
-                      />
-                      <DocumentUploadButton 
-                        documentType="vehicleInsurance" 
-                        label="Seguro del vehículo" 
-                        currentUrl={professionalData?.vehicleInsurancePhoto}
-                      />
-                      <DocumentUploadButton 
-                        documentType="vehiclePhoto" 
-                        label="Foto del vehículo" 
-                        currentUrl={professionalData?.vehiclePhoto}
-                      />
+                      <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.md }]}>
+                        <Feather name="truck" size={16} color={theme.textSecondary} />
+                        <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
+                          Los documentos del vehículo están en "Mi vehículo"
+                        </ThemedText>
+                      </View>
                     </>
                   )}
                   
@@ -2078,7 +2038,7 @@ useEffect(() => {
         </Pressable>
       </Modal>
 
-      {/* Vehicle Modal */}
+{/* Vehicle Modal */}
       <Modal
         visible={showVehicleModal}
         transparent
@@ -2160,6 +2120,39 @@ useEffect(() => {
                 style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
               />
               
+              {/* Documentos del vehículo - solo para moto/coche */}
+              {(vehicleForm.vehicleType === "motorcycle" || vehicleForm.vehicleType === "car") && (
+                <>
+                  <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos del vehículo</ThemedText>
+                  
+                  <DocumentUploadButton 
+                    documentType="vehiclePhoto" 
+                    label="Foto del vehículo" 
+                    currentUrl={professionalData?.vehiclePhoto}
+                  />
+                  <DocumentUploadButton 
+                    documentType="vehiclePlate" 
+                    label="Foto matrícula" 
+                    currentUrl={professionalData?.vehiclePlatePhoto}
+                  />
+                  <DocumentUploadButton 
+                    documentType="vehicleItv" 
+                    label="ITV" 
+                    currentUrl={professionalData?.vehicleItvPhoto}
+                  />
+                  <DocumentUploadButton 
+                    documentType="vehicleInsurance" 
+                    label="Seguro del vehículo" 
+                    currentUrl={professionalData?.vehicleInsurancePhoto}
+                  />
+                  <DocumentUploadButton 
+                    documentType="vehicleLicense" 
+                    label="Licencia de conducir" 
+                    currentUrl={professionalData?.vehicleLicensePhoto}
+                  />
+                </>
+              )}
+              
               <Pressable
                 onPress={saveVehicle}
                 disabled={isSavingVehicle}
@@ -2173,6 +2166,41 @@ useEffect(() => {
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      {/* Document Image Preview Modal */}
+      <Modal
+        visible={showPreviewModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
+        <Pressable 
+          style={styles.previewModalOverlay} 
+          onPress={() => setShowPreviewModal(false)}
+        >
+          <Pressable 
+            style={styles.previewModalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={[styles.previewModalHeader, { borderBottomColor: theme.border }]}>
+              <ThemedText type="h4">Vista previa</ThemedText>
+              <Pressable 
+                onPress={() => setShowPreviewModal(false)}
+                style={[styles.previewModalClose, { backgroundColor: theme.backgroundSecondary }]}
+              >
+                <Feather name="x" size={20} color={theme.text} />
+              </Pressable>
+            </View>
+            {previewImage && (
+              <Image 
+                source={{ uri: previewImage }}
+                style={styles.previewImage}
+                contentFit="contain"
+              />
+            )}
+          </Pressable>
+        </Pressable>
       </Modal>
     </LinearGradient>
   );
@@ -2462,10 +2490,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
   },
-  strikeInfoCard: {
+strikeInfoCard: {
     flexDirection: "row",
     alignItems: "flex-start",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
+  },
+  // Preview modal styles
+  previewModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  previewModalContent: {
+    width: "100%",
+    maxWidth: "95%",
+    maxHeight: "80%",
+    backgroundColor: "#fff",
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+  },
+  previewModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  previewModalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: 400,
   },
 });

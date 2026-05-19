@@ -51,6 +51,7 @@ import registrationRoutes from "./routes/registration";
 import adminSubscriptionPlansRoutes from "./routes/adminSubscriptionPlans";
 import adminTrackingRoutes from "./routes/adminTracking";
 import businessCategoriesRoutes from "./routes/businessCategories";
+import deliveryVerificationRoutes from "./routes/deliveryVerification";
 
 const router = express.Router();
 
@@ -191,6 +192,7 @@ router.use("/user",                  userRoutes);
 router.use("/delivery",              deliveryConfigRoutes);
 router.use("/delivery",              deliveryRoutes);
 router.use("/delivery",              deliveryRoutesLegacy);
+router.use("/delivery-verification",  deliveryVerificationRoutes);
 router.use("/payments",              paymentRoutes);
 router.use("/digital-payments",      digitalPaymentRoutes);
 router.use("/payment-accounts",      paymentAccountsRoutes);

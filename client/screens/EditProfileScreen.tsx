@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   View, StyleSheet, ScrollView, ActivityIndicator,
-  Pressable, TextInput,
+  Pressable, TextInput, Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -39,28 +39,77 @@ function SectionTitle({ icon, title }: { icon: string; title: string }) {
   );
 }
 
-function DocUpload({ label, description, uri, onPress, theme }: any) {
+function DocUpload({ label, description, uri, onPress, onRemove, theme, onPreview }: { label: string; description?: string; uri: string | null | undefined; onPress: () => void; onRemove?: () => void; theme: any; onPreview?: (uri: string) => void }) {
+  const resolvedUri = uri ? (uri.startsWith('data:image/') || uri.startsWith('http') ? uri : null) : null;
+  
   return (
     <View style={{ marginBottom: Spacing.md }}>
       <ThemedText type="small" style={{ fontWeight: "600", color: theme.text, marginBottom: 4 }}>{label}</ThemedText>
       {description && (
         <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>{description}</ThemedText>
       )}
-      <Pressable
-        onPress={onPress}
-        style={[
-          styles.docUpload,
-          {
-            borderColor: uri ? ComeYaColors.success : theme.border,
-            backgroundColor: uri ? ComeYaColors.success + "10" : theme.backgroundSecondary,
+      
+      {/* Image Preview / Upload Area */}
+      {uri ? (
+        <Pressable onPress={() => onPreview?.(uri)} style={[styles.docPreviewContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+          <Image source={{ uri: uri.startsWith('http') ? uri : uri }} style={styles.docPreviewImage} contentFit="cover" />
+          <View style={[styles.docPreviewOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+            <Feather name="eye" size={20} color="#fff" />
+            <ThemedText type="caption" style={{ color: "#fff", marginLeft: 4 }}>Toca para ver</ThemedText>
+          </View>
+        </Pressable>
+      ) : (
+        /* Empty state - always visible */
+        <Pressable
+          onPress={onPress}
+          style={[
+            styles.docUpload,
+            { flex: 1,
+            borderColor: theme.border,
+            backgroundColor: theme.backgroundSecondary,
           },
-        ]}
-      >
-        <Feather name={uri ? "check-circle" : "upload"} size={20} color={uri ? ComeYaColors.success : theme.textSecondary} />
-        <ThemedText type="small" style={{ color: uri ? ComeYaColors.success : theme.textSecondary, marginLeft: 8, fontWeight: "600" }}>
-          {uri ? "Documento subido ✓" : "Seleccionar imagen"}
-        </ThemedText>
-      </Pressable>
+          ]}
+        >
+          <Feather name="upload" size={20} color={theme.textSecondary} />
+          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 8, fontWeight: "600" }}>
+            Seleccionar documento
+          </ThemedText>
+        </Pressable>
+      )}
+      
+      {/* Action buttons row */}
+      <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm }}>
+        <Pressable
+          onPress={onPress}
+          style={[
+            styles.docUpload,
+            { flex: 1,
+            borderColor: uri ? ComeYaColors.primary : theme.border,
+            backgroundColor: uri ? ComeYaColors.primary + "10" : theme.backgroundSecondary,
+          },
+          ]}
+        >
+          <Feather name={uri ? "refresh-cw" : "upload"} size={20} color={uri ? ComeYaColors.primary : theme.textSecondary} />
+          <ThemedText type="small" style={{ color: uri ? ComeYaColors.primary : theme.textSecondary, marginLeft: 8, fontWeight: "600" }}>
+            {uri ? "Cambiar" : "Subir"}
+          </ThemedText>
+        </Pressable>
+        {uri && onRemove && (
+          <Pressable
+            onPress={onRemove}
+            style={[
+              styles.docUpload,
+              {
+                borderColor: ComeYaColors.error,
+                backgroundColor: ComeYaColors.error + "10",
+                paddingHorizontal: Spacing.md,
+              },
+            ]}
+          >
+            <Feather name="trash-2" size={20} color={ComeYaColors.error} />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -103,9 +152,22 @@ const [dni,   setDni]   = useState((user as any)?.dni   || "");
   const [vehicleInsurancePhotoUri, setVehicleInsurancePhotoUri] = useState<string | null>(null);
   const [vehicleLicensePhotoUri, setVehicleLicensePhotoUri] = useState<string | null>(null);
 
-  const [isSaving,        setIsSaving]        = useState(false);
+const [isSaving,        setIsSaving]        = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 const [verificationStatus, setVerificationStatus] = useState<string>((user as any)?.verificationStatus || "pending");
+
+  // Preview modal state
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // Helper to resolve document URL
+  const resolveDocumentUrl = (url: string | null | undefined): string | null => {
+    if (!url) return null;
+    if (url.startsWith('data:image/')) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    const apiBase = getApiUrl().replace(/\/+$/, "");
+    return `${apiBase}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
 
   React.useLayoutEffect(() => {
     navigation.setOptions({ headerTitle: "Editar perfil" });
@@ -148,13 +210,55 @@ const [verificationStatus, setVerificationStatus] = useState<string>((user as an
     if (user?.id) load();
 }, [user?.id]);
 
-  const pickDocument = async (setter: (uri: string) => void) => {
+const pickDocument = async (setter: (uri: string) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") { showToast("Se necesita permiso de galería", "error"); return; }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
       setter(result.assets[0].uri);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
+// Remove document handler
+  const removeDocument = async (key: string, currentUri: string | null) => {
+    if (!currentUri || !currentUri.startsWith("http")) {
+      // Already removed or local only
+      return;
+    }
+    try {
+      // Determine which API to call based on document type
+      const isVehicleDoc = ["vehiclePhoto", "vehiclePlatePhoto", "vehicleItvPhoto", "vehicleInsurancePhoto", "vehicleLicensePhoto"].includes(key);
+      
+      if (isVehicleDoc) {
+        // Map to vehicle delete flags
+        const deleteKeyMap: Record<string, string> = {
+          vehiclePhoto: "deleteVehiclePhoto",
+          vehiclePlatePhoto: "deleteVehiclePlatePhoto",
+          vehicleItvPhoto: "deleteVehicleItvPhoto",
+          vehicleInsurancePhoto: "deleteVehicleInsurancePhoto",
+          vehicleLicensePhoto: "deleteVehicleLicensePhoto",
+        };
+        const res = await apiRequest("PUT", "/api/users/vehicle", { [deleteKeyMap[key]]: true });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Documento eliminado", "success");
+        }
+} else {
+        // Personal documents - use delete flags
+        const deleteKeyMap: Record<string, string> = {
+          idDocumentUrl: "deleteIdDocumentUrl",
+          idDocumentBackUrl: "deleteIdDocumentBackUrl",
+          autonomoDocumentUrl: "deleteAutonomoDocumentUrl",
+        };
+        const res = await apiRequest("PUT", "/api/users/personal-docs", { [deleteKeyMap[key]]: true });
+        const data = await res.json();
+        if (data.success) {
+          showToast("Documento eliminado", "success");
+        }
+      }
+    } catch (err: any) {
+      showToast(err.message || "Error al eliminar documento", "error");
     }
   };
 
@@ -253,7 +357,7 @@ vehicleColor: vehicleColor.trim() || undefined,
         setVerificationStatus("pending");
       }
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Perfil actualizado correctamente", "success");
       navigation.goBack();
     } catch (error: any) {
@@ -295,8 +399,15 @@ vehicleColor: vehicleColor.trim() || undefined,
     finally { setIsUploadingImage(false); }
   };
 
-  const statusColor = verificationStatus === "verified" ? ComeYaColors.success : verificationStatus === "rejected" ? ComeYaColors.error : ComeYaColors.warning;
+const statusColor = verificationStatus === "verified" ? ComeYaColors.success : verificationStatus === "rejected" ? ComeYaColors.error : ComeYaColors.warning;
   const statusLabel = verificationStatus === "verified" ? "Verificado ✓" : verificationStatus === "rejected" ? "Rechazado — sube nuevos documentos" : "En revisión";
+
+  // Preview handler
+  const handlePreviewDocument = (uri: string) => {
+    const resolved = resolveDocumentUrl(uri) || uri;
+    setPreviewImage(resolved);
+    setShowPreviewModal(true);
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -405,13 +516,65 @@ vehicleColor: vehicleColor.trim() || undefined,
                 </>
               )}
 
-              <DocUpload
+<DocUpload
                 label="Foto del vehículo *"
                 description="Foto clara del vehículo con matrícula visible"
                 uri={vehiclePhotoUri}
                 onPress={() => pickDocument((uri) => setVehiclePhotoUri(uri))}
+                onRemove={() => { setVehiclePhotoUri(null); removeDocument("vehiclePhoto", vehiclePhotoUri); }}
                 theme={theme}
+                onPreview={handlePreviewDocument}
               />
+
+              {/* ── Documentos del vehículo (moto/coche) ── */}
+              {(vehicleType === 'motorcycle' || vehicleType === 'car') && (
+                <>
+                  <SectionTitle icon="truck" title="Documentos del vehículo" />
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+                    Sube los documentos de tu vehículo según la normativa española
+                  </ThemedText>
+
+<DocUpload
+                    label="Foto de matrícula *"
+                    description="Foto clara de la matrícula del vehículo"
+                    uri={vehiclePlatePhotoUri}
+                    onPress={() => pickDocument(setVehiclePlatePhotoUri)}
+                    onRemove={() => { setVehiclePlatePhotoUri(null); removeDocument("vehiclePlatePhoto", vehiclePlatePhotoUri); }}
+                    theme={theme}
+                    onPreview={handlePreviewDocument}
+                  />
+
+                  <DocUpload
+                    label="ITV en vigor"
+                    description="Foto del documento ITV vigente (motos y coches)"
+                    uri={vehicleItvPhotoUri}
+                    onPress={() => pickDocument(setVehicleItvPhotoUri)}
+                    onRemove={() => { setVehicleItvPhotoUri(null); removeDocument("vehicleItvPhoto", vehicleItvPhotoUri); }}
+                    theme={theme}
+                    onPreview={handlePreviewDocument}
+                  />
+
+                  <DocUpload
+                    label="Seguro de responsabilidad civil"
+                    description="Foto de la póliza o recibo del seguro"
+                    uri={vehicleInsurancePhotoUri}
+                    onPress={() => pickDocument(setVehicleInsurancePhotoUri)}
+                    onRemove={() => { setVehicleInsurancePhotoUri(null); removeDocument("vehicleInsurancePhoto", vehicleInsurancePhotoUri); }}
+                    theme={theme}
+                    onPreview={handlePreviewDocument}
+                  />
+
+                  <DocUpload
+                    label="Permiso de conducir"
+                    description="Foto del carnet de conducir (anverso)"
+                    uri={vehicleLicensePhotoUri}
+                    onPress={() => pickDocument(setVehicleLicensePhotoUri)}
+                    onRemove={() => { setVehicleLicensePhotoUri(null); removeDocument("vehicleLicensePhoto", vehicleLicensePhotoUri); }}
+                    theme={theme}
+                    onPreview={handlePreviewDocument}
+                  />
+                </>
+              )}
             </>
           )}
 
@@ -425,12 +588,14 @@ vehicleColor: vehicleColor.trim() || undefined,
                   : "Sube documentos actualizados si necesitas renovar tu verificación."}
               </ThemedText>
 
-              <DocUpload
+<DocUpload
                 label="Foto del DNI / NIE (anverso) *"
                 description="Foto del anverso de tu DNI o NIE"
                 uri={idDocUri}
                 onPress={() => pickDocument(setIdDocUri)}
+                onRemove={() => { setIdDocUri(null); removeDocument("idDocumentUrl", idDocUri); }}
                 theme={theme}
+                onPreview={handlePreviewDocument}
               />
 
               <DocUpload
@@ -438,15 +603,19 @@ vehicleColor: vehicleColor.trim() || undefined,
                 description="Foto del reverso de tu DNI o NIE"
                 uri={idDocBackUri}
                 onPress={() => pickDocument(setIdDocBackUri)}
+                onRemove={() => { setIdDocBackUri(null); removeDocument("idDocumentBackUrl", idDocBackUri); }}
                 theme={theme}
+                onPreview={handlePreviewDocument}
               />
 
-<DocUpload
+              <DocUpload
                 label={isBusiness ? "Certificado de autónomo / empresa *" : "Documento de autónomo *"}
                 description="Alta en Hacienda o certificado de empresa"
                 uri={autonomoDocUri}
                 onPress={() => pickDocument(setAutonomoDocUri)}
+                onRemove={() => { setAutonomoDocUri(null); removeDocument("autonomoDocumentUrl", autonomoDocUri); }}
                 theme={theme}
+                onPreview={handlePreviewDocument}
               />
             </>
           )}
@@ -462,11 +631,23 @@ vehicleColor: vehicleColor.trim() || undefined,
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.lg, backgroundColor: theme.backgroundSecondary, borderTopColor: theme.border }]}>
+<View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.lg, backgroundColor: theme.backgroundSecondary, borderTopColor: theme.border }]}>
         <Button onPress={handleSave} disabled={isSaving} loading={isSaving} style={styles.saveButton}>
           Guardar cambios
         </Button>
       </View>
+
+      {/* Image Preview Modal */}
+      <Modal visible={showPreviewModal} transparent animationType="fade" onRequestClose={() => setShowPreviewModal(false)}>
+        <View style={styles.previewModalContainer}>
+          {previewImage && (
+            <Image source={{ uri: previewImage }} style={styles.previewModalImage} contentFit="contain" />
+          )}
+          <Pressable style={styles.previewModalClose} onPress={() => setShowPreviewModal(false)}>
+            <Feather name="x" size={24} color="#fff" />
+          </Pressable>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -483,8 +664,15 @@ const styles = StyleSheet.create({
   formSection: { padding: Spacing.lg, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg },
   sectionIcon: { width: 30, height: 30, borderRadius: 8, justifyContent: "center", alignItems: "center" },
   vehicleChip: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: Spacing.sm, borderRadius: BorderRadius.md, borderWidth: 1.5 },
-  docUpload: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 2, borderStyle: "dashed", borderRadius: BorderRadius.lg, padding: Spacing.lg },
+docUpload: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 2, borderStyle: "dashed", borderRadius: BorderRadius.lg, padding: Spacing.lg },
+  removeButton: { width: 48, height: 48, borderRadius: BorderRadius.md, borderWidth: 1, justifyContent: "center", alignItems: "center" },
   footer: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: 1 },
   saveButton: { width: "100%" },
   infoBox: { flexDirection: "row", alignItems: "flex-start", padding: Spacing.md, borderRadius: BorderRadius.md, marginBottom: Spacing.xl },
+  docPreviewContainer: { width: "100%", height: 150, borderRadius: BorderRadius.md, borderWidth: 1, overflow: "hidden", position: "relative" },
+  docPreviewImage: { width: "100%", height: "100%" },
+  docPreviewOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: Spacing.sm },
+  previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.9)" },
+  previewModalImage: { width: "90%", height: "70%", borderRadius: BorderRadius.md },
+  previewModalClose: { position: "absolute", top: 50, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
 });

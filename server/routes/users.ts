@@ -72,9 +72,10 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
     const { db } = await import("../db");
     const { CloudinaryService } = await import("../cloudinaryService");
 
-    const {
+const {
       vehicleType, vehiclePlate, vehicleBrand, vehicleModel, vehicleColor, vehicleYear,
-      vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
+      vehiclePhoto, vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
+      deleteVehiclePhoto, deleteVehiclePlatePhoto, deleteVehicleItvPhoto, deleteVehicleInsurancePhoto, deleteVehicleLicensePhoto,
     } = req.body;
 
     const updates: any = {};
@@ -94,17 +95,29 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
       return b64; // ya es URL
     };
 
+const photoUrl    = await uploadDoc(vehiclePhoto,       "photo");
     const plateUrl    = await uploadDoc(vehiclePlatePhoto,    "plate");
     const itvUrl      = await uploadDoc(vehicleItvPhoto,      "itv");
     const insuranceUrl= await uploadDoc(vehicleInsurancePhoto,"insurance");
     const licenseUrl  = await uploadDoc(vehicleLicensePhoto,  "license");
 
-    if (plateUrl     !== undefined) updates.vehiclePlatePhoto     = plateUrl;
-    if (itvUrl       !== undefined) updates.vehicleItvPhoto       = itvUrl;
-    if (insuranceUrl !== undefined) updates.vehicleInsurancePhoto = insuranceUrl;
-    if (licenseUrl   !== undefined) updates.vehicleLicensePhoto   = licenseUrl;
+    // Handle deletes and updates
+    if (deleteVehiclePhoto === true) updates.vehiclePhoto = null;
+    else if (photoUrl !== undefined) updates.vehiclePhoto = photoUrl;
 
-const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id as string)).limit(1);
+    if (deleteVehiclePlatePhoto === true) updates.vehiclePlatePhoto = null;
+    else if (plateUrl !== undefined) updates.vehiclePlatePhoto = plateUrl;
+
+    if (deleteVehicleItvPhoto === true) updates.vehicleItvPhoto = null;
+    else if (itvUrl !== undefined) updates.vehicleItvPhoto = itvUrl;
+
+    if (deleteVehicleInsurancePhoto === true) updates.vehicleInsurancePhoto = null;
+    else if (insuranceUrl !== undefined) updates.vehicleInsurancePhoto = insuranceUrl;
+
+    if (deleteVehicleLicensePhoto === true) updates.vehicleLicensePhoto = null;
+    else if (licenseUrl !== undefined) updates.vehicleLicensePhoto = licenseUrl;
+
+    const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id as string)).limit(1);
     if (existing) {
       await db.update(deliveryDrivers).set(updates).where(eq(deliveryDrivers.userId, req.user!.id as string));
     } else {
@@ -444,6 +457,41 @@ const [user] = await db.select({ verificationStatus: users.verificationStatus, v
   }
 });
 
+// POST /api/users/:id/reset-verification — Reiniciar verificación para volver a subir documentos
+router.post("/:id/reset-verification", authenticateToken, async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const userId = req.params.id;
+
+    // Verificar que el usuario que hace la petición es el mismo o es admin
+    if (req.user!.id !== userId && req.user!.role !== "admin" && req.user!.role !== "super_admin") {
+      return res.status(403).json({ error: "No tienes permiso para hacer esto" });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    // No permitir reset si ya está aprobado
+    if (user.verificationStatus === "verified" && user.isActive) {
+      return res.status(400).json({ error: "Tu cuenta ya está verificada. Contacta soporte para modificar tus documentos." });
+    }
+
+    // Reiniciar estado de verificación
+    await db.update(users).set({
+      verificationStatus: "pending" as any,
+      verificationNotes: null,
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+
+    res.json({ success: true, message: "Verificación reiniciada. Por favor, envía tus documentos nuevamente." });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/users/change-phone — solicitar cambio de teléfono via OTP
 router.post("/change-phone", authenticateToken, async (req, res) => {
   try {
@@ -498,7 +546,7 @@ const { users } = await import("@shared/schema-mysql");
   }
 });
 
-// POST /api/users/verification-document — subir un documento de verificación
+// POST /api/users/verification-document — subir y guardar un documento de verificación
 router.post("/verification-document", authenticateToken, async (req, res) => {
   try {
     const { key, image } = req.body;
@@ -510,10 +558,54 @@ router.post("/verification-document", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "El archivo es muy pesado. Máximo 5MB" });
     }
 
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
     const { CloudinaryService } = await import("../cloudinaryService");
+
+    // Upload to Cloudinary
     const url = await CloudinaryService.uploadImage(image, "verification-docs", `driver-${req.user!.id}-${key}`);
-    res.json({ success: true, url });
+
+    // Map document keys to database fields
+    const fieldMap: Record<string, string> = {
+      idDocument: "idDocumentUrl",
+      idDocumentBack: "idDocumentBackUrl",
+      autonomo: "autonomoDocumentUrl",
+      vehicleLicense: "vehicleLicensePhoto",
+      vehiclePlate: "vehiclePlatePhoto",
+      vehicleItv: "vehicleItvPhoto",
+      vehicleInsurance: "vehicleInsurancePhoto",
+      vehiclePhoto: "vehiclePhoto",
+    };
+
+    const field = fieldMap[key];
+    if (!field) {
+      return res.status(400).json({ error: "Tipo de documento inválido" });
+    }
+
+    // Determine which table to update based on document type
+    const isVehicleDocument = ["vehicleLicense", "vehiclePlate", "vehicleItv", "vehicleInsurance", "vehiclePhoto"].includes(field);
+
+    if (isVehicleDocument) {
+      // Update deliveryDrivers table for vehicle documents
+      const { deliveryDrivers } = await import("@shared/schema-mysql");
+      const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id as string)).limit(1);
+      if (existing) {
+        await db.update(deliveryDrivers).set({ [field]: url, updatedAt: new Date() }).where(eq(deliveryDrivers.userId, req.user!.id as string));
+      } else {
+        await db.insert(deliveryDrivers).values({ id: crypto.randomUUID(), userId: req.user!.id, [field]: url });
+      }
+    } else {
+      // Update users table for personal documents (idDocument, idDocumentBack, autonomo)
+      await db.update(users).set({
+        [field]: url,
+        verificationStatus: "pending",
+        updatedAt: new Date(),
+      }).where(eq(users.id, req.user!.id as string));
+    }
+
+    res.json({ success: true, url, message: "Documento guardado correctamente" });
   } catch (error: any) {
+    console.error("Verification document upload error:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -524,12 +616,18 @@ router.put("/personal-docs", authenticateToken, async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const { idDocumentUrl, idDocumentBackUrl, autonomoDocumentUrl } = req.body;
+    const { idDocumentUrl, idDocumentBackUrl, autonomoDocumentUrl, deleteIdDocumentUrl, deleteIdDocumentBackUrl, deleteAutonomoDocumentUrl } = req.body;
     const updates: any = { verificationStatus: "pending", updatedAt: new Date() };
 
-    if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
-if (idDocumentBackUrl) updates.idDocumentBackUrl = idDocumentBackUrl;
-    if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
+    // Handle deletes (setting to empty string or null removes the document)
+    if (deleteIdDocumentUrl === true) updates.idDocumentUrl = null;
+    else if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
+
+    if (deleteIdDocumentBackUrl === true) updates.idDocumentBackUrl = null;
+    else if (idDocumentBackUrl) updates.idDocumentBackUrl = idDocumentBackUrl;
+
+    if (deleteAutonomoDocumentUrl === true) updates.autonomoDocumentUrl = null;
+    else if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
 
     await db.update(users).set(updates).where(eq(users.id, req.user!.id as string));
     res.json({ success: true, message: "Documentos guardados. Tu cuenta será revisada nuevamente." });
