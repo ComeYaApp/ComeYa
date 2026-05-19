@@ -96,3 +96,8 @@ export function notifyAdminOrderStuck(data: { orderId: string; businessName: str
   if (!io) return;
   io.to('admins').emit('admin_order_stuck', { ...data, timestamp: new Date().toISOString() });
 }
+
+export function notifyAdmins(data: { type: string; [key: string]: any }) {
+  if (!io) return;
+  io.to('admins').emit('admin_notification', { ...data, timestamp: new Date().toISOString() });
+}

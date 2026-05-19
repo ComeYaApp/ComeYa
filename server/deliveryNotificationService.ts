@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { users, deliveryDrivers } from "@shared/schema-mysql";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or } from "drizzle-orm";
 import { sendPushToUser } from "./enhancedPushService";
 
 interface NotificationData {
