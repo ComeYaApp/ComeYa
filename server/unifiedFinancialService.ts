@@ -2,9 +2,7 @@
 import { db } from "./db";
 import { systemSettings, wallets, transactions } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
-import { SubscriptionService } from './subscriptionService';
-
-;
+import { SubscriptionService } from "./subscriptionService";
 import { logger } from "./logger";
 
 interface CommissionRates {
@@ -81,9 +79,9 @@ export class UnifiedFinancialService {
   async calculateCommissions(
     totalAmount: number,
     deliveryFee: number = 0,
-    productosBase?: number,businessOwnerId?: string,
-    
-    nemyCommission?: number
+    productosBase?: number,
+    nemyCommission?: number,
+    businessOwnerId?: string
   ): Promise<{
     platform: number;
     business: number;
@@ -522,9 +520,7 @@ export class UnifiedFinancialService {
       return { success: true, message: 'Pago procesado con billetera' };
     });
   }
-}
 
-// Export singlet
   async getBusinessCommissionRate(ownerId?: string): Promise<number> {
     if (!ownerId) return 0.15;
     try {
@@ -534,6 +530,7 @@ export class UnifiedFinancialService {
       return 0.15;
     }
   }
+}
 
-on instance
+// Export singleton instance
 export const financialService = UnifiedFinancialService.getInstance();
