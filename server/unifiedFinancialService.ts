@@ -1,7 +1,8 @@
 // Unified Financial Service - Single Source of Truth for All Financial Operations
 import { db } from "./db";
 import { systemSettings, wallets, transactions } from "@shared/schema-mysql";
-import { eq } from "drizzle-orm"import { SubscriptionService } from './subscriptionService';
+import { eq } from "drizzle-orm";
+import { SubscriptionService } from './subscriptionService';
 
 ;
 import { logger } from "./logger";
