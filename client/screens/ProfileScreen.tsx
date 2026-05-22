@@ -1,4 +1,4 @@
-Ôªøimport React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -285,7 +285,7 @@ const data = await apiResponse.json();
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showToast("Permisos de galer√≠a denegados", "error");
+      showToast("Permisos de galerÌa denegados", "error");
       return;
     }
 
@@ -418,11 +418,11 @@ const saveProfile = async () => {
       });
       const data = await res.json();
       if (data.success || data.user) {
-        // Si es driver o negocio,resetear verificaci√≥n si cambi√≥ informaci√≥n cr√≠tica (DNI)
+        // Si es driver o negocio,resetear verificaciÛn si cambiÛ informaciÛn crÌtica (DNI)
         if (isDriverOrBusiness && editDni.trim()) {
           try {
             await apiRequest("POST", `/api/users/${user?.id}/reset-verification`);
-            showToast("Perfil actualizado. Tu verificaci√≥n est√° en revisi√≥n.", "success");
+            showToast("Perfil actualizado. Tu verificaciÛn est· en revisiÛn.", "success");
           } catch {
             showToast("Perfil actualizado. Contacta soporte para re-verificar.", "warning");
           }
@@ -435,7 +435,7 @@ const saveProfile = async () => {
         showToast(data.message || "Error al actualizar perfil", "error");
       }
     } catch {
-      showToast("Error de conexi√≥n", "error");
+      showToast("Error de conexiÛn", "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -446,7 +446,7 @@ const saveProfile = async () => {
       showToast("Completa todos los campos", "error"); return;
     }
     if (editNewPassword.length < 6) {
-      showToast("La nueva contrase√±a debe tener al menos 6 caracteres", "error"); return;
+      showToast("La nueva contraseÒa debe tener al menos 6 caracteres", "error"); return;
     }
     setIsSavingProfile(true);
     try {
@@ -456,15 +456,15 @@ const saveProfile = async () => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Contrase√±a cambiada correctamente", "success");
+        showToast("ContraseÒa cambiada correctamente", "success");
         setEditCurrentPassword("");
         setEditNewPassword("");
         setShowEditProfileModal(false);
       } else {
-        showToast(data.message || "Error al cambiar contrase√±a", "error");
+        showToast(data.message || "Error al cambiar contraseÒa", "error");
       }
     } catch {
-      showToast("Error de conexi√≥n", "error");
+      showToast("Error de conexiÛn", "error");
 } finally {
       setIsSavingProfile(false);
     }
@@ -472,7 +472,7 @@ const saveProfile = async () => {
 
   const saveVehicle = async () => {
     if (!vehicleForm.vehicleType) {
-      showToast("Selecciona un tipo de veh√≠culo", "error");
+      showToast("Selecciona un tipo de vehÌculo", "error");
       return;
     }
     setIsSavingVehicle(true);
@@ -486,7 +486,7 @@ const saveProfile = async () => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Veh√≠culo guardado", "success");
+        showToast("VehÌculo guardado", "success");
         setShowVehicleModal(false);
         // Actualizar driverStats local
         setDriverStats(prev => prev ? {
@@ -495,10 +495,10 @@ const saveProfile = async () => {
           vehiclePlate: vehicleForm.vehiclePlate.trim().toUpperCase(),
         } : null);
       } else {
-        showToast(data.message || "Error al guardar veh√≠culo", "error");
+        showToast(data.message || "Error al guardar vehÌculo", "error");
       }
     } catch {
-      showToast("Error de conexi√≥n", "error");
+      showToast("Error de conexiÛn", "error");
     } finally {
       setIsSavingVehicle(false);
     }
@@ -540,7 +540,7 @@ const saveProfile = async () => {
         if (data.success && data.user) {
           if (data.user.profileImage) {
             const img = data.user.profileImage;
-            // Si es base64, usarla directamente sin a√±adir ?v=
+            // Si es base64, usarla directamente sin aÒadir ?v=
             if (img.startsWith('data:image/')) {
               setProfileImage(img);
             } else {
@@ -609,7 +609,7 @@ const saveProfile = async () => {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showToast("Permisos de galer√≠a denegados", "error");
+      showToast("Permisos de galerÌa denegados", "error");
       return;
     }
 
@@ -696,7 +696,7 @@ const saveProfile = async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const friendly = error?.message || "No se pudo subir la imagen";
       showToast(friendly, "error");
-      // Si el backend devolvi√≥ texto de error completo (ej. 400: ...), mu√©stralo para diagn√≥stico en dispositivo.
+      // Si el backend devolviÛ texto de error completo (ej. 400: ...), muÈstralo para diagnÛstico en dispositivo.
       if (error?.message && error.message.includes(":")) {
         showToast(error.message, "error");
       }
@@ -742,7 +742,7 @@ const saveProfile = async () => {
     }
 
     Linking.openURL(shareUrl).catch(() => {
-      console.log("No se pudo abrir la aplicaci√≥n");
+      console.log("No se pudo abrir la aplicaciÛn");
     });
   };
 
@@ -835,7 +835,7 @@ useEffect(() => {
       }
 
       if (finalStatus !== "granted") {
-        showToast("Activa permisos de notificaci√≥n en ajustes del sistema", "error");
+        showToast("Activa permisos de notificaciÛn en ajustes del sistema", "error");
         return;
       }
       await updateSettings({ notificationsEnabled: true });
@@ -851,7 +851,7 @@ useEffect(() => {
       case "customer":
         return "Cliente";
       case "business_owner":
-        return "Due√±o de Negocio";
+        return "DueÒo de Negocio";
       case "delivery_driver":
         return "Repartidor";
       case "admin":
@@ -921,7 +921,7 @@ useEffect(() => {
             {user?.name || "Usuario"}
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-      {user?.phone || "Sin tel√©fono"}
+      {user?.phone || "Sin telÈfono"}
           </ThemedText>
           <Badge
             text={getRoleLabel()}
@@ -935,7 +935,7 @@ useEffect(() => {
               style={{ marginTop: Spacing.xs }}
             />
           ) : null}
-          {subscription && (
+          {subscription && (user?.role === "customer" || user?.role === "business_owner") && (
             <View style={{ flexDirection: "row", alignItems: "center", marginTop: Spacing.sm, backgroundColor: ComeYaColors.primary + "18", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
               <Feather name="star" size={13} color={ComeYaColors.primary} />
               <ThemedText type="caption" style={{ color: ComeYaColors.primary, fontWeight: "700", marginLeft: 4 }}>
@@ -972,15 +972,28 @@ useEffect(() => {
               />
 <SettingsItem
                 icon="clock"
-                label="Horarios de atenci√≥n"
+                label="Horarios de atenciÛn"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   navigation.navigate("BusinessHours" as any);
                 }}
               />
+              <SettingsItem
+                icon="star"
+                label="Suscripciones"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  navigation.navigate("Subscriptions" as any);
+                }}
+              />
+              <SettingsItem
+                icon="credit-card"
+                label="MÈtodos de pago"
+                onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
+              />
             </>
           )}
-        {/* Secci√≥n cliente: features avanzadas */}
+        {/* SecciÛn cliente: features avanzadas */}
           {user?.role === "customer" && (
             <>
               <SettingsItem
@@ -993,8 +1006,8 @@ useEffect(() => {
               />
               <SettingsItem
                 icon="credit-card"
-                label="M√©todos de pago"
-                value="Bizum ¬∑ Tarjeta ¬∑ PayPal"
+                label="MÈtodos de pago"
+                value="Bizum ∑ Tarjeta ∑ PayPal"
                 onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
               />
               <SettingsItem
@@ -1049,12 +1062,12 @@ useEffect(() => {
               Estado del Repartidor
             </ThemedText>
 
-            {/* Stats r√°pidas */}
+            {/* Stats r·pidas */}
             {driverStats && (
               <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
                 <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center" }}>
                   <ThemedText type="h3" style={{ color: "#FF9800" }}>
-                    {driverStats.rating > 0 ? (driverStats.rating / 10).toFixed(1) : "‚Äî"}
+                    {driverStats.rating > 0 ? (driverStats.rating / 10).toFixed(1) : "ó"}
                   </ThemedText>
                   <ThemedText type="caption" style={{ color: theme.textSecondary }}>Rating</ThemedText>
                 </View>
@@ -1077,11 +1090,11 @@ useEffect(() => {
               </View>
             )}
 
-{/* Veh√≠culo */}
+{/* VehÌculo */}
 <SettingsItem
               icon="truck"
-              label="Mi veh√≠culo"
-              value={driverStats?.vehicleType ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` ¬∑ ${driverStats.vehiclePlate}` : ""}` : "No registrado"}
+              label="Mi vehÌculo"
+              value={driverStats?.vehicleType ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` ∑ ${driverStats.vehiclePlate}` : ""}` : "No registrado"}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 // Pre-fill form with existing data
@@ -1112,8 +1125,8 @@ useEffect(() => {
                     {driverStrikes === 0 
                       ? "Sin strikes - Excelente trabajo" 
                       : driverStrikes >= maxStrikes 
-                        ? "Cuenta en riesgo de suspensi√≥n"
-                        : `${maxStrikes - driverStrikes} strikes restantes antes de suspensi√≥n`}
+                        ? "Cuenta en riesgo de suspensiÛn"
+                        : `${maxStrikes - driverStrikes} strikes restantes antes de suspensiÛn`}
                   </ThemedText>
                 </View>
               </View>
@@ -1174,7 +1187,7 @@ useEffect(() => {
           <SettingsItem
             icon="globe"
             label="Idioma"
-            value="Espa√±ol"
+            value="EspaÒol"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowLanguageModal(true);
@@ -1186,7 +1199,7 @@ useEffect(() => {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <ThemedText type="h4" style={styles.sectionTitle}>
-            M√°s
+            M·s
           </ThemedText>
           <SettingsItem
             icon="share-2"
@@ -1229,7 +1242,7 @@ useEffect(() => {
           />
           <SettingsItem
             icon="file-text"
-            label="T√©rminos y condiciones"
+            label="TÈrminos y condiciones"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowTermsModal(true);
@@ -1237,7 +1250,7 @@ useEffect(() => {
           />
           <SettingsItem
             icon="shield"
-            label="Pol√≠tica de privacidad"
+            label="PolÌtica de privacidad"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowPrivacyModal(true);
@@ -1250,7 +1263,7 @@ useEffect(() => {
         >
           <SettingsItem
             icon="log-out"
-            label="Cerrar sesi√≥n"
+            label="Cerrar sesiÛn"
             onPress={handleLogout}
             danger
           />
@@ -1279,13 +1292,13 @@ useEffect(() => {
               <Feather name="log-out" size={28} color={ComeYaColors.error} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
-              Cerrar sesi√≥n
+              Cerrar sesiÛn
             </ThemedText>
             <ThemedText
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              ¬øEst√°s seguro que deseas cerrar sesi√≥n?
+              øEst·s seguro que deseas cerrar sesiÛn?
             </ThemedText>
             <View style={styles.modalButtons}>
               <Pressable
@@ -1308,7 +1321,7 @@ useEffect(() => {
                   type="body"
                   style={{ color: "#FFFFFF", fontWeight: "600" }}
                 >
-                  Cerrar sesi√≥n
+                  Cerrar sesiÛn
                 </ThemedText>
               </Pressable>
             </View>
@@ -1437,7 +1450,7 @@ useEffect(() => {
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              Recibe alertas sobre tus pedidos y promociones especiales. Si el permiso est√° bloqueado, debes activarlo en la configuraci√≥n del sistema.
+              Recibe alertas sobre tus pedidos y promociones especiales. Si el permiso est· bloqueado, debes activarlo en la configuraciÛn del sistema.
             </ThemedText>
             <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginBottom: Spacing.md }]}>
               <Feather name="info" size={16} color={theme.textSecondary} />
@@ -1525,7 +1538,7 @@ useEffect(() => {
                   type="body"
                   style={{ color: ComeYaColors.primary, fontWeight: "600" }}
                 >
-                  Espa√±ol
+                  EspaÒol
                 </ThemedText>
                 <Feather
                   name="check"
@@ -1539,7 +1552,7 @@ useEffect(() => {
               type="small"
               style={[styles.comingSoon, { color: theme.textSecondary }]}
             >
-              M√°s idiomas pr√≥ximamente...
+              M·s idiomas prÛximamente...
             </ThemedText>
             <Pressable
               style={[
@@ -1573,7 +1586,7 @@ useEffect(() => {
               { borderBottomColor: theme.border },
             ]}
           >
-            <ThemedText type="h3">T√©rminos y condiciones</ThemedText>
+            <ThemedText type="h3">TÈrminos y condiciones</ThemedText>
             <Pressable
               style={[
                 styles.closeButton,
@@ -1779,7 +1792,7 @@ useEffect(() => {
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              10. Contacto ‚Äî Privacidad
+              10. Contacto ó Privacidad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
               Para ejercer tus derechos o resolver dudas sobre privacidad, contactanos a traves de Ayuda y Soporte en la app o al correo: privacidad@comeya.es
@@ -1813,7 +1826,7 @@ useEffect(() => {
                   style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
                 >
                   <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
-                    {tab === "datos" ? "Datos" : tab === "seguridad" ? "Seguridad" : "Profesi√≥n"}
+                    {tab === "datos" ? "Datos" : tab === "seguridad" ? "Seguridad" : "ProfesiÛn"}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -1839,11 +1852,11 @@ useEffect(() => {
                     autoCapitalize="none"
                     style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                   />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>DNI / C√©dula</ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>DNI / CÈdula</ThemedText>
                   <TextInput
                     value={editDni}
                     onChangeText={setEditDni}
-                    placeholder="N√∫mero de documento"
+                    placeholder="N˙mero de documento"
                     placeholderTextColor={theme.textSecondary}
                     style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                   />
@@ -1860,20 +1873,20 @@ useEffect(() => {
                 </>
               ) : editTab === "seguridad" ? (
                 <>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Contrase√±a actual</ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>ContraseÒa actual</ThemedText>
                   <TextInput
                     value={editCurrentPassword}
                     onChangeText={setEditCurrentPassword}
-                    placeholder="‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢"
+                    placeholder="ïïïïïïïï"
                     placeholderTextColor={theme.textSecondary}
                     secureTextEntry
                     style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
                   />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Nueva contrase√±a</ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Nueva contraseÒa</ThemedText>
                   <TextInput
                     value={editNewPassword}
                     onChangeText={setEditNewPassword}
-                    placeholder="M√≠nimo 6 caracteres"
+                    placeholder="MÌnimo 6 caracteres"
                     placeholderTextColor={theme.textSecondary}
                     secureTextEntry
                     style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
@@ -1885,18 +1898,18 @@ useEffect(() => {
                   >
                     {isSavingProfile
                       ? <ActivityIndicator color="#fff" size="small" />
-                      : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Cambiar contrase√±a</ThemedText>
+                      : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Cambiar contraseÒa</ThemedText>
                     }
                   </Pressable>
                 </>
 ) : (
-                // Profesi√≥n tab - solo documentos personales para drivers/business owners
-                // Los datos del veh√≠culo est√°n en "Mi veh√≠culo"
+                // ProfesiÛn tab - solo documentos personales para drivers/business owners
+                // Los datos del vehÌculo est·n en "Mi vehÌculo"
                 <>
                   <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
                     {user?.role === "delivery_driver" 
-                      ? "Para gestionar tu veh√≠culo y sus documentos, ve a 'Mi veh√≠culo' en la pantalla de perfil."
-                      : "Gestiona tus documentos de verificaci√≥n abajo."}
+                      ? "Para gestionar tu vehÌculo y sus documentos, ve a 'Mi vehÌculo' en la pantalla de perfil."
+                      : "Gestiona tus documentos de verificaciÛn abajo."}
                   </ThemedText>
                   
                   {user?.role === "business_owner" && (
@@ -1905,7 +1918,7 @@ useEffect(() => {
                       <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginBottom: Spacing.md }]}>
                         <Feather name="info" size={16} color={theme.textSecondary} />
                         <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-                          Aqu√≠ puedes ver el estado de tus documentos. Contacta soporte si necesitas actualizar algo.
+                          AquÌ puedes ver el estado de tus documentos. Contacta soporte si necesitas actualizar algo.
                         </ThemedText>
                       </View>
                     </>
@@ -1918,23 +1931,23 @@ useEffect(() => {
                       
                       <DocumentUploadButton 
                         documentType="idDocument" 
-                        label="DNI / Identificaci√≥n (frente)" 
+                        label="DNI / IdentificaciÛn (frente)" 
                         currentUrl={professionalData?.idDocumentUrl}
                       />
                       <DocumentUploadButton 
                         documentType="idDocumentBack" 
-                        label="DNI / Identificaci√≥n (reverso)" 
+                        label="DNI / IdentificaciÛn (reverso)" 
                         currentUrl={professionalData?.idDocumentBackUrl}
                       />
                       <DocumentUploadButton 
                         documentType="autonomo" 
-                        label="Documento de Aut√≥nomo" 
+                        label="Documento de AutÛnomo" 
                         currentUrl={professionalData?.autonomoDocumentUrl}
                       />
                       <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.md }]}>
                         <Feather name="truck" size={16} color={theme.textSecondary} />
                         <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-                          Los documentos del veh√≠culo est√°n en "Mi veh√≠culo"
+                          Los documentos del vehÌculo est·n en "Mi vehÌculo"
                         </ThemedText>
                       </View>
                     </>
@@ -1947,12 +1960,12 @@ useEffect(() => {
                       
                       <DocumentUploadButton 
                         documentType="idDocument" 
-                        label="DNI / Identificaci√≥n" 
+                        label="DNI / IdentificaciÛn" 
                         currentUrl={professionalData?.idDocumentUrl}
                       />
                       <DocumentUploadButton 
                         documentType="autonomo" 
-                        label="Documento de Aut√≥nomo" 
+                        label="Documento de AutÛnomo" 
                         currentUrl={professionalData?.autonomoDocumentUrl}
                       />
                     </>
@@ -1967,7 +1980,7 @@ useEffect(() => {
                     >
                       {isSavingVehicle
                         ? <ActivityIndicator color="#fff" size="small" />
-                        : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar veh√≠culo</ThemedText>
+                        : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar vehÌculo</ThemedText>
                       }
                     </Pressable>
                   )}
@@ -2017,7 +2030,7 @@ useEffect(() => {
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              Esta funci√≥n estar√° disponible pr√≥ximamente. Podr√°s gestionar tus
+              Esta funciÛn estar· disponible prÛximamente. Podr·s gestionar tus
               direcciones de entrega favoritas.
             </ThemedText>
             <Pressable
@@ -2049,13 +2062,13 @@ useEffect(() => {
           <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowVehicleModal(false)} />
           <View style={[styles.editModalCard, { backgroundColor: theme.card }]}>
             <View style={[styles.editModalHeader, { borderBottomColor: theme.border }]}>
-              <ThemedText type="h3">Mi veh√≠culo</ThemedText>
+              <ThemedText type="h3">Mi vehÌculo</ThemedText>
               <Pressable onPress={() => setShowVehicleModal(false)} style={styles.editModalClose}>
                 <Feather name="x" size={22} color={theme.text} />
               </Pressable>
             </View>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Tipo de veh√≠culo *</ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Tipo de vehÌculo *</ThemedText>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
                 {["car", "motorcycle", "bicycle"].map(type => (
                   <Pressable
@@ -2101,7 +2114,7 @@ useEffect(() => {
                 style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
               />
               
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Matr√≠cula</ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>MatrÌcula</ThemedText>
               <TextInput
                 value={vehicleForm.vehiclePlate}
                 onChangeText={text => setVehicleForm(f => ({ ...f, vehiclePlate: text }))}
@@ -2120,19 +2133,19 @@ useEffect(() => {
                 style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
               />
               
-              {/* Documentos del veh√≠culo - solo para moto/coche */}
+              {/* Documentos del vehÌculo - solo para moto/coche */}
               {(vehicleForm.vehicleType === "motorcycle" || vehicleForm.vehicleType === "car") && (
                 <>
-                  <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos del veh√≠culo</ThemedText>
+                  <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos del vehÌculo</ThemedText>
                   
                   <DocumentUploadButton 
                     documentType="vehiclePhoto" 
-                    label="Foto del veh√≠culo" 
+                    label="Foto del vehÌculo" 
                     currentUrl={professionalData?.vehiclePhoto}
                   />
                   <DocumentUploadButton 
                     documentType="vehiclePlate" 
-                    label="Foto matr√≠cula" 
+                    label="Foto matrÌcula" 
                     currentUrl={professionalData?.vehiclePlatePhoto}
                   />
                   <DocumentUploadButton 
@@ -2142,7 +2155,7 @@ useEffect(() => {
                   />
                   <DocumentUploadButton 
                     documentType="vehicleInsurance" 
-                    label="Seguro del veh√≠culo" 
+                    label="Seguro del vehÌculo" 
                     currentUrl={professionalData?.vehicleInsurancePhoto}
                   />
                   <DocumentUploadButton 
@@ -2160,7 +2173,7 @@ useEffect(() => {
               >
                 {isSavingVehicle
                   ? <ActivityIndicator color="#fff" size="small" />
-                  : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar veh√≠culo</ThemedText>
+                  : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar vehÌculo</ThemedText>
                 }
               </Pressable>
             </ScrollView>

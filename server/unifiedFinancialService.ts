@@ -1,7 +1,9 @@
 // Unified Financial Service - Single Source of Truth for All Financial Operations
 import { db } from "./db";
 import { systemSettings, wallets, transactions } from "@shared/schema-mysql";
-import { eq } from "drizzle-orm";
+import { eq } from "drizzle-orm"import { SubscriptionService } from './subscriptionService';
+
+;
 import { logger } from "./logger";
 
 interface CommissionRates {
@@ -78,7 +80,8 @@ export class UnifiedFinancialService {
   async calculateCommissions(
     totalAmount: number,
     deliveryFee: number = 0,
-    productosBase?: number,
+    productosBase?: number,businessOwnerId?: string,
+    
     nemyCommission?: number
   ): Promise<{
     platform: number;
@@ -102,7 +105,7 @@ export class UnifiedFinancialService {
 
     const platformAmount = nemyCommission && nemyCommission > 0
       ? nemyCommission
-      : Math.round(productBase * 0.15);
+      : Math.round(productBase * await this.getBusinessCommissionRate(businessOwnerId));
 
     const businessAmount = productBase;
     const driverAmount = safeDeliveryFee;
@@ -520,5 +523,16 @@ export class UnifiedFinancialService {
   }
 }
 
-// Export singleton instance
+// Export singlet
+  async getBusinessCommissionRate(ownerId?: string): Promise<number> {
+    if (!ownerId) return 0.15;
+    try {
+      const discount = await SubscriptionService.getBusinessCommissionDiscount(ownerId);
+      return discount.commissionRate;
+    } catch {
+      return 0.15;
+    }
+  }
+
+on instance
 export const financialService = UnifiedFinancialService.getInstance();

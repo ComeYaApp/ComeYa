@@ -21,7 +21,11 @@ const PAYMENT_METHODS = [
 
 export default function SubscriptionScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation<Nav>();
+  
+  const isBusinessOwner=user?.role==="business_owner";
+  const customerBenefits=["Envio gratis","10% descuento","Soporte","Ofertas"];
+  const businessBenefits=["Comision reducida","Negocios destacados","Estadisticas","Soporte VIP","Promociones"];
+const navigation = useNavigation<Nav>();
   const queryClient = useQueryClient();
   const [selectedPlan, setSelectedPlan] = useState<'premium' | 'business'>('premium');
   const [paymentModal, setPaymentModal] = useState<{ plan: 'premium' | 'business'; amount: number } | null>(null);
@@ -201,7 +205,7 @@ export default function SubscriptionScreen() {
             <Text style={styles.planPrice}>€15/mes</Text>
           </LinearGradient>
           <View style={styles.planBenefits}>
-            {['Envío gratis ilimitado', '10% descuento en todos los pedidos', 'Soporte prioritario 24/7', 'Acceso a ofertas exclusivas'].map(b => (
+            {(isBusinessOwner ? businessBenefits : customerBenefits).map(b => (
               <View key={b} style={styles.benefit}>
                 <Text style={styles.benefitIcon}>✅</Text>
                 <Text style={styles.benefitText}>{b}</Text>
@@ -222,7 +226,7 @@ export default function SubscriptionScreen() {
             <Text style={styles.planPrice}>€30/mes</Text>
           </LinearGradient>
           <View style={styles.planBenefits}>
-            {['Todo lo de Premium', '15% descuento en todos los pedidos', 'Sin mínimo de pedido', 'Facturación para empresas'].map(b => (
+            {(isBusinessOwner ? businessBenefits : customerBenefits).map(b => (
               <View key={b} style={styles.benefit}>
                 <Text style={styles.benefitIcon}>✅</Text>
                 <Text style={styles.benefitText}>{b}</Text>

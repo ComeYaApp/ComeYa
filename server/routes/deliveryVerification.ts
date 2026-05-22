@@ -81,10 +81,10 @@ router.post("/submit", async (req, res) => {
     } = req.body;
 
     // Obtener usuario actual
-    const [user] = await db
+const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.id, userId as string))
       .limit(1);
 
     if (!user) {
@@ -97,13 +97,13 @@ router.post("/submit", async (req, res) => {
       await db
         .update(users)
         .set({ role: "delivery_driver", verificationStatus: "pending" as any })
-        .where(eq(users.id, userId));
+        .where(eq(users.id, userId as string));
     } else {
       // Solo actualizar verificación
       await db
         .update(users)
         .set({ verificationStatus: "pending" as any, updatedAt: new Date() })
-        .where(eq(users.id, userId));
+        .where(eq(users.id, userId as string));
     }
 
     // Guardar URLs de documentos en users
@@ -115,13 +115,13 @@ router.post("/submit", async (req, res) => {
     await db
       .update(users)
       .set(userUpdates)
-      .where(eq(users.id, userId));
+      .where(eq(users.id, userId as string));
 
     // Buscar o crear registro en delivery_drivers
     const [existingDriver] = await db
       .select()
       .from(deliveryDrivers)
-      .where(eq(deliveryDrivers.userId, userId))
+      .where(eq(deliveryDrivers.userId, userId as string))
       .limit(1);
 
     const driverUpdates: any = {
@@ -141,7 +141,7 @@ router.post("/submit", async (req, res) => {
       await db
         .update(deliveryDrivers)
         .set(driverUpdates)
-        .where(eq(deliveryDrivers.userId, userId));
+        .where(eq(deliveryDrivers.userId, userId as string));
     } else {
       await db
         .insert(deliveryDrivers)

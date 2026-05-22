@@ -151,9 +151,13 @@ router.get("/system/exchange-rate", async (req, res) => {
 // ─── Coupon validation ────────────────────────────────────────────────────────
 router.post("/coupons/validate", authenticateToken, async (req, res) => {
   try {
-    const { validateCoupon } = await import("./couponService");
+    const { AdvancedCouponService } = await import("./advancedCouponService");
     const { code, userId, orderTotal } = req.body;
-    const result = await validateCoupon(code, userId || req.user!.id, orderTotal);
+    const context = {
+      userId: userId || req.user!.id,
+      orderTotal: orderTotal || 0
+    };
+    const result = await AdvancedCouponService.validateCoupon(code, context);
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ valid: false, error: error.message });

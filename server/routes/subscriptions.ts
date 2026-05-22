@@ -237,4 +237,26 @@ router.post('/cancel', authenticateToken, async (req, res) => {
   }
 });
 
+
+
+// Beneficios para due{ñ}os de negocio
+router.get('/business-benefits', authenticateToken, async (req, res) => {
+  try {
+    const benefits = await SubscriptionService.getBusinessBenefits(req.user!.id);
+    const commission = await SubscriptionService.getBusinessCommissionDiscount(req.user!.id);
+    res.json({
+      success: true,
+      benefits,
+      commission: {
+        rate: commission.commissionRate,
+        baseRate: commission.baseRate,
+        discountPercent: commission.discountPercent,
+        plan: commission.plan
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

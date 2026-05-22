@@ -17,7 +17,7 @@ router.get("/dashboard/metrics", authenticateToken, requireRole("admin", "super_
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const todayOrders = allOrders.filter(o => {
+const todayOrders = allOrders.filter((o: any) => {
       const orderDate = new Date(o.createdAt);
       return orderDate >= today;
     });
@@ -25,7 +25,7 @@ router.get("/dashboard/metrics", authenticateToken, requireRole("admin", "super_
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    const recentOrders = allOrders.filter(o => {
+const recentOrders = allOrders.filter((o: any) => {
       const orderDate = new Date(o.createdAt);
       return orderDate >= sevenDaysAgo;
     });
@@ -33,19 +33,19 @@ router.get("/dashboard/metrics", authenticateToken, requireRole("admin", "super_
     const ordersToShow = todayOrders.length > 0 ? todayOrders : recentOrders;
     const timeframe = todayOrders.length > 0 ? "hoy" : "últimos 7 días";
     
-    const cancelledToday = ordersToShow.filter(o => o.status === "cancelled").length;
-    const driversOnline = allUsers.filter(u => u.role === "delivery_driver" && u.isActive).length;
-    const totalDrivers = allUsers.filter(u => u.role === "delivery_driver").length;
-    const pausedBusinesses = allBusinesses.filter(b => !b.isActive).length;
+    const cancelledToday = ordersToShow.filter((o: any) => o.status === "cancelled").length;
+    const driversOnline = allUsers.filter((u: any) => u.role === "delivery_driver" && u.isActive).length;
+    const totalDrivers = allUsers.filter((u: any) => u.role === "delivery_driver").length;
+    const pausedBusinesses = allBusinesses.filter((b: any) => !b.isActive).length;
     const totalBusinesses = allBusinesses.length;
 
-    const activeOrdersCount = allOrders.filter(o => 
+    const activeOrdersCount = allOrders.filter((o: any) => 
       ["pending", "confirmed", "preparing", "on_the_way"].includes(o.status)
     ).length;
 
     const todayRevenue = ordersToShow
-      .filter(o => o.status === "delivered")
-      .reduce((sum, o) => sum + o.total, 0);
+      .filter((o: any) => o.status === "delivered")
+      .reduce((sum: number, o: any) => sum + Number(o.total), 0);
 
     res.json({
       activeOrders: activeOrdersCount,
@@ -78,21 +78,21 @@ router.get("/dashboard/active-orders", authenticateToken, requireRole("admin", "
     const activeOrders = await db
       .select()
       .from(orders)
-      .where(inArray(orders.status, ["pending", "confirmed", "preparing", "on_the_way"]));
+      .where(inArray(orders.status, ["pending", "confirmed", "preparing", "on_the_way"] as any));
 
     const ordersWithDetails = [];
     
-    for (const order of activeOrders) {
-      const customer = await db
+for (const order of activeOrders) {
+const customer = await db
         .select({ id: users.id, name: users.name })
         .from(users)
-        .where(eq(users.id, order.userId))
+.where(eq(users.id, order.userId as string))
         .limit(1);
 
-      const business = await db
+const business = await db
         .select({ id: businesses.id, name: businesses.name, latitude: businesses.latitude, longitude: businesses.longitude })
         .from(businesses)
-        .where(eq(businesses.id, order.businessId))
+.where(eq(businesses.id, order.businessId as string))
         .limit(1);
 
       let driver = null;
@@ -100,7 +100,7 @@ router.get("/dashboard/active-orders", authenticateToken, requireRole("admin", "
         const driverData = await db
           .select({ id: users.id, name: users.name, isOnline: users.isActive })
           .from(users)
-          .where(eq(users.id, order.deliveryPersonId))
+.where(eq(users.id, order.deliveryPersonId as string))
           .limit(1);
         driver = driverData[0] || null;
       }
@@ -136,8 +136,8 @@ router.get("/dashboard/online-drivers", authenticateToken, requireRole("admin", 
 
     const driverUsers = await db.select().from(users).where(eq(users.role, "delivery_driver"));
 
-    const driversWithDetails = await Promise.all(driverUsers.map(async (driver) => {
-      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, driver.id)).limit(1);
+const driversWithDetails = await Promise.all(driverUsers.map(async (driver: any) => {
+const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, driver.id as string)).limit(1);
       return {
         id: driver.id,
         name: driver.name,
@@ -178,8 +178,8 @@ router.put("/users/:id", authenticateToken, requireRole("admin", "super_admin"),
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
-    const { name, email, phone, role, isActive } = req.body;
-    const userId = req.params.id;
+const { name, email, phone, role, isActive } = req.body;
+    const userId = req.params.id as string;
 
     const updates: any = {};
     if (name     !== undefined) updates.name     = name;
@@ -209,17 +209,17 @@ router.get("/orders", authenticateToken, requireRole("admin", "super_admin"), as
     const allOrders = await db.select().from(orders).orderBy(desc(orders.createdAt));
     
     const enrichedOrders = [];
-    for (const order of allOrders) {
+for (const order of allOrders) {
       const business = await db
         .select({ name: businesses.name })
         .from(businesses)
-        .where(eq(businesses.id, order.businessId))
+.where(eq(businesses.id, order.businessId as string))
         .limit(1);
         
       const customer = await db
         .select({ name: users.name, phone: users.phone })
         .from(users)
-        .where(eq(users.id, order.userId))
+.where(eq(users.id, order.userId as string))
         .limit(1);
 
       enrichedOrders.push({
@@ -260,7 +260,7 @@ router.get("/businesses/:id/products", authenticateToken, requireRole("admin", "
     const businessProducts = await db
       .select()
       .from(products)
-      .where(eq(products.businessId, req.params.id));
+      .where(eq(products.businessId, req.params.id as any));
       
     res.json({ success: true, products: businessProducts });
   } catch (error: any) {
@@ -301,7 +301,7 @@ router.put("/businesses/:id/commission", authenticateToken, requireRole("admin",
       return res.status(400).json({ success: false, error: "Comisión debe ser entre 0 y 100" });
     }
 
-    await db.update(businesses).set({ customCommission: val }).where(eq(businesses.id, req.params.id));
+await db.update(businesses).set({ customCommission: val }).where(eq(businesses.id, req.params.id as any));
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
@@ -324,7 +324,7 @@ router.put("/businesses/:id", authenticateToken, requireRole("admin", "super_adm
       ...(isActive         !== undefined && { isActive }),
       // null = usa comision global, numero = comision especifica
       ...(customCommission !== undefined && { customCommission: customCommission === null ? null : parseInt(customCommission) }),
-    }).where(eq(businesses.id, req.params.id));
+    }).where(eq(businesses.id, req.params.id as any));
 
     res.json({ success: true });
   } catch (error: any) {
@@ -368,11 +368,11 @@ router.get("/drivers", authenticateToken, requireRole("admin", "super_admin"), a
 
     const driverUsers = await db.select().from(users).where(eq(users.role, "delivery_driver"));
 
-    const enriched = await Promise.all(driverUsers.map(async (u) => {
-      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, u.id)).limit(1);
+const enriched = await Promise.all(driverUsers.map(async (u: any) => {
+      const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, u.id as string)).limit(1);
       const pendingPays = await db.select().from(payouts)
-        .where(and(eq(payouts.recipientId, u.id), eq(payouts.status, "pending")));
-      const pendingAmount = pendingPays.reduce((s, p) => s + p.amount, 0);
+        .where(and(eq(payouts.recipientId, u.id as string), eq(payouts.status, "pending")));
+      const pendingAmount = pendingPays.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
       return {
         id: u.id,
         name: u.name,
@@ -410,7 +410,7 @@ router.post("/drivers/:id/block", authenticateToken, requireRole("admin", "super
     const { eq } = await import("drizzle-orm");
     const { reason } = req.body;
     await db.update(deliveryDrivers).set({ isBlocked: true, blockedReason: reason ?? "Bloqueado por admin" })
-      .where(eq(deliveryDrivers.userId, req.params.id));
+      .where(eq(deliveryDrivers.userId, req.params.id as any));
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -424,7 +424,7 @@ router.post("/drivers/:id/unblock", authenticateToken, requireRole("admin", "sup
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
     await db.update(deliveryDrivers).set({ isBlocked: false, blockedReason: null })
-      .where(eq(deliveryDrivers.userId, req.params.id));
+      .where(eq(deliveryDrivers.userId, req.params.id as any));
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -436,8 +436,8 @@ router.post("/drivers/:id/strike", authenticateToken, requireRole("admin", "supe
   try {
     const { reason } = req.body;
     if (!reason?.trim()) return res.status(400).json({ error: "La razón del strike es requerida" });
-    const { addStrike } = await import("../strikeService");
-    await addStrike(req.params.id, reason.trim());
+const { addStrike } = await import("../strikeService");
+    await addStrike(req.params.id as string, reason.trim());
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -447,8 +447,8 @@ router.post("/drivers/:id/strike", authenticateToken, requireRole("admin", "supe
 // Remove strike from driver
 router.delete("/drivers/:id/strike", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
-    const { removeStrike } = await import("../strikeService");
-    await removeStrike(req.params.id);
+const { removeStrike } = await import("../strikeService");
+    await removeStrike(req.params.id as string);
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -542,7 +542,7 @@ router.post("/wallets/:walletId/release", authenticateToken, requireRole("admin"
     const [wallet] = await db
       .select()
       .from(wallets)
-      .where(eq(wallets.id, req.params.walletId))
+      .where(eq(wallets.id, req.params.walletId as any))
       .limit(1);
 
     if (!wallet) {
@@ -559,7 +559,7 @@ router.post("/wallets/:walletId/release", authenticateToken, requireRole("admin"
         balance: wallet.balance + wallet.pendingBalance,
         pendingBalance: 0,
       })
-      .where(eq(wallets.id, req.params.walletId));
+      .where(eq(wallets.id, req.params.walletId as any));
 
     res.json({ success: true, message: "Balance released successfully" });
   } catch (error: any) {
@@ -576,12 +576,12 @@ router.get("/finance", authenticateToken, requireRole("admin", "super_admin"), a
 
     const allTransactions = await db.select().from(transactions).orderBy(desc(transactions.createdAt));
     
-    const enrichedTransactions = [];
+const enrichedTransactions = [];
     for (const transaction of allTransactions) {
       const user = await db
         .select({ id: users.id, name: users.name, email: users.email, role: users.role })
         .from(users)
-        .where(eq(users.id, transaction.userId))
+.where(eq(users.id, transaction.userId as string))
         .limit(1);
         
       enrichedTransactions.push({
@@ -729,21 +729,21 @@ router.get("/verifications/pending", authenticateToken, requireRole("admin", "su
     const { inArray, eq } = await import("drizzle-orm");
 
     const pending = await db.select().from(users).where(
-      inArray(users.role, ["delivery_driver", "business_owner"])
+inArray(users.role, ["delivery_driver", "business_owner"] as any)
     );
 
-    // Enriquecer con datos de delivery_drivers y businesses
-    const enriched = await Promise.all(pending.map(async (user) => {
+// Enriquecer con datos de delivery_drivers y businesses
+const enriched = await Promise.all(pending.map(async (user: any) => {
       let deliveryDriver = null;
       let business = null;
 
-      if (user.role === "delivery_driver") {
-        const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id)).limit(1);
+if (user.role === "delivery_driver") {
+        const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id as string)).limit(1);
         deliveryDriver = dd || null;
       }
 
       if (user.role === "business_owner") {
-        const [biz] = await db.select().from(businesses).where(eq(businesses.ownerId, user.id)).limit(1);
+        const [biz] = await db.select().from(businesses).where(eq(businesses.ownerId, user.id as string)).limit(1);
         business = biz || null;
       }
 
@@ -767,8 +767,8 @@ router.put("/verifications/:userId", authenticateToken, requireRole("admin", "su
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
-    const { action, notes } = req.body; // action: "approve" | "reject"
-    const userId = req.params.userId;
+const { action, notes } = req.body; // action: "approve" | "reject"
+    const userId = req.params.userId as string;
 
     if (!action || !["approve", "reject"].includes(action)) {
       return res.status(400).json({ error: "action debe ser 'approve' o 'reject'" });
@@ -889,7 +889,7 @@ router.get("/gift-cards/pending", authenticateToken, requireRole("admin", "super
 router.post("/gift-cards/:id/activate", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { GiftCardService } = await import("../giftCardService");
-    res.json(await GiftCardService.activateGiftCard(req.params.id, req.user!.id));
+res.json(await GiftCardService.activateGiftCard(req.params.id as string, req.user!.id));
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -901,7 +901,7 @@ router.post("/gift-cards/:id/reject", authenticateToken, requireRole("admin", "s
     const { reason } = req.body;
     if (!reason) return res.status(400).json({ success: false, error: 'Razón requerida' });
     const { GiftCardService } = await import("../giftCardService");
-    res.json(await GiftCardService.rejectGiftCard(req.params.id, req.user!.id, reason));
+res.json(await GiftCardService.rejectGiftCard(req.params.id as string, req.user!.id, reason));
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -928,12 +928,12 @@ router.get("/delivery-verifications/pending", authenticateToken, requireRole("ad
       ))
       .orderBy(asc(users.createdAt));
 
-    // Enrich con datos de delivery_drivers
-    const enriched = await Promise.all(pendingDrivers.map(async (user) => {
+// Enrich con datos de delivery_drivers
+const enriched = await Promise.all(pendingDrivers.map(async (user: any) => {
       const [dd] = await db
         .select()
         .from(deliveryDrivers)
-        .where(eq(deliveryDrivers.userId, user.id))
+        .where(eq(deliveryDrivers.userId, user.id as string))
         .limit(1);
 
       return {
@@ -978,20 +978,22 @@ router.get("/delivery-verifications/:userId", authenticateToken, requireRole("ad
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
+    const userId = req.params.userId as string;
+
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, req.params.userId))
+      .where(eq(users.id, userId))
       .limit(1);
 
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    const [driver] = await db
+const [driver] = await db
       .select()
       .from(deliveryDrivers)
-      .where(eq(deliveryDrivers.userId, user.id))
+      .where(eq(deliveryDrivers.userId, user.id as string))
       .limit(1);
 
     res.json({
@@ -1038,7 +1040,7 @@ router.post("/delivery-verifications/:userId/approve", authenticateToken, requir
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
-    const userId = req.params.userId;
+    const userId = req.params.userId as string;
     const adminId = req.user!.id;
 
     const [user] = await db
@@ -1098,7 +1100,7 @@ router.post("/delivery-verifications/:userId/reject", authenticateToken, require
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
-    const userId = req.params.userId;
+    const userId = req.params.userId as string;
     const adminId = req.user!.id;
     const { reason } = req.body;
 
@@ -1164,7 +1166,7 @@ router.post("/delivery-verifications/:userId/reset", authenticateToken, requireR
     const { db } = await import("../db");
     const { eq } = await import("drizzle-orm");
 
-    const userId = req.params.userId;
+    const userId = req.params.userId as string;
 
     const [user] = await db
       .select()

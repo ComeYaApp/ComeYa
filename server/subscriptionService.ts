@@ -221,4 +221,42 @@ export class SubscriptionService {
 
     return { success: true, renewed: renewed.length };
   }
+
+  // Reduced commission for business owners
+  static async getBusinessCommissionDiscount(userId: string) {
+    const BASE = 0.15;
+    const sub = await this.getUserSubscription(userId);
+    if (sub.plan == "free" || sub.status != "active") {
+      return { commissionRate: BASE, baseRate: BASE, discountPercent: 0, plan: sub.plan };
+    }
+    const benefits = await db.select().from(subscriptionBenefits).where(eq(subscriptionBenefits.plan, sub.plan));
+    let discountPercent = 0;
+    for (const b of benefits) {
+      if (b.benefitType == "reduced_commission" && b.benefitValue && b.benefitValue > 0) {
+        discountPercent = b.benefitValue;
+        break;
+      }
+    }
+    return { commissionRate: BASE - (BASE * discountPercent / 100), baseRate: BASE, discountPercent, plan: sub.plan };
+  }
+
+  // Obtener beneficios para negocios
+  static async getBusinessBenefits(userId: string) {
+    const subscription = await this.getUserSubscription(userId);
+    if (subscription.plan === "free" || subscription.status !== "active") {
+      return { commissionDiscount: 0, featuredListing: false, analyticsAccess: false, prioritySupport: false, promotionalTools: false, plan: "free" };
+    }
+    const benefits = await db.select().from(subscriptionBenefits).where(eq(subscriptionBenefits.plan, subscription.plan));
+    const result = { commissionDiscount: 0, featuredListing: false, analyticsAccess: false, prioritySupport: false, promotionalTools: false, plan: subscription.plan };
+    for (const b of benefits) {
+      switch (b.benefitType) {
+        case "reduced_commission": result.commissionDiscount = b.benefitValue ?? 0; break;
+        case "featured_listing": result.featuredListing = (b.benefitValue ?? 0) > 0; break;
+        case "analytics_access": result.analyticsAccess = (b.benefitValue ?? 0) > 0; break;
+        case "priority_support": result.prioritySupport = (b.benefitValue ?? 0) > 0; break;
+        case "promotional_tools": result.promotionalTools = (b.benefitValue ?? 0) > 0; break;
+      }
+    }
+    return result;
+  }
 }

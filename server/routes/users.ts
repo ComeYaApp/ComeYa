@@ -471,7 +471,7 @@ router.post("/:id/reset-verification", authenticateToken, async (req, res) => {
       return res.status(403).json({ error: "No tienes permiso para hacer esto" });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+const [user] = await db.select().from(users).where(eq(users.id, userId as string)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
     // No permitir reset si ya está aprobado
@@ -484,7 +484,7 @@ router.post("/:id/reset-verification", authenticateToken, async (req, res) => {
       verificationStatus: "pending" as any,
       verificationNotes: null,
       updatedAt: new Date(),
-    }).where(eq(users.id, userId));
+    }).where(eq(users.id, userId as string));
 
     res.json({ success: true, message: "Verificación reiniciada. Por favor, envía tus documentos nuevamente." });
   } catch (error: any) {
