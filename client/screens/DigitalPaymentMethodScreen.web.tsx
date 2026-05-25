@@ -132,8 +132,22 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
     }
   };
 
-  const handleContinue = () => {
+const handleContinue = () => {
     if (!selected) return;
+    
+    // Para métodos manuales (bizum, sepa, paypal), ir a PaymentProof para subir comprobante
+    if (selected.requiresManualVerification) {
+      const amount = orderTotal * 100; // convert to cents
+      const shortId = Date.now().toString(36).toUpperCase();
+      (navigation as any).navigate('PaymentProof', {
+        orderId: shortId,
+        amount,
+        paymentMethod: selected.provider.includes('sepa') ? 'sepa' : selected.provider.includes('paypal') ? 'paypal' : 'bizum',
+      });
+      return;
+    }
+    
+    // Para Stripe (tarjeta/bizum instantáneo), ir a Checkout
     (navigation as any).navigate('Checkout', {
       selectedPaymentMethod: selected,
       orderType,

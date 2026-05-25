@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, Pressable, Modal, StyleSheet, Image, SafeAreaView } from "react-native";
+import { View, ScrollView, Pressable, Modal, StyleSheet, Image, SafeAreaView, Linking } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
@@ -202,8 +202,11 @@ const renderCustomerMenuItems = () => {
           <ThemedText type="caption" style={styles.sectionTitle}>
             Más
           </ThemedText>
-          <SettingsItem icon="share-2" label="Compartir ComeYa" onPress={() => {/* TODO: share */}} />
-          <SettingsItem icon="help-circle" label="Ayuda y soporte" onPress={() => {/* TODO: help */}} />
+          <SettingsItem icon="share-2" label="Compartir ComeYa" onPress={() => {
+            const message = encodeURIComponent("Descubre ComeYa - Tu delivery local de confianza. https://app.comeya.es");
+            Linking.openURL(`whatsapp://send?text=${message}`).catch(() => {});
+          }} />
+          <SettingsItem icon="help-circle" label="Ayuda y soporte" onPress={() => navigation.navigate("Support" as any)} />
           <SettingsItem icon="file-text" label="Términos y condiciones" onPress={() => setShowTermsModal(true)} />
           <SettingsItem icon="shield" label="Política de privacidad" onPress={() => setShowPrivacyModal(true)} />
           <SettingsItem icon="log-out" label="Cerrar sesión" onPress={() => setShowLogoutModal(true)} danger />
