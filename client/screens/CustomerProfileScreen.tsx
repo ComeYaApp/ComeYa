@@ -161,13 +161,13 @@ const [showLanguageModal, setShowLanguageModal] = useState(false);
 
 const renderCustomerMenuItems = () => {
     const items: { icon: keyof typeof Feather.glyphMap; label: string; onPress: () => void }[] = [
-      { icon: "map-pin", label: "Direcciones guardadas", onPress: () => setShowAddressesModal(true) },
-      { icon: "credit-card", label: "Métodos de pago", onPress: () => setShowPaymentMethodsModal(true) },
-      { icon: "gift", label: "Mis puntos y recompensas", onPress: () => setShowPointsModal(true) },
-      { icon: "star", label: "Suscripciones", onPress: () => setShowSubscriptionsModal(true) },
-      { icon: "tag", label: "Mis Gift Cards", onPress: () => setShowGiftCardsModal(true) },
-      { icon: "users", label: "Pedido grupal", onPress: () => setShowGroupOrderModal(true) },
-      { icon: "clock", label: "Pedidos programados", onPress: () => setShowScheduledOrdersModal(true) },
+      { icon: "map-pin", label: "Direcciones guardadas", onPress: () => navigation.navigate("Addresses" as any) },
+      { icon: "credit-card", label: "Métodos de pago", onPress: () => navigation.navigate("PaymentMethods" as any) },
+      { icon: "gift", label: "Mis puntos y recompensas", onPress: () => navigation.navigate("Loyalty" as any) },
+      { icon: "star", label: "Suscripciones", onPress: () => navigation.navigate("Subscriptions" as any) },
+      { icon: "tag", label: "Mis Gift Cards", onPress: () => navigation.navigate("GiftCards" as any) },
+      { icon: "users", label: "Pedido grupal", onPress: () => navigation.navigate("GroupOrder" as any) },
+      { icon: "clock", label: "Pedidos programados", onPress: () => navigation.navigate("ScheduledOrders" as any) },
     ];
 
     return (

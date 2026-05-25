@@ -93,8 +93,8 @@ const navigation = useNavigation<Nav>();
         return;
       }
       subscriptionId = data.subscriptionId;
-    } catch {
-      Alert.alert('Error', 'No se pudo conectar con el servidor');
+} catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo conectar con el servidor');
       return;
     }
 

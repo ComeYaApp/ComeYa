@@ -36,9 +36,9 @@ export default function PaymentProofScreen() {
   const { isDark } = useTheme();
   const { showToast } = useToast();
 
-  const { orderId, amount, paymentMethod } = route.params;
+const { orderId, amount, paymentMethod, subscriptionId } = route.params;
   const amountEur = (amount / 100).toFixed(2);
-  const shortId   = orderId.slice(-6).toUpperCase();
+  const shortId = (subscriptionId || orderId).slice(-6).toUpperCase();
 
   const bg     = isDark ? '#111'    : '#f7f7f7';
   const card   = isDark ? '#1e1e1e' : '#fff';
@@ -107,10 +107,12 @@ export default function PaymentProofScreen() {
       });
       const uploadData = await uploadRes.json();
       if (!uploadData.success) throw new Error(uploadData.error);
-      const r = await apiRequest('POST', '/api/payments/submit-proof', {
-        orderId, imageUrl: uploadData.url, referenceNumber: referenceNumber.trim(),
-        senderName: senderName.trim(), amount, paymentMethod,
-      });
+// Include subscriptionId for subscription payments
+      const submitData = subscriptionId
+        ? { subscriptionId, imageUrl: uploadData.url, referenceNumber: referenceNumber.trim(), senderName: senderName.trim(), amount, paymentMethod }
+        : { orderId, imageUrl: uploadData.url, referenceNumber: referenceNumber.trim(), senderName: senderName.trim(), amount, paymentMethod };
+      
+      const r = await apiRequest('POST', subscriptionId ? '/api/subscriptions/submit-proof' : '/api/payments/submit-proof', submitData);
       const d = await r.json();
       if (d.success) setStep('success');
       else throw new Error(d.error);
