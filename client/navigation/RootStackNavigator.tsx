@@ -46,7 +46,6 @@ import ScheduledOrdersScreen from "@/screens/ScheduledOrdersScreen";
 import AddressesScreen from "@/screens/AddressesScreen";
 import SavedAddressesScreen from "@/screens/SavedAddressesScreen";
 import AddAddressScreen from "@/screens/AddAddressScreen";
-import AddBankAccountScreen from "@/screens/AddBankAccountScreen";
 import SupportChatScreen from "@/screens/SupportChatScreen";
 import WalletScreen from "@/screens/WalletScreen";
 import ReportIssueScreen from "@/screens/ReportIssueScreen";
@@ -328,10 +327,10 @@ export default function RootStackNavigator() {
             component={OrderChatScreen}
             options={{ headerTitle: "Chat" }}
           />
-          <Stack.Screen
+<Stack.Screen
             name="AddBankAccount"
-            component={AddBankAccountScreen}
-            options={{ headerTitle: "Agregar Cuenta Bancaria" }}
+            component={PaymentWalletSetupScreen}
+            options={{ headerTitle: "Métodos de pago" }}
           />
           <Stack.Screen
             name="DeliveryEarnings"

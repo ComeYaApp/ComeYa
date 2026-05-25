@@ -3,7 +3,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import ProfileScreen from '../screens/ProfileScreen';
 import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import WithdrawalScreen from '../screens/WithdrawalScreen';
-import AddBankAccountScreen from '../screens/AddBankAccountScreen';
+import PaymentWalletSetupScreen from '../screens/PaymentWalletSetupScreen';
 
 const Stack = createStackNavigator();
 
@@ -37,8 +37,8 @@ export default function ProfileNavigator() {
       />
       <Stack.Screen 
         name="AddBankAccount" 
-        component={AddBankAccountScreen} 
-        options={{ title: 'Agregar Cuenta Bancaria' }}
+        component={PaymentWalletSetupScreen} 
+        options={{ title: 'Métodos de pago' }}
       />
     </Stack.Navigator>
   );
