@@ -24,12 +24,24 @@ const MoreStack = createNativeStackNavigator();
 function BusinessMoreStackNavigator() {
   return (
     <MoreStack.Navigator screenOptions={{ headerShown: false }}>
-      <MoreStack.Screen name="BusinessMoreHome" component={MyBusinessesScreen} />
-      <MoreStack.Screen name="BusinessManage" component={BusinessManageScreen} />
+      <MoreStack.Screen
+        name="BusinessMoreHome"
+        component={MyBusinessesScreen}
+      />
+      <MoreStack.Screen
+        name="BusinessManage"
+        component={BusinessManageScreen}
+      />
       <MoreStack.Screen name="BusinessHours" component={BusinessHoursScreen} />
-      <MoreStack.Screen name="BusinessAnalytics" component={BusinessAnalyticsScreen} />
+      <MoreStack.Screen
+        name="BusinessAnalytics"
+        component={BusinessAnalyticsScreen}
+      />
       <MoreStack.Screen name="BusinessStats" component={BusinessStatsScreen} />
-      <MoreStack.Screen name="BusinessFinances" component={BusinessFinancesScreen} />
+      <MoreStack.Screen
+        name="BusinessFinances"
+        component={BusinessFinancesScreen}
+      />
     </MoreStack.Navigator>
   );
 }
@@ -62,7 +74,9 @@ export default function BusinessTabNavigator() {
         component={BusinessDashboardScreen}
         options={{
           title: "Mi Negocio",
-          tabBarIcon: ({ color, size }) => <Feather name="briefcase" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="briefcase" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -70,15 +84,19 @@ export default function BusinessTabNavigator() {
         component={BusinessOrdersScreen}
         options={{
           title: "Pedidos",
-          tabBarIcon: ({ color, size }) => <Feather name="shopping-bag" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="shopping-bag" size={size} color={color} />
+          ),
         }}
       />
-<Tab.Screen
+      <Tab.Screen
         name="BusinessProducts"
         component={BusinessProductsScreen}
         options={{
           title: "Productos",
-          tabBarIcon: ({ color, size }) => <Feather name="package" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="package" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -86,7 +104,9 @@ export default function BusinessTabNavigator() {
         component={BusinessDeliveryMapScreen}
         options={{
           title: "GPS",
-          tabBarIcon: ({ color, size }) => <Feather name="map" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="map" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -94,7 +114,9 @@ export default function BusinessTabNavigator() {
         component={BusinessMoreStackNavigator}
         options={{
           title: "Gestión",
-          tabBarIcon: ({ color, size }) => <Feather name="grid" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="grid" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -102,7 +124,9 @@ export default function BusinessTabNavigator() {
         component={ProfileScreen}
         options={{
           title: "Perfil",
-          tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

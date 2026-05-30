@@ -28,7 +28,12 @@ import { ComeYaLogo } from "@/components/ComeYaLogo";
 import { AlertModal } from "@/components/AlertModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { LinearGradient } from "expo-linear-gradient";
 import { useToast } from "@/contexts/ToastContext";
@@ -71,7 +76,11 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isBiometricLoading, setIsBiometricLoading] = useState(false);
-  const [errors, setErrors] = useState<{ phone?: string; identifier?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{
+    phone?: string;
+    identifier?: string;
+    password?: string;
+  }>({});
   const [featuredBusinesses, setFeaturedBusinesses] = useState<
     FeaturedBusiness[]
   >([]);
@@ -122,7 +131,11 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   };
 
   const validate = () => {
-    const newErrors: { phone?: string; identifier?: string; password?: string } = {};
+    const newErrors: {
+      phone?: string;
+      identifier?: string;
+      password?: string;
+    } = {};
 
     if (loginMode === "sms") {
       if (!phone) {
@@ -151,9 +164,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
     try {
       const digits = identifier.replace(/\D/g, "");
-      const normalizedPhone = digits.length === 9
-        ? `+34${digits}`
-        : identifier.replace(/\s+/g, "");
+      const normalizedPhone =
+        digits.length === 9 ? `+34${digits}` : identifier.replace(/\s+/g, "");
       const result = await loginWithPassword(identifier, password);
 
       if (result?.requiresVerification) {
@@ -189,7 +201,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
     try {
       const digits = phone.replace(/\D/g, "");
-      const normalizedPhone = digits.length === 9 ? `+34${digits}` : `+${digits}`;
+      const normalizedPhone =
+        digits.length === 9 ? `+34${digits}` : `+${digits}`;
       const result = await requestPhoneLogin(normalizedPhone);
 
       if (result?.userNotFound) {
@@ -214,7 +227,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         visible: true,
         type: "error",
         title: "Error al enviar código",
-        message: error.message || "No pudimos enviar el código SMS. Intenta nuevamente.",
+        message:
+          error.message ||
+          "No pudimos enviar el código SMS. Intenta nuevamente.",
       });
     } finally {
       setIsLoading(false);
@@ -232,7 +247,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           visible: true,
           type: "error",
           title: "Verificación fallida",
-          message: "No se pudo verificar tu identidad. Intenta con otro método.",
+          message:
+            "No se pudo verificar tu identidad. Intenta con otro método.",
         });
       }
     } catch (error) {
@@ -312,8 +328,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
               Bienvenido a ComeYa
             </ThemedText>
             <ThemedText type="body" style={styles.formSubtitle}>
-              {loginMode === "password" 
-                ? "Usa tu correo o teléfono con contraseña" 
+              {loginMode === "password"
+                ? "Usa tu correo o teléfono con contraseña"
                 : "Te enviaremos un código SMS para verificar"}
             </ThemedText>
 
@@ -323,7 +339,12 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                   <ThemedText type="small" style={styles.inputLabel}>
                     Correo o teléfono
                   </ThemedText>
-                  <View style={[styles.inputBox, errors.identifier ? styles.inputBoxError : null]}>
+                  <View
+                    style={[
+                      styles.inputBox,
+                      errors.identifier ? styles.inputBoxError : null,
+                    ]}
+                  >
                     <Feather
                       name="user"
                       size={20}
@@ -335,7 +356,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                       value={identifier}
                       onChangeText={(text) => {
                         setIdentifier(text);
-                        if (errors.identifier) setErrors((prev) => ({ ...prev, identifier: "" }));
+                        if (errors.identifier)
+                          setErrors((prev) => ({ ...prev, identifier: "" }));
                       }}
                       keyboardType="email-address"
                       autoCapitalize="none"
@@ -357,7 +379,12 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                   <ThemedText type="small" style={styles.inputLabel}>
                     Contraseña
                   </ThemedText>
-                  <View style={[styles.inputBox, errors.password ? styles.inputBoxError : null]}>
+                  <View
+                    style={[
+                      styles.inputBox,
+                      errors.password ? styles.inputBoxError : null,
+                    ]}
+                  >
                     <Feather
                       name="lock"
                       size={20}
@@ -369,7 +396,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                       value={password}
                       onChangeText={(text) => {
                         setPassword(text);
-                        if (errors.password) setErrors((prev) => ({ ...prev, password: "" }));
+                        if (errors.password)
+                          setErrors((prev) => ({ ...prev, password: "" }));
                       }}
                       secureTextEntry={!showPassword}
                       placeholderTextColor="#999999"
@@ -433,14 +461,20 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
             )}
 
             <Button
-              onPress={loginMode === "password" ? handlePasswordLogin : handlePhoneLogin}
+              onPress={
+                loginMode === "password"
+                  ? handlePasswordLogin
+                  : handlePhoneLogin
+              }
               disabled={isLoading}
               style={styles.loginButton}
             >
               {isLoading ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : loginMode === "password" ? (
+                "Iniciar sesión"
               ) : (
-                loginMode === "password" ? "Iniciar sesión" : "Enviar código SMS"
+                "Enviar código SMS"
               )}
             </Button>
 
@@ -457,8 +491,8 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                 color={ComeYaColors.primary}
               />
               <ThemedText type="small" style={styles.switchModeText}>
-                {loginMode === "password" 
-                  ? "Iniciar con código SMS" 
+                {loginMode === "password"
+                  ? "Iniciar con código SMS"
                   : "Iniciar con contraseña"}
               </ThemedText>
             </Pressable>
@@ -886,4 +920,3 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 });
-

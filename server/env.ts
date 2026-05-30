@@ -17,7 +17,7 @@ const envSchema = z.object({
     .string()
     .refine(
       (val) => !val || val.startsWith("sk_"),
-      "STRIPE_SECRET_KEY must start with sk_ or be empty"
+      "STRIPE_SECRET_KEY must start with sk_ or be empty",
     )
     .optional()
     .default(""),
@@ -25,7 +25,7 @@ const envSchema = z.object({
     .string()
     .refine(
       (val) => !val || val.startsWith("pk_"),
-      "STRIPE_PUBLISHABLE_KEY must start with pk_ or be empty"
+      "STRIPE_PUBLISHABLE_KEY must start with pk_ or be empty",
     )
     .optional()
     .default(""),
@@ -33,7 +33,7 @@ const envSchema = z.object({
     .string()
     .refine(
       (val) => !val || val.startsWith("whsec_"),
-      "STRIPE_WEBHOOK_SECRET must start with whsec_ or be empty"
+      "STRIPE_WEBHOOK_SECRET must start with whsec_ or be empty",
     )
     .optional()
     .default(""),
@@ -43,7 +43,7 @@ const envSchema = z.object({
     .string()
     .refine(
       (val) => !val || val.startsWith("AC"),
-      "TWILIO_ACCOUNT_SID must start with AC or be empty"
+      "TWILIO_ACCOUNT_SID must start with AC or be empty",
     )
     .optional()
     .default(""),
@@ -52,7 +52,7 @@ const envSchema = z.object({
     .string()
     .refine(
       (val) => !val || val.startsWith("+"),
-      "TWILIO_PHONE_NUMBER must start with + or be empty"
+      "TWILIO_PHONE_NUMBER must start with + or be empty",
     )
     .optional()
     .default(""),
@@ -60,7 +60,7 @@ const envSchema = z.object({
     .string()
     .refine(
       (val) => !val || val.startsWith("VA"),
-      "TWILIO_VERIFY_SERVICE_SID must start with VA or be empty"
+      "TWILIO_VERIFY_SERVICE_SID must start with VA or be empty",
     )
     .optional()
     .default(""),

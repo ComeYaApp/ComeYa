@@ -88,7 +88,6 @@ export default function VerifyPhoneScreen({
     if (key === "Backspace" && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-
   };
 
   const handleVerify = async () => {
@@ -130,7 +129,9 @@ export default function VerifyPhoneScreen({
               PENDING_BUSINESS_ONBOARDING_KEY,
               JSON.stringify({ openAddModal: true, draft }),
             );
-            setError("No se pudo crear el negocio. Completa los datos manualmente.");
+            setError(
+              "No se pudo crear el negocio. Completa los datos manualmente.",
+            );
             return;
           }
         }
@@ -252,7 +253,9 @@ export default function VerifyPhoneScreen({
 
         <Button
           onPress={handleVerify}
-          disabled={isLoading || code.some((d) => !d) || code.join("").length !== 6}
+          disabled={
+            isLoading || code.some((d) => !d) || code.join("").length !== 6
+          }
           style={styles.verifyButton}
         >
           {isLoading ? (

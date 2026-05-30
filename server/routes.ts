@@ -57,7 +57,13 @@ const router = express.Router();
 
 // ─── Public config (keys para el frontend) ───────────────────────────────────
 router.get("/config/maps-key", (_req, res) => {
-  res.json({ key: process.env.GOOGLE_MAPS_WEB_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "" });
+  res.json({
+    key:
+      process.env.GOOGLE_MAPS_WEB_KEY ||
+      process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY ||
+      process.env.GOOGLE_MAPS_API_KEY ||
+      "",
+  });
 });
 
 // ─── Upload endpoints (Cloudinary) ──────────────────────────────────────────
@@ -66,9 +72,15 @@ router.post("/upload/payment-proof", authenticateToken, async (req, res) => {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: "image requerida" });
     const { CloudinaryService } = await import("./cloudinaryService");
-    const url = await CloudinaryService.uploadImage(image, "comprobantes", `proof-${req.user!.id}-${Date.now()}`);
+    const url = await CloudinaryService.uploadImage(
+      image,
+      "comprobantes",
+      `proof-${req.user!.id}-${Date.now()}`,
+    );
     res.json({ success: true, url, imageUrl: url, proofUrl: url });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post("/upload/business-image", authenticateToken, async (req, res) => {
@@ -76,9 +88,15 @@ router.post("/upload/business-image", authenticateToken, async (req, res) => {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: "image requerida" });
     const { CloudinaryService } = await import("./cloudinaryService");
-    const url = await CloudinaryService.uploadImage(image, "businesses", `biz-${req.user!.id}-${Date.now()}`);
+    const url = await CloudinaryService.uploadImage(
+      image,
+      "businesses",
+      `biz-${req.user!.id}-${Date.now()}`,
+    );
     res.json({ success: true, url, imageUrl: url });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post("/upload/product-image", authenticateToken, async (req, res) => {
@@ -86,9 +104,15 @@ router.post("/upload/product-image", authenticateToken, async (req, res) => {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: "image requerida" });
     const { CloudinaryService } = await import("./cloudinaryService");
-    const url = await CloudinaryService.uploadImage(image, "products", `prod-${req.user!.id}-${Date.now()}`);
+    const url = await CloudinaryService.uploadImage(
+      image,
+      "products",
+      `prod-${req.user!.id}-${Date.now()}`,
+    );
     res.json({ success: true, url, imageUrl: url });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post("/upload/review-image", authenticateToken, async (req, res) => {
@@ -96,9 +120,15 @@ router.post("/upload/review-image", authenticateToken, async (req, res) => {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: "image requerida" });
     const { CloudinaryService } = await import("./cloudinaryService");
-    const url = await CloudinaryService.uploadImage(image, "reviews", `review-${req.user!.id}-${Date.now()}`);
+    const url = await CloudinaryService.uploadImage(
+      image,
+      "reviews",
+      `review-${req.user!.id}-${Date.now()}`,
+    );
     res.json({ success: true, url, imageUrl: url });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post("/upload/delivery-proof", authenticateToken, async (req, res) => {
@@ -106,9 +136,15 @@ router.post("/upload/delivery-proof", authenticateToken, async (req, res) => {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: "image requerida" });
     const { CloudinaryService } = await import("./cloudinaryService");
-    const url = await CloudinaryService.uploadImage(image, "delivery-proofs", `delivery-${req.user!.id}-${Date.now()}`);
+    const url = await CloudinaryService.uploadImage(
+      image,
+      "delivery-proofs",
+      `delivery-${req.user!.id}-${Date.now()}`,
+    );
     res.json({ success: true, url, imageUrl: url });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.post("/upload/image", authenticateToken, async (req, res) => {
@@ -116,14 +152,24 @@ router.post("/upload/image", authenticateToken, async (req, res) => {
     const { image, folder = "misc" } = req.body;
     if (!image) return res.status(400).json({ error: "image requerida" });
     const { CloudinaryService } = await import("./cloudinaryService");
-    const url = await CloudinaryService.uploadImage(image, folder, `img-${req.user!.id}-${Date.now()}`);
+    const url = await CloudinaryService.uploadImage(
+      image,
+      folder,
+      `img-${req.user!.id}-${Date.now()}`,
+    );
     res.json({ success: true, url, imageUrl: url });
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 router.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString(), environment: process.env.NODE_ENV });
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+  });
 });
 
 // ─── Public settings ──────────────────────────────────────────────────────────
@@ -142,9 +188,14 @@ router.get("/system/exchange-rate", async (req, res) => {
   try {
     const { exchangeRateService } = await import("./exchangeRateService");
     const result = await exchangeRateService.getCurrentRate();
-    res.json({ success: true, rate: result.rate, source: result.source, lastUpdated: result.lastUpdated });
+    res.json({
+      success: true,
+      rate: result.rate,
+      source: result.source,
+      lastUpdated: result.lastUpdated,
+    });
   } catch (error: any) {
-    res.json({ success: true, rate: 36.50, source: 'fallback' }); // Fallback
+    res.json({ success: true, rate: 36.5, source: "fallback" }); // Fallback
   }
 });
 
@@ -155,7 +206,7 @@ router.post("/coupons/validate", authenticateToken, async (req, res) => {
     const { code, userId, orderTotal } = req.body;
     const context = {
       userId: userId || req.user!.id,
-      orderTotal: orderTotal || 0
+      orderTotal: orderTotal || 0,
     };
     const result = await AdvancedCouponService.validateCoupon(code, context);
     res.json(result);
@@ -169,77 +220,121 @@ router.get("/delivery-zones", async (_req, res) => {
   res.json({
     success: true,
     zones: [
-      { id: "zone-centro", name: "Centro",        deliveryFee: 300, maxDeliveryTime: 20, isActive: true, centerLatitude: "41.7636",  centerLongitude: "-2.4677", radiusKm: 2 },
-      { id: "zone-norte",  name: "Norte",          deliveryFee: 350, maxDeliveryTime: 25, isActive: true, centerLatitude: "41.7750",  centerLongitude: "-2.4677", radiusKm: 3 },
-      { id: "zone-sur",    name: "Sur",            deliveryFee: 350, maxDeliveryTime: 25, isActive: true, centerLatitude: "41.7500",  centerLongitude: "-2.4677", radiusKm: 3 },
-      { id: "zone-este",   name: "Este",           deliveryFee: 400, maxDeliveryTime: 30, isActive: true, centerLatitude: "41.7636",  centerLongitude: "-2.4400", radiusKm: 3 },
+      {
+        id: "zone-centro",
+        name: "Centro",
+        deliveryFee: 300,
+        maxDeliveryTime: 20,
+        isActive: true,
+        centerLatitude: "41.7636",
+        centerLongitude: "-2.4677",
+        radiusKm: 2,
+      },
+      {
+        id: "zone-norte",
+        name: "Norte",
+        deliveryFee: 350,
+        maxDeliveryTime: 25,
+        isActive: true,
+        centerLatitude: "41.7750",
+        centerLongitude: "-2.4677",
+        radiusKm: 3,
+      },
+      {
+        id: "zone-sur",
+        name: "Sur",
+        deliveryFee: 350,
+        maxDeliveryTime: 25,
+        isActive: true,
+        centerLatitude: "41.7500",
+        centerLongitude: "-2.4677",
+        radiusKm: 3,
+      },
+      {
+        id: "zone-este",
+        name: "Este",
+        deliveryFee: 400,
+        maxDeliveryTime: 30,
+        isActive: true,
+        centerLatitude: "41.7636",
+        centerLongitude: "-2.4400",
+        radiusKm: 3,
+      },
     ],
   });
 });
 
 // ─── Favorites stubs ──────────────────────────────────────────────────────────
-router.get("/favorites/check/:userId/:businessId", (_req, res) => res.json({ success: true, isFavorite: false }));
-router.get("/favorites/:userId", (_req, res) => res.json({ success: true, favorites: [] }));
+router.get("/favorites/check/:userId/:businessId", (_req, res) =>
+  res.json({ success: true, isFavorite: false }),
+);
+router.get("/favorites/:userId", (_req, res) =>
+  res.json({ success: true, favorites: [] }),
+);
 router.post("/favorites", (_req, res) => res.json({ success: true }));
-router.delete("/favorites/:userId/:businessId", (_req, res) => res.json({ success: true }));
+router.delete("/favorites/:userId/:businessId", (_req, res) =>
+  res.json({ success: true }),
+);
 
 // ─── Levels stub ──────────────────────────────────────────────────────────────
-router.get("/levels/my-level", (_req, res) => res.json({ success: true, level: null }));
+router.get("/levels/my-level", (_req, res) =>
+  res.json({ success: true, level: null }),
+);
 
 // ─── Core route modules ───────────────────────────────────────────────────────
-router.use("/auth",                  authRoutes);
-router.use("/businesses",            businessRoutes);
-router.use("/business",              businessRoutes);
-router.use("/orders",                orderRoutes);
-router.use("/users",                 userRoutes);
-router.use("/user",                  userRoutes);
-router.use("/delivery",              deliveryConfigRoutes);
-router.use("/delivery",              deliveryRoutes);
-router.use("/delivery",              deliveryRoutesLegacy);
-router.use("/delivery-verification",  deliveryVerificationRoutes);
-router.use("/payments",              paymentRoutes);
-router.use("/digital-payments",      digitalPaymentRoutes);
-router.use("/payment-accounts",      paymentAccountsRoutes);
-router.use("/fund-release",          fundReleaseRoutes);
-router.use("/payouts",               payoutRoutes);
-router.use("/wallet",                walletRoutes);
-router.use("/wallet",                walletRoutesV2);
-router.use("/bank-account",          bankAccountRoutes);
-router.use("/admin",                 adminRoutes);
-router.use("/admin/finance",         adminFinanceRoutes);
-router.use("/admin",                 adminExchangeRateRoutes);
-router.use("/support",               supportRoutes);
-router.use("/withdrawals",           withdrawalRoutes);
-router.use("/cash-settlement",       cashSettlementRoutes);
-router.use("/weekly-settlement",     weeklySettlementRoutes);
-router.use("/audit",                 financialAuditRoutes);
-router.use("/favorites",             favoritesRoutes);
+router.use("/auth", authRoutes);
+router.use("/businesses", businessRoutes);
+router.use("/business", businessRoutes);
+router.use("/orders", orderRoutes);
+router.use("/users", userRoutes);
+router.use("/user", userRoutes);
+router.use("/delivery", deliveryConfigRoutes);
+router.use("/delivery", deliveryRoutes);
+router.use("/delivery", deliveryRoutesLegacy);
+router.use("/delivery-verification", deliveryVerificationRoutes);
+router.use("/payments", paymentRoutes);
+router.use("/digital-payments", digitalPaymentRoutes);
+router.use("/payment-accounts", paymentAccountsRoutes);
+router.use("/fund-release", fundReleaseRoutes);
+router.use("/payouts", payoutRoutes);
+router.use("/wallet", walletRoutes);
+router.use("/wallet", walletRoutesV2);
+router.use("/bank-account", bankAccountRoutes);
+router.use("/admin", adminRoutes);
+router.use("/admin/finance", adminFinanceRoutes);
+router.use("/admin", adminExchangeRateRoutes);
+router.use("/support", supportRoutes);
+router.use("/withdrawals", withdrawalRoutes);
+router.use("/cash-settlement", cashSettlementRoutes);
+router.use("/weekly-settlement", weeklySettlementRoutes);
+router.use("/audit", financialAuditRoutes);
+router.use("/favorites", favoritesRoutes);
 router.use("/business-verification", businessVerificationRoutes);
-router.use("/gps",                   gpsRoutes);
-router.use("/search",                searchRoutes);
-router.use("/coupons",               couponRoutes);
-router.use("/loyalty",               loyaltyRoutes);
-router.use("/favorites",             favoritesRoutesV2);
-router.use("/scheduled-orders",      scheduledOrdersRoutes);
-router.use("/ai",                    aiRecommendationsRoutes);
-router.use("/support",               supportRoutesV2);
-router.use("/tracking",              enhancedTrackingRoutes);
-router.use("/subscriptions",        subscriptionRoutes);
-router.use("/smart-notifications",  smartNotificationRoutes);
-router.use("/reviews",              enhancedReviewsRoutes);
-router.use("/analytics",            businessAnalyticsRoutes);
-router.use("/group-orders",         groupOrdersRoutes);
-router.use("/gamification",         gamificationRoutes);
-router.use("/gift-cards",           giftCardsRoutes);
-router.use("/orders",               orderChatRoutes);
-router.use("/stripe",               stripePaymentRoutes);
-router.use("/connect",              stripeConnectRoutes);
-router.use("/business/stripe",      stripeConnectRoutes);
-router.use("/pickup",               pickupRoutes);
-router.use("/registration",        registrationRoutes);
+router.use("/gps", gpsRoutes);
+router.use("/search", searchRoutes);
+router.use("/coupons", couponRoutes);
+router.use("/loyalty", loyaltyRoutes);
+router.use("/favorites", favoritesRoutesV2);
+router.use("/scheduled-orders", scheduledOrdersRoutes);
+router.use("/ai", aiRecommendationsRoutes);
+router.use("/support", supportRoutesV2);
+router.use("/tracking", enhancedTrackingRoutes);
+router.use("/subscriptions", subscriptionRoutes);
+router.use("/smart-notifications", smartNotificationRoutes);
+router.use("/reviews", enhancedReviewsRoutes);
+router.use("/analytics", businessAnalyticsRoutes);
+router.use("/group-orders", groupOrdersRoutes);
+router.use("/gamification", gamificationRoutes);
+router.use("/gift-cards", giftCardsRoutes);
+router.use("/orders", orderChatRoutes);
+router.use("/stripe", stripePaymentRoutes);
+router.use("/connect", stripeConnectRoutes);
+router.use("/business/stripe", stripeConnectRoutes);
+router.use("/pickup", pickupRoutes);
+router.use("/registration", registrationRoutes);
 router.use("/admin/business-categories", businessCategoriesRoutes);
-router.use("/admin",                     adminSubscriptionPlansRoutes);
-router.use("/admin",                     adminTrackingRoutes);
-router.use("/business-categories",       businessCategoriesRoutes);
+router.use("/admin", adminSubscriptionPlansRoutes);
+router.use("/admin", adminTrackingRoutes);
+router.use("/business-categories", businessCategoriesRoutes);
 
 export default router;

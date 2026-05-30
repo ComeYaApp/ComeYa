@@ -21,24 +21,25 @@ export async function getAuthToken(): Promise<string | null> {
   }
 
   try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+
     // Try to get token directly first
-    let token = await AsyncStorage.getItem('token');
-    
+    let token = await AsyncStorage.getItem("token");
+
     // Fallback to user object
     if (!token) {
-      const stored = await AsyncStorage.getItem('@ComeYa_user');
+      const stored = await AsyncStorage.getItem("@ComeYa_user");
       if (stored) {
         const user = JSON.parse(stored);
         token = user.token;
       }
     }
-    
+
     // Update cache
     tokenCache = token;
     tokenCacheTime = Date.now();
-    
+
     return token;
   } catch (error) {
     return null;
@@ -60,16 +61,17 @@ async function throwIfResNotOk(res: Response) {
 
 async function tryRefreshToken(): Promise<string | null> {
   try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    const stored = await AsyncStorage.getItem('@ComeYa_user');
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    const stored = await AsyncStorage.getItem("@ComeYa_user");
     if (!stored) return null;
     const user = JSON.parse(stored);
     if (!user.refreshToken) return null;
 
-    const baseUrl = (await import('@/constants/api')).getApiBaseUrl();
+    const baseUrl = (await import("@/constants/api")).getApiBaseUrl();
     const res = await fetch(`${baseUrl}/api/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: user.refreshToken }),
     });
     if (!res.ok) return null;
@@ -78,8 +80,8 @@ async function tryRefreshToken(): Promise<string | null> {
 
     // Guardar nuevo token
     user.token = data.token;
-    await AsyncStorage.setItem('@ComeYa_user', JSON.stringify(user));
-    await AsyncStorage.setItem('token', data.token);
+    await AsyncStorage.setItem("@ComeYa_user", JSON.stringify(user));
+    await AsyncStorage.setItem("token", data.token);
     tokenCache = data.token;
     tokenCacheTime = Date.now();
     return data.token;
@@ -98,18 +100,18 @@ export async function apiRequest(
 
   console.log(`🚀 API Request: ${method} ${url.toString()}`);
   if (data) {
-    console.log('📦 Request data:', JSON.stringify(data).substring(0, 100));
+    console.log("📦 Request data:", JSON.stringify(data).substring(0, 100));
   }
 
   const token = await getAuthToken();
-  console.log('🔑 Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+  console.log("🔑 Token:", token ? `${token.substring(0, 20)}...` : "NO TOKEN");
 
   const headers: Record<string, string> = {};
   if (data) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   try {
@@ -126,7 +128,7 @@ export async function apiRequest(
     if (res.status === 401) {
       const newToken = await tryRefreshToken();
       if (newToken) {
-        headers['Authorization'] = `Bearer ${newToken}`;
+        headers["Authorization"] = `Bearer ${newToken}`;
         const retryRes = await fetch(url, {
           method,
           headers,
@@ -137,9 +139,10 @@ export async function apiRequest(
         return retryRes;
       }
       // Si no se pudo refrescar, limpiar sesión
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      await AsyncStorage.removeItem('@ComeYa_user');
-      await AsyncStorage.removeItem('token');
+      const AsyncStorage =
+        require("@react-native-async-storage/async-storage").default;
+      await AsyncStorage.removeItem("@ComeYa_user");
+      await AsyncStorage.removeItem("token");
       tokenCache = null;
       tokenCacheTime = 0;
     }
@@ -147,7 +150,7 @@ export async function apiRequest(
     await throwIfResNotOk(res);
     return res;
   } catch (error) {
-    console.error('❌ API Request failed:', error);
+    console.error("❌ API Request failed:", error);
     throw error;
   }
 }
@@ -165,10 +168,10 @@ export async function apiRequestRaw(
 
   const headers: Record<string, string> = {};
   if (data) {
-    headers['Content-Type'] = 'application/json';
+    headers["Content-Type"] = "application/json";
   }
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   return fetch(url, {
@@ -192,7 +195,7 @@ export const getQueryFn: <T>(options: {
 
     const headers: Record<string, string> = {};
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const res = await fetch(url, {

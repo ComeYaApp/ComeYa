@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, StyleSheet, ScrollView, ActivityIndicator,
-  Pressable, TextInput, Modal,
+  View,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Pressable,
+  TextInput,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -17,7 +22,12 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 function resolveProfileImageUrl(profileImage: string): string {
@@ -30,32 +40,99 @@ function resolveProfileImageUrl(profileImage: string): string {
 function SectionTitle({ icon, title }: { icon: string; title: string }) {
   const { theme } = useTheme();
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.md, marginTop: Spacing.lg }}>
-      <View style={[styles.sectionIcon, { backgroundColor: ComeYaColors.primary + "18" }]}>
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: Spacing.md,
+        marginTop: Spacing.lg,
+      }}
+    >
+      <View
+        style={[
+          styles.sectionIcon,
+          { backgroundColor: ComeYaColors.primary + "18" },
+        ]}
+      >
         <Feather name={icon as any} size={16} color={ComeYaColors.primary} />
       </View>
-      <ThemedText type="h4" style={{ marginLeft: Spacing.sm, color: theme.text }}>{title}</ThemedText>
+      <ThemedText
+        type="h4"
+        style={{ marginLeft: Spacing.sm, color: theme.text }}
+      >
+        {title}
+      </ThemedText>
     </View>
   );
 }
 
-function DocUpload({ label, description, uri, onPress, onRemove, theme, onPreview }: { label: string; description?: string; uri: string | null | undefined; onPress: () => void; onRemove?: () => void; theme: any; onPreview?: (uri: string) => void }) {
-  const resolvedUri = uri ? (uri.startsWith('data:image/') || uri.startsWith('http') ? uri : null) : null;
-  
+function DocUpload({
+  label,
+  description,
+  uri,
+  onPress,
+  onRemove,
+  theme,
+  onPreview,
+}: {
+  label: string;
+  description?: string;
+  uri: string | null | undefined;
+  onPress: () => void;
+  onRemove?: () => void;
+  theme: any;
+  onPreview?: (uri: string) => void;
+}) {
+  const resolvedUri = uri
+    ? uri.startsWith("data:image/") || uri.startsWith("http")
+      ? uri
+      : null
+    : null;
+
   return (
     <View style={{ marginBottom: Spacing.md }}>
-      <ThemedText type="small" style={{ fontWeight: "600", color: theme.text, marginBottom: 4 }}>{label}</ThemedText>
+      <ThemedText
+        type="small"
+        style={{ fontWeight: "600", color: theme.text, marginBottom: 4 }}
+      >
+        {label}
+      </ThemedText>
       {description && (
-        <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>{description}</ThemedText>
+        <ThemedText
+          type="caption"
+          style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}
+        >
+          {description}
+        </ThemedText>
       )}
-      
+
       {/* Image Preview / Upload Area */}
       {uri ? (
-        <Pressable onPress={() => onPreview?.(uri)} style={[styles.docPreviewContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-          <Image source={{ uri: uri.startsWith('http') ? uri : uri }} style={styles.docPreviewImage} contentFit="cover" />
-          <View style={[styles.docPreviewOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+        <Pressable
+          onPress={() => onPreview?.(uri)}
+          style={[
+            styles.docPreviewContainer,
+            {
+              backgroundColor: theme.backgroundSecondary,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <Image
+            source={{ uri: uri.startsWith("http") ? uri : uri }}
+            style={styles.docPreviewImage}
+            contentFit="cover"
+          />
+          <View
+            style={[
+              styles.docPreviewOverlay,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
             <Feather name="eye" size={20} color="#fff" />
-            <ThemedText type="caption" style={{ color: "#fff", marginLeft: 4 }}>Toca para ver</ThemedText>
+            <ThemedText type="caption" style={{ color: "#fff", marginLeft: 4 }}>
+              Toca para ver
+            </ThemedText>
           </View>
         </Pressable>
       ) : (
@@ -64,33 +141,57 @@ function DocUpload({ label, description, uri, onPress, onRemove, theme, onPrevie
           onPress={onPress}
           style={[
             styles.docUpload,
-            { flex: 1,
-            borderColor: theme.border,
-            backgroundColor: theme.backgroundSecondary,
-          },
+            {
+              flex: 1,
+              borderColor: theme.border,
+              backgroundColor: theme.backgroundSecondary,
+            },
           ]}
         >
           <Feather name="upload" size={20} color={theme.textSecondary} />
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 8, fontWeight: "600" }}>
+          <ThemedText
+            type="small"
+            style={{
+              color: theme.textSecondary,
+              marginLeft: 8,
+              fontWeight: "600",
+            }}
+          >
             Seleccionar documento
           </ThemedText>
         </Pressable>
       )}
-      
+
       {/* Action buttons row */}
-      <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm }}>
+      <View
+        style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.sm }}
+      >
         <Pressable
           onPress={onPress}
           style={[
             styles.docUpload,
-            { flex: 1,
-            borderColor: uri ? ComeYaColors.primary : theme.border,
-            backgroundColor: uri ? ComeYaColors.primary + "10" : theme.backgroundSecondary,
-          },
+            {
+              flex: 1,
+              borderColor: uri ? ComeYaColors.primary : theme.border,
+              backgroundColor: uri
+                ? ComeYaColors.primary + "10"
+                : theme.backgroundSecondary,
+            },
           ]}
         >
-          <Feather name={uri ? "refresh-cw" : "upload"} size={20} color={uri ? ComeYaColors.primary : theme.textSecondary} />
-          <ThemedText type="small" style={{ color: uri ? ComeYaColors.primary : theme.textSecondary, marginLeft: 8, fontWeight: "600" }}>
+          <Feather
+            name={uri ? "refresh-cw" : "upload"}
+            size={20}
+            color={uri ? ComeYaColors.primary : theme.textSecondary}
+          />
+          <ThemedText
+            type="small"
+            style={{
+              color: uri ? ComeYaColors.primary : theme.textSecondary,
+              marginLeft: 8,
+              fontWeight: "600",
+            }}
+          >
             {uri ? "Cambiar" : "Subir"}
           </ThemedText>
         </Pressable>
@@ -121,49 +222,61 @@ export default function EditProfileScreen() {
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
 
-  const isDriver   = user?.role === "delivery_driver";
+  const isDriver = user?.role === "delivery_driver";
   const isBusiness = user?.role === "business_owner";
-  const needsDocs  = isDriver || isBusiness;
+  const needsDocs = isDriver || isBusiness;
 
   // Datos comunes
-  const [name,  setName]  = useState(user?.name  || "");
+  const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [email, setEmail] = useState(user?.email || "");
-const [dni,   setDni]   = useState((user as any)?.dni   || "");
+  const [dni, setDni] = useState((user as any)?.dni || "");
   const [address, setAddress] = useState((user as any)?.address || "");
   const [profession, setProfession] = useState("");
 
   // Solo repartidor
-  const [vehicleType,  setVehicleType]  = useState("");
+  const [vehicleType, setVehicleType] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [vehicleBrand, setVehicleBrand] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
   const [vehiclePhotoUri, setVehiclePhotoUri] = useState<string | null>(null);
 
-// Documentos personales
-  const [idDocUri,          setIdDocUri]          = useState<string | null>(null);
-  const [idDocBackUri,      setIdDocBackUri]      = useState<string | null>(null);
-  const [autonomoDocUri,    setAutonomoDocUri]    = useState<string | null>(null);
+  // Documentos personales
+  const [idDocUri, setIdDocUri] = useState<string | null>(null);
+  const [idDocBackUri, setIdDocBackUri] = useState<string | null>(null);
+  const [autonomoDocUri, setAutonomoDocUri] = useState<string | null>(null);
 
   // Documentos del vehículo (para moto/coche)
-  const [vehiclePlatePhotoUri,    setVehiclePlatePhotoUri]    = useState<string | null>(null);
-  const [vehicleItvPhotoUri,      setVehicleItvPhotoUri]      = useState<string | null>(null);
-  const [vehicleInsurancePhotoUri, setVehicleInsurancePhotoUri] = useState<string | null>(null);
-  const [vehicleLicensePhotoUri, setVehicleLicensePhotoUri] = useState<string | null>(null);
+  const [vehiclePlatePhotoUri, setVehiclePlatePhotoUri] = useState<
+    string | null
+  >(null);
+  const [vehicleItvPhotoUri, setVehicleItvPhotoUri] = useState<string | null>(
+    null,
+  );
+  const [vehicleInsurancePhotoUri, setVehicleInsurancePhotoUri] = useState<
+    string | null
+  >(null);
+  const [vehicleLicensePhotoUri, setVehicleLicensePhotoUri] = useState<
+    string | null
+  >(null);
 
-const [isSaving,        setIsSaving]        = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-const [verificationStatus, setVerificationStatus] = useState<string>((user as any)?.verificationStatus || "pending");
+  const [verificationStatus, setVerificationStatus] = useState<string>(
+    (user as any)?.verificationStatus || "pending",
+  );
 
   // Preview modal state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Helper to resolve document URL
-  const resolveDocumentUrl = (url: string | null | undefined): string | null => {
+  const resolveDocumentUrl = (
+    url: string | null | undefined,
+  ): string | null => {
     if (!url) return null;
-    if (url.startsWith('data:image/')) return url;
+    if (url.startsWith("data:image/")) return url;
     if (/^https?:\/\//i.test(url)) return url;
     const apiBase = getApiUrl().replace(/\/+$/, "");
     return `${apiBase}${url.startsWith("/") ? "" : "/"}${url}`;
@@ -183,44 +296,62 @@ const [verificationStatus, setVerificationStatus] = useState<string>((user as an
         ]);
         const verData = await verRes.json();
         const profileData = await profileRes.json();
-        if (verData.success) setVerificationStatus(verData.verificationStatus || "pending");
+        if (verData.success)
+          setVerificationStatus(verData.verificationStatus || "pending");
         if (profileData.success) {
           if (profileData.dni) setDni(profileData.dni);
           if (profileData.address) setAddress(profileData.address);
           if (profileData.vehicleType) setVehicleType(profileData.vehicleType);
-          if (profileData.vehiclePlate) setVehiclePlate(profileData.vehiclePlate);
-          if (profileData.vehicleBrand) setVehicleBrand(profileData.vehicleBrand);
-          if (profileData.vehicleModel) setVehicleModel(profileData.vehicleModel);
-          if (profileData.vehicleColor) setVehicleColor(profileData.vehicleColor);
-          if (profileData.vehiclePhoto) setVehiclePhotoUri(profileData.vehiclePhoto);
-          
+          if (profileData.vehiclePlate)
+            setVehiclePlate(profileData.vehiclePlate);
+          if (profileData.vehicleBrand)
+            setVehicleBrand(profileData.vehicleBrand);
+          if (profileData.vehicleModel)
+            setVehicleModel(profileData.vehicleModel);
+          if (profileData.vehicleColor)
+            setVehicleColor(profileData.vehicleColor);
+          if (profileData.vehiclePhoto)
+            setVehiclePhotoUri(profileData.vehiclePhoto);
+
           // Cargar documentos personales
           if (profileData.idDocumentUrl) setIdDocUri(profileData.idDocumentUrl);
-          if (profileData.idDocumentBackUrl) setIdDocBackUri(profileData.idDocumentBackUrl);
-          if (profileData.autonomoDocumentUrl) setAutonomoDocUri(profileData.autonomoDocumentUrl);
-          
+          if (profileData.idDocumentBackUrl)
+            setIdDocBackUri(profileData.idDocumentBackUrl);
+          if (profileData.autonomoDocumentUrl)
+            setAutonomoDocUri(profileData.autonomoDocumentUrl);
+
           // Cargar documentos del vehículo
-          if (profileData.vehiclePlatePhoto) setVehiclePlatePhotoUri(profileData.vehiclePlatePhoto);
-          if (profileData.vehicleItvPhoto) setVehicleItvPhotoUri(profileData.vehicleItvPhoto);
-          if (profileData.vehicleInsurancePhoto) setVehicleInsurancePhotoUri(profileData.vehicleInsurancePhoto);
-          if (profileData.vehicleLicensePhoto) setVehicleLicensePhotoUri(profileData.vehicleLicensePhoto);
+          if (profileData.vehiclePlatePhoto)
+            setVehiclePlatePhotoUri(profileData.vehiclePlatePhoto);
+          if (profileData.vehicleItvPhoto)
+            setVehicleItvPhotoUri(profileData.vehicleItvPhoto);
+          if (profileData.vehicleInsurancePhoto)
+            setVehicleInsurancePhotoUri(profileData.vehicleInsurancePhoto);
+          if (profileData.vehicleLicensePhoto)
+            setVehicleLicensePhotoUri(profileData.vehicleLicensePhoto);
         }
       } catch {}
     };
     if (user?.id) load();
-}, [user?.id]);
+  }, [user?.id]);
 
-const pickDocument = async (setter: (uri: string) => void) => {
+  const pickDocument = async (setter: (uri: string) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") { showToast("Se necesita permiso de galería", "error"); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (status !== "granted") {
+      showToast("Se necesita permiso de galería", "error");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
     if (!result.canceled && result.assets[0]) {
       setter(result.assets[0].uri);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
 
-// Remove document handler
+  // Remove document handler
   const removeDocument = async (key: string, currentUri: string | null) => {
     if (!currentUri || !currentUri.startsWith("http")) {
       // Already removed or local only
@@ -228,8 +359,14 @@ const pickDocument = async (setter: (uri: string) => void) => {
     }
     try {
       // Determine which API to call based on document type
-      const isVehicleDoc = ["vehiclePhoto", "vehiclePlatePhoto", "vehicleItvPhoto", "vehicleInsurancePhoto", "vehicleLicensePhoto"].includes(key);
-      
+      const isVehicleDoc = [
+        "vehiclePhoto",
+        "vehiclePlatePhoto",
+        "vehicleItvPhoto",
+        "vehicleInsurancePhoto",
+        "vehicleLicensePhoto",
+      ].includes(key);
+
       if (isVehicleDoc) {
         // Map to vehicle delete flags
         const deleteKeyMap: Record<string, string> = {
@@ -239,19 +376,23 @@ const pickDocument = async (setter: (uri: string) => void) => {
           vehicleInsurancePhoto: "deleteVehicleInsurancePhoto",
           vehicleLicensePhoto: "deleteVehicleLicensePhoto",
         };
-        const res = await apiRequest("PUT", "/api/users/vehicle", { [deleteKeyMap[key]]: true });
+        const res = await apiRequest("PUT", "/api/users/vehicle", {
+          [deleteKeyMap[key]]: true,
+        });
         const data = await res.json();
         if (data.success) {
           showToast("Documento eliminado", "success");
         }
-} else {
+      } else {
         // Personal documents - use delete flags
         const deleteKeyMap: Record<string, string> = {
           idDocumentUrl: "deleteIdDocumentUrl",
           idDocumentBackUrl: "deleteIdDocumentBackUrl",
           autonomoDocumentUrl: "deleteAutonomoDocumentUrl",
         };
-        const res = await apiRequest("PUT", "/api/users/personal-docs", { [deleteKeyMap[key]]: true });
+        const res = await apiRequest("PUT", "/api/users/personal-docs", {
+          [deleteKeyMap[key]]: true,
+        });
         const data = await res.json();
         if (data.success) {
           showToast("Documento eliminado", "success");
@@ -263,7 +404,10 @@ const pickDocument = async (setter: (uri: string) => void) => {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { showToast("El nombre es requerido", "error"); return; }
+    if (!name.trim()) {
+      showToast("El nombre es requerido", "error");
+      return;
+    }
     if (!user?.id) return;
 
     setIsSaving(true);
@@ -281,10 +425,17 @@ const pickDocument = async (setter: (uri: string) => void) => {
       if (!data.success) throw new Error(data.error || "Error al actualizar");
 
       // Actualizar vehículo si es repartidor
-      if (isDriver && (vehicleType || vehiclePlate || vehicleBrand || vehicleModel || vehicleColor)) {
+      if (
+        isDriver &&
+        (vehicleType ||
+          vehiclePlate ||
+          vehicleBrand ||
+          vehicleModel ||
+          vehicleColor)
+      ) {
         // Subir foto de vehículo a Cloudinary si es nueva (URI local)
         let vehiclePhotoUrl: string | undefined = undefined;
-        if (vehiclePhotoUri && !vehiclePhotoUri.startsWith('http')) {
+        if (vehiclePhotoUri && !vehiclePhotoUri.startsWith("http")) {
           const xhr = new XMLHttpRequest();
           const base64 = await new Promise<string>((resolve, reject) => {
             xhr.onload = () => {
@@ -294,18 +445,22 @@ const pickDocument = async (setter: (uri: string) => void) => {
               reader.readAsDataURL(xhr.response);
             };
             xhr.onerror = reject;
-            xhr.responseType = 'blob';
-            xhr.open('GET', vehiclePhotoUri);
+            xhr.responseType = "blob";
+            xhr.open("GET", vehiclePhotoUri);
             xhr.send();
           });
-          const uploadRes = await apiRequest('POST', '/api/registration/upload-documents', {
-            userId: user!.id,
-            vehiclePhoto: base64,
-            vehicleType,
-          });
+          const uploadRes = await apiRequest(
+            "POST",
+            "/api/registration/upload-documents",
+            {
+              userId: user!.id,
+              vehiclePhoto: base64,
+              vehicleType,
+            },
+          );
           const uploadData = await uploadRes.json();
           vehiclePhotoUrl = uploadData.uploadedUrls?.vehiclePhoto;
-        } else if (vehiclePhotoUri?.startsWith('http')) {
+        } else if (vehiclePhotoUri?.startsWith("http")) {
           vehiclePhotoUrl = vehiclePhotoUri;
         }
 
@@ -314,50 +469,91 @@ const pickDocument = async (setter: (uri: string) => void) => {
           vehiclePlate: vehiclePlate.trim() || undefined,
           vehicleBrand: vehicleBrand.trim() || undefined,
           vehicleModel: vehicleModel.trim() || undefined,
-vehicleColor: vehicleColor.trim() || undefined,
+          vehicleColor: vehicleColor.trim() || undefined,
           vehiclePhoto: vehiclePhotoUrl,
         });
       }
 
-      await updateUser({ name: name.trim(), phone: phone.trim(), email: email.trim() || undefined });
+      await updateUser({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+      });
 
-// Subir documentos si se seleccionaron (solo si son cambios locales, no URLs)
-      const hasPersonalDocs = (idDocUri && !idDocUri.startsWith('http')) || (idDocBackUri && !idDocBackUri.startsWith('http')) || (autonomoDocUri && !autonomoDocUri.startsWith('http'));
+      // Subir documentos si se seleccionaron (solo si son cambios locales, no URLs)
+      const hasPersonalDocs =
+        (idDocUri && !idDocUri.startsWith("http")) ||
+        (idDocBackUri && !idDocBackUri.startsWith("http")) ||
+        (autonomoDocUri && !autonomoDocUri.startsWith("http"));
       let needsReverify = false;
       if (needsDocs && hasPersonalDocs) {
         const formData = new FormData();
         // Añadir documentos solo si son nuevos (URI locales, no URLs del servidor)
-        if (idDocUri && !idDocUri.startsWith('http')) { formData.append("idDocumentUrl", idDocUri); needsReverify = true; }
-        if (idDocBackUri && !idDocBackUri.startsWith('http')) { formData.append("idDocumentBackUrl", idDocBackUri); needsReverify = true; }
-        if (autonomoDocUri && !autonomoDocUri.startsWith('http')) { formData.append("autonomoDocumentUrl", autonomoDocUri); needsReverify = true; }
-        if (formData.has("idDocumentUrl") || formData.has("idDocumentBackUrl") || formData.has("autonomoDocumentUrl")) {
-          await apiRequest("POST", `/api/users/${user.id}/verification-documents`, formData);
+        if (idDocUri && !idDocUri.startsWith("http")) {
+          formData.append("idDocumentUrl", idDocUri);
+          needsReverify = true;
+        }
+        if (idDocBackUri && !idDocBackUri.startsWith("http")) {
+          formData.append("idDocumentBackUrl", idDocBackUri);
+          needsReverify = true;
+        }
+        if (autonomoDocUri && !autonomoDocUri.startsWith("http")) {
+          formData.append("autonomoDocumentUrl", autonomoDocUri);
+          needsReverify = true;
+        }
+        if (
+          formData.has("idDocumentUrl") ||
+          formData.has("idDocumentBackUrl") ||
+          formData.has("autonomoDocumentUrl")
+        ) {
+          await apiRequest(
+            "POST",
+            `/api/users/${user.id}/verification-documents`,
+            formData,
+          );
         }
         setVerificationStatus("pending");
       }
-      
+
       // Subir documentos del vehículo si hay cambios locales
-      const hasVehicleDocs = (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith('http')) || 
-                           (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith('http')) ||
-                           (vehicleInsurancePhotoUri && !vehicleInsurancePhotoUri.startsWith('http')) ||
-                           (vehicleLicensePhotoUri && !vehicleLicensePhotoUri.startsWith('http'));
+      const hasVehicleDocs =
+        (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith("http")) ||
+        (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith("http")) ||
+        (vehicleInsurancePhotoUri &&
+          !vehicleInsurancePhotoUri.startsWith("http")) ||
+        (vehicleLicensePhotoUri && !vehicleLicensePhotoUri.startsWith("http"));
       if (isDriver && hasVehicleDocs) {
         const vehicleFormData = new FormData();
-        if (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith('http')) vehicleFormData.append("vehiclePlatePhoto", vehiclePlatePhotoUri);
-        if (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith('http')) vehicleFormData.append("vehicleItvPhoto", vehicleItvPhotoUri);
-        if (vehicleInsurancePhotoUri && !vehicleInsurancePhotoUri.startsWith('http')) vehicleFormData.append("vehicleInsurancePhoto", vehicleInsurancePhotoUri);
-        if (vehicleLicensePhotoUri && !vehicleLicensePhotoUri.startsWith('http')) vehicleFormData.append("vehicleLicensePhoto", vehicleLicensePhotoUri);
-        
-// Check if FormData has entries (Array.from not available, use forEach)
+        if (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith("http"))
+          vehicleFormData.append("vehiclePlatePhoto", vehiclePlatePhotoUri);
+        if (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith("http"))
+          vehicleFormData.append("vehicleItvPhoto", vehicleItvPhotoUri);
+        if (
+          vehicleInsurancePhotoUri &&
+          !vehicleInsurancePhotoUri.startsWith("http")
+        )
+          vehicleFormData.append(
+            "vehicleInsurancePhoto",
+            vehicleInsurancePhotoUri,
+          );
+        if (
+          vehicleLicensePhotoUri &&
+          !vehicleLicensePhotoUri.startsWith("http")
+        )
+          vehicleFormData.append("vehicleLicensePhoto", vehicleLicensePhotoUri);
+
+        // Check if FormData has entries (Array.from not available, use forEach)
         let hasVehicleDocs = false;
-        vehicleFormData.forEach(() => { hasVehicleDocs = true; });
+        vehicleFormData.forEach(() => {
+          hasVehicleDocs = true;
+        });
         if (hasVehicleDocs) {
           await apiRequest("PUT", "/api/users/vehicle", vehicleFormData);
         }
         setVerificationStatus("pending");
       }
 
-Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Perfil actualizado correctamente", "success");
       navigation.goBack();
     } catch (error: any) {
@@ -370,9 +566,18 @@ Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") { showToast("Se necesita permiso para acceder a las fotos", "error"); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.5 });
-    if (!result.canceled && result.assets[0]) await uploadImage(result.assets[0].uri);
+    if (status !== "granted") {
+      showToast("Se necesita permiso para acceder a las fotos", "error");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+    if (!result.canceled && result.assets[0])
+      await uploadImage(result.assets[0].uri);
   };
 
   const uploadImage = async (uri: string) => {
@@ -391,16 +596,33 @@ Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         xhr.open("GET", uri);
         xhr.send();
       });
-      const res = await apiRequest("POST", "/api/user/profile-image", { image: base64 });
+      const res = await apiRequest("POST", "/api/user/profile-image", {
+        image: base64,
+      });
       const data = await res.json();
-      if (data.success) { await updateUser({ profileImage: data.profileImage }); showToast("Foto actualizada", "success"); }
-      else throw new Error(data.error);
-    } catch { showToast("Error al subir imagen", "error"); }
-    finally { setIsUploadingImage(false); }
+      if (data.success) {
+        await updateUser({ profileImage: data.profileImage });
+        showToast("Foto actualizada", "success");
+      } else throw new Error(data.error);
+    } catch {
+      showToast("Error al subir imagen", "error");
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
-const statusColor = verificationStatus === "verified" ? ComeYaColors.success : verificationStatus === "rejected" ? ComeYaColors.error : ComeYaColors.warning;
-  const statusLabel = verificationStatus === "verified" ? "Verificado ✓" : verificationStatus === "rejected" ? "Rechazado — sube nuevos documentos" : "En revisión";
+  const statusColor =
+    verificationStatus === "verified"
+      ? ComeYaColors.success
+      : verificationStatus === "rejected"
+        ? ComeYaColors.error
+        : ComeYaColors.warning;
+  const statusLabel =
+    verificationStatus === "verified"
+      ? "Verificado ✓"
+      : verificationStatus === "rejected"
+        ? "Rechazado — sube nuevos documentos"
+        : "En revisión";
 
   // Preview handler
   const handlePreviewDocument = (uri: string) => {
@@ -413,133 +635,283 @@ const statusColor = verificationStatus === "verified" ? ComeYaColors.success : v
     <ThemedView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: Spacing.lg, paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: Spacing.lg, paddingBottom: insets.bottom + 100 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Foto de perfil */}
-        <View style={[styles.avatarSection, { backgroundColor: theme.card }, Shadows.md]}>
+        <View
+          style={[
+            styles.avatarSection,
+            { backgroundColor: theme.card },
+            Shadows.md,
+          ]}
+        >
           <Pressable onPress={handlePickImage} disabled={isUploadingImage}>
-            <View style={[styles.avatar, { backgroundColor: ComeYaColors.primary + "20" }]}>
+            <View
+              style={[
+                styles.avatar,
+                { backgroundColor: ComeYaColors.primary + "20" },
+              ]}
+            >
               {isUploadingImage ? (
                 <ActivityIndicator size="large" color={ComeYaColors.primary} />
               ) : user?.profileImage ? (
-                <Image source={{ uri: resolveProfileImageUrl(user.profileImage) }} style={styles.avatarImage} contentFit="cover" />
+                <Image
+                  source={{ uri: resolveProfileImageUrl(user.profileImage) }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                />
               ) : (
                 <Feather name="user" size={40} color={ComeYaColors.primary} />
               )}
             </View>
-            <View style={[styles.cameraButton, { backgroundColor: ComeYaColors.primary }]}>
+            <View
+              style={[
+                styles.cameraButton,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+            >
               <Feather name="camera" size={16} color="#fff" />
             </View>
           </Pressable>
-          <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+          <ThemedText
+            type="caption"
+            style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+          >
             Toca para cambiar foto
           </ThemedText>
         </View>
 
         {/* Estado de verificación (solo repartidor/negocio) */}
         {needsDocs && (
-          <View style={[styles.statusBanner, { backgroundColor: statusColor + "15", borderColor: statusColor + "40" }]}>
-            <Feather name={verificationStatus === "verified" ? "check-circle" : "clock"} size={16} color={statusColor} />
-            <ThemedText type="small" style={{ color: statusColor, flex: 1, marginLeft: 8, fontWeight: "600" }}>
+          <View
+            style={[
+              styles.statusBanner,
+              {
+                backgroundColor: statusColor + "15",
+                borderColor: statusColor + "40",
+              },
+            ]}
+          >
+            <Feather
+              name={
+                verificationStatus === "verified" ? "check-circle" : "clock"
+              }
+              size={16}
+              color={statusColor}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                color: statusColor,
+                flex: 1,
+                marginLeft: 8,
+                fontWeight: "600",
+              }}
+            >
               Estado de verificación: {statusLabel}
             </ThemedText>
           </View>
         )}
 
-        <View style={[styles.formSection, { backgroundColor: theme.card }, Shadows.sm]}>
-
+        <View
+          style={[
+            styles.formSection,
+            { backgroundColor: theme.card },
+            Shadows.sm,
+          ]}
+        >
           {/* ── Datos personales ── */}
           <SectionTitle icon="user" title="Datos personales" />
 
-          <Input label="Nombre completo *" leftIcon="user" value={name} onChangeText={setName}
-            placeholder="Nombre y apellidos" autoCapitalize="words" />
+          <Input
+            label="Nombre completo *"
+            leftIcon="user"
+            value={name}
+            onChangeText={setName}
+            placeholder="Nombre y apellidos"
+            autoCapitalize="words"
+          />
 
-          <Input label="DNI / NIE *" leftIcon="credit-card" value={dni}
-            onChangeText={(t) => setDni(t.toUpperCase())} placeholder="12345678A" autoCapitalize="characters" />
+          <Input
+            label="DNI / NIE *"
+            leftIcon="credit-card"
+            value={dni}
+            onChangeText={(t) => setDni(t.toUpperCase())}
+            placeholder="12345678A"
+            autoCapitalize="characters"
+          />
 
-          <Input label="Teléfono *" leftIcon="phone" value={phone} onChangeText={setPhone}
-            placeholder="+34 6XX XXX XXX" keyboardType="phone-pad" />
+          <Input
+            label="Teléfono *"
+            leftIcon="phone"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+34 6XX XXX XXX"
+            keyboardType="phone-pad"
+          />
 
-          <Input label="Correo electrónico (opcional)" leftIcon="mail" value={email} onChangeText={setEmail}
-            placeholder="tu@email.com" keyboardType="email-address" autoCapitalize="none" />
+          <Input
+            label="Correo electrónico (opcional)"
+            leftIcon="mail"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="tu@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
 
-          <Input label="Dirección *" leftIcon="map-pin" value={address} onChangeText={setAddress}
-            placeholder="Calle Mayor 12, Soria" autoCapitalize="words" />
+          <Input
+            label="Dirección *"
+            leftIcon="map-pin"
+            value={address}
+            onChangeText={setAddress}
+            placeholder="Calle Mayor 12, Soria"
+            autoCapitalize="words"
+          />
 
           {/* ── Vehículo (solo repartidor) ── */}
           {isDriver && (
             <>
               <SectionTitle icon="truck" title="Vehículo" />
 
-              <ThemedText type="small" style={{ fontWeight: "600", color: theme.text, marginBottom: Spacing.sm }}>
+              <ThemedText
+                type="small"
+                style={{
+                  fontWeight: "600",
+                  color: theme.text,
+                  marginBottom: Spacing.sm,
+                }}
+              >
                 Tipo de vehículo
               </ThemedText>
-              <View style={{ flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.md }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: Spacing.sm,
+                  marginBottom: Spacing.md,
+                }}
+              >
                 {[
-                  { id: "bike",       label: "Bicicleta", icon: "wind" },
-                  { id: "motorcycle", label: "Moto",      icon: "zap" },
-                  { id: "car",        label: "Coche",     icon: "truck" },
+                  { id: "bike", label: "Bicicleta", icon: "wind" },
+                  { id: "motorcycle", label: "Moto", icon: "zap" },
+                  { id: "car", label: "Coche", icon: "truck" },
                 ].map((v) => (
                   <Pressable
                     key={v.id}
-                    onPress={() => { setVehicleType(v.id); Haptics.selectionAsync(); }}
+                    onPress={() => {
+                      setVehicleType(v.id);
+                      Haptics.selectionAsync();
+                    }}
                     style={[
                       styles.vehicleChip,
                       {
-                        backgroundColor: vehicleType === v.id ? ComeYaColors.primary : theme.backgroundSecondary,
-                        borderColor: vehicleType === v.id ? ComeYaColors.primary : theme.border,
+                        backgroundColor:
+                          vehicleType === v.id
+                            ? ComeYaColors.primary
+                            : theme.backgroundSecondary,
+                        borderColor:
+                          vehicleType === v.id
+                            ? ComeYaColors.primary
+                            : theme.border,
                       },
                     ]}
                   >
-                    <Feather name={v.icon as any} size={16} color={vehicleType === v.id ? "#FFF" : theme.text} />
-                    <ThemedText type="small" style={{ color: vehicleType === v.id ? "#FFF" : theme.text, marginLeft: 4, fontWeight: "600" }}>
+                    <Feather
+                      name={v.icon as any}
+                      size={16}
+                      color={vehicleType === v.id ? "#FFF" : theme.text}
+                    />
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color: vehicleType === v.id ? "#FFF" : theme.text,
+                        marginLeft: 4,
+                        fontWeight: "600",
+                      }}
+                    >
                       {v.label}
                     </ThemedText>
                   </Pressable>
                 ))}
               </View>
 
-              <Input label="Matrícula" leftIcon="hash" value={vehiclePlate}
-                onChangeText={(t) => setVehiclePlate(t.toUpperCase())} placeholder="1234 ABC"
-                autoCapitalize="characters" />
+              <Input
+                label="Matrícula"
+                leftIcon="hash"
+                value={vehiclePlate}
+                onChangeText={(t) => setVehiclePlate(t.toUpperCase())}
+                placeholder="1234 ABC"
+                autoCapitalize="characters"
+              />
 
-              {(vehicleType === 'motorcycle' || vehicleType === 'car') && (
+              {(vehicleType === "motorcycle" || vehicleType === "car") && (
                 <>
-                  <Input label="Marca" leftIcon="tag" value={vehicleBrand}
-                    onChangeText={setVehicleBrand} placeholder="Honda, Toyota..." />
-                  <Input label="Modelo" leftIcon="info" value={vehicleModel}
-                    onChangeText={setVehicleModel} placeholder="CBR 500, Corolla..." />
-                  <Input label="Color" leftIcon="droplet" value={vehicleColor}
-                    onChangeText={setVehicleColor} placeholder="Rojo, Negro..." />
+                  <Input
+                    label="Marca"
+                    leftIcon="tag"
+                    value={vehicleBrand}
+                    onChangeText={setVehicleBrand}
+                    placeholder="Honda, Toyota..."
+                  />
+                  <Input
+                    label="Modelo"
+                    leftIcon="info"
+                    value={vehicleModel}
+                    onChangeText={setVehicleModel}
+                    placeholder="CBR 500, Corolla..."
+                  />
+                  <Input
+                    label="Color"
+                    leftIcon="droplet"
+                    value={vehicleColor}
+                    onChangeText={setVehicleColor}
+                    placeholder="Rojo, Negro..."
+                  />
                 </>
               )}
 
-<DocUpload
+              <DocUpload
                 label="Foto del vehículo *"
                 description="Foto clara del vehículo con matrícula visible"
                 uri={vehiclePhotoUri}
                 onPress={() => pickDocument((uri) => setVehiclePhotoUri(uri))}
-                onRemove={() => { setVehiclePhotoUri(null); removeDocument("vehiclePhoto", vehiclePhotoUri); }}
+                onRemove={() => {
+                  setVehiclePhotoUri(null);
+                  removeDocument("vehiclePhoto", vehiclePhotoUri);
+                }}
                 theme={theme}
                 onPreview={handlePreviewDocument}
               />
 
               {/* ── Documentos del vehículo (moto/coche) ── */}
-              {(vehicleType === 'motorcycle' || vehicleType === 'car') && (
+              {(vehicleType === "motorcycle" || vehicleType === "car") && (
                 <>
                   <SectionTitle icon="truck" title="Documentos del vehículo" />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-                    Sube los documentos de tu vehículo según la normativa española
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: theme.textSecondary,
+                      marginBottom: Spacing.md,
+                    }}
+                  >
+                    Sube los documentos de tu vehículo según la normativa
+                    española
                   </ThemedText>
 
-<DocUpload
+                  <DocUpload
                     label="Foto de matrícula *"
                     description="Foto clara de la matrícula del vehículo"
                     uri={vehiclePlatePhotoUri}
                     onPress={() => pickDocument(setVehiclePlatePhotoUri)}
-                    onRemove={() => { setVehiclePlatePhotoUri(null); removeDocument("vehiclePlatePhoto", vehiclePlatePhotoUri); }}
+                    onRemove={() => {
+                      setVehiclePlatePhotoUri(null);
+                      removeDocument("vehiclePlatePhoto", vehiclePlatePhotoUri);
+                    }}
                     theme={theme}
                     onPreview={handlePreviewDocument}
                   />
@@ -549,7 +921,10 @@ const statusColor = verificationStatus === "verified" ? ComeYaColors.success : v
                     description="Foto del documento ITV vigente (motos y coches)"
                     uri={vehicleItvPhotoUri}
                     onPress={() => pickDocument(setVehicleItvPhotoUri)}
-                    onRemove={() => { setVehicleItvPhotoUri(null); removeDocument("vehicleItvPhoto", vehicleItvPhotoUri); }}
+                    onRemove={() => {
+                      setVehicleItvPhotoUri(null);
+                      removeDocument("vehicleItvPhoto", vehicleItvPhotoUri);
+                    }}
                     theme={theme}
                     onPreview={handlePreviewDocument}
                   />
@@ -559,7 +934,13 @@ const statusColor = verificationStatus === "verified" ? ComeYaColors.success : v
                     description="Foto de la póliza o recibo del seguro"
                     uri={vehicleInsurancePhotoUri}
                     onPress={() => pickDocument(setVehicleInsurancePhotoUri)}
-                    onRemove={() => { setVehicleInsurancePhotoUri(null); removeDocument("vehicleInsurancePhoto", vehicleInsurancePhotoUri); }}
+                    onRemove={() => {
+                      setVehicleInsurancePhotoUri(null);
+                      removeDocument(
+                        "vehicleInsurancePhoto",
+                        vehicleInsurancePhotoUri,
+                      );
+                    }}
                     theme={theme}
                     onPreview={handlePreviewDocument}
                   />
@@ -569,7 +950,13 @@ const statusColor = verificationStatus === "verified" ? ComeYaColors.success : v
                     description="Foto del carnet de conducir (anverso)"
                     uri={vehicleLicensePhotoUri}
                     onPress={() => pickDocument(setVehicleLicensePhotoUri)}
-                    onRemove={() => { setVehicleLicensePhotoUri(null); removeDocument("vehicleLicensePhoto", vehicleLicensePhotoUri); }}
+                    onRemove={() => {
+                      setVehicleLicensePhotoUri(null);
+                      removeDocument(
+                        "vehicleLicensePhoto",
+                        vehicleLicensePhotoUri,
+                      );
+                    }}
                     theme={theme}
                     onPreview={handlePreviewDocument}
                   />
@@ -581,19 +968,28 @@ const statusColor = verificationStatus === "verified" ? ComeYaColors.success : v
           {/* ── Documentos (repartidor y negocio) ── */}
           {needsDocs && (
             <>
-              <SectionTitle icon="file-text" title="Documentos de verificación" />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+              <SectionTitle
+                icon="file-text"
+                title="Documentos de verificación"
+              />
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
+              >
                 {verificationStatus === "rejected"
-? "Tus documentos fueron rechazados. Sube nuevas imágenes para volver a solicitar verificación."
+                  ? "Tus documentos fueron rechazados. Sube nuevas imágenes para volver a solicitar verificación."
                   : "Sube documentos actualizados si necesitas renovar tu verificación."}
               </ThemedText>
 
-<DocUpload
+              <DocUpload
                 label="Foto del DNI / NIE (anverso) *"
                 description="Foto del anverso de tu DNI o NIE"
                 uri={idDocUri}
                 onPress={() => pickDocument(setIdDocUri)}
-                onRemove={() => { setIdDocUri(null); removeDocument("idDocumentUrl", idDocUri); }}
+                onRemove={() => {
+                  setIdDocUri(null);
+                  removeDocument("idDocumentUrl", idDocUri);
+                }}
                 theme={theme}
                 onPreview={handlePreviewDocument}
               />
@@ -603,17 +999,27 @@ const statusColor = verificationStatus === "verified" ? ComeYaColors.success : v
                 description="Foto del reverso de tu DNI o NIE"
                 uri={idDocBackUri}
                 onPress={() => pickDocument(setIdDocBackUri)}
-                onRemove={() => { setIdDocBackUri(null); removeDocument("idDocumentBackUrl", idDocBackUri); }}
+                onRemove={() => {
+                  setIdDocBackUri(null);
+                  removeDocument("idDocumentBackUrl", idDocBackUri);
+                }}
                 theme={theme}
                 onPreview={handlePreviewDocument}
               />
 
               <DocUpload
-                label={isBusiness ? "Certificado de autónomo / empresa *" : "Documento de autónomo *"}
+                label={
+                  isBusiness
+                    ? "Certificado de autónomo / empresa *"
+                    : "Documento de autónomo *"
+                }
                 description="Alta en Hacienda o certificado de empresa"
                 uri={autonomoDocUri}
                 onPress={() => pickDocument(setAutonomoDocUri)}
-                onRemove={() => { setAutonomoDocUri(null); removeDocument("autonomoDocumentUrl", autonomoDocUri); }}
+                onRemove={() => {
+                  setAutonomoDocUri(null);
+                  removeDocument("autonomoDocumentUrl", autonomoDocUri);
+                }}
                 theme={theme}
                 onPreview={handlePreviewDocument}
               />
@@ -621,29 +1027,66 @@ const statusColor = verificationStatus === "verified" ? ComeYaColors.success : v
           )}
         </View>
 
-        <View style={[styles.formSection, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[
+            styles.formSection,
+            { backgroundColor: theme.card },
+            Shadows.sm,
+          ]}
+        >
           {/* ── Profesión ── */}
           <SectionTitle icon="briefcase" title="Profesión" />
 
-<Input label="Tu profesión" leftIcon="award" value={profession}
+          <Input
+            label="Tu profesión"
+            leftIcon="award"
+            value={profession}
             onChangeText={setProfession}
-            placeholder="Ej: Repartidor, Chef, Comerciante..." autoCapitalize="words" />
+            placeholder="Ej: Repartidor, Chef, Comerciante..."
+            autoCapitalize="words"
+          />
         </View>
       </ScrollView>
 
-<View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.lg, backgroundColor: theme.backgroundSecondary, borderTopColor: theme.border }]}>
-        <Button onPress={handleSave} disabled={isSaving} loading={isSaving} style={styles.saveButton}>
+      <View
+        style={[
+          styles.footer,
+          {
+            paddingBottom: insets.bottom + Spacing.lg,
+            backgroundColor: theme.backgroundSecondary,
+            borderTopColor: theme.border,
+          },
+        ]}
+      >
+        <Button
+          onPress={handleSave}
+          disabled={isSaving}
+          loading={isSaving}
+          style={styles.saveButton}
+        >
           Guardar cambios
         </Button>
       </View>
 
       {/* Image Preview Modal */}
-      <Modal visible={showPreviewModal} transparent animationType="fade" onRequestClose={() => setShowPreviewModal(false)}>
+      <Modal
+        visible={showPreviewModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
         <View style={styles.previewModalContainer}>
           {previewImage && (
-            <Image source={{ uri: previewImage }} style={styles.previewModalImage} contentFit="contain" />
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.previewModalImage}
+              contentFit="contain"
+            />
           )}
-          <Pressable style={styles.previewModalClose} onPress={() => setShowPreviewModal(false)}>
+          <Pressable
+            style={styles.previewModalClose}
+            onPress={() => setShowPreviewModal(false)}
+          >
             <Feather name="x" size={24} color="#fff" />
           </Pressable>
         </View>
@@ -656,23 +1099,131 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: Spacing.lg },
-  avatarSection: { alignItems: "center", padding: Spacing.xl, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg },
-  avatar: { width: 80, height: 80, borderRadius: 40, justifyContent: "center", alignItems: "center", overflow: "hidden" },
+  avatarSection: {
+    alignItems: "center",
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
   avatarImage: { width: 80, height: 80, borderRadius: 40 },
-  cameraButton: { position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff" },
-  statusBanner: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: BorderRadius.md, padding: Spacing.md, marginBottom: Spacing.md },
-  formSection: { padding: Spacing.lg, borderRadius: BorderRadius.lg, marginBottom: Spacing.lg },
-  sectionIcon: { width: 30, height: 30, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-  vehicleChip: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: Spacing.sm, borderRadius: BorderRadius.md, borderWidth: 1.5 },
-docUpload: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderWidth: 2, borderStyle: "dashed", borderRadius: BorderRadius.lg, padding: Spacing.lg },
-  removeButton: { width: 48, height: 48, borderRadius: BorderRadius.md, borderWidth: 1, justifyContent: "center", alignItems: "center" },
-  footer: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, borderTopWidth: 1 },
+  cameraButton: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  statusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  formSection: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+  },
+  sectionIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  vehicleChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+  },
+  docUpload: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+  },
+  removeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  footer: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+  },
   saveButton: { width: "100%" },
-  infoBox: { flexDirection: "row", alignItems: "flex-start", padding: Spacing.md, borderRadius: BorderRadius.md, marginBottom: Spacing.xl },
-  docPreviewContainer: { width: "100%", height: 150, borderRadius: BorderRadius.md, borderWidth: 1, overflow: "hidden", position: "relative" },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.xl,
+  },
+  docPreviewContainer: {
+    width: "100%",
+    height: 150,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    overflow: "hidden",
+    position: "relative",
+  },
   docPreviewImage: { width: "100%", height: "100%" },
-  docPreviewOverlay: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: Spacing.sm },
-  previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.9)" },
-  previewModalImage: { width: "90%", height: "70%", borderRadius: BorderRadius.md },
-  previewModalClose: { position: "absolute", top: 50, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
+  docPreviewOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: Spacing.sm,
+  },
+  previewModalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.9)",
+  },
+  previewModalImage: {
+    width: "90%",
+    height: "70%",
+    borderRadius: BorderRadius.md,
+  },
+  previewModalClose: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

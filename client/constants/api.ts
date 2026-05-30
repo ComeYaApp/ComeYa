@@ -73,4 +73,3 @@ export const getDefaultHeaders = (token?: string) => {
 
   return headers;
 };
-

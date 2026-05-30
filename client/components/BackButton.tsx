@@ -1,7 +1,7 @@
-import React from 'react';
-import { Platform, Pressable, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Feather } from '@expo/vector-icons';
+import React from "react";
+import { Platform, Pressable, StyleSheet } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
 
 interface BackButtonProps {
   color?: string;
@@ -9,11 +9,15 @@ interface BackButtonProps {
   onPress?: () => void;
 }
 
-export function BackButton({ color = '#fff', size = 24, onPress }: BackButtonProps) {
+export function BackButton({
+  color = "#fff",
+  size = 24,
+  onPress,
+}: BackButtonProps) {
   const navigation = useNavigation();
 
   // Only show on web
-  if (Platform.OS !== 'web') {
+  if (Platform.OS !== "web") {
     return null;
   }
 

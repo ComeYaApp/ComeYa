@@ -7,7 +7,7 @@ function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const R = 6371; // Radio de la Tierra en km
   const dLat = toRad(lat2 - lat1);
@@ -39,7 +39,7 @@ export async function calculateDynamicETA(
   businessId: string,
   deliveryLat: number,
   deliveryLng: number,
-  driverId?: string
+  driverId?: string,
 ): Promise<ETACalculation> {
   // 1. Obtener tiempo de preparación del negocio
   const [business] = await db
@@ -59,7 +59,7 @@ export async function calculateDynamicETA(
     businessLat,
     businessLng,
     deliveryLat,
-    deliveryLng
+    deliveryLng,
   );
 
   // 4. Obtener velocidad del driver (si está asignado)
@@ -70,7 +70,9 @@ export async function calculateDynamicETA(
       .from(deliveryDrivers)
       .where(eq(deliveryDrivers.userId, driverId))
       .limit(1);
-    driverSpeed = driver?.avgSpeed ? parseFloat(driver.avgSpeed.toString()) : 25;
+    driverSpeed = driver?.avgSpeed
+      ? parseFloat(driver.avgSpeed.toString())
+      : 25;
   }
 
   // 5. Calcular tiempo de entrega
@@ -116,7 +118,7 @@ export async function updateOrderETA(orderId: string): Promise<void> {
     order.businessId,
     deliveryLat,
     deliveryLng,
-    order.deliveryPersonId || undefined
+    order.deliveryPersonId || undefined,
   );
 
   await db
@@ -133,7 +135,7 @@ export async function updateOrderETA(orderId: string): Promise<void> {
 export async function recalculateETAWithDriverLocation(
   orderId: string,
   driverLat: number,
-  driverLng: number
+  driverLng: number,
 ): Promise<ETACalculation> {
   const [order] = await db
     .select()
@@ -153,7 +155,12 @@ export async function recalculateETAWithDriverLocation(
     : 0;
 
   // Calcular distancia desde ubicación actual del driver
-  const distance = calculateDistance(driverLat, driverLng, deliveryLat, deliveryLng);
+  const distance = calculateDistance(
+    driverLat,
+    driverLng,
+    deliveryLat,
+    deliveryLng,
+  );
 
   const [driver] = await db
     .select()
@@ -161,7 +168,9 @@ export async function recalculateETAWithDriverLocation(
     .where(eq(deliveryDrivers.userId, order.deliveryPersonId!))
     .limit(1);
 
-  const driverSpeed = driver?.avgSpeed ? parseFloat(driver.avgSpeed.toString()) : 25;
+  const driverSpeed = driver?.avgSpeed
+    ? parseFloat(driver.avgSpeed.toString())
+    : 25;
   const deliveryTime = Math.ceil((distance / driverSpeed) * 60);
   const buffer = 2; // Buffer menor cuando ya está en camino
 

@@ -30,7 +30,10 @@ export function StripeProvider({ children }: StripeProviderProps) {
       setStripeNativeProvider(() => NativeStripeProvider);
       setStripeAvailable(true);
 
-      const response = await apiRequestRaw("GET", "/api/stripe/publishable-key");
+      const response = await apiRequestRaw(
+        "GET",
+        "/api/stripe/publishable-key",
+      );
       const responseText = await response.text();
       let parsedBody: any = {};
       if (responseText) {
@@ -58,7 +61,13 @@ export function StripeProvider({ children }: StripeProviderProps) {
   };
 
   // En web o Expo Go, solo renderizar children sin Stripe
-  if (isWeb || isExpoGo || !stripeAvailable || !publishableKey || !StripeNativeProvider) {
+  if (
+    isWeb ||
+    isExpoGo ||
+    !stripeAvailable ||
+    !publishableKey ||
+    !StripeNativeProvider
+  ) {
     return <>{children}</>;
   }
 

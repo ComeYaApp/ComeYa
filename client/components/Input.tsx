@@ -1,6 +1,13 @@
-import React from 'react';
-import { View, TextInput, Text, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
-import { theme } from '@/constants/theme';
+import React from "react";
+import {
+  View,
+  TextInput,
+  Text,
+  StyleSheet,
+  TextInputProps,
+  ViewStyle,
+} from "react-native";
+import { theme } from "@/constants/theme";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -9,7 +16,14 @@ interface InputProps extends TextInputProps {
   leftIcon?: string;
 }
 
-export function Input({ label, error, containerStyle, style, leftIcon, ...props }: InputProps) {
+export function Input({
+  label,
+  error,
+  containerStyle,
+  style,
+  leftIcon,
+  ...props
+}: InputProps) {
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -20,7 +34,12 @@ export function Input({ label, error, containerStyle, style, leftIcon, ...props 
           </View>
         )}
         <TextInput
-          style={[styles.input, leftIcon && styles.inputWithIcon, error && styles.inputError, style]}
+          style={[
+            styles.input,
+            leftIcon && styles.inputWithIcon,
+            error && styles.inputError,
+            style,
+          ]}
           placeholderTextColor={theme.colors.text.disabled}
           {...props}
         />
@@ -40,13 +59,13 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   iconContainer: {
     width: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
     borderBottomWidth: 1,

@@ -1,8 +1,8 @@
-import { useCart } from '@/contexts/CartContext';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/navigation/RootStackNavigator';
-import * as Haptics from 'expo-haptics';
+import { useCart } from "@/contexts/CartContext";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import * as Haptics from "expo-haptics";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -18,7 +18,7 @@ export function useReorder() {
   }) => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
+
       // Limpiar carrito actual
       await clearCart();
 
@@ -29,7 +29,7 @@ export function useReorder() {
           name: item.name,
           price: item.price,
           image: item.image,
-          description: '',
+          description: "",
           isAvailable: true,
           isWeightBased: false,
         };
@@ -39,16 +39,16 @@ export function useReorder() {
           order.businessId,
           order.businessName,
           item.quantity,
-          item.note
+          item.note,
         );
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
+
       // Navegar al carrito
-      navigation.navigate('Cart');
+      navigation.navigate("Cart");
     } catch (error) {
-      console.error('Reorder error:', error);
+      console.error("Reorder error:", error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   };

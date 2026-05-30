@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://localhost:5000";
+const BACKEND_URL =
+  process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://localhost:5000";
 
 export type NotifLevel = "critical" | "high" | "medium";
 
@@ -19,7 +20,8 @@ export interface AdminNotif {
 // Sonidos via Web Audio API — sin archivos externos
 function playSound(level: NotifLevel) {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = new (window.AudioContext ||
+      (window as any).webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -30,7 +32,7 @@ function playSound(level: NotifLevel) {
       osc.type = "square";
       osc.frequency.setValueAtTime(880, ctx.currentTime);
       osc.frequency.setValueAtTime(440, ctx.currentTime + 0.15);
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.30);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.3);
       gain.gain.setValueAtTime(0.3, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
       osc.start(ctx.currentTime);
@@ -49,33 +51,40 @@ function playSound(level: NotifLevel) {
   } catch {}
 }
 
-let _addNotif: ((n: Omit<AdminNotif, "id" | "timestamp" | "read">) => void) | null = null;
+let _addNotif:
+  | ((n: Omit<AdminNotif, "id" | "timestamp" | "read">) => void)
+  | null = null;
 
 export function useAdminNotifications() {
   const { user } = useAuth();
   const [notifs, setNotifs] = useState<AdminNotif[]>([]);
   const socketRef = useRef<any>(null);
 
-  const add = useCallback((n: Omit<AdminNotif, "id" | "timestamp" | "read">) => {
-    const notif: AdminNotif = {
-      ...n,
-      id: `${Date.now()}-${Math.random()}`,
-      timestamp: new Date(),
-      read: false,
-    };
-    setNotifs(prev => [notif, ...prev].slice(0, 50)); // max 50
-    playSound(n.level);
-  }, []);
+  const add = useCallback(
+    (n: Omit<AdminNotif, "id" | "timestamp" | "read">) => {
+      const notif: AdminNotif = {
+        ...n,
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: new Date(),
+        read: false,
+      };
+      setNotifs((prev) => [notif, ...prev].slice(0, 50)); // max 50
+      playSound(n.level);
+    },
+    [],
+  );
 
   // Exponer add globalmente para que AdminShell pueda usarlo
   _addNotif = add;
 
   const markRead = useCallback((id: string) => {
-    setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setNotifs((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    );
   }, []);
 
   const markAllRead = useCallback(() => {
-    setNotifs(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
   const clear = useCallback(() => setNotifs([]), []);
@@ -175,12 +184,14 @@ export function useAdminNotifications() {
     };
   }, [user?.id, user?.role]);
 
-  const unreadCount = notifs.filter(n => !n.read).length;
+  const unreadCount = notifs.filter((n) => !n.read).length;
 
   return { notifs, unreadCount, markRead, markAllRead, clear };
 }
 
 // Para disparar notificaciones desde fuera del hook (ej: polling)
-export function pushAdminNotif(n: Omit<AdminNotif, "id" | "timestamp" | "read">) {
+export function pushAdminNotif(
+  n: Omit<AdminNotif, "id" | "timestamp" | "read">,
+) {
   _addNotif?.(n);
 }

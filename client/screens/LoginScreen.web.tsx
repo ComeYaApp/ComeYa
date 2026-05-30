@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, StyleSheet, Pressable, ActivityIndicator,
-  TextInput, Text, ScrollView,
+  View,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  TextInput,
+  Text,
+  ScrollView,
 } from "react-native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
@@ -15,7 +20,9 @@ import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 import { useTheme } from "@/hooks/useTheme";
 
-type Props = { navigation: NativeStackNavigationProp<RootStackParamList, "Login"> };
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList, "Login">;
+};
 
 // Rojo para versión web
 const PRIMARY = "#DC2626"; // Rojo profesional
@@ -33,43 +40,58 @@ export default function LoginScreen({ navigation }: Props) {
   const { isMobile } = useResponsive();
   const { isDark, themeMode, setThemeMode } = useTheme();
 
-  const bg       = isDark ? "#111" : "#fff";
-  const cardBg   = isDark ? "#1e1e1e" : "#fff";
-  const rightBg  = isDark ? "#0a0a0a" : "#fafafa";
-  const textCol  = isDark ? "#fff" : "#1a1a1a";
-  const subCol   = isDark ? "#aaa" : "#666";
-  const borderCol= isDark ? "#333" : "#e0e0e0";
-  const inputBg  = isDark ? "#2a2a2a" : "#fff";
+  const bg = isDark ? "#111" : "#fff";
+  const cardBg = isDark ? "#1e1e1e" : "#fff";
+  const rightBg = isDark ? "#0a0a0a" : "#fafafa";
+  const textCol = isDark ? "#fff" : "#1a1a1a";
+  const subCol = isDark ? "#aaa" : "#666";
+  const borderCol = isDark ? "#333" : "#e0e0e0";
+  const inputBg = isDark ? "#2a2a2a" : "#fff";
   const prefixBg = isDark ? "#222" : "#f8f8f8";
 
   useEffect(() => {
-    apiRequest("GET", "/api/business/featured").then(r => r.json())
-      .then(d => setFeaturedBusinesses(d.businesses?.slice(0, 4) || []))
+    apiRequest("GET", "/api/business/featured")
+      .then((r) => r.json())
+      .then((d) => setFeaturedBusinesses(d.businesses?.slice(0, 4) || []))
       .catch(() => {});
   }, []);
 
   const handleSMS = async () => {
     if (!phone || phone.replace(/\D/g, "").length < 7) {
-      showToast("Ingresa un número válido", "error"); return;
+      showToast("Ingresa un número válido", "error");
+      return;
     }
     setLoading(true);
     try {
       const digits = phone.replace(/\D/g, "");
-      const formatted = digits.startsWith("34") ? `+${digits}` : digits.length === 9 ? `+34${digits}` : `+${digits}`;
+      const formatted = digits.startsWith("34")
+        ? `+${digits}`
+        : digits.length === 9
+          ? `+34${digits}`
+          : `+${digits}`;
       const result = await requestPhoneLogin(formatted);
       if (result?.userNotFound) {
         showToast("Cuenta no encontrada. Regístrate primero.", "warning");
-        setTimeout(() => navigation.navigate("Signup", { phone: formatted }), 1000);
+        setTimeout(
+          () => navigation.navigate("Signup", { phone: formatted }),
+          1000,
+        );
         return;
       }
-      if (result?.requiresVerification) navigation.navigate("VerifyPhone", { phone: formatted });
+      if (result?.requiresVerification)
+        navigation.navigate("VerifyPhone", { phone: formatted });
     } catch (e: any) {
       showToast(e.message || "Error al enviar código", "error");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePassword = async () => {
-    if (!identifier || !password) { showToast("Completa todos los campos", "error"); return; }
+    if (!identifier || !password) {
+      showToast("Completa todos los campos", "error");
+      return;
+    }
     setLoading(true);
     try {
       const result = await loginWithPassword(identifier, password);
@@ -80,16 +102,26 @@ export default function LoginScreen({ navigation }: Props) {
       }
     } catch (e: any) {
       showToast(e.message || "Credenciales incorrectas", "error");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const cycleTheme = () => {
-    const next = themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'system' : 'light';
+    const next =
+      themeMode === "light"
+        ? "dark"
+        : themeMode === "dark"
+          ? "system"
+          : "light";
     setThemeMode(next);
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: bg }} contentContainerStyle={[s.root, { backgroundColor: bg }]}>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: bg }}
+      contentContainerStyle={[s.root, { backgroundColor: bg }]}
+    >
       {/* IZQUIERDA/ARRIBA — Branding Hero */}
       <View style={s.left}>
         <View style={s.leftInner}>
@@ -99,25 +131,50 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
             <Text style={s.logoText}>ComeYa</Text>
           </View>
-          <Text style={[s.headline, isMobile && { fontSize: 28, lineHeight: 34, marginBottom: 12 }]}>Tu comida favorita,{"\n"}en tu puerta</Text>
-          <Text style={[s.subheadline, isMobile && { fontSize: 14, lineHeight: 20, marginBottom: 20 }]}>
-            Los mejores restaurantes y negocios locales de Soria, a un clic de distancia.
+          <Text
+            style={[
+              s.headline,
+              isMobile && { fontSize: 28, lineHeight: 34, marginBottom: 12 },
+            ]}
+          >
+            Tu comida favorita,{"\n"}en tu puerta
+          </Text>
+          <Text
+            style={[
+              s.subheadline,
+              isMobile && { fontSize: 14, lineHeight: 20, marginBottom: 20 },
+            ]}
+          >
+            Los mejores restaurantes y negocios locales de Soria, a un clic de
+            distancia.
           </Text>
           {featuredBusinesses.length > 0 && (
             <View style={s.bizGrid}>
               {featuredBusinesses.map((b) => (
                 <View key={b.id} style={s.bizCard}>
-                  <Image source={{ uri: b.image }} style={s.bizImg} contentFit="cover" />
+                  <Image
+                    source={{ uri: b.image }}
+                    style={s.bizImg}
+                    contentFit="cover"
+                  />
                   <View style={s.bizOverlay}>
-                    <Text style={s.bizName} numberOfLines={1}>{b.name}</Text>
-                    <Text style={s.bizRating}>★ {(b.rating / 10).toFixed(1)}</Text>
+                    <Text style={s.bizName} numberOfLines={1}>
+                      {b.name}
+                    </Text>
+                    <Text style={s.bizRating}>
+                      ★ {(b.rating / 10).toFixed(1)}
+                    </Text>
                   </View>
                 </View>
               ))}
             </View>
           )}
           <View style={[s.stats, isMobile && { gap: 24 }]}>
-            {[["50+", "Negocios"], ["30min", "Entrega promedio"], ["4.8★", "Valoración"]].map(([n, l]) => (
+            {[
+              ["50+", "Negocios"],
+              ["30min", "Entrega promedio"],
+              ["4.8★", "Valoración"],
+            ].map(([n, l]) => (
               <View key={l} style={s.stat}>
                 <Text style={[s.statN, isMobile && { fontSize: 20 }]}>{n}</Text>
                 <Text style={s.statL}>{l}</Text>
@@ -133,21 +190,65 @@ export default function LoginScreen({ navigation }: Props) {
           {/* Toggle tema */}
           <Pressable onPress={cycleTheme} style={s.themeToggle}>
             <Feather name={isDark ? "sun" : "moon"} size={18} color={subCol} />
-            <Text style={{ fontSize: 12, color: subCol, marginLeft: 6, fontWeight: '600' }}>
-              {themeMode === 'light' ? 'Claro' : themeMode === 'dark' ? 'Oscuro' : 'Sistema'}
+            <Text
+              style={{
+                fontSize: 12,
+                color: subCol,
+                marginLeft: 6,
+                fontWeight: "600",
+              }}
+            >
+              {themeMode === "light"
+                ? "Claro"
+                : themeMode === "dark"
+                  ? "Oscuro"
+                  : "Sistema"}
             </Text>
           </Pressable>
-          <View style={[s.formCard, { backgroundColor: cardBg, shadowColor: isDark ? '#000' : '#000' }]}>
-            <Text style={[s.formTitle, { color: textCol }]}>Bienvenido de vuelta</Text>
+          <View
+            style={[
+              s.formCard,
+              {
+                backgroundColor: cardBg,
+                shadowColor: isDark ? "#000" : "#000",
+              },
+            ]}
+          >
+            <Text style={[s.formTitle, { color: textCol }]}>
+              Bienvenido de vuelta
+            </Text>
             <Text style={[s.formSub, { color: subCol }]}>
-              {mode === "sms" ? "Ingresa tu número para recibir un código" : "Ingresa tus credenciales"}
+              {mode === "sms"
+                ? "Ingresa tu número para recibir un código"
+                : "Ingresa tus credenciales"}
             </Text>
 
             {/* Toggle modo */}
-            <View style={[s.modeRow, { backgroundColor: isDark ? '#222' : '#f5f5f5' }]}>
+            <View
+              style={[
+                s.modeRow,
+                { backgroundColor: isDark ? "#222" : "#f5f5f5" },
+              ]}
+            >
               {(["sms", "password"] as const).map((m) => (
-                <Pressable key={m} onPress={() => setMode(m)} style={[s.modeBtn, mode === m && [s.modeBtnActive, { backgroundColor: cardBg }]]}>
-                  <Text style={[s.modeBtnText, { color: subCol }, mode === m && s.modeBtnTextActive]}>
+                <Pressable
+                  key={m}
+                  onPress={() => setMode(m)}
+                  style={[
+                    s.modeBtn,
+                    mode === m && [
+                      s.modeBtnActive,
+                      { backgroundColor: cardBg },
+                    ],
+                  ]}
+                >
+                  <Text
+                    style={[
+                      s.modeBtnText,
+                      { color: subCol },
+                      mode === m && s.modeBtnTextActive,
+                    ]}
+                  >
                     {m === "sms" ? "📱 SMS" : "🔑 Contraseña"}
                   </Text>
                 </Pressable>
@@ -156,11 +257,33 @@ export default function LoginScreen({ navigation }: Props) {
 
             {mode === "sms" ? (
               <View style={s.field}>
-                <Text style={[s.label, { color: textCol }]}>Número de teléfono</Text>
-                <View style={[s.inputRow, { borderColor: borderCol, backgroundColor: inputBg }]}>
-                  <View style={[s.prefix, { backgroundColor: prefixBg, borderRightColor: borderCol }]}><Text style={[s.prefixText, { color: textCol }]}>🇪🇸 +34</Text></View>
+                <Text style={[s.label, { color: textCol }]}>
+                  Número de teléfono
+                </Text>
+                <View
+                  style={[
+                    s.inputRow,
+                    { borderColor: borderCol, backgroundColor: inputBg },
+                  ]}
+                >
+                  <View
+                    style={[
+                      s.prefix,
+                      {
+                        backgroundColor: prefixBg,
+                        borderRightColor: borderCol,
+                      },
+                    ]}
+                  >
+                    <Text style={[s.prefixText, { color: textCol }]}>
+                      🇪🇸 +34
+                    </Text>
+                  </View>
                   <TextInput
-                    style={[s.input, { color: textCol, backgroundColor: inputBg }]}
+                    style={[
+                      s.input,
+                      { color: textCol, backgroundColor: inputBg },
+                    ]}
                     placeholder="612 345 678"
                     placeholderTextColor={subCol}
                     value={phone}
@@ -172,9 +295,19 @@ export default function LoginScreen({ navigation }: Props) {
             ) : (
               <>
                 <View style={s.field}>
-                  <Text style={[s.label, { color: textCol }]}>Correo electrónico o teléfono</Text>
+                  <Text style={[s.label, { color: textCol }]}>
+                    Correo electrónico o teléfono
+                  </Text>
                   <TextInput
-                    style={[s.input, s.inputFull, { borderColor: borderCol, backgroundColor: inputBg, color: textCol }]}
+                    style={[
+                      s.input,
+                      s.inputFull,
+                      {
+                        borderColor: borderCol,
+                        backgroundColor: inputBg,
+                        color: textCol,
+                      },
+                    ]}
                     placeholder="correo@ejemplo.com"
                     placeholderTextColor={subCol}
                     value={identifier}
@@ -185,22 +318,41 @@ export default function LoginScreen({ navigation }: Props) {
                 </View>
                 <View style={s.field}>
                   <View style={s.labelRow}>
-                    <Text style={[s.label, { color: textCol }]}>Contraseña</Text>
+                    <Text style={[s.label, { color: textCol }]}>
+                      Contraseña
+                    </Text>
                     <Pressable onPress={() => {}}>
-                      <Text style={s.forgotLink}>¿Olvidaste tu contraseña?</Text>
+                      <Text style={s.forgotLink}>
+                        ¿Olvidaste tu contraseña?
+                      </Text>
                     </Pressable>
                   </View>
-                  <View style={[s.inputRow, { borderColor: borderCol, backgroundColor: inputBg }]}>
+                  <View
+                    style={[
+                      s.inputRow,
+                      { borderColor: borderCol, backgroundColor: inputBg },
+                    ]}
+                  >
                     <TextInput
-                      style={[s.input, { flex: 1, color: textCol, backgroundColor: inputBg }]}
+                      style={[
+                        s.input,
+                        { flex: 1, color: textCol, backgroundColor: inputBg },
+                      ]}
                       placeholder="Tu contraseña"
                       placeholderTextColor={subCol}
                       value={password}
                       onChangeText={setPassword}
                       secureTextEntry={!showPass}
                     />
-                    <Pressable onPress={() => setShowPass(!showPass)} style={s.eyeBtn}>
-                      <Feather name={showPass ? "eye-off" : "eye"} size={20} color={subCol} />
+                    <Pressable
+                      onPress={() => setShowPass(!showPass)}
+                      style={s.eyeBtn}
+                    >
+                      <Feather
+                        name={showPass ? "eye-off" : "eye"}
+                        size={20}
+                        color={subCol}
+                      />
                     </Pressable>
                   </View>
                 </View>
@@ -212,10 +364,13 @@ export default function LoginScreen({ navigation }: Props) {
               onPress={mode === "sms" ? handleSMS : handlePassword}
               disabled={loading}
             >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={s.submitText}>{mode === "sms" ? "Enviar código" : "Iniciar sesión"}</Text>
-              }
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={s.submitText}>
+                  {mode === "sms" ? "Enviar código" : "Iniciar sesión"}
+                </Text>
+              )}
             </Pressable>
 
             <View style={s.dividerRow}>
@@ -224,15 +379,33 @@ export default function LoginScreen({ navigation }: Props) {
               <View style={s.divLine} />
             </View>
 
-            <Pressable style={[s.registerBtn, { borderColor: borderCol, backgroundColor: cardBg }]} onPress={() => navigation.navigate("Signup")}>
-              <Text style={[s.registerText, { color: textCol }]}>Crear cuenta nueva</Text>
+            <Pressable
+              style={[
+                s.registerBtn,
+                { borderColor: borderCol, backgroundColor: cardBg },
+              ]}
+              onPress={() => navigation.navigate("Signup")}
+            >
+              <Text style={[s.registerText, { color: textCol }]}>
+                Crear cuenta nueva
+              </Text>
             </Pressable>
 
             <Text style={s.legal}>
               Al continuar, aceptas nuestros{" "}
-              <Text style={s.legalLink} onPress={() => navigation.navigate("Terms" as any)}>Términos de Servicio</Text>
-              {" "}y{" "}
-              <Text style={s.legalLink} onPress={() => navigation.navigate("Privacy" as any)}>Política de Privacidad</Text>
+              <Text
+                style={s.legalLink}
+                onPress={() => navigation.navigate("Terms" as any)}
+              >
+                Términos de Servicio
+              </Text>{" "}
+              y{" "}
+              <Text
+                style={s.legalLink}
+                onPress={() => navigation.navigate("Privacy" as any)}
+              >
+                Política de Privacidad
+              </Text>
             </Text>
           </View>
         </View>
@@ -242,30 +415,30 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const s = StyleSheet.create({
-  root: { 
-    flex: 1, 
+  root: {
+    flex: 1,
     flexDirection: "row",
     minHeight: "100vh" as any,
     flexWrap: "wrap" as any,
   },
 
   // IZQUIERDA/ARRIBA — Hero Section
-  left: { 
+  left: {
     flex: 1,
     minWidth: 300,
     maxWidth: 600,
     backgroundColor: PRIMARY,
     position: "relative" as any,
   },
-  leftInner: { 
+  leftInner: {
     padding: 28,
     maxWidth: 600,
     margin: "auto" as any,
   },
-  logoRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    marginBottom: 24, 
+  logoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
     gap: 16,
   },
   logoCircle: {
@@ -284,43 +457,43 @@ const s = StyleSheet.create({
     width: 48,
     height: 48,
   },
-  logoText: { 
-    fontSize: 36, 
-    fontWeight: "900", 
-    color: "#fff", 
+  logoText: {
+    fontSize: 36,
+    fontWeight: "900",
+    color: "#fff",
     letterSpacing: -1,
   },
-  headline: { 
-    fontSize: 48, 
-    fontWeight: "900", 
-    color: "#fff", 
-    lineHeight: 56, 
-    marginBottom: 24, 
+  headline: {
+    fontSize: 48,
+    fontWeight: "900",
+    color: "#fff",
+    lineHeight: 56,
+    marginBottom: 24,
     letterSpacing: -1.5,
   },
-  subheadline: { 
-    fontSize: 20, 
-    color: "rgba(255,255,255,0.9)", 
-    lineHeight: 32, 
+  subheadline: {
+    fontSize: 20,
+    color: "rgba(255,255,255,0.9)",
+    lineHeight: 32,
     marginBottom: 48,
     fontWeight: "400",
   },
-  bizGrid: { 
-    flexDirection: "row", 
-    flexWrap: "wrap", 
-    gap: 16, 
+  bizGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
     marginBottom: 48,
   },
-  bizCard: { 
+  bizCard: {
     width: "calc(50% - 8px)" as any,
     aspectRatio: 1.4,
-    borderRadius: 16, 
-    overflow: "hidden", 
+    borderRadius: 16,
+    overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.1)",
     position: "relative" as any,
   },
-  bizImg: { 
-    width: "100%" as any, 
+  bizImg: {
+    width: "100%" as any,
     height: "100%" as any,
   },
   bizOverlay: {
@@ -329,11 +502,12 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 12,
-    backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.7), transparent)" as any,
+    backgroundImage:
+      "linear-gradient(to top, rgba(0,0,0,0.7), transparent)" as any,
   },
-  bizName: { 
-    fontSize: 14, 
-    color: "#fff", 
+  bizName: {
+    fontSize: 14,
+    color: "#fff",
     fontWeight: "700",
     marginBottom: 4,
   },
@@ -342,28 +516,28 @@ const s = StyleSheet.create({
     color: "rgba(255,255,255,0.9)",
     fontWeight: "600",
   },
-  stats: { 
-    flexDirection: "row", 
+  stats: {
+    flexDirection: "row",
     gap: 56,
   },
-  stat: { 
+  stat: {
     alignItems: "flex-start",
   },
-  statN: { 
-    fontSize: 32, 
-    fontWeight: "900", 
-    color: "#fff", 
+  statN: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#fff",
     marginBottom: 6,
     letterSpacing: -0.5,
   },
-  statL: { 
-    fontSize: 14, 
-    color: "rgba(255,255,255,0.8)", 
+  statL: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
     fontWeight: "500",
   },
 
   // DERECHA/ABAJO — Form Container
-  right: { 
+  right: {
     flex: 1,
     minWidth: 300,
     display: "flex" as any,
@@ -394,55 +568,55 @@ const s = StyleSheet.create({
     shadowRadius: 24,
     elevation: 8,
   },
-  formTitle: { 
-    fontSize: 28, 
-    fontWeight: "800", 
-    color: "#1a1a1a", 
-    marginBottom: 8, 
+  formTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#1a1a1a",
+    marginBottom: 8,
     letterSpacing: -0.5,
   },
-  formSub: { 
-    fontSize: 15, 
-    color: "#666", 
-    marginBottom: 32, 
+  formSub: {
+    fontSize: 15,
+    color: "#666",
+    marginBottom: 32,
     lineHeight: 22,
   },
-  modeRow: { 
-    flexDirection: "row", 
-    backgroundColor: "#f5f5f5", 
-    borderRadius: 12, 
-    padding: 4, 
+  modeRow: {
+    flexDirection: "row",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 4,
     marginBottom: 24,
   },
-  modeBtn: { 
-    flex: 1, 
-    paddingVertical: 10, 
-    borderRadius: 10, 
+  modeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
     alignItems: "center",
   },
-  modeBtnActive: { 
-    backgroundColor: "#fff", 
-    shadowColor: "#000", 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.06, 
+  modeBtnActive: {
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
     shadowRadius: 4,
   },
-  modeBtnText: { 
-    fontSize: 14, 
-    color: "#666", 
+  modeBtnText: {
+    fontSize: 14,
+    color: "#666",
     fontWeight: "600",
   },
-  modeBtnTextActive: { 
-    color: PRIMARY, 
+  modeBtnTextActive: {
+    color: PRIMARY,
     fontWeight: "700",
   },
-  field: { 
+  field: {
     marginBottom: 20,
   },
-  label: { 
-    fontSize: 14, 
-    fontWeight: "600", 
-    color: "#1a1a1a", 
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1a1a1a",
     marginBottom: 8,
   },
   labelRow: {
@@ -456,101 +630,101 @@ const s = StyleSheet.create({
     color: PRIMARY,
     fontWeight: "600",
   },
-  inputRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    borderWidth: 1.5, 
-    borderColor: "#e0e0e0", 
-    borderRadius: 10, 
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
     backgroundColor: "#fff",
     height: 48,
   },
-  prefix: { 
-    paddingHorizontal: 14, 
+  prefix: {
+    paddingHorizontal: 14,
     height: "100%" as any,
     justifyContent: "center" as any,
-    backgroundColor: "#f8f8f8", 
-    borderRightWidth: 1.5, 
+    backgroundColor: "#f8f8f8",
+    borderRightWidth: 1.5,
     borderRightColor: "#e0e0e0",
   },
-  prefixText: { 
-    fontSize: 14, 
-    color: "#1a1a1a", 
+  prefixText: {
+    fontSize: 14,
+    color: "#1a1a1a",
     fontWeight: "600",
   },
-  input: { 
-    flex: 1, 
-    paddingHorizontal: 14, 
+  input: {
+    flex: 1,
+    paddingHorizontal: 14,
     height: 48,
-    fontSize: 15, 
-    color: "#1a1a1a", 
+    fontSize: 15,
+    color: "#1a1a1a",
     outlineStyle: "none",
   } as any,
-  inputFull: { 
-    borderWidth: 1.5, 
-    borderColor: "#e0e0e0", 
-    borderRadius: 10, 
+  inputFull: {
+    borderWidth: 1.5,
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
     backgroundColor: "#fff",
     paddingHorizontal: 14,
   },
-  eyeBtn: { 
+  eyeBtn: {
     paddingHorizontal: 14,
     height: "100%" as any,
     justifyContent: "center" as any,
   },
-  submitBtn: { 
-    backgroundColor: PRIMARY, 
-    borderRadius: 10, 
+  submitBtn: {
+    backgroundColor: PRIMARY,
+    borderRadius: 10,
     height: 48,
-    alignItems: "center", 
+    alignItems: "center",
     justifyContent: "center" as any,
-    marginTop: 8, 
+    marginTop: 8,
     marginBottom: 24,
   },
-  submitText: { 
-    color: "#fff", 
-    fontSize: 16, 
+  submitText: {
+    color: "#fff",
+    fontSize: 16,
     fontWeight: "700",
   },
-  dividerRow: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 16, 
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
     marginBottom: 24,
   },
-  divLine: { 
-    flex: 1, 
-    height: 1, 
+  divLine: {
+    flex: 1,
+    height: 1,
     backgroundColor: "#e0e0e0",
   },
-  divText: { 
-    fontSize: 13, 
-    color: "#999", 
+  divText: {
+    fontSize: 13,
+    color: "#999",
     fontWeight: "500",
   },
-  registerBtn: { 
-    borderWidth: 1.5, 
-    borderColor: "#e0e0e0", 
-    borderRadius: 10, 
+  registerBtn: {
+    borderWidth: 1.5,
+    borderColor: "#e0e0e0",
+    borderRadius: 10,
     height: 48,
-    alignItems: "center", 
+    alignItems: "center",
     justifyContent: "center" as any,
     marginBottom: 24,
     backgroundColor: "#fff",
   },
-  registerText: { 
-    color: "#1a1a1a", 
-    fontSize: 15, 
+  registerText: {
+    color: "#1a1a1a",
+    fontSize: 15,
     fontWeight: "600",
   },
-  legal: { 
-    fontSize: 12, 
-    color: "#999", 
-    textAlign: "center", 
+  legal: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
     lineHeight: 18,
   },
-  legalLink: { 
-    color: PRIMARY, 
+  legalLink: {
+    color: PRIMARY,
     fontWeight: "600",
   },
 });

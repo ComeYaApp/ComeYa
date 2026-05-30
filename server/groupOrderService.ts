@@ -1,6 +1,11 @@
-import { db } from './db';
-import { groupOrders, groupOrderParticipants, groupOrderInvitations, orders } from '@shared/schema-mysql';
-import { eq, and } from 'drizzle-orm';
+import { db } from "./db";
+import {
+  groupOrders,
+  groupOrderParticipants,
+  groupOrderInvitations,
+  orders,
+} from "@shared/schema-mysql";
+import { eq, and } from "drizzle-orm";
 
 export class GroupOrderService {
   // Crear pedido grupal
@@ -37,7 +42,7 @@ export class GroupOrderService {
       deliveryLongitude: deliveryLongitude || null,
       shareToken,
       expiresAt,
-      status: 'open',
+      status: "open",
     });
 
     return {
@@ -66,15 +71,15 @@ export class GroupOrderService {
       .limit(1);
 
     if (!group) {
-      return { success: false, error: 'Grupo no encontrado' };
+      return { success: false, error: "Grupo no encontrado" };
     }
 
-    if (group.status !== 'open') {
-      return { success: false, error: 'El grupo ya está cerrado' };
+    if (group.status !== "open") {
+      return { success: false, error: "El grupo ya está cerrado" };
     }
 
     if (new Date() > new Date(group.expiresAt)) {
-      return { success: false, error: 'El grupo ha expirado' };
+      return { success: false, error: "El grupo ha expirado" };
     }
 
     // Verificar si ya está en el grupo
@@ -84,13 +89,13 @@ export class GroupOrderService {
       .where(
         and(
           eq(groupOrderParticipants.groupOrderId, group.id),
-          eq(groupOrderParticipants.userId, userId)
-        )
+          eq(groupOrderParticipants.userId, userId),
+        ),
       )
       .limit(1);
 
     if (existing) {
-      return { success: false, error: 'Ya estás en este grupo' };
+      return { success: false, error: "Ya estás en este grupo" };
     }
 
     // Agregar participante
@@ -101,7 +106,7 @@ export class GroupOrderService {
       userName,
       items: JSON.stringify(items),
       subtotal,
-      paymentStatus: 'pending',
+      paymentStatus: "pending",
     });
 
     // Actualizar total del grupo
@@ -129,7 +134,7 @@ export class GroupOrderService {
       .limit(1);
 
     if (!group) {
-      return { success: false, error: 'Grupo no encontrado' };
+      return { success: false, error: "Grupo no encontrado" };
     }
 
     const participants = await db
@@ -158,15 +163,15 @@ export class GroupOrderService {
       .limit(1);
 
     if (!group) {
-      return { success: false, error: 'Grupo no encontrado' };
+      return { success: false, error: "Grupo no encontrado" };
     }
 
     if (group.creatorId !== creatorId) {
-      return { success: false, error: 'Solo el creador puede cerrar el grupo' };
+      return { success: false, error: "Solo el creador puede cerrar el grupo" };
     }
 
-    if (group.status !== 'open') {
-      return { success: false, error: 'El grupo ya está cerrado' };
+    if (group.status !== "open") {
+      return { success: false, error: "El grupo ya está cerrado" };
     }
 
     // Obtener participantes
@@ -176,7 +181,7 @@ export class GroupOrderService {
       .where(eq(groupOrderParticipants.groupOrderId, groupOrderId));
 
     if (participants.length === 0) {
-      return { success: false, error: 'No hay participantes en el grupo' };
+      return { success: false, error: "No hay participantes en el grupo" };
     }
 
     // Combinar todos los items
@@ -197,11 +202,11 @@ export class GroupOrderService {
       businessId: group.businessId,
       businessName: group.businessName,
       items: JSON.stringify(allItems),
-      status: 'pending',
+      status: "pending",
       subtotal: totalAmount,
       deliveryFee,
       total: totalAmount + deliveryFee,
-      paymentMethod: 'group_split',
+      paymentMethod: "group_split",
       deliveryAddress: group.deliveryAddress,
       deliveryLatitude: group.deliveryLatitude || null,
       deliveryLongitude: group.deliveryLongitude || null,
@@ -211,7 +216,7 @@ export class GroupOrderService {
     await db
       .update(groupOrders)
       .set({
-        status: 'locked',
+        status: "locked",
         orderId,
         lockedAt: new Date(),
         orderedAt: new Date(),
@@ -222,11 +227,14 @@ export class GroupOrderService {
   }
 
   // Marcar pago de participante
-  static async markParticipantPaid(participantId: string, paymentProofUrl?: string) {
+  static async markParticipantPaid(
+    participantId: string,
+    paymentProofUrl?: string,
+  ) {
     await db
       .update(groupOrderParticipants)
       .set({
-        paymentStatus: 'paid',
+        paymentStatus: "paid",
         paymentProofUrl: paymentProofUrl || null,
         paidAt: new Date(),
       })
@@ -250,12 +258,13 @@ export class GroupOrderService {
       .where(eq(groupOrderParticipants.userId, userId));
 
     const participantGroupIds = participations.map((p) => p.groupOrderId);
-    const participantGroups = participantGroupIds.length > 0
-      ? await db
-          .select()
-          .from(groupOrders)
-          .where(eq(groupOrders.id, participantGroupIds[0])) // Simplificado
-      : [];
+    const participantGroups =
+      participantGroupIds.length > 0
+        ? await db
+            .select()
+            .from(groupOrders)
+            .where(eq(groupOrders.id, participantGroupIds[0])) // Simplificado
+        : [];
 
     return {
       success: true,

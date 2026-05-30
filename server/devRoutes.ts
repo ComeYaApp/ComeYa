@@ -7,11 +7,13 @@ const router = express.Router();
 router.post("/auth/dev-email-login", async (req, res) => {
   try {
     if (process.env.NODE_ENV === "production") {
-      return res.status(404).json({ error: "Endpoint not available in production" });
+      return res
+        .status(404)
+        .json({ error: "Endpoint not available in production" });
     }
 
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({ error: "Email y password son requeridos" });
     }
@@ -44,7 +46,7 @@ router.post("/auth/dev-email-login", async (req, res) => {
     const token = jwt.default.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET || "demo-secret",
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     res.json({

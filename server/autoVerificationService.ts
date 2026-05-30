@@ -1,6 +1,11 @@
 // Auto Verification Service - Sistema Semi-Automático con Anti-Fraude
 import { db } from "./db";
-import { orders, paymentProofs, users, transactions } from "@shared/schema-mysql";
+import {
+  orders,
+  paymentProofs,
+  users,
+  transactions,
+} from "@shared/schema-mysql";
 import { eq, and, gte, desc, sql } from "drizzle-orm";
 import { logger } from "./logger";
 
@@ -95,17 +100,16 @@ export class AutoVerificationService {
         userTrustworthy: await this.checkUserTrustworthiness(proof.userId),
         timeValid: await this.checkTimeValidity(proof.submittedAt),
         imageValid: await this.checkImageValidity(proof.proofImageUrl),
-        duplicateCheck: await this.checkDuplicateReference(proof.referenceNumber, proof.id),
+        duplicateCheck: await this.checkDuplicateReference(
+          proof.referenceNumber,
+          proof.id,
+        ),
         velocityCheck: await this.checkVelocity(proof.userId),
       };
 
       // Calcular confianza y riesgo
-      const { confidence, riskScore, reason } = await this.calculateConfidenceAndRisk(
-        checks,
-        proof,
-        order,
-        user
-      );
+      const { confidence, riskScore, reason } =
+        await this.calculateConfidenceAndRisk(checks, proof, order, user);
 
       // Decisión final
       const autoApprove =
@@ -156,15 +160,16 @@ export class AutoVerificationService {
    */
   private async checkReferenceFormat(reference: string): Promise<boolean> {
     if (!reference) return false;
-    
+
     // Formato válido: 8-10 dígitos
     const isValid = /^\d{8,10}$/.test(reference);
-    
+
     // No puede ser secuencial (12345678, 11111111, etc)
-    const isSequential = /^(\d)\1+$/.test(reference) || 
-                        reference === "12345678" || 
-                        reference === "87654321";
-    
+    const isSequential =
+      /^(\d)\1+$/.test(reference) ||
+      reference === "12345678" ||
+      reference === "87654321";
+
     return isValid && !isSequential;
   }
 
@@ -172,7 +177,10 @@ export class AutoVerificationService {
    * 2. Verificar que el monto coincida
    * Tolerancia de ±5 Bs
    */
-  private async checkAmountMatch(proofAmount: number, orderTotal: number): Promise<boolean> {
+  private async checkAmountMatch(
+    proofAmount: number,
+    orderTotal: number,
+  ): Promise<boolean> {
     const difference = Math.abs(proofAmount - orderTotal);
     return difference <= this.MAX_AMOUNT_TOLERANCE;
   }
@@ -213,7 +221,8 @@ export class AutoVerificationService {
    */
   private async checkTimeValidity(submittedAt: Date): Promise<boolean> {
     const now = new Date();
-    const hoursSinceSubmit = (now.getTime() - new Date(submittedAt).getTime()) / (1000 * 60 * 60);
+    const hoursSinceSubmit =
+      (now.getTime() - new Date(submittedAt).getTime()) / (1000 * 60 * 60);
 
     // No más de 48 horas
     if (hoursSinceSubmit > 48) {
@@ -252,15 +261,18 @@ export class AutoVerificationService {
    * 6. Verificar que la referencia no esté duplicada
    * CRÍTICO para prevenir fraude
    */
-  private async checkDuplicateReference(reference: string, currentProofId: string): Promise<boolean> {
+  private async checkDuplicateReference(
+    reference: string,
+    currentProofId: string,
+  ): Promise<boolean> {
     const duplicates = await db
       .select()
       .from(paymentProofs)
       .where(
         and(
           eq(paymentProofs.referenceNumber, reference),
-          sql`${paymentProofs.id} != ${currentProofId}`
-        )
+          sql`${paymentProofs.id} != ${currentProofId}`,
+        ),
       )
       .limit(1);
 
@@ -281,16 +293,14 @@ export class AutoVerificationService {
     const ordersLastHour = await db
       .select({ count: sql<number>`count(*)` })
       .from(orders)
-      .where(
-        and(
-          eq(orders.userId, userId),
-          gte(orders.createdAt, oneHourAgo)
-        )
-      );
+      .where(and(eq(orders.userId, userId), gte(orders.createdAt, oneHourAgo)));
 
     const countLastHour = Number(ordersLastHour[0]?.count || 0);
     if (countLastHour > this.MAX_ORDERS_PER_HOUR) {
-      logger.warn(`⚠️ Velocity check failed: ${countLastHour} orders in last hour`, { userId });
+      logger.warn(
+        `⚠️ Velocity check failed: ${countLastHour} orders in last hour`,
+        { userId },
+      );
       return false;
     }
 
@@ -298,16 +308,14 @@ export class AutoVerificationService {
     const ordersLastDay = await db
       .select({ count: sql<number>`count(*)` })
       .from(orders)
-      .where(
-        and(
-          eq(orders.userId, userId),
-          gte(orders.createdAt, oneDayAgo)
-        )
-      );
+      .where(and(eq(orders.userId, userId), gte(orders.createdAt, oneDayAgo)));
 
     const countLastDay = Number(ordersLastDay[0]?.count || 0);
     if (countLastDay > this.MAX_ORDERS_PER_DAY) {
-      logger.warn(`⚠️ Velocity check failed: ${countLastDay} orders in last day`, { userId });
+      logger.warn(
+        `⚠️ Velocity check failed: ${countLastDay} orders in last day`,
+        { userId },
+      );
       return false;
     }
 
@@ -343,18 +351,24 @@ export class AutoVerificationService {
       .orderBy(desc(orders.createdAt));
 
     const totalOrders = userOrders.length;
-    const successfulOrders = userOrders.filter((o) => o.status === "completed").length;
-    const disputedOrders = userOrders.filter((o) => o.status === "disputed").length;
+    const successfulOrders = userOrders.filter(
+      (o) => o.status === "completed",
+    ).length;
+    const disputedOrders = userOrders.filter(
+      (o) => o.status === "disputed",
+    ).length;
     const disputeRate = totalOrders > 0 ? disputedOrders / totalOrders : 0;
 
     const totalValue = userOrders.reduce((sum, o) => sum + o.total, 0);
     const avgOrderValue = totalOrders > 0 ? totalValue / totalOrders : 0;
 
     const accountAge = Math.floor(
-      (Date.now() - new Date(user.createdAt!).getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(user.createdAt!).getTime()) /
+        (1000 * 60 * 60 * 24),
     );
 
-    const lastOrderDate = userOrders.length > 0 ? userOrders[0].createdAt : null;
+    const lastOrderDate =
+      userOrders.length > 0 ? userOrders[0].createdAt : null;
 
     return {
       totalOrders,
@@ -374,7 +388,7 @@ export class AutoVerificationService {
     checks: any,
     proof: any,
     order: any,
-    user: any
+    user: any,
   ): Promise<{ confidence: number; riskScore: number; reason: string }> {
     let confidence = 1.0;
     let riskScore = 0.0;
@@ -437,9 +451,10 @@ export class AutoVerificationService {
     confidence = Math.max(0, Math.min(1, confidence));
     riskScore = Math.max(0, Math.min(1, riskScore));
 
-    const reason = reasons.length > 0 
-      ? reasons.join(", ") 
-      : "Todas las validaciones pasaron correctamente";
+    const reason =
+      reasons.length > 0
+        ? reasons.join(", ")
+        : "Todas las validaciones pasaron correctamente";
 
     return { confidence, riskScore, reason };
   }
@@ -447,7 +462,11 @@ export class AutoVerificationService {
   /**
    * Registrar intento de fraude
    */
-  async logFraudAttempt(userId: string, proofId: string, reason: string): Promise<void> {
+  async logFraudAttempt(
+    userId: string,
+    proofId: string,
+    reason: string,
+  ): Promise<void> {
     logger.error(`🚨 FRAUD ATTEMPT DETECTED`, {
       userId,
       proofId,
@@ -456,20 +475,29 @@ export class AutoVerificationService {
     });
 
     // Incrementar contador de fraude en audit_logs
-    const { auditLogs } = await import('@shared/schema-mysql');
+    const { auditLogs } = await import("@shared/schema-mysql");
     await db.insert(auditLogs).values({
       userId,
-      action: 'fraud_attempt',
-      entityType: 'payment_proof',
+      action: "fraud_attempt",
+      entityType: "payment_proof",
       entityId: proofId,
       changes: JSON.stringify({ reason }),
     });
 
     // Notificar al admin via WebSocket
     try {
-      const { notifyAdminFraud } = await import('./websocket');
-      const [user] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
-      notifyAdminFraud({ userId, userName: user?.name ?? 'Usuario desconocido', proofId, reason });
+      const { notifyAdminFraud } = await import("./websocket");
+      const [user] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      notifyAdminFraud({
+        userId,
+        userName: user?.name ?? "Usuario desconocido",
+        proofId,
+        reason,
+      });
     } catch {}
 
     // Contar intentos recientes del usuario
@@ -477,18 +505,25 @@ export class AutoVerificationService {
     const recentFraud = await db
       .select({ count: sql<number>`count(*)` })
       .from(auditLogs)
-      .where(and(
-        eq(auditLogs.userId, userId),
-        eq(auditLogs.action, 'fraud_attempt'),
-        gte(auditLogs.createdAt, since),
-      ));
+      .where(
+        and(
+          eq(auditLogs.userId, userId),
+          eq(auditLogs.action, "fraud_attempt"),
+          gte(auditLogs.createdAt, since),
+        ),
+      );
 
     const fraudCount = Number(recentFraud[0]?.count || 0);
 
     // Bloquear usuario si tiene 3+ intentos en 7 días
     if (fraudCount >= 3) {
-      await db.update(users).set({ isActive: false }).where(eq(users.id, userId));
-      logger.error(`🔒 User ${userId} BLOCKED after ${fraudCount} fraud attempts`);
+      await db
+        .update(users)
+        .set({ isActive: false })
+        .where(eq(users.id, userId));
+      logger.error(
+        `🔒 User ${userId} BLOCKED after ${fraudCount} fraud attempts`,
+      );
     }
   }
 }

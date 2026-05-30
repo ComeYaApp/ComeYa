@@ -19,7 +19,12 @@ let PROVIDER_GOOGLE: any = null;
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 
 interface Location {
   latitude: number;
@@ -46,32 +51,66 @@ const MAP_HEIGHT = 300;
 
 const isValidLocation = (location?: Location): location is Location => {
   if (!location) return false;
-  return Number.isFinite(location.latitude) && Number.isFinite(location.longitude)
-    && location.latitude !== 0 && location.longitude !== 0;
+  return (
+    Number.isFinite(location.latitude) &&
+    Number.isFinite(location.longitude) &&
+    location.latitude !== 0 &&
+    location.longitude !== 0
+  );
 };
 
-const STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
-  pending:       { label: "Esperando confirmación", color: "#F59E0B", icon: "clock" },
-  accepted:      { label: "Pedido aceptado",        color: "#3B82F6", icon: "check" },
-  preparing:     { label: "Preparando tu pedido",   color: "#8B5CF6", icon: "package" },
-  ready:         { label: "Listo para recoger",     color: "#10B981", icon: "check-circle" },
-  on_the_way:    { label: "En camino",              color: "#10B981", icon: "navigation" },
-  in_transit:    { label: "En camino",              color: "#10B981", icon: "navigation" },
-  arriving:      { label: "Llegando",               color: "#10B981", icon: "map-pin" },
-  delivered:     { label: "Entregado",              color: "#10B981", icon: "check-circle" },
-  cancelled:     { label: "Cancelado",              color: "#EF4444", icon: "x-circle" },
+const STATUS_LABELS: Record<
+  string,
+  { label: string; color: string; icon: string }
+> = {
+  pending: { label: "Esperando confirmación", color: "#F59E0B", icon: "clock" },
+  accepted: { label: "Pedido aceptado", color: "#3B82F6", icon: "check" },
+  preparing: {
+    label: "Preparando tu pedido",
+    color: "#8B5CF6",
+    icon: "package",
+  },
+  ready: {
+    label: "Listo para recoger",
+    color: "#10B981",
+    icon: "check-circle",
+  },
+  on_the_way: { label: "En camino", color: "#10B981", icon: "navigation" },
+  in_transit: { label: "En camino", color: "#10B981", icon: "navigation" },
+  arriving: { label: "Llegando", color: "#10B981", icon: "map-pin" },
+  delivered: { label: "Entregado", color: "#10B981", icon: "check-circle" },
+  cancelled: { label: "Cancelado", color: "#EF4444", icon: "x-circle" },
 };
 
-const STATUS_LABELS_PICKUP: Record<string, { label: string; color: string; icon: string }> = {
-  pending:       { label: "Esperando confirmación", color: "#F59E0B", icon: "clock" },
-  accepted:      { label: "Pedido aceptado",        color: "#3B82F6", icon: "check" },
-  preparing:     { label: "Preparando tu pedido",   color: "#8B5CF6", icon: "package" },
-  ready:         { label: "¡Listo! Puedes recogerlo", color: "#10B981", icon: "shopping-bag" },
-  delivered:     { label: "Recogido",               color: "#10B981", icon: "check-circle" },
-  cancelled:     { label: "Cancelado",              color: "#EF4444", icon: "x-circle" },
+const STATUS_LABELS_PICKUP: Record<
+  string,
+  { label: string; color: string; icon: string }
+> = {
+  pending: { label: "Esperando confirmación", color: "#F59E0B", icon: "clock" },
+  accepted: { label: "Pedido aceptado", color: "#3B82F6", icon: "check" },
+  preparing: {
+    label: "Preparando tu pedido",
+    color: "#8B5CF6",
+    icon: "package",
+  },
+  ready: {
+    label: "¡Listo! Puedes recogerlo",
+    color: "#10B981",
+    icon: "shopping-bag",
+  },
+  delivered: { label: "Recogido", color: "#10B981", icon: "check-circle" },
+  cancelled: { label: "Cancelado", color: "#EF4444", icon: "x-circle" },
 };
 
-function PinMarker({ color, icon, iconColor }: { color: string; icon: string; iconColor?: string }) {
+function PinMarker({
+  color,
+  icon,
+  iconColor,
+}: {
+  color: string;
+  icon: string;
+  iconColor?: string;
+}) {
   return (
     <View style={styles.pinContainer}>
       <View style={[styles.pinBody, { backgroundColor: color }]}>
@@ -98,7 +137,7 @@ function DriverMarker({ color }: { color: string }) {
           duration: 1000,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, []);
 
@@ -136,7 +175,7 @@ export function CollapsibleMap({
   const { theme, isDark } = useTheme();
   const [mapAvailable, setMapAvailable] = useState(false);
 
-  const statusInfo = isPickup 
+  const statusInfo = isPickup
     ? (STATUS_LABELS_PICKUP[status] ?? STATUS_LABELS_PICKUP.preparing)
     : (STATUS_LABELS[status] ?? STATUS_LABELS.preparing);
   const hasDriver = !isPickup && (!!deliveryPersonLocation || !!driverName);
@@ -157,19 +196,33 @@ export function CollapsibleMap({
 
   const getInitialRegion = () => {
     // Para pickup: solo mostrar negocio y cliente
-    const locations = isPickup 
+    const locations = isPickup
       ? [businessLocation, customerLocation].filter(isValidLocation)
-      : [businessLocation, deliveryPersonLocation, customerLocation].filter(isValidLocation);
-    
+      : [businessLocation, deliveryPersonLocation, customerLocation].filter(
+          isValidLocation,
+        );
+
     if (locations.length === 0) {
       return customerLocation && isValidLocation(customerLocation)
-        ? { latitude: customerLocation.latitude, longitude: customerLocation.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-        : { latitude: 41.7636, longitude: -2.4677, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+        ? {
+            latitude: customerLocation.latitude,
+            longitude: customerLocation.longitude,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }
+        : {
+            latitude: 41.7636,
+            longitude: -2.4677,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          };
     }
     const lats = locations.map((l) => l.latitude);
     const lngs = locations.map((l) => l.longitude);
-    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats),
+      maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs),
+      maxLng = Math.max(...lngs);
     return {
       latitude: (minLat + maxLat) / 2,
       longitude: (minLng + maxLng) / 2,
@@ -180,7 +233,9 @@ export function CollapsibleMap({
 
   const routeCoords = isPickup
     ? [customerLocation, businessLocation].filter(isValidLocation)
-    : [businessLocation, deliveryPersonLocation, customerLocation].filter(isValidLocation);
+    : [businessLocation, deliveryPersonLocation, customerLocation].filter(
+        isValidLocation,
+      );
   const hasAnyLocation = routeCoords.length > 0;
 
   return (
@@ -200,10 +255,14 @@ export function CollapsibleMap({
           >
             {/* Business marker - Restaurante o Mercado */}
             {isValidLocation(businessLocation) && (
-              <Marker coordinate={businessLocation} title="Negocio" anchor={{ x: 0.5, y: 1 }}>
-                <PinMarker 
-                  color="#FF6B35" 
-                  icon={isPickup ? "shopping-bag" : "coffee"} 
+              <Marker
+                coordinate={businessLocation}
+                title="Negocio"
+                anchor={{ x: 0.5, y: 1 }}
+              >
+                <PinMarker
+                  color="#FF6B35"
+                  icon={isPickup ? "shopping-bag" : "coffee"}
                   iconColor="#FFFFFF"
                 />
               </Marker>
@@ -211,14 +270,22 @@ export function CollapsibleMap({
 
             {/* Driver marker — pulsing (SOLO DELIVERY) */}
             {!isPickup && isValidLocation(deliveryPersonLocation) && (
-              <Marker coordinate={deliveryPersonLocation} title="Repartidor" anchor={{ x: 0.5, y: 1 }}>
+              <Marker
+                coordinate={deliveryPersonLocation}
+                title="Repartidor"
+                anchor={{ x: 0.5, y: 1 }}
+              >
                 <DriverMarker color="#10B981" />
               </Marker>
             )}
 
             {/* Customer marker */}
             {isValidLocation(customerLocation) && (
-              <Marker coordinate={customerLocation} title="Tu ubicación" anchor={{ x: 0.5, y: 1 }}>
+              <Marker
+                coordinate={customerLocation}
+                title="Tu ubicación"
+                anchor={{ x: 0.5, y: 1 }}
+              >
                 <PinMarker color="#E3F2FD" icon="home" iconColor="#3B82F6" />
               </Marker>
             )}
@@ -233,23 +300,46 @@ export function CollapsibleMap({
             )}
           </MapView>
         ) : (
-          <View style={[styles.mapFallback, { backgroundColor: theme.backgroundSecondary }]}>
-            <View style={[styles.mapFallbackIcon, { backgroundColor: ComeYaColors.primary + '15' }]}>
+          <View
+            style={[
+              styles.mapFallback,
+              { backgroundColor: theme.backgroundSecondary },
+            ]}
+          >
+            <View
+              style={[
+                styles.mapFallbackIcon,
+                { backgroundColor: ComeYaColors.primary + "15" },
+              ]}
+            >
               <Feather name="map-pin" size={32} color={ComeYaColors.primary} />
             </View>
-            <ThemedText type="h4" style={{ marginTop: Spacing.md, color: theme.text }}>
+            <ThemedText
+              type="h4"
+              style={{ marginTop: Spacing.md, color: theme.text }}
+            >
               {statusInfo.label}
             </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs, textAlign: "center", paddingHorizontal: Spacing.xl }}>
-              {!mapAvailable 
-                ? "El mapa solo está disponible en la app móvil" 
+            <ThemedText
+              type="caption"
+              style={{
+                color: theme.textSecondary,
+                marginTop: Spacing.xs,
+                textAlign: "center",
+                paddingHorizontal: Spacing.xl,
+              }}
+            >
+              {!mapAvailable
+                ? "El mapa solo está disponible en la app móvil"
                 : "Ubicación GPS no disponible aún"}
             </ThemedText>
           </View>
         )}
 
         {/* Status pill — top overlay */}
-        <View style={[styles.statusPill, { backgroundColor: statusInfo.color }]}>
+        <View
+          style={[styles.statusPill, { backgroundColor: statusInfo.color }]}
+        >
           <Feather name={statusInfo.icon as any} size={13} color="#FFFFFF" />
           <ThemedText type="caption" style={styles.statusPillText}>
             {statusInfo.label}
@@ -260,7 +350,10 @@ export function CollapsibleMap({
         {eta && (
           <View style={[styles.etaPill, { backgroundColor: theme.card }]}>
             <Feather name="clock" size={13} color={ComeYaColors.primary} />
-            <ThemedText type="caption" style={[styles.etaPillText, { color: ComeYaColors.primary }]}>
+            <ThemedText
+              type="caption"
+              style={[styles.etaPillText, { color: ComeYaColors.primary }]}
+            >
               {eta}
             </ThemedText>
           </View>
@@ -269,7 +362,13 @@ export function CollapsibleMap({
 
       {/* Driver card — bottom overlay (SOLO DELIVERY) */}
       {hasDriver && (
-        <View style={[styles.driverCard, { backgroundColor: theme.card }, Shadows.lg]}>
+        <View
+          style={[
+            styles.driverCard,
+            { backgroundColor: theme.card },
+            Shadows.lg,
+          ]}
+        >
           <View style={styles.driverLeft}>
             {driverPhoto ? (
               <Image
@@ -278,15 +377,30 @@ export function CollapsibleMap({
                 contentFit="cover"
               />
             ) : (
-              <View style={[styles.driverAvatar, { backgroundColor: ComeYaColors.primary + "20" }]}>
+              <View
+                style={[
+                  styles.driverAvatar,
+                  { backgroundColor: ComeYaColors.primary + "20" },
+                ]}
+              >
                 <Feather name="user" size={22} color={ComeYaColors.primary} />
               </View>
             )}
             <View style={styles.driverInfo}>
-              <ThemedText type="h4" numberOfLines={1}>{driverName ?? "Repartidor"}</ThemedText>
+              <ThemedText type="h4" numberOfLines={1}>
+                {driverName ?? "Repartidor"}
+              </ThemedText>
               <View style={styles.driverBadge}>
-                <View style={[styles.onlineDot, { backgroundColor: ComeYaColors.success }]} />
-                <ThemedText type="caption" style={{ color: ComeYaColors.success }}>
+                <View
+                  style={[
+                    styles.onlineDot,
+                    { backgroundColor: ComeYaColors.success },
+                  ]}
+                />
+                <ThemedText
+                  type="caption"
+                  style={{ color: ComeYaColors.success }}
+                >
                   En camino
                 </ThemedText>
               </View>
@@ -295,16 +409,28 @@ export function CollapsibleMap({
           <View style={styles.driverActions}>
             {onCallDriver && (
               <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onCallDriver(); }}
-                style={[styles.actionBtn, { backgroundColor: theme.backgroundSecondary }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onCallDriver();
+                }}
+                style={[
+                  styles.actionBtn,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <Feather name="phone" size={18} color={ComeYaColors.primary} />
               </Pressable>
             )}
             {onChatDriver && (
               <Pressable
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onChatDriver(); }}
-                style={[styles.actionBtn, { backgroundColor: ComeYaColors.primary }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onChatDriver();
+                }}
+                style={[
+                  styles.actionBtn,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
               >
                 <Feather name="message-circle" size={18} color="#FFFFFF" />
               </Pressable>
@@ -325,10 +451,21 @@ export function CollapsibleMap({
             });
             Linking.openURL(url!);
           }}
-          style={[styles.navigateButton, { backgroundColor: ComeYaColors.primary }, Shadows.lg]}
+          style={[
+            styles.navigateButton,
+            { backgroundColor: ComeYaColors.primary },
+            Shadows.lg,
+          ]}
         >
           <Feather name="navigation" size={18} color="#FFFFFF" />
-          <ThemedText type="body" style={{ color: "#FFFFFF", marginLeft: Spacing.sm, fontWeight: "600" }}>
+          <ThemedText
+            type="body"
+            style={{
+              color: "#FFFFFF",
+              marginLeft: Spacing.sm,
+              fontWeight: "600",
+            }}
+          >
             Abrir en Google Maps
           </ThemedText>
         </Pressable>
@@ -341,9 +478,21 @@ const darkMapStyle = [
   { elementType: "geometry", stylers: [{ color: "#212121" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#373737" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3c3c3c" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#373737" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#3c3c3c" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#000000" }],
+  },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
 ];

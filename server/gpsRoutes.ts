@@ -1,284 +1,334 @@
-import { Router, Request, Response } from 'express';
-import { db } from './db';
-import { orders, deliveryProofs, proximityAlerts, deliveryHeatmap, deliveryDrivers } from '../shared/schema-mysql';
-import { eq, and, sql } from 'drizzle-orm';
-import { authenticateToken } from './authMiddleware';
+import { Router, Request, Response } from "express";
+import { db } from "./db";
+import {
+  orders,
+  deliveryProofs,
+  proximityAlerts,
+  deliveryHeatmap,
+  deliveryDrivers,
+} from "../shared/schema-mysql";
+import { eq, and, sql } from "drizzle-orm";
+import { authenticateToken } from "./authMiddleware";
 
 const router = Router();
 
 // Geofence event (driver entered/exited geofence)
-router.post('/geofence-event', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { orderId, type, location, distance } = req.body;
-    const userId = (req as any).user?.userId;
+router.post(
+  "/geofence-event",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { orderId, type, location, distance } = req.body;
+      const userId = (req as any).user?.userId;
 
-    console.log(`📍 Geofence event: ${type} for order ${orderId} at ${location} (${distance}m)`);
-
-    // Update order with geofence event
-    if (type === 'enter' && location === 'business') {
-      await db.update(orders)
-        .set({ driverPickedUpAt: new Date() })
-        .where(eq(orders.id, orderId));
-    } else if (type === 'enter' && location === 'customer') {
-      await db.update(orders)
-        .set({ driverArrivedAt: new Date() })
-        .where(eq(orders.id, orderId));
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error handling geofence event:', error);
-    res.status(500).json({ error: 'Failed to process geofence event' });
-  }
-});
-
-// Proximity alert (driver approaching destination)
-router.post('/proximity-alert', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { orderId, type, distance, destinationType, timestamp } = req.body;
-    const userId = (req as any).user?.userId;
-
-    console.log(`🔔 Proximity alert: ${type} for order ${orderId} (${distance}m from ${destinationType})`);
-
-    // Save proximity alert
-    await db.insert(proximityAlerts).values({
-      orderId,
-      driverId: userId,
-      alertType: type,
-      distance,
-      destinationType,
-      notificationSent: true,
-    });
-
-    // TODO: Send push notification to customer/business
-    // This would integrate with your notification service
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error handling proximity alert:', error);
-    res.status(500).json({ error: 'Failed to process proximity alert' });
-  }
-});
-
-// Submit delivery proof (photo + route)
-router.post('/proof/:orderId', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { orderId } = req.params;
-    const { photoBase64, latitude, longitude, timestamp, accuracy, route } = req.body;
-    const userId = (req as any).user?.userId;
-
-    console.log(`📸 Delivery proof submitted for order ${orderId}`);
-
-    // In production, upload photo to S3/CloudStorage
-    // For now, we'll store base64 (not recommended for production)
-    const photoUrl = `data:image/jpeg;base64,${photoBase64.substring(0, 100)}...`; // Truncated for demo
-
-    // Calculate route distance
-    let routeDistance = 0;
-    if (route && route.length > 1) {
-      for (let i = 1; i < route.length; i++) {
-        const prev = route[i - 1];
-        const curr = route[i];
-        routeDistance += calculateDistance(
-          prev.latitude,
-          prev.longitude,
-          curr.latitude,
-          curr.longitude
-        );
-      }
-    }
-
-    // Save delivery proof
-    await db.insert(deliveryProofs).values({
-      orderId,
-      driverId: userId,
-      photoUrl,
-      photoBase64: photoBase64.substring(0, 1000), // Store truncated version
-      latitude: latitude.toString(),
-      longitude: longitude.toString(),
-      accuracy,
-      route: JSON.stringify(route),
-      routeDistance: Math.round(routeDistance),
-      timestamp: new Date(timestamp),
-    });
-
-    // Update order with proof data
-    await db.update(orders)
-      .set({
-        deliveryProofPhoto: photoUrl,
-        deliveryProofPhotoTimestamp: new Date(timestamp),
-        deliveryRoute: JSON.stringify(route),
-        deliveryDistance: Math.round(routeDistance),
-        deliveryGpsAccuracy: accuracy,
-        deliveryGpsValidated: accuracy ? accuracy < 50 : false,
-      })
-      .where(eq(orders.id, orderId));
-
-    // Update driver stats
-    await db.update(deliveryDrivers)
-      .set({
-        totalDistanceTraveled: sql`${deliveryDrivers.totalDistanceTraveled} + ${Math.round(routeDistance)}`,
-      })
-      .where(eq(deliveryDrivers.userId, userId));
-
-    res.json({ success: true, routeDistance: Math.round(routeDistance) });
-  } catch (error) {
-    console.error('Error submitting delivery proof:', error);
-    res.status(500).json({ error: 'Failed to submit delivery proof' });
-  }
-});
-
-// Get delivery proof for order
-router.get('/proof/:orderId', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { orderId } = req.params;
-
-    const proof = await db.select()
-      .from(deliveryProofs)
-      .where(eq(deliveryProofs.orderId, orderId))
-      .limit(1);
-
-    if (proof.length === 0) {
-      return res.status(404).json({ error: 'Delivery proof not found' });
-    }
-
-    res.json({ success: true, proof: proof[0] });
-  } catch (error) {
-    console.error('Error getting delivery proof:', error);
-    res.status(500).json({ error: 'Failed to get delivery proof' });
-  }
-});
-
-// Get heatmap data (admin only)
-router.get('/heatmap', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const userRole = (req as any).user?.role;
-    
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    // Get all completed orders with coordinates
-    const completedOrders = await db.select({
-      latitude: orders.deliveryLatitude,
-      longitude: orders.deliveryLongitude,
-      total: orders.total,
-      deliveredAt: orders.deliveredAt,
-    })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.status, 'delivered'),
-          sql`${orders.deliveryLatitude} IS NOT NULL`,
-          sql`${orders.deliveryLongitude} IS NOT NULL`
-        )
+      console.log(
+        `📍 Geofence event: ${type} for order ${orderId} at ${location} (${distance}m)`,
       );
 
-    // Group by grid cells (0.001 degree ~= 100m)
-    const heatmapData: Record<string, {
-      latitude: number;
-      longitude: number;
-      orderCount: number;
-      totalRevenue: number;
-    }> = {};
-
-    completedOrders.forEach((order) => {
-      if (!order.latitude || !order.longitude) return;
-
-      const lat = parseFloat(order.latitude);
-      const lng = parseFloat(order.longitude);
-      
-      // Round to grid cell
-      const gridLat = Math.round(lat * 1000) / 1000;
-      const gridLng = Math.round(lng * 1000) / 1000;
-      const gridCell = `${gridLat},${gridLng}`;
-
-      if (!heatmapData[gridCell]) {
-        heatmapData[gridCell] = {
-          latitude: gridLat,
-          longitude: gridLng,
-          orderCount: 0,
-          totalRevenue: 0,
-        };
+      // Update order with geofence event
+      if (type === "enter" && location === "business") {
+        await db
+          .update(orders)
+          .set({ driverPickedUpAt: new Date() })
+          .where(eq(orders.id, orderId));
+      } else if (type === "enter" && location === "customer") {
+        await db
+          .update(orders)
+          .set({ driverArrivedAt: new Date() })
+          .where(eq(orders.id, orderId));
       }
 
-      heatmapData[gridCell].orderCount++;
-      heatmapData[gridCell].totalRevenue += order.total || 0;
-    });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error handling geofence event:", error);
+      res.status(500).json({ error: "Failed to process geofence event" });
+    }
+  },
+);
 
-    const heatmap = Object.values(heatmapData);
+// Proximity alert (driver approaching destination)
+router.post(
+  "/proximity-alert",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { orderId, type, distance, destinationType, timestamp } = req.body;
+      const userId = (req as any).user?.userId;
 
-    res.json({ success: true, heatmap });
-  } catch (error) {
-    console.error('Error getting heatmap:', error);
-    res.status(500).json({ error: 'Failed to get heatmap data' });
-  }
-});
+      console.log(
+        `🔔 Proximity alert: ${type} for order ${orderId} (${distance}m from ${destinationType})`,
+      );
+
+      // Save proximity alert
+      await db.insert(proximityAlerts).values({
+        orderId,
+        driverId: userId,
+        alertType: type,
+        distance,
+        destinationType,
+        notificationSent: true,
+      });
+
+      // TODO: Send push notification to customer/business
+      // This would integrate with your notification service
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error handling proximity alert:", error);
+      res.status(500).json({ error: "Failed to process proximity alert" });
+    }
+  },
+);
+
+// Submit delivery proof (photo + route)
+router.post(
+  "/proof/:orderId",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { orderId } = req.params;
+      const { photoBase64, latitude, longitude, timestamp, accuracy, route } =
+        req.body;
+      const userId = (req as any).user?.userId;
+
+      console.log(`📸 Delivery proof submitted for order ${orderId}`);
+
+      // In production, upload photo to S3/CloudStorage
+      // For now, we'll store base64 (not recommended for production)
+      const photoUrl = `data:image/jpeg;base64,${photoBase64.substring(0, 100)}...`; // Truncated for demo
+
+      // Calculate route distance
+      let routeDistance = 0;
+      if (route && route.length > 1) {
+        for (let i = 1; i < route.length; i++) {
+          const prev = route[i - 1];
+          const curr = route[i];
+          routeDistance += calculateDistance(
+            prev.latitude,
+            prev.longitude,
+            curr.latitude,
+            curr.longitude,
+          );
+        }
+      }
+
+      // Save delivery proof
+      await db.insert(deliveryProofs).values({
+        orderId,
+        driverId: userId,
+        photoUrl,
+        photoBase64: photoBase64.substring(0, 1000), // Store truncated version
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        accuracy,
+        route: JSON.stringify(route),
+        routeDistance: Math.round(routeDistance),
+        timestamp: new Date(timestamp),
+      });
+
+      // Update order with proof data
+      await db
+        .update(orders)
+        .set({
+          deliveryProofPhoto: photoUrl,
+          deliveryProofPhotoTimestamp: new Date(timestamp),
+          deliveryRoute: JSON.stringify(route),
+          deliveryDistance: Math.round(routeDistance),
+          deliveryGpsAccuracy: accuracy,
+          deliveryGpsValidated: accuracy ? accuracy < 50 : false,
+        })
+        .where(eq(orders.id, orderId));
+
+      // Update driver stats
+      await db
+        .update(deliveryDrivers)
+        .set({
+          totalDistanceTraveled: sql`${deliveryDrivers.totalDistanceTraveled} + ${Math.round(routeDistance)}`,
+        })
+        .where(eq(deliveryDrivers.userId, userId));
+
+      res.json({ success: true, routeDistance: Math.round(routeDistance) });
+    } catch (error) {
+      console.error("Error submitting delivery proof:", error);
+      res.status(500).json({ error: "Failed to submit delivery proof" });
+    }
+  },
+);
+
+// Get delivery proof for order
+router.get(
+  "/proof/:orderId",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { orderId } = req.params;
+
+      const proof = await db
+        .select()
+        .from(deliveryProofs)
+        .where(eq(deliveryProofs.orderId, orderId))
+        .limit(1);
+
+      if (proof.length === 0) {
+        return res.status(404).json({ error: "Delivery proof not found" });
+      }
+
+      res.json({ success: true, proof: proof[0] });
+    } catch (error) {
+      console.error("Error getting delivery proof:", error);
+      res.status(500).json({ error: "Failed to get delivery proof" });
+    }
+  },
+);
+
+// Get heatmap data (admin only)
+router.get(
+  "/heatmap",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const userRole = (req as any).user?.role;
+
+      if (userRole !== "admin" && userRole !== "super_admin") {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Get all completed orders with coordinates
+      const completedOrders = await db
+        .select({
+          latitude: orders.deliveryLatitude,
+          longitude: orders.deliveryLongitude,
+          total: orders.total,
+          deliveredAt: orders.deliveredAt,
+        })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.status, "delivered"),
+            sql`${orders.deliveryLatitude} IS NOT NULL`,
+            sql`${orders.deliveryLongitude} IS NOT NULL`,
+          ),
+        );
+
+      // Group by grid cells (0.001 degree ~= 100m)
+      const heatmapData: Record<
+        string,
+        {
+          latitude: number;
+          longitude: number;
+          orderCount: number;
+          totalRevenue: number;
+        }
+      > = {};
+
+      completedOrders.forEach((order) => {
+        if (!order.latitude || !order.longitude) return;
+
+        const lat = parseFloat(order.latitude);
+        const lng = parseFloat(order.longitude);
+
+        // Round to grid cell
+        const gridLat = Math.round(lat * 1000) / 1000;
+        const gridLng = Math.round(lng * 1000) / 1000;
+        const gridCell = `${gridLat},${gridLng}`;
+
+        if (!heatmapData[gridCell]) {
+          heatmapData[gridCell] = {
+            latitude: gridLat,
+            longitude: gridLng,
+            orderCount: 0,
+            totalRevenue: 0,
+          };
+        }
+
+        heatmapData[gridCell].orderCount++;
+        heatmapData[gridCell].totalRevenue += order.total || 0;
+      });
+
+      const heatmap = Object.values(heatmapData);
+
+      res.json({ success: true, heatmap });
+    } catch (error) {
+      console.error("Error getting heatmap:", error);
+      res.status(500).json({ error: "Failed to get heatmap data" });
+    }
+  },
+);
 
 // Generate tracking token for sharing
-router.post('/tracking-token/:orderId', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { orderId } = req.params;
-    const userId = (req as any).user?.userId;
+router.post(
+  "/tracking-token/:orderId",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { orderId } = req.params;
+      const userId = (req as any).user?.userId;
 
-    // Verify user owns this order
-    const order = await db.select()
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1);
+      // Verify user owns this order
+      const order = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
 
-    if (order.length === 0 || order[0].userId !== userId) {
-      return res.status(403).json({ error: 'Unauthorized' });
+      if (order.length === 0 || order[0].userId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Generate token (valid for 24 hours)
+      const token = generateTrackingToken();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await db
+        .update(orders)
+        .set({
+          trackingToken: token,
+          trackingTokenExpires: expiresAt,
+        })
+        .where(eq(orders.id, orderId));
+
+      const trackingUrl = `${process.env.FRONTEND_URL}/track/${token}`;
+
+      res.json({ success: true, token, trackingUrl, expiresAt });
+    } catch (error) {
+      console.error("Error generating tracking token:", error);
+      res.status(500).json({ error: "Failed to generate tracking token" });
     }
-
-    // Generate token (valid for 24 hours)
-    const token = generateTrackingToken();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-    await db.update(orders)
-      .set({
-        trackingToken: token,
-        trackingTokenExpires: expiresAt,
-      })
-      .where(eq(orders.id, orderId));
-
-    const trackingUrl = `${process.env.FRONTEND_URL}/track/${token}`;
-
-    res.json({ success: true, token, trackingUrl, expiresAt });
-  } catch (error) {
-    console.error('Error generating tracking token:', error);
-    res.status(500).json({ error: 'Failed to generate tracking token' });
-  }
-});
+  },
+);
 
 // Public tracking endpoint (no auth required)
-router.get('/track/:token', async (req: Request, res: Response) => {
+router.get("/track/:token", async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
 
     // Find order by token
-    const order = await db.select()
+    const order = await db
+      .select()
       .from(orders)
       .where(
         and(
           eq(orders.trackingToken, token),
-          sql`${orders.trackingTokenExpires} > NOW()`
-        )
+          sql`${orders.trackingTokenExpires} > NOW()`,
+        ),
       )
       .limit(1);
 
     if (order.length === 0) {
-      return res.status(404).json({ error: 'Invalid or expired tracking link' });
+      return res
+        .status(404)
+        .json({ error: "Invalid or expired tracking link" });
     }
 
     // Get driver location if available
     let driverLocation = null;
     if (order[0].deliveryPersonId) {
-      const driver = await db.select({
-        latitude: deliveryDrivers.currentLatitude,
-        longitude: deliveryDrivers.currentLongitude,
-        lastUpdate: deliveryDrivers.lastLocationUpdate,
-      })
+      const driver = await db
+        .select({
+          latitude: deliveryDrivers.currentLatitude,
+          longitude: deliveryDrivers.currentLongitude,
+          lastUpdate: deliveryDrivers.lastLocationUpdate,
+        })
         .from(deliveryDrivers)
         .where(eq(deliveryDrivers.userId, order[0].deliveryPersonId))
         .limit(1);
@@ -304,13 +354,18 @@ router.get('/track/:token', async (req: Request, res: Response) => {
       driverLocation,
     });
   } catch (error) {
-    console.error('Error tracking order:', error);
-    res.status(500).json({ error: 'Failed to track order' });
+    console.error("Error tracking order:", error);
+    res.status(500).json({ error: "Failed to track order" });
   }
 });
 
 // Helper functions
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
   const R = 6371e3;
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
@@ -326,8 +381,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 function generateTrackingToken(): string {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
 }
 
 export default router;

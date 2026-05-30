@@ -1,18 +1,32 @@
 // Financial Calculator - Centralized financial operations
 // All monetary calculations MUST go through this service
 
-import { financialService } from './unifiedFinancialService';
+import { financialService } from "./unifiedFinancialService";
 
 export class FinancialCalculator {
   // Calculate order total (all values in centavos)
-  static calculateOrderTotal(subtotal: number, deliveryFee: number, tax: number = 0): number {
+  static calculateOrderTotal(
+    subtotal: number,
+    deliveryFee: number,
+    tax: number = 0,
+  ): number {
     const total = subtotal + deliveryFee + tax;
     return Math.round(total);
   }
 
   // Validate order total
-  static validateOrderTotal(subtotal: number, deliveryFee: number, tax: number, total: number): boolean {
-    return financialService.validateOrderTotal(subtotal, deliveryFee, tax, total);
+  static validateOrderTotal(
+    subtotal: number,
+    deliveryFee: number,
+    tax: number,
+    total: number,
+  ): boolean {
+    return financialService.validateOrderTotal(
+      subtotal,
+      deliveryFee,
+      tax,
+      total,
+    );
   }
 
   // Calculate commission distribution
@@ -20,7 +34,7 @@ export class FinancialCalculator {
     total: number,
     deliveryFee: number = 0,
     productosBase?: number,
-    nemyCommission?: number
+    nemyCommission?: number,
   ): Promise<{
     platform: number;
     business: number;
@@ -30,7 +44,7 @@ export class FinancialCalculator {
       total,
       deliveryFee,
       productosBase,
-      nemyCommission
+      nemyCommission,
     );
     return {
       platform: result.platform,

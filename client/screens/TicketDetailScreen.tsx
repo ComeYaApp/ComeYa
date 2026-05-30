@@ -18,7 +18,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -47,21 +52,30 @@ export default function TicketDetailScreen() {
   const { data: messagesData, isLoading } = useQuery<{ messages: Message[] }>({
     queryKey: ["/api/support/tickets", ticketId, "messages"],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/support/tickets/${ticketId}/messages`);
+      const response = await apiRequest(
+        "GET",
+        `/api/support/tickets/${ticketId}/messages`,
+      );
       return response.json();
     },
   });
 
   const sendReplyMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/support/tickets/${ticketId}/messages`, {
-        message: replyText,
-      });
+      const response = await apiRequest(
+        "POST",
+        `/api/support/tickets/${ticketId}/messages`,
+        {
+          message: replyText,
+        },
+      );
       return response.json();
     },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      queryClient.invalidateQueries({ queryKey: ["/api/support/tickets", ticketId, "messages"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/support/tickets", ticketId, "messages"],
+      });
       setReplyText("");
       showToast("Mensaje enviado", "success");
     },
@@ -113,8 +127,15 @@ export default function TicketDetailScreen() {
             </View>
           ) : messages.length === 0 ? (
             <View style={styles.emptyState}>
-              <Feather name="message-circle" size={48} color={theme.textSecondary} />
-              <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+              <Feather
+                name="message-circle"
+                size={48}
+                color={theme.textSecondary}
+              />
+              <ThemedText
+                type="body"
+                style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+              >
                 No hay mensajes
               </ThemedText>
             </View>
@@ -136,8 +157,19 @@ export default function TicketDetailScreen() {
                 >
                   {!isFromUser && (
                     <View style={styles.adminBadge}>
-                      <Feather name="shield" size={12} color={ComeYaColors.primary} />
-                      <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: "600", marginLeft: 4 }}>
+                      <Feather
+                        name="shield"
+                        size={12}
+                        color={ComeYaColors.primary}
+                      />
+                      <ThemedText
+                        type="small"
+                        style={{
+                          color: ComeYaColors.primary,
+                          fontWeight: "600",
+                          marginLeft: 4,
+                        }}
+                      >
                         Soporte ComeYa
                       </ThemedText>
                     </View>
@@ -170,7 +202,9 @@ export default function TicketDetailScreen() {
           )}
         </ScrollView>
 
-        <View style={[styles.replyBox, { backgroundColor: theme.card }, Shadows.md]}>
+        <View
+          style={[styles.replyBox, { backgroundColor: theme.card }, Shadows.md]}
+        >
           <TextInput
             value={replyText}
             onChangeText={setReplyText}
@@ -187,7 +221,8 @@ export default function TicketDetailScreen() {
               styles.sendButton,
               {
                 backgroundColor: ComeYaColors.primary,
-                opacity: sendReplyMutation.isPending || !replyText.trim() ? 0.5 : 1,
+                opacity:
+                  sendReplyMutation.isPending || !replyText.trim() ? 0.5 : 1,
               },
             ]}
           >

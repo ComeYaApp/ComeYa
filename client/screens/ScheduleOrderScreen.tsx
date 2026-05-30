@@ -18,7 +18,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -162,7 +167,11 @@ export default function ScheduleOrderScreen() {
           style={[styles.card, { backgroundColor: theme.card }, Shadows.md]}
         >
           <View style={styles.businessInfo}>
-            <Feather name="shopping-bag" size={24} color={ComeYaColors.primary} />
+            <Feather
+              name="shopping-bag"
+              size={24}
+              color={ComeYaColors.primary}
+            />
             <View style={{ marginLeft: Spacing.md }}>
               <ThemedText type="h4">{businessName || "Negocio"}</ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -225,7 +234,9 @@ export default function ScheduleOrderScreen() {
                   backgroundColor: isRecurring
                     ? ComeYaColors.primary
                     : theme.backgroundSecondary,
-                  borderColor: isRecurring ? ComeYaColors.primary : "transparent",
+                  borderColor: isRecurring
+                    ? ComeYaColors.primary
+                    : "transparent",
                 },
               ]}
             >

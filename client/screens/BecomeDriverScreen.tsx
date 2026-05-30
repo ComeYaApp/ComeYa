@@ -20,7 +20,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -50,21 +55,29 @@ export default function BecomeDriverScreen() {
   const [emergencyContact, setEmergencyContact] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const pickImage = async (type: 'profile' | 'ine' | 'vehicle' | 'license') => {
+  const pickImage = async (type: "profile" | "ine" | "vehicle" | "license") => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: type === 'profile' ? [1, 1] : [4, 3],
+      aspect: type === "profile" ? [1, 1] : [4, 3],
       quality: 0.8,
     });
 
     if (!result.canceled) {
       const uri = result.assets[0].uri;
       switch (type) {
-        case 'profile': setProfilePhoto(uri); break;
-        case 'ine': setInePhoto(uri); break;
-        case 'vehicle': setVehiclePhoto(uri); break;
-        case 'license': setLicensePhoto(uri); break;
+        case "profile":
+          setProfilePhoto(uri);
+          break;
+        case "ine":
+          setInePhoto(uri);
+          break;
+        case "vehicle":
+          setVehiclePhoto(uri);
+          break;
+        case "license":
+          setLicensePhoto(uri);
+          break;
       }
     }
   };
@@ -132,7 +145,10 @@ export default function BecomeDriverScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
     >
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
@@ -282,19 +298,34 @@ export default function BecomeDriverScreen() {
           />
 
           {/* Foto de Perfil */}
-          <ThemedText type="body" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+          >
             Foto de perfil *
           </ThemedText>
           <Pressable
-            onPress={() => pickImage('profile')}
-            style={[styles.photoButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            onPress={() => pickImage("profile")}
+            style={[
+              styles.photoButton,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                borderColor: theme.border,
+              },
+            ]}
           >
             {profilePhoto ? (
-              <Image source={{ uri: profilePhoto }} style={styles.photoPreview} />
+              <Image
+                source={{ uri: profilePhoto }}
+                style={styles.photoPreview}
+              />
             ) : (
               <>
                 <Feather name="camera" size={24} color={theme.textSecondary} />
-                <ThemedText type="small" style={{ marginTop: Spacing.xs, color: theme.textSecondary }}>
+                <ThemedText
+                  type="small"
+                  style={{ marginTop: Spacing.xs, color: theme.textSecondary }}
+                >
                   Toca para subir foto
                 </ThemedText>
               </>
@@ -302,19 +333,35 @@ export default function BecomeDriverScreen() {
           </Pressable>
 
           {/* Foto INE */}
-          <ThemedText type="body" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+          >
             Foto de INE (frontal) *
           </ThemedText>
           <Pressable
-            onPress={() => pickImage('ine')}
-            style={[styles.photoButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            onPress={() => pickImage("ine")}
+            style={[
+              styles.photoButton,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                borderColor: theme.border,
+              },
+            ]}
           >
             {inePhoto ? (
               <Image source={{ uri: inePhoto }} style={styles.photoPreview} />
             ) : (
               <>
-                <Feather name="credit-card" size={24} color={theme.textSecondary} />
-                <ThemedText type="small" style={{ marginTop: Spacing.xs, color: theme.textSecondary }}>
+                <Feather
+                  name="credit-card"
+                  size={24}
+                  color={theme.textSecondary}
+                />
+                <ThemedText
+                  type="small"
+                  style={{ marginTop: Spacing.xs, color: theme.textSecondary }}
+                >
                   Toca para subir INE
                 </ThemedText>
               </>
@@ -322,19 +369,34 @@ export default function BecomeDriverScreen() {
           </Pressable>
 
           {/* Foto Vehículo */}
-          <ThemedText type="body" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+          >
             Foto del vehículo (lateral) *
           </ThemedText>
           <Pressable
-            onPress={() => pickImage('vehicle')}
-            style={[styles.photoButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+            onPress={() => pickImage("vehicle")}
+            style={[
+              styles.photoButton,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                borderColor: theme.border,
+              },
+            ]}
           >
             {vehiclePhoto ? (
-              <Image source={{ uri: vehiclePhoto }} style={styles.photoPreview} />
+              <Image
+                source={{ uri: vehiclePhoto }}
+                style={styles.photoPreview}
+              />
             ) : (
               <>
                 <Feather name="truck" size={24} color={theme.textSecondary} />
-                <ThemedText type="small" style={{ marginTop: Spacing.xs, color: theme.textSecondary }}>
+                <ThemedText
+                  type="small"
+                  style={{ marginTop: Spacing.xs, color: theme.textSecondary }}
+                >
                   Toca para subir foto
                 </ThemedText>
               </>
@@ -342,21 +404,43 @@ export default function BecomeDriverScreen() {
           </Pressable>
 
           {/* Foto Licencia */}
-          {vehicleType !== 'bike' && (
+          {vehicleType !== "bike" && (
             <>
-              <ThemedText type="body" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+              <ThemedText
+                type="body"
+                style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+              >
                 Licencia de conducir
               </ThemedText>
               <Pressable
-                onPress={() => pickImage('license')}
-                style={[styles.photoButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                onPress={() => pickImage("license")}
+                style={[
+                  styles.photoButton,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
               >
                 {licensePhoto ? (
-                  <Image source={{ uri: licensePhoto }} style={styles.photoPreview} />
+                  <Image
+                    source={{ uri: licensePhoto }}
+                    style={styles.photoPreview}
+                  />
                 ) : (
                   <>
-                    <Feather name="file-text" size={24} color={theme.textSecondary} />
-                    <ThemedText type="small" style={{ marginTop: Spacing.xs, color: theme.textSecondary }}>
+                    <Feather
+                      name="file-text"
+                      size={24}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="small"
+                      style={{
+                        marginTop: Spacing.xs,
+                        color: theme.textSecondary,
+                      }}
+                    >
                       Toca para subir licencia
                     </ThemedText>
                   </>
@@ -366,7 +450,10 @@ export default function BecomeDriverScreen() {
           )}
 
           {/* CLABE Bancaria */}
-          <ThemedText type="body" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+          >
             CLABE interbancaria (18 dígitos) *
           </ThemedText>
           <TextInput
@@ -387,7 +474,10 @@ export default function BecomeDriverScreen() {
           />
 
           {/* Banco */}
-          <ThemedText type="body" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+          >
             Nombre del banco
           </ThemedText>
           <TextInput
@@ -406,7 +496,10 @@ export default function BecomeDriverScreen() {
           />
 
           {/* Contacto de Emergencia */}
-          <ThemedText type="body" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+          >
             Contacto de emergencia *
           </ThemedText>
           <TextInput
@@ -547,13 +640,13 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
   },
   photoPreview: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: BorderRadius.md,
   },
   submitButton: {

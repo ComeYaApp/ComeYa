@@ -1,17 +1,16 @@
 import React from "react";
-import {
-  Modal,
-  View,
-  StyleSheet,
-  Pressable,
-  Dimensions,
-} from "react-native";
+import { Modal, View, StyleSheet, Pressable, Dimensions } from "react-native";
 import { BlurView } from "expo-blur";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "./ThemedText";
 import { Button } from "./Button";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -80,8 +79,17 @@ export function AlertModal({
       <BlurView intensity={20} tint="dark" style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View style={[styles.modalContainer, Shadows.xl]}>
-          <View style={[styles.iconContainer, { backgroundColor: `${iconConfig.color}15` }]}>
-            <Feather name={iconConfig.name} size={48} color={iconConfig.color} />
+          <View
+            style={[
+              styles.iconContainer,
+              { backgroundColor: `${iconConfig.color}15` },
+            ]}
+          >
+            <Feather
+              name={iconConfig.name}
+              size={48}
+              color={iconConfig.color}
+            />
           </View>
 
           <ThemedText type="h3" style={styles.title}>

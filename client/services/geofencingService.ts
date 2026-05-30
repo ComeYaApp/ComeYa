@@ -1,13 +1,13 @@
-import * as Location from 'expo-location';
-import * as Notifications from 'expo-notifications';
-import { apiRequest } from '@/lib/query-client';
+import * as Location from "expo-location";
+import * as Notifications from "expo-notifications";
+import { apiRequest } from "@/lib/query-client";
 
 export interface GeofenceRegion {
   id: string;
   latitude: number;
   longitude: number;
   radius: number; // meters
-  type: 'business' | 'customer';
+  type: "business" | "customer";
   orderId: string;
 }
 
@@ -21,7 +21,7 @@ class GeofencingService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371e3; // Earth radius in meters
     const φ1 = (lat1 * Math.PI) / 180;
@@ -40,8 +40,10 @@ class GeofencingService {
   // Add geofence for an order
   async addGeofence(region: GeofenceRegion): Promise<void> {
     this.activeGeofences.set(region.id, region);
-    console.log(`📍 Geofence added: ${region.type} for order ${region.orderId}`);
-    
+    console.log(
+      `📍 Geofence added: ${region.type} for order ${region.orderId}`,
+    );
+
     if (!this.checkInterval) {
       this.startMonitoring();
     }
@@ -51,7 +53,7 @@ class GeofencingService {
   removeGeofence(id: string): void {
     this.activeGeofences.delete(id);
     console.log(`🗑️ Geofence removed: ${id}`);
-    
+
     if (this.activeGeofences.size === 0 && this.checkInterval) {
       this.stopMonitoring();
     }
@@ -74,11 +76,11 @@ class GeofencingService {
 
         this.checkGeofences(this.lastLocation);
       } catch (error) {
-        console.error('Error monitoring geofences:', error);
+        console.error("Error monitoring geofences:", error);
       }
     }, 15000); // Check every 15 seconds
 
-    console.log('🔍 Geofence monitoring started');
+    console.log("🔍 Geofence monitoring started");
   }
 
   // Stop monitoring
@@ -86,7 +88,7 @@ class GeofencingService {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
-      console.log('🛑 Geofence monitoring stopped');
+      console.log("🛑 Geofence monitoring stopped");
     }
   }
 
@@ -100,7 +102,7 @@ class GeofencingService {
         currentLocation.latitude,
         currentLocation.longitude,
         region.latitude,
-        region.longitude
+        region.longitude,
       );
 
       if (distance <= region.radius) {
@@ -115,17 +117,23 @@ class GeofencingService {
   // Handle geofence entry
   private async onGeofenceEnter(
     region: GeofenceRegion,
-    distance: number
+    distance: number,
   ): Promise<void> {
-    console.log(`✅ Entered geofence: ${region.type} (${distance.toFixed(0)}m)`);
+    console.log(
+      `✅ Entered geofence: ${region.type} (${distance.toFixed(0)}m)`,
+    );
 
     // Send notification
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: region.type === 'business' ? '🏪 Llegaste al negocio' : '🏠 Llegaste con el cliente',
-        body: region.type === 'business' 
-          ? 'Recoge el pedido y marca como "Recogido"'
-          : 'Entrega el pedido y marca como "Entregado"',
+        title:
+          region.type === "business"
+            ? "🏪 Llegaste al negocio"
+            : "🏠 Llegaste con el cliente",
+        body:
+          region.type === "business"
+            ? 'Recoge el pedido y marca como "Recogido"'
+            : 'Entrega el pedido y marca como "Entregado"',
         data: { orderId: region.orderId, type: region.type },
       },
       trigger: null,
@@ -133,29 +141,31 @@ class GeofencingService {
 
     // Notify backend
     try {
-      await apiRequest('POST', '/api/delivery/geofence-event', {
+      await apiRequest("POST", "/api/delivery/geofence-event", {
         orderId: region.orderId,
-        type: 'enter',
+        type: "enter",
         location: region.type,
         distance,
       });
     } catch (error) {
-      console.error('Error notifying geofence entry:', error);
+      console.error("Error notifying geofence entry:", error);
     }
   }
 
   // Handle route deviation
   private async onGeofenceDeviation(
     region: GeofenceRegion,
-    distance: number
+    distance: number,
   ): Promise<void> {
-    console.log(`⚠️ Route deviation detected: ${distance.toFixed(0)}m from ${region.type}`);
+    console.log(
+      `⚠️ Route deviation detected: ${distance.toFixed(0)}m from ${region.type}`,
+    );
 
     // Only alert if driver is supposed to be heading there
-    if (region.type === 'customer') {
+    if (region.type === "customer") {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: '⚠️ Alerta de ruta',
+          title: "⚠️ Alerta de ruta",
           body: `Te has alejado ${(distance / 1000).toFixed(1)}km del destino`,
           data: { orderId: region.orderId },
         },
@@ -168,7 +178,7 @@ class GeofencingService {
   clearAll(): void {
     this.activeGeofences.clear();
     this.stopMonitoring();
-    console.log('🧹 All geofences cleared');
+    console.log("🧹 All geofences cleared");
   }
 
   // Get active geofences count

@@ -20,14 +20,18 @@ import { EmptyState } from "@/components/EmptyState";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { useTheme } from "@/hooks/useTheme";
 import { useReorder } from "@/hooks/useReorder";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { Order, OrderStatus } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 type OrdersScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Pendiente",
@@ -74,7 +78,9 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(
+    null,
+  );
   const [pendingConfirmId, setPendingConfirmId] = useState<string | null>(null);
 
   const loadOrders = useCallback(async () => {
@@ -88,7 +94,8 @@ export default function OrdersScreen() {
           ...o,
           businessName: o.businessName || b?.name || "",
           businessImage: o.businessImage || b?.image || "",
-          items: typeof o.items === "string" ? JSON.parse(o.items) : (o.items ?? []),
+          items:
+            typeof o.items === "string" ? JSON.parse(o.items) : (o.items ?? []),
         };
       });
       setOrders(
@@ -127,7 +134,11 @@ export default function OrdersScreen() {
     setPendingConfirmId(null);
     setConfirmingOrderId(orderId);
     try {
-      const res = await apiRequest("POST", `/api/fund-release/confirm-delivery`, { orderId });
+      const res = await apiRequest(
+        "POST",
+        `/api/fund-release/confirm-delivery`,
+        { orderId },
+      );
       const data = await res.json();
       if (data.success) {
         loadOrders();
@@ -161,15 +172,25 @@ export default function OrdersScreen() {
 
   // delivered sin confirmar = activo (cliente debe confirmar)
   const activeOrders = orders.filter(
-    (o) => !(o.status === "cancelled" || (o.status === "delivered" && (o as any).confirmedByCustomer))
+    (o) =>
+      !(
+        o.status === "cancelled" ||
+        (o.status === "delivered" && (o as any).confirmedByCustomer)
+      ),
   );
-  const pastOrders = orders.filter((o) =>
-    o.status === "cancelled" || (o.status === "delivered" && (o as any).confirmedByCustomer)
+  const pastOrders = orders.filter(
+    (o) =>
+      o.status === "cancelled" ||
+      (o.status === "delivered" && (o as any).confirmedByCustomer),
   );
 
   const renderOrder = ({ item }: { item: Order }) => {
-    const needsConfirm = item.status === "delivered" && !(item as any).confirmedByCustomer;
-    const isActive = !(item.status === "cancelled" || (item.status === "delivered" && (item as any).confirmedByCustomer));
+    const needsConfirm =
+      item.status === "delivered" && !(item as any).confirmedByCustomer;
+    const isActive = !(
+      item.status === "cancelled" ||
+      (item.status === "delivered" && (item as any).confirmedByCustomer)
+    );
 
     return (
       <Pressable
@@ -196,13 +217,17 @@ export default function OrdersScreen() {
               {formatDate(item.createdAt)}
             </ThemedText>
           </View>
-          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+          <View style={{ alignItems: "flex-end", gap: 4 }}>
             <Badge
               text={STATUS_LABELS[item.status]}
               variant={STATUS_VARIANTS[item.status]}
             />
             <Badge
-              text={(item as any).orderType === 'pickup' ? '🛍️ Recoger' : '🚚 Delivery'}
+              text={
+                (item as any).orderType === "pickup"
+                  ? "🛍️ Recoger"
+                  : "🚚 Delivery"
+              }
               variant="secondary"
             />
           </View>
@@ -210,7 +235,10 @@ export default function OrdersScreen() {
 
         {isActive && (
           <View style={styles.statusSection}>
-            <OrderProgressBar status={item.status} orderType={(item as any).orderType || 'delivery'} />
+            <OrderProgressBar
+              status={item.status}
+              orderType={(item as any).orderType || "delivery"}
+            />
           </View>
         )}
 
@@ -226,29 +254,53 @@ export default function OrdersScreen() {
 
         {needsConfirm ? (
           <Pressable
-            onPress={(e) => { e.stopPropagation?.(); confirmDelivery(item.id); }}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              confirmDelivery(item.id);
+            }}
             disabled={confirmingOrderId === item.id}
-            style={[styles.confirmButton, { backgroundColor: ComeYaColors.success }]}
+            style={[
+              styles.confirmButton,
+              { backgroundColor: ComeYaColors.success },
+            ]}
           >
             <Feather name="check-circle" size={16} color="#FFF" />
-            <ThemedText type="small" style={{ color: "#FFF", marginLeft: Spacing.xs, fontWeight: "600" }}>
-              {confirmingOrderId === item.id ? "Confirmando..." : "✅ Confirmar que recibí mi pedido"}
+            <ThemedText
+              type="small"
+              style={{
+                color: "#FFF",
+                marginLeft: Spacing.xs,
+                fontWeight: "600",
+              }}
+            >
+              {confirmingOrderId === item.id
+                ? "Confirmando..."
+                : "✅ Confirmar que recibí mi pedido"}
             </ThemedText>
           </Pressable>
         ) : isActive ? (
           <View style={[styles.trackButton, { borderTopColor: theme.border }]}>
             <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
-            <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+            <ThemedText
+              type="small"
+              style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+            >
               Ver seguimiento
             </ThemedText>
           </View>
         ) : (
           <Pressable
             onPress={() => reorder(item)}
-            style={[styles.reorderButton, { backgroundColor: theme.backgroundSecondary }]}
+            style={[
+              styles.reorderButton,
+              { backgroundColor: theme.backgroundSecondary },
+            ]}
           >
             <Feather name="refresh-cw" size={16} color={ComeYaColors.primary} />
-            <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+            <ThemedText
+              type="small"
+              style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+            >
               Pedir de nuevo
             </ThemedText>
           </Pressable>
@@ -278,7 +330,10 @@ export default function OrdersScreen() {
   if (!isLoading && orders.length === 0) {
     return (
       <LinearGradient
-        colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+        colors={[
+          theme.gradientStart || "#FFFFFF",
+          theme.gradientEnd || "#F5F5F5",
+        ]}
         style={styles.container}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -296,7 +351,10 @@ export default function OrdersScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}

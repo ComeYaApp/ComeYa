@@ -12,7 +12,10 @@ export default function PaymentWebViewScreen() {
   const { paymentUrl } = route.params || {};
 
   useEffect(() => {
-    if (!paymentUrl) { navigation.goBack(); return; }
+    if (!paymentUrl) {
+      navigation.goBack();
+      return;
+    }
     // En web, abrir directamente en nueva pestaña
     window.open(paymentUrl, "_blank");
     // Volver al inicio después de abrir
@@ -24,7 +27,10 @@ export default function PaymentWebViewScreen() {
   return (
     <View style={[s.container, { backgroundColor: theme.backgroundRoot }]}>
       <ActivityIndicator size="large" color={ComeYaColors.primary} />
-      <ThemedText type="body" style={{ marginTop: 16, color: theme.textSecondary }}>
+      <ThemedText
+        type="body"
+        style={{ marginTop: 16, color: theme.textSecondary }}
+      >
         Abriendo pasarela de pago...
       </ThemedText>
     </View>

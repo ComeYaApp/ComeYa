@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 export async function validateBusinessOwnership(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { businessId } = req.params;
@@ -27,8 +27,8 @@ export async function validateBusinessOwnership(
     }
 
     if (business.ownerId !== userId) {
-      return res.status(403).json({ 
-        error: "You do not have permission to access this business" 
+      return res.status(403).json({
+        error: "You do not have permission to access this business",
       });
     }
 
@@ -42,7 +42,7 @@ export async function validateBusinessOwnership(
 export async function validateOrderBusinessOwnership(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const orderId = req.params.id || req.params.orderId;
@@ -67,11 +67,11 @@ export async function validateOrderBusinessOwnership(
       .from(businesses)
       .where(eq(businesses.ownerId, userId));
 
-    const businessIds = ownerBusinesses.map(b => b.id);
+    const businessIds = ownerBusinesses.map((b) => b.id);
 
     if (!businessIds.includes(order.businessId)) {
-      return res.status(403).json({ 
-        error: "This order does not belong to your business" 
+      return res.status(403).json({
+        error: "This order does not belong to your business",
       });
     }
 
@@ -85,7 +85,7 @@ export async function validateOrderBusinessOwnership(
 export async function validateDriverOrderOwnership(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const orderId = req.params.id || req.params.orderId;
@@ -106,8 +106,8 @@ export async function validateDriverOrderOwnership(
     }
 
     if (order.deliveryPersonId !== userId) {
-      return res.status(403).json({ 
-        error: "This order is not assigned to you" 
+      return res.status(403).json({
+        error: "This order is not assigned to you",
       });
     }
 
@@ -121,7 +121,7 @@ export async function validateDriverOrderOwnership(
 export async function validateCustomerOrderOwnership(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const orderId = req.params.id || req.params.orderId;
@@ -131,7 +131,10 @@ export async function validateCustomerOrderOwnership(
     if (role === "admin" || role === "super_admin") return next();
 
     const [order] = await db
-      .select({ userId: orders.userId, deliveryPersonId: orders.deliveryPersonId })
+      .select({
+        userId: orders.userId,
+        deliveryPersonId: orders.deliveryPersonId,
+      })
       .from(orders)
       .where(eq(orders.id, orderId))
       .limit(1);
@@ -143,8 +146,8 @@ export async function validateCustomerOrderOwnership(
     // Allow: customer who owns it, business_owner (checked elsewhere)
     // El repartidor NO puede confirmar recepción — eso es exclusivo del cliente
     if (order.userId !== userId && role !== "business_owner") {
-      return res.status(403).json({ 
-        error: "Solo el cliente puede realizar esta acción" 
+      return res.status(403).json({
+        error: "Solo el cliente puede realizar esta acción",
       });
     }
 

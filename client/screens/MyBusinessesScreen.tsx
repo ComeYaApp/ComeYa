@@ -13,7 +13,12 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+  RouteProp,
+} from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -25,7 +30,12 @@ import { ThemedView } from "@/components/ThemedView";
 import { BackButton } from "@/components/BackButton";
 import { useTheme } from "@/hooks/useTheme";
 import { useBusiness, Business } from "@/contexts/BusinessContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,21 +58,23 @@ export default function MyBusinessesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<MyBusinessesRouteProp>();
   const { user } = useAuth();
-  const { 
-    businesses, 
-    selectedBusiness, 
-    isLoading, 
-    loadBusinesses, 
+  const {
+    businesses,
+    selectedBusiness,
+    isLoading,
+    loadBusinesses,
     selectBusiness,
     createBusiness,
     deleteBusiness,
   } = useBusiness();
 
   const [refreshing, setRefreshing] = useState(false);
-const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [businessToDelete, setBusinessToDelete] = useState<Business | null>(null);
+  const [businessToDelete, setBusinessToDelete] = useState<Business | null>(
+    null,
+  );
   const [businessToEdit, setBusinessToEdit] = useState<Business | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,7 +113,7 @@ const [showAddModal, setShowAddModal] = useState(false);
   useFocusEffect(
     useCallback(() => {
       loadBusinesses();
-    }, [])
+    }, []),
   );
 
   const onRefresh = async () => {
@@ -127,12 +139,16 @@ const [showAddModal, setShowAddModal] = useState(false);
 
     if (!result.canceled && result.assets[0].base64) {
       try {
-        const response = await apiRequest("POST", "/api/upload/business-image", {
-          image: `data:image/jpeg;base64,${result.assets[0].base64}`,
-        });
+        const response = await apiRequest(
+          "POST",
+          "/api/upload/business-image",
+          {
+            image: `data:image/jpeg;base64,${result.assets[0].base64}`,
+          },
+        );
         const data = await response.json();
         if (data.success && data.imageUrl) {
-          setNewBusiness(prev => ({ ...prev, image: data.imageUrl }));
+          setNewBusiness((prev) => ({ ...prev, image: data.imageUrl }));
         }
       } catch (error) {
         console.error("Error uploading image:", error);
@@ -171,7 +187,7 @@ const [showAddModal, setShowAddModal] = useState(false);
     setShowDeleteModal(true);
   };
 
-const handleDeleteBusiness = async () => {
+  const handleDeleteBusiness = async () => {
     if (!businessToDelete) return;
 
     setSubmitting(true);
@@ -206,7 +222,14 @@ const handleDeleteBusiness = async () => {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowEditModal(false);
       setBusinessToEdit(null);
-      setNewBusiness({ name: "", description: "", type: "restaurant", address: "", phone: "", image: "" });
+      setNewBusiness({
+        name: "",
+        description: "",
+        type: "restaurant",
+        address: "",
+        phone: "",
+        image: "",
+      });
       Alert.alert("Éxito", "Negocio actualizado correctamente");
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo actualizar el negocio");
@@ -239,7 +262,7 @@ const handleDeleteBusiness = async () => {
   };
 
   const styles = StyleSheet.create({
-container: {
+    container: {
       flex: 1,
       backgroundColor: theme.theme.backgroundRoot,
     },
@@ -415,7 +438,7 @@ container: {
       color: theme.theme.text,
       marginBottom: Spacing.xs,
     },
-input: {
+    input: {
       backgroundColor: theme.theme.background,
       borderRadius: BorderRadius.md,
       padding: Spacing.md,
@@ -435,7 +458,7 @@ input: {
       marginBottom: Spacing.md,
       gap: Spacing.sm,
     },
-typeOption: {
+    typeOption: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: Spacing.md,
@@ -454,7 +477,7 @@ typeOption: {
       marginLeft: Spacing.xs,
       color: theme.theme.text,
     },
-imagePickerButton: {
+    imagePickerButton: {
       backgroundColor: theme.theme.background,
       borderRadius: BorderRadius.md,
       padding: Spacing.lg,
@@ -487,7 +510,7 @@ imagePickerButton: {
       borderRadius: BorderRadius.md,
       alignItems: "center",
     },
-cancelButton: {
+    cancelButton: {
       backgroundColor: theme.theme.background,
       borderWidth: 1,
       borderColor: theme.theme.border,
@@ -524,7 +547,7 @@ cancelButton: {
       textAlign: "center",
       marginTop: Spacing.sm,
     },
-emptyState: {
+    emptyState: {
       alignItems: "center",
       justifyContent: "center",
       paddingVertical: Spacing.xxl,
@@ -575,7 +598,8 @@ emptyState: {
         <View style={styles.headerContent}>
           <ThemedText style={styles.headerTitle}>Mis Negocios</ThemedText>
           <ThemedText style={styles.headerSubtitle}>
-            {businesses.length} {businesses.length === 1 ? "negocio" : "negocios"} registrados
+            {businesses.length}{" "}
+            {businesses.length === 1 ? "negocio" : "negocios"} registrados
           </ThemedText>
         </View>
       </View>
@@ -590,15 +614,24 @@ emptyState: {
           />
         }
       >
-        <Pressable style={styles.addButton} onPress={() => setShowAddModal(true)}>
+        <Pressable
+          style={styles.addButton}
+          onPress={() => setShowAddModal(true)}
+        >
           <Feather name="plus" size={20} color="#fff" />
-          <ThemedText style={styles.addButtonText}>Agregar Nuevo Negocio</ThemedText>
+          <ThemedText style={styles.addButtonText}>
+            Agregar Nuevo Negocio
+          </ThemedText>
         </Pressable>
 
         {businesses.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
-              <Feather name="briefcase" size={36} color={theme.theme.textSecondary} />
+              <Feather
+                name="briefcase"
+                size={36}
+                color={theme.theme.textSecondary}
+              />
             </View>
             <ThemedText style={styles.emptyText}>Sin negocios</ThemedText>
             <ThemedText style={styles.emptySubtext}>
@@ -626,7 +659,11 @@ emptyState: {
                   />
                 ) : (
                   <View style={styles.businessImagePlaceholder}>
-                    <Feather name="image" size={32} color={theme.theme.textSecondary} />
+                    <Feather
+                      name="image"
+                      size={32}
+                      color={theme.theme.textSecondary}
+                    />
                   </View>
                 )}
 
@@ -644,7 +681,11 @@ emptyState: {
                       <ThemedText
                         style={[
                           styles.statusText,
-                          { color: business.isOpen ? ComeYaColors.success : theme.theme.textSecondary },
+                          {
+                            color: business.isOpen
+                              ? ComeYaColors.success
+                              : theme.theme.textSecondary,
+                          },
                         ]}
                       >
                         {business.isOpen ? "Abierto" : "Cerrado"}
@@ -652,7 +693,8 @@ emptyState: {
                     </View>
                   </View>
                   <ThemedText style={styles.businessType}>
-                    {BUSINESS_TYPES.find(t => t.id === business.type)?.name || "Negocio"}
+                    {BUSINESS_TYPES.find((t) => t.id === business.type)?.name ||
+                      "Negocio"}
                   </ThemedText>
 
                   {business.stats && (
@@ -661,49 +703,85 @@ emptyState: {
                         <ThemedText style={styles.statValue}>
                           {business.stats.pendingOrders}
                         </ThemedText>
-                        <ThemedText style={styles.statLabel}>Pendientes</ThemedText>
+                        <ThemedText style={styles.statLabel}>
+                          Pendientes
+                        </ThemedText>
                       </View>
                       <View style={styles.statItem}>
                         <ThemedText style={styles.statValue}>
                           {business.stats.totalOrders}
                         </ThemedText>
-                        <ThemedText style={styles.statLabel}>Completadas</ThemedText>
+                        <ThemedText style={styles.statLabel}>
+                          Completadas
+                        </ThemedText>
                       </View>
                       <View style={styles.statItem}>
                         <ThemedText style={styles.statValue}>
                           {formatCurrency(business.stats.totalRevenue)}
                         </ThemedText>
-                        <ThemedText style={styles.statLabel}>Ingresos</ThemedText>
+                        <ThemedText style={styles.statLabel}>
+                          Ingresos
+                        </ThemedText>
                       </View>
                     </View>
                   )}
                 </View>
 
-<View style={styles.actionsRow}>
+                <View style={styles.actionsRow}>
                   <Pressable
                     style={styles.actionButton}
                     onPress={() => handleSelectBusiness(business)}
                   >
                     <Feather
-                      name={selectedBusiness?.id === business.id ? "check-circle" : "circle"}
+                      name={
+                        selectedBusiness?.id === business.id
+                          ? "check-circle"
+                          : "circle"
+                      }
                       size={18}
-                      color={selectedBusiness?.id === business.id ? ComeYaColors.primary : theme.theme.textSecondary}
+                      color={
+                        selectedBusiness?.id === business.id
+                          ? ComeYaColors.primary
+                          : theme.theme.textSecondary
+                      }
                     />
                     <ThemedText
                       style={[
                         styles.actionText,
-                        { color: selectedBusiness?.id === business.id ? ComeYaColors.primary : theme.theme.textSecondary },
+                        {
+                          color:
+                            selectedBusiness?.id === business.id
+                              ? ComeYaColors.primary
+                              : theme.theme.textSecondary,
+                        },
                       ]}
                     >
-                      {selectedBusiness?.id === business.id ? "Seleccionado" : "Seleccionar"}
+                      {selectedBusiness?.id === business.id
+                        ? "Seleccionado"
+                        : "Seleccionar"}
                     </ThemedText>
                   </Pressable>
-<Pressable
-                    style={[styles.actionButton, { borderLeftWidth: 1, borderLeftColor: theme.theme.border }]}
+                  <Pressable
+                    style={[
+                      styles.actionButton,
+                      {
+                        borderLeftWidth: 1,
+                        borderLeftColor: theme.theme.border,
+                      },
+                    ]}
                     onPress={() => openEditModal(business)}
                   >
-                    <Feather name="edit-2" size={18} color={ComeYaColors.primary} />
-                    <ThemedText style={[styles.actionText, { color: ComeYaColors.primary }]}>
+                    <Feather
+                      name="edit-2"
+                      size={18}
+                      color={ComeYaColors.primary}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.actionText,
+                        { color: ComeYaColors.primary },
+                      ]}
+                    >
                       Editar
                     </ThemedText>
                   </Pressable>
@@ -711,8 +789,14 @@ emptyState: {
                     style={[styles.actionButton, styles.actionButtonDanger]}
                     onPress={() => confirmDelete(business)}
                   >
-                    <Feather name="trash-2" size={18} color={ComeYaColors.error} />
-                    <ThemedText style={[styles.actionText, { color: ComeYaColors.error }]}>
+                    <Feather
+                      name="trash-2"
+                      size={18}
+                      color={ComeYaColors.error}
+                    />
+                    <ThemedText
+                      style={[styles.actionText, { color: ComeYaColors.error }]}
+                    >
                       Eliminar
                     </ThemedText>
                   </Pressable>
@@ -739,7 +823,9 @@ emptyState: {
               placeholder="Nombre del negocio"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.name}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, name: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, name: text }))
+              }
             />
 
             <ThemedText style={styles.inputLabel}>Descripción</ThemedText>
@@ -748,27 +834,37 @@ emptyState: {
               placeholder="Breve descripción de tu negocio"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.description}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, description: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, description: text }))
+              }
               multiline
             />
 
             <ThemedText style={styles.inputLabel}>Tipo de negocio</ThemedText>
             <View style={styles.typeSelector}>
-              {BUSINESS_TYPES.map(type => (
+              {BUSINESS_TYPES.map((type) => (
                 <Pressable
                   key={type.id}
                   style={[
                     styles.typeOption,
                     newBusiness.type === type.id && styles.typeOptionSelected,
                   ]}
-                  onPress={() => setNewBusiness(prev => ({ ...prev, type: type.id }))}
+                  onPress={() =>
+                    setNewBusiness((prev) => ({ ...prev, type: type.id }))
+                  }
                 >
                   <Feather
                     name={type.icon as any}
                     size={16}
-                    color={newBusiness.type === type.id ? ComeYaColors.primary : theme.theme.text}
+                    color={
+                      newBusiness.type === type.id
+                        ? ComeYaColors.primary
+                        : theme.theme.text
+                    }
                   />
-                  <ThemedText style={styles.typeOptionText}>{type.name}</ThemedText>
+                  <ThemedText style={styles.typeOptionText}>
+                    {type.name}
+                  </ThemedText>
                 </Pressable>
               ))}
             </View>
@@ -779,7 +875,9 @@ emptyState: {
               placeholder="Dirección del negocio"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.address}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, address: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, address: text }))
+              }
             />
 
             <ThemedText style={styles.inputLabel}>Teléfono</ThemedText>
@@ -788,12 +886,19 @@ emptyState: {
               placeholder="Número de contacto"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.phone}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, phone: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, phone: text }))
+              }
               keyboardType="phone-pad"
             />
 
-            <ThemedText style={styles.inputLabel}>Imagen del negocio</ThemedText>
-            <Pressable style={styles.imagePickerButton} onPress={handlePickImage}>
+            <ThemedText style={styles.inputLabel}>
+              Imagen del negocio
+            </ThemedText>
+            <Pressable
+              style={styles.imagePickerButton}
+              onPress={handlePickImage}
+            >
               {newBusiness.image ? (
                 <Image
                   source={{ uri: getImageUrl(newBusiness.image) }}
@@ -802,7 +907,11 @@ emptyState: {
                 />
               ) : (
                 <>
-                  <Feather name="camera" size={32} color={theme.theme.textSecondary} />
+                  <Feather
+                    name="camera"
+                    size={32}
+                    color={theme.theme.textSecondary}
+                  />
                   <ThemedText style={styles.imagePickerText}>
                     Toca para seleccionar imagen
                   </ThemedText>
@@ -815,7 +924,9 @@ emptyState: {
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowAddModal(false)}
               >
-                <ThemedText style={[styles.buttonText, { color: theme.theme.text }]}>
+                <ThemedText
+                  style={[styles.buttonText, { color: theme.theme.text }]}
+                >
                   Cancelar
                 </ThemedText>
               </Pressable>
@@ -846,11 +957,16 @@ emptyState: {
         <View style={[styles.modalOverlay, { justifyContent: "center" }]}>
           <View style={styles.deleteModalContent}>
             <View style={styles.deleteIcon}>
-              <Feather name="alert-triangle" size={32} color={ComeYaColors.error} />
+              <Feather
+                name="alert-triangle"
+                size={32}
+                color={ComeYaColors.error}
+              />
             </View>
             <ThemedText style={styles.modalTitle}>Eliminar Negocio</ThemedText>
             <ThemedText style={styles.deleteMessage}>
-              Esta acción no se puede deshacer. Si el negocio tiene pedidos activos, no podrá ser eliminado.
+              Esta acción no se puede deshacer. Si el negocio tiene pedidos
+              activos, no podrá ser eliminado.
             </ThemedText>
 
             <View style={[styles.modalButtons, { width: "100%" }]}>
@@ -858,7 +974,9 @@ emptyState: {
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowDeleteModal(false)}
               >
-                <ThemedText style={[styles.buttonText, { color: theme.theme.text }]}>
+                <ThemedText
+                  style={[styles.buttonText, { color: theme.theme.text }]}
+                >
                   Cancelar
                 </ThemedText>
               </Pressable>
@@ -876,7 +994,7 @@ emptyState: {
                 )}
               </Pressable>
             </View>
-</View>
+          </View>
         </View>
       </Modal>
 
@@ -896,7 +1014,9 @@ emptyState: {
               placeholder="Nombre del negocio"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.name}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, name: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, name: text }))
+              }
             />
 
             <ThemedText style={styles.inputLabel}>Descripción</ThemedText>
@@ -905,27 +1025,37 @@ emptyState: {
               placeholder="Breve descripción de tu negocio"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.description}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, description: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, description: text }))
+              }
               multiline
             />
 
             <ThemedText style={styles.inputLabel}>Tipo de negocio</ThemedText>
             <View style={styles.typeSelector}>
-              {BUSINESS_TYPES.map(type => (
+              {BUSINESS_TYPES.map((type) => (
                 <Pressable
                   key={type.id}
                   style={[
                     styles.typeOption,
                     newBusiness.type === type.id && styles.typeOptionSelected,
                   ]}
-                  onPress={() => setNewBusiness(prev => ({ ...prev, type: type.id }))}
+                  onPress={() =>
+                    setNewBusiness((prev) => ({ ...prev, type: type.id }))
+                  }
                 >
                   <Feather
                     name={type.icon as any}
                     size={16}
-                    color={newBusiness.type === type.id ? ComeYaColors.primary : theme.theme.text}
+                    color={
+                      newBusiness.type === type.id
+                        ? ComeYaColors.primary
+                        : theme.theme.text
+                    }
                   />
-                  <ThemedText style={styles.typeOptionText}>{type.name}</ThemedText>
+                  <ThemedText style={styles.typeOptionText}>
+                    {type.name}
+                  </ThemedText>
                 </Pressable>
               ))}
             </View>
@@ -936,7 +1066,9 @@ emptyState: {
               placeholder="Dirección del negocio"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.address}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, address: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, address: text }))
+              }
             />
 
             <ThemedText style={styles.inputLabel}>Teléfono</ThemedText>
@@ -945,12 +1077,19 @@ emptyState: {
               placeholder="Número de contacto"
               placeholderTextColor={theme.theme.textSecondary}
               value={newBusiness.phone}
-              onChangeText={(text) => setNewBusiness(prev => ({ ...prev, phone: text }))}
+              onChangeText={(text) =>
+                setNewBusiness((prev) => ({ ...prev, phone: text }))
+              }
               keyboardType="phone-pad"
             />
 
-            <ThemedText style={styles.inputLabel}>Imagen del negocio</ThemedText>
-            <Pressable style={styles.imagePickerButton} onPress={handlePickImage}>
+            <ThemedText style={styles.inputLabel}>
+              Imagen del negocio
+            </ThemedText>
+            <Pressable
+              style={styles.imagePickerButton}
+              onPress={handlePickImage}
+            >
               {newBusiness.image ? (
                 <Image
                   source={{ uri: getImageUrl(newBusiness.image) }}
@@ -959,7 +1098,11 @@ emptyState: {
                 />
               ) : (
                 <>
-                  <Feather name="camera" size={32} color={theme.theme.textSecondary} />
+                  <Feather
+                    name="camera"
+                    size={32}
+                    color={theme.theme.textSecondary}
+                  />
                   <ThemedText style={styles.imagePickerText}>
                     Toca para seleccionar imagen
                   </ThemedText>
@@ -972,7 +1115,9 @@ emptyState: {
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => setShowEditModal(false)}
               >
-                <ThemedText style={[styles.buttonText, { color: theme.theme.text }]}>
+                <ThemedText
+                  style={[styles.buttonText, { color: theme.theme.text }]}
+                >
                   Cancelar
                 </ThemedText>
               </Pressable>

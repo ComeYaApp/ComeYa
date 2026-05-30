@@ -12,7 +12,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { Product } from "@/types";
 
 interface ProductCardProps {
@@ -23,7 +28,11 @@ interface ProductCardProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ProductCard({ product, onPress, businessIsOpen = true }: ProductCardProps) {
+export function ProductCard({
+  product,
+  onPress,
+  businessIsOpen = true,
+}: ProductCardProps) {
   const { theme } = useTheme();
   const { isProductInCart, getCartItem } = useCart();
   const scale = useSharedValue(1);
@@ -47,9 +56,9 @@ export function ProductCard({ product, onPress, businessIsOpen = true }: Product
 
   const formatPrice = () => {
     if (product.isWeightBased) {
-      return `€${(product.price).toFixed(2)}/${product.unit}`;
+      return `€${product.price.toFixed(2)}/${product.unit}`;
     }
-    return `€${(product.price).toFixed(2)}`;
+    return `€${product.price.toFixed(2)}`;
   };
 
   return (
@@ -67,7 +76,11 @@ export function ProductCard({ product, onPress, businessIsOpen = true }: Product
     >
       <View style={styles.imageContainer}>
         <Image
-          source={product.image ? { uri: product.image } : require("../../assets/images/delivery-hero.png")}
+          source={
+            product.image
+              ? { uri: product.image }
+              : require("../../assets/images/delivery-hero.png")
+          }
           style={styles.image}
           contentFit="cover"
         />
@@ -86,7 +99,10 @@ export function ProductCard({ product, onPress, businessIsOpen = true }: Product
         ) : null}
         {inCart && cartItem ? (
           <View
-            style={[styles.cartBadge, { backgroundColor: ComeYaColors.primary }]}
+            style={[
+              styles.cartBadge,
+              { backgroundColor: ComeYaColors.primary },
+            ]}
           >
             <ThemedText type="caption" style={styles.cartBadgeText}>
               {cartItem.quantity}

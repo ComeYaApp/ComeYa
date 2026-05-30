@@ -1,21 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
-import * as Location from 'expo-location';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { AUTLAN_CENTER, isInCoverageArea } from '@/utils/coverage';
-import { useOptimizedGeocoding, usePerformanceMonitor } from '@/hooks/usePerformance';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from "react-native";
+import * as Location from "expo-location";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { AUTLAN_CENTER, isInCoverageArea } from "@/utils/coverage";
+import {
+  useOptimizedGeocoding,
+  usePerformanceMonitor,
+} from "@/hooks/usePerformance";
 
 // Conditional import for MapView - only works on native platforms
 let MapView: any = null;
 let Marker: any = null;
 
-if (Platform.OS !== 'web') {
+if (Platform.OS !== "web") {
   try {
-    const maps = require('react-native-maps');
+    const maps = require("react-native-maps");
     MapView = maps.default;
     Marker = maps.Marker;
   } catch (error) {
-    console.log('react-native-maps not available');
+    console.log("react-native-maps not available");
   }
 }
 
@@ -40,10 +51,13 @@ export default function LocationPickerScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { reverseGeocode, isLoading: isGeocoding } = useOptimizedGeocoding();
-  usePerformanceMonitor('LocationPickerScreen');
-  
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [address, setAddress] = useState('');
+  usePerformanceMonitor("LocationPickerScreen");
+
+  const [location, setLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -51,16 +65,17 @@ export default function LocationPickerScreen() {
   }, []);
 
   const requestLocationPermission = async () => {
-    const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
-    if (status === 'granted') {
+    const { status, canAskAgain } =
+      await Location.requestForegroundPermissionsAsync();
+    if (status === "granted") {
       getCurrentLocation();
       return;
     }
 
     const message = canAskAgain
-      ? 'Necesitamos acceso al GPS para autocompletar tu dirección.'
-      : 'Activa el GPS desde ajustes para autocompletar tu dirección.';
-    Alert.alert('GPS requerido', message);
+      ? "Necesitamos acceso al GPS para autocompletar tu dirección."
+      : "Activa el GPS desde ajustes para autocompletar tu dirección.";
+    Alert.alert("GPS requerido", message);
     setLocation(AUTLAN_CENTER);
   };
 
@@ -77,37 +92,43 @@ export default function LocationPickerScreen() {
       setLocation(coords);
       await handleReverseGeocode(coords);
     } catch (error) {
-      console.error('Error getting location:', error);
+      console.error("Error getting location:", error);
       setLocation(AUTLAN_CENTER);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReverseGeocode = useCallback(async (coords: { latitude: number; longitude: number }) => {
-    const result = await reverseGeocode(coords);
-    if (result?.formattedAddress) {
-      setAddress(result.formattedAddress);
-    }
-  }, [reverseGeocode]);
+  const handleReverseGeocode = useCallback(
+    async (coords: { latitude: number; longitude: number }) => {
+      const result = await reverseGeocode(coords);
+      if (result?.formattedAddress) {
+        setAddress(result.formattedAddress);
+      }
+    },
+    [reverseGeocode],
+  );
 
-  const handleMapPress = useCallback(async (event: any) => {
-    const coords = event.nativeEvent.coordinate;
-    setLocation(coords);
-    await handleReverseGeocode(coords);
-  }, [handleReverseGeocode]);
+  const handleMapPress = useCallback(
+    async (event: any) => {
+      const coords = event.nativeEvent.coordinate;
+      setLocation(coords);
+      await handleReverseGeocode(coords);
+    },
+    [handleReverseGeocode],
+  );
 
   const handleConfirm = () => {
     if (!location) {
-      Alert.alert('Error', 'Por favor selecciona una ubicación');
+      Alert.alert("Error", "Por favor selecciona una ubicación");
       return;
     }
 
     if (!isInCoverageArea(location.latitude, location.longitude)) {
       Alert.alert(
-        'Fuera de cobertura',
-        'Esta ubicación está fuera de nuestra zona de servicio en Soria. Por favor selecciona una dirección dentro de la ciudad.',
-        [{ text: 'OK' }]
+        "Fuera de cobertura",
+        "Esta ubicación está fuera de nuestra zona de servicio en Soria. Por favor selecciona una dirección dentro de la ciudad.",
+        [{ text: "OK" }],
       );
       return;
     }
@@ -121,7 +142,7 @@ export default function LocationPickerScreen() {
 
   return (
     <View style={styles.container}>
-      {Platform.OS === 'web' ? (
+      {Platform.OS === "web" ? (
         <WebMapFallback location={location} />
       ) : MapView ? (
         <MapView
@@ -131,11 +152,15 @@ export default function LocationPickerScreen() {
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
           }}
-          region={location ? {
-            ...location,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          } : undefined}
+          region={
+            location
+              ? {
+                  ...location,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }
+              : undefined
+          }
           onPress={handleMapPress}
         >
           {location && Marker && (
@@ -151,7 +176,7 @@ export default function LocationPickerScreen() {
       )}
 
       {address && (
-        <View 
+        <View
           style={styles.addressBox}
           accessibilityLabel={`Dirección seleccionada: ${address}`}
           accessibilityRole="text"
@@ -181,7 +206,11 @@ export default function LocationPickerScreen() {
           onPress={handleConfirm}
           disabled={!location}
           accessibilityLabel="Confirmar ubicación seleccionada"
-          accessibilityHint={location ? 'Guarda la ubicación seleccionada' : 'Selecciona una ubicación primero'}
+          accessibilityHint={
+            location
+              ? "Guarda la ubicación seleccionada"
+              : "Selecciona una ubicación primero"
+          }
           accessibilityRole="button"
         >
           <Text style={styles.confirmButtonText}>Confirmar Ubicación</Text>
@@ -199,29 +228,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   webFallback: {
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   webFallbackTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 16,
   },
   webFallbackText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     lineHeight: 24,
   },
   coordinatesBox: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 12,
     borderRadius: 8,
     marginTop: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -229,18 +258,18 @@ const styles = StyleSheet.create({
   },
   coordinatesText: {
     fontSize: 14,
-    color: '#333',
-    fontFamily: 'monospace',
+    color: "#333",
+    fontFamily: "monospace",
   },
   addressBox: {
-    position: 'absolute',
+    position: "absolute",
     top: 20,
     left: 20,
     right: 20,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -248,21 +277,21 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   buttonContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 20,
     left: 20,
     right: 20,
   },
   currentLocationButton: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -270,21 +299,21 @@ const styles = StyleSheet.create({
   },
   currentLocationText: {
     fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
+    color: "#007AFF",
+    fontWeight: "600",
   },
   confirmButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   confirmButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

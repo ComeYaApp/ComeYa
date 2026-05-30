@@ -6,13 +6,24 @@ import { financialService } from "./unifiedFinancialService";
 export async function validateOrderFinancials(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
-    const { subtotal, deliveryFee, total, productosBase, nemyCommission, couponDiscount } = req.body;
+    const {
+      subtotal,
+      deliveryFee,
+      total,
+      productosBase,
+      nemyCommission,
+      couponDiscount,
+    } = req.body;
 
     // Validar que los campos existan
-    if (subtotal === undefined || deliveryFee === undefined || total === undefined) {
+    if (
+      subtotal === undefined ||
+      deliveryFee === undefined ||
+      total === undefined
+    ) {
       return res.status(400).json({
         error: "Campos financieros requeridos: subtotal, deliveryFee, total",
       });
@@ -32,8 +43,9 @@ export async function validateOrderFinancials(
         ? nemyCommission
         : Math.round(baseSubtotal * 0.15);
     const discount = couponDiscount || 0;
-    const calculatedTotal = baseSubtotal + platformCommission + deliveryFee - discount;
-    
+    const calculatedTotal =
+      baseSubtotal + platformCommission + deliveryFee - discount;
+
     // Permitir diferencia de 1 centavo por redondeo
     if (Math.abs(calculatedTotal - total) > 1) {
       return res.status(400).json({
@@ -54,19 +66,30 @@ export async function validateOrderFinancials(
 export async function validateCommissionRates(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { platform, business, driver } = req.body;
 
-    if (platform === undefined || business === undefined || driver === undefined) {
+    if (
+      platform === undefined ||
+      business === undefined ||
+      driver === undefined
+    ) {
       return res.status(400).json({
         error: "Campos requeridos: platform, business, driver",
       });
     }
 
     // Validar que sean números entre 0 y 1
-    if (platform < 0 || platform > 1 || business < 0 || business > 1 || driver < 0 || driver > 1) {
+    if (
+      platform < 0 ||
+      platform > 1 ||
+      business < 0 ||
+      business > 1 ||
+      driver < 0 ||
+      driver > 1
+    ) {
       return res.status(400).json({
         error: "Las comisiones deben estar entre 0 y 1 (0% y 100%)",
       });
@@ -96,7 +119,7 @@ export async function validateCommissionRates(
 export async function validateWithdrawal(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { amount } = req.body;
@@ -112,7 +135,7 @@ export async function validateWithdrawal(
     const validation = await FinancialIntegrity.validateWalletTransaction(
       userId,
       -amount, // Negativo para retiro
-      "withdrawal"
+      "withdrawal",
     );
 
     if (!validation.valid) {
@@ -132,11 +155,15 @@ export async function validateWithdrawal(
 export async function validateOrderCompletion(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
-    const paramId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const paramOrderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
+    const paramId = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
+    const paramOrderId = Array.isArray(req.params.orderId)
+      ? req.params.orderId[0]
+      : req.params.orderId;
     const orderId = paramId || paramOrderId;
 
     const validation = await FinancialIntegrity.reconcileOrder(orderId);
@@ -165,7 +192,7 @@ export async function validateOrderCompletion(
 export async function calculateCommissions(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const { total, deliveryFee = 0, productosBase, nemyCommission } = req.body;
@@ -180,7 +207,7 @@ export async function calculateCommissions(
       total,
       deliveryFee || 0,
       productosBase || undefined,
-      nemyCommission || undefined
+      nemyCommission || undefined,
     );
 
     // Agregar comisiones al body para uso posterior

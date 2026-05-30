@@ -21,7 +21,12 @@ import { Badge } from "@/components/Badge";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 export default function BusinessOrdersScreen() {
@@ -49,25 +54,29 @@ export default function BusinessOrdersScreen() {
 
   // WebSocket connection
   useEffect(() => {
-    const socket = io(getApiUrl().replace('/api', ''), {
-      transports: ['websocket', 'polling'],
+    const socket = io(getApiUrl().replace("/api", ""), {
+      transports: ["websocket", "polling"],
     });
 
-    socket.on('connect', () => {
-      console.log('🔌 WebSocket connected');
+    socket.on("connect", () => {
+      console.log("🔌 WebSocket connected");
       // Join business room
-      socket.emit('join', { userId: user?.id, role: 'business_owner', businessId: user?.businessId });
+      socket.emit("join", {
+        userId: user?.id,
+        role: "business_owner",
+        businessId: user?.businessId,
+      });
     });
 
-    socket.on('new_order', (order: any) => {
-      console.log('📦 New order received via WebSocket:', order);
+    socket.on("new_order", (order: any) => {
+      console.log("📦 New order received via WebSocket:", order);
       playNotificationSound();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       loadOrders(); // Refresh orders
     });
 
-    socket.on('payment_verified', ({ orderId }: { orderId: string }) => {
-      console.log('💳 Payment verified for order:', orderId);
+    socket.on("payment_verified", ({ orderId }: { orderId: string }) => {
+      console.log("💳 Payment verified for order:", orderId);
       loadOrders();
     });
 
@@ -81,8 +90,10 @@ export default function BusinessOrdersScreen() {
   const playNotificationSound = async () => {
     try {
       const { sound } = await Audio.Sound.createAsync(
-        { uri: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" },
-        { shouldPlay: true }
+        {
+          uri: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+        },
+        { shouldPlay: true },
       );
       await sound.playAsync();
     } catch (error) {
@@ -96,13 +107,18 @@ export default function BusinessOrdersScreen() {
       const data = await response.json();
       if (data.success) {
         const newOrders = data.orders;
-        const pendingCount = newOrders.filter((o: any) => o.status === "pending").length;
-        
-        if (pendingCount > previousPendingCount.current && previousPendingCount.current > 0) {
+        const pendingCount = newOrders.filter(
+          (o: any) => o.status === "pending",
+        ).length;
+
+        if (
+          pendingCount > previousPendingCount.current &&
+          previousPendingCount.current > 0
+        ) {
           playNotificationSound();
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        
+
         previousPendingCount.current = pendingCount;
         setOrders(newOrders);
       }
@@ -128,7 +144,9 @@ export default function BusinessOrdersScreen() {
       await apiRequest("PUT", `/api/business/orders/${orderId}/status`, {
         status,
       });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
       loadOrders();
     } catch (error) {
       console.error("Error updating order:", error);
@@ -138,7 +156,7 @@ export default function BusinessOrdersScreen() {
 
   const handleAccept = (orderId: string, isPickup: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    
+
     if (isPickup) {
       // Mostrar modal de tiempo para pickup
       setTimeModal({ visible: true, orderId });
@@ -177,7 +195,9 @@ export default function BusinessOrdersScreen() {
   const filteredOrders = orders.filter((order: any) => {
     if (filter === "pending") return order.status === "pending";
     if (filter === "active")
-      return ["accepted", "preparing", "ready", "on_the_way"].includes(order.status);
+      return ["accepted", "preparing", "ready", "on_the_way"].includes(
+        order.status,
+      );
     return true;
   });
 
@@ -196,20 +216,21 @@ export default function BusinessOrdersScreen() {
 
   const getPaymentLabel = (method: string) => {
     const map: Record<string, string> = {
-      pago_movil:   "📱 Pago Móvil",
-      pagomovil:    "📱 Pago Móvil",
-      binance:      "🟡 Binance Pay",
-      binance_pay:  "🟡 Binance Pay",
-      zinli:        "💜 Zinli",
-      zelle:        "💵 Zelle",
-      cash:         "💵 Efectivo",
-      efectivo:     "💵 Efectivo",
+      pago_movil: "📱 Pago Móvil",
+      pagomovil: "📱 Pago Móvil",
+      binance: "🟡 Binance Pay",
+      binance_pay: "🟡 Binance Pay",
+      zinli: "💜 Zinli",
+      zelle: "💵 Zelle",
+      cash: "💵 Efectivo",
+      efectivo: "💵 Efectivo",
     };
     return map[method?.toLowerCase()] ?? "💳 " + (method ?? "Pago digital");
   };
 
   const renderOrder = ({ item }: { item: any }) => {
-    const items = typeof item.items === "string" ? JSON.parse(item.items) : item.items;
+    const items =
+      typeof item.items === "string" ? JSON.parse(item.items) : item.items;
 
     return (
       <View
@@ -222,10 +243,14 @@ export default function BusinessOrdersScreen() {
               {new Date(item.createdAt).toLocaleTimeString("es-VE", {
                 hour: "2-digit",
                 minute: "2-digit",
-              })} - {new Date(item.createdAt).toLocaleDateString("es-VE")}
+              })}{" "}
+              - {new Date(item.createdAt).toLocaleDateString("es-VE")}
             </ThemedText>
             {item.businessName ? (
-              <ThemedText type="small" style={{ color: ComeYaColors.primary, marginTop: 2 }}>
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.primary, marginTop: 2 }}
+              >
                 {item.businessName}
               </ThemedText>
             ) : null}
@@ -236,12 +261,12 @@ export default function BusinessOrdersScreen() {
               item.status === "pending"
                 ? "warning"
                 : item.status === "preparing"
-                ? "info"
-                : item.status === "ready"
-                ? "success"
-                : item.status === "cancelled"
-                ? "error"
-                : "primary"
+                  ? "info"
+                  : item.status === "ready"
+                    ? "success"
+                    : item.status === "cancelled"
+                      ? "error"
+                      : "primary"
             }
           />
         </View>
@@ -249,7 +274,10 @@ export default function BusinessOrdersScreen() {
         {item.customer ? (
           <View style={styles.customerInfo}>
             <Feather name="user" size={14} color={theme.textSecondary} />
-            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}
+            >
               {item.customer.name} - {item.customer.phone}
             </ThemedText>
           </View>
@@ -258,23 +286,35 @@ export default function BusinessOrdersScreen() {
         {item.address ? (
           <View style={styles.customerInfo}>
             <Feather name="map-pin" size={14} color={theme.textSecondary} />
-            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: Spacing.xs, flex: 1 }}>
+            <ThemedText
+              type="small"
+              style={{
+                color: theme.textSecondary,
+                marginLeft: Spacing.xs,
+                flex: 1,
+              }}
+            >
               {item.address.street}, {item.address.city}
             </ThemedText>
           </View>
         ) : null}
 
         <View style={styles.itemsList}>
-          {Array.isArray(items) && items.map((orderItem: any, index: number) => (
-            <View key={index} style={styles.item}>
-              <ThemedText type="body">
-                {orderItem.quantity}x {orderItem.name || orderItem.product?.name || "Producto"}
-              </ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                €{((orderItem.price || orderItem.product?.price || 0) / 100).toFixed(2)}
-              </ThemedText>
-            </View>
-          ))}
+          {Array.isArray(items) &&
+            items.map((orderItem: any, index: number) => (
+              <View key={index} style={styles.item}>
+                <ThemedText type="body">
+                  {orderItem.quantity}x{" "}
+                  {orderItem.name || orderItem.product?.name || "Producto"}
+                </ThemedText>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  €
+                  {(
+                    (orderItem.price || orderItem.product?.price || 0) / 100
+                  ).toFixed(2)}
+                </ThemedText>
+              </View>
+            ))}
         </View>
 
         <View style={styles.orderFooter}>
@@ -287,7 +327,10 @@ export default function BusinessOrdersScreen() {
             </ThemedText>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <ThemedText type="small" style={{ color: ComeYaColors.success, fontWeight: "600" }}>
+            <ThemedText
+              type="small"
+              style={{ color: ComeYaColors.success, fontWeight: "600" }}
+            >
               Recibes: €{(item.subtotal / 100).toFixed(2)}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -306,7 +349,7 @@ export default function BusinessOrdersScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.actionButton,
-                  { 
+                  {
                     backgroundColor: theme.backgroundSecondary,
                     opacity: pressed ? 0.7 : 1,
                   },
@@ -327,7 +370,7 @@ export default function BusinessOrdersScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.actionButton,
-                  { 
+                  {
                     backgroundColor: ComeYaColors.primary,
                     opacity: pressed ? 0.8 : 1,
                   },
@@ -402,8 +445,13 @@ export default function BusinessOrdersScreen() {
             <Pressable
               onPress={async () => {
                 try {
-                  await apiRequest("POST", `/api/orders/${item.id}/mark-picked-up`);
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                  await apiRequest(
+                    "POST",
+                    `/api/orders/${item.id}/mark-picked-up`,
+                  );
+                  Haptics.notificationAsync(
+                    Haptics.NotificationFeedbackType.Success,
+                  ).catch(() => {});
                   loadOrders();
                 } catch (error) {
                   console.error("Error marking as picked up:", error);
@@ -448,7 +496,10 @@ export default function BusinessOrdersScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -463,17 +514,13 @@ export default function BusinessOrdersScreen() {
       />
 
       {/* Modal de Tiempo Estimado */}
-      <Modal
-        visible={timeModal.visible}
-        transparent
-        animationType="slide"
-      >
+      <Modal visible={timeModal.visible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <ThemedText type="h3" style={{ marginBottom: Spacing.lg }}>
               ¿Cuánto tiempo tomará?
             </ThemedText>
-            
+
             <View style={styles.timeGrid}>
               {[10, 15, 20, 25, 30, 40].map((time) => (
                 <Pressable
@@ -482,14 +529,22 @@ export default function BusinessOrdersScreen() {
                   style={[
                     styles.timeOption,
                     {
-                      backgroundColor: selectedTime === time ? ComeYaColors.primary : theme.backgroundSecondary,
-                      borderColor: selectedTime === time ? ComeYaColors.primary : theme.border,
+                      backgroundColor:
+                        selectedTime === time
+                          ? ComeYaColors.primary
+                          : theme.backgroundSecondary,
+                      borderColor:
+                        selectedTime === time
+                          ? ComeYaColors.primary
+                          : theme.border,
                     },
                   ]}
                 >
                   <ThemedText
                     type="h4"
-                    style={{ color: selectedTime === time ? "#FFF" : theme.text }}
+                    style={{
+                      color: selectedTime === time ? "#FFF" : theme.text,
+                    }}
                   >
                     {time} min
                   </ThemedText>
@@ -500,25 +555,44 @@ export default function BusinessOrdersScreen() {
             <View style={styles.modalActions}>
               <Pressable
                 onPress={() => setTimeModal({ visible: false, orderId: "" })}
-                style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <ThemedText type="body">Cancelar</ThemedText>
               </Pressable>
               <Pressable
                 onPress={async () => {
                   try {
-                    await apiRequest("PATCH", `/api/orders/${timeModal.orderId}/status`, { status: "accepted" });
-                    await apiRequest("POST", `/api/pickup/${timeModal.orderId}/update-time`, { estimatedMinutes: selectedTime });
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+                    await apiRequest(
+                      "PATCH",
+                      `/api/orders/${timeModal.orderId}/status`,
+                      { status: "accepted" },
+                    );
+                    await apiRequest(
+                      "POST",
+                      `/api/pickup/${timeModal.orderId}/update-time`,
+                      { estimatedMinutes: selectedTime },
+                    );
+                    Haptics.notificationAsync(
+                      Haptics.NotificationFeedbackType.Success,
+                    ).catch(() => {});
                     setTimeModal({ visible: false, orderId: "" });
                     loadOrders();
                   } catch (error) {
                     Alert.alert("Error", "No se pudo aceptar el pedido");
                   }
                 }}
-                style={[styles.modalButton, { backgroundColor: ComeYaColors.primary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
               >
-                <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
+                <ThemedText
+                  type="body"
+                  style={{ color: "#FFF", fontWeight: "600" }}
+                >
                   Aceptar y Notificar
                 </ThemedText>
               </Pressable>
@@ -570,7 +644,8 @@ export default function BusinessOrdersScreen() {
           style={[
             styles.filterButton,
             {
-              backgroundColor: filter === "all" ? ComeYaColors.primary : theme.card,
+              backgroundColor:
+                filter === "all" ? ComeYaColors.primary : theme.card,
             },
           ]}
         >

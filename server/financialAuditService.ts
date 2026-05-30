@@ -25,7 +25,6 @@ interface FullAuditReport {
 }
 
 export class FinancialAuditService {
-  
   // REGLA 1: Comisiones suman 100%
   async auditCommissionRates(): Promise<AuditResult> {
     try {
@@ -36,9 +35,9 @@ export class FinancialAuditService {
       return {
         passed,
         rule: "Commission Rates Sum to 100%",
-        details: passed 
-          ? `✓ Rates valid: Platform ${(rates.platform*100).toFixed(1)}% + Business ${(rates.business*100).toFixed(1)}% + Driver ${(rates.driver*100).toFixed(1)}% = 100%`
-          : `✗ Rates invalid: Total = ${(total*100).toFixed(2)}%`,
+        details: passed
+          ? `✓ Rates valid: Platform ${(rates.platform * 100).toFixed(1)}% + Business ${(rates.business * 100).toFixed(1)}% + Driver ${(rates.driver * 100).toFixed(1)}% = 100%`
+          : `✗ Rates invalid: Total = ${(total * 100).toFixed(2)}%`,
         severity: passed ? "info" : "critical",
         expectedValue: 1.0,
         actualValue: total,
@@ -62,18 +61,22 @@ export class FinancialAuditService {
       for (const order of allOrders) {
         // Nueva lógica: total = costo producto + 15% comisión MOUZO + costo delivery
         const nemyCommission = Math.round(order.subtotal * 0.15);
-        const expectedTotal = order.subtotal + nemyCommission + order.deliveryFee;
+        const expectedTotal =
+          order.subtotal + nemyCommission + order.deliveryFee;
         if (order.total !== expectedTotal) {
-          invalidOrders.push(`${order.id.slice(-6)}: expected ${expectedTotal}, got ${order.total}`);
+          invalidOrders.push(
+            `${order.id.slice(-6)}: expected ${expectedTotal}, got ${order.total}`,
+          );
         }
       }
 
       return {
         passed: invalidOrders.length === 0,
         rule: "Order Totals Match Calculation",
-        details: invalidOrders.length === 0
-          ? `✓ All ${allOrders.length} orders have correct totals`
-          : `✗ ${invalidOrders.length}/${allOrders.length} orders with incorrect totals`,
+        details:
+          invalidOrders.length === 0
+            ? `✓ All ${allOrders.length} orders have correct totals`
+            : `✗ ${invalidOrders.length}/${allOrders.length} orders with incorrect totals`,
         severity: invalidOrders.length === 0 ? "info" : "critical",
         affectedEntities: invalidOrders.slice(0, 10),
       };
@@ -98,11 +101,18 @@ export class FinancialAuditService {
       const invalidOrders: string[] = [];
 
       for (const order of deliveredOrders) {
-        if (order.platformFee && order.businessEarnings && order.deliveryEarnings) {
-          const distributed = order.platformFee + order.businessEarnings + order.deliveryEarnings;
-          
+        if (
+          order.platformFee &&
+          order.businessEarnings &&
+          order.deliveryEarnings
+        ) {
+          const distributed =
+            order.platformFee + order.businessEarnings + order.deliveryEarnings;
+
           if (distributed !== order.total) {
-            invalidOrders.push(`${order.id.slice(-6)}: total ${order.total}, distributed ${distributed}`);
+            invalidOrders.push(
+              `${order.id.slice(-6)}: total ${order.total}, distributed ${distributed}`,
+            );
           }
         }
       }
@@ -110,9 +120,10 @@ export class FinancialAuditService {
       return {
         passed: invalidOrders.length === 0,
         rule: "Commission Distribution Equals Order Total",
-        details: invalidOrders.length === 0
-          ? `✓ All ${deliveredOrders.length} delivered orders correctly distributed`
-          : `✗ ${invalidOrders.length}/${deliveredOrders.length} orders with distribution errors`,
+        details:
+          invalidOrders.length === 0
+            ? `✓ All ${deliveredOrders.length} delivered orders correctly distributed`
+            : `✗ ${invalidOrders.length}/${deliveredOrders.length} orders with distribution errors`,
         severity: invalidOrders.length === 0 ? "info" : "critical",
         affectedEntities: invalidOrders.slice(0, 10),
       };
@@ -141,16 +152,19 @@ export class FinancialAuditService {
         const calculatedBalance = txs.reduce((sum, tx) => sum + tx.amount, 0);
 
         if (wallet.balance !== calculatedBalance) {
-          invalidWallets.push(`${wallet.userId.slice(-6)}: expected ${calculatedBalance}, got ${wallet.balance}`);
+          invalidWallets.push(
+            `${wallet.userId.slice(-6)}: expected ${calculatedBalance}, got ${wallet.balance}`,
+          );
         }
       }
 
       return {
         passed: invalidWallets.length === 0,
         rule: "Wallet Balances Match Transaction History",
-        details: invalidWallets.length === 0
-          ? `✓ All ${allWallets.length} wallets have correct balances`
-          : `✗ ${invalidWallets.length}/${allWallets.length} wallets with balance mismatches`,
+        details:
+          invalidWallets.length === 0
+            ? `✓ All ${allWallets.length} wallets have correct balances`
+            : `✗ ${invalidWallets.length}/${allWallets.length} wallets with balance mismatches`,
         severity: invalidWallets.length === 0 ? "info" : "critical",
         affectedEntities: invalidWallets.slice(0, 10),
       };
@@ -182,7 +196,9 @@ export class FinancialAuditService {
           const expectedAfter = (tx.balanceBefore || 0) + tx.amount;
 
           if (tx.balanceAfter !== expectedAfter) {
-            invalidChains.push(`Wallet ${wallet.userId.slice(-6)}, tx ${i+1}: chain broken`);
+            invalidChains.push(
+              `Wallet ${wallet.userId.slice(-6)}, tx ${i + 1}: chain broken`,
+            );
             break;
           }
         }
@@ -191,9 +207,10 @@ export class FinancialAuditService {
       return {
         passed: invalidChains.length === 0,
         rule: "Transaction Chains Are Consistent",
-        details: invalidChains.length === 0
-          ? `✓ All wallet transaction chains are valid`
-          : `✗ ${invalidChains.length} wallets with broken transaction chains`,
+        details:
+          invalidChains.length === 0
+            ? `✓ All wallet transaction chains are valid`
+            : `✗ ${invalidChains.length} wallets with broken transaction chains`,
         severity: invalidChains.length === 0 ? "info" : "critical",
         affectedEntities: invalidChains.slice(0, 10),
       };
@@ -221,21 +238,26 @@ export class FinancialAuditService {
           .limit(1);
 
         if (!order) {
-          invalidPayments.push(`Payment ${payment.id.slice(-6)}: order not found`);
+          invalidPayments.push(
+            `Payment ${payment.id.slice(-6)}: order not found`,
+          );
           continue;
         }
 
         if (payment.amount !== order.total) {
-          invalidPayments.push(`Payment ${payment.id.slice(-6)}: amount ${payment.amount} != order ${order.total}`);
+          invalidPayments.push(
+            `Payment ${payment.id.slice(-6)}: amount ${payment.amount} != order ${order.total}`,
+          );
         }
       }
 
       return {
         passed: invalidPayments.length === 0,
         rule: "Stripe Payments Match Order Totals",
-        details: invalidPayments.length === 0
-          ? `✓ All ${allPayments.length} payments match their orders`
-          : `✗ ${invalidPayments.length}/${allPayments.length} payments with mismatches`,
+        details:
+          invalidPayments.length === 0
+            ? `✓ All ${allPayments.length} payments match their orders`
+            : `✗ ${invalidPayments.length}/${allPayments.length} payments with mismatches`,
         severity: invalidPayments.length === 0 ? "info" : "warning",
         affectedEntities: invalidPayments.slice(0, 10),
       };
@@ -267,11 +289,13 @@ export class FinancialAuditService {
           .from(transactions)
           .where(eq(transactions.orderId, order.id));
 
-        const driverTx = driverTxs.find(tx => tx.userId === order.deliveryPersonId);
-        
+        const driverTx = driverTxs.find(
+          (tx) => tx.userId === order.deliveryPersonId,
+        );
+
         if (driverTx && driverTx.amount !== order.deliveryEarnings) {
           invalidTransactions.push(
-            `Order ${order.id.slice(-6)}: driver tx ${driverTx.amount} != expected ${order.deliveryEarnings}`
+            `Order ${order.id.slice(-6)}: driver tx ${driverTx.amount} != expected ${order.deliveryEarnings}`,
           );
         }
       }
@@ -279,9 +303,10 @@ export class FinancialAuditService {
       return {
         passed: invalidTransactions.length === 0,
         rule: "Transaction Amounts Match Order Commissions",
-        details: invalidTransactions.length === 0
-          ? `✓ All transactions match their order commissions`
-          : `✗ ${invalidTransactions.length} transactions with incorrect amounts`,
+        details:
+          invalidTransactions.length === 0
+            ? `✓ All transactions match their order commissions`
+            : `✗ ${invalidTransactions.length} transactions with incorrect amounts`,
         severity: invalidTransactions.length === 0 ? "info" : "critical",
         affectedEntities: invalidTransactions.slice(0, 10),
       };
@@ -310,10 +335,10 @@ export class FinancialAuditService {
         if (!order.deliveryPersonId) continue;
 
         const expectedEarnings = Math.round(order.deliveryFee * rates.driver);
-        
+
         if (order.deliveryEarnings !== expectedEarnings) {
           invalidEarnings.push(
-            `Order ${order.id.slice(-6)}: deliveryEarnings ${order.deliveryEarnings} != expected ${expectedEarnings} (${(rates.driver*100).toFixed(0)}% of ${order.deliveryFee})`
+            `Order ${order.id.slice(-6)}: deliveryEarnings ${order.deliveryEarnings} != expected ${expectedEarnings} (${(rates.driver * 100).toFixed(0)}% of ${order.deliveryFee})`,
           );
         }
       }
@@ -321,9 +346,10 @@ export class FinancialAuditService {
       return {
         passed: invalidEarnings.length === 0,
         rule: "Driver Earnings = 15% of Delivery Fee",
-        details: invalidEarnings.length === 0
-          ? `✓ All ${deliveredOrders.length} orders have correct driver earnings (15% of deliveryFee)`
-          : `✗ ${invalidEarnings.length}/${deliveredOrders.length} orders with incorrect driver earnings`,
+        details:
+          invalidEarnings.length === 0
+            ? `✓ All ${deliveredOrders.length} orders have correct driver earnings (15% of deliveryFee)`
+            : `✗ ${invalidEarnings.length}/${deliveredOrders.length} orders with incorrect driver earnings`,
         severity: invalidEarnings.length === 0 ? "info" : "critical",
         affectedEntities: invalidEarnings.slice(0, 10),
       };
@@ -351,9 +377,13 @@ export class FinancialAuditService {
     results.push(await this.auditTransactionAmounts());
     results.push(await this.auditDriverEarningsCalculation()); // Nueva regla
 
-    const passed = results.filter(r => r.passed).length;
-    const failed = results.filter(r => !r.passed && r.severity === "critical").length;
-    const warnings = results.filter(r => !r.passed && r.severity === "warning").length;
+    const passed = results.filter((r) => r.passed).length;
+    const failed = results.filter(
+      (r) => !r.passed && r.severity === "critical",
+    ).length;
+    const warnings = results.filter(
+      (r) => !r.passed && r.severity === "warning",
+    ).length;
 
     let systemHealth: "healthy" | "warning" | "critical" = "healthy";
     if (failed > 0) systemHealth = "critical";

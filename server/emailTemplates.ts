@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -14,11 +14,14 @@ interface OrderEmailData {
 
 export async function sendOrderConfirmationEmail(
   to: string,
-  data: OrderEmailData
+  data: OrderEmailData,
 ) {
   const itemsList = data.items
-    .map(item => `<li>${item.quantity}x ${item.name} - $${item.price.toFixed(2)}</li>`)
-    .join('');
+    .map(
+      (item) =>
+        `<li>${item.quantity}x ${item.name} - $${item.price.toFixed(2)}</li>`,
+    )
+    .join("");
 
   const html = `
     <!DOCTYPE html>
@@ -50,7 +53,7 @@ export async function sendOrderConfirmationEmail(
               <h2>Pedido #${data.orderNumber}</h2>
               <p><strong>Negocio:</strong> ${data.businessName}</p>
               <p><strong>Dirección de entrega:</strong> ${data.deliveryAddress}</p>
-              ${data.estimatedTime ? `<p><strong>Tiempo estimado:</strong> ${data.estimatedTime}</p>` : ''}
+              ${data.estimatedTime ? `<p><strong>Tiempo estimado:</strong> ${data.estimatedTime}</p>` : ""}
               
               <h3>Artículos:</h3>
               <ul class="items">
@@ -73,19 +76,19 @@ export async function sendOrderConfirmationEmail(
 
   try {
     await resend.emails.send({
-      from: 'ComeYa <pedidos@comeya.es>',
+      from: "ComeYa <pedidos@comeya.es>",
       to,
       subject: `Pedido Confirmado #${data.orderNumber}`,
       html,
     });
   } catch (error) {
-    console.error('Error sending confirmation email:', error);
+    console.error("Error sending confirmation email:", error);
   }
 }
 
 export async function sendOrderOnTheWayEmail(
   to: string,
-  data: OrderEmailData & { driverName: string; driverPhone: string }
+  data: OrderEmailData & { driverName: string; driverPhone: string },
 ) {
   const html = `
     <!DOCTYPE html>
@@ -117,7 +120,7 @@ export async function sendOrderOnTheWayEmail(
             </div>
             
             <p><strong>Dirección de entrega:</strong> ${data.deliveryAddress}</p>
-            ${data.estimatedTime ? `<p><strong>Llegada estimada:</strong> ${data.estimatedTime}</p>` : ''}
+            ${data.estimatedTime ? `<p><strong>Llegada estimada:</strong> ${data.estimatedTime}</p>` : ""}
             
             <p>¡Prepárate para recibir tu pedido! 🎉</p>
           </div>
@@ -131,19 +134,19 @@ export async function sendOrderOnTheWayEmail(
 
   try {
     await resend.emails.send({
-      from: 'ComeYa <pedidos@comeya.es>',
+      from: "ComeYa <pedidos@comeya.es>",
       to,
       subject: `Tu pedido #${data.orderNumber} va en camino 🚴`,
       html,
     });
   } catch (error) {
-    console.error('Error sending on-the-way email:', error);
+    console.error("Error sending on-the-way email:", error);
   }
 }
 
 export async function sendOrderDeliveredEmail(
   to: string,
-  data: OrderEmailData
+  data: OrderEmailData,
 ) {
   const html = `
     <!DOCTYPE html>
@@ -189,23 +192,26 @@ export async function sendOrderDeliveredEmail(
 
   try {
     await resend.emails.send({
-      from: 'ComeYa <pedidos@comeya.es>',
+      from: "ComeYa <pedidos@comeya.es>",
       to,
       subject: `Pedido Entregado #${data.orderNumber} ✅`,
       html,
     });
   } catch (error) {
-    console.error('Error sending delivered email:', error);
+    console.error("Error sending delivered email:", error);
   }
 }
 
 export async function sendPaymentReceiptEmail(
   to: string,
-  data: OrderEmailData & { paymentMethod: string; transactionId: string }
+  data: OrderEmailData & { paymentMethod: string; transactionId: string },
 ) {
   const itemsList = data.items
-    .map(item => `<li>${item.quantity}x ${item.name} - $${item.price.toFixed(2)}</li>`)
-    .join('');
+    .map(
+      (item) =>
+        `<li>${item.quantity}x ${item.name} - $${item.price.toFixed(2)}</li>`,
+    )
+    .join("");
 
   const html = `
     <!DOCTYPE html>
@@ -261,12 +267,12 @@ export async function sendPaymentReceiptEmail(
 
   try {
     await resend.emails.send({
-      from: 'ComeYa <pagos@comeya.es>',
+      from: "ComeYa <pagos@comeya.es>",
       to,
       subject: `Recibo de Pago - Pedido #${data.orderNumber}`,
       html,
     });
   } catch (error) {
-    console.error('Error sending receipt email:', error);
+    console.error("Error sending receipt email:", error);
   }
 }

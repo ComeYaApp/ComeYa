@@ -17,7 +17,12 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import {
+  ComeYaColors,
+  Spacing,
+  BorderRadius,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 interface ActiveOrder {
@@ -55,7 +60,10 @@ export default function DriverMapScreen() {
   const { user } = useAuth();
   const mapRef = useRef<MapView>(null);
 
-  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
@@ -67,7 +75,7 @@ export default function DriverMapScreen() {
       const data = await res.json();
       if (data.success && data.orders?.length > 0) {
         const active = data.orders.find((o: any) =>
-          ["ready", "picked_up", "on_the_way"].includes(o.status)
+          ["ready", "picked_up", "on_the_way"].includes(o.status),
         );
         setActiveOrder(active || null);
       } else {
@@ -91,19 +99,34 @@ export default function DriverMapScreen() {
     const start = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("GPS requerido", "Activa el GPS para usar el mapa de entregas.");
+        Alert.alert(
+          "GPS requerido",
+          "Activa el GPS para usar el mapa de entregas.",
+        );
         setLoading(false);
         return;
       }
 
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setDriverLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      setDriverLocation({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
       setLoading(false);
 
       sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 5000,
+          distanceInterval: 10,
+        },
         (l) => {
-          const coords = { latitude: l.coords.latitude, longitude: l.coords.longitude };
+          const coords = {
+            latitude: l.coords.latitude,
+            longitude: l.coords.longitude,
+          };
           setDriverLocation(coords);
           // Enviar ubicación al servidor
           apiRequest("PUT", "/api/delivery/location", {
@@ -112,7 +135,7 @@ export default function DriverMapScreen() {
             longitude: l.coords.longitude.toString(),
             isOnline: true,
           }).catch(() => {});
-        }
+        },
       );
     };
 
@@ -160,35 +183,57 @@ export default function DriverMapScreen() {
       default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
     });
     Linking.canOpenURL(url!).then((ok) => {
-      Linking.openURL(ok ? url! : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`);
+      Linking.openURL(
+        ok
+          ? url!
+          : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`,
+      );
     });
   };
 
   const callCustomer = () => {
-    if (activeOrder?.customerPhone) Linking.openURL(`tel:${activeOrder.customerPhone}`);
+    if (activeOrder?.customerPhone)
+      Linking.openURL(`tel:${activeOrder.customerPhone}`);
   };
 
-  const businessCoords = activeOrder?.businessLatitude && activeOrder?.businessLongitude
-    ? { latitude: parseFloat(activeOrder.businessLatitude), longitude: parseFloat(activeOrder.businessLongitude) }
-    : null;
+  const businessCoords =
+    activeOrder?.businessLatitude && activeOrder?.businessLongitude
+      ? {
+          latitude: parseFloat(activeOrder.businessLatitude),
+          longitude: parseFloat(activeOrder.businessLongitude),
+        }
+      : null;
 
-  const customerCoords = activeOrder?.deliveryLatitude && activeOrder?.deliveryLongitude
-    ? { latitude: parseFloat(activeOrder.deliveryLatitude), longitude: parseFloat(activeOrder.deliveryLongitude) }
-    : null;
+  const customerCoords =
+    activeOrder?.deliveryLatitude && activeOrder?.deliveryLongitude
+      ? {
+          latitude: parseFloat(activeOrder.deliveryLatitude),
+          longitude: parseFloat(activeOrder.deliveryLongitude),
+        }
+      : null;
 
   const isPickingUp = activeOrder?.status === "ready";
   const destination = isPickingUp ? businessCoords : customerCoords;
-  const destinationAddress = isPickingUp ? activeOrder?.businessAddress : activeOrder?.deliveryAddress;
+  const destinationAddress = isPickingUp
+    ? activeOrder?.businessAddress
+    : activeOrder?.deliveryAddress;
 
   const initialRegion = driverLocation
     ? { ...driverLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-    : { latitude: 41.7636, longitude: -2.4677, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+    : {
+        latitude: 41.7636,
+        longitude: -2.4677,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
 
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: theme.backgroundRoot }]}>
         <ActivityIndicator size="large" color={ComeYaColors.primary} />
-        <ThemedText style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
+        <ThemedText
+          style={{ marginTop: Spacing.md, color: theme.textSecondary }}
+        >
           Obteniendo ubicación GPS...
         </ThemedText>
       </View>
@@ -254,9 +299,19 @@ export default function DriverMapScreen() {
       </MapView>
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: theme.card }]}>
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 8, backgroundColor: theme.card },
+        ]}
+      >
         <View style={styles.headerLeft}>
-          <View style={[styles.onlineDot, { backgroundColor: isOnline ? ComeYaColors.success : "#F44336" }]} />
+          <View
+            style={[
+              styles.onlineDot,
+              { backgroundColor: isOnline ? ComeYaColors.success : "#F44336" },
+            ]}
+          />
           <ThemedText type="h4" style={{ marginLeft: 6 }}>
             {isOnline ? "En línea" : "Desconectado"}
           </ThemedText>
@@ -269,28 +324,77 @@ export default function DriverMapScreen() {
 
       {/* Panel inferior — pedido activo */}
       {activeOrder ? (
-        <View style={[styles.orderPanel, { backgroundColor: theme.card }, Shadows.lg]}>
+        <View
+          style={[
+            styles.orderPanel,
+            { backgroundColor: theme.card },
+            Shadows.lg,
+          ]}
+        >
           {/* Estado */}
-          <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[activeOrder.status] || ComeYaColors.primary) + "20" }]}>
-            <View style={[styles.statusDot, { backgroundColor: STATUS_COLORS[activeOrder.status] || ComeYaColors.primary }]} />
-            <ThemedText type="small" style={{ color: STATUS_COLORS[activeOrder.status] || ComeYaColors.primary, fontWeight: "700" }}>
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor:
+                  (STATUS_COLORS[activeOrder.status] || ComeYaColors.primary) +
+                  "20",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor:
+                    STATUS_COLORS[activeOrder.status] || ComeYaColors.primary,
+                },
+              ]}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                color:
+                  STATUS_COLORS[activeOrder.status] || ComeYaColors.primary,
+                fontWeight: "700",
+              }}
+            >
               {STATUS_LABELS[activeOrder.status] || activeOrder.status}
             </ThemedText>
           </View>
 
           {/* Destino actual */}
           <View style={styles.destinationRow}>
-            <View style={[styles.destIcon, { backgroundColor: isPickingUp ? "#FF9800" : "#9C27B0" }]}>
-              <Feather name={isPickingUp ? "shopping-bag" : "home"} size={16} color="#FFF" />
+            <View
+              style={[
+                styles.destIcon,
+                { backgroundColor: isPickingUp ? "#FF9800" : "#9C27B0" },
+              ]}
+            >
+              <Feather
+                name={isPickingUp ? "shopping-bag" : "home"}
+                size={16}
+                color="#FFF"
+              />
             </View>
             <View style={{ flex: 1, marginLeft: Spacing.sm }}>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
                 {isPickingUp ? "Recoger en" : "Entregar en"}
               </ThemedText>
-              <ThemedText type="body" style={{ fontWeight: "600" }} numberOfLines={1}>
-                {isPickingUp ? activeOrder.businessName : activeOrder.customerName}
+              <ThemedText
+                type="body"
+                style={{ fontWeight: "600" }}
+                numberOfLines={1}
+              >
+                {isPickingUp
+                  ? activeOrder.businessName
+                  : activeOrder.customerName}
               </ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }} numberOfLines={1}>
+              <ThemedText
+                type="small"
+                style={{ color: theme.textSecondary }}
+                numberOfLines={1}
+              >
                 {destinationAddress}
               </ThemedText>
             </View>
@@ -303,23 +407,37 @@ export default function DriverMapScreen() {
           <View style={styles.actionRow}>
             {destination && (
               <Pressable
-                onPress={() => openNavigation(
-                  destination.latitude.toString(),
-                  destination.longitude.toString(),
-                  destinationAddress || ""
-                )}
-                style={[styles.navButton, { backgroundColor: ComeYaColors.primary }]}
+                onPress={() =>
+                  openNavigation(
+                    destination.latitude.toString(),
+                    destination.longitude.toString(),
+                    destinationAddress || "",
+                  )
+                }
+                style={[
+                  styles.navButton,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
               >
                 <Feather name="navigation" size={16} color="#FFF" />
-                <ThemedText type="small" style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}>
+                <ThemedText
+                  type="small"
+                  style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}
+                >
                   Navegar
                 </ThemedText>
               </Pressable>
             )}
             {!isPickingUp && activeOrder.customerPhone && (
-              <Pressable onPress={callCustomer} style={[styles.callButton, { backgroundColor: "#4CAF50" }]}>
+              <Pressable
+                onPress={callCustomer}
+                style={[styles.callButton, { backgroundColor: "#4CAF50" }]}
+              >
                 <Feather name="phone" size={16} color="#FFF" />
-                <ThemedText type="small" style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}>
+                <ThemedText
+                  type="small"
+                  style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}
+                >
                   Llamar
                 </ThemedText>
               </Pressable>
@@ -327,13 +445,27 @@ export default function DriverMapScreen() {
           </View>
 
           {/* Pago */}
-          <View style={[styles.paymentRow, { backgroundColor: theme.backgroundSecondary }]}>
+          <View
+            style={[
+              styles.paymentRow,
+              { backgroundColor: theme.backgroundSecondary },
+            ]}
+          >
             <Feather
-              name={activeOrder.paymentMethod === "cash" ? "dollar-sign" : "credit-card"}
+              name={
+                activeOrder.paymentMethod === "cash"
+                  ? "dollar-sign"
+                  : "credit-card"
+              }
               size={14}
-              color={activeOrder.paymentMethod === "cash" ? "#FF9800" : "#4CAF50"}
+              color={
+                activeOrder.paymentMethod === "cash" ? "#FF9800" : "#4CAF50"
+              }
             />
-            <ThemedText type="small" style={{ marginLeft: 6, color: theme.textSecondary }}>
+            <ThemedText
+              type="small"
+              style={{ marginLeft: 6, color: theme.textSecondary }}
+            >
               {activeOrder.paymentMethod === "cash"
                 ? `Cobrar €${(activeOrder.total / 100).toFixed(2)} en efectivo`
                 : "Pagado digitalmente"}
@@ -341,10 +473,25 @@ export default function DriverMapScreen() {
           </View>
         </View>
       ) : (
-        <View style={[styles.noOrderPanel, { backgroundColor: theme.card }, Shadows.md]}>
+        <View
+          style={[
+            styles.noOrderPanel,
+            { backgroundColor: theme.card },
+            Shadows.md,
+          ]}
+        >
           <Feather name="map-pin" size={32} color={theme.textSecondary} />
-          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}>
-            {isOnline ? "Esperando pedidos..." : "Actívate para recibir pedidos"}
+          <ThemedText
+            type="body"
+            style={{
+              color: theme.textSecondary,
+              marginTop: Spacing.sm,
+              textAlign: "center",
+            }}
+          >
+            {isOnline
+              ? "Esperando pedidos..."
+              : "Actívate para recibir pedidos"}
           </ThemedText>
         </View>
       )}
@@ -352,16 +499,27 @@ export default function DriverMapScreen() {
       {/* Leyenda */}
       <View style={[styles.legend, { backgroundColor: theme.card + "EE" }]}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: ComeYaColors.primary }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Tú</ThemedText>
+          <View
+            style={[
+              styles.legendDot,
+              { backgroundColor: ComeYaColors.primary },
+            ]}
+          />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Tú
+          </ThemedText>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#FF9800" }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Negocio</ThemedText>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Negocio
+          </ThemedText>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#9C27B0" }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Cliente</ThemedText>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Cliente
+          </ThemedText>
         </View>
       </View>
     </View>

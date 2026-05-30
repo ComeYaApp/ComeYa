@@ -1,6 +1,10 @@
 import { eq } from "drizzle-orm";
 
-export async function ensureOrderAccess(orderId: string, userId: string, role: string) {
+export async function ensureOrderAccess(
+  orderId: string,
+  userId: string,
+  role: string,
+) {
   const { orders, businesses } = await import("@shared/schema-mysql");
   const { db } = await import("../db");
 
@@ -39,5 +43,8 @@ export async function ensureOrderAccess(orderId: string, userId: string, role: s
     }
   }
 
-  return { status: 403, error: "You do not have permission to access this order" } as const;
+  return {
+    status: 403,
+    error: "You do not have permission to access this order",
+  } as const;
 }

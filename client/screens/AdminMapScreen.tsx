@@ -80,7 +80,9 @@ export default function AdminMapScreen() {
                 title={`Pedido #${order.id.slice(-6)}`}
                 description={`${order.customer?.name || "Cliente"} - ${order.status}`}
               >
-                <View style={[s.marker, { backgroundColor: ComeYaColors.primary }]}>
+                <View
+                  style={[s.marker, { backgroundColor: ComeYaColors.primary }]}
+                >
                   <Feather name="shopping-bag" size={16} color="#FFF" />
                 </View>
               </Marker>

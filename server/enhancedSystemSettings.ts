@@ -24,7 +24,10 @@ export async function updateCommissionSetting(params: {
     // Validate commission rate
     const newRate = parseFloat(params.value);
     if (isNaN(newRate) || newRate < 0 || newRate > 1) {
-      return { success: false, error: "Commission rate must be between 0 and 1" };
+      return {
+        success: false,
+        error: "Commission rate must be between 0 and 1",
+      };
     }
 
     // Get all commission rates to validate total
@@ -44,9 +47,9 @@ export async function updateCommissionSetting(params: {
 
     // Validate total is 100%
     if (Math.abs(totalRate - 1.0) > 0.001) {
-      return { 
-        success: false, 
-        error: `Commission rates must sum to 100%. Current total would be: ${(totalRate * 100).toFixed(2)}%` 
+      return {
+        success: false,
+        error: `Commission rates must sum to 100%. Current total would be: ${(totalRate * 100).toFixed(2)}%`,
       };
     }
 

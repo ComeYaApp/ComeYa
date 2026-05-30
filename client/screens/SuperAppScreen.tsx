@@ -1,14 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Image, TextInput } from 'react-native';
-import { Colors } from '../constants/Colors';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Image,
+  TextInput,
+} from "react-native";
+import { Colors } from "../constants/Colors";
+import { useAuth } from "../contexts/AuthContext";
 
 interface SuperAppService {
   id: string;
   name: string;
   icon: string;
   description: string;
-  category: 'delivery' | 'services' | 'payments' | 'utilities';
+  category: "delivery" | "services" | "payments" | "utilities";
   isActive: boolean;
   estimatedTime?: string;
   minOrder?: number;
@@ -31,7 +40,7 @@ interface UtilityService {
   id: string;
   name: string;
   icon: string;
-  type: 'phone' | 'electricity' | 'water' | 'gas' | 'internet' | 'tv';
+  type: "phone" | "electricity" | "water" | "gas" | "internet" | "tv";
   provider: string;
   accountNumber?: string;
   lastPayment?: string;
@@ -45,9 +54,11 @@ export default function SuperAppScreen() {
   const [providers, setProviders] = useState<ServiceProvider[]>([]);
   const [utilities, setUtilities] = useState<UtilityService[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'services' | 'pharmacy' | 'grocery' | 'utilities' | 'payments'>('services');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [rechargeAmount, setRechargeAmount] = useState('');
+  const [activeTab, setActiveTab] = useState<
+    "services" | "pharmacy" | "grocery" | "utilities" | "payments"
+  >("services");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [rechargeAmount, setRechargeAmount] = useState("");
 
   useEffect(() => {
     loadSuperAppData();
@@ -59,62 +70,62 @@ export default function SuperAppScreen() {
       // Mock super app services
       const mockServices: SuperAppService[] = [
         {
-          id: '1',
-          name: 'Farmacia',
-          icon: '💊',
-          description: 'Medicamentos y productos de salud',
-          category: 'delivery',
+          id: "1",
+          name: "Farmacia",
+          icon: "💊",
+          description: "Medicamentos y productos de salud",
+          category: "delivery",
           isActive: true,
-          estimatedTime: '30-45 min',
+          estimatedTime: "30-45 min",
           minOrder: 5000,
           commission: 12,
         },
         {
-          id: '2',
-          name: 'Supermercado',
-          icon: '🛒',
-          description: 'Despensa y productos del hogar',
-          category: 'delivery',
+          id: "2",
+          name: "Supermercado",
+          icon: "🛒",
+          description: "Despensa y productos del hogar",
+          category: "delivery",
           isActive: true,
-          estimatedTime: '45-60 min',
+          estimatedTime: "45-60 min",
           minOrder: 20000,
           commission: 8,
         },
         {
-          id: '3',
-          name: 'Limpieza',
-          icon: '🧹',
-          description: 'Servicio de limpieza a domicilio',
-          category: 'services',
+          id: "3",
+          name: "Limpieza",
+          icon: "🧹",
+          description: "Servicio de limpieza a domicilio",
+          category: "services",
           isActive: true,
-          estimatedTime: '2-4 horas',
+          estimatedTime: "2-4 horas",
           commission: 20,
         },
         {
-          id: '4',
-          name: 'Mascotas',
-          icon: '🐕',
-          description: 'Cuidado y paseo de mascotas',
-          category: 'services',
+          id: "4",
+          name: "Mascotas",
+          icon: "🐕",
+          description: "Cuidado y paseo de mascotas",
+          category: "services",
           isActive: true,
-          estimatedTime: '1-2 horas',
+          estimatedTime: "1-2 horas",
           commission: 25,
         },
         {
-          id: '5',
-          name: 'Recarga Móvil',
-          icon: '📱',
-          description: 'Recarga tu celular al instante',
-          category: 'utilities',
+          id: "5",
+          name: "Recarga Móvil",
+          icon: "📱",
+          description: "Recarga tu celular al instante",
+          category: "utilities",
           isActive: true,
           commission: 3,
         },
         {
-          id: '6',
-          name: 'Pago de Servicios',
-          icon: '💡',
-          description: 'Luz, agua, gas, internet',
-          category: 'utilities',
+          id: "6",
+          name: "Pago de Servicios",
+          icon: "💡",
+          description: "Luz, agua, gas, internet",
+          category: "utilities",
           isActive: true,
           commission: 2,
         },
@@ -122,46 +133,46 @@ export default function SuperAppScreen() {
 
       const mockProviders: ServiceProvider[] = [
         {
-          id: '1',
-          name: 'Farmacia San Pablo',
+          id: "1",
+          name: "Farmacia San Pablo",
           rating: 4.8,
-          imageUrl: 'https://via.placeholder.com/80x80',
-          category: 'pharmacy',
+          imageUrl: "https://via.placeholder.com/80x80",
+          category: "pharmacy",
           isOpen: true,
-          deliveryTime: '30-45 min',
+          deliveryTime: "30-45 min",
           minOrder: 5000,
           deliveryFee: 2500,
         },
         {
-          id: '2',
-          name: 'Farmacia Guadalajara',
+          id: "2",
+          name: "Farmacia Guadalajara",
           rating: 4.6,
-          imageUrl: 'https://via.placeholder.com/80x80',
-          category: 'pharmacy',
+          imageUrl: "https://via.placeholder.com/80x80",
+          category: "pharmacy",
           isOpen: true,
-          deliveryTime: '35-50 min',
+          deliveryTime: "35-50 min",
           minOrder: 5000,
           deliveryFee: 3000,
         },
         {
-          id: '3',
-          name: 'Walmart Express',
+          id: "3",
+          name: "Walmart Express",
           rating: 4.5,
-          imageUrl: 'https://via.placeholder.com/80x80',
-          category: 'grocery',
+          imageUrl: "https://via.placeholder.com/80x80",
+          category: "grocery",
           isOpen: true,
-          deliveryTime: '45-60 min',
+          deliveryTime: "45-60 min",
           minOrder: 20000,
           deliveryFee: 4000,
         },
         {
-          id: '4',
-          name: 'Soriana Híper',
+          id: "4",
+          name: "Soriana Híper",
           rating: 4.3,
-          imageUrl: 'https://via.placeholder.com/80x80',
-          category: 'grocery',
+          imageUrl: "https://via.placeholder.com/80x80",
+          category: "grocery",
           isOpen: true,
-          deliveryTime: '50-70 min',
+          deliveryTime: "50-70 min",
           minOrder: 25000,
           deliveryFee: 5000,
         },
@@ -169,34 +180,34 @@ export default function SuperAppScreen() {
 
       const mockUtilities: UtilityService[] = [
         {
-          id: '1',
-          name: 'Telcel',
-          icon: '📱',
-          type: 'phone',
-          provider: 'Telcel',
-          accountNumber: '33-1234-5678',
-          lastPayment: '2024-01-10',
-          nextDue: '2024-02-10',
+          id: "1",
+          name: "Telcel",
+          icon: "📱",
+          type: "phone",
+          provider: "Telcel",
+          accountNumber: "33-1234-5678",
+          lastPayment: "2024-01-10",
+          nextDue: "2024-02-10",
           amount: 30000,
         },
         {
-          id: '2',
-          name: 'CFE',
-          icon: '💡',
-          type: 'electricity',
-          provider: 'Comisión Federal de Electricidad',
-          accountNumber: '123456789',
-          nextDue: '2024-01-20',
+          id: "2",
+          name: "CFE",
+          icon: "💡",
+          type: "electricity",
+          provider: "Comisión Federal de Electricidad",
+          accountNumber: "123456789",
+          nextDue: "2024-01-20",
           amount: 85000,
         },
         {
-          id: '3',
-          name: 'SIAPA',
-          icon: '💧',
-          type: 'water',
-          provider: 'Sistema de Agua Potable',
-          accountNumber: '987654321',
-          nextDue: '2024-01-25',
+          id: "3",
+          name: "SIAPA",
+          icon: "💧",
+          type: "water",
+          provider: "Sistema de Agua Potable",
+          accountNumber: "987654321",
+          nextDue: "2024-01-25",
           amount: 45000,
         },
       ];
@@ -205,8 +216,8 @@ export default function SuperAppScreen() {
       setProviders(mockProviders);
       setUtilities(mockUtilities);
     } catch (error) {
-      console.error('Error loading super app data:', error);
-      Alert.alert('Error', 'No se pudieron cargar los servicios');
+      console.error("Error loading super app data:", error);
+      Alert.alert("Error", "No se pudieron cargar los servicios");
     } finally {
       setLoading(false);
     }
@@ -214,101 +225,110 @@ export default function SuperAppScreen() {
 
   const rechargePhone = async () => {
     if (!phoneNumber || !rechargeAmount) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert("Error", "Por favor completa todos los campos");
       return;
     }
 
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/superapp/recharge`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`,
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/superapp/recharge`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: JSON.stringify({
+            phoneNumber,
+            amount: parseFloat(rechargeAmount) * 100,
+          }),
         },
-        body: JSON.stringify({
-          phoneNumber,
-          amount: parseFloat(rechargeAmount) * 100,
-        }),
-      });
+      );
 
       if (response.ok) {
-        Alert.alert('¡Éxito!', 'Recarga realizada correctamente');
-        setPhoneNumber('');
-        setRechargeAmount('');
+        Alert.alert("¡Éxito!", "Recarga realizada correctamente");
+        setPhoneNumber("");
+        setRechargeAmount("");
       } else {
-        throw new Error('Error processing recharge');
+        throw new Error("Error processing recharge");
       }
     } catch (error) {
-      console.error('Error recharging phone:', error);
-      Alert.alert('Error', 'No se pudo procesar la recarga');
+      console.error("Error recharging phone:", error);
+      Alert.alert("Error", "No se pudo procesar la recarga");
     }
   };
 
   const payUtility = async (utilityId: string) => {
-    const utility = utilities.find(u => u.id === utilityId);
+    const utility = utilities.find((u) => u.id === utilityId);
     if (!utility) return;
 
     Alert.alert(
-      'Confirmar Pago',
+      "Confirmar Pago",
       `¿Quieres pagar ${formatCurrency(utility.amount || 0)} para ${utility.name}?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Pagar',
+          text: "Pagar",
           onPress: async () => {
             try {
-              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/superapp/pay-utility`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${user?.token}`,
+              const response = await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL}/api/superapp/pay-utility`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${user?.token}`,
+                  },
+                  body: JSON.stringify({ utilityId }),
                 },
-                body: JSON.stringify({ utilityId }),
-              });
+              );
 
               if (response.ok) {
-                Alert.alert('¡Éxito!', 'Pago realizado correctamente');
+                Alert.alert("¡Éxito!", "Pago realizado correctamente");
                 loadSuperAppData();
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo procesar el pago');
+              Alert.alert("Error", "No se pudo procesar el pago");
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const openService = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId);
+    const service = services.find((s) => s.id === serviceId);
     if (!service) return;
 
     if (!service.isActive) {
-      Alert.alert('Servicio no disponible', 'Este servicio estará disponible próximamente');
+      Alert.alert(
+        "Servicio no disponible",
+        "Este servicio estará disponible próximamente",
+      );
       return;
     }
 
     // Navigate to specific service
     switch (service.name) {
-      case 'Farmacia':
-        setActiveTab('pharmacy');
+      case "Farmacia":
+        setActiveTab("pharmacy");
         break;
-      case 'Supermercado':
-        setActiveTab('grocery');
+      case "Supermercado":
+        setActiveTab("grocery");
         break;
-      case 'Recarga Móvil':
-      case 'Pago de Servicios':
-        setActiveTab('utilities');
+      case "Recarga Móvil":
+      case "Pago de Servicios":
+        setActiveTab("utilities");
         break;
       default:
-        Alert.alert('Próximamente', `${service.name} estará disponible pronto`);
+        Alert.alert("Próximamente", `${service.name} estará disponible pronto`);
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'MXN',
+    return new Intl.NumberFormat("es-VE", {
+      style: "currency",
+      currency: "MXN",
     }).format(amount / 100);
   };
 
@@ -321,27 +341,27 @@ export default function SuperAppScreen() {
 
       {/* Service Categories */}
       <View style={styles.categoryGrid}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.categoryCard}
-          onPress={() => setActiveTab('pharmacy')}
+          onPress={() => setActiveTab("pharmacy")}
         >
           <Text style={styles.categoryIcon}>💊</Text>
           <Text style={styles.categoryName}>Farmacia</Text>
           <Text style={styles.categoryDescription}>Medicamentos</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.categoryCard}
-          onPress={() => setActiveTab('grocery')}
+          onPress={() => setActiveTab("grocery")}
         >
           <Text style={styles.categoryIcon}>🛒</Text>
           <Text style={styles.categoryName}>Supermercado</Text>
           <Text style={styles.categoryDescription}>Despensa</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.categoryCard}
-          onPress={() => setActiveTab('utilities')}
+          onPress={() => setActiveTab("utilities")}
         >
           <Text style={styles.categoryIcon}>💡</Text>
           <Text style={styles.categoryName}>Servicios</Text>
@@ -358,19 +378,26 @@ export default function SuperAppScreen() {
       {/* All Services */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Todos los Servicios</Text>
-        
+
         {services.map((service) => (
           <TouchableOpacity
             key={service.id}
-            style={[styles.serviceCard, !service.isActive && styles.serviceCardDisabled]}
+            style={[
+              styles.serviceCard,
+              !service.isActive && styles.serviceCardDisabled,
+            ]}
             onPress={() => openService(service.id)}
           >
             <Text style={styles.serviceIcon}>{service.icon}</Text>
             <View style={styles.serviceInfo}>
               <Text style={styles.serviceName}>{service.name}</Text>
-              <Text style={styles.serviceDescription}>{service.description}</Text>
+              <Text style={styles.serviceDescription}>
+                {service.description}
+              </Text>
               {service.estimatedTime && (
-                <Text style={styles.serviceTime}>⏱️ {service.estimatedTime}</Text>
+                <Text style={styles.serviceTime}>
+                  ⏱️ {service.estimatedTime}
+                </Text>
               )}
             </View>
             <View style={styles.serviceStatus}>
@@ -392,17 +419,17 @@ export default function SuperAppScreen() {
             <Text style={styles.popularServiceIcon}>🍕</Text>
             <Text style={styles.popularServiceName}>Comida</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.popularService}>
             <Text style={styles.popularServiceIcon}>💊</Text>
             <Text style={styles.popularServiceName}>Farmacia</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.popularService}>
             <Text style={styles.popularServiceIcon}>🛒</Text>
             <Text style={styles.popularServiceName}>Súper</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.popularService}>
             <Text style={styles.popularServiceIcon}>📱</Text>
             <Text style={styles.popularServiceName}>Recarga</Text>
@@ -420,27 +447,36 @@ export default function SuperAppScreen() {
       </Text>
 
       {providers
-        .filter(p => p.category === 'pharmacy')
+        .filter((p) => p.category === "pharmacy")
         .map((pharmacy) => (
           <TouchableOpacity key={pharmacy.id} style={styles.providerCard}>
-            <Image source={{ uri: pharmacy.imageUrl }} style={styles.providerImage} />
+            <Image
+              source={{ uri: pharmacy.imageUrl }}
+              style={styles.providerImage}
+            />
             <View style={styles.providerInfo}>
               <Text style={styles.providerName}>{pharmacy.name}</Text>
               <View style={styles.providerMeta}>
                 <Text style={styles.providerRating}>⭐ {pharmacy.rating}</Text>
-                <Text style={styles.providerTime}>🕐 {pharmacy.deliveryTime}</Text>
-                <Text style={styles.providerFee}>🚚 {formatCurrency(pharmacy.deliveryFee)}</Text>
+                <Text style={styles.providerTime}>
+                  🕐 {pharmacy.deliveryTime}
+                </Text>
+                <Text style={styles.providerFee}>
+                  🚚 {formatCurrency(pharmacy.deliveryFee)}
+                </Text>
               </View>
               <Text style={styles.providerMinOrder}>
                 Pedido mínimo: {formatCurrency(pharmacy.minOrder)}
               </Text>
             </View>
             <View style={styles.providerStatus}>
-              <Text style={[
-                styles.providerStatusText,
-                { color: pharmacy.isOpen ? 'green' : 'red' }
-              ]}>
-                {pharmacy.isOpen ? 'Abierto' : 'Cerrado'}
+              <Text
+                style={[
+                  styles.providerStatusText,
+                  { color: pharmacy.isOpen ? "green" : "red" },
+                ]}
+              >
+                {pharmacy.isOpen ? "Abierto" : "Cerrado"}
               </Text>
             </View>
           </TouchableOpacity>
@@ -455,19 +491,19 @@ export default function SuperAppScreen() {
             <Text style={styles.productName}>Paracetamol</Text>
             <Text style={styles.productPrice}>$25</Text>
           </View>
-          
+
           <View style={styles.productCard}>
             <Text style={styles.productIcon}>🩹</Text>
             <Text style={styles.productName}>Curitas</Text>
             <Text style={styles.productPrice}>$35</Text>
           </View>
-          
+
           <View style={styles.productCard}>
             <Text style={styles.productIcon}>🧴</Text>
             <Text style={styles.productName}>Alcohol</Text>
             <Text style={styles.productPrice}>$45</Text>
           </View>
-          
+
           <View style={styles.productCard}>
             <Text style={styles.productIcon}>🌡️</Text>
             <Text style={styles.productName}>Termómetro</Text>
@@ -481,32 +517,39 @@ export default function SuperAppScreen() {
   const renderGrocery = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Supermercados</Text>
-      <Text style={styles.sectionSubtitle}>
-        Despensa y productos del hogar
-      </Text>
+      <Text style={styles.sectionSubtitle}>Despensa y productos del hogar</Text>
 
       {providers
-        .filter(p => p.category === 'grocery')
+        .filter((p) => p.category === "grocery")
         .map((grocery) => (
           <TouchableOpacity key={grocery.id} style={styles.providerCard}>
-            <Image source={{ uri: grocery.imageUrl }} style={styles.providerImage} />
+            <Image
+              source={{ uri: grocery.imageUrl }}
+              style={styles.providerImage}
+            />
             <View style={styles.providerInfo}>
               <Text style={styles.providerName}>{grocery.name}</Text>
               <View style={styles.providerMeta}>
                 <Text style={styles.providerRating}>⭐ {grocery.rating}</Text>
-                <Text style={styles.providerTime}>🕐 {grocery.deliveryTime}</Text>
-                <Text style={styles.providerFee}>🚚 {formatCurrency(grocery.deliveryFee)}</Text>
+                <Text style={styles.providerTime}>
+                  🕐 {grocery.deliveryTime}
+                </Text>
+                <Text style={styles.providerFee}>
+                  🚚 {formatCurrency(grocery.deliveryFee)}
+                </Text>
               </View>
               <Text style={styles.providerMinOrder}>
                 Pedido mínimo: {formatCurrency(grocery.minOrder)}
               </Text>
             </View>
             <View style={styles.providerStatus}>
-              <Text style={[
-                styles.providerStatusText,
-                { color: grocery.isOpen ? 'green' : 'red' }
-              ]}>
-                {grocery.isOpen ? 'Abierto' : 'Cerrado'}
+              <Text
+                style={[
+                  styles.providerStatusText,
+                  { color: grocery.isOpen ? "green" : "red" },
+                ]}
+              >
+                {grocery.isOpen ? "Abierto" : "Cerrado"}
               </Text>
             </View>
           </TouchableOpacity>
@@ -520,17 +563,17 @@ export default function SuperAppScreen() {
             <Text style={styles.groceryCategoryIcon}>🥛</Text>
             <Text style={styles.groceryCategoryName}>Lácteos</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.groceryCategory}>
             <Text style={styles.groceryCategoryIcon}>🍞</Text>
             <Text style={styles.groceryCategoryName}>Panadería</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.groceryCategory}>
             <Text style={styles.groceryCategoryIcon}>🥩</Text>
             <Text style={styles.groceryCategoryName}>Carnes</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.groceryCategory}>
             <Text style={styles.groceryCategoryIcon}>🍎</Text>
             <Text style={styles.groceryCategoryName}>Frutas</Text>
@@ -543,7 +586,7 @@ export default function SuperAppScreen() {
   const renderUtilities = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Servicios y Pagos</Text>
-      
+
       {/* Phone Recharge */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Recarga Móvil</Text>
@@ -562,7 +605,10 @@ export default function SuperAppScreen() {
             placeholder="Monto ($)"
             keyboardType="numeric"
           />
-          <TouchableOpacity style={styles.rechargeButton} onPress={rechargePhone}>
+          <TouchableOpacity
+            style={styles.rechargeButton}
+            onPress={rechargePhone}
+          >
             <Text style={styles.rechargeButtonText}>Recargar</Text>
           </TouchableOpacity>
         </View>
@@ -584,7 +630,7 @@ export default function SuperAppScreen() {
       {/* Utility Bills */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Pago de Servicios</Text>
-        
+
         {utilities.map((utility) => (
           <View key={utility.id} style={styles.utilityCard}>
             <Text style={styles.utilityIcon}>{utility.icon}</Text>
@@ -592,7 +638,9 @@ export default function SuperAppScreen() {
               <Text style={styles.utilityName}>{utility.name}</Text>
               <Text style={styles.utilityProvider}>{utility.provider}</Text>
               {utility.accountNumber && (
-                <Text style={styles.utilityAccount}>Cuenta: {utility.accountNumber}</Text>
+                <Text style={styles.utilityAccount}>
+                  Cuenta: {utility.accountNumber}
+                </Text>
               )}
               {utility.nextDue && (
                 <Text style={styles.utilityDue}>Vence: {utility.nextDue}</Text>
@@ -600,7 +648,9 @@ export default function SuperAppScreen() {
             </View>
             <View style={styles.utilityPayment}>
               {utility.amount && (
-                <Text style={styles.utilityAmount}>{formatCurrency(utility.amount)}</Text>
+                <Text style={styles.utilityAmount}>
+                  {formatCurrency(utility.amount)}
+                </Text>
               )}
               <TouchableOpacity
                 style={styles.payButton}
@@ -626,7 +676,7 @@ export default function SuperAppScreen() {
   const renderPayments = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Centro de Pagos</Text>
-      
+
       {/* P2P Payments */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Enviar Dinero</Text>
@@ -634,7 +684,9 @@ export default function SuperAppScreen() {
           <Text style={styles.paymentIcon}>💸</Text>
           <View style={styles.paymentInfo}>
             <Text style={styles.paymentTitle}>Enviar a Contacto</Text>
-            <Text style={styles.paymentDescription}>Transfiere dinero a amigos y familia</Text>
+            <Text style={styles.paymentDescription}>
+              Transfiere dinero a amigos y familia
+            </Text>
           </View>
           <Text style={styles.paymentArrow}>→</Text>
         </TouchableOpacity>
@@ -643,7 +695,9 @@ export default function SuperAppScreen() {
           <Text style={styles.paymentIcon}>📱</Text>
           <View style={styles.paymentInfo}>
             <Text style={styles.paymentTitle}>Código QR</Text>
-            <Text style={styles.paymentDescription}>Paga escaneando códigos QR</Text>
+            <Text style={styles.paymentDescription}>
+              Paga escaneando códigos QR
+            </Text>
           </View>
           <Text style={styles.paymentArrow}>→</Text>
         </TouchableOpacity>
@@ -652,12 +706,14 @@ export default function SuperAppScreen() {
       {/* Bill Payments */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Pago de Cuentas</Text>
-        
+
         <TouchableOpacity style={styles.paymentOption}>
           <Text style={styles.paymentIcon}>💡</Text>
           <View style={styles.paymentInfo}>
             <Text style={styles.paymentTitle}>Servicios Públicos</Text>
-            <Text style={styles.paymentDescription}>Luz, agua, gas, teléfono</Text>
+            <Text style={styles.paymentDescription}>
+              Luz, agua, gas, teléfono
+            </Text>
           </View>
           <Text style={styles.paymentArrow}>→</Text>
         </TouchableOpacity>
@@ -666,7 +722,9 @@ export default function SuperAppScreen() {
           <Text style={styles.paymentIcon}>🏦</Text>
           <View style={styles.paymentInfo}>
             <Text style={styles.paymentTitle}>Tarjetas de Crédito</Text>
-            <Text style={styles.paymentDescription}>Paga tus tarjetas bancarias</Text>
+            <Text style={styles.paymentDescription}>
+              Paga tus tarjetas bancarias
+            </Text>
           </View>
           <Text style={styles.paymentArrow}>→</Text>
         </TouchableOpacity>
@@ -684,7 +742,7 @@ export default function SuperAppScreen() {
       {/* Recent Payments */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Pagos Recientes</Text>
-        
+
         <View style={styles.recentPayment}>
           <Text style={styles.recentPaymentIcon}>💡</Text>
           <View style={styles.recentPaymentInfo}>
@@ -717,22 +775,27 @@ export default function SuperAppScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>ComeYa Super App</Text>
-      
+
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
         {[
-          { key: 'services', label: 'Servicios' },
-          { key: 'pharmacy', label: 'Farmacia' },
-          { key: 'grocery', label: 'Súper' },
-          { key: 'utilities', label: 'Pagos' },
-          { key: 'payments', label: 'Envíos' },
+          { key: "services", label: "Servicios" },
+          { key: "pharmacy", label: "Farmacia" },
+          { key: "grocery", label: "Súper" },
+          { key: "utilities", label: "Pagos" },
+          { key: "payments", label: "Envíos" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key as any)}
           >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab.key && styles.activeTabText,
+              ]}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -741,11 +804,11 @@ export default function SuperAppScreen() {
 
       {/* Tab Content */}
       <View style={styles.tabContent}>
-        {activeTab === 'services' && renderServices()}
-        {activeTab === 'pharmacy' && renderPharmacy()}
-        {activeTab === 'grocery' && renderGrocery()}
-        {activeTab === 'utilities' && renderUtilities()}
-        {activeTab === 'payments' && renderPayments()}
+        {activeTab === "services" && renderServices()}
+        {activeTab === "pharmacy" && renderPharmacy()}
+        {activeTab === "grocery" && renderGrocery()}
+        {activeTab === "utilities" && renderUtilities()}
+        {activeTab === "payments" && renderPayments()}
       </View>
     </View>
   );
@@ -758,14 +821,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 20,
   },
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    backgroundColor: "white",
     marginHorizontal: 20,
     borderRadius: 12,
     padding: 4,
@@ -773,7 +836,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
   },
   activeTab: {
@@ -782,11 +845,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 11,
     color: Colors.light.tabIconDefault,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   activeTabText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   tabContent: {
     flex: 1,
@@ -794,7 +857,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 8,
   },
@@ -805,35 +868,35 @@ const styles = StyleSheet.create({
   },
   subsectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 12,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginBottom: 20,
   },
   categoryCard: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: 'white',
+    minWidth: "45%",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -845,7 +908,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -854,8 +917,8 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   serviceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     backgroundColor: Colors.light.background,
     borderRadius: 12,
@@ -873,7 +936,7 @@ const styles = StyleSheet.create({
   },
   serviceName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -887,25 +950,25 @@ const styles = StyleSheet.create({
     color: Colors.light.tint,
   },
   serviceStatus: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   serviceActive: {
     fontSize: 12,
-    color: 'green',
-    fontWeight: '600',
+    color: "green",
+    fontWeight: "600",
   },
   serviceInactive: {
     fontSize: 12,
     color: Colors.light.tabIconDefault,
   },
   popularService: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 12,
     width: 80,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -918,15 +981,15 @@ const styles = StyleSheet.create({
   popularServiceName: {
     fontSize: 12,
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
   },
   providerCard: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -943,12 +1006,12 @@ const styles = StyleSheet.create({
   },
   providerName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 8,
   },
   providerMeta: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 4,
   },
@@ -969,25 +1032,25 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   providerStatus: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
   providerStatusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   productGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   productCard: {
     flex: 1,
-    minWidth: '45%',
+    minWidth: "45%",
     backgroundColor: Colors.light.background,
     borderRadius: 8,
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   productIcon: {
     fontSize: 24,
@@ -995,22 +1058,22 @@ const styles = StyleSheet.create({
   },
   productName: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
   productPrice: {
     fontSize: 12,
     color: Colors.light.tint,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   groceryCategory: {
     flex: 1,
-    minWidth: '45%',
+    minWidth: "45%",
     backgroundColor: Colors.light.background,
     borderRadius: 8,
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   groceryCategoryIcon: {
     fontSize: 24,
@@ -1018,7 +1081,7 @@ const styles = StyleSheet.create({
   },
   groceryCategoryName: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   rechargeForm: {
@@ -1036,15 +1099,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tint,
     borderRadius: 8,
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   rechargeButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   quickAmounts: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   quickAmount: {
@@ -1052,16 +1115,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
     borderRadius: 8,
     padding: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   quickAmountText: {
     fontSize: 14,
     color: Colors.light.text,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   utilityCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     backgroundColor: Colors.light.background,
     borderRadius: 12,
@@ -1076,7 +1139,7 @@ const styles = StyleSheet.create({
   },
   utilityName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 2,
   },
@@ -1092,15 +1155,15 @@ const styles = StyleSheet.create({
   },
   utilityDue: {
     fontSize: 12,
-    color: 'orange',
-    fontWeight: '600',
+    color: "orange",
+    fontWeight: "600",
   },
   utilityPayment: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   utilityAmount: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
     marginBottom: 8,
   },
@@ -1111,20 +1174,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   payButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   addServiceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 16,
     backgroundColor: Colors.light.background,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: Colors.light.tint,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
   },
   addServiceIcon: {
     fontSize: 24,
@@ -1134,11 +1197,11 @@ const styles = StyleSheet.create({
   addServiceText: {
     fontSize: 16,
     color: Colors.light.tint,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   paymentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     backgroundColor: Colors.light.background,
     borderRadius: 12,
@@ -1153,7 +1216,7 @@ const styles = StyleSheet.create({
   },
   paymentTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -1166,8 +1229,8 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   recentPayment: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     backgroundColor: Colors.light.background,
     borderRadius: 8,
@@ -1182,7 +1245,7 @@ const styles = StyleSheet.create({
   },
   recentPaymentTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 2,
   },
@@ -1192,13 +1255,13 @@ const styles = StyleSheet.create({
   },
   recentPaymentAmount: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
   },
   loadingText: {
     fontSize: 18,
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 50,
   },
 });

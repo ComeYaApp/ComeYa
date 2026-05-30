@@ -5,20 +5,31 @@
 
 import { apiRequest } from "@/lib/query-client";
 
-export type UploadFolder = "profiles" | "businesses" | "products" | "comprobantes" | "reviews" | "delivery-proofs";
+export type UploadFolder =
+  | "profiles"
+  | "businesses"
+  | "products"
+  | "comprobantes"
+  | "reviews"
+  | "delivery-proofs";
 
 /**
  * Abre el selector de archivos del browser y sube la imagen a Cloudinary
  * @returns URL de Cloudinary o null si el usuario cancela
  */
-export async function pickAndUploadImage(folder: UploadFolder): Promise<string | null> {
+export async function pickAndUploadImage(
+  folder: UploadFolder,
+): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
     input.onchange = async (e: any) => {
       const file = e.target.files?.[0];
-      if (!file) { resolve(null); return; }
+      if (!file) {
+        resolve(null);
+        return;
+      }
       try {
         const url = await uploadFileToCloudinary(file, folder);
         resolve(url);
@@ -35,7 +46,10 @@ export async function pickAndUploadImage(folder: UploadFolder): Promise<string |
 /**
  * Sube un File/Blob directamente a Cloudinary via backend
  */
-export async function uploadFileToCloudinary(file: File | Blob, folder: UploadFolder): Promise<string> {
+export async function uploadFileToCloudinary(
+  file: File | Blob,
+  folder: UploadFolder,
+): Promise<string> {
   const base64 = await fileToBase64(file);
   const endpoint = getEndpointForFolder(folder);
   const res = await apiRequest("POST", endpoint, { image: base64 });
@@ -60,7 +74,9 @@ export function fileToBase64(file: File | Blob): Promise<string> {
 /**
  * Captura una foto desde la cámara del browser (WebRTC)
  */
-export async function captureFromCamera(folder: UploadFolder): Promise<string | null> {
+export async function captureFromCamera(
+  folder: UploadFolder,
+): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -68,7 +84,10 @@ export async function captureFromCamera(folder: UploadFolder): Promise<string | 
     input.capture = "environment"; // cámara trasera
     input.onchange = async (e: any) => {
       const file = e.target.files?.[0];
-      if (!file) { resolve(null); return; }
+      if (!file) {
+        resolve(null);
+        return;
+      }
       try {
         const url = await uploadFileToCloudinary(file, folder);
         resolve(url);
@@ -82,12 +101,19 @@ export async function captureFromCamera(folder: UploadFolder): Promise<string | 
 
 function getEndpointForFolder(folder: UploadFolder): string {
   switch (folder) {
-    case "profiles":       return "/api/user/profile-image";
-    case "businesses":     return "/api/upload/business-image";
-    case "products":       return "/api/upload/product-image";
-    case "comprobantes":   return "/api/upload/payment-proof";
-    case "reviews":        return "/api/upload/review-image";
-    case "delivery-proofs": return "/api/upload/delivery-proof";
-    default:               return "/api/upload/image";
+    case "profiles":
+      return "/api/user/profile-image";
+    case "businesses":
+      return "/api/upload/business-image";
+    case "products":
+      return "/api/upload/product-image";
+    case "comprobantes":
+      return "/api/upload/payment-proof";
+    case "reviews":
+      return "/api/upload/review-image";
+    case "delivery-proofs":
+      return "/api/upload/delivery-proof";
+    default:
+      return "/api/upload/image";
   }
 }

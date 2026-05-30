@@ -12,16 +12,19 @@ export default {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
       config: {
-        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+        googleMapsApiKey:
+          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+          "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g",
       },
       infoPlist: {
-        NSLocationWhenInUseUsageDescription: "Necesitamos tu ubicacion para asignarte pedidos y mostrar tu posicion en tiempo real."
-      }
+        NSLocationWhenInUseUsageDescription:
+          "Necesitamos tu ubicacion para asignarte pedidos y mostrar tu posicion en tiempo real.",
+      },
     },
     android: {
       adaptiveIcon: {
         backgroundColor: "#DC2626",
-        foregroundImage: "./client/assets/nuevologoapp-padded.jpeg"
+        foregroundImage: "./client/assets/nuevologoapp-padded.jpeg",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
@@ -29,8 +32,10 @@ export default {
       versionCode: 2,
       config: {
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyDLejpcrNJNHzQIduWuot5QAoepitVk2zY"
-        }
+          apiKey:
+            process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+            "AIzaSyDLejpcrNJNHzQIduWuot5QAoepitVk2zY",
+        },
       },
       permissions: [
         "android.permission.ACCESS_FINE_LOCATION",
@@ -38,13 +43,13 @@ export default {
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.INTERNET",
-        "android.permission.POST_NOTIFICATIONS"
-      ]
+        "android.permission.POST_NOTIFICATIONS",
+      ],
     },
     web: {
       output: "single",
       favicon: "./public/icon.png",
-      bundler: "metro"
+      bundler: "metro",
     },
     plugins: [
       [
@@ -56,24 +61,26 @@ export default {
           backgroundColor: "#DC2626",
           dark: {
             backgroundColor: "#DC2626",
-            image: "./client/assets/splash.png"
-          }
-        }
+            image: "./client/assets/splash.png",
+          },
+        },
       ],
       "expo-web-browser",
       "expo-secure-store",
-      "expo-location"
+      "expo-location",
     ],
     experiments: {
-      reactCompiler: true
+      reactCompiler: true,
     },
     privacyPolicyUrl: "https://app.comeya.es/privacy-policy",
     extra: {
       eas: {
-        projectId: "8c58541f-bf02-4e36-bcf9-a2e64b126a5b"
+        projectId: "8c58541f-bf02-4e36-bcf9-a2e64b126a5b",
       },
-      EXPO_PUBLIC_BACKEND_URL: process.env.EXPO_PUBLIC_BACKEND_URL || "https://comeya-backend.onrender.com"
+      EXPO_PUBLIC_BACKEND_URL:
+        process.env.EXPO_PUBLIC_BACKEND_URL ||
+        "https://comeya-backend.onrender.com",
     },
-    owner: "caskiuzs-organization"
-  }
+    owner: "caskiuzs-organization",
+  },
 };

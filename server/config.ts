@@ -33,19 +33,37 @@ async function getNum(key: string, def: number): Promise<number> {
 
 export const CONFIG = {
   // Comisiones — key existente en BD: "comeya_commission_pct" o "nemy_commission"
-  async commission()        { return (await getNum("comeya_commission_pct", 15)) / 100; },
-  async commissionDivisor() { return 1 + await CONFIG.commission(); },
+  async commission() {
+    return (await getNum("comeya_commission_pct", 15)) / 100;
+  },
+  async commissionDivisor() {
+    return 1 + (await CONFIG.commission());
+  },
 
   // Delivery
-  async deliveryFee()  { return getNum("default_delivery_fee_cents", 300); },
-  async deliveryTime() { return get("default_delivery_time", "30-45 min"); },
+  async deliveryFee() {
+    return getNum("default_delivery_fee_cents", 300);
+  },
+  async deliveryTime() {
+    return get("default_delivery_time", "30-45 min");
+  },
 
   // Datos de pago ComeYa — editables por el admin desde el panel
-  async bizumPhone()   { return get("comeya_bizum_phone", "600 000 000"); },
-  async iban()         { return get("comeya_iban", "ES00 0000 0000 0000 0000 0000"); },
-  async paypalEmail()  { return get("comeya_paypal_email", "pagos@comeya.es"); },
-  async titular()      { return get("comeya_titular", "ComeYa S.L."); },
-  async banco()        { return get("comeya_banco", "Banco Santander"); },
+  async bizumPhone() {
+    return get("comeya_bizum_phone", "600 000 000");
+  },
+  async iban() {
+    return get("comeya_iban", "ES00 0000 0000 0000 0000 0000");
+  },
+  async paypalEmail() {
+    return get("comeya_paypal_email", "pagos@comeya.es");
+  },
+  async titular() {
+    return get("comeya_titular", "ComeYa S.L.");
+  },
+  async banco() {
+    return get("comeya_banco", "Banco Santander");
+  },
 };
 
 export function invalidateSettingsCache() {

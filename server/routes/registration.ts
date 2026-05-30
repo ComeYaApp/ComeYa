@@ -35,7 +35,7 @@ router.post("/upload-documents", async (req, res) => {
       uploadedUrls.idDocument = await CloudinaryService.uploadImage(
         idDocument,
         "profiles",
-        `id-${userId}`
+        `id-${userId}`,
       );
     }
 
@@ -44,7 +44,7 @@ router.post("/upload-documents", async (req, res) => {
       uploadedUrls.autonomoDocument = await CloudinaryService.uploadImage(
         autonomoDocument,
         "profiles",
-        `autonomo-${userId}`
+        `autonomo-${userId}`,
       );
     }
 
@@ -53,11 +53,12 @@ router.post("/upload-documents", async (req, res) => {
       uploadedUrls.profilePhoto = await CloudinaryService.uploadImage(
         profilePhoto,
         "profiles",
-        `profile-${userId}`
+        `profile-${userId}`,
       );
-      
+
       // Actualizar profileImage en users
-      await db.update(users)
+      await db
+        .update(users)
         .set({ profileImage: uploadedUrls.profilePhoto } as any)
         .where(eq(users.id, userId));
     }
@@ -67,7 +68,7 @@ router.post("/upload-documents", async (req, res) => {
       uploadedUrls.vehiclePhoto = await CloudinaryService.uploadImage(
         vehiclePhoto,
         "profiles",
-        `vehicle-${userId}`
+        `vehicle-${userId}`,
       );
     }
 
@@ -76,7 +77,7 @@ router.post("/upload-documents", async (req, res) => {
       uploadedUrls.vehicleDocument = await CloudinaryService.uploadImage(
         vehicleDocument,
         "profiles",
-        `vehicle-doc-${userId}`
+        `vehicle-doc-${userId}`,
       );
     }
 
@@ -85,7 +86,7 @@ router.post("/upload-documents", async (req, res) => {
       uploadedUrls.insuranceDocument = await CloudinaryService.uploadImage(
         insuranceDocument,
         "profiles",
-        `insurance-${userId}`
+        `insurance-${userId}`,
       );
     }
 
@@ -131,7 +132,9 @@ router.post("/upload-documents", async (req, res) => {
     });
   } catch (error: any) {
     console.error("Error uploading documents:", error);
-    res.status(500).json({ error: error.message || "Error al subir documentos" });
+    res
+      .status(500)
+      .json({ error: error.message || "Error al subir documentos" });
   }
 });
 

@@ -1,5 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Text, useWindowDimensions } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  Text,
+  useWindowDimensions,
+} from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -38,7 +46,7 @@ export default function VerifyPhoneScreen() {
 
   useEffect(() => {
     if (countdown > 0) {
-      const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+      const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
       return () => clearTimeout(t);
     } else {
       setCanResend(true);
@@ -62,7 +70,10 @@ export default function VerifyPhoneScreen() {
 
   const handleVerify = async () => {
     const fullCode = code.join("");
-    if (fullCode.length !== 6) { setError("Ingresa el código completo"); return; }
+    if (fullCode.length !== 6) {
+      setError("Ingresa el código completo");
+      return;
+    }
     setIsLoading(true);
     try {
       const verifiedUser = await verifyPhone(phone, fullCode);
@@ -78,7 +89,10 @@ export default function VerifyPhoneScreen() {
           try {
             await apiRequest("POST", "/api/business/create", draft);
           } catch {
-            await AsyncStorage.setItem(PENDING_BUSINESS_ONBOARDING_KEY, JSON.stringify({ openAddModal: true, draft }));
+            await AsyncStorage.setItem(
+              PENDING_BUSINESS_ONBOARDING_KEY,
+              JSON.stringify({ openAddModal: true, draft }),
+            );
           }
         }
       }
@@ -114,7 +128,12 @@ export default function VerifyPhoneScreen() {
           style={s.logo}
           contentFit="contain"
         />
-        <View style={[s.iconCircle, { backgroundColor: ComeYaColors.primary + "15" }]}>
+        <View
+          style={[
+            s.iconCircle,
+            { backgroundColor: ComeYaColors.primary + "15" },
+          ]}
+        >
           <Feather name="smartphone" size={36} color={ComeYaColors.primary} />
         </View>
         <Text style={[s.title, { color: text }]}>Verifica tu teléfono</Text>
@@ -127,10 +146,12 @@ export default function VerifyPhoneScreen() {
           {code.map((digit, i) => (
             <input
               key={i}
-              ref={el => { inputRefs.current[i] = el; }}
+              ref={(el) => {
+                inputRefs.current[i] = el;
+              }}
               value={digit}
-              onChange={e => handleCodeChange(e.target.value, i)}
-              onKeyDown={e => handleKeyDown(e, i)}
+              onChange={(e) => handleCodeChange(e.target.value, i)}
+              onKeyDown={(e) => handleKeyDown(e, i)}
               maxLength={1}
               inputMode="numeric"
               style={{
@@ -138,36 +159,56 @@ export default function VerifyPhoneScreen() {
                 height: isMobile ? Math.floor((screenWidth - 80) / 6) : 64,
                 borderRadius: 12,
                 border: `2px solid ${error ? ComeYaColors.error : digit ? ComeYaColors.primary : border}`,
-                backgroundColor: card, color: text,
-                fontSize: isMobile ? 20 : 28, fontWeight: "700", textAlign: "center",
-                outline: "none", transition: "border-color 0.2s",
+                backgroundColor: card,
+                color: text,
+                fontSize: isMobile ? 20 : 28,
+                fontWeight: "700",
+                textAlign: "center",
+                outline: "none",
+                transition: "border-color 0.2s",
                 flexShrink: 0,
               }}
             />
           ))}
         </View>
 
-        {error ? <Text style={[s.error, { color: ComeYaColors.error }]}>{error}</Text> : null}
+        {error ? (
+          <Text style={[s.error, { color: ComeYaColors.error }]}>{error}</Text>
+        ) : null}
 
         <Pressable
           onPress={handleVerify}
-          disabled={isLoading || code.some(d => !d) || code.join("").length !== 6}
-          style={[s.btn, { backgroundColor: ComeYaColors.primary, opacity: isLoading || code.some(d => !d) ? 0.5 : 1 }]}
-        >
-          {isLoading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={s.btnText}>Verificar</Text>
+          disabled={
+            isLoading || code.some((d) => !d) || code.join("").length !== 6
           }
+          style={[
+            s.btn,
+            {
+              backgroundColor: ComeYaColors.primary,
+              opacity: isLoading || code.some((d) => !d) ? 0.5 : 1,
+            },
+          ]}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={s.btnText}>Verificar</Text>
+          )}
         </Pressable>
 
         <View style={s.resendRow}>
           <Text style={{ color: sub }}>¿No recibiste el código? </Text>
           {canResend ? (
             <Pressable onPress={handleResend} disabled={isResending}>
-              {isResending
-                ? <ActivityIndicator size="small" color={ComeYaColors.primary} />
-                : <Text style={{ color: ComeYaColors.primary, fontWeight: "700" }}>Reenviar</Text>
-              }
+              {isResending ? (
+                <ActivityIndicator size="small" color={ComeYaColors.primary} />
+              ) : (
+                <Text
+                  style={{ color: ComeYaColors.primary, fontWeight: "700" }}
+                >
+                  Reenviar
+                </Text>
+              )}
             </Pressable>
           ) : (
             <Text style={{ color: sub }}>{countdown}s</Text>
@@ -184,15 +225,51 @@ export default function VerifyPhoneScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, justifyContent: "center", alignItems: "center", padding: 16 },
-  card: { width: "100%" as any, maxWidth: 420, padding: 32, borderRadius: 24, borderWidth: 1, alignItems: "center" },
+  root: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  card: {
+    width: "100%" as any,
+    maxWidth: 420,
+    padding: 32,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: "center",
+  },
   logo: { width: 80, height: 40, marginBottom: 24 },
-  iconCircle: { width: 80, height: 80, borderRadius: 40, justifyContent: "center", alignItems: "center", marginBottom: 20 },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   title: { fontSize: 26, fontWeight: "800", marginBottom: 8 },
-  subtitle: { fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 32 },
-  codeRow: { flexDirection: "row", gap: 8, marginBottom: 16, justifyContent: "center", width: "100%" as any },
+  subtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  codeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+    justifyContent: "center",
+    width: "100%" as any,
+  },
   error: { fontSize: 13, marginBottom: 12, textAlign: "center" },
-  btn: { width: "100%", paddingVertical: 16, borderRadius: 14, alignItems: "center", marginTop: 8 },
+  btn: {
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 8,
+  },
   btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   resendRow: { flexDirection: "row", alignItems: "center", marginTop: 20 },
   backLink: { flexDirection: "row", alignItems: "center", marginTop: 16 },

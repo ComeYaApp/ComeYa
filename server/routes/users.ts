@@ -14,7 +14,10 @@ router.put("/push-token", authenticateToken, async (req, res) => {
     }
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-await db.update(users).set({ pushToken: token, updatedAt: new Date() }).where(eq(users.id, req.user!.id as string));
+    await db
+      .update(users)
+      .set({ pushToken: token, updatedAt: new Date() })
+      .where(eq(users.id, req.user!.id as string));
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -27,35 +30,59 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
     const { users, deliveryDrivers } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-const [user] = await db.select().from(users).where(eq(users.id, req.user!.id as string)).limit(1);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.user!.id as string))
+      .limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    let vehicleType = null, vehiclePlate = null, vehiclePhoto = null;
-    let vehicleBrand = null, vehicleModel = null, vehicleColor = null, vehicleYear = null;
-    let vehiclePlatePhoto = null, vehicleItvPhoto = null, vehicleInsurancePhoto = null, vehicleLicensePhoto = null;
+    let vehicleType = null,
+      vehiclePlate = null,
+      vehiclePhoto = null;
+    let vehicleBrand = null,
+      vehicleModel = null,
+      vehicleColor = null,
+      vehicleYear = null;
+    let vehiclePlatePhoto = null,
+      vehicleItvPhoto = null,
+      vehicleInsurancePhoto = null,
+      vehicleLicensePhoto = null;
 
     if (user.role === "delivery_driver") {
-const [dd] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, user.id as string)).limit(1);
-      vehicleType          = dd?.vehicleType          ?? null;
-      vehiclePlate         = dd?.vehiclePlate         ?? null;
-      vehiclePhoto         = dd?.vehiclePhoto         ?? null;
-      vehicleBrand         = dd?.vehicleBrand         ?? null;
-      vehicleModel         = dd?.vehicleModel         ?? null;
-      vehicleColor         = dd?.vehicleColor         ?? null;
-      vehicleYear          = (dd as any)?.vehicleYear          ?? null;
-      vehiclePlatePhoto    = (dd as any)?.vehiclePlatePhoto    ?? null;
-      vehicleItvPhoto      = (dd as any)?.vehicleItvPhoto      ?? null;
-      vehicleInsurancePhoto= (dd as any)?.vehicleInsurancePhoto?? null;
-      vehicleLicensePhoto  = (dd as any)?.vehicleLicensePhoto  ?? null;
+      const [dd] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, user.id as string))
+        .limit(1);
+      vehicleType = dd?.vehicleType ?? null;
+      vehiclePlate = dd?.vehiclePlate ?? null;
+      vehiclePhoto = dd?.vehiclePhoto ?? null;
+      vehicleBrand = dd?.vehicleBrand ?? null;
+      vehicleModel = dd?.vehicleModel ?? null;
+      vehicleColor = dd?.vehicleColor ?? null;
+      vehicleYear = (dd as any)?.vehicleYear ?? null;
+      vehiclePlatePhoto = (dd as any)?.vehiclePlatePhoto ?? null;
+      vehicleItvPhoto = (dd as any)?.vehicleItvPhoto ?? null;
+      vehicleInsurancePhoto = (dd as any)?.vehicleInsurancePhoto ?? null;
+      vehicleLicensePhoto = (dd as any)?.vehicleLicensePhoto ?? null;
     }
 
-res.json({
+    res.json({
       success: true,
       dni: user.dni,
       address: user.address,
-      vehicleType, vehiclePlate, vehiclePhoto,
-      vehicleBrand, vehicleModel, vehicleColor, vehicleYear,
-      vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
+      vehicleType,
+      vehiclePlate,
+      vehiclePhoto,
+      vehicleBrand,
+      vehicleModel,
+      vehicleColor,
+      vehicleYear,
+      vehiclePlatePhoto,
+      vehicleItvPhoto,
+      vehicleInsurancePhoto,
+      vehicleLicensePhoto,
       idDocumentUrl: user.idDocumentUrl,
       idDocumentBackUrl: (user as any).idDocumentBackUrl,
       autonomoDocumentUrl: user.autonomoDocumentUrl,
@@ -72,34 +99,51 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
     const { db } = await import("../db");
     const { CloudinaryService } = await import("../cloudinaryService");
 
-const {
-      vehicleType, vehiclePlate, vehicleBrand, vehicleModel, vehicleColor, vehicleYear,
-      vehiclePhoto, vehiclePlatePhoto, vehicleItvPhoto, vehicleInsurancePhoto, vehicleLicensePhoto,
-      deleteVehiclePhoto, deleteVehiclePlatePhoto, deleteVehicleItvPhoto, deleteVehicleInsurancePhoto, deleteVehicleLicensePhoto,
+    const {
+      vehicleType,
+      vehiclePlate,
+      vehicleBrand,
+      vehicleModel,
+      vehicleColor,
+      vehicleYear,
+      vehiclePhoto,
+      vehiclePlatePhoto,
+      vehicleItvPhoto,
+      vehicleInsurancePhoto,
+      vehicleLicensePhoto,
+      deleteVehiclePhoto,
+      deleteVehiclePlatePhoto,
+      deleteVehicleItvPhoto,
+      deleteVehicleInsurancePhoto,
+      deleteVehicleLicensePhoto,
     } = req.body;
 
     const updates: any = {};
-    if (vehicleType  !== undefined) updates.vehicleType  = vehicleType  || null;
+    if (vehicleType !== undefined) updates.vehicleType = vehicleType || null;
     if (vehiclePlate !== undefined) updates.vehiclePlate = vehiclePlate || null;
     if (vehicleBrand !== undefined) updates.vehicleBrand = vehicleBrand || null;
     if (vehicleModel !== undefined) updates.vehicleModel = vehicleModel || null;
     if (vehicleColor !== undefined) updates.vehicleColor = vehicleColor || null;
-    if (vehicleYear  !== undefined) updates.vehicleYear  = vehicleYear  || null;
+    if (vehicleYear !== undefined) updates.vehicleYear = vehicleYear || null;
 
     // Subir fotos de documentos a Cloudinary si son base64
     const uploadDoc = async (b64: string | undefined, key: string) => {
       if (!b64) return undefined;
       if (b64.startsWith("data:image/")) {
-        return await CloudinaryService.uploadImage(b64, "profiles", `driver-${req.user!.id}-${key}`);
+        return await CloudinaryService.uploadImage(
+          b64,
+          "profiles",
+          `driver-${req.user!.id}-${key}`,
+        );
       }
       return b64; // ya es URL
     };
 
-const photoUrl    = await uploadDoc(vehiclePhoto,       "photo");
-    const plateUrl    = await uploadDoc(vehiclePlatePhoto,    "plate");
-    const itvUrl      = await uploadDoc(vehicleItvPhoto,      "itv");
-    const insuranceUrl= await uploadDoc(vehicleInsurancePhoto,"insurance");
-    const licenseUrl  = await uploadDoc(vehicleLicensePhoto,  "license");
+    const photoUrl = await uploadDoc(vehiclePhoto, "photo");
+    const plateUrl = await uploadDoc(vehiclePlatePhoto, "plate");
+    const itvUrl = await uploadDoc(vehicleItvPhoto, "itv");
+    const insuranceUrl = await uploadDoc(vehicleInsurancePhoto, "insurance");
+    const licenseUrl = await uploadDoc(vehicleLicensePhoto, "license");
 
     // Handle deletes and updates
     if (deleteVehiclePhoto === true) updates.vehiclePhoto = null;
@@ -111,17 +155,28 @@ const photoUrl    = await uploadDoc(vehiclePhoto,       "photo");
     if (deleteVehicleItvPhoto === true) updates.vehicleItvPhoto = null;
     else if (itvUrl !== undefined) updates.vehicleItvPhoto = itvUrl;
 
-    if (deleteVehicleInsurancePhoto === true) updates.vehicleInsurancePhoto = null;
-    else if (insuranceUrl !== undefined) updates.vehicleInsurancePhoto = insuranceUrl;
+    if (deleteVehicleInsurancePhoto === true)
+      updates.vehicleInsurancePhoto = null;
+    else if (insuranceUrl !== undefined)
+      updates.vehicleInsurancePhoto = insuranceUrl;
 
     if (deleteVehicleLicensePhoto === true) updates.vehicleLicensePhoto = null;
     else if (licenseUrl !== undefined) updates.vehicleLicensePhoto = licenseUrl;
 
-    const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id as string)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(deliveryDrivers)
+      .where(eq(deliveryDrivers.userId, req.user!.id as string))
+      .limit(1);
     if (existing) {
-      await db.update(deliveryDrivers).set(updates).where(eq(deliveryDrivers.userId, req.user!.id as string));
+      await db
+        .update(deliveryDrivers)
+        .set(updates)
+        .where(eq(deliveryDrivers.userId, req.user!.id as string));
     } else {
-      await db.insert(deliveryDrivers).values({ id: crypto.randomUUID(), userId: req.user!.id, ...updates });
+      await db
+        .insert(deliveryDrivers)
+        .values({ id: crypto.randomUUID(), userId: req.user!.id, ...updates });
     }
 
     res.json({ success: true });
@@ -135,11 +190,11 @@ router.get("/profile", authenticateToken, async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const [user] = await db
       .select()
       .from(users)
-.where(eq(users.id, req.user!.id as string))
+      .where(eq(users.id, req.user!.id as string))
       .limit(1);
 
     if (!user) {
@@ -169,11 +224,11 @@ router.get("/:userId", authenticateToken, async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const [user] = await db
       .select()
       .from(users)
-.where(eq(users.id, req.params.userId as string))
+      .where(eq(users.id, req.params.userId as string))
       .limit(1);
 
     if (!user) {
@@ -202,9 +257,9 @@ router.put("/profile", authenticateToken, async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const { name, email, profileImage, dni, address, phone } = req.body;
-    
+
     const updates: any = {};
     if (name) updates.name = name;
     if (phone !== undefined) updates.phone = phone || null;
@@ -212,7 +267,7 @@ router.put("/profile", authenticateToken, async (req, res) => {
     if (profileImage) updates.profileImage = profileImage;
     if (dni !== undefined) updates.dni = dni || null;
     if (address !== undefined) updates.address = address || null;
-    
+
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: "No hay datos para actualizar" });
     }
@@ -221,18 +276,25 @@ router.put("/profile", authenticateToken, async (req, res) => {
 
     await db
       .update(users)
-.set(updates)
+      .set(updates)
       .where(eq(users.id, req.user!.id as string));
 
     // Sincronizar con tabla addresses si se envió dirección
     if (address) {
       const { addresses } = await import("@shared/schema-mysql");
-const existing = await db.select().from(addresses)
+      const existing = await db
+        .select()
+        .from(addresses)
         .where(eq(addresses.userId, req.user!.id as string))
         .limit(10);
-const defaultAddr = existing.find((a: { isDefault: boolean }) => a.isDefault) || existing[0];
-if (defaultAddr) {
-        await db.update(addresses).set({ street: address }).where(eq(addresses.id, defaultAddr.id as string));
+      const defaultAddr =
+        existing.find((a: { isDefault: boolean }) => a.isDefault) ||
+        existing[0];
+      if (defaultAddr) {
+        await db
+          .update(addresses)
+          .set({ street: address })
+          .where(eq(addresses.id, defaultAddr.id as string));
       } else {
         await db.insert(addresses).values({
           id: crypto.randomUUID(),
@@ -259,30 +321,54 @@ router.post("/profile-image", authenticateToken, async (req, res) => {
     const { image } = req.body;
 
     if (!image) return res.status(400).json({ error: "Imagen requerida" });
-    if (!image.startsWith('data:image/')) return res.status(400).json({ error: "Formato de imagen inválido" });
+    if (!image.startsWith("data:image/"))
+      return res.status(400).json({ error: "Formato de imagen inválido" });
 
     // Límite 2MB
     const estimatedBytes = Math.ceil(image.length * 0.75);
     if (estimatedBytes > 2 * 1024 * 1024) {
-      return res.status(400).json({ error: "La imagen es muy pesada. Máximo 2MB" });
+      return res
+        .status(400)
+        .json({ error: "La imagen es muy pesada. Máximo 2MB" });
     }
 
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { CloudinaryService } = await import("../cloudinaryService");
 
-// Eliminar imagen anterior si existe
-    const [currentUser] = await db.select().from(users).where(eq(users.id, req.user!.id as string)).limit(1);
-    if (currentUser?.profileImage && currentUser.profileImage.includes('cloudinary')) {
-      const oldPublicId = CloudinaryService.extractPublicId(currentUser.profileImage);
-      if (oldPublicId) await CloudinaryService.deleteImage(oldPublicId).catch(() => {});
+    // Eliminar imagen anterior si existe
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.user!.id as string))
+      .limit(1);
+    if (
+      currentUser?.profileImage &&
+      currentUser.profileImage.includes("cloudinary")
+    ) {
+      const oldPublicId = CloudinaryService.extractPublicId(
+        currentUser.profileImage,
+      );
+      if (oldPublicId)
+        await CloudinaryService.deleteImage(oldPublicId).catch(() => {});
     }
 
     // Subir nueva imagen
-const imageUrl = await CloudinaryService.uploadImage(image, 'profiles', `user-${req.user!.id}`);
-    await db.update(users).set({ profileImage: imageUrl }).where(eq(users.id, req.user!.id as string));
+    const imageUrl = await CloudinaryService.uploadImage(
+      image,
+      "profiles",
+      `user-${req.user!.id}`,
+    );
+    await db
+      .update(users)
+      .set({ profileImage: imageUrl })
+      .where(eq(users.id, req.user!.id as string));
 
-    res.json({ success: true, profileImage: imageUrl, message: "Imagen actualizada" });
+    res.json({
+      success: true,
+      profileImage: imageUrl,
+      message: "Imagen actualizada",
+    });
   } catch (error: any) {
     console.error("Upload image error:", error);
     res.status(500).json({ error: error.message });
@@ -294,10 +380,15 @@ const getAddresses = async (req: any, res: any) => {
   try {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-const userId = req.params.id || req.user!.id;
-    const list = await db.select().from(addresses).where(eq(addresses.userId, userId as string));
+    const userId = req.params.id || req.user!.id;
+    const list = await db
+      .select()
+      .from(addresses)
+      .where(eq(addresses.userId, userId as string));
     res.json({ success: true, addresses: list });
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 router.get("/addresses", authenticateToken, getAddresses);
@@ -309,16 +400,29 @@ const postAddress = async (req: any, res: any) => {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const userId = req.params.id || req.user!.id;
-    const { label, street, city, state, zipCode, latitude, longitude, isDefault } = req.body;
-    if (!label || !street) return res.status(400).json({ error: "label y street son requeridos" });
+    const {
+      label,
+      street,
+      city,
+      state,
+      zipCode,
+      latitude,
+      longitude,
+      isDefault,
+    } = req.body;
+    if (!label || !street)
+      return res.status(400).json({ error: "label y street son requeridos" });
 
-// Si isDefault, quitar default de las demás
+    // Si isDefault, quitar default de las demás
     if (isDefault) {
-      await db.update(addresses).set({ isDefault: false }).where(eq(addresses.userId, userId as string));
+      await db
+        .update(addresses)
+        .set({ isDefault: false })
+        .where(eq(addresses.userId, userId as string));
     }
 
     const id = crypto.randomUUID();
-await db.insert(addresses).values({
+    await db.insert(addresses).values({
       id: id as string,
       userId,
       label,
@@ -331,9 +435,15 @@ await db.insert(addresses).values({
       isDefault: isDefault || false,
     });
 
-const [saved] = await db.select().from(addresses).where(eq(addresses.id, id as string)).limit(1);
+    const [saved] = await db
+      .select()
+      .from(addresses)
+      .where(eq(addresses.id, id as string))
+      .limit(1);
     res.json({ success: true, address: saved });
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 router.post("/addresses", authenticateToken, postAddress);
@@ -344,7 +454,16 @@ router.put("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
   try {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const { label, street, city, state, zipCode, latitude, longitude, isDefault } = req.body;
+    const {
+      label,
+      street,
+      city,
+      state,
+      zipCode,
+      latitude,
+      longitude,
+      isDefault,
+    } = req.body;
     const updates: any = {};
     if (label) updates.label = label;
     if (street) updates.street = street;
@@ -353,41 +472,54 @@ router.put("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
     if (zipCode !== undefined) updates.zipCode = zipCode;
     if (latitude !== undefined) updates.latitude = String(latitude);
     if (longitude !== undefined) updates.longitude = String(longitude);
-if (isDefault !== undefined) updates.isDefault = isDefault;
-    await db.update(addresses).set(updates).where(eq(addresses.id, req.params.addressId as string));
+    if (isDefault !== undefined) updates.isDefault = isDefault;
+    await db
+      .update(addresses)
+      .set(updates)
+      .where(eq(addresses.id, req.params.addressId as string));
     res.json({ success: true });
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // DELETE /:userId/addresses/:addressId
-router.delete("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
-  try {
-    const { addresses } = await import("@shared/schema-mysql");
-    const { db } = await import("../db");
-    await db.delete(addresses).where(eq(addresses.id, req.params.addressId as string));
-    res.json({ success: true });
-  } catch (error: any) { res.status(500).json({ error: error.message }); }
-});
+router.delete(
+  "/:id/addresses/:addressId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { addresses } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      await db
+        .delete(addresses)
+        .where(eq(addresses.id, req.params.addressId as string));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // Add user address
 router.post("/addresses", authenticateToken, async (req, res) => {
   try {
     const { address, label, isDefault } = req.body;
-    
+
     if (!address) {
       return res.status(400).json({ error: "Dirección requerida" });
     }
 
     // For now, just return success - implement address storage later
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Dirección guardada",
       address: {
         id: crypto.randomUUID(),
         address,
         label: label || "Casa",
         isDefault: isDefault || false,
-      }
+      },
     });
   } catch (error: any) {
     console.error("Add address error:", error);
@@ -396,60 +528,86 @@ router.post("/addresses", authenticateToken, async (req, res) => {
 });
 
 // Get user stats (for admin)
-router.get("/stats", authenticateToken, requireRole("admin", "super_admin"), async (req, res) => {
-  try {
-    const { users, orders } = await import("@shared/schema-mysql");
-    const { db } = await import("../db");
-    const { sql } = await import("drizzle-orm");
-    
-    const [userCount] = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
-    const [orderCount] = await db.execute(sql`SELECT COUNT(*) as count FROM orders`);
-    const [activeUsers] = await db.execute(sql`
+router.get(
+  "/stats",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { users, orders } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { sql } = await import("drizzle-orm");
+
+      const [userCount] = await db.execute(
+        sql`SELECT COUNT(*) as count FROM users`,
+      );
+      const [orderCount] = await db.execute(
+        sql`SELECT COUNT(*) as count FROM orders`,
+      );
+      const [activeUsers] = await db.execute(sql`
       SELECT COUNT(DISTINCT userId) as count 
       FROM orders 
       WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     `);
 
-    res.json({
-      success: true,
-      stats: {
-        totalUsers: userCount.count,
-        totalOrders: orderCount.count,
-        activeUsers: activeUsers.count,
-      },
-    });
-  } catch (error: any) {
-    console.error("Get user stats error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+      res.json({
+        success: true,
+        stats: {
+          totalUsers: userCount.count,
+          totalOrders: orderCount.count,
+          activeUsers: activeUsers.count,
+        },
+      });
+    } catch (error: any) {
+      console.error("Get user stats error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // POST /:userId/verification-documents — guardar URLs de documentos de identidad
-router.post("/:id/verification-documents", authenticateToken, async (req, res) => {
-  try {
-    const { users } = await import("@shared/schema-mysql");
-    const { db } = await import("../db");
-    const userId = req.params.id;
+router.post(
+  "/:id/verification-documents",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { users } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const userId = req.params.id;
 
-    const { idDocumentUrl, autonomoDocumentUrl } = req.body;
-    const updates: any = { verificationStatus: "pending" };
-    if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
-if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
+      const { idDocumentUrl, autonomoDocumentUrl } = req.body;
+      const updates: any = { verificationStatus: "pending" };
+      if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
+      if (autonomoDocumentUrl)
+        updates.autonomoDocumentUrl = autonomoDocumentUrl;
 
-    await db.update(users).set(updates).where(eq(users.id, userId as string));
-    res.json({ success: true, message: "Documentos recibidos. Tu cuenta está en revisión." });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+      await db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, userId as string));
+      res.json({
+        success: true,
+        message: "Documentos recibidos. Tu cuenta está en revisión.",
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // GET /api/users/:id/verification-status
 router.get("/:id/verification-status", authenticateToken, async (req, res) => {
   try {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-const [user] = await db.select({ verificationStatus: users.verificationStatus, verificationNotes: users.verificationNotes })
-      .from(users).where(eq(users.id, req.params.id as string)).limit(1);
+    const [user] = await db
+      .select({
+        verificationStatus: users.verificationStatus,
+        verificationNotes: users.verificationNotes,
+      })
+      .from(users)
+      .where(eq(users.id, req.params.id as string))
+      .limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     res.json({ success: true, ...user });
   } catch (error: any) {
@@ -467,26 +625,48 @@ router.post("/:id/reset-verification", authenticateToken, async (req, res) => {
     const userId = req.params.id;
 
     // Verificar que el usuario que hace la petición es el mismo o es admin
-    if (req.user!.id !== userId && req.user!.role !== "admin" && req.user!.role !== "super_admin") {
-      return res.status(403).json({ error: "No tienes permiso para hacer esto" });
+    if (
+      req.user!.id !== userId &&
+      req.user!.role !== "admin" &&
+      req.user!.role !== "super_admin"
+    ) {
+      return res
+        .status(403)
+        .json({ error: "No tienes permiso para hacer esto" });
     }
 
-const [user] = await db.select().from(users).where(eq(users.id, userId as string)).limit(1);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId as string))
+      .limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
     // No permitir reset si ya está aprobado
     if (user.verificationStatus === "verified" && user.isActive) {
-      return res.status(400).json({ error: "Tu cuenta ya está verificada. Contacta soporte para modificar tus documentos." });
+      return res
+        .status(400)
+        .json({
+          error:
+            "Tu cuenta ya está verificada. Contacta soporte para modificar tus documentos.",
+        });
     }
 
     // Reiniciar estado de verificación
-    await db.update(users).set({
-      verificationStatus: "pending" as any,
-      verificationNotes: null,
-      updatedAt: new Date(),
-    }).where(eq(users.id, userId as string));
+    await db
+      .update(users)
+      .set({
+        verificationStatus: "pending" as any,
+        verificationNotes: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId as string));
 
-    res.json({ success: true, message: "Verificación reiniciada. Por favor, envía tus documentos nuevamente." });
+    res.json({
+      success: true,
+      message:
+        "Verificación reiniciada. Por favor, envía tus documentos nuevamente.",
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -501,18 +681,29 @@ router.post("/change-phone", authenticateToken, async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-// Verificar que no esté en uso
-    const [existing] = await db.select().from(users).where(eq(users.phone, newPhone as string)).limit(1);
+    // Verificar que no esté en uso
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(eq(users.phone, newPhone as string))
+      .limit(1);
     if (existing && existing.id !== req.user!.id) {
-      return res.status(400).json({ error: "Este teléfono ya está registrado" });
+      return res
+        .status(400)
+        .json({ error: "Este teléfono ya está registrado" });
     }
 
     // Enviar OTP al nuevo teléfono via Twilio
-    const twilio = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    await twilio.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID).verifications.create({
-      to: newPhone,
-      channel: "sms",
-    });
+    const twilio = require("twilio")(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN,
+    );
+    await twilio.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
+      .verifications.create({
+        to: newPhone,
+        channel: "sms",
+      });
 
     res.json({ success: true, message: "Código enviado al nuevo teléfono" });
   } catch (error: any) {
@@ -524,21 +715,30 @@ router.post("/change-phone", authenticateToken, async (req, res) => {
 router.post("/verify-phone-change", authenticateToken, async (req, res) => {
   try {
     const { newPhone, code } = req.body;
-    if (!newPhone || !code) return res.status(400).json({ error: "Teléfono y código requeridos" });
+    if (!newPhone || !code)
+      return res.status(400).json({ error: "Teléfono y código requeridos" });
 
-    const twilio = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    const check = await twilio.verify.v2.services(process.env.TWILIO_VERIFY_SERVICE_SID).verificationChecks.create({
-      to: newPhone,
-      code,
-    });
+    const twilio = require("twilio")(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN,
+    );
+    const check = await twilio.verify.v2
+      .services(process.env.TWILIO_VERIFY_SERVICE_SID)
+      .verificationChecks.create({
+        to: newPhone,
+        code,
+      });
 
     if (check.status !== "approved") {
       return res.status(400).json({ error: "Código incorrecto" });
     }
 
-const { users } = await import("@shared/schema-mysql");
+    const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    await db.update(users).set({ phone: newPhone, updatedAt: new Date() }).where(eq(users.id, req.user!.id as string));
+    await db
+      .update(users)
+      .set({ phone: newPhone, updatedAt: new Date() })
+      .where(eq(users.id, req.user!.id as string));
 
     res.json({ success: true, message: "Teléfono actualizado correctamente" });
   } catch (error: any) {
@@ -550,12 +750,16 @@ const { users } = await import("@shared/schema-mysql");
 router.post("/verification-document", authenticateToken, async (req, res) => {
   try {
     const { key, image } = req.body;
-    if (!key || !image) return res.status(400).json({ error: "key e image requeridos" });
-    if (!image.startsWith("data:image/")) return res.status(400).json({ error: "Formato de imagen inválido" });
+    if (!key || !image)
+      return res.status(400).json({ error: "key e image requeridos" });
+    if (!image.startsWith("data:image/"))
+      return res.status(400).json({ error: "Formato de imagen inválido" });
 
     const estimatedBytes = Math.ceil(image.length * 0.75);
     if (estimatedBytes > 5 * 1024 * 1024) {
-      return res.status(400).json({ error: "El archivo es muy pesado. Máximo 5MB" });
+      return res
+        .status(400)
+        .json({ error: "El archivo es muy pesado. Máximo 5MB" });
     }
 
     const { users } = await import("@shared/schema-mysql");
@@ -563,7 +767,11 @@ router.post("/verification-document", authenticateToken, async (req, res) => {
     const { CloudinaryService } = await import("../cloudinaryService");
 
     // Upload to Cloudinary
-    const url = await CloudinaryService.uploadImage(image, "verification-docs", `driver-${req.user!.id}-${key}`);
+    const url = await CloudinaryService.uploadImage(
+      image,
+      "verification-docs",
+      `driver-${req.user!.id}-${key}`,
+    );
 
     // Map document keys to database fields
     const fieldMap: Record<string, string> = {
@@ -583,27 +791,53 @@ router.post("/verification-document", authenticateToken, async (req, res) => {
     }
 
     // Determine which table to update based on document type
-    const isVehicleDocument = ["vehicleLicense", "vehiclePlate", "vehicleItv", "vehicleInsurance", "vehiclePhoto"].includes(field);
+    const isVehicleDocument = [
+      "vehicleLicense",
+      "vehiclePlate",
+      "vehicleItv",
+      "vehicleInsurance",
+      "vehiclePhoto",
+    ].includes(field);
 
     if (isVehicleDocument) {
       // Update deliveryDrivers table for vehicle documents
       const { deliveryDrivers } = await import("@shared/schema-mysql");
-      const [existing] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, req.user!.id as string)).limit(1);
+      const [existing] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, req.user!.id as string))
+        .limit(1);
       if (existing) {
-        await db.update(deliveryDrivers).set({ [field]: url, updatedAt: new Date() }).where(eq(deliveryDrivers.userId, req.user!.id as string));
+        await db
+          .update(deliveryDrivers)
+          .set({ [field]: url, updatedAt: new Date() })
+          .where(eq(deliveryDrivers.userId, req.user!.id as string));
       } else {
-        await db.insert(deliveryDrivers).values({ id: crypto.randomUUID(), userId: req.user!.id, [field]: url });
+        await db
+          .insert(deliveryDrivers)
+          .values({
+            id: crypto.randomUUID(),
+            userId: req.user!.id,
+            [field]: url,
+          });
       }
     } else {
       // Update users table for personal documents (idDocument, idDocumentBack, autonomo)
-      await db.update(users).set({
-        [field]: url,
-        verificationStatus: "pending",
-        updatedAt: new Date(),
-      }).where(eq(users.id, req.user!.id as string));
+      await db
+        .update(users)
+        .set({
+          [field]: url,
+          verificationStatus: "pending",
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, req.user!.id as string));
     }
 
-    res.json({ success: true, url, message: "Documento guardado correctamente" });
+    res.json({
+      success: true,
+      url,
+      message: "Documento guardado correctamente",
+    });
   } catch (error: any) {
     console.error("Verification document upload error:", error);
     res.status(500).json({ error: error.message });
@@ -616,8 +850,18 @@ router.put("/personal-docs", authenticateToken, async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const { idDocumentUrl, idDocumentBackUrl, autonomoDocumentUrl, deleteIdDocumentUrl, deleteIdDocumentBackUrl, deleteAutonomoDocumentUrl } = req.body;
-    const updates: any = { verificationStatus: "pending", updatedAt: new Date() };
+    const {
+      idDocumentUrl,
+      idDocumentBackUrl,
+      autonomoDocumentUrl,
+      deleteIdDocumentUrl,
+      deleteIdDocumentBackUrl,
+      deleteAutonomoDocumentUrl,
+    } = req.body;
+    const updates: any = {
+      verificationStatus: "pending",
+      updatedAt: new Date(),
+    };
 
     // Handle deletes (setting to empty string or null removes the document)
     if (deleteIdDocumentUrl === true) updates.idDocumentUrl = null;
@@ -627,10 +871,17 @@ router.put("/personal-docs", authenticateToken, async (req, res) => {
     else if (idDocumentBackUrl) updates.idDocumentBackUrl = idDocumentBackUrl;
 
     if (deleteAutonomoDocumentUrl === true) updates.autonomoDocumentUrl = null;
-    else if (autonomoDocumentUrl) updates.autonomoDocumentUrl = autonomoDocumentUrl;
+    else if (autonomoDocumentUrl)
+      updates.autonomoDocumentUrl = autonomoDocumentUrl;
 
-    await db.update(users).set(updates).where(eq(users.id, req.user!.id as string));
-    res.json({ success: true, message: "Documentos guardados. Tu cuenta será revisada nuevamente." });
+    await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, req.user!.id as string));
+    res.json({
+      success: true,
+      message: "Documentos guardados. Tu cuenta será revisada nuevamente.",
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

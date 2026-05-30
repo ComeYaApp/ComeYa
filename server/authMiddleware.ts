@@ -46,7 +46,10 @@ export async function authenticateToken(
     }
 
     // Verify JWT
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "comeya_local_secret_key") as any;
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "comeya_local_secret_key",
+    ) as any;
     // Get user from database
     const [user] = await db
       .select()
@@ -101,7 +104,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: "No autenticado" });
   }
 
-  if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
     return res.status(403).json({
       error: "Solo administradores pueden acceder",
       yourRole: req.user.role,
@@ -118,8 +121,10 @@ export function requireMinRole(minRole: string) {
       return res.status(401).json({ error: "No autenticado" });
     }
 
-    const userLevel = ROLE_HIERARCHY[req.user.role as keyof typeof ROLE_HIERARCHY] || 0;
-    const minLevel = ROLE_HIERARCHY[minRole as keyof typeof ROLE_HIERARCHY] || 0;
+    const userLevel =
+      ROLE_HIERARCHY[req.user.role as keyof typeof ROLE_HIERARCHY] || 0;
+    const minLevel =
+      ROLE_HIERARCHY[minRole as keyof typeof ROLE_HIERARCHY] || 0;
 
     if (userLevel < minLevel) {
       return res.status(403).json({
@@ -134,7 +139,9 @@ export function requireMinRole(minRole: string) {
 }
 
 // Check if user owns resource
-export function requireOwnership(resourceType: "order" | "business" | "wallet") {
+export function requireOwnership(
+  resourceType: "order" | "business" | "wallet",
+) {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: "No autenticado" });
@@ -180,7 +187,10 @@ export function auditAction(action: string, entityType: string) {
 // Rate limiting per user
 const userRequestCounts = new Map<string, { count: number; resetAt: number }>();
 
-export function rateLimitPerUser(maxRequests: number = 60, windowMs: number = 60000) {
+export function rateLimitPerUser(
+  maxRequests: number = 60,
+  windowMs: number = 60000,
+) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return next();
@@ -216,7 +226,11 @@ export function rateLimitPerUser(maxRequests: number = 60, windowMs: number = 60
 }
 
 // Verify phone is verified
-export function requirePhoneVerified(req: Request, res: Response, next: NextFunction) {
+export function requirePhoneVerified(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   if (!req.user) {
     return res.status(401).json({ error: "No autenticado" });
   }

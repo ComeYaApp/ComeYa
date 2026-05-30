@@ -8,10 +8,14 @@ export class WeeklySettlementCron {
   static start() {
     // Viernes a las 11:59 PM - FLUJO RESTRICTIVO: Cerrar semana y bloquear
     cron.schedule("59 23 * * 5", async () => {
-      console.log("🕐 FLUJO RESTRICTIVO VIERNES: Cerrando semana y bloqueando drivers con deuda...");
+      console.log(
+        "🕐 FLUJO RESTRICTIVO VIERNES: Cerrando semana y bloqueando drivers con deuda...",
+      );
       try {
         const result = await WeeklySettlementService.closeWeek();
-        console.log(`✅ Semana cerrada: ${result.count} liquidaciones creadas, ${result.blocked} drivers bloqueados`);
+        console.log(
+          `✅ Semana cerrada: ${result.count} liquidaciones creadas, ${result.blocked} drivers bloqueados`,
+        );
       } catch (error) {
         console.error("❌ Error al cerrar semana:", error);
       }
@@ -28,10 +32,10 @@ export class WeeklySettlementCron {
       }
     });
 
-
-
     console.log("⏰ Cron jobs de liquidación semanal iniciados:");
-    console.log("   - Viernes 11:59 PM: FLUJO RESTRICTIVO - Cierre y bloqueo inmediato");
+    console.log(
+      "   - Viernes 11:59 PM: FLUJO RESTRICTIVO - Cierre y bloqueo inmediato",
+    );
     console.log("   - Lunes 12:00 AM: Bloqueo definitivo de drivers sin pago");
   }
 }

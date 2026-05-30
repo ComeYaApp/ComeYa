@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, Linking, Platform, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  Linking,
+  Platform,
+  Alert,
+} from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { Feather } from "@expo/vector-icons";
 import { Audio } from "expo-av";
@@ -49,9 +59,18 @@ interface OrderTracking {
 }
 
 const ORDER_COLORS = [
-  "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8",
-  "#F7DC6F", "#BB8FCE", "#85C1E2", "#F8B739", "#52B788",
-  "#FF8FA3", "#6C5CE7"
+  "#FF6B6B",
+  "#4ECDC4",
+  "#45B7D1",
+  "#FFA07A",
+  "#98D8C8",
+  "#F7DC6F",
+  "#BB8FCE",
+  "#85C1E2",
+  "#F8B739",
+  "#52B788",
+  "#FF8FA3",
+  "#6C5CE7",
 ];
 
 const STATUS_FILTERS = [
@@ -67,13 +86,18 @@ export default function MapViewScreen({ navigation }: any) {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [activeOrders, setActiveOrders] = useState<OrderTracking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState<OrderTracking | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderTracking | null>(
+    null,
+  );
   const [showOrdersList, setShowOrdersList] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [previousOrdersCount, setPreviousOrdersCount] = useState(0);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const sound = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
@@ -85,9 +109,16 @@ export default function MapViewScreen({ navigation }: any) {
     if (Platform.OS !== "web") {
       Location.requestForegroundPermissionsAsync().then(({ status }) => {
         if (status === "granted") {
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then((loc) => {
-            setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-          }).catch(() => {});
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          })
+            .then((loc) => {
+              setUserLocation({
+                latitude: loc.coords.latitude,
+                longitude: loc.coords.longitude,
+              });
+            })
+            .catch(() => {});
         }
       });
     }
@@ -119,8 +150,10 @@ export default function MapViewScreen({ navigation }: any) {
     if (soundEnabled) {
       try {
         const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" },
-          { shouldPlay: true }
+          {
+            uri: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
+          },
+          { shouldPlay: true },
         );
         await newSound.playAsync();
         setTimeout(() => newSound.unloadAsync(), 2000);
@@ -138,54 +171,64 @@ export default function MapViewScreen({ navigation }: any) {
 
     Alert.alert(
       "🔔 Nuevo Pedido",
-      `${count} ${count === 1 ? 'nuevo pedido ha' : 'nuevos pedidos han'} llegado`,
+      `${count} ${count === 1 ? "nuevo pedido ha" : "nuevos pedidos han"} llegado`,
       [
         { text: "Ver", onPress: () => setShowOrdersList(true) },
         { text: "OK", style: "cancel" },
-      ]
+      ],
     );
   };
 
   const fetchData = async () => {
     try {
       const [businessesRes, ordersRes] = await Promise.all([
-        apiRequest<{ success: boolean; businesses: Business[] }>("/admin/businesses", "GET"),
+        apiRequest<{ success: boolean; businesses: Business[] }>(
+          "/admin/businesses",
+          "GET",
+        ),
         apiRequest<{ orders: any[] }>("/admin/dashboard/active-orders", "GET"),
       ]);
 
       setBusinesses(businessesRes.businesses);
-      
-      const ordersWithColors = ordersRes.orders.map((order: any, index: number) => ({
-        id: order.id,
-        shortId: generateShortId(order.id),
-        status: order.status,
-        color: ORDER_COLORS[index % ORDER_COLORS.length],
-        customer: {
-          id: order.customer?.id || "",
-          name: order.customer?.name || "Cliente",
-          latitude: order.deliveryAddress?.latitude || 0,
-          longitude: order.deliveryAddress?.longitude || 0,
-        },
-        business: {
-          id: order.business?.id || "",
-          name: order.business?.name || "Negocio",
-          latitude: order.business?.latitude || 0,
-          longitude: order.business?.longitude || 0,
-        },
-        driver: order.driver ? {
-          id: order.driver.id,
-          name: order.driver.name,
-          latitude: order.business?.latitude || 0,
-          longitude: order.business?.longitude || 0,
-        } : undefined,
-        total: order.total || 0,
-        createdAt: order.createdAt,
-        estimatedTime: calculateEstimatedTime(order.status),
-      }));
+
+      const ordersWithColors = ordersRes.orders.map(
+        (order: any, index: number) => ({
+          id: order.id,
+          shortId: generateShortId(order.id),
+          status: order.status,
+          color: ORDER_COLORS[index % ORDER_COLORS.length],
+          customer: {
+            id: order.customer?.id || "",
+            name: order.customer?.name || "Cliente",
+            latitude: order.deliveryAddress?.latitude || 0,
+            longitude: order.deliveryAddress?.longitude || 0,
+          },
+          business: {
+            id: order.business?.id || "",
+            name: order.business?.name || "Negocio",
+            latitude: order.business?.latitude || 0,
+            longitude: order.business?.longitude || 0,
+          },
+          driver: order.driver
+            ? {
+                id: order.driver.id,
+                name: order.driver.name,
+                latitude: order.business?.latitude || 0,
+                longitude: order.business?.longitude || 0,
+              }
+            : undefined,
+          total: order.total || 0,
+          createdAt: order.createdAt,
+          estimatedTime: calculateEstimatedTime(order.status),
+        }),
+      );
 
       setActiveOrders(ordersWithColors);
-      
-      if (previousOrdersCount > 0 && ordersWithColors.length > previousOrdersCount) {
+
+      if (
+        previousOrdersCount > 0 &&
+        ordersWithColors.length > previousOrdersCount
+      ) {
         const newOrdersCount = ordersWithColors.length - previousOrdersCount;
         handleNewOrderNotification(newOrdersCount);
       }
@@ -198,18 +241,26 @@ export default function MapViewScreen({ navigation }: any) {
   };
 
   const generateShortId = (id: string): string => {
-    const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = id
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return `#${hash.toString(36).toUpperCase().slice(0, 4)}`;
   };
 
   const calculateEstimatedTime = (status: string): number => {
     switch (status) {
-      case "pending": return 25;
-      case "confirmed": return 20;
-      case "preparing": return 15;
-      case "ready": return 10;
-      case "on_the_way": return 5;
-      default: return 0;
+      case "pending":
+        return 25;
+      case "confirmed":
+        return 20;
+      case "preparing":
+        return 15;
+      case "ready":
+        return 10;
+      case "on_the_way":
+        return 5;
+      default:
+        return 0;
     }
   };
 
@@ -240,14 +291,23 @@ export default function MapViewScreen({ navigation }: any) {
   const centerOnOrder = (order: OrderTracking) => {
     setSelectedOrder(order);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     const coordinates = [
-      { latitude: order.customer.latitude, longitude: order.customer.longitude },
-      { latitude: order.business.latitude, longitude: order.business.longitude },
+      {
+        latitude: order.customer.latitude,
+        longitude: order.customer.longitude,
+      },
+      {
+        latitude: order.business.latitude,
+        longitude: order.business.longitude,
+      },
     ];
-    
+
     if (order.driver) {
-      coordinates.push({ latitude: order.driver.latitude, longitude: order.driver.longitude });
+      coordinates.push({
+        latitude: order.driver.latitude,
+        longitude: order.driver.longitude,
+      });
     }
 
     mapRef.current?.fitToCoordinates(coordinates, {
@@ -256,23 +316,35 @@ export default function MapViewScreen({ navigation }: any) {
     });
   };
 
-  const renderOrderMarker = (order: OrderTracking, type: "customer" | "business" | "driver") => {
+  const renderOrderMarker = (
+    order: OrderTracking,
+    type: "customer" | "business" | "driver",
+  ) => {
     let coordinate, icon, label;
-    
+
     switch (type) {
       case "customer":
-        coordinate = { latitude: order.customer.latitude, longitude: order.customer.longitude };
+        coordinate = {
+          latitude: order.customer.latitude,
+          longitude: order.customer.longitude,
+        };
         icon = "user";
         label = order.customer.name;
         break;
       case "business":
-        coordinate = { latitude: order.business.latitude, longitude: order.business.longitude };
+        coordinate = {
+          latitude: order.business.latitude,
+          longitude: order.business.longitude,
+        };
         icon = "shopping-bag";
         label = order.business.name;
         break;
       case "driver":
         if (!order.driver) return null;
-        coordinate = { latitude: order.driver.latitude, longitude: order.driver.longitude };
+        coordinate = {
+          latitude: order.driver.latitude,
+          longitude: order.driver.longitude,
+        };
         icon = "truck";
         label = order.driver.name;
         break;
@@ -294,7 +366,11 @@ export default function MapViewScreen({ navigation }: any) {
             },
           ]}
         >
-          <Feather name={icon as any} size={type === "driver" ? 18 : 16} color="#fff" />
+          <Feather
+            name={icon as any}
+            size={type === "driver" ? 18 : 16}
+            color="#fff"
+          />
           <View style={[styles.markerBadge, { backgroundColor: order.color }]}>
             <Text style={styles.markerBadgeText}>{order.shortId}</Text>
           </View>
@@ -305,10 +381,16 @@ export default function MapViewScreen({ navigation }: any) {
 
   const renderOrderRoute = (order: OrderTracking) => {
     const coordinates = [];
-    
+
     coordinates.push(
-      { latitude: order.customer.latitude, longitude: order.customer.longitude },
-      { latitude: order.business.latitude, longitude: order.business.longitude }
+      {
+        latitude: order.customer.latitude,
+        longitude: order.customer.longitude,
+      },
+      {
+        latitude: order.business.latitude,
+        longitude: order.business.longitude,
+      },
     );
 
     if (order.driver && ["ready", "on_the_way"].includes(order.status)) {
@@ -316,8 +398,14 @@ export default function MapViewScreen({ navigation }: any) {
         <>
           <Polyline
             coordinates={[
-              { latitude: order.business.latitude, longitude: order.business.longitude },
-              { latitude: order.driver.latitude, longitude: order.driver.longitude },
+              {
+                latitude: order.business.latitude,
+                longitude: order.business.longitude,
+              },
+              {
+                latitude: order.driver.latitude,
+                longitude: order.driver.longitude,
+              },
             ]}
             strokeColor={order.color}
             strokeWidth={3}
@@ -325,8 +413,14 @@ export default function MapViewScreen({ navigation }: any) {
           />
           <Polyline
             coordinates={[
-              { latitude: order.driver.latitude, longitude: order.driver.longitude },
-              { latitude: order.customer.latitude, longitude: order.customer.longitude },
+              {
+                latitude: order.driver.latitude,
+                longitude: order.driver.longitude,
+              },
+              {
+                latitude: order.customer.latitude,
+                longitude: order.customer.longitude,
+              },
             ]}
             strokeColor={order.color}
             strokeWidth={4}
@@ -345,15 +439,20 @@ export default function MapViewScreen({ navigation }: any) {
     );
   };
 
-  const filteredOrders = statusFilter === "all" 
-    ? activeOrders 
-    : activeOrders.filter(order => order.status === statusFilter);
+  const filteredOrders =
+    statusFilter === "all"
+      ? activeOrders
+      : activeOrders.filter((order) => order.status === statusFilter);
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <View
+        style={[styles.loadingContainer, { backgroundColor: theme.background }]}
+      >
         <ActivityIndicator size="large" color={ComeYaColors.primary} />
-        <Text style={[styles.loadingText, { color: theme.text }]}>Cargando mapa en tiempo real...</Text>
+        <Text style={[styles.loadingText, { color: theme.text }]}>
+          Cargando mapa en tiempo real...
+        </Text>
       </View>
     );
   }
@@ -363,52 +462,90 @@ export default function MapViewScreen({ navigation }: any) {
     if (userLocation) {
       return { ...userLocation, latitudeDelta: 0.05, longitudeDelta: 0.05 };
     }
-    const firstValid = activeOrders.find(o => o.business.latitude !== 0 && o.business.longitude !== 0);
+    const firstValid = activeOrders.find(
+      (o) => o.business.latitude !== 0 && o.business.longitude !== 0,
+    );
     if (firstValid) {
-      return { latitude: firstValid.business.latitude, longitude: firstValid.business.longitude, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+      return {
+        latitude: firstValid.business.latitude,
+        longitude: firstValid.business.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
     }
-    return { latitude: 41.7636, longitude: -2.4677, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+    return {
+      latitude: 41.7636,
+      longitude: -2.4677,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
+    };
   })();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.card, borderBottomColor: theme.border },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Tracking en Tiempo Real</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            Tracking en Tiempo Real
+          </Text>
           <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
             {filteredOrders.length} de {activeOrders.length} pedidos
           </Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => {
               setSoundEnabled(!soundEnabled);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }} 
+            }}
             style={styles.headerButton}
           >
-            <Feather name={soundEnabled ? "volume-2" : "volume-x"} size={20} color={soundEnabled ? ComeYaColors.primary : theme.textSecondary} />
+            <Feather
+              name={soundEnabled ? "volume-2" : "volume-x"}
+              size={20}
+              color={soundEnabled ? ComeYaColors.primary : theme.textSecondary}
+            />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => {
               setNotificationsEnabled(!notificationsEnabled);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }} 
+            }}
             style={styles.headerButton}
           >
-            <Feather name={notificationsEnabled ? "bell" : "bell-off"} size={20} color={notificationsEnabled ? ComeYaColors.primary : theme.textSecondary} />
+            <Feather
+              name={notificationsEnabled ? "bell" : "bell-off"}
+              size={20}
+              color={
+                notificationsEnabled
+                  ? ComeYaColors.primary
+                  : theme.textSecondary
+              }
+            />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => {
               setShowOrdersList(!showOrdersList);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }} 
+            }}
             style={styles.headerButton}
           >
-            <Feather name={showOrdersList ? "eye-off" : "eye"} size={20} color={theme.text} />
+            <Feather
+              name={showOrdersList ? "eye-off" : "eye"}
+              size={20}
+              color={theme.text}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -421,7 +558,7 @@ export default function MapViewScreen({ navigation }: any) {
         showsMyLocationButton
       >
         {businesses
-          .filter(b => activeOrders.some(o => o.business.id === b.id))
+          .filter((b) => activeOrders.some((o) => o.business.id === b.id))
           .map((business) => (
             <Marker
               key={`business-${business.id}`}
@@ -429,9 +566,20 @@ export default function MapViewScreen({ navigation }: any) {
                 latitude: business.latitude,
                 longitude: business.longitude,
               }}
-              pinColor={business.isActive ? ComeYaColors.success : ComeYaColors.error}
+              pinColor={
+                business.isActive ? ComeYaColors.success : ComeYaColors.error
+              }
             >
-              <View style={[styles.businessMarker, { backgroundColor: business.isActive ? ComeYaColors.success : ComeYaColors.error }]}>
+              <View
+                style={[
+                  styles.businessMarker,
+                  {
+                    backgroundColor: business.isActive
+                      ? ComeYaColors.success
+                      : ComeYaColors.error,
+                  },
+                ]}
+              >
                 <Feather name="shopping-bag" size={16} color="#fff" />
               </View>
             </Marker>
@@ -450,21 +598,38 @@ export default function MapViewScreen({ navigation }: any) {
       {showOrdersList && (
         <View style={[styles.ordersPanel, { backgroundColor: theme.card }]}>
           <View style={styles.ordersPanelHeader}>
-            <Text style={[styles.ordersPanelTitle, { color: theme.text }]}>Pedidos Activos</Text>
-            <View style={[styles.liveIndicator, { backgroundColor: ComeYaColors.error }]}>
+            <Text style={[styles.ordersPanelTitle, { color: theme.text }]}>
+              Pedidos Activos
+            </Text>
+            <View
+              style={[
+                styles.liveIndicator,
+                { backgroundColor: ComeYaColors.error },
+              ]}
+            >
               <Text style={styles.liveText}>● LIVE</Text>
             </View>
           </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersContainer}>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filtersContainer}
+          >
             {STATUS_FILTERS.map((filter) => (
               <TouchableOpacity
                 key={filter.key}
                 style={[
                   styles.filterButton,
                   {
-                    backgroundColor: statusFilter === filter.key ? ComeYaColors.primary : theme.backgroundSecondary,
-                    borderColor: statusFilter === filter.key ? ComeYaColors.primary : theme.border,
+                    backgroundColor:
+                      statusFilter === filter.key
+                        ? ComeYaColors.primary
+                        : theme.backgroundSecondary,
+                    borderColor:
+                      statusFilter === filter.key
+                        ? ComeYaColors.primary
+                        : theme.border,
                   },
                 ]}
                 onPress={() => {
@@ -472,15 +637,17 @@ export default function MapViewScreen({ navigation }: any) {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
               >
-                <Feather 
-                  name={filter.icon as any} 
-                  size={14} 
-                  color={statusFilter === filter.key ? "#fff" : theme.text} 
+                <Feather
+                  name={filter.icon as any}
+                  size={14}
+                  color={statusFilter === filter.key ? "#fff" : theme.text}
                 />
                 <Text
                   style={[
                     styles.filterText,
-                    { color: statusFilter === filter.key ? "#fff" : theme.text },
+                    {
+                      color: statusFilter === filter.key ? "#fff" : theme.text,
+                    },
                   ]}
                 >
                   {filter.label}
@@ -488,29 +655,46 @@ export default function MapViewScreen({ navigation }: any) {
               </TouchableOpacity>
             ))}
           </ScrollView>
-          
+
           <ScrollView showsVerticalScrollIndicator={false}>
             {filteredOrders.map((order) => (
               <TouchableOpacity
                 key={order.id}
                 style={[
                   styles.orderItem,
-                  { 
-                    backgroundColor: selectedOrder?.id === order.id ? order.color + "20" : theme.backgroundSecondary,
+                  {
+                    backgroundColor:
+                      selectedOrder?.id === order.id
+                        ? order.color + "20"
+                        : theme.backgroundSecondary,
                     borderLeftColor: order.color,
-                  }
+                  },
                 ]}
                 onPress={() => centerOnOrder(order)}
               >
                 <View style={styles.orderItemHeader}>
-                  <View style={[styles.orderColorBadge, { backgroundColor: order.color }]}>
+                  <View
+                    style={[
+                      styles.orderColorBadge,
+                      { backgroundColor: order.color },
+                    ]}
+                  >
                     <Text style={styles.orderShortId}>{order.shortId}</Text>
                   </View>
                   <View style={styles.orderItemInfo}>
-                    <Text style={[styles.orderBusinessName, { color: theme.text }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.orderBusinessName, { color: theme.text }]}
+                      numberOfLines={1}
+                    >
                       {order.business.name}
                     </Text>
-                    <Text style={[styles.orderCustomerName, { color: theme.textSecondary }]} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.orderCustomerName,
+                        { color: theme.textSecondary },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {order.customer.name}
                     </Text>
                   </View>
@@ -520,16 +704,34 @@ export default function MapViewScreen({ navigation }: any) {
                 </View>
 
                 <View style={styles.orderItemStatus}>
-                  <View style={[styles.statusBadge, { backgroundColor: order.color + "30" }]}>
-                    <Feather name={getStatusIcon(order.status) as any} size={12} color={order.color} />
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: order.color + "30" },
+                    ]}
+                  >
+                    <Feather
+                      name={getStatusIcon(order.status) as any}
+                      size={12}
+                      color={order.color}
+                    />
                     <Text style={[styles.statusText, { color: order.color }]}>
                       {getStatusLabel(order.status)}
                     </Text>
                   </View>
                   {order.estimatedTime && order.estimatedTime > 0 && (
                     <View style={styles.timeEstimate}>
-                      <Feather name="clock" size={12} color={theme.textSecondary} />
-                      <Text style={[styles.timeText, { color: theme.textSecondary }]}>
+                      <Feather
+                        name="clock"
+                        size={12}
+                        color={theme.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.timeText,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
                         ~{order.estimatedTime} min
                       </Text>
                     </View>
@@ -537,11 +739,65 @@ export default function MapViewScreen({ navigation }: any) {
                 </View>
 
                 <View style={styles.flowIndicator}>
-                  <View style={[styles.flowDot, { backgroundColor: order.status === "pending" ? order.color : "#ccc" }]} />
-                  <View style={[styles.flowLine, { backgroundColor: ["confirmed", "preparing", "ready", "on_the_way"].includes(order.status) ? order.color : "#ccc" }]} />
-                  <View style={[styles.flowDot, { backgroundColor: ["preparing", "ready", "on_the_way"].includes(order.status) ? order.color : "#ccc" }]} />
-                  <View style={[styles.flowLine, { backgroundColor: ["ready", "on_the_way"].includes(order.status) ? order.color : "#ccc" }]} />
-                  <View style={[styles.flowDot, { backgroundColor: order.status === "on_the_way" ? order.color : "#ccc" }]} />
+                  <View
+                    style={[
+                      styles.flowDot,
+                      {
+                        backgroundColor:
+                          order.status === "pending" ? order.color : "#ccc",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.flowLine,
+                      {
+                        backgroundColor: [
+                          "confirmed",
+                          "preparing",
+                          "ready",
+                          "on_the_way",
+                        ].includes(order.status)
+                          ? order.color
+                          : "#ccc",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.flowDot,
+                      {
+                        backgroundColor: [
+                          "preparing",
+                          "ready",
+                          "on_the_way",
+                        ].includes(order.status)
+                          ? order.color
+                          : "#ccc",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.flowLine,
+                      {
+                        backgroundColor: ["ready", "on_the_way"].includes(
+                          order.status,
+                        )
+                          ? order.color
+                          : "#ccc",
+                      },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.flowDot,
+                      {
+                        backgroundColor:
+                          order.status === "on_the_way" ? order.color : "#ccc",
+                      },
+                    ]}
+                  />
                 </View>
               </TouchableOpacity>
             ))}
@@ -549,8 +805,12 @@ export default function MapViewScreen({ navigation }: any) {
             {filteredOrders.length === 0 && (
               <View style={styles.emptyOrders}>
                 <Feather name="inbox" size={48} color={theme.textSecondary} />
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  {statusFilter === "all" ? "No hay pedidos activos" : `No hay pedidos ${STATUS_FILTERS.find(f => f.key === statusFilter)?.label.toLowerCase()}`}
+                <Text
+                  style={[styles.emptyText, { color: theme.textSecondary }]}
+                >
+                  {statusFilter === "all"
+                    ? "No hay pedidos activos"
+                    : `No hay pedidos ${STATUS_FILTERS.find((f) => f.key === statusFilter)?.label.toLowerCase()}`}
                 </Text>
               </View>
             )}
@@ -562,15 +822,25 @@ export default function MapViewScreen({ navigation }: any) {
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
             <Feather name="user" size={14} color={theme.textSecondary} />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Cliente</Text>
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+              Cliente
+            </Text>
           </View>
           <View style={styles.legendItem}>
-            <Feather name="shopping-bag" size={14} color={theme.textSecondary} />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Negocio</Text>
+            <Feather
+              name="shopping-bag"
+              size={14}
+              color={theme.textSecondary}
+            />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+              Negocio
+            </Text>
           </View>
           <View style={styles.legendItem}>
             <Feather name="truck" size={14} color={theme.textSecondary} />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Repartidor</Text>
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>
+              Repartidor
+            </Text>
           </View>
         </View>
       </View>

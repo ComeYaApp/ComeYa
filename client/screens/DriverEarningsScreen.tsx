@@ -16,7 +16,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 
 interface EarningsData {
   stats: {
@@ -97,11 +102,12 @@ export default function DriverEarningsScreen() {
   const stats = {
     totalDeliveries: data?.stats?.totalDeliveries || 0,
     // rating viene como 0-50 (0.0-5.0 * 10), mostrar como X.X
-    averageRating: data?.stats?.rating && data.stats.rating > 0
-      ? (data.stats.rating / 10).toFixed(1)
-      : data?.stats?.totalRatings && data.stats.totalRatings > 0
-        ? (data.stats.rating! / 10).toFixed(1)
-        : "—",
+    averageRating:
+      data?.stats?.rating && data.stats.rating > 0
+        ? (data.stats.rating / 10).toFixed(1)
+        : data?.stats?.totalRatings && data.stats.totalRatings > 0
+          ? (data.stats.rating! / 10).toFixed(1)
+          : "—",
     completionRate: data?.stats?.completionRate || 100,
     avgDeliveryTime: data?.stats?.avgDeliveryTime || 0,
   };
@@ -182,7 +188,7 @@ export default function DriverEarningsScreen() {
           >
             €{getEarningsForPeriod().toFixed(2)}
           </ThemedText>
-          
+
           {getEarningsForPeriod() === 0 && earnings.total > 0 && (
             <View style={styles.emptyPeriodHint}>
               <Feather name="info" size={14} color="rgba(255,255,255,0.8)" />
@@ -246,13 +252,22 @@ export default function DriverEarningsScreen() {
               type="caption"
               style={{ color: theme.textSecondary, marginTop: 4 }}
             >
-              Cuando el cliente confirme la entrega, tus fondos se liberan automáticamente. Si tienes Stripe Connect configurado, el pago llega directo a tu cuenta bancaria. Si no, ComeYa te transfiere vía Bizum o IBAN desde Perfil → Cuentas de pago.
+              Cuando el cliente confirme la entrega, tus fondos se liberan
+              automáticamente. Si tienes Stripe Connect configurado, el pago
+              llega directo a tu cuenta bancaria. Si no, ComeYa te transfiere
+              vía Bizum o IBAN desde Perfil → Cuentas de pago.
             </ThemedText>
           </View>
         </View>
 
         {/* Total Earned Card */}
-        <View style={[styles.totalCard, { backgroundColor: theme.card }, Shadows.md]}>
+        <View
+          style={[
+            styles.totalCard,
+            { backgroundColor: theme.card },
+            Shadows.md,
+          ]}
+        >
           <View style={styles.totalRow}>
             <View>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -325,22 +340,49 @@ export default function DriverEarningsScreen() {
             <Animated.View
               key={delivery.id}
               entering={FadeInRight.delay(index * 50).springify()}
-              style={[styles.deliveryItem, { backgroundColor: theme.card }, Shadows.sm]}
+              style={[
+                styles.deliveryItem,
+                { backgroundColor: theme.card },
+                Shadows.sm,
+              ]}
             >
-              <View style={[styles.deliveryIcon, { backgroundColor: ComeYaColors.success + "20" }]}>
-                <Feather name="check-circle" size={20} color={ComeYaColors.success} />
+              <View
+                style={[
+                  styles.deliveryIcon,
+                  { backgroundColor: ComeYaColors.success + "20" },
+                ]}
+              >
+                <Feather
+                  name="check-circle"
+                  size={20}
+                  color={ComeYaColors.success}
+                />
               </View>
               <View style={styles.deliveryInfo}>
-                <ThemedText type="body" numberOfLines={1}>{delivery.businessName}</ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                <ThemedText type="body" numberOfLines={1}>
+                  {delivery.businessName}
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary }}
+                >
                   {formatDate(delivery.deliveredAt || delivery.createdAt)}
                 </ThemedText>
               </View>
               <View style={{ alignItems: "flex-end" }}>
-                <ThemedText type="body" style={{ color: ComeYaColors.success, fontWeight: "600" }}>
-                  +€{((delivery.deliveryEarnings || delivery.deliveryFee) / 100).toFixed(2)}
+                <ThemedText
+                  type="body"
+                  style={{ color: ComeYaColors.success, fontWeight: "600" }}
+                >
+                  +€
+                  {(
+                    (delivery.deliveryEarnings || delivery.deliveryFee) / 100
+                  ).toFixed(2)}
                 </ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary }}
+                >
                   {delivery.paymentMethod === "cash" ? "Efectivo" : "Digital"}
                 </ThemedText>
               </View>

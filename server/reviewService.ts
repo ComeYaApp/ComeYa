@@ -87,10 +87,7 @@ async function updateBusinessRating(businessId: string) {
       })
       .from(reviews)
       .where(
-        and(
-          eq(reviews.businessId, businessId),
-          eq(reviews.approved, true),
-        ),
+        and(eq(reviews.businessId, businessId), eq(reviews.approved, true)),
       );
 
     const avgRating = result.avgRating

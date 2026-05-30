@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Modal, TextInput, Image } from 'react-native';
-import { Colors } from '../constants/Colors';
-import { useAuth } from '../contexts/AuthContext';
-import { LinearGradient } from 'expo-linear-gradient';
-import QRCode from 'react-native-qrcode-svg';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  TextInput,
+  Image,
+} from "react-native";
+import { Colors } from "../constants/Colors";
+import { useAuth } from "../contexts/AuthContext";
+import { LinearGradient } from "expo-linear-gradient";
+import QRCode from "react-native-qrcode-svg";
 
 interface WalletData {
   balance: number;
@@ -20,11 +30,11 @@ interface WalletData {
   };
   transactions: Array<{
     id: string;
-    type: 'credit' | 'debit' | 'transfer' | 'cashback' | 'refund';
+    type: "credit" | "debit" | "transfer" | "cashback" | "refund";
     amount: number;
     description: string;
     date: string;
-    status: 'completed' | 'pending' | 'failed';
+    status: "completed" | "pending" | "failed";
     category: string;
     merchant?: string;
   }>;
@@ -40,12 +50,12 @@ interface WalletData {
 interface Investment {
   id: string;
   name: string;
-  type: 'savings' | 'investment';
+  type: "savings" | "investment";
   amount: number;
   interestRate: number;
   duration: string;
   returns: number;
-  status: 'active' | 'matured';
+  status: "active" | "matured";
 }
 
 export default function EnhancedWalletScreen() {
@@ -53,13 +63,15 @@ export default function EnhancedWalletScreen() {
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'p2p' | 'invest' | 'cards'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "transactions" | "p2p" | "invest" | "cards"
+  >("overview");
   const [showQRModal, setShowQRModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [showTopUpModal, setShowTopUpModal] = useState(false);
-  const [sendAmount, setSendAmount] = useState('');
-  const [sendRecipient, setSendRecipient] = useState('');
-  const [topUpAmount, setTopUpAmount] = useState('');
+  const [sendAmount, setSendAmount] = useState("");
+  const [sendRecipient, setSendRecipient] = useState("");
+  const [topUpAmount, setTopUpAmount] = useState("");
 
   useEffect(() => {
     loadWalletData();
@@ -78,88 +90,88 @@ export default function EnhancedWalletScreen() {
         loyaltyPoints: 2450,
         cashback: 8500,
         virtualCard: {
-          number: '**** **** **** 1234',
-          expiryDate: '12/26',
-          cvv: '***',
+          number: "**** **** **** 1234",
+          expiryDate: "12/26",
+          cvv: "***",
           isActive: true,
         },
         transactions: [
           {
-            id: '1',
-            type: 'debit',
+            id: "1",
+            type: "debit",
             amount: -15000,
-            description: 'Pedido - Tacos El Güero',
-            date: '2024-01-12T19:30:00Z',
-            status: 'completed',
-            category: 'Comida',
-            merchant: 'Tacos El Güero',
+            description: "Pedido - Tacos El Güero",
+            date: "2024-01-12T19:30:00Z",
+            status: "completed",
+            category: "Comida",
+            merchant: "Tacos El Güero",
           },
           {
-            id: '2',
-            type: 'cashback',
+            id: "2",
+            type: "cashback",
             amount: 750,
-            description: 'Cashback 5% - Pedido anterior',
-            date: '2024-01-12T19:35:00Z',
-            status: 'completed',
-            category: 'Cashback',
+            description: "Cashback 5% - Pedido anterior",
+            date: "2024-01-12T19:35:00Z",
+            status: "completed",
+            category: "Cashback",
           },
           {
-            id: '3',
-            type: 'credit',
+            id: "3",
+            type: "credit",
             amount: 50000,
-            description: 'Recarga desde tarjeta',
-            date: '2024-01-10T14:20:00Z',
-            status: 'completed',
-            category: 'Recarga',
+            description: "Recarga desde tarjeta",
+            date: "2024-01-10T14:20:00Z",
+            status: "completed",
+            category: "Recarga",
           },
           {
-            id: '4',
-            type: 'transfer',
+            id: "4",
+            type: "transfer",
             amount: -25000,
-            description: 'Transferencia a María González',
-            date: '2024-01-09T16:45:00Z',
-            status: 'completed',
-            category: 'Transferencia',
+            description: "Transferencia a María González",
+            date: "2024-01-09T16:45:00Z",
+            status: "completed",
+            category: "Transferencia",
           },
           {
-            id: '5',
-            type: 'refund',
+            id: "5",
+            type: "refund",
             amount: 12000,
-            description: 'Reembolso - Pedido cancelado',
-            date: '2024-01-08T11:15:00Z',
-            status: 'completed',
-            category: 'Reembolso',
+            description: "Reembolso - Pedido cancelado",
+            date: "2024-01-08T11:15:00Z",
+            status: "completed",
+            category: "Reembolso",
           },
         ],
         p2pContacts: [
           {
-            id: '1',
-            name: 'María González',
-            phone: '+58 33 1234 5678',
-            avatar: 'https://via.placeholder.com/50x50',
-            lastTransfer: '2024-01-09',
+            id: "1",
+            name: "María González",
+            phone: "+58 33 1234 5678",
+            avatar: "https://via.placeholder.com/50x50",
+            lastTransfer: "2024-01-09",
           },
           {
-            id: '2',
-            name: 'Carlos Ruiz',
-            phone: '+58 33 8765 4321',
-            avatar: 'https://via.placeholder.com/50x50',
-            lastTransfer: '2024-01-05',
+            id: "2",
+            name: "Carlos Ruiz",
+            phone: "+58 33 8765 4321",
+            avatar: "https://via.placeholder.com/50x50",
+            lastTransfer: "2024-01-05",
           },
           {
-            id: '3',
-            name: 'Ana López',
-            phone: '+58 33 5555 1234',
-            avatar: 'https://via.placeholder.com/50x50',
-            lastTransfer: '2024-01-03',
+            id: "3",
+            name: "Ana López",
+            phone: "+58 33 5555 1234",
+            avatar: "https://via.placeholder.com/50x50",
+            lastTransfer: "2024-01-03",
           },
         ],
       };
 
       setWalletData(mockData);
     } catch (error) {
-      console.error('Error loading wallet data:', error);
-      Alert.alert('Error', 'No se pudieron cargar los datos de la billetera');
+      console.error("Error loading wallet data:", error);
+      Alert.alert("Error", "No se pudieron cargar los datos de la billetera");
     } finally {
       setLoading(false);
     }
@@ -169,145 +181,157 @@ export default function EnhancedWalletScreen() {
     try {
       const mockInvestments: Investment[] = [
         {
-          id: '1',
-          name: 'Ahorro ComeYa',
-          type: 'savings',
+          id: "1",
+          name: "Ahorro ComeYa",
+          type: "savings",
           amount: 50000,
           interestRate: 8.5,
-          duration: '6 meses',
+          duration: "6 meses",
           returns: 2125,
-          status: 'active',
+          status: "active",
         },
         {
-          id: '2',
-          name: 'Inversión Crecimiento',
-          type: 'investment',
+          id: "2",
+          name: "Inversión Crecimiento",
+          type: "investment",
           amount: 100000,
           interestRate: 12.0,
-          duration: '1 año',
+          duration: "1 año",
           returns: 8500,
-          status: 'active',
+          status: "active",
         },
       ];
 
       setInvestments(mockInvestments);
     } catch (error) {
-      console.error('Error loading investments:', error);
+      console.error("Error loading investments:", error);
     }
   };
 
   const sendMoney = async () => {
     if (!sendAmount || !sendRecipient) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert("Error", "Por favor completa todos los campos");
       return;
     }
 
     const amount = parseFloat(sendAmount) * 100;
     if (amount > (walletData?.balance || 0)) {
-      Alert.alert('Error', 'Saldo insuficiente');
+      Alert.alert("Error", "Saldo insuficiente");
       return;
     }
 
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/wallet/transfer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`,
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/wallet/transfer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: JSON.stringify({
+            recipient: sendRecipient,
+            amount: amount,
+          }),
         },
-        body: JSON.stringify({
-          recipient: sendRecipient,
-          amount: amount,
-        }),
-      });
+      );
 
       if (response.ok) {
-        Alert.alert('¡Éxito!', 'Dinero enviado correctamente');
+        Alert.alert("¡Éxito!", "Dinero enviado correctamente");
         setShowSendModal(false);
-        setSendAmount('');
-        setSendRecipient('');
+        setSendAmount("");
+        setSendRecipient("");
         loadWalletData();
       } else {
-        throw new Error('Error sending money');
+        throw new Error("Error sending money");
       }
     } catch (error) {
-      console.error('Error sending money:', error);
-      Alert.alert('Error', 'No se pudo enviar el dinero');
+      console.error("Error sending money:", error);
+      Alert.alert("Error", "No se pudo enviar el dinero");
     }
   };
 
   const topUpWallet = async () => {
     if (!topUpAmount) {
-      Alert.alert('Error', 'Ingresa el monto a recargar');
+      Alert.alert("Error", "Ingresa el monto a recargar");
       return;
     }
 
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/wallet/topup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`,
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/wallet/topup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: JSON.stringify({
+            amount: parseFloat(topUpAmount) * 100,
+          }),
         },
-        body: JSON.stringify({
-          amount: parseFloat(topUpAmount) * 100,
-        }),
-      });
+      );
 
       if (response.ok) {
-        Alert.alert('¡Éxito!', 'Billetera recargada correctamente');
+        Alert.alert("¡Éxito!", "Billetera recargada correctamente");
         setShowTopUpModal(false);
-        setTopUpAmount('');
+        setTopUpAmount("");
         loadWalletData();
       } else {
-        throw new Error('Error topping up wallet');
+        throw new Error("Error topping up wallet");
       }
     } catch (error) {
-      console.error('Error topping up wallet:', error);
-      Alert.alert('Error', 'No se pudo recargar la billetera');
+      console.error("Error topping up wallet:", error);
+      Alert.alert("Error", "No se pudo recargar la billetera");
     }
   };
 
   const requestMoney = (contactId: string) => {
-    Alert.alert('Solicitar Dinero', 'Funcionalidad en desarrollo');
+    Alert.alert("Solicitar Dinero", "Funcionalidad en desarrollo");
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'MXN',
+    return new Intl.NumberFormat("es-VE", {
+      style: "currency",
+      currency: "MXN",
     }).format(amount / 100);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-VE', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleDateString("es-VE", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'credit': return '💰';
-      case 'debit': return '🛒';
-      case 'transfer': return '💸';
-      case 'cashback': return '🎁';
-      case 'refund': return '↩️';
-      default: return '💳';
+      case "credit":
+        return "💰";
+      case "debit":
+        return "🛒";
+      case "transfer":
+        return "💸";
+      case "cashback":
+        return "🎁";
+      case "refund":
+        return "↩️";
+      default:
+        return "💳";
     }
   };
 
   const getTransactionColor = (type: string) => {
     switch (type) {
-      case 'credit':
-      case 'cashback':
-      case 'refund':
-        return 'green';
-      case 'debit':
-      case 'transfer':
-        return 'red';
+      case "credit":
+      case "cashback":
+      case "refund":
+        return "green";
+      case "debit":
+      case "transfer":
+        return "red";
       default:
         return Colors.light.text;
     }
@@ -317,7 +341,7 @@ export default function EnhancedWalletScreen() {
     <ScrollView>
       {/* Balance Card */}
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={["#667eea", "#764ba2"]}
         style={styles.balanceCard}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -328,10 +352,12 @@ export default function EnhancedWalletScreen() {
             <Text style={styles.qrIcon}>📱</Text>
           </TouchableOpacity>
         </View>
-        
-        <Text style={styles.balanceAmount}>{formatCurrency(walletData?.balance || 0)}</Text>
+
+        <Text style={styles.balanceAmount}>
+          {formatCurrency(walletData?.balance || 0)}
+        </Text>
         <Text style={styles.balanceSubtitle}>Saldo disponible</Text>
-        
+
         {walletData?.pendingBalance && walletData.pendingBalance > 0 && (
           <Text style={styles.pendingBalance}>
             + {formatCurrency(walletData.pendingBalance)} pendiente
@@ -341,33 +367,33 @@ export default function EnhancedWalletScreen() {
 
       {/* Quick Actions */}
       <View style={styles.quickActions}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.quickAction}
           onPress={() => setShowTopUpModal(true)}
         >
           <Text style={styles.quickActionIcon}>💳</Text>
           <Text style={styles.quickActionText}>Recargar</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.quickAction}
           onPress={() => setShowSendModal(true)}
         >
           <Text style={styles.quickActionIcon}>💸</Text>
           <Text style={styles.quickActionText}>Enviar</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.quickAction}
           onPress={() => setShowQRModal(true)}
         >
           <Text style={styles.quickActionIcon}>📱</Text>
           <Text style={styles.quickActionText}>Recibir</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={styles.quickAction}
-          onPress={() => setActiveTab('invest')}
+          onPress={() => setActiveTab("invest")}
         >
           <Text style={styles.quickActionIcon}>📈</Text>
           <Text style={styles.quickActionText}>Invertir</Text>
@@ -377,15 +403,21 @@ export default function EnhancedWalletScreen() {
       {/* Stats */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{formatCurrency(walletData?.totalEarned || 0)}</Text>
+          <Text style={styles.statValue}>
+            {formatCurrency(walletData?.totalEarned || 0)}
+          </Text>
           <Text style={styles.statLabel}>Total Ganado</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{formatCurrency(walletData?.totalSpent || 0)}</Text>
+          <Text style={styles.statValue}>
+            {formatCurrency(walletData?.totalSpent || 0)}
+          </Text>
           <Text style={styles.statLabel}>Total Gastado</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{formatCurrency(walletData?.cashback || 0)}</Text>
+          <Text style={styles.statValue}>
+            {formatCurrency(walletData?.cashback || 0)}
+          </Text>
           <Text style={styles.statLabel}>Cashback</Text>
         </View>
         <View style={styles.statCard}>
@@ -398,23 +430,32 @@ export default function EnhancedWalletScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Transacciones Recientes</Text>
-          <TouchableOpacity onPress={() => setActiveTab('transactions')}>
+          <TouchableOpacity onPress={() => setActiveTab("transactions")}>
             <Text style={styles.seeAllText}>Ver todas</Text>
           </TouchableOpacity>
         </View>
-        
+
         {walletData?.transactions.slice(0, 3).map((transaction) => (
           <View key={transaction.id} style={styles.transactionItem}>
-            <Text style={styles.transactionIcon}>{getTransactionIcon(transaction.type)}</Text>
+            <Text style={styles.transactionIcon}>
+              {getTransactionIcon(transaction.type)}
+            </Text>
             <View style={styles.transactionInfo}>
-              <Text style={styles.transactionDescription}>{transaction.description}</Text>
-              <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
+              <Text style={styles.transactionDescription}>
+                {transaction.description}
+              </Text>
+              <Text style={styles.transactionDate}>
+                {formatDate(transaction.date)}
+              </Text>
             </View>
-            <Text style={[
-              styles.transactionAmount,
-              { color: getTransactionColor(transaction.type) }
-            ]}>
-              {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+            <Text
+              style={[
+                styles.transactionAmount,
+                { color: getTransactionColor(transaction.type) },
+              ]}
+            >
+              {transaction.amount > 0 ? "+" : ""}
+              {formatCurrency(transaction.amount)}
             </Text>
           </View>
         ))}
@@ -446,26 +487,47 @@ export default function EnhancedWalletScreen() {
   const renderTransactions = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Todas las Transacciones</Text>
-      
+
       {walletData?.transactions.map((transaction) => (
         <View key={transaction.id} style={styles.transactionCard}>
           <View style={styles.transactionHeader}>
-            <Text style={styles.transactionIcon}>{getTransactionIcon(transaction.type)}</Text>
+            <Text style={styles.transactionIcon}>
+              {getTransactionIcon(transaction.type)}
+            </Text>
             <View style={styles.transactionInfo}>
-              <Text style={styles.transactionDescription}>{transaction.description}</Text>
-              <Text style={styles.transactionCategory}>{transaction.category}</Text>
-              <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
+              <Text style={styles.transactionDescription}>
+                {transaction.description}
+              </Text>
+              <Text style={styles.transactionCategory}>
+                {transaction.category}
+              </Text>
+              <Text style={styles.transactionDate}>
+                {formatDate(transaction.date)}
+              </Text>
             </View>
             <View style={styles.transactionAmountContainer}>
-              <Text style={[
-                styles.transactionAmount,
-                { color: getTransactionColor(transaction.type) }
-              ]}>
-                {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
+              <Text
+                style={[
+                  styles.transactionAmount,
+                  { color: getTransactionColor(transaction.type) },
+                ]}
+              >
+                {transaction.amount > 0 ? "+" : ""}
+                {formatCurrency(transaction.amount)}
               </Text>
-              <View style={[styles.statusBadge, { backgroundColor: transaction.status === 'completed' ? 'green' : 'orange' }]}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor:
+                      transaction.status === "completed" ? "green" : "orange",
+                  },
+                ]}
+              >
                 <Text style={styles.statusText}>
-                  {transaction.status === 'completed' ? 'Completado' : 'Pendiente'}
+                  {transaction.status === "completed"
+                    ? "Completado"
+                    : "Pendiente"}
                 </Text>
               </View>
             </View>
@@ -478,17 +540,20 @@ export default function EnhancedWalletScreen() {
   const renderP2P = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Enviar y Recibir Dinero</Text>
-      
+
       {/* Quick Send */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Contactos Frecuentes</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {walletData?.p2pContacts.map((contact) => (
             <TouchableOpacity key={contact.id} style={styles.contactCard}>
-              <Image source={{ uri: contact.avatar }} style={styles.contactAvatar} />
+              <Image
+                source={{ uri: contact.avatar }}
+                style={styles.contactAvatar}
+              />
               <Text style={styles.contactName}>{contact.name}</Text>
               <View style={styles.contactActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.contactActionButton}
                   onPress={() => {
                     setSendRecipient(contact.phone);
@@ -497,7 +562,7 @@ export default function EnhancedWalletScreen() {
                 >
                   <Text style={styles.contactActionText}>Enviar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.contactActionButton, styles.requestButton]}
                   onPress={() => requestMoney(contact.id)}
                 >
@@ -512,7 +577,7 @@ export default function EnhancedWalletScreen() {
       {/* QR Code Section */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Código QR</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.qrSection}
           onPress={() => setShowQRModal(true)}
         >
@@ -529,7 +594,7 @@ export default function EnhancedWalletScreen() {
       {/* Send Money Form */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Enviar a Nuevo Contacto</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.sendMoneyButton}
           onPress={() => setShowSendModal(true)}
         >
@@ -542,22 +607,27 @@ export default function EnhancedWalletScreen() {
   const renderInvestments = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Inversiones y Ahorros</Text>
-      
+
       {/* Investment Summary */}
       <View style={styles.investmentSummary}>
         <Text style={styles.investmentSummaryTitle}>Total Invertido</Text>
         <Text style={styles.investmentSummaryAmount}>
-          {formatCurrency(investments.reduce((sum, inv) => sum + inv.amount, 0))}
+          {formatCurrency(
+            investments.reduce((sum, inv) => sum + inv.amount, 0),
+          )}
         </Text>
         <Text style={styles.investmentSummaryReturns}>
-          Ganancias: +{formatCurrency(investments.reduce((sum, inv) => sum + inv.returns, 0))}
+          Ganancias: +
+          {formatCurrency(
+            investments.reduce((sum, inv) => sum + inv.returns, 0),
+          )}
         </Text>
       </View>
 
       {/* Investment Options */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Opciones de Inversión</Text>
-        
+
         <TouchableOpacity style={styles.investmentOption}>
           <Text style={styles.investmentOptionIcon}>💰</Text>
           <View style={styles.investmentOptionInfo}>
@@ -572,7 +642,9 @@ export default function EnhancedWalletScreen() {
         <TouchableOpacity style={styles.investmentOption}>
           <Text style={styles.investmentOptionIcon}>📈</Text>
           <View style={styles.investmentOptionInfo}>
-            <Text style={styles.investmentOptionTitle}>Inversión Crecimiento</Text>
+            <Text style={styles.investmentOptionTitle}>
+              Inversión Crecimiento
+            </Text>
             <Text style={styles.investmentOptionDescription}>
               12% anual • Riesgo moderado • 1 año mínimo
             </Text>
@@ -595,23 +667,29 @@ export default function EnhancedWalletScreen() {
       {/* Current Investments */}
       <View style={styles.section}>
         <Text style={styles.subsectionTitle}>Mis Inversiones</Text>
-        
+
         {investments.map((investment) => (
           <View key={investment.id} style={styles.investmentCard}>
             <View style={styles.investmentHeader}>
               <Text style={styles.investmentName}>{investment.name}</Text>
               <Text style={styles.investmentStatus}>
-                {investment.status === 'active' ? '🟢 Activa' : '✅ Vencida'}
+                {investment.status === "active" ? "🟢 Activa" : "✅ Vencida"}
               </Text>
             </View>
-            
+
             <View style={styles.investmentDetails}>
-              <Text style={styles.investmentAmount}>{formatCurrency(investment.amount)}</Text>
-              <Text style={styles.investmentRate}>{investment.interestRate}% anual</Text>
+              <Text style={styles.investmentAmount}>
+                {formatCurrency(investment.amount)}
+              </Text>
+              <Text style={styles.investmentRate}>
+                {investment.interestRate}% anual
+              </Text>
             </View>
-            
+
             <View style={styles.investmentFooter}>
-              <Text style={styles.investmentDuration}>{investment.duration}</Text>
+              <Text style={styles.investmentDuration}>
+                {investment.duration}
+              </Text>
               <Text style={styles.investmentReturns}>
                 +{formatCurrency(investment.returns)}
               </Text>
@@ -625,10 +703,10 @@ export default function EnhancedWalletScreen() {
   const renderCards = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Tarjetas Virtuales</Text>
-      
+
       {/* Virtual Card */}
       <LinearGradient
-        colors={['#1e3c72', '#2a5298']}
+        colors={["#1e3c72", "#2a5298"]}
         style={styles.virtualCard}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -637,13 +715,15 @@ export default function EnhancedWalletScreen() {
           <Text style={styles.cardTitle}>ComeYa Card</Text>
           <Text style={styles.cardType}>Virtual</Text>
         </View>
-        
+
         <Text style={styles.cardNumber}>{walletData?.virtualCard.number}</Text>
-        
+
         <View style={styles.cardFooter}>
           <View>
             <Text style={styles.cardLabel}>Expira</Text>
-            <Text style={styles.cardValue}>{walletData?.virtualCard.expiryDate}</Text>
+            <Text style={styles.cardValue}>
+              {walletData?.virtualCard.expiryDate}
+            </Text>
           </View>
           <View>
             <Text style={styles.cardLabel}>CVV</Text>
@@ -658,12 +738,12 @@ export default function EnhancedWalletScreen() {
           <Text style={styles.cardActionIcon}>👁️</Text>
           <Text style={styles.cardActionText}>Ver Detalles</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.cardAction}>
           <Text style={styles.cardActionIcon}>🔒</Text>
           <Text style={styles.cardActionText}>Bloquear</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.cardAction}>
           <Text style={styles.cardActionIcon}>⚙️</Text>
           <Text style={styles.cardActionText}>Configurar</Text>
@@ -680,7 +760,9 @@ export default function EnhancedWalletScreen() {
           </View>
           <View style={styles.benefit}>
             <Text style={styles.benefitIcon}>🎁</Text>
-            <Text style={styles.benefitText}>Cashback en todas las compras</Text>
+            <Text style={styles.benefitText}>
+              Cashback en todas las compras
+            </Text>
           </View>
           <View style={styles.benefit}>
             <Text style={styles.benefitIcon}>🔒</Text>
@@ -706,22 +788,27 @@ export default function EnhancedWalletScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>ComeYa Wallet</Text>
-      
+
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
         {[
-          { key: 'overview', label: 'Inicio' },
-          { key: 'transactions', label: 'Historial' },
-          { key: 'p2p', label: 'Enviar' },
-          { key: 'invest', label: 'Invertir' },
-          { key: 'cards', label: 'Tarjetas' },
+          { key: "overview", label: "Inicio" },
+          { key: "transactions", label: "Historial" },
+          { key: "p2p", label: "Enviar" },
+          { key: "invest", label: "Invertir" },
+          { key: "cards", label: "Tarjetas" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key as any)}
           >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab.key && styles.activeTabText,
+              ]}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -730,11 +817,11 @@ export default function EnhancedWalletScreen() {
 
       {/* Tab Content */}
       <View style={styles.tabContent}>
-        {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'transactions' && renderTransactions()}
-        {activeTab === 'p2p' && renderP2P()}
-        {activeTab === 'invest' && renderInvestments()}
-        {activeTab === 'cards' && renderCards()}
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "transactions" && renderTransactions()}
+        {activeTab === "p2p" && renderP2P()}
+        {activeTab === "invest" && renderInvestments()}
+        {activeTab === "cards" && renderCards()}
       </View>
 
       {/* QR Modal */}
@@ -762,9 +849,7 @@ export default function EnhancedWalletScreen() {
             <Text style={styles.qrText}>
               Comparte este código para recibir dinero
             </Text>
-            <Text style={styles.qrSubtext}>
-              ID: {user?.id}
-            </Text>
+            <Text style={styles.qrSubtext}>ID: {user?.id}</Text>
           </View>
         </View>
       </Modal>
@@ -864,14 +949,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 20,
   },
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    backgroundColor: "white",
     marginHorizontal: 20,
     borderRadius: 12,
     padding: 4,
@@ -879,7 +964,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
   },
   activeTab: {
@@ -888,11 +973,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 11,
     color: Colors.light.tabIconDefault,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   activeTabText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   tabContent: {
     flex: 1,
@@ -902,56 +987,56 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   balanceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   balanceTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
   qrIcon: {
     fontSize: 24,
   },
   balanceAmount: {
     fontSize: 36,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     marginBottom: 4,
   },
   balanceSubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
   },
   pendingBalance: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
+    color: "rgba(255,255,255,0.9)",
     marginTop: 8,
   },
   quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   quickAction: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   quickActionIcon: {
     fontSize: 32,
@@ -960,22 +1045,22 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 12,
     color: Colors.light.text,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginBottom: 20,
   },
   statCard: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: 'white',
+    minWidth: "45%",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -983,7 +1068,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -992,59 +1077,59 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   subsectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 12,
   },
   seeAllText: {
     fontSize: 14,
     color: Colors.light.tint,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   transactionCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   transactionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   transactionIcon: {
     fontSize: 24,
@@ -1055,7 +1140,7 @@ const styles = StyleSheet.create({
   },
   transactionDescription: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 2,
   },
@@ -1069,11 +1154,11 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   transactionAmountContainer: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   transactionAmount: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   statusBadge: {
@@ -1083,15 +1168,15 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 10,
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   cashbackOffers: {
     gap: 12,
   },
   cashbackOffer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     backgroundColor: Colors.light.background,
     borderRadius: 8,
@@ -1105,23 +1190,23 @@ const styles = StyleSheet.create({
   },
   cashbackTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 2,
   },
   cashbackDescription: {
     fontSize: 12,
-    color: 'green',
-    fontWeight: '600',
+    color: "green",
+    fontWeight: "600",
   },
   contactCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginRight: 12,
-    alignItems: 'center',
+    alignItems: "center",
     width: 120,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1135,13 +1220,13 @@ const styles = StyleSheet.create({
   },
   contactName: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 8,
   },
   contactActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 4,
   },
   contactActionButton: {
@@ -1155,12 +1240,12 @@ const styles = StyleSheet.create({
   },
   contactActionText: {
     fontSize: 10,
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   qrSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     backgroundColor: Colors.light.background,
     borderRadius: 12,
@@ -1174,7 +1259,7 @@ const styles = StyleSheet.create({
   },
   qrSectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -1186,20 +1271,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tint,
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   sendMoneyButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   investmentSummary: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -1212,18 +1297,18 @@ const styles = StyleSheet.create({
   },
   investmentSummaryAmount: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
     marginBottom: 4,
   },
   investmentSummaryReturns: {
     fontSize: 14,
-    color: 'green',
-    fontWeight: '600',
+    color: "green",
+    fontWeight: "600",
   },
   investmentOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     backgroundColor: Colors.light.background,
     borderRadius: 12,
@@ -1238,7 +1323,7 @@ const styles = StyleSheet.create({
   },
   investmentOptionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -1248,8 +1333,8 @@ const styles = StyleSheet.create({
   },
   investmentOptionRate: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: 'green',
+    fontWeight: "bold",
+    color: "green",
   },
   investmentCard: {
     backgroundColor: Colors.light.background,
@@ -1258,14 +1343,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   investmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   investmentName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   investmentStatus: {
@@ -1273,25 +1358,25 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   investmentDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   investmentAmount: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
   },
   investmentRate: {
     fontSize: 14,
-    fontWeight: '600',
-    color: 'green',
+    fontWeight: "600",
+    color: "green",
   },
   investmentFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   investmentDuration: {
     fontSize: 12,
@@ -1299,70 +1384,70 @@ const styles = StyleSheet.create({
   },
   investmentReturns: {
     fontSize: 14,
-    fontWeight: '600',
-    color: 'green',
+    fontWeight: "600",
+    color: "green",
   },
   virtualCard: {
     borderRadius: 16,
     padding: 24,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 24,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
   cardType: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
   },
   cardNumber: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     letterSpacing: 2,
     marginBottom: 24,
   },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   cardLabel: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     marginBottom: 4,
   },
   cardValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
   cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   cardAction: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   cardActionIcon: {
     fontSize: 24,
@@ -1371,14 +1456,14 @@ const styles = StyleSheet.create({
   cardActionText: {
     fontSize: 12,
     color: Colors.light.text,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   benefits: {
     gap: 12,
   },
   benefit: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   benefitIcon: {
     fontSize: 20,
@@ -1390,19 +1475,19 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   modalCancel: {
@@ -1412,7 +1497,7 @@ const styles = StyleSheet.create({
   modalSave: {
     fontSize: 16,
     color: Colors.light.tint,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modalContent: {
     flex: 1,
@@ -1420,7 +1505,7 @@ const styles = StyleSheet.create({
   },
   modalSectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 8,
   },
@@ -1435,11 +1520,11 @@ const styles = StyleSheet.create({
   availableBalance: {
     fontSize: 14,
     color: Colors.light.tabIconDefault,
-    textAlign: 'center',
+    textAlign: "center",
   },
   quickAmounts: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginTop: 16,
   },
@@ -1452,30 +1537,30 @@ const styles = StyleSheet.create({
   quickAmountText: {
     fontSize: 14,
     color: Colors.light.text,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   qrContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 40,
   },
   qrText: {
     fontSize: 16,
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 20,
     marginBottom: 8,
   },
   qrSubtext: {
     fontSize: 12,
     color: Colors.light.tabIconDefault,
-    textAlign: 'center',
+    textAlign: "center",
   },
   loadingText: {
     fontSize: 18,
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 50,
   },
 });

@@ -9,10 +9,12 @@ export const autoFundReleaseCron = cron.schedule(
   async () => {
     try {
       logger.info("🔄 Starting auto fund release job...");
-      
+
       const result = await fundReleaseService.autoReleaseFunds();
-      
-      logger.info(`✅ Auto fund release completed: ${result.released} released, ${result.failed} failed`);
+
+      logger.info(
+        `✅ Auto fund release completed: ${result.released} released, ${result.failed} failed`,
+      );
     } catch (error) {
       logger.error("❌ Error in auto fund release cron:", error);
     }
@@ -20,7 +22,7 @@ export const autoFundReleaseCron = cron.schedule(
   {
     scheduled: false, // Don't start automatically
     timezone: "America/Caracas",
-  }
+  },
 );
 
 // Start the cron job

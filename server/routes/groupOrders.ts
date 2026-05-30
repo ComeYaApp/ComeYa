@@ -1,14 +1,14 @@
-import express from 'express';
-import { authenticateToken } from '../authMiddleware';
-import { GroupOrderService } from '../groupOrderService';
-import { db } from '../db';
-import { groupOrders } from '@shared/schema-mysql';
-import { eq } from 'drizzle-orm';
+import express from "express";
+import { authenticateToken } from "../authMiddleware";
+import { GroupOrderService } from "../groupOrderService";
+import { db } from "../db";
+import { groupOrders } from "@shared/schema-mysql";
+import { eq } from "drizzle-orm";
 
 const router = express.Router();
 
 // POST /api/group-orders - Crear pedido grupal
-router.post('/', authenticateToken, async (req, res) => {
+router.post("/", authenticateToken, async (req, res) => {
   try {
     const {
       businessId,
@@ -31,13 +31,13 @@ router.post('/', authenticateToken, async (req, res) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error('Create group order error:', error);
+    console.error("Create group order error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // POST /api/group-orders/join - Unirse a pedido grupal
-router.post('/join', authenticateToken, async (req, res) => {
+router.post("/join", authenticateToken, async (req, res) => {
   try {
     const { shareToken, items, subtotal } = req.body;
 
@@ -51,26 +51,26 @@ router.post('/join', authenticateToken, async (req, res) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error('Join group order error:', error);
+    console.error("Join group order error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // GET /api/group-orders/:groupOrderId - Obtener detalles del grupo
-router.get('/:groupOrderId', authenticateToken, async (req, res) => {
+router.get("/:groupOrderId", authenticateToken, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
 
     const result = await GroupOrderService.getGroupOrder(groupOrderId);
     res.json(result);
   } catch (error: any) {
-    console.error('Get group order error:', error);
+    console.error("Get group order error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // GET /api/group-orders/by-token/:shareToken - Obtener detalles del grupo por shareToken
-router.get('/by-token/:shareToken', authenticateToken, async (req, res) => {
+router.get("/by-token/:shareToken", authenticateToken, async (req, res) => {
   try {
     const { shareToken } = req.params;
 
@@ -81,51 +81,61 @@ router.get('/by-token/:shareToken', authenticateToken, async (req, res) => {
       .limit(1);
 
     if (!group) {
-      return res.json({ success: false, error: 'Grupo no encontrado' });
+      return res.json({ success: false, error: "Grupo no encontrado" });
     }
 
     const result = await GroupOrderService.getGroupOrder(group.id);
     res.json(result);
   } catch (error: any) {
-    console.error('Get group order by token error:', error);
+    console.error("Get group order by token error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // POST /api/group-orders/:groupOrderId/lock - Cerrar grupo y crear pedido
-router.post('/:groupOrderId/lock', authenticateToken, async (req, res) => {
+router.post("/:groupOrderId/lock", authenticateToken, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
 
-    const result = await GroupOrderService.lockAndOrder(groupOrderId, req.user!.id);
+    const result = await GroupOrderService.lockAndOrder(
+      groupOrderId,
+      req.user!.id,
+    );
     res.json(result);
   } catch (error: any) {
-    console.error('Lock group order error:', error);
+    console.error("Lock group order error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // POST /api/group-orders/participants/:participantId/pay - Marcar pago
-router.post('/participants/:participantId/pay', authenticateToken, async (req, res) => {
-  try {
-    const { participantId } = req.params;
-    const { paymentProofUrl } = req.body;
+router.post(
+  "/participants/:participantId/pay",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { participantId } = req.params;
+      const { paymentProofUrl } = req.body;
 
-    const result = await GroupOrderService.markParticipantPaid(participantId, paymentProofUrl);
-    res.json(result);
-  } catch (error: any) {
-    console.error('Mark participant paid error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+      const result = await GroupOrderService.markParticipantPaid(
+        participantId,
+        paymentProofUrl,
+      );
+      res.json(result);
+    } catch (error: any) {
+      console.error("Mark participant paid error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
 
 // GET /api/group-orders/user/my-groups - Obtener grupos del usuario
-router.get('/user/my-groups', authenticateToken, async (req, res) => {
+router.get("/user/my-groups", authenticateToken, async (req, res) => {
   try {
     const result = await GroupOrderService.getUserGroupOrders(req.user!.id);
     res.json(result);
   } catch (error: any) {
-    console.error('Get user group orders error:', error);
+    console.error("Get user group orders error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

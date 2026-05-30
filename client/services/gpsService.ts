@@ -1,10 +1,10 @@
-import { Alert, Platform } from 'react-native';
-import * as Location from 'expo-location';
-import { apiRequest } from '@/lib/query-client';
-import { offlineGPSService } from './offlineGPSService';
-import { deliveryProofService } from './deliveryProofService';
-import { proximityNotificationService } from './proximityNotificationService';
-import { geofencingService } from './geofencingService';
+import { Alert, Platform } from "react-native";
+import * as Location from "expo-location";
+import { apiRequest } from "@/lib/query-client";
+import { offlineGPSService } from "./offlineGPSService";
+import { deliveryProofService } from "./deliveryProofService";
+import { proximityNotificationService } from "./proximityNotificationService";
+import { geofencingService } from "./geofencingService";
 
 export interface GPSLocation {
   latitude: number;
@@ -25,35 +25,39 @@ class GPSService {
 
   async requestPermissions(): Promise<boolean> {
     try {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         return new Promise((resolve) => {
           if (!navigator.geolocation) {
-            console.log('Geolocation not supported');
+            console.log("Geolocation not supported");
             resolve(false);
             return;
           }
-          
-          navigator.permissions.query({ name: 'geolocation' }).then((result) => {
-            resolve(result.state === 'granted' || result.state === 'prompt');
-          }).catch(() => {
-            resolve(true);
-          });
+
+          navigator.permissions
+            .query({ name: "geolocation" })
+            .then((result) => {
+              resolve(result.state === "granted" || result.state === "prompt");
+            })
+            .catch(() => {
+              resolve(true);
+            });
         });
       }
 
-      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
-      const granted = status === 'granted';
+      const { status, canAskAgain } =
+        await Location.requestForegroundPermissionsAsync();
+      const granted = status === "granted";
 
       if (!granted) {
         const message = canAskAgain
-          ? 'Activa el GPS para continuar con las entregas.'
-          : 'Activa el GPS desde ajustes para continuar con las entregas.';
-        Alert.alert('GPS requerido', message);
+          ? "Activa el GPS para continuar con las entregas."
+          : "Activa el GPS desde ajustes para continuar con las entregas.";
+        Alert.alert("GPS requerido", message);
       }
 
       return granted;
     } catch (error) {
-      console.error('Error requesting GPS permissions:', error);
+      console.error("Error requesting GPS permissions:", error);
       return false;
     }
   }
@@ -65,7 +69,7 @@ class GPSService {
         return null;
       }
 
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         return new Promise((resolve) => {
           if (!navigator.geolocation) {
             resolve(null);
@@ -83,23 +87,23 @@ class GPSService {
               });
             },
             (error) => {
-              console.error('Web geolocation error:', error);
+              console.error("Web geolocation error:", error);
               resolve(null);
             },
             {
               enableHighAccuracy: true,
               timeout: 10000,
-              maximumAge: 60000
-            }
+              maximumAge: 60000,
+            },
           );
         });
       }
 
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
-        timeoutMs: 10000
+        timeoutMs: 10000,
       });
-      
+
       return {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -108,8 +112,8 @@ class GPSService {
         speed: location.coords.speed || undefined,
       };
     } catch (error) {
-      console.error('Error getting current location:', error);
-      
+      console.error("Error getting current location:", error);
+
       // Try offline fallback
       const cached = await offlineGPSService.getCurrentLocation();
       if (cached) {
@@ -119,7 +123,7 @@ class GPSService {
           timestamp: Date.now(),
         };
       }
-      
+
       return null;
     }
   }
@@ -129,13 +133,13 @@ class GPSService {
 
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
-      console.log('GPS permission denied');
+      console.log("GPS permission denied");
       this.isTracking = false;
       return false;
     }
 
     try {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         if (!navigator.geolocation) return false;
 
         this.webWatchId = navigator.geolocation.watchPosition(
@@ -153,14 +157,14 @@ class GPSService {
             }
           },
           (error) => {
-            console.error('Web GPS tracking error:', error);
+            console.error("Web GPS tracking error:", error);
             this.stopTracking();
           },
           {
             enableHighAccuracy: true,
             timeout: 15000,
-            maximumAge: 30000
-          }
+            maximumAge: 30000,
+          },
         );
       } else {
         this.locationSubscription = await Location.watchPositionAsync(
@@ -177,15 +181,15 @@ class GPSService {
               accuracy: location.coords.accuracy,
               speed: location.coords.speed || undefined,
             });
-          }
+          },
         );
       }
 
       this.isTracking = true;
-      console.log('✅ GPS tracking started');
+      console.log("✅ GPS tracking started");
       return true;
     } catch (error) {
-      console.error('Error starting GPS tracking:', error);
+      console.error("Error starting GPS tracking:", error);
       this.stopTracking();
       return false;
     }
@@ -195,7 +199,7 @@ class GPSService {
     if (!this.isTracking) return;
 
     try {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         if (this.webWatchId !== null) {
           navigator.geolocation.clearWatch(this.webWatchId);
           this.webWatchId = null;
@@ -208,9 +212,9 @@ class GPSService {
       }
 
       this.isTracking = false;
-      console.log('🛑 GPS tracking stopped');
+      console.log("🛑 GPS tracking stopped");
     } catch (error) {
-      console.error('Error stopping GPS tracking:', error);
+      console.error("Error stopping GPS tracking:", error);
     }
   }
 
@@ -239,7 +243,7 @@ class GPSService {
       timestamp: location.timestamp || Date.now(),
     });
 
-    console.log('📍 Location updated:', location.latitude, location.longitude);
+    console.log("📍 Location updated:", location.latitude, location.longitude);
   }
 
   isCurrentlyTracking(): boolean {
@@ -247,19 +251,23 @@ class GPSService {
   }
 
   async getLocationForDelivery(): Promise<GPSLocation | null> {
-    console.log('🎯 Getting location for delivery confirmation...');
+    console.log("🎯 Getting location for delivery confirmation...");
     const location = await this.getCurrentLocation();
-    
+
     // Validate accuracy
-    if (location && location.accuracy && location.accuracy > this.MIN_ACCURACY) {
+    if (
+      location &&
+      location.accuracy &&
+      location.accuracy > this.MIN_ACCURACY
+    ) {
       Alert.alert(
-        'GPS Impreciso',
+        "GPS Impreciso",
         `La precisión del GPS es de ${Math.round(location.accuracy)}m. Espera a tener mejor señal (menos de ${this.MIN_ACCURACY}m).`,
-        [{ text: 'OK' }]
+        [{ text: "OK" }],
       );
       return null;
     }
-    
+
     return location;
   }
 
@@ -267,13 +275,13 @@ class GPSService {
   async validateDeliveryLocation(
     currentLocation: GPSLocation,
     destinationLat: number,
-    destinationLng: number
+    destinationLng: number,
   ): Promise<{ valid: boolean; distance: number }> {
     const distance = this.calculateDistance(
       currentLocation.latitude,
       currentLocation.longitude,
       destinationLat,
-      destinationLng
+      destinationLng,
     );
 
     return {
@@ -287,7 +295,7 @@ class GPSService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;

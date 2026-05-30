@@ -3,7 +3,7 @@
  * Radio amplio (~15km desde el centro) para cubrir toda la ciudad y alrededores
  */
 export const SORIA_BOUNDS = {
-  minLat: 41.70,
+  minLat: 41.7,
   maxLat: 41.83,
   minLng: -2.55,
   maxLng: -2.38,
@@ -26,7 +26,10 @@ export const AUTLAN_CENTER = SORIA_CENTER;
 /**
  * Valida si unas coordenadas están dentro de la zona de cobertura de Soria
  */
-export const isInCoverageArea = (latitude: number, longitude: number): boolean => {
+export const isInCoverageArea = (
+  latitude: number,
+  longitude: number,
+): boolean => {
   return (
     latitude >= SORIA_BOUNDS.minLat &&
     latitude <= SORIA_BOUNDS.maxLat &&

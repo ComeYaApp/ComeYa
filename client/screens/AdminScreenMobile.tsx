@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -8,7 +15,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -83,7 +95,13 @@ export default function AdminScreenMobile() {
       >
         {stats ? (
           <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: theme.card }, Shadows.sm]}>
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.card },
+                Shadows.sm,
+              ]}
+            >
               <Feather name="users" size={24} color={ComeYaColors.primary} />
               <ThemedText type="h2" style={{ marginTop: Spacing.sm }}>
                 {stats.totalUsers}
@@ -93,8 +111,18 @@ export default function AdminScreenMobile() {
               </ThemedText>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: theme.card }, Shadows.sm]}>
-              <Feather name="shopping-bag" size={24} color={ComeYaColors.primary} />
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.card },
+                Shadows.sm,
+              ]}
+            >
+              <Feather
+                name="shopping-bag"
+                size={24}
+                color={ComeYaColors.primary}
+              />
               <ThemedText type="h2" style={{ marginTop: Spacing.sm }}>
                 {stats.totalOrders}
               </ThemedText>
@@ -103,8 +131,18 @@ export default function AdminScreenMobile() {
               </ThemedText>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: theme.card }, Shadows.sm]}>
-              <Feather name="dollar-sign" size={24} color={ComeYaColors.success} />
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.card },
+                Shadows.sm,
+              ]}
+            >
+              <Feather
+                name="dollar-sign"
+                size={24}
+                color={ComeYaColors.success}
+              />
               <ThemedText type="h2" style={{ marginTop: Spacing.sm }}>
                 €{stats.totalRevenue.toFixed(0)}
               </ThemedText>
@@ -113,7 +151,13 @@ export default function AdminScreenMobile() {
               </ThemedText>
             </View>
 
-            <View style={[styles.statCard, { backgroundColor: theme.card }, Shadows.sm]}>
+            <View
+              style={[
+                styles.statCard,
+                { backgroundColor: theme.card },
+                Shadows.sm,
+              ]}
+            >
               <Feather name="clock" size={24} color={ComeYaColors.warning} />
               <ThemedText type="h2" style={{ marginTop: Spacing.sm }}>
                 {stats.pendingOrders}
@@ -125,14 +169,22 @@ export default function AdminScreenMobile() {
           </View>
         ) : (
           <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
-            <Feather name="alert-circle" size={48} color={theme.textSecondary} />
-            <ThemedText style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
+            <Feather
+              name="alert-circle"
+              size={48}
+              color={theme.textSecondary}
+            />
+            <ThemedText
+              style={{ marginTop: Spacing.md, color: theme.textSecondary }}
+            >
               No se pudieron cargar las estadísticas
             </ThemedText>
           </View>
         )}
 
-        <View style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <Feather name="info" size={20} color={ComeYaColors.primary} />
           <ThemedText type="body" style={{ marginLeft: Spacing.sm, flex: 1 }}>
             Para acceder al panel completo, usa la versión web en tu computadora

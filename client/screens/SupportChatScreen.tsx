@@ -20,7 +20,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
 
 interface Message {
@@ -66,7 +71,7 @@ function MessageBubble({ message }: { message: Message }) {
               { backgroundColor: ComeYaColors.primary + "20" },
             ]}
           >
-<Image
+            <Image
               source={require("../../assets/images/comeya-logo-final.png")}
               style={{ width: 16, height: 16 }}
               resizeMode="contain"
@@ -112,7 +117,7 @@ function EmptyState() {
       >
         <Feather name="message-circle" size={48} color={ComeYaColors.primary} />
       </View>
-<Image
+      <Image
         source={require("../../assets/images/comeya-logo-final.png")}
         style={{ width: 80, height: 80, marginTop: Spacing.md }}
         resizeMode="contain"
@@ -222,7 +227,9 @@ export default function SupportChatScreen() {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(`Error ${response.status}: ${text || response.statusText}`);
+        throw new Error(
+          `Error ${response.status}: ${text || response.statusText}`,
+        );
       }
 
       const data = await response.json();

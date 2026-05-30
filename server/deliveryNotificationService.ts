@@ -42,14 +42,16 @@ export class DeliveryNotificationService {
         try {
           const twilio = require("twilio")(
             process.env.TWILIO_ACCOUNT_SID,
-            process.env.TWILIO_AUTH_TOKEN
+            process.env.TWILIO_AUTH_TOKEN,
           );
           await twilio.messages.create({
             body: `🎉 ¡ComeYa te espera! Tu cuenta de repartidor ha sido aprobada. Abre la app para empezar a trabajar.`,
             from: process.env.TWILIO_PHONE_NUMBER,
             to: user.phone,
           });
-        } catch { /*silencioso*/ }
+        } catch {
+          /*silencioso*/
+        }
       }
 
       return true;
@@ -62,7 +64,10 @@ export class DeliveryNotificationService {
   /**
    * Notificar al repartidor que ha sido rechazado
    */
-  static async notifyRejected(userId: string, reason: string): Promise<boolean> {
+  static async notifyRejected(
+    userId: string,
+    reason: string,
+  ): Promise<boolean> {
     try {
       const [user] = await db
         .select({ name: users.name, phone: users.phone })
@@ -99,7 +104,10 @@ export class DeliveryNotificationService {
   /**
    * Notificar al repartidor que hay documentos pendientes por actualizar
    */
-  static async notifyDocumentsNeeded(userId: string, missingDocs: string[]): Promise<boolean> {
+  static async notifyDocumentsNeeded(
+    userId: string,
+    missingDocs: string[],
+  ): Promise<boolean> {
     try {
       const docNames: Record<string, string> = {
         idDocumentUrl: "DNI (frente)",
@@ -112,9 +120,7 @@ export class DeliveryNotificationService {
         autonomoDocumentUrl: "Documento de autónomo",
       };
 
-      const missingNames = missingDocs
-        .map(d => docNames[d] || d)
-        .join(", ");
+      const missingNames = missingDocs.map((d) => docNames[d] || d).join(", ");
 
       await sendPushToUser(userId, {
         title: "📄 Documentos requeridos",
@@ -155,18 +161,15 @@ export class DeliveryNotificationService {
           phone: user.phone,
           message: `Nuevo repartidor pendiente: ${user.name} (${user.phone})`,
         });
-      } catch { /*silencioso*/ }
+      } catch {
+        /*silencioso*/
+      }
 
       // Enviar push a admins
       const admins = await db
         .select({ id: users.id })
         .from(users)
-        .where(
-          or(
-            eq(users.role, "admin"),
-            eq(users.role, "super_admin")
-          )
-        );
+        .where(or(eq(users.role, "admin"), eq(users.role, "super_admin")));
 
       for (const admin of admins) {
         await sendPushToUser(admin.id, {
@@ -189,7 +192,11 @@ export class DeliveryNotificationService {
   /**
    * Notificar al repartidor que hay un nuevo pedido asignado
    */
-  static async notifyNewOrder(driverId: string, orderId: string, businessName: string): Promise<boolean> {
+  static async notifyNewOrder(
+    driverId: string,
+    orderId: string,
+    businessName: string,
+  ): Promise<boolean> {
     try {
       await sendPushToUser(driverId, {
         title: "🛍️ Nuevo pedido asignado",
@@ -211,7 +218,11 @@ export class DeliveryNotificationService {
   /**
    * Notificar al repartidor que hay un pedido cerca
    */
-  static async notifyOrderNearby(driverId: string, orderId: string, distance: number): Promise<boolean> {
+  static async notifyOrderNearby(
+    driverId: string,
+    orderId: string,
+    distance: number,
+  ): Promise<boolean> {
     try {
       await sendPushToUser(driverId, {
         title: "📍 Pedido cerca",
@@ -254,15 +265,20 @@ export class DeliveryNotificationService {
   /**
    * Notificar al repartidor sobre strike
    */
-  static async notifyStrike(userId: string, strikeCount: number, reason: string): Promise<boolean> {
+  static async notifyStrike(
+    userId: string,
+    strikeCount: number,
+    reason: string,
+  ): Promise<boolean> {
     try {
       const remaining = 3 - strikeCount;
-      
+
       await sendPushToUser(userId, {
         title: `⚠️ Strike(${strikeCount}/3)`,
-        body: remaining > 0 
-          ? `Has recibido un strike: ${reason}. Te quedan ${remaining} antes de suspensión.`
-          : `Tu cuenta está en riesgo: ${reason}`,
+        body:
+          remaining > 0
+            ? `Has recibido un strike: ${reason}. Te quedan ${remaining} antes de suspensión.`
+            : `Tu cuenta está en riesgo: ${reason}`,
         data: {
           screen: "DriverDashboard",
           action: "strike_added",
@@ -279,10 +295,14 @@ export class DeliveryNotificationService {
   /**
    * Notificar al repartidor sobre Earnings
    */
-  static async notifyEarnings(driverId: string, amount: number, period: string): Promise<boolean> {
+  static async notifyEarnings(
+    driverId: string,
+    amount: number,
+    period: string,
+  ): Promise<boolean> {
     try {
       const amountStr = (amount / 100).toFixed(2);
-      
+
       await sendPushToUser(driverId, {
         title: "💰 Ganancias disponibles",
         body: `Tienes €${amountStr} ${period}. Solicita tu retiro.`,
@@ -306,7 +326,11 @@ export class DeliveryNotificationService {
   /**
    * Enviar notificación a todos los drivers activos
    */
-  static async broadcastToDrivers(title: string, body: string, data?: Record<string, any>): Promise<number> {
+  static async broadcastToDrivers(
+    title: string,
+    body: string,
+    data?: Record<string, any>,
+  ): Promise<number> {
     try {
       const allDrivers = await db
         .select({ id: deliveryDrivers.userId })
@@ -318,7 +342,9 @@ export class DeliveryNotificationService {
         try {
           await sendPushToUser(driver.userId, { title, body, data });
           sent++;
-        } catch { /*continuar*/ }
+        } catch {
+          /*continuar*/
+        }
       }
 
       return sent;

@@ -28,10 +28,14 @@ export async function calculateAndDistributeCommissions(
   }
 
   // Use unified financial service for consistent calculations
-  const commissions = await financialService.calculateCommissions(order.total, order.deliveryFee || 0);
+  const commissions = await financialService.calculateCommissions(
+    order.total,
+    order.deliveryFee || 0,
+  );
 
   // VALIDACIÓN: Verificar que la suma de comisiones = total del pedido
-  const totalCommissions = commissions.platform + commissions.business + commissions.driver;
+  const totalCommissions =
+    commissions.platform + commissions.business + commissions.driver;
   if (totalCommissions !== order.total) {
     logger.error("Commission distribution validation failed", {
       orderId,
@@ -39,7 +43,10 @@ export async function calculateAndDistributeCommissions(
       distributed: totalCommissions,
       breakdown: commissions,
     });
-    throw new AppError(500, `Commission sum mismatch: total ${order.total}, distributed ${totalCommissions}`);
+    throw new AppError(
+      500,
+      `Commission sum mismatch: total ${order.total}, distributed ${totalCommissions}`,
+    );
   }
 
   await db
@@ -76,7 +83,7 @@ async function distributeToWallets(
       businessEarnings,
       isCash ? "cash_income" : "income",
       order.id,
-      `Earnings from order #${order.id.slice(-6)}${isCash ? " (efectivo)" : ""}`
+      `Earnings from order #${order.id.slice(-6)}${isCash ? " (efectivo)" : ""}`,
     );
 
     // Update driver wallet if assigned
@@ -88,18 +95,18 @@ async function distributeToWallets(
           deliveryEarnings,
           "cash_income",
           order.id,
-          `Comisión de entrega - Pedido #${order.id.slice(-6)} (efectivo cobrado)`
+          `Comisión de entrega - Pedido #${order.id.slice(-6)} (efectivo cobrado)`,
         );
 
         // Registrar deuda: el repartidor debe depositar platform + business
         const platformFee = order.platformFee || Math.round(order.total * 0.15);
         const debtAmount = order.total - deliveryEarnings; // Total menos su comisión
-        
+
         await financialService.updateCashOwed(
           order.deliveryPersonId,
           debtAmount,
           order.id,
-          `Deuda por pedido #${order.id.slice(-6)} en efectivo`
+          `Deuda por pedido #${order.id.slice(-6)} en efectivo`,
         );
       } else {
         // TARJETA: Solo acreditar comisión
@@ -108,7 +115,7 @@ async function distributeToWallets(
           deliveryEarnings,
           "income",
           order.id,
-          `Comisión de entrega - Pedido #${order.id.slice(-6)}`
+          `Comisión de entrega - Pedido #${order.id.slice(-6)}`,
         );
       }
     }
@@ -124,7 +131,7 @@ export async function releasePendingFunds(orderId: string): Promise<void> {
     .from(orders)
     .where(eq(orders.id, orderId))
     .limit(1);
-  
+
   if (!order || !order.businessEarnings) return;
 
   // Funds are already released immediately in the new system

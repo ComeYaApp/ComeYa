@@ -1,7 +1,13 @@
-import { db } from './db';
-import { reviews, reviewTags, reviewResponses, businesses, deliveryDrivers } from '@shared/schema-mysql';
-import { eq, and, desc } from 'drizzle-orm';
-import { CloudinaryService } from './cloudinaryService';
+import { db } from "./db";
+import {
+  reviews,
+  reviewTags,
+  reviewResponses,
+  businesses,
+  deliveryDrivers,
+} from "@shared/schema-mysql";
+import { eq, and, desc } from "drizzle-orm";
+import { CloudinaryService } from "./cloudinaryService";
 
 export class EnhancedReviewService {
   // Crear review mejorada
@@ -37,17 +43,26 @@ export class EnhancedReviewService {
     if (photos && photos.length > 0) {
       photoUrls = await Promise.all(
         photos.map(async (photo, index) => {
-          if (photo.startsWith('data:image/')) {
-            return await CloudinaryService.uploadImage(photo, 'reviews', `review-${orderId}-${index}`);
+          if (photo.startsWith("data:image/")) {
+            return await CloudinaryService.uploadImage(
+              photo,
+              "reviews",
+              `review-${orderId}-${index}`,
+            );
           }
           return photo;
-        })
+        }),
       );
     }
 
     // Calcular rating general (promedio)
-    const ratings = [foodRating, deliveryRating, packagingRating].filter((r) => r && r > 0);
-    const averageRating = ratings.length > 0 ? Math.round(ratings.reduce((a, b) => a! + b!, 0)! / ratings.length) : 5;
+    const ratings = [foodRating, deliveryRating, packagingRating].filter(
+      (r) => r && r > 0,
+    );
+    const averageRating =
+      ratings.length > 0
+        ? Math.round(ratings.reduce((a, b) => a! + b!, 0)! / ratings.length)
+        : 5;
 
     const reviewId = crypto.randomUUID();
 
@@ -79,15 +94,17 @@ export class EnhancedReviewService {
 
     // Verificar achievements de resenas
     try {
-      const { GamificationService } = await import('./gamificationService');
-      const { count: countFn } = await import('drizzle-orm');
-      const { achievements: achTable } = await import('@shared/schema-mysql');
+      const { GamificationService } = await import("./gamificationService");
+      const { count: countFn } = await import("drizzle-orm");
+      const { achievements: achTable } = await import("@shared/schema-mysql");
       const [{ value: reviewCount }] = await db
         .select({ value: countFn() })
         .from(reviews)
         .where(eq(reviews.userId, userId));
-      const reviewAchievements = await db.select().from(achTable)
-        .where(eq(achTable.requirementType, 'review_count'));
+      const reviewAchievements = await db
+        .select()
+        .from(achTable)
+        .where(eq(achTable.requirementType, "review_count"));
       for (const ach of reviewAchievements) {
         if (Number(reviewCount) >= ach.requirementValue) {
           await (GamificationService as any).unlockAchievement(userId, ach.id);
@@ -103,7 +120,9 @@ export class EnhancedReviewService {
     const businessReviews = await db
       .select()
       .from(reviews)
-      .where(and(eq(reviews.businessId, businessId), eq(reviews.approved, true)));
+      .where(
+        and(eq(reviews.businessId, businessId), eq(reviews.approved, true)),
+      );
 
     if (businessReviews.length === 0) return;
 
@@ -125,18 +144,20 @@ export class EnhancedReviewService {
       .select()
       .from(reviews)
       .where(
-        and(
-          eq(reviews.deliveryPersonId, driverId),
-          eq(reviews.approved, true)
-        )
+        and(eq(reviews.deliveryPersonId, driverId), eq(reviews.approved, true)),
       );
 
     if (driverReviews.length === 0) return;
 
-    const ratingsWithDriver = driverReviews.filter((r) => r.deliveryPersonRating);
+    const ratingsWithDriver = driverReviews.filter(
+      (r) => r.deliveryPersonRating,
+    );
     if (ratingsWithDriver.length === 0) return;
 
-    const totalRating = ratingsWithDriver.reduce((sum, r) => sum + (r.deliveryPersonRating || 0), 0);
+    const totalRating = ratingsWithDriver.reduce(
+      (sum, r) => sum + (r.deliveryPersonRating || 0),
+      0,
+    );
     const avgRating = Math.round((totalRating / ratingsWithDriver.length) * 10); // 0-50 scale
 
     await db
@@ -164,7 +185,9 @@ export class EnhancedReviewService {
     const businessReviews = await db
       .select()
       .from(reviews)
-      .where(and(eq(reviews.businessId, businessId), eq(reviews.approved, true)))
+      .where(
+        and(eq(reviews.businessId, businessId), eq(reviews.approved, true)),
+      )
       .orderBy(desc(reviews.createdAt))
       .limit(limit);
 
@@ -183,14 +206,19 @@ export class EnhancedReviewService {
           tags: review.tags ? JSON.parse(review.tags) : [],
           response: response || null,
         };
-      })
+      }),
     );
 
     return { success: true, reviews: reviewsWithResponses };
   }
 
   // Responder a una review (solo dueño del negocio)
-  static async respondToReview(reviewId: string, businessId: string, respondedBy: string, responseText: string) {
+  static async respondToReview(
+    reviewId: string,
+    businessId: string,
+    respondedBy: string,
+    responseText: string,
+  ) {
     // Verificar que la review pertenece al negocio
     const [review] = await db
       .select()
@@ -199,7 +227,7 @@ export class EnhancedReviewService {
       .limit(1);
 
     if (!review) {
-      return { success: false, error: 'Review no encontrada' };
+      return { success: false, error: "Review no encontrada" };
     }
 
     // Verificar si ya existe una respuesta

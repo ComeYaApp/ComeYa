@@ -78,15 +78,17 @@ export type RootStackParamList = {
     businessName: string;
   };
   Cart: undefined;
-  Checkout: {
-    orderId?: string;
-    subtotalWithMarkup?: number;
-    calculatedDeliveryFee?: number;
-    addressRefreshToken?: number;
-    selectedAddressId?: string;
-    selectedPaymentMethod?: any;
-    orderType?: 'delivery' | 'pickup';
-  } | undefined;
+  Checkout:
+    | {
+        orderId?: string;
+        subtotalWithMarkup?: number;
+        calculatedDeliveryFee?: number;
+        addressRefreshToken?: number;
+        selectedAddressId?: string;
+        selectedPaymentMethod?: any;
+        orderType?: "delivery" | "pickup";
+      }
+    | undefined;
   OrderTracking: { orderId: string };
   Carnival: undefined;
   Markets: undefined;
@@ -120,20 +122,37 @@ export type RootStackParamList = {
   Gamification: undefined;
   Subscriptions: undefined;
   GiftCards: undefined;
-  GroupOrder: { businessId?: string; groupOrderId?: string; shareToken?: string } | undefined;
+  GroupOrder:
+    | { businessId?: string; groupOrderId?: string; shareToken?: string }
+    | undefined;
   ScheduledOrders: undefined;
   Addresses: undefined;
   SavedAddresses: undefined;
   AddAddress: { address?: any; fromCheckout?: boolean } | undefined;
   AddBankAccount: undefined;
-  LocationPicker: { onLocationSelected?: (coords: any, address: string) => void };
+  LocationPicker: {
+    onLocationSelected?: (coords: any, address: string) => void;
+  };
   SupportChat: undefined;
   Wallet: undefined;
   ReportIssue: { orderId: string; orderNumber?: string };
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
   DigitalPaymentMethod: { orderTotal: number };
-  PaymentProof: { orderId: string; amount: number; paymentMethod: string; subscriptionId?: string };
-  StripePayment: { orderId: string; amount: number; subtotal: number; deliveryFee: number; businessId: string; isSubscription?: boolean; subscriptionId?: string };
+  PaymentProof: {
+    orderId: string;
+    amount: number;
+    paymentMethod: string;
+    subscriptionId?: string;
+  };
+  StripePayment: {
+    orderId: string;
+    amount: number;
+    subtotal: number;
+    deliveryFee: number;
+    businessId: string;
+    isSubscription?: boolean;
+    subscriptionId?: string;
+  };
   AdminPaymentAccounts: undefined;
   PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };
@@ -142,7 +161,17 @@ export type RootStackParamList = {
   BecomeDriver: undefined;
   BusinessHours: undefined;
   BusinessCategories: undefined;
-  MyBusinesses: { openAddModal?: boolean; draft?: { name?: string; type?: string; address?: string; phone?: string } } | undefined;
+  MyBusinesses:
+    | {
+        openAddModal?: boolean;
+        draft?: {
+          name?: string;
+          type?: string;
+          address?: string;
+          phone?: string;
+        };
+      }
+    | undefined;
   Terms: undefined;
   Privacy: undefined;
   QRScanner: undefined;
@@ -152,29 +181,34 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootStackNavigator() {
   const screenOptions = useScreenOptions();
-  const { isAuthenticated, isLoading, pendingVerificationPhone, user } = useAuth();
+  const { isAuthenticated, isLoading, pendingVerificationPhone, user } =
+    useAuth();
   const navigationRef = useRef<any>(null);
 
   function getPathFromUrl(url: string): string {
-    if (typeof URL !== 'undefined') {
+    if (typeof URL !== "undefined") {
       try {
         const parsed = new URL(url);
-        return parsed.pathname.replace(/^\/+/, '');
+        return parsed.pathname.replace(/^\/+/, "");
       } catch {
         // fallback
       }
     }
     // Fallback: extract path after "://"
     const match = url.match(/:\/\/[^/]+(.+)/);
-    return match ? match[1].replace(/^\/+/, '') : '';
+    return match ? match[1].replace(/^\/+/, "") : "";
   }
 
-// Helper to safely get window.location.href (works on web and React Native)
+  // Helper to safely get window.location.href (works on web and React Native)
   const getWindowHref = (): string => {
-    if (typeof window !== 'undefined' && window.location && typeof window.location.href === 'string') {
+    if (
+      typeof window !== "undefined" &&
+      window.location &&
+      typeof window.location.href === "string"
+    ) {
       return window.location.href;
     }
-    return '';
+    return "";
   };
 
   useEffect(() => {
@@ -182,29 +216,29 @@ export default function RootStackNavigator() {
       // Support both Linking events and direct URL
       const incomingUrl = event?.url || getWindowHref();
       if (!incomingUrl) return;
-      
-      console.log('Deep link received:', incomingUrl);
-      
+
+      console.log("Deep link received:", incomingUrl);
+
       // Parse deep link manually for comeya://group-order/xxx or /group-order/xxx
       const path = getPathFromUrl(incomingUrl);
       const match = path.match(/group-order\/([^/?]+)/);
       if (match && match[1]) {
         const shareToken = match[1];
         if (navigationRef.current) {
-          navigationRef.current.navigate('GroupOrder', { shareToken });
+          navigationRef.current.navigate("GroupOrder", { shareToken });
         }
       }
     };
 
     // For web: check initial URL on load
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       handleURL();
     }
 
     // Listen for Linking events (for mobile deep links)
-    const subscription = Linking.addEventListener('url', handleURL);
-    
-    Linking.getInitialURL().then(initialUrl => {
+    const subscription = Linking.addEventListener("url", handleURL);
+
+    Linking.getInitialURL().then((initialUrl) => {
       if (initialUrl) {
         handleURL({ url: initialUrl });
       }
@@ -231,9 +265,7 @@ export default function RootStackNavigator() {
   };
 
   return (
-<Stack.Navigator 
-      screenOptions={screenOptions}
-    >
+    <Stack.Navigator screenOptions={screenOptions}>
       {isAuthenticated ? (
         <>
           <Stack.Screen
@@ -327,7 +359,7 @@ export default function RootStackNavigator() {
             component={OrderChatScreen}
             options={{ headerTitle: "Chat" }}
           />
-<Stack.Screen
+          <Stack.Screen
             name="AddBankAccount"
             component={PaymentWalletSetupScreen}
             options={{ headerTitle: "Métodos de pago" }}
@@ -362,17 +394,37 @@ export default function RootStackNavigator() {
             component={BusinessDashboardScreen}
             options={{ headerShown: false }}
           />
-          <Stack.Screen name="Gamification" component={GamificationScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Subscriptions" component={SubscriptionScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="GiftCards" component={GiftCardsScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="GroupOrder" component={GroupOrderScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="ScheduledOrders" component={ScheduledOrdersScreen} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="Gamification"
+            component={GamificationScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Subscriptions"
+            component={SubscriptionScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="GiftCards"
+            component={GiftCardsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="GroupOrder"
+            component={GroupOrderScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ScheduledOrders"
+            component={ScheduledOrdersScreen}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="EditProfile"
             component={EditProfileScreen}
             options={{ headerTitle: "Editar perfil" }}
           />
-<Stack.Screen
+          <Stack.Screen
             name="Profile"
             component={ProfileStackNavigator}
             options={{ headerTitle: "Mi perfil" }}
@@ -485,17 +537,17 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="DeliveryConfirmation"
             component={DeliveryConfirmationScreen}
-            options={{ 
+            options={{
               presentation: "modal",
-              headerShown: false 
+              headerShown: false,
             }}
           />
           <Stack.Screen
             name="QRScanner"
             component={QRScannerScreen}
-            options={{ 
+            options={{
               presentation: "modal",
-              headerShown: false 
+              headerShown: false,
             }}
           />
         </>

@@ -20,7 +20,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -133,7 +138,10 @@ export default function SupportScreen() {
               }}
               style={[
                 styles.chatPromoCard,
-                { backgroundColor: ComeYaColors.primary + "10", borderColor: ComeYaColors.primary }
+                {
+                  backgroundColor: ComeYaColors.primary + "10",
+                  borderColor: ComeYaColors.primary,
+                },
               ]}
             >
               <View style={styles.chatPromoIcon}>
@@ -150,7 +158,11 @@ export default function SupportScreen() {
                   Chatea con nuestro asistente IA para respuestas instantáneas
                 </ThemedText>
               </View>
-              <Feather name="chevron-right" size={20} color={ComeYaColors.primary} />
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={ComeYaColors.primary}
+              />
             </Pressable>
 
             <ThemedText type="body" style={styles.label}>
@@ -252,7 +264,12 @@ export default function SupportScreen() {
               </View>
             ) : tickets.length === 0 ? (
               <View style={styles.emptyState}>
-                <View style={[styles.emptyIconContainer, { backgroundColor: ComeYaColors.primary + "10" }]}>
+                <View
+                  style={[
+                    styles.emptyIconContainer,
+                    { backgroundColor: ComeYaColors.primary + "10" },
+                  ]}
+                >
                   <Image
                     source={require("../../assets/images/comeya-logo-final.png")}
                     contentFit="contain"
@@ -266,7 +283,11 @@ export default function SupportScreen() {
                 </ThemedText>
                 <ThemedText
                   type="body"
-                  style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.xs }}
+                  style={{
+                    color: theme.textSecondary,
+                    textAlign: "center",
+                    marginTop: Spacing.xs,
+                  }}
                 >
                   Crea un ticket si necesitas ayuda con tu pedido
                 </ThemedText>
@@ -277,7 +298,9 @@ export default function SupportScreen() {
                   key={ticket.id}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    navigation.navigate("TicketDetail", { ticketId: ticket.id });
+                    navigation.navigate("TicketDetail", {
+                      ticketId: ticket.id,
+                    });
                   }}
                 >
                   <Animated.View
@@ -288,54 +311,56 @@ export default function SupportScreen() {
                       Shadows.sm,
                     ]}
                   >
-                  <View style={styles.ticketHeader}>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        { backgroundColor: statusColors[ticket.status] + "20" },
-                      ]}
-                    >
+                    <View style={styles.ticketHeader}>
                       <View
                         style={[
-                          styles.statusDot,
-                          { backgroundColor: statusColors[ticket.status] },
+                          styles.statusBadge,
+                          {
+                            backgroundColor: statusColors[ticket.status] + "20",
+                          },
                         ]}
-                      />
+                      >
+                        <View
+                          style={[
+                            styles.statusDot,
+                            { backgroundColor: statusColors[ticket.status] },
+                          ]}
+                        />
+                        <ThemedText
+                          type="small"
+                          style={{
+                            color: statusColors[ticket.status],
+                            fontWeight: "600",
+                          }}
+                        >
+                          {statusLabels[ticket.status] || ticket.status}
+                        </ThemedText>
+                      </View>
                       <ThemedText
                         type="small"
-                        style={{
-                          color: statusColors[ticket.status],
-                          fontWeight: "600",
-                        }}
+                        style={{ color: theme.textSecondary }}
                       >
-                        {statusLabels[ticket.status] || ticket.status}
+                        {new Date(ticket.createdAt).toLocaleDateString("es-VE")}
                       </ThemedText>
                     </View>
                     <ThemedText
-                      type="small"
-                      style={{ color: theme.textSecondary }}
+                      type="body"
+                      style={{ fontWeight: "600", marginTop: Spacing.sm }}
                     >
-                      {new Date(ticket.createdAt).toLocaleDateString("es-VE")}
+                      {ticket.subject}
                     </ThemedText>
-                  </View>
-                  <ThemedText
-                    type="body"
-                    style={{ fontWeight: "600", marginTop: Spacing.sm }}
-                  >
-                    {ticket.subject}
-                  </ThemedText>
-                  <ThemedText
-                    type="small"
-                    style={{
-                      color: theme.textSecondary,
-                      marginTop: Spacing.xs,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {ticket.category || "General"}
-                  </ThemedText>
-                </Animated.View>
-              </Pressable>
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color: theme.textSecondary,
+                        marginTop: Spacing.xs,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {ticket.category || "General"}
+                    </ThemedText>
+                  </Animated.View>
+                </Pressable>
               ))
             )}
           </ScrollView>

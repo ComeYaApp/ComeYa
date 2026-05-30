@@ -1,7 +1,12 @@
-import cron from 'node-cron';
-import { db } from './db';
-import { orders, wallets, transactions, businesses } from '@shared/schema-mysql';
-import { eq, and, lt, isNull } from 'drizzle-orm';
+import cron from "node-cron";
+import { db } from "./db";
+import {
+  orders,
+  wallets,
+  transactions,
+  businesses,
+} from "@shared/schema-mysql";
+import { eq, and, lt, isNull } from "drizzle-orm";
 
 /**
  * Auto-confirm deliveries after 12 hours if customer hasn't confirmed
@@ -9,22 +14,22 @@ import { eq, and, lt, isNull } from 'drizzle-orm';
  */
 export function startAutoConfirmCron() {
   // Run every hour
-  cron.schedule('0 * * * *', async () => {
+  cron.schedule("0 * * * *", async () => {
     try {
-      console.log('🔄 Running auto-confirm delivery cron...');
-      
+      console.log("🔄 Running auto-confirm delivery cron...");
+
       // Find orders delivered more than 12 hours ago without customer confirmation
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
-      
+
       const ordersToConfirm = await db
         .select()
         .from(orders)
         .where(
           and(
-            eq(orders.status, 'delivered'),
+            eq(orders.status, "delivered"),
             isNull(orders.confirmedByCustomer),
-            lt(orders.deliveredAt, twelveHoursAgo)
-          )
+            lt(orders.deliveredAt, twelveHoursAgo),
+          ),
         );
 
       console.log(`📦 Found ${ordersToConfirm.length} orders to auto-confirm`);
@@ -32,12 +37,14 @@ export function startAutoConfirmCron() {
       for (const order of ordersToConfirm) {
         try {
           // Calculate commissions
-          const { financialService } = await import('./unifiedFinancialService');
+          const { financialService } = await import(
+            "./unifiedFinancialService"
+          );
           const commissions = await financialService.calculateCommissions(
             order.total,
             order.deliveryFee,
             order.productosBase || order.subtotal,
-            order.nemyCommission || undefined
+            order.nemyCommission || undefined,
           );
 
           // Update order with confirmation
@@ -60,8 +67,10 @@ export function startAutoConfirmCron() {
 
           const businessOwnerId = business?.ownerId || order.businessId;
 
-          if (order.paymentMethod === 'cash') {
-            const { cashSettlementService } = await import('./cashSettlementService');
+          if (order.paymentMethod === "cash") {
+            const { cashSettlementService } = await import(
+              "./cashSettlementService"
+            );
             await cashSettlementService.registerCashDebt(
               order.id,
               order.deliveryPersonId,
@@ -80,9 +89,10 @@ export function startAutoConfirmCron() {
             if (businessWallet) {
               await db
                 .update(wallets)
-                .set({ 
+                .set({
                   balance: businessWallet.balance + commissions.business,
-                  totalEarned: businessWallet.totalEarned + commissions.business,
+                  totalEarned:
+                    businessWallet.totalEarned + commissions.business,
                 })
                 .where(eq(wallets.userId, businessOwnerId));
             } else {
@@ -106,7 +116,7 @@ export function startAutoConfirmCron() {
               if (driverWallet) {
                 await db
                   .update(wallets)
-                  .set({ 
+                  .set({
                     balance: driverWallet.balance + commissions.driver,
                     totalEarned: driverWallet.totalEarned + commissions.driver,
                   })
@@ -126,17 +136,17 @@ export function startAutoConfirmCron() {
             await db.insert(transactions).values([
               {
                 userId: businessOwnerId,
-                type: 'order_payment',
+                type: "order_payment",
                 amount: commissions.business,
-                status: 'completed',
+                status: "completed",
                 description: `Pago automático por pedido #${order.id.slice(-8)}`,
                 orderId: order.id,
               },
               {
                 userId: order.deliveryPersonId,
-                type: 'delivery_payment',
+                type: "delivery_payment",
                 amount: commissions.driver,
-                status: 'completed',
+                status: "completed",
                 description: `Pago automático entrega #${order.id.slice(-8)}`,
                 orderId: order.id,
               },
@@ -149,11 +159,11 @@ export function startAutoConfirmCron() {
         }
       }
 
-      console.log('✅ Auto-confirm cron completed');
+      console.log("✅ Auto-confirm cron completed");
     } catch (error) {
-      console.error('❌ Auto-confirm cron error:', error);
+      console.error("❌ Auto-confirm cron error:", error);
     }
   });
 
-  console.log('⏰ Auto-confirm delivery cron started (runs every hour)');
+  console.log("⏰ Auto-confirm delivery cron started (runs every hour)");
 }

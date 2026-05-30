@@ -35,7 +35,17 @@ import type {
 } from "@/components/admin/types/admin.types";
 
 interface AdminSectionScreenProps {
-  section: "users" | "orders" | "businesses" | "drivers" | "coupons" | "support" | "zones" | "settings" | "finance" | "logs";
+  section:
+    | "users"
+    | "orders"
+    | "businesses"
+    | "drivers"
+    | "coupons"
+    | "support"
+    | "zones"
+    | "settings"
+    | "finance"
+    | "logs";
   title: string;
 }
 
@@ -52,7 +62,10 @@ const sectionConfig = {
   logs: { icon: "file-text", title: "Logs de Auditoría" },
 };
 
-export default function AdminSectionScreen({ section, title }: AdminSectionScreenProps) {
+export default function AdminSectionScreen({
+  section,
+  title,
+}: AdminSectionScreenProps) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { showToast } = useToast();
@@ -66,7 +79,11 @@ export default function AdminSectionScreen({ section, title }: AdminSectionScree
 
   const fetchData = async () => {
     try {
-      if (section === "users" || section === "orders" || section === "businesses") {
+      if (
+        section === "users" ||
+        section === "orders" ||
+        section === "businesses"
+      ) {
         const [usersRes, ordersRes, businessesRes] = await Promise.all([
           apiRequest("GET", "/api/admin/users"),
           apiRequest("GET", "/api/admin/orders"),
@@ -79,7 +96,11 @@ export default function AdminSectionScreen({ section, title }: AdminSectionScree
 
         setUsers(usersData.users || []);
         setOrders(ordersData.orders || []);
-        setBusinesses(Array.isArray(businessesData) ? businessesData : businessesData.businesses || []);
+        setBusinesses(
+          Array.isArray(businessesData)
+            ? businessesData
+            : businessesData.businesses || [],
+        );
       }
     } catch (error) {
       console.error(`Error fetching ${section} data:`, error);
@@ -129,8 +150,15 @@ export default function AdminSectionScreen({ section, title }: AdminSectionScree
       default:
         return (
           <View style={styles.emptyState}>
-            <Feather name={config.icon as any} size={48} color={theme.textSecondary} />
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+            <Feather
+              name={config.icon as any}
+              size={48}
+              color={theme.textSecondary}
+            />
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+            >
               Sección en desarrollo
             </ThemedText>
           </View>
@@ -154,8 +182,17 @@ export default function AdminSectionScreen({ section, title }: AdminSectionScree
             <Feather name="arrow-left" size={24} color={theme.text} />
           </Pressable>
           <View style={styles.titleContainer}>
-            <View style={[styles.titleIcon, { backgroundColor: ComeYaColors.primaryLight }]}>
-              <Feather name={config.icon as any} size={20} color={ComeYaColors.primary} />
+            <View
+              style={[
+                styles.titleIcon,
+                { backgroundColor: ComeYaColors.primaryLight },
+              ]}
+            >
+              <Feather
+                name={config.icon as any}
+                size={20}
+                color={ComeYaColors.primary}
+              />
             </View>
             <ThemedText type="h2">{title}</ThemedText>
           </View>

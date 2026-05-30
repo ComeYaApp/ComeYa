@@ -42,7 +42,12 @@ import { BusinessCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { Business } from "@/types";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -87,30 +92,34 @@ export default function HomeScreen() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-    // Mapa de iconos y colores - clave = primera categoria del negocio
-  const CATEGORY_STYLE: Record<string, { icon: string; color: string; label: string }> = {
-    pizza: { icon: 'circle', color: '#E91E63', label: 'Pizzas' },
-    burger: { icon: 'layers', color: '#F44336', label: 'Hamburguesas' },
-    burgers: { icon: 'layers', color: '#F44336', label: 'Hamburguesas' },
-    sushi: { icon: 'wind', color: '#00BCD4', label: 'Sushi' },
-    pollo: { icon: 'feather', color: '#FF9800', label: 'Pollo' },
-    mariscos: { icon: 'anchor', color: '#2196F3', label: 'Mariscos' },
-    tacos: { icon: 'sun', color: '#FF5722', label: 'Mexicana' },
-    mexicana: { icon: 'sun', color: '#FF5722', label: 'Mexicana' },
-    mercado: { icon: 'shopping-bag', color: '#4CAF50', label: 'Mercado' },
-    carniceria: { icon: 'shopping-bag', color: '#795548', label: 'Carniceria' },
+  // Mapa de iconos y colores - clave = primera categoria del negocio
+  const CATEGORY_STYLE: Record<
+    string,
+    { icon: string; color: string; label: string }
+  > = {
+    pizza: { icon: "circle", color: "#E91E63", label: "Pizzas" },
+    burger: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
+    burgers: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
+    sushi: { icon: "wind", color: "#00BCD4", label: "Sushi" },
+    pollo: { icon: "feather", color: "#FF9800", label: "Pollo" },
+    mariscos: { icon: "anchor", color: "#2196F3", label: "Mariscos" },
+    tacos: { icon: "sun", color: "#FF5722", label: "Mexicana" },
+    mexicana: { icon: "sun", color: "#FF5722", label: "Mexicana" },
+    mercado: { icon: "shopping-bag", color: "#4CAF50", label: "Mercado" },
+    carniceria: { icon: "shopping-bag", color: "#795548", label: "Carniceria" },
   };
 
   // Genera categorias unicas usando SOLO la primera categoria de cada negocio
   const dynamicCategories = React.useMemo(() => {
     const seen = new Set<string>();
-    const cats: { id: string; icon: string; color: string; label: string }[] = [];
+    const cats: { id: string; icon: string; color: string; label: string }[] =
+      [];
     businesses.forEach((b) => {
       const firstCat = b.categories[0]?.toLowerCase().trim();
       if (!firstCat || seen.has(firstCat)) return;
       seen.add(firstCat);
       const style = CATEGORY_STYLE[firstCat] || {
-        icon: 'tag',
+        icon: "tag",
         color: ComeYaColors.primary,
         label: firstCat.charAt(0).toUpperCase() + firstCat.slice(1),
       };
@@ -121,40 +130,52 @@ export default function HomeScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const response = await apiRequest('GET', '/api/businesses');
+      const response = await apiRequest("GET", "/api/businesses");
       const data = await response.json();
       const rawBusinesses = data.businesses || [];
-      
-      console.log('🔍 Raw businesses from API:', rawBusinesses);
-      
+
+      console.log("🔍 Raw businesses from API:", rawBusinesses);
+
       // Adaptar datos del backend al formato del frontend
       const businessList: Business[] = rawBusinesses.map((b) => ({
         id: b.id,
         name: b.name,
-        description: b.description || '',
-        type: b.type || 'restaurant',
-        profileImage: b.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
-        bannerImage: b.cover_image || b.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
+        description: b.description || "",
+        type: b.type || "restaurant",
+        profileImage:
+          b.image ||
+          "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
+        bannerImage:
+          b.cover_image ||
+          b.image ||
+          "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
         rating: (b.rating || 0) / 100, // Convertir de centavos a decimal
         reviewCount: b.total_ratings || 0,
-        deliveryTime: b.delivery_time || '30-45 min',
+        deliveryTime: b.delivery_time || "30-45 min",
         deliveryFee: (b.delivery_fee || 300) / 100,
         minimumOrder: (b.min_order || 1000) / 100,
-        isOpen: b.isOpen === true || b.isOpen === 1 || b.is_open === true || b.is_open === 1,
+        isOpen:
+          b.isOpen === true ||
+          b.isOpen === 1 ||
+          b.is_open === true ||
+          b.is_open === 1,
         openingHours: [],
-        address: b.address || 'Soria, España',
-        phone: b.phone || '',
-        categories: b.categories ? b.categories.split(',') : [],
+        address: b.address || "Soria, España",
+        phone: b.phone || "",
+        categories: b.categories ? b.categories.split(",") : [],
         featured: b.is_featured || false,
       }));
-      
-      console.log('✅ Processed businesses:', businessList);
-      console.log('📊 Categories found:', businessList.map(b => ({ name: b.name, categories: b.categories })));
-      
+
+      console.log("✅ Processed businesses:", businessList);
+      console.log(
+        "📊 Categories found:",
+        businessList.map((b) => ({ name: b.name, categories: b.categories })),
+      );
+
       setBusinesses(businessList);
       setFeaturedBusinesses(businessList.filter((b) => b.featured));
     } catch (error) {
-      console.error('Error loading businesses:', error);
+      console.error("Error loading businesses:", error);
     } finally {
       setIsLoading(false);
     }
@@ -169,13 +190,16 @@ export default function HomeScreen() {
       }
       setSearchLoading(true);
       try {
-        const response = await apiRequest('GET', `/api/search/products?q=${encodeURIComponent(searchQuery)}`);
+        const response = await apiRequest(
+          "GET",
+          `/api/search/products?q=${encodeURIComponent(searchQuery)}`,
+        );
         const data = await response.json();
         if (data.success) {
           setSearchResults(data.results || []);
         }
       } catch (error) {
-        console.error('Search error:', error);
+        console.error("Search error:", error);
       } finally {
         setSearchLoading(false);
       }
@@ -212,7 +236,9 @@ export default function HomeScreen() {
       if (activeCategory) {
         // Buscar en todas las categorias del negocio, no solo la primera
         filtered = filtered.filter((b) =>
-          b.categories.some((cat) => cat.toLowerCase().trim() === activeCategory)
+          b.categories.some(
+            (cat) => cat.toLowerCase().trim() === activeCategory,
+          ),
         );
       }
 
@@ -240,7 +266,7 @@ export default function HomeScreen() {
   );
 
   const filteredBusinesses = filterBusinesses(businesses);
-  
+
   // Ordenar por rating (destacados primero, luego por rating)
   const sortedBusinesses = [...filteredBusinesses].sort((a, b) => {
     // Destacados primero
@@ -249,19 +275,22 @@ export default function HomeScreen() {
     // Luego por rating
     return b.rating - a.rating;
   });
-  
+
   const restaurants = sortedBusinesses.filter((b) => b.type === "restaurant");
   const markets = sortedBusinesses.filter((b) => b.type === "market");
   const firstName = user?.name.split(" ")[0] || "Usuario";
 
   const hasActiveFilters = searchQuery.trim() || activeCategory || activeFilter;
-  
+
   // Cuando hay filtros activos, mostrar todos los negocios (restaurantes + mercados)
   const displayBusinesses = hasActiveFilters ? sortedBusinesses : restaurants;
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -325,9 +354,7 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.quickAccessScroll}
           >
-            {[
-            ...dynamicCategories
-            ].map((item) => {
+            {[...dynamicCategories].map((item) => {
               const isActive = activeCategory === item.id;
               return (
                 <Pressable
@@ -392,7 +419,9 @@ export default function HomeScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {searchLoading && <ActivityIndicator size="small" color={ComeYaColors.primary} />}
+          {searchLoading && (
+            <ActivityIndicator size="small" color={ComeYaColors.primary} />
+          )}
         </View>
 
         {/* Resultados de búsqueda de productos */}
@@ -401,23 +430,50 @@ export default function HomeScreen() {
             <ThemedText type="h3" style={styles.sectionTitle}>
               Productos ({searchResults.length})
             </ThemedText>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.sm }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: Spacing.sm }}
+            >
               {searchResults.map((product: any, idx: number) => (
                 <Pressable
                   key={`${product.id}-${idx}`}
-                  onPress={() => navigation.navigate("BusinessDetail", { businessId: product.business.id })}
-                  style={[styles.productCard, { backgroundColor: theme.card }, Shadows.sm]}
+                  onPress={() =>
+                    navigation.navigate("BusinessDetail", {
+                      businessId: product.business.id,
+                    })
+                  }
+                  style={[
+                    styles.productCard,
+                    { backgroundColor: theme.card },
+                    Shadows.sm,
+                  ]}
                 >
-                  <Image source={{ uri: product.image }} style={styles.productImage} contentFit="cover" />
+                  <Image
+                    source={{ uri: product.image }}
+                    style={styles.productImage}
+                    contentFit="cover"
+                  />
                   <View style={{ padding: Spacing.sm }}>
-                    <ThemedText type="small" style={{ fontWeight: "600" }} numberOfLines={1}>
+                    <ThemedText
+                      type="small"
+                      style={{ fontWeight: "600" }}
+                      numberOfLines={1}
+                    >
                       {product.name}
                     </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary }}
+                      numberOfLines={1}
+                    >
                       {product.business.name}
                     </ThemedText>
-                    <ThemedText type="small" style={{ color: ComeYaColors.primary, marginTop: 2 }}>
-            €{(product.price / 100).toFixed(2)}
+                    <ThemedText
+                      type="small"
+                      style={{ color: ComeYaColors.primary, marginTop: 2 }}
+                    >
+                      €{(product.price / 100).toFixed(2)}
                     </ThemedText>
                   </View>
                 </Pressable>
@@ -625,7 +681,9 @@ export default function HomeScreen() {
             {displayBusinesses.length > 0 ? (
               <View style={styles.section}>
                 <ThemedText type="h3" style={styles.sectionTitle}>
-                  {hasActiveFilters ? `Resultados (${displayBusinesses.length})` : "Todos los restaurantes"}
+                  {hasActiveFilters
+                    ? `Resultados (${displayBusinesses.length})`
+                    : "Todos los restaurantes"}
                 </ThemedText>
                 <View style={styles.gridContainer}>
                   {displayBusinesses.map((business, index) => (
@@ -666,11 +724,19 @@ export default function HomeScreen() {
                         <View style={styles.gridMeta}>
                           <View style={styles.ratingSmall}>
                             <Feather name="star" size={10} color="#FFB800" />
-                            <ThemedText type="caption" style={{ marginLeft: 2 }}>
-                              {business.rating > 0 ? business.rating.toFixed(1) : "Nuevo"}
+                            <ThemedText
+                              type="caption"
+                              style={{ marginLeft: 2 }}
+                            >
+                              {business.rating > 0
+                                ? business.rating.toFixed(1)
+                                : "Nuevo"}
                             </ThemedText>
                           </View>
-                          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                          <ThemedText
+                            type="caption"
+                            style={{ color: theme.textSecondary }}
+                          >
                             {business.deliveryTime}
                           </ThemedText>
                         </View>
@@ -687,68 +753,90 @@ export default function HomeScreen() {
                 entering={FadeInDown.delay(300).springify()}
                 style={styles.section}
               >
-              <View style={styles.bannerRow}>
-                <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    navigation.navigate("BusinessList");
-                  }}
-                  style={({ pressed }) => [
-                    styles.marketsBanner,
-                    styles.bannerHalf,
-                    {
-                      backgroundColor: ComeYaColors.primary,
-                      transform: [{ scale: pressed ? 0.97 : 1 }],
-                    },
-                    Shadows.md,
-                  ]}
-                >
-                  <LinearGradient
-                    colors={[ComeYaColors.primary, "#E65100", "#D84315"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.marketsGradient}
+                <View style={styles.bannerRow}>
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      navigation.navigate("BusinessList");
+                    }}
+                    style={({ pressed }) => [
+                      styles.marketsBanner,
+                      styles.bannerHalf,
+                      {
+                        backgroundColor: ComeYaColors.primary,
+                        transform: [{ scale: pressed ? 0.97 : 1 }],
+                      },
+                      Shadows.md,
+                    ]}
                   >
-                    <View style={[styles.marketsContent, { flexDirection: "column", alignItems: "center" }]}>
-                      <Feather name="compass" size={28} color="#FFFFFF" />
-                      <ThemedText type="small" style={[styles.marketsTitle, { marginTop: Spacing.sm, textAlign: "center" }]}>
-                        Explorar
-                      </ThemedText>
-                    </View>
-                  </LinearGradient>
-                </Pressable>
+                    <LinearGradient
+                      colors={[ComeYaColors.primary, "#E65100", "#D84315"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.marketsGradient}
+                    >
+                      <View
+                        style={[
+                          styles.marketsContent,
+                          { flexDirection: "column", alignItems: "center" },
+                        ]}
+                      >
+                        <Feather name="compass" size={28} color="#FFFFFF" />
+                        <ThemedText
+                          type="small"
+                          style={[
+                            styles.marketsTitle,
+                            { marginTop: Spacing.sm, textAlign: "center" },
+                          ]}
+                        >
+                          Explorar
+                        </ThemedText>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
 
-                <Pressable
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    navigation.navigate("BusinessMap");
-                  }}
-                  style={({ pressed }) => [
-                    styles.marketsBanner,
-                    styles.bannerHalf,
-                    {
-                      backgroundColor: "#1565C0",
-                      transform: [{ scale: pressed ? 0.97 : 1 }],
-                    },
-                    Shadows.md,
-                  ]}
-                >
-                  <LinearGradient
-                    colors={["#1E88E5", "#1565C0", "#0D47A1"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.marketsGradient}
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      navigation.navigate("BusinessMap");
+                    }}
+                    style={({ pressed }) => [
+                      styles.marketsBanner,
+                      styles.bannerHalf,
+                      {
+                        backgroundColor: "#1565C0",
+                        transform: [{ scale: pressed ? 0.97 : 1 }],
+                      },
+                      Shadows.md,
+                    ]}
                   >
-                    <View style={[styles.marketsContent, { flexDirection: "column", alignItems: "center" }]}>
-                      <Feather name="map" size={28} color="#FFFFFF" />
-                      <ThemedText type="small" style={[styles.marketsTitle, { marginTop: Spacing.sm, textAlign: "center" }]}>
-                        Ver mapa
-                      </ThemedText>
-                    </View>
-                  </LinearGradient>
-                </Pressable>
-              </View>
-            </Animated.View>
+                    <LinearGradient
+                      colors={["#1E88E5", "#1565C0", "#0D47A1"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.marketsGradient}
+                    >
+                      <View
+                        style={[
+                          styles.marketsContent,
+                          { flexDirection: "column", alignItems: "center" },
+                        ]}
+                      >
+                        <Feather name="map" size={28} color="#FFFFFF" />
+                        <ThemedText
+                          type="small"
+                          style={[
+                            styles.marketsTitle,
+                            { marginTop: Spacing.sm, textAlign: "center" },
+                          ]}
+                        >
+                          Ver mapa
+                        </ThemedText>
+                      </View>
+                    </LinearGradient>
+                  </Pressable>
+                </View>
+              </Animated.View>
             )}
 
             {/* Markets Section - Original - Solo mostrar si NO hay filtros */}
@@ -757,47 +845,58 @@ export default function HomeScreen() {
                 entering={FadeInDown.delay(350).springify()}
                 style={styles.section}
               >
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  navigation.navigate("Markets");
-                }}
-                style={({ pressed }) => [
-                  styles.marketsBanner,
-                  {
-                    backgroundColor: "#4CAF50",
-                    transform: [{ scale: pressed ? 0.98 : 1 }],
-                  },
-                  Shadows.md,
-                ]}
-              >
-                <LinearGradient
-                  colors={["#66BB6A", "#4CAF50", "#43A047"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.marketsGradient}
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    navigation.navigate("Markets");
+                  }}
+                  style={({ pressed }) => [
+                    styles.marketsBanner,
+                    {
+                      backgroundColor: "#4CAF50",
+                      transform: [{ scale: pressed ? 0.98 : 1 }],
+                    },
+                    Shadows.md,
+                  ]}
                 >
-                  <View style={styles.marketsContent}>
-                    <View style={styles.marketsIconContainer}>
-                      <Feather name="shopping-bag" size={32} color="#FFFFFF" />
-                    </View>
-                    <View style={styles.marketsTextContainer}>
-                      <ThemedText type="h3" style={styles.marketsTitle}>
-                        Ver Mercados
-                      </ThemedText>
-                      <View style={styles.marketsCTA}>
-                        <ThemedText type="small" style={styles.marketsSubtitle}>
-                          Frutas, verduras, carnes y mas
+                  <LinearGradient
+                    colors={["#66BB6A", "#4CAF50", "#43A047"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.marketsGradient}
+                  >
+                    <View style={styles.marketsContent}>
+                      <View style={styles.marketsIconContainer}>
+                        <Feather
+                          name="shopping-bag"
+                          size={32}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                      <View style={styles.marketsTextContainer}>
+                        <ThemedText type="h3" style={styles.marketsTitle}>
+                          Ver Mercados
                         </ThemedText>
+                        <View style={styles.marketsCTA}>
+                          <ThemedText
+                            type="small"
+                            style={styles.marketsSubtitle}
+                          >
+                            Frutas, verduras, carnes y mas
+                          </ThemedText>
+                        </View>
+                      </View>
+                      <View style={styles.marketsArrow}>
+                        <Feather
+                          name="chevron-right"
+                          size={24}
+                          color="#FFFFFF"
+                        />
                       </View>
                     </View>
-                    <View style={styles.marketsArrow}>
-                      <Feather name="chevron-right" size={24} color="#FFFFFF" />
-                    </View>
-                  </View>
-                </LinearGradient>
-              </Pressable>
-            </Animated.View>
+                  </LinearGradient>
+                </Pressable>
+              </Animated.View>
             )}
 
             {/* Markets Preview - Solo mostrar si NO hay filtros activos */}

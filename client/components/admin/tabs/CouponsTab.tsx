@@ -32,7 +32,11 @@ interface CouponsTabProps {
   onSelectCoupon?: (coupon: Coupon) => void;
 }
 
-export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSelectCoupon }) => {
+export const CouponsTab: React.FC<CouponsTabProps> = ({
+  theme,
+  showToast,
+  onSelectCoupon,
+}) => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -45,7 +49,6 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
     maxUsesPerUser: "",
     expiresAt: "",
   });
-
 
   useEffect(() => {
     fetchCoupons();
@@ -74,13 +77,20 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
       const res = await apiRequest("POST", "/api/coupons/admin/create", {
         code: formData.code.toUpperCase(),
         discountType: formData.discountType,
-        discountValue: formData.discountType === "percentage" 
-          ? parseInt(formData.discountValue)
-          : Math.round(parseFloat(formData.discountValue) * 100),
-        minOrderAmount: formData.minOrderAmount ? Math.round(parseFloat(formData.minOrderAmount) * 100) : null,
+        discountValue:
+          formData.discountType === "percentage"
+            ? parseInt(formData.discountValue)
+            : Math.round(parseFloat(formData.discountValue) * 100),
+        minOrderAmount: formData.minOrderAmount
+          ? Math.round(parseFloat(formData.minOrderAmount) * 100)
+          : null,
         maxUses: formData.maxUses ? parseInt(formData.maxUses) : null,
-        maxUsesPerUser: formData.maxUsesPerUser ? parseInt(formData.maxUsesPerUser) : null,
-        expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null,
+        maxUsesPerUser: formData.maxUsesPerUser
+          ? parseInt(formData.maxUsesPerUser)
+          : null,
+        expiresAt: formData.expiresAt
+          ? new Date(formData.expiresAt).toISOString()
+          : null,
         isActive: true,
       });
 
@@ -104,10 +114,6 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
       showToast("Error al crear cupón", "error");
     }
   };
-
-
-
-
 
   if (loading) {
     return (
@@ -142,17 +148,24 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
           </View>
         ) : (
           coupons.map((coupon) => (
-            <Pressable 
-              key={coupon.id} 
+            <Pressable
+              key={coupon.id}
               style={[styles.card, { backgroundColor: theme.card }]}
               onPress={() => onSelectCoupon?.(coupon)}
             >
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.couponCode, { color: ComeYaColors.primary }]}>
+                  <Text
+                    style={[styles.couponCode, { color: ComeYaColors.primary }]}
+                  >
                     {coupon.code}
                   </Text>
-                  <Text style={[styles.couponDiscount, { color: theme.textSecondary }]}>
+                  <Text
+                    style={[
+                      styles.couponDiscount,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
                     {coupon.discountType === "percentage"
                       ? `${coupon.discountValue}% descuento`
                       : `€${(coupon.discountValue / 100).toFixed(2)} descuento`}
@@ -171,7 +184,11 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
                   <Text
                     style={[
                       styles.statusText,
-                      { color: coupon.isActive ? ComeYaColors.success : ComeYaColors.error },
+                      {
+                        color: coupon.isActive
+                          ? ComeYaColors.success
+                          : ComeYaColors.error,
+                      },
                     ]}
                   >
                     {coupon.isActive ? "Activo" : "Inactivo"}
@@ -181,14 +198,22 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
 
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Usos</Text>
+                  <Text
+                    style={[styles.statLabel, { color: theme.textSecondary }]}
+                  >
+                    Usos
+                  </Text>
                   <Text style={[styles.statValue, { color: theme.text }]}>
-                      {coupon.usedCount}/{coupon.maxUses || "∞"}
-                    </Text>
-                  </View>
-                  {coupon.minOrderAmount ? (
+                    {coupon.usedCount}/{coupon.maxUses || "∞"}
+                  </Text>
+                </View>
+                {coupon.minOrderAmount ? (
                   <View style={styles.stat}>
-                    <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Mínimo</Text>
+                    <Text
+                      style={[styles.statLabel, { color: theme.textSecondary }]}
+                    >
+                      Mínimo
+                    </Text>
                     <Text style={[styles.statValue, { color: theme.text }]}>
                       €{(coupon.minOrderAmount / 100).toFixed(2)}
                     </Text>
@@ -196,14 +221,17 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
                 ) : null}
                 {coupon.expiresAt ? (
                   <View style={styles.stat}>
-                    <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Expira</Text>
+                    <Text
+                      style={[styles.statLabel, { color: theme.textSecondary }]}
+                    >
+                      Expira
+                    </Text>
                     <Text style={[styles.statValue, { color: theme.text }]}>
                       {new Date(coupon.expiresAt).toLocaleDateString("es-ES")}
                     </Text>
                   </View>
                 ) : null}
               </View>
-
             </Pressable>
           ))
         )}
@@ -214,112 +242,226 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({ theme, showToast, onSele
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Crear cupón</Text>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Crear cupón
+              </Text>
               <Pressable onPress={() => setShowModal(false)}>
                 <Feather name="x" size={24} color={theme.text} />
               </Pressable>
             </View>
 
             <ScrollView style={styles.modalBody}>
-              <Text style={[styles.label, { color: theme.text }]}>Código *</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Código *
+              </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                  },
+                ]}
                 value={formData.code}
-                onChangeText={(text) => setFormData({ ...formData, code: text.toUpperCase() })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, code: text.toUpperCase() })
+                }
                 placeholder="BIENVENIDA20"
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="characters"
               />
 
-              <Text style={[styles.label, { color: theme.text }]}>Tipo de descuento *</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Tipo de descuento *
+              </Text>
               <View style={styles.radioGroup}>
                 <Pressable
-                  onPress={() => setFormData({ ...formData, discountType: "percentage" })}
-                  style={[styles.radioOption, { borderColor: formData.discountType === "percentage" ? ComeYaColors.primary : theme.border }]}
+                  onPress={() =>
+                    setFormData({ ...formData, discountType: "percentage" })
+                  }
+                  style={[
+                    styles.radioOption,
+                    {
+                      borderColor:
+                        formData.discountType === "percentage"
+                          ? ComeYaColors.primary
+                          : theme.border,
+                    },
+                  ]}
                 >
                   <Feather
-                    name={formData.discountType === "percentage" ? "check-circle" : "circle"}
+                    name={
+                      formData.discountType === "percentage"
+                        ? "check-circle"
+                        : "circle"
+                    }
                     size={20}
-                    color={formData.discountType === "percentage" ? ComeYaColors.primary : theme.textSecondary}
+                    color={
+                      formData.discountType === "percentage"
+                        ? ComeYaColors.primary
+                        : theme.textSecondary
+                    }
                   />
-                  <Text style={[styles.radioLabel, { color: theme.text }]}>Porcentaje (%)</Text>
+                  <Text style={[styles.radioLabel, { color: theme.text }]}>
+                    Porcentaje (%)
+                  </Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => setFormData({ ...formData, discountType: "fixed" })}
-                  style={[styles.radioOption, { borderColor: formData.discountType === "fixed" ? ComeYaColors.primary : theme.border }]}
+                  onPress={() =>
+                    setFormData({ ...formData, discountType: "fixed" })
+                  }
+                  style={[
+                    styles.radioOption,
+                    {
+                      borderColor:
+                        formData.discountType === "fixed"
+                          ? ComeYaColors.primary
+                          : theme.border,
+                    },
+                  ]}
                 >
                   <Feather
-                    name={formData.discountType === "fixed" ? "check-circle" : "circle"}
+                    name={
+                      formData.discountType === "fixed"
+                        ? "check-circle"
+                        : "circle"
+                    }
                     size={20}
-                    color={formData.discountType === "fixed" ? ComeYaColors.primary : theme.textSecondary}
+                    color={
+                      formData.discountType === "fixed"
+                        ? ComeYaColors.primary
+                        : theme.textSecondary
+                    }
                   />
-                  <Text style={[styles.radioLabel, { color: theme.text }]}>Monto fijo ($)</Text>
+                  <Text style={[styles.radioLabel, { color: theme.text }]}>
+                    Monto fijo ($)
+                  </Text>
                 </Pressable>
               </View>
 
               <Text style={[styles.label, { color: theme.text }]}>
-                {formData.discountType === "percentage" ? "Porcentaje de descuento *" : "Monto de descuento * ($)"}
+                {formData.discountType === "percentage"
+                  ? "Porcentaje de descuento *"
+                  : "Monto de descuento * ($)"}
               </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                  },
+                ]}
                 value={formData.discountValue}
-                onChangeText={(text) => setFormData({ ...formData, discountValue: text })}
-                placeholder={formData.discountType === "percentage" ? "20" : "50.00"}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, discountValue: text })
+                }
+                placeholder={
+                  formData.discountType === "percentage" ? "20" : "50.00"
+                }
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="decimal-pad"
               />
 
-              <Text style={[styles.label, { color: theme.text }]}>Pedido mínimo ($)</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Pedido mínimo ($)
+              </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                  },
+                ]}
                 value={formData.minOrderAmount}
-                onChangeText={(text) => setFormData({ ...formData, minOrderAmount: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, minOrderAmount: text })
+                }
                 placeholder="100.00"
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="decimal-pad"
               />
 
-              <Text style={[styles.label, { color: theme.text }]}>Usos máximos totales</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Usos máximos totales
+              </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                  },
+                ]}
                 value={formData.maxUses}
-                onChangeText={(text) => setFormData({ ...formData, maxUses: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, maxUses: text })
+                }
                 placeholder="100"
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="number-pad"
               />
 
-              <Text style={[styles.label, { color: theme.text }]}>Usos máximos por usuario</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Usos máximos por usuario
+              </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                  },
+                ]}
                 value={formData.maxUsesPerUser}
-                onChangeText={(text) => setFormData({ ...formData, maxUsesPerUser: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, maxUsesPerUser: text })
+                }
                 placeholder="1"
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="number-pad"
               />
 
-              <Text style={[styles.label, { color: theme.text }]}>Fecha de expiración</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Fecha de expiración
+              </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                  },
+                ]}
                 value={formData.expiresAt}
-                onChangeText={(text) => setFormData({ ...formData, expiresAt: text })}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, expiresAt: text })
+                }
                 placeholder="2024-12-31"
                 placeholderTextColor={theme.textSecondary}
               />
-              <Text style={[styles.hint, { color: theme.textSecondary }]}>Formato: YYYY-MM-DD</Text>
+              <Text style={[styles.hint, { color: theme.textSecondary }]}>
+                Formato: YYYY-MM-DD
+              </Text>
             </ScrollView>
 
             <View style={styles.modalFooter}>
               <Pressable
                 onPress={() => setShowModal(false)}
-                style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <Text style={{ color: theme.text }}>Cancelar</Text>
               </Pressable>
               <Pressable
                 onPress={handleCreateCoupon}
-                style={[styles.modalButton, { backgroundColor: ComeYaColors.primary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
               >
                 <Text style={{ color: "#FFF", fontWeight: "600" }}>Crear</Text>
               </Pressable>

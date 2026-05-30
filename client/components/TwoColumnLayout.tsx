@@ -51,9 +51,9 @@ export function TwoColumnLayout({
 }
 
 const s = StyleSheet.create({
-  root:              { flex: 1, flexDirection: "row" },
-  sidebar:           { flexShrink: 0 },
-  content:           { flex: 1 },
+  root: { flex: 1, flexDirection: "row" },
+  sidebar: { flexShrink: 0 },
+  content: { flex: 1 },
   mobileSidebarWrap: { width: "100%" as any },
-  mobileContent:     { flex: 1 },
+  mobileContent: { flex: 1 },
 });

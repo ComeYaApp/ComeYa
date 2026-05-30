@@ -18,7 +18,7 @@ interface DialogState extends DialogOptions {
 let _setDialog: ((d: DialogState | null) => void) | null = null;
 
 export function confirm(opts: DialogOptions): Promise<boolean> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     _setDialog?.({ ...opts, resolve });
   });
 }
@@ -34,36 +34,58 @@ export function WebDialogProvider({ children }: { children: React.ReactNode }) {
     setDialog(null);
   };
 
-  const card   = isDark ? "#1e1e1e" : "#fff";
-  const text   = isDark ? "#fff"    : "#1a1a1a";
-  const sub    = isDark ? "#aaa"    : "#666";
-  const border = isDark ? "#333"    : "#e8e8e8";
+  const card = isDark ? "#1e1e1e" : "#fff";
+  const text = isDark ? "#fff" : "#1a1a1a";
+  const sub = isDark ? "#aaa" : "#666";
+  const border = isDark ? "#333" : "#e8e8e8";
 
-  const variantColor = dialog?.variant === "danger" ? "#EF4444"
-    : dialog?.variant === "warning" ? "#F59E0B"
-    : "#3B82F6";
+  const variantColor =
+    dialog?.variant === "danger"
+      ? "#EF4444"
+      : dialog?.variant === "warning"
+        ? "#F59E0B"
+        : "#3B82F6";
 
-  const variantIcon: any = dialog?.variant === "danger" ? "trash-2"
-    : dialog?.variant === "warning" ? "alert-triangle"
-    : "info";
+  const variantIcon: any =
+    dialog?.variant === "danger"
+      ? "trash-2"
+      : dialog?.variant === "warning"
+        ? "alert-triangle"
+        : "info";
 
   return (
     <>
       {children}
       {dialog && (
         <View style={s.overlay}>
-          <View style={[s.modal, { backgroundColor: card, borderColor: border }]}>
-            <View style={[s.iconWrap, { backgroundColor: variantColor + "15" }]}>
+          <View
+            style={[s.modal, { backgroundColor: card, borderColor: border }]}
+          >
+            <View
+              style={[s.iconWrap, { backgroundColor: variantColor + "15" }]}
+            >
               <Feather name={variantIcon} size={24} color={variantColor} />
             </View>
             <Text style={[s.title, { color: text }]}>{dialog.title}</Text>
-            {dialog.message && <Text style={[s.message, { color: sub }]}>{dialog.message}</Text>}
+            {dialog.message && (
+              <Text style={[s.message, { color: sub }]}>{dialog.message}</Text>
+            )}
             <View style={s.btns}>
-              <Pressable onPress={() => handle(false)} style={[s.btn, { borderColor: border, borderWidth: 1 }]}>
-                <Text style={[s.btnText, { color: text }]}>{dialog.cancelLabel || "Cancelar"}</Text>
+              <Pressable
+                onPress={() => handle(false)}
+                style={[s.btn, { borderColor: border, borderWidth: 1 }]}
+              >
+                <Text style={[s.btnText, { color: text }]}>
+                  {dialog.cancelLabel || "Cancelar"}
+                </Text>
               </Pressable>
-              <Pressable onPress={() => handle(true)} style={[s.btn, { backgroundColor: variantColor }]}>
-                <Text style={[s.btnText, { color: "#fff" }]}>{dialog.confirmLabel || "Confirmar"}</Text>
+              <Pressable
+                onPress={() => handle(true)}
+                style={[s.btn, { backgroundColor: variantColor }]}
+              >
+                <Text style={[s.btnText, { color: "#fff" }]}>
+                  {dialog.confirmLabel || "Confirmar"}
+                </Text>
               </Pressable>
             </View>
           </View>

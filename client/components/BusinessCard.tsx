@@ -11,7 +11,12 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { Business } from "@/types";
 
 interface BusinessCardProps {

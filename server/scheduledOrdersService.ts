@@ -1,6 +1,6 @@
-import { db } from './db';
-import { scheduledOrders, orders } from '@shared/schema-mysql';
-import { eq, and, lte, gte } from 'drizzle-orm';
+import { db } from "./db";
+import { scheduledOrders, orders } from "@shared/schema-mysql";
+import { eq, and, lte, gte } from "drizzle-orm";
 
 export class ScheduledOrdersService {
   // Crear pedido programado
@@ -9,7 +9,7 @@ export class ScheduledOrdersService {
     businessId: string;
     items: any[];
     scheduledFor: Date;
-    recurringPattern?: 'daily' | 'weekly' | 'monthly';
+    recurringPattern?: "daily" | "weekly" | "monthly";
     recurringDays?: number[];
     recurringEndDate?: Date;
     deliveryAddressId: string;
@@ -22,12 +22,14 @@ export class ScheduledOrdersService {
       items: JSON.stringify(data.items),
       scheduledFor: data.scheduledFor,
       recurringPattern: data.recurringPattern,
-      recurringDays: data.recurringDays ? JSON.stringify(data.recurringDays) : null,
+      recurringDays: data.recurringDays
+        ? JSON.stringify(data.recurringDays)
+        : null,
       recurringEndDate: data.recurringEndDate,
       deliveryAddressId: data.deliveryAddressId,
       paymentMethod: data.paymentMethod,
       notes: data.notes,
-      status: 'pending',
+      status: "pending",
     });
 
     return { success: true, scheduledOrderId: scheduled.insertId };
@@ -41,8 +43,8 @@ export class ScheduledOrdersService {
       .where(
         and(
           eq(scheduledOrders.userId, userId),
-          eq(scheduledOrders.status, 'pending')
-        )
+          eq(scheduledOrders.status, "pending"),
+        ),
       );
 
     return scheduled;
@@ -52,12 +54,12 @@ export class ScheduledOrdersService {
   static async cancelScheduledOrder(scheduledOrderId: string, userId: string) {
     await db
       .update(scheduledOrders)
-      .set({ status: 'cancelled' })
+      .set({ status: "cancelled" })
       .where(
         and(
           eq(scheduledOrders.id, scheduledOrderId),
-          eq(scheduledOrders.userId, userId)
-        )
+          eq(scheduledOrders.userId, userId),
+        ),
       );
 
     return { success: true };
@@ -71,9 +73,9 @@ export class ScheduledOrdersService {
       .from(scheduledOrders)
       .where(
         and(
-          eq(scheduledOrders.status, 'pending'),
-          lte(scheduledOrders.scheduledFor, now)
-        )
+          eq(scheduledOrders.status, "pending"),
+          lte(scheduledOrders.scheduledFor, now),
+        ),
       );
 
     const results = [];
@@ -88,14 +90,14 @@ export class ScheduledOrdersService {
           deliveryAddressId: scheduled.deliveryAddressId,
           paymentMethod: scheduled.paymentMethod,
           notes: scheduled.notes,
-          status: 'pending',
+          status: "pending",
         });
 
         // Marcar como ejecutado
         await db
           .update(scheduledOrders)
           .set({
-            status: 'executed',
+            status: "executed",
             executedOrderId: order.insertId,
           })
           .where(eq(scheduledOrders.id, scheduled.id));
@@ -105,10 +107,16 @@ export class ScheduledOrdersService {
           const nextDate = this.calculateNextOccurrence(
             scheduled.scheduledFor,
             scheduled.recurringPattern,
-            scheduled.recurringDays ? JSON.parse(scheduled.recurringDays) : null
+            scheduled.recurringDays
+              ? JSON.parse(scheduled.recurringDays)
+              : null,
           );
 
-          if (nextDate && (!scheduled.recurringEndDate || nextDate <= scheduled.recurringEndDate)) {
+          if (
+            nextDate &&
+            (!scheduled.recurringEndDate ||
+              nextDate <= scheduled.recurringEndDate)
+          ) {
             await db.insert(scheduledOrders).values({
               userId: scheduled.userId,
               businessId: scheduled.businessId,
@@ -120,16 +128,20 @@ export class ScheduledOrdersService {
               deliveryAddressId: scheduled.deliveryAddressId,
               paymentMethod: scheduled.paymentMethod,
               notes: scheduled.notes,
-              status: 'pending',
+              status: "pending",
             });
           }
         }
 
-        results.push({ scheduledOrderId: scheduled.id, orderId: order.insertId, success: true });
+        results.push({
+          scheduledOrderId: scheduled.id,
+          orderId: order.insertId,
+          success: true,
+        });
       } catch (error) {
         await db
           .update(scheduledOrders)
-          .set({ status: 'failed' })
+          .set({ status: "failed" })
           .where(eq(scheduledOrders.id, scheduled.id));
 
         results.push({ scheduledOrderId: scheduled.id, success: false, error });
@@ -142,19 +154,19 @@ export class ScheduledOrdersService {
   // Calcular próxima ocurrencia
   private static calculateNextOccurrence(
     currentDate: Date,
-    pattern: 'daily' | 'weekly' | 'monthly',
-    days?: number[]
+    pattern: "daily" | "weekly" | "monthly",
+    days?: number[],
   ): Date {
     const next = new Date(currentDate);
 
     switch (pattern) {
-      case 'daily':
+      case "daily":
         next.setDate(next.getDate() + 1);
         break;
-      case 'weekly':
+      case "weekly":
         next.setDate(next.getDate() + 7);
         break;
-      case 'monthly':
+      case "monthly":
         next.setMonth(next.getMonth() + 1);
         break;
     }

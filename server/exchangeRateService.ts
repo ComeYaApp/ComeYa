@@ -7,7 +7,7 @@ import { logger } from "./logger";
 interface AlCambioResponse {
   success: boolean;
   rate?: number;
-  source: 'alcambio' | 'manual' | 'fallback';
+  source: "alcambio" | "manual" | "fallback";
   lastUpdated?: Date;
 }
 
@@ -16,7 +16,7 @@ export class ExchangeRateService {
   private cachedRate: number | null = null;
   private lastFetch: Date | null = null;
   private readonly CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos
-  private readonly FALLBACK_RATE = 36.50;
+  private readonly FALLBACK_RATE = 36.5;
 
   private constructor() {}
 
@@ -33,11 +33,12 @@ export class ExchangeRateService {
    */
   private async fetchFromAlCambio(): Promise<number | null> {
     try {
-      logger.info('📊 Fetching USDT rate from alcambio.app...');
-      
-      const response = await fetch('https://alcambio.app/tasas', {
+      logger.info("📊 Fetching USDT rate from alcambio.app...");
+
+      const response = await fetch("https://alcambio.app/tasas", {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         },
       });
 
@@ -47,26 +48,28 @@ export class ExchangeRateService {
       }
 
       const html = await response.text();
-      
+
       // Buscar "Tasa USDT" y extraer el promedio
       // Formato esperado: <div>Promedio</div><div>668,41 Bs</div>
-      const usdtMatch = html.match(/Tasa USDT[\s\S]*?Promedio[\s\S]*?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*Bs/i);
-      
+      const usdtMatch = html.match(
+        /Tasa USDT[\s\S]*?Promedio[\s\S]*?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*Bs/i,
+      );
+
       if (usdtMatch && usdtMatch[1]) {
         // Convertir "668,41" a 668.41
-        const rateStr = usdtMatch[1].replace(/,/g, '');
+        const rateStr = usdtMatch[1].replace(/,/g, "");
         const rate = parseFloat(rateStr);
-        
+
         if (!isNaN(rate) && rate > 0) {
           logger.info(`✅ USDT rate from AlCambio: ${rate} Bs`);
           return rate;
         }
       }
 
-      logger.warn('⚠️ Could not parse USDT rate from AlCambio HTML');
+      logger.warn("⚠️ Could not parse USDT rate from AlCambio HTML");
       return null;
     } catch (error: any) {
-      logger.error('❌ Error fetching from AlCambio:', error.message);
+      logger.error("❌ Error fetching from AlCambio:", error.message);
       return null;
     }
   }
@@ -79,7 +82,7 @@ export class ExchangeRateService {
       const [setting] = await db
         .select()
         .from(systemSettings)
-        .where(eq(systemSettings.key, 'usd_exchange_rate'))
+        .where(eq(systemSettings.key, "usd_exchange_rate"))
         .limit(1);
 
       if (setting?.value) {
@@ -90,7 +93,7 @@ export class ExchangeRateService {
       }
       return null;
     } catch (error: any) {
-      logger.error('Error getting manual rate:', error);
+      logger.error("Error getting manual rate:", error);
       return null;
     }
   }
@@ -103,10 +106,10 @@ export class ExchangeRateService {
       const [setting] = await db
         .select()
         .from(systemSettings)
-        .where(eq(systemSettings.key, 'exchange_rate_auto_update'))
+        .where(eq(systemSettings.key, "exchange_rate_auto_update"))
         .limit(1);
 
-      return setting?.value !== 'false';
+      return setting?.value !== "false";
     } catch (error) {
       return true; // Por defecto habilitado
     }
@@ -129,13 +132,13 @@ export class ExchangeRateService {
         return {
           success: true,
           rate: manualRate,
-          source: 'manual',
+          source: "manual",
         };
       }
       return {
         success: true,
         rate: this.FALLBACK_RATE,
-        source: 'fallback',
+        source: "fallback",
       };
     }
 
@@ -149,7 +152,7 @@ export class ExchangeRateService {
       return {
         success: true,
         rate: this.cachedRate,
-        source: 'alcambio',
+        source: "alcambio",
         lastUpdated: this.lastFetch,
       };
     }
@@ -161,12 +164,12 @@ export class ExchangeRateService {
       this.lastFetch = now;
 
       // Guardar en DB para referencia
-      await this.saveRateToHistory(alcambioRate, 'alcambio');
+      await this.saveRateToHistory(alcambioRate, "alcambio");
 
       return {
         success: true,
         rate: alcambioRate,
-        source: 'alcambio',
+        source: "alcambio",
         lastUpdated: now,
       };
     }
@@ -177,7 +180,7 @@ export class ExchangeRateService {
       return {
         success: true,
         rate: manualRate,
-        source: 'manual',
+        source: "manual",
       };
     }
 
@@ -185,24 +188,27 @@ export class ExchangeRateService {
     return {
       success: true,
       rate: this.FALLBACK_RATE,
-      source: 'fallback',
+      source: "fallback",
     };
   }
 
   /**
    * Actualiza la tasa manual (solo admin)
    */
-  async updateManualRate(rate: number, adminId: string): Promise<{ success: boolean; message: string }> {
+  async updateManualRate(
+    rate: number,
+    adminId: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       if (rate <= 0) {
-        return { success: false, message: 'La tasa debe ser mayor a 0' };
+        return { success: false, message: "La tasa debe ser mayor a 0" };
       }
 
       // Actualizar o insertar
       const [existing] = await db
         .select()
         .from(systemSettings)
-        .where(eq(systemSettings.key, 'usd_exchange_rate'))
+        .where(eq(systemSettings.key, "usd_exchange_rate"))
         .limit(1);
 
       if (existing) {
@@ -212,31 +218,33 @@ export class ExchangeRateService {
             value: rate.toString(),
             updatedAt: new Date(),
           })
-          .where(eq(systemSettings.key, 'usd_exchange_rate'));
+          .where(eq(systemSettings.key, "usd_exchange_rate"));
       } else {
         await db.insert(systemSettings).values({
-          category: 'currency',
-          key: 'usd_exchange_rate',
+          category: "currency",
+          key: "usd_exchange_rate",
           value: rate.toString(),
-          description: 'Tasa de cambio BsD/USD manual',
+          description: "Tasa de cambio BsD/USD manual",
         });
       }
 
       // Guardar en historial
-      await this.saveRateToHistory(rate, 'manual', adminId);
+      await this.saveRateToHistory(rate, "manual", adminId);
 
       // Limpiar cache para forzar recarga
       this.cachedRate = null;
       this.lastFetch = null;
 
-      logger.info(`💰 Exchange rate updated manually by ${adminId}: ${rate} Bs/USD`);
+      logger.info(
+        `💰 Exchange rate updated manually by ${adminId}: ${rate} Bs/USD`,
+      );
 
       return {
         success: true,
         message: `Tasa actualizada a ${rate} Bs/USD`,
       };
     } catch (error: any) {
-      logger.error('Error updating manual rate:', error);
+      logger.error("Error updating manual rate:", error);
       return { success: false, message: error.message };
     }
   }
@@ -244,39 +252,44 @@ export class ExchangeRateService {
   /**
    * Habilita/deshabilita la actualización automática
    */
-  async toggleAutoUpdate(enabled: boolean, adminId: string): Promise<{ success: boolean; message: string }> {
+  async toggleAutoUpdate(
+    enabled: boolean,
+    adminId: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
       const [existing] = await db
         .select()
         .from(systemSettings)
-        .where(eq(systemSettings.key, 'exchange_rate_auto_update'))
+        .where(eq(systemSettings.key, "exchange_rate_auto_update"))
         .limit(1);
 
       if (existing) {
         await db
           .update(systemSettings)
           .set({
-            value: enabled ? 'true' : 'false',
+            value: enabled ? "true" : "false",
             updatedAt: new Date(),
           })
-          .where(eq(systemSettings.key, 'exchange_rate_auto_update'));
+          .where(eq(systemSettings.key, "exchange_rate_auto_update"));
       } else {
         await db.insert(systemSettings).values({
-          category: 'currency',
-          key: 'exchange_rate_auto_update',
-          value: enabled ? 'true' : 'false',
-          description: 'Actualización automática de tasa desde alcambio.app',
+          category: "currency",
+          key: "exchange_rate_auto_update",
+          value: enabled ? "true" : "false",
+          description: "Actualización automática de tasa desde alcambio.app",
         });
       }
 
-      logger.info(`🔄 Auto-update ${enabled ? 'enabled' : 'disabled'} by ${adminId}`);
+      logger.info(
+        `🔄 Auto-update ${enabled ? "enabled" : "disabled"} by ${adminId}`,
+      );
 
       return {
         success: true,
-        message: `Actualización automática ${enabled ? 'habilitada' : 'deshabilitada'}`,
+        message: `Actualización automática ${enabled ? "habilitada" : "deshabilitada"}`,
       };
     } catch (error: any) {
-      logger.error('Error toggling auto-update:', error);
+      logger.error("Error toggling auto-update:", error);
       return { success: false, message: error.message };
     }
   }
@@ -284,11 +297,17 @@ export class ExchangeRateService {
   /**
    * Guarda la tasa en un historial (opcional, para analytics)
    */
-  private async saveRateToHistory(rate: number, source: string, adminId?: string) {
+  private async saveRateToHistory(
+    rate: number,
+    source: string,
+    adminId?: string,
+  ) {
     try {
       // Guardar en una tabla de historial si existe
       // Por ahora solo log
-      logger.info(`📊 Rate saved to history: ${rate} Bs/USD (source: ${source})`);
+      logger.info(
+        `📊 Rate saved to history: ${rate} Bs/USD (source: ${source})`,
+      );
     } catch (error) {
       // No crítico
     }

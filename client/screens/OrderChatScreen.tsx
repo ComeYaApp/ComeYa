@@ -22,7 +22,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 
@@ -172,13 +177,13 @@ export default function OrderChatScreen() {
   const resolvedReceiverId = useMemo(() => {
     if (receiverId) return receiverId;
     if (!orderMeta || !user) return undefined;
-    
+
     // Lógica mejorada para resolver el destinatario
     if (user.role === "delivery_driver") {
       // Repartidor envía al cliente
       return orderMeta.userId || orderMeta.customerId;
     }
-    
+
     if (user.role === "customer") {
       // Cliente puede enviar al repartidor o al negocio
       if (orderMeta.deliveryPersonId) {
@@ -186,12 +191,12 @@ export default function OrderChatScreen() {
       }
       return orderMeta.businessId; // Fallback: negocio
     }
-    
+
     if (user.role === "business_owner") {
       // Negocio envía al cliente
       return orderMeta.userId || orderMeta.customerId;
     }
-    
+
     return undefined;
   }, [receiverId, orderMeta, user]);
 
@@ -220,17 +225,33 @@ export default function OrderChatScreen() {
         isRead: false,
       };
 
-      await queryClient.cancelQueries({ queryKey: ["/api/orders", orderId, "chat"] });
-      const previous = queryClient.getQueryData<ChatMessage[]>(["/api/orders", orderId, "chat"]) || [];
-      queryClient.setQueryData<ChatMessage[]>(["/api/orders", orderId, "chat"], [...previous, optimisticMessage]);
+      await queryClient.cancelQueries({
+        queryKey: ["/api/orders", orderId, "chat"],
+      });
+      const previous =
+        queryClient.getQueryData<ChatMessage[]>([
+          "/api/orders",
+          orderId,
+          "chat",
+        ]) || [];
+      queryClient.setQueryData<ChatMessage[]>(
+        ["/api/orders", orderId, "chat"],
+        [...previous, optimisticMessage],
+      );
       setMessageText("");
       return { previous };
     },
     onError: (error, _variables, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(["/api/orders", orderId, "chat"], context.previous);
+        queryClient.setQueryData(
+          ["/api/orders", orderId, "chat"],
+          context.previous,
+        );
       }
-      showToast((error as Error)?.message || "No se pudo enviar el mensaje", "error");
+      showToast(
+        (error as Error)?.message || "No se pudo enviar el mensaje",
+        "error",
+      );
     },
     onSuccess: () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -265,9 +286,12 @@ export default function OrderChatScreen() {
         keyboardVerticalOffset={headerHeight}
       >
         {showReceiverHint ? (
-          <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm }}>
+          <View
+            style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.sm }}
+          >
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Cargando destinatario del chat... abre desde el pedido con repartidor asignado.
+              Cargando destinatario del chat... abre desde el pedido con
+              repartidor asignado.
             </ThemedText>
           </View>
         ) : null}
@@ -302,8 +326,12 @@ export default function OrderChatScreen() {
             ]}
           >
             {showReceiverHint ? (
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}>
-                No encontramos destinatario aún. Abre el chat desde un pedido con repartidor asignado.
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}
+              >
+                No encontramos destinatario aún. Abre el chat desde un pedido
+                con repartidor asignado.
               </ThemedText>
             ) : null}
             <TextInput
@@ -317,7 +345,11 @@ export default function OrderChatScreen() {
             />
             <Pressable
               onPress={handleSend}
-              disabled={!messageText.trim() || sendMessageMutation.isPending || !resolvedReceiverId}
+              disabled={
+                !messageText.trim() ||
+                sendMessageMutation.isPending ||
+                !resolvedReceiverId
+              }
               style={[
                 styles.sendButton,
                 {

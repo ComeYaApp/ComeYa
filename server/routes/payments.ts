@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticateToken } from "../authMiddleware";
 import { eq } from "drizzle-orm";
+import { getStripe } from "../stripeClient";
 
 const router = express.Router();
 
@@ -9,15 +10,31 @@ router.get("/info", authenticateToken, async (req, res) => {
   try {
     const { db } = await import("../db");
     const [rows]: any = await db.execute(
-      "SELECT provider, account_data FROM payment_receiving_accounts WHERE is_active = TRUE"
+      "SELECT provider, account_data FROM payment_receiving_accounts WHERE is_active = TRUE",
     );
 
-    const data: any = { success: true, bizum: "", iban: "", paypalEmail: "", titular: "ComeYa S.L.", banco: "" };
+    const data: any = {
+      success: true,
+      bizum: "",
+      iban: "",
+      paypalEmail: "",
+      titular: "ComeYa S.L.",
+      banco: "",
+    };
     rows.forEach((row: any) => {
       const d = row.account_data;
-      if (row.provider === "bizum")        { data.bizum = d.phone || ""; data.titular = d.name || data.titular; }
-      if (row.provider === "transferencia") { data.iban = d.iban || ""; data.titular = d.titular || data.titular; data.banco = d.banco || ""; }
-      if (row.provider === "paypal")        { data.paypalEmail = d.email || ""; }
+      if (row.provider === "bizum") {
+        data.bizum = d.phone || "";
+        data.titular = d.name || data.titular;
+      }
+      if (row.provider === "transferencia") {
+        data.iban = d.iban || "";
+        data.titular = d.titular || data.titular;
+        data.banco = d.banco || "";
+      }
+      if (row.provider === "paypal") {
+        data.paypalEmail = d.email || "";
+      }
     });
     res.json(data);
   } catch (error: any) {
@@ -25,11 +42,11 @@ router.get("/info", authenticateToken, async (req, res) => {
     const { CONFIG } = await import("../config");
     res.json({
       success: true,
-      bizum:       await CONFIG.bizumPhone(),
-      iban:        await CONFIG.iban(),
+      bizum: await CONFIG.bizumPhone(),
+      iban: await CONFIG.iban(),
       paypalEmail: await CONFIG.paypalEmail(),
-      titular:     await CONFIG.titular(),
-      banco:       await CONFIG.banco(),
+      titular: await CONFIG.titular(),
+      banco: await CONFIG.banco(),
     });
   }
 });
@@ -49,13 +66,17 @@ router.post("/upload-proof-image", authenticateToken, async (req: any, res) => {
     const upload = multer({ storage: multer.memoryStorage() }).single("file");
 
     upload(req, res, async (err: any) => {
-      if (err) return res.status(400).json({ success: false, error: err.message });
-      if (!req.file) return res.status(400).json({ success: false, error: "No se recibió archivo" });
+      if (err)
+        return res.status(400).json({ success: false, error: err.message });
+      if (!req.file)
+        return res
+          .status(400)
+          .json({ success: false, error: "No se recibió archivo" });
 
       const result = await new Promise<any>((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           { folder: "payment_proofs", resource_type: "image" },
-          (error, result) => error ? reject(error) : resolve(result)
+          (error, result) => (error ? reject(error) : resolve(result)),
         );
         stream.end(req.file!.buffer);
       });
@@ -70,27 +91,46 @@ router.post("/upload-proof-image", authenticateToken, async (req: any, res) => {
 // POST /api/payments/submit-proof — subir comprobante de pago manual
 router.post("/submit-proof", authenticateToken, async (req, res) => {
   try {
-    const { orderId, imageUrl, referenceNumber, senderName, amount, paymentMethod } = req.body;
+    const {
+      orderId,
+      imageUrl,
+      referenceNumber,
+      senderName,
+      amount,
+      paymentMethod,
+    } = req.body;
     const userId = (req as any).user?.id;
 
     if (!orderId || !imageUrl || !referenceNumber) {
-      return res.status(400).json({ error: "orderId, imageUrl y referenceNumber son requeridos" });
+      return res
+        .status(400)
+        .json({ error: "orderId, imageUrl y referenceNumber son requeridos" });
     }
 
     const { db } = await import("../db");
     const { orders, paymentProofs } = await import("../../shared/schema-mysql");
     const { randomUUID } = await import("crypto");
 
-    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
 
     // Detectar duplicado por referencia
     const { sql: drizzleSql } = await import("drizzle-orm");
-    const [existing] = await db.select().from(paymentProofs)
-      .where(drizzleSql`reference_number = ${referenceNumber.trim()} AND id != 'none'`)
+    const [existing] = await db
+      .select()
+      .from(paymentProofs)
+      .where(
+        drizzleSql`reference_number = ${referenceNumber.trim()} AND id != 'none'`,
+      )
       .limit(1);
     if (existing) {
-      return res.status(409).json({ error: "Este comprobante ya fue enviado anteriormente" });
+      return res
+        .status(409)
+        .json({ error: "Este comprobante ya fue enviado anteriormente" });
     }
 
     const proofId = randomUUID();
@@ -98,7 +138,7 @@ router.post("/submit-proof", authenticateToken, async (req, res) => {
       id: proofId,
       orderId,
       userId,
-      paymentProvider: paymentMethod || order.paymentMethod || 'bizum',
+      paymentProvider: paymentMethod || order.paymentMethod || "bizum",
       proofImageUrl: imageUrl,
       referenceNumber: referenceNumber.trim(),
       amount: amount || order.total,
@@ -109,30 +149,48 @@ router.post("/submit-proof", authenticateToken, async (req, res) => {
     // Guardar senderName en verificationNotes si viene
     if (senderName) {
       await db.execute(
-        drizzleSql`UPDATE payment_proofs SET verification_notes = ${`Remitente: ${senderName}`} WHERE id = ${proofId}`
+        drizzleSql`UPDATE payment_proofs SET verification_notes = ${`Remitente: ${senderName}`} WHERE id = ${proofId}`,
       );
     }
 
     // Intentar auto-verificación con OCR
     try {
-      const { autoVerificationService } = await import("../autoVerificationService");
+      const { autoVerificationService } = await import(
+        "../autoVerificationService"
+      );
       const result = await autoVerificationService.shouldAutoApprove(proofId);
       if (result.autoApprove) {
-        await db.update(orders)
-          .set({ status: "confirmed", paidAt: new Date(), updatedAt: new Date() })
+        await db
+          .update(orders)
+          .set({
+            status: "confirmed",
+            paidAt: new Date(),
+            updatedAt: new Date(),
+          })
           .where(eq(orders.id, orderId));
         await db.execute(
-          drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_at = NOW() WHERE id = ${proofId}`
+          drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_at = NOW() WHERE id = ${proofId}`,
         );
-        return res.json({ success: true, proofId, autoApproved: true, message: "Pago verificado automáticamente" });
+        return res.json({
+          success: true,
+          proofId,
+          autoApproved: true,
+          message: "Pago verificado automáticamente",
+        });
       }
-    } catch { /* auto-verificación falla silenciosamente */ }
+    } catch {
+      /* auto-verificación falla silenciosamente */
+    }
 
     // Notificar al admin via WebSocket que hay un nuevo comprobante pendiente
     try {
       const { notifyAdminNewProof } = await import("../websocket");
       const { users } = await import("../../shared/schema-mysql");
-      const [u] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+      const [u] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
       notifyAdminNewProof({
         proofId,
         orderId,
@@ -142,7 +200,12 @@ router.post("/submit-proof", authenticateToken, async (req, res) => {
       });
     } catch {}
 
-    res.json({ success: true, proofId, autoApproved: false, message: "Comprobante recibido. Será verificado en breve." });
+    res.json({
+      success: true,
+      proofId,
+      autoApproved: false,
+      message: "Comprobante recibido. Será verificado en breve.",
+    });
   } catch (error: any) {
     console.error("Submit proof error:", error);
     res.status(500).json({ error: error.message });
@@ -162,7 +225,7 @@ router.get("/proofs/pending", authenticateToken, async (req, res) => {
         LEFT JOIN users u ON pp.user_id = u.id
         WHERE pp.status = 'pending'
         ORDER BY pp.submitted_at DESC
-      `
+      `,
     );
     res.json({ success: true, proofs: rows });
   } catch (error: any) {
@@ -178,14 +241,19 @@ router.post("/proofs/:proofId/approve", authenticateToken, async (req, res) => {
     const { sql: drizzleSql } = await import("drizzle-orm");
     const { proofId } = req.params;
 
-    const [proof] = await db.select().from(paymentProofs)
-      .where(drizzleSql`id = ${proofId}`).limit(1);
-    if (!proof) return res.status(404).json({ error: "Comprobante no encontrado" });
+    const [proof] = await db
+      .select()
+      .from(paymentProofs)
+      .where(drizzleSql`id = ${proofId}`)
+      .limit(1);
+    if (!proof)
+      return res.status(404).json({ error: "Comprobante no encontrado" });
 
     await db.execute(
-      drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_by = ${req.user!.id}, verified_at = NOW() WHERE id = ${proofId}`
+      drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_by = ${req.user!.id}, verified_at = NOW() WHERE id = ${proofId}`,
     );
-    await db.update(orders)
+    await db
+      .update(orders)
       .set({ status: "confirmed", paidAt: new Date(), updatedAt: new Date() })
       .where(eq(orders.id, proof.orderId));
 
@@ -214,12 +282,16 @@ router.post("/proofs/:proofId/reject", authenticateToken, async (req, res) => {
     const { proofId } = req.params;
     const { reason } = req.body;
 
-    const [proof] = await db.select().from(paymentProofs)
-      .where(drizzleSql`id = ${proofId}`).limit(1);
-    if (!proof) return res.status(404).json({ error: "Comprobante no encontrado" });
+    const [proof] = await db
+      .select()
+      .from(paymentProofs)
+      .where(drizzleSql`id = ${proofId}`)
+      .limit(1);
+    if (!proof)
+      return res.status(404).json({ error: "Comprobante no encontrado" });
 
     await db.execute(
-      drizzleSql`UPDATE payment_proofs SET status = 'rejected', verified_by = ${req.user!.id}, verified_at = NOW(), verification_notes = ${reason || 'Rechazado por admin'} WHERE id = ${proofId}`
+      drizzleSql`UPDATE payment_proofs SET status = 'rejected', verified_by = ${req.user!.id}, verified_at = NOW(), verification_notes = ${reason || "Rechazado por admin"} WHERE id = ${proofId}`,
     );
 
     // Notificar al cliente
@@ -227,7 +299,8 @@ router.post("/proofs/:proofId/reject", authenticateToken, async (req, res) => {
       const { sendPushToUser } = await import("../enhancedPushService");
       await sendPushToUser(proof.userId, {
         title: "❌ Comprobante rechazado",
-        body: reason || "Tu comprobante no pudo ser verificado. Contacta soporte.",
+        body:
+          reason || "Tu comprobante no pudo ser verificado. Contacta soporte.",
         data: { orderId: proof.orderId, screen: "OrderTracking" },
       });
     } catch {}
@@ -242,7 +315,8 @@ router.post("/proofs/:proofId/reject", authenticateToken, async (req, res) => {
 router.post("/analyze-proof", authenticateToken, async (req, res) => {
   try {
     const { imageBase64, expectedAmount, paymentMethod } = req.body;
-    if (!imageBase64) return res.status(400).json({ error: "imageBase64 requerido" });
+    if (!imageBase64)
+      return res.status(400).json({ error: "imageBase64 requerido" });
 
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -264,7 +338,10 @@ Responde SOLO con JSON válido sin markdown. Ejemplo:
       prompt,
     ]);
 
-    const text = result.response.text().replace(/```json|```/g, "").trim();
+    const text = result.response
+      .text()
+      .replace(/```json|```/g, "")
+      .trim();
     const extracted = JSON.parse(text);
 
     res.json({ success: true, extracted });
@@ -278,50 +355,61 @@ Responde SOLO con JSON válido sin markdown. Ejemplo:
 // Crea una sesión de pago según el provider
 router.post("/create-session", authenticateToken, async (req, res) => {
   try {
-    const { orderId, amount, provider } = req.body;
+    const { orderId, amount, provider, isSubscription, subscriptionId } = req.body;
     if (!orderId || !amount || !provider) {
-      return res.status(400).json({ error: "orderId, amount y provider son requeridos" });
+      return res
+        .status(400)
+        .json({ error: "orderId, amount y provider son requeridos" });
     }
-
-    const { db } = await import("../db");
-    const { orders } = await import("../../shared/schema-mysql");
-
-    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
-    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
 
     const amountEur = amount / 100; // amount viene en céntimos
 
     switch (provider) {
       case "stripe_card":
       case "stripe_bizum": {
-        const stripe = (await import("stripe")).default;
-        const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2024-06-20" });
+        const stripe = getStripe();
 
-        const paymentMethods = provider === "stripe_bizum" ? ["bizum"] : ["card"];
+        const payment_method_types = provider === "stripe_bizum" ? ["bizum"] : ["card"];
 
-        const session = await stripeClient.checkout.sessions.create({
-          payment_method_types: paymentMethods as any,
-          line_items: [{
-            price_data: {
-              currency: "eur",
-              product_data: { name: `Pedido ComeYa #${orderId.slice(-6)}` },
-              unit_amount: amount,
+        // Determinar nombre del producto según tipo
+        let productName = `Pedido ComeYa #${orderId.slice(-6)}`;
+        if (isSubscription) {
+          productName = subscriptionId 
+            ? `Suscripción ComeYa ${subscriptionId.slice(-6)}`
+            : `Suscripción ComeYa Premium/Business`;
+        }
+
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: payment_method_types as any,
+          line_items: [
+            {
+              price_data: {
+                currency: "eur",
+                product_data: { name: productName },
+                unit_amount: amount,
+              },
+              quantity: 1,
             },
-            quantity: 1,
-          }],
+          ],
           mode: "payment",
-          success_url: `${process.env.BACKEND_URL}/api/payments/success?orderId=${orderId}&provider=${provider}`,
-          cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel?orderId=${orderId}`,
-          metadata: { orderId, provider },
+          success_url: `${process.env.BACKEND_URL}/api/payments/success?orderId=${orderId}&provider=${provider}&isSubscription=${!!isSubscription}&subscriptionId=${subscriptionId || ''}`,
+          cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel?orderId=${orderId}&isSubscription=${!!isSubscription}`,
+          metadata: { 
+            orderId, 
+            provider, 
+            isSubscription: isSubscription ? 'true' : 'false', 
+            subscriptionId: subscriptionId || '' 
+          },
         });
 
         return res.json({ url: session.url, sessionId: session.id });
       }
 
       case "paypal": {
-        const base = process.env.PAYPAL_MODE === "live"
-          ? "https://api-m.paypal.com"
-          : "https://api-m.sandbox.paypal.com";
+        const base =
+          process.env.PAYPAL_MODE === "live"
+            ? "https://api-m.paypal.com"
+            : "https://api-m.sandbox.paypal.com";
 
         // Obtener token
         const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
@@ -332,7 +420,7 @@ router.post("/create-session", authenticateToken, async (req, res) => {
           },
           body: "grant_type=client_credentials",
         });
-        const tokenData = await tokenRes.json() as any;
+        const tokenData = (await tokenRes.json()) as any;
 
         // Crear orden PayPal
         const orderRes = await fetch(`${base}/v2/checkout/orders`, {
@@ -343,18 +431,22 @@ router.post("/create-session", authenticateToken, async (req, res) => {
           },
           body: JSON.stringify({
             intent: "CAPTURE",
-            purchase_units: [{
-              reference_id: orderId,
-              amount: { currency_code: "EUR", value: amountEur.toFixed(2) },
-            }],
+            purchase_units: [
+              {
+                reference_id: orderId,
+                amount: { currency_code: "EUR", value: amountEur.toFixed(2) },
+              },
+            ],
             application_context: {
               return_url: `${process.env.BACKEND_URL}/api/payments/success?orderId=${orderId}&provider=paypal`,
               cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel?orderId=${orderId}`,
             },
           }),
         });
-        const paypalOrder = await orderRes.json() as any;
-        const approveLink = paypalOrder.links?.find((l: any) => l.rel === "approve")?.href;
+        const paypalOrder = (await orderRes.json()) as any;
+        const approveLink = paypalOrder.links?.find(
+          (l: any) => l.rel === "approve",
+        )?.href;
 
         return res.json({ url: approveLink, paypalOrderId: paypalOrder.id });
       }
@@ -389,20 +481,26 @@ router.post("/create-session", authenticateToken, async (req, res) => {
           .digest("hex")
           .toUpperCase();
 
-        const binanceRes = await fetch("https://bpay.binanceapi.com/binancepay/openapi/v2/order", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "BinancePay-Timestamp": String(timestamp),
-            "BinancePay-Nonce": nonce,
-            "BinancePay-Certificate-SN": apiKey,
-            "BinancePay-Signature": signature,
+        const binanceRes = await fetch(
+          "https://bpay.binanceapi.com/binancepay/openapi/v2/order",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "BinancePay-Timestamp": String(timestamp),
+              "BinancePay-Nonce": nonce,
+              "BinancePay-Certificate-SN": apiKey,
+              "BinancePay-Signature": signature,
+            },
+            body,
           },
-          body,
-        });
-        const binanceData = await binanceRes.json() as any;
+        );
+        const binanceData = (await binanceRes.json()) as any;
 
-        return res.json({ url: binanceData.data?.checkoutUrl, binanceOrderId: binanceData.data?.prepayId });
+        return res.json({
+          url: binanceData.data?.checkoutUrl,
+          binanceOrderId: binanceData.data?.prepayId,
+        });
       }
 
       default:
@@ -427,9 +525,10 @@ router.get("/success", async (req, res) => {
 
     // Para PayPal hay que capturar el pago
     if (provider === "paypal" && token) {
-      const base = process.env.PAYPAL_MODE === "live"
-        ? "https://api-m.paypal.com"
-        : "https://api-m.sandbox.paypal.com";
+      const base =
+        process.env.PAYPAL_MODE === "live"
+          ? "https://api-m.paypal.com"
+          : "https://api-m.sandbox.paypal.com";
 
       const tokenRes = await fetch(`${base}/v1/oauth2/token`, {
         method: "POST",
@@ -439,7 +538,7 @@ router.get("/success", async (req, res) => {
         },
         body: "grant_type=client_credentials",
       });
-      const tokenData = await tokenRes.json() as any;
+      const tokenData = (await tokenRes.json()) as any;
 
       await fetch(`${base}/v2/checkout/orders/${token}/capture`, {
         method: "POST",
@@ -451,14 +550,15 @@ router.get("/success", async (req, res) => {
     }
 
     // Confirmar pedido
-    await db.update(orders)
+    await db
+      .update(orders)
       .set({ status: "accepted", paidAt: new Date(), updatedAt: new Date() })
       .where(eq(orders.id, orderId));
 
     // Redirigir de vuelta a la app via deep link
     // La app tiene scheme "comeya://" configurado en app.json
     const deepLink = `comeya://order-confirmed?orderId=${orderId}`;
-    
+
     // Pagina HTML que intenta abrir la app y muestra mensaje de exito
     res.send(`
       <!DOCTYPE html>
@@ -527,14 +627,18 @@ router.get("/cancel", async (req, res) => {
 });
 
 // POST /api/payments/webhook/stripe
-router.post("/webhook/stripe", express.raw({ type: "application/json" }), async (req, res) => {
-  try {
-    const { handleStripeWebhook } = await import("../webhookHandlers");
-    return handleStripeWebhook(req, res);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-});
+router.post(
+  "/webhook/stripe",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    try {
+      const { handleStripeWebhook } = await import("../webhookHandlers");
+      return handleStripeWebhook(req, res);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+);
 
 // POST /api/payments/webhook/binance
 router.post("/webhook/binance", async (req, res) => {
@@ -544,7 +648,10 @@ router.post("/webhook/binance", async (req, res) => {
       const orderId = data.merchantTradeNo;
       const { db } = await import("../db");
       const { orders } = await import("../../shared/schema-mysql");
-      await db.update(orders).set({ status: "confirmed", updatedAt: new Date() }).where(eq(orders.id, orderId));
+      await db
+        .update(orders)
+        .set({ status: "confirmed", updatedAt: new Date() })
+        .where(eq(orders.id, orderId));
     }
     res.json({ returnCode: "SUCCESS", returnMessage: null });
   } catch (error: any) {

@@ -9,13 +9,18 @@ export default function WalletScreen() {
   const { user } = useAuth();
   const { theme } = useTheme();
 
-  const showWithdrawals = user?.role === "delivery_driver" || user?.role === "business_owner";
-  const showConnectSetup = user?.role === "delivery_driver" || user?.role === "business_owner";
+  const showWithdrawals =
+    user?.role === "delivery_driver" || user?.role === "business_owner";
+  const showConnectSetup =
+    user?.role === "delivery_driver" || user?.role === "business_owner";
 
   return (
     <WebLayout>
       <View style={[s.container, { backgroundColor: theme.backgroundRoot }]}>
-        <UniversalWallet showWithdrawals={showWithdrawals} showConnectSetup={showConnectSetup} />
+        <UniversalWallet
+          showWithdrawals={showWithdrawals}
+          showConnectSetup={showConnectSetup}
+        />
       </View>
     </WebLayout>
   );

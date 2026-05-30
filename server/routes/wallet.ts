@@ -9,7 +9,7 @@ router.get("/", authenticateToken, async (req, res) => {
   try {
     const { wallets, transactions } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     // Get or create wallet
     let [wallet] = await db
       .select()
@@ -27,7 +27,7 @@ router.get("/", authenticateToken, async (req, res) => {
         totalEarned: 0,
         createdAt: new Date(),
       };
-      
+
       await db.insert(wallets).values(newWallet);
       wallet = newWallet;
     }
@@ -48,7 +48,7 @@ router.get("/", authenticateToken, async (req, res) => {
         pendingBalancePesos: wallet.pendingBalance / 100,
         totalEarnedPesos: wallet.totalEarned / 100,
       },
-      transactions: recentTransactions.map(t => ({
+      transactions: recentTransactions.map((t) => ({
         ...t,
         amountPesos: t.amount / 100,
       })),
@@ -64,7 +64,7 @@ router.get("/transactions", authenticateToken, async (req, res) => {
   try {
     const { transactions } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const userTransactions = await db
       .select()
       .from(transactions)
@@ -73,7 +73,7 @@ router.get("/transactions", authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      transactions: userTransactions.map(t => ({
+      transactions: userTransactions.map((t) => ({
         ...t,
         amountPesos: t.amount / 100,
       })),
@@ -89,7 +89,7 @@ router.get("/balance", authenticateToken, async (req, res) => {
   try {
     const { wallets } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const [wallet] = await db
       .select()
       .from(wallets)
@@ -123,7 +123,7 @@ router.get("/balance", authenticateToken, async (req, res) => {
 router.post("/withdraw", authenticateToken, async (req, res) => {
   try {
     const { amount } = req.body;
-    
+
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: "Monto inválido" });
     }
@@ -135,7 +135,7 @@ router.post("/withdraw", authenticateToken, async (req, res) => {
 
     const { wallets, transactions } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const [wallet] = await db
       .select()
       .from(wallets)
@@ -147,7 +147,7 @@ router.post("/withdraw", authenticateToken, async (req, res) => {
     }
 
     const amountCentavos = Math.round(amount * 100);
-    
+
     if (wallet.balance < amountCentavos) {
       return res.status(400).json({ error: "Saldo insuficiente" });
     }
@@ -194,18 +194,20 @@ router.get("/withdrawals", authenticateToken, async (req, res) => {
   try {
     const { transactions } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const withdrawals = await db
       .select()
       .from(transactions)
       .where(eq(transactions.userId, req.user!.id))
       .orderBy(desc(transactions.createdAt));
 
-    const withdrawalTransactions = withdrawals.filter(t => t.type === "withdrawal");
+    const withdrawalTransactions = withdrawals.filter(
+      (t) => t.type === "withdrawal",
+    );
 
     res.json({
       success: true,
-      withdrawals: withdrawalTransactions.map(t => ({
+      withdrawals: withdrawalTransactions.map((t) => ({
         ...t,
         amountPesos: Math.abs(t.amount) / 100,
       })),

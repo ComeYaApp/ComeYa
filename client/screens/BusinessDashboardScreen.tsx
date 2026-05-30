@@ -21,7 +21,12 @@ import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -79,8 +84,13 @@ function StatCard({
       <View style={[styles.statIcon, { backgroundColor: color + "20" }]}>
         <Feather name={icon as any} size={18} color={color} />
       </View>
-      <ThemedText type="h3" style={{ fontSize: 20 }}>{value}</ThemedText>
-      <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+      <ThemedText type="h3" style={{ fontSize: 20 }}>
+        {value}
+      </ThemedText>
+      <ThemedText
+        type="caption"
+        style={{ color: theme.textSecondary, textAlign: "center" }}
+      >
         {label}
       </ThemedText>
       {subtext ? (
@@ -106,7 +116,12 @@ function TopProductRow({
       entering={FadeInDown.delay(index * 50).springify()}
       style={[styles.productRow, { backgroundColor: theme.card }, Shadows.sm]}
     >
-      <View style={[styles.rankBadge, { backgroundColor: ComeYaColors.primary + "20" }]}>
+      <View
+        style={[
+          styles.rankBadge,
+          { backgroundColor: ComeYaColors.primary + "20" },
+        ]}
+      >
         <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
           {index + 1}
         </ThemedText>
@@ -132,21 +147,26 @@ export default function BusinessDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { user } = useAuth();
-  const { businesses, selectedBusiness, isLoading: businessLoading } = useBusiness();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  
+  const {
+    businesses,
+    selectedBusiness,
+    isLoading: businessLoading,
+  } = useBusiness();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const [isOpen, setIsOpen] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState<Period>("week");
-  
+
   const [dashboard, setDashboard] = useState<DashboardData>({
     pendingOrders: 0,
     todayOrders: 0,
     todayRevenue: 0,
     recentOrders: [],
   });
-  
+
   const [stats, setStats] = useState<StatsData>({
     revenue: { today: 0, week: 0, month: 0, total: 0 },
     orders: { total: 0, completed: 0, cancelled: 0, avgValue: 0 },
@@ -164,10 +184,10 @@ export default function BusinessDashboardScreen() {
         apiRequest("GET", `/api/business/dashboard?businessId=${businessId}`),
         apiRequest("GET", `/api/business/stats?businessId=${businessId}`),
       ]);
-      
+
       const dashboardData = await dashboardRes.json();
       const statsData = await statsRes.json();
-      
+
       if (dashboardData.success) {
         setDashboard({
           pendingOrders: dashboardData.dashboard.pendingOrders || 0,
@@ -177,11 +197,21 @@ export default function BusinessDashboardScreen() {
         });
         setIsOpen(dashboardData.dashboard.isOpen ?? true);
       }
-      
+
       if (statsData.success) {
         setStats({
-          revenue: statsData.revenue || { today: 0, week: 0, month: 0, total: 0 },
-          orders: statsData.orders || { total: 0, completed: 0, cancelled: 0, avgValue: 0 },
+          revenue: statsData.revenue || {
+            today: 0,
+            week: 0,
+            month: 0,
+            total: 0,
+          },
+          orders: statsData.orders || {
+            total: 0,
+            completed: 0,
+            cancelled: 0,
+            avgValue: 0,
+          },
           topProducts: statsData.topProducts || [],
         });
       }
@@ -197,7 +227,7 @@ export default function BusinessDashboardScreen() {
       if (!businessLoading) {
         loadData();
       }
-    }, [selectedBusiness, businessLoading])
+    }, [selectedBusiness, businessLoading]),
   );
 
   useEffect(() => {
@@ -208,7 +238,9 @@ export default function BusinessDashboardScreen() {
 
   useEffect(() => {
     if (dashboard.pendingOrders > 0) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+        () => {},
+      );
     }
   }, [dashboard.pendingOrders]);
 
@@ -221,18 +253,22 @@ export default function BusinessDashboardScreen() {
   const toggleBusinessStatus = async () => {
     try {
       if (!selectedBusiness?.id) {
-        console.error('No business selected');
+        console.error("No business selected");
         return;
       }
-      
+
       const newStatus = !isOpen;
       setIsOpen(newStatus); // Actualizar UI inmediatamente
-      
+
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      
-      const response = await apiRequest("PUT", `/api/business/${selectedBusiness.id}/toggle-status`, {});
+
+      const response = await apiRequest(
+        "PUT",
+        `/api/business/${selectedBusiness.id}/toggle-status`,
+        {},
+      );
       const data = await response.json();
-      
+
       if (data.success) {
         // Confirmar el estado desde el servidor
         setIsOpen(data.isOpen);
@@ -255,16 +291,21 @@ export default function BusinessDashboardScreen() {
 
   const getRevenueForPeriod = () => {
     switch (selectedPeriod) {
-      case "today": return stats.revenue.today;
-      case "week": return stats.revenue.week;
-      case "month": return stats.revenue.month;
-      default: return 0;
+      case "today":
+        return stats.revenue.today;
+      case "week":
+        return stats.revenue.week;
+      case "month":
+        return stats.revenue.month;
+      default:
+        return 0;
     }
   };
 
-  const completionRate = stats.orders.total > 0
-    ? Math.round((stats.orders.completed / stats.orders.total) * 100)
-    : 100;
+  const completionRate =
+    stats.orders.total > 0
+      ? Math.round((stats.orders.completed / stats.orders.total) * 100)
+      : 100;
 
   const getStatusTranslation = (status: string) => {
     const translations: Record<string, string> = {
@@ -293,10 +334,18 @@ export default function BusinessDashboardScreen() {
 
   if (loading || businessLoading) {
     return (
-      <LinearGradient colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']} style={styles.container}>
+      <LinearGradient
+        colors={[
+          theme.gradientStart || "#FFFFFF",
+          theme.gradientEnd || "#F5F5F5",
+        ]}
+        style={styles.container}
+      >
         <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color={ComeYaColors.primary} />
-          <ThemedText style={{ marginTop: Spacing.md }}>Cargando dashboard...</ThemedText>
+          <ThemedText style={{ marginTop: Spacing.md }}>
+            Cargando dashboard...
+          </ThemedText>
         </View>
       </LinearGradient>
     );
@@ -304,11 +353,26 @@ export default function BusinessDashboardScreen() {
 
   if (!selectedBusiness) {
     return (
-      <LinearGradient colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']} style={styles.container}>
+      <LinearGradient
+        colors={[
+          theme.gradientStart || "#FFFFFF",
+          theme.gradientEnd || "#F5F5F5",
+        ]}
+        style={styles.container}
+      >
         <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <Feather name="shopping-bag" size={48} color={theme.textSecondary} />
-          <ThemedText type="h3" style={{ marginTop: Spacing.md }}>Sin negocio registrado</ThemedText>
-          <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: 'center' }}>
+          <ThemedText type="h3" style={{ marginTop: Spacing.md }}>
+            Sin negocio registrado
+          </ThemedText>
+          <ThemedText
+            type="caption"
+            style={{
+              color: theme.textSecondary,
+              marginTop: Spacing.sm,
+              textAlign: "center",
+            }}
+          >
             Crea tu negocio para empezar a recibir pedidos
           </ThemedText>
         </View>
@@ -317,12 +381,28 @@ export default function BusinessDashboardScreen() {
   }
 
   return (
-    <LinearGradient colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']} style={styles.container}>
+    <LinearGradient
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
+      style={styles.container}
+    >
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + Spacing.md,
+            paddingBottom: insets.bottom + 100,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={ComeYaColors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={ComeYaColors.primary}
+          />
         }
       >
         <View style={styles.header}>
@@ -336,10 +416,17 @@ export default function BusinessDashboardScreen() {
                   navigation.navigate("BusinessMore" as any);
                 }}
               >
-                <ThemedText type="caption" style={{ color: ComeYaColors.primary }}>
+                <ThemedText
+                  type="caption"
+                  style={{ color: ComeYaColors.primary }}
+                >
                   {selectedBusiness?.name || "Seleccionar negocio"}
                 </ThemedText>
-                <Feather name="chevron-down" size={14} color={ComeYaColors.primary} />
+                <Feather
+                  name="chevron-down"
+                  size={14}
+                  color={ComeYaColors.primary}
+                />
               </Pressable>
             ) : (
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -348,7 +435,13 @@ export default function BusinessDashboardScreen() {
             )}
           </View>
           <View style={styles.statusToggle}>
-            <ThemedText type="small" style={{ marginRight: Spacing.sm, color: isOpen ? "#4CAF50" : theme.textSecondary }}>
+            <ThemedText
+              type="small"
+              style={{
+                marginRight: Spacing.sm,
+                color: isOpen ? "#4CAF50" : theme.textSecondary,
+              }}
+            >
               {isOpen ? "Abierto" : "Cerrado"}
             </ThemedText>
             <Switch
@@ -362,12 +455,23 @@ export default function BusinessDashboardScreen() {
 
         <Animated.View
           entering={FadeInDown.springify()}
-          style={[styles.revenueCard, { backgroundColor: "#4CAF50" }, Shadows.lg]}
+          style={[
+            styles.revenueCard,
+            { backgroundColor: "#4CAF50" },
+            Shadows.lg,
+          ]}
         >
           <ThemedText type="body" style={{ color: "rgba(255,255,255,0.8)" }}>
             Ingresos - {periodLabels[selectedPeriod]}
           </ThemedText>
-          <ThemedText type="h1" style={{ color: "#FFFFFF", fontSize: 38, marginVertical: Spacing.sm }}>
+          <ThemedText
+            type="h1"
+            style={{
+              color: "#FFFFFF",
+              fontSize: 38,
+              marginVertical: Spacing.sm,
+            }}
+          >
             €{getRevenueForPeriod().toFixed(2)}
           </ThemedText>
 
@@ -381,12 +485,20 @@ export default function BusinessDashboardScreen() {
                 }}
                 style={[
                   styles.periodButton,
-                  { backgroundColor: selectedPeriod === period ? "#FFFFFF" : "rgba(255,255,255,0.2)" },
+                  {
+                    backgroundColor:
+                      selectedPeriod === period
+                        ? "#FFFFFF"
+                        : "rgba(255,255,255,0.2)",
+                  },
                 ]}
               >
                 <ThemedText
                   type="small"
-                  style={{ color: selectedPeriod === period ? "#4CAF50" : "#FFFFFF", fontWeight: "600" }}
+                  style={{
+                    color: selectedPeriod === period ? "#4CAF50" : "#FFFFFF",
+                    fontWeight: "600",
+                  }}
                 >
                   {periodLabels[period]}
                 </ThemedText>
@@ -401,11 +513,19 @@ export default function BusinessDashboardScreen() {
           </View>
         </Animated.View>
 
-        <ThemedText type="h3" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+        <ThemedText
+          type="h3"
+          style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+        >
           Resumen de Pedidos
         </ThemedText>
         <View style={styles.statsGrid}>
-          <StatCard icon="shopping-bag" label="Totales" value={stats.orders.total} delay={0} />
+          <StatCard
+            icon="shopping-bag"
+            label="Totales"
+            value={stats.orders.total}
+            delay={0}
+          />
           <StatCard
             icon="check-circle"
             label="Completados"
@@ -418,7 +538,11 @@ export default function BusinessDashboardScreen() {
             icon="clock"
             label="Pendientes"
             value={dashboard.pendingOrders}
-            color={dashboard.pendingOrders > 0 ? ComeYaColors.warning : theme.textSecondary}
+            color={
+              dashboard.pendingOrders > 0
+                ? ComeYaColors.warning
+                : theme.textSecondary
+            }
             delay={100}
           />
           <StatCard
@@ -430,25 +554,40 @@ export default function BusinessDashboardScreen() {
           />
         </View>
 
-        <View style={[styles.avgCard, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.avgCard, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <Feather name="trending-up" size={20} color={ComeYaColors.primary} />
           <View style={{ marginLeft: Spacing.md, flex: 1 }}>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>Ticket promedio</ThemedText>
-            <ThemedText type="h3">€{stats.orders.avgValue.toFixed(2)}</ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              Ticket promedio
+            </ThemedText>
+            <ThemedText type="h3">
+              €{stats.orders.avgValue.toFixed(2)}
+            </ThemedText>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>Pedidos hoy</ThemedText>
+          <View style={{ alignItems: "flex-end" }}>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              Pedidos hoy
+            </ThemedText>
             <ThemedText type="h3">{dashboard.todayOrders}</ThemedText>
           </View>
         </View>
 
         {/* Sistema de Pagos */}
-        <View style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <View style={styles.infoHeader}>
             <Feather name="info" size={20} color={ComeYaColors.primary} />
-            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Sistema de Pagos</ThemedText>
+            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
+              Sistema de Pagos
+            </ThemedText>
           </View>
-          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+          >
             • Recibes el 100% del precio base de tus productos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
@@ -464,7 +603,10 @@ export default function BusinessDashboardScreen() {
 
         {stats.topProducts.length > 0 ? (
           <>
-            <ThemedText type="h3" style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}>
+            <ThemedText
+              type="h3"
+              style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+            >
               Productos Más Vendidos
             </ThemedText>
             {stats.topProducts.map((product, index) => (
@@ -477,88 +619,143 @@ export default function BusinessDashboardScreen() {
           <>
             <View style={styles.sectionHeader}>
               <ThemedText type="h3">Pedidos Recientes</ThemedText>
-              <Pressable onPress={() => navigation.navigate("BusinessOrders" as any)}>
-                <ThemedText type="small" style={{ color: ComeYaColors.primary }}>Ver todos</ThemedText>
+              <Pressable
+                onPress={() => navigation.navigate("BusinessOrders" as any)}
+              >
+                <ThemedText
+                  type="small"
+                  style={{ color: ComeYaColors.primary }}
+                >
+                  Ver todos
+                </ThemedText>
               </Pressable>
             </View>
-            {dashboard.recentOrders.slice(0, 5).map((order: any, index: number) => (
-              <Animated.View
-                key={order.id}
-                entering={FadeInDown.delay(index * 50).springify()}
-                style={[styles.orderCard, { backgroundColor: theme.card }, Shadows.sm]}
-              >
-                <View style={styles.orderHeader}>
-                  <ThemedText type="body" style={{ fontWeight: "600" }}>
-                    Pedido #{order.id?.slice(-6) || index}
-                  </ThemedText>
-                  <Badge
-                    text={getStatusTranslation(order.status)}
-                    variant={order.status === "delivered" ? "success" : order.status === "cancelled" ? "error" : "primary"}
-                  />
-                </View>
-                <View style={styles.orderDetails}>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      {order.customerName || "Cliente"}
+            {dashboard.recentOrders
+              .slice(0, 5)
+              .map((order: any, index: number) => (
+                <Animated.View
+                  key={order.id}
+                  entering={FadeInDown.delay(index * 50).springify()}
+                  style={[
+                    styles.orderCard,
+                    { backgroundColor: theme.card },
+                    Shadows.sm,
+                  ]}
+                >
+                  <View style={styles.orderHeader}>
+                    <ThemedText type="body" style={{ fontWeight: "600" }}>
+                      Pedido #{order.id?.slice(-6) || index}
                     </ThemedText>
-                    {order.customerPhone ? (
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-                        {order.customerPhone}
-                      </ThemedText>
-                    ) : null}
-                    {order.paymentMethod ? (
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-                        {getPaymentMethodLabel(order.paymentMethod)}
-                      </ThemedText>
-                    ) : null}
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-                      {new Date(order.createdAt).toLocaleDateString("es-ES", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </ThemedText>
+                    <Badge
+                      text={getStatusTranslation(order.status)}
+                      variant={
+                        order.status === "delivered"
+                          ? "success"
+                          : order.status === "cancelled"
+                            ? "error"
+                            : "primary"
+                      }
+                    />
                   </View>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <ThemedText type="body" style={{ fontWeight: "600", color: ComeYaColors.primary }}>
-                      €{(order.subtotal || 0).toFixed(2)}
-                    </ThemedText>
-                    {order.deliveryFee > 0 ? (
-                      <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-                        + €{order.deliveryFee.toFixed(2)} envío
+                  <View style={styles.orderDetails}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText
+                        type="caption"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        {order.customerName || "Cliente"}
                       </ThemedText>
-                    ) : null}
+                      {order.customerPhone ? (
+                        <ThemedText
+                          type="caption"
+                          style={{ color: theme.textSecondary, marginTop: 2 }}
+                        >
+                          {order.customerPhone}
+                        </ThemedText>
+                      ) : null}
+                      {order.paymentMethod ? (
+                        <ThemedText
+                          type="caption"
+                          style={{ color: theme.textSecondary, marginTop: 2 }}
+                        >
+                          {getPaymentMethodLabel(order.paymentMethod)}
+                        </ThemedText>
+                      ) : null}
+                      <ThemedText
+                        type="caption"
+                        style={{ color: theme.textSecondary, marginTop: 2 }}
+                      >
+                        {new Date(order.createdAt).toLocaleDateString("es-ES", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </ThemedText>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <ThemedText
+                        type="body"
+                        style={{
+                          fontWeight: "600",
+                          color: ComeYaColors.primary,
+                        }}
+                      >
+                        €{(order.subtotal || 0).toFixed(2)}
+                      </ThemedText>
+                      {order.deliveryFee > 0 ? (
+                        <ThemedText
+                          type="caption"
+                          style={{ color: theme.textSecondary, marginTop: 2 }}
+                        >
+                          + €{order.deliveryFee.toFixed(2)} envío
+                        </ThemedText>
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-              </Animated.View>
-            ))}
+                </Animated.View>
+              ))}
           </>
         ) : null}
 
         <View style={styles.quickActions}>
-          <ThemedText type="h3" style={{ marginBottom: Spacing.sm }}>Acciones Rápidas</ThemedText>
+          <ThemedText type="h3" style={{ marginBottom: Spacing.sm }}>
+            Acciones Rápidas
+          </ThemedText>
           <View style={styles.actionsRow}>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.card }]}
               onPress={() => navigation.navigate("BusinessOrders" as any)}
             >
-              <Feather name="clipboard" size={24} color={ComeYaColors.primary} />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs }}>Pedidos</ThemedText>
+              <Feather
+                name="clipboard"
+                size={24}
+                color={ComeYaColors.primary}
+              />
+              <ThemedText type="small" style={{ marginTop: Spacing.xs }}>
+                Pedidos
+              </ThemedText>
             </Pressable>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.card }]}
               onPress={() => navigation.navigate("BusinessProducts" as any)}
             >
               <Feather name="package" size={24} color={ComeYaColors.primary} />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs }}>Productos</ThemedText>
+              <ThemedText type="small" style={{ marginTop: Spacing.xs }}>
+                Productos
+              </ThemedText>
             </Pressable>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.card }]}
               onPress={() => navigation.navigate("BusinessHours" as any)}
             >
               <Feather name="clock" size={24} color="#FF9800" />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: 'center' }}>Horarios</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ marginTop: Spacing.xs, textAlign: "center" }}
+              >
+                Horarios
+              </ThemedText>
             </Pressable>
           </View>
           <View style={[styles.actionsRow, { marginTop: Spacing.sm }]}>
@@ -570,14 +767,24 @@ export default function BusinessDashboardScreen() {
               }}
             >
               <Feather name="maximize" size={24} color="#4CAF50" />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: 'center' }}>Escanear QR</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ marginTop: Spacing.xs, textAlign: "center" }}
+              >
+                Escanear QR
+              </ThemedText>
             </Pressable>
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.card }]}
               onPress={() => navigation.navigate("BusinessProfile" as any)}
             >
               <Feather name="settings" size={24} color={ComeYaColors.primary} />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs, textAlign: 'center' }}>Ajustes</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ marginTop: Spacing.xs, textAlign: "center" }}
+              >
+                Ajustes
+              </ThemedText>
             </Pressable>
           </View>
         </View>

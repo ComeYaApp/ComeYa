@@ -53,7 +53,9 @@ export class FinancialIntegrity {
       order.nemyCommission !== undefined &&
       order.nemyCommission !== null;
     const markupTotal = hasMarkup
-      ? (order.productosBase || 0) + (order.nemyCommission || 0) + order.deliveryFee
+      ? (order.productosBase || 0) +
+        (order.nemyCommission || 0) +
+        order.deliveryFee
       : subtotalTotal;
 
     if (order.total !== subtotalTotal && order.total !== markupTotal) {
@@ -72,12 +74,14 @@ export class FinancialIntegrity {
     }
 
     // 2. Validar comisiones si existen
-    if (order.platformFee !== undefined && 
-        order.businessEarnings !== undefined && 
-        order.deliveryEarnings !== undefined) {
-      
-      const commissionTotal = order.platformFee + order.businessEarnings + order.deliveryEarnings;
-      
+    if (
+      order.platformFee !== undefined &&
+      order.businessEarnings !== undefined &&
+      order.deliveryEarnings !== undefined
+    ) {
+      const commissionTotal =
+        order.platformFee + order.businessEarnings + order.deliveryEarnings;
+
       if (commissionTotal !== order.total) {
         return {
           valid: false,
@@ -98,12 +102,14 @@ export class FinancialIntegrity {
         order.total,
         order.deliveryFee || 0,
         order.productosBase || undefined,
-        order.nemyCommission || undefined
+        order.nemyCommission || undefined,
       );
-      
-      if (order.platformFee !== expectedCommissions.platform ||
-          order.businessEarnings !== expectedCommissions.business ||
-          order.deliveryEarnings !== expectedCommissions.driver) {
+
+      if (
+        order.platformFee !== expectedCommissions.platform ||
+        order.businessEarnings !== expectedCommissions.business ||
+        order.deliveryEarnings !== expectedCommissions.driver
+      ) {
         return {
           valid: false,
           error: "Comisiones no coinciden con rates del sistema",
@@ -126,7 +132,7 @@ export class FinancialIntegrity {
   static async validateWalletTransaction(
     userId: string,
     amount: number,
-    type: string
+    type: string,
   ): Promise<ValidationResult> {
     // Obtener wallet
     const [wallet] = await db
@@ -167,7 +173,8 @@ export class FinancialIntegrity {
         return { valid: false, error: "Usuario no encontrado" };
       }
 
-      const limits = ROLE_WITHDRAWAL_LIMITS[user.role] || ROLE_WITHDRAWAL_LIMITS.customer;
+      const limits =
+        ROLE_WITHDRAWAL_LIMITS[user.role] || ROLE_WITHDRAWAL_LIMITS.customer;
       const withdrawalAmount = Math.abs(amount);
 
       if (withdrawalAmount < limits.minAmount) {
@@ -182,7 +189,10 @@ export class FinancialIntegrity {
         return {
           valid: false,
           error: `Monto máximo por transacción: $${(limits.maxPerTransaction / 100).toFixed(2)} MXN`,
-          details: { maxAmount: limits.maxPerTransaction, requested: withdrawalAmount },
+          details: {
+            maxAmount: limits.maxPerTransaction,
+            requested: withdrawalAmount,
+          },
         };
       }
     }
@@ -244,7 +254,11 @@ export class FinancialIntegrity {
 
     // Si el pedido está entregado, validar que las comisiones estén calculadas
     if (order.status === "delivered") {
-      if (!order.platformFee || !order.businessEarnings || !order.deliveryEarnings) {
+      if (
+        !order.platformFee ||
+        !order.businessEarnings ||
+        !order.deliveryEarnings
+      ) {
         return {
           valid: false,
           error: "Pedido entregado sin comisiones calculadas",

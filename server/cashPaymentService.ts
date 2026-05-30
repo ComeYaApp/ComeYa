@@ -23,7 +23,8 @@ export async function processCashPayment(
   params: CashPaymentParams,
 ): Promise<CashPaymentResult> {
   try {
-    const { orderId, customerId, businessId, cashReceived, orderTotal } = params;
+    const { orderId, customerId, businessId, cashReceived, orderTotal } =
+      params;
 
     // Validate cash amount
     if (cashReceived < orderTotal) {
@@ -36,19 +37,17 @@ export async function processCashPayment(
     const change = cashReceived - orderTotal;
 
     // Create payment record
-    const result = await db
-      .insert(payments)
-      .values({
-        orderId,
-        customerId,
-        businessId,
-        amount: orderTotal,
-        currency: "MXN",
-        status: "succeeded",
-        paymentMethod: "cash",
-        processedAt: new Date(),
-      });
-    
+    const result = await db.insert(payments).values({
+      orderId,
+      customerId,
+      businessId,
+      amount: orderTotal,
+      currency: "MXN",
+      status: "succeeded",
+      paymentMethod: "cash",
+      processedAt: new Date(),
+    });
+
     // Get the inserted ID
     const paymentId = result[0].insertId.toString();
 
@@ -120,7 +119,7 @@ async function processCashCommissions(orderId: string) {
       order.total,
       order.deliveryFee || 0,
       order.productosBase || undefined,
-      order.nemyCommission || undefined
+      order.nemyCommission || undefined,
     );
 
     const platformAmount = commissions.platform;
@@ -148,10 +147,12 @@ async function processCashCommissions(orderId: string) {
       );
     }
 
-      if (platformAmount > 0) {
-        // TODO: Define platform wallet handling for cash; currently held at platform level
-        console.log(`ℹ️ Plataforma debe registrar $${platformAmount} para pedido ${orderId}`);
-      }
+    if (platformAmount > 0) {
+      // TODO: Define platform wallet handling for cash; currently held at platform level
+      console.log(
+        `ℹ️ Plataforma debe registrar $${platformAmount} para pedido ${orderId}`,
+      );
+    }
 
     console.log(`💰 Cash commissions processed for order ${orderId}`);
   } catch (error) {

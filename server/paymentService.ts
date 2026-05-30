@@ -19,7 +19,9 @@ function getStripe(): Stripe {
   if (!stripeInstance) {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
-      throw new Error("Stripe is not configured. Please add STRIPE_SECRET_KEY.");
+      throw new Error(
+        "Stripe is not configured. Please add STRIPE_SECRET_KEY.",
+      );
     }
     stripeInstance = new Stripe(key, {
       apiVersion: "2024-12-18.acacia",
@@ -31,7 +33,7 @@ function getStripe(): Stripe {
 const stripe = new Proxy({} as Stripe, {
   get(_, prop) {
     return (getStripe() as any)[prop];
-  }
+  },
 });
 
 interface CreatePaymentIntentParams {
@@ -155,7 +157,9 @@ export async function creditWallet(
         })
         .$returningId();
 
-      const newId = Array.isArray(result) ? result[0].id : (result as any).insertId;
+      const newId = Array.isArray(result)
+        ? result[0].id
+        : (result as any).insertId;
       [wallet] = await tx
         .select()
         .from(wallets)
@@ -210,14 +214,16 @@ export async function processSuccessfulPayment(paymentIntentId: string) {
       .limit(1);
 
     if (!order) {
-      throw new Error(`Order ${payment.orderId} not found for payment ${paymentIntentId}`);
+      throw new Error(
+        `Order ${payment.orderId} not found for payment ${paymentIntentId}`,
+      );
     }
 
     const commissions = await financialService.calculateCommissions(
       payment.amount,
       order.deliveryFee || 0,
       order.productosBase || undefined,
-      order.nemyCommission || undefined
+      order.nemyCommission || undefined,
     );
 
     const platformAmount = commissions.platform;
@@ -230,7 +236,7 @@ export async function processSuccessfulPayment(paymentIntentId: string) {
       businessAmount,
       "commission",
       payment.orderId,
-      `Venta con tarjeta - Pedido ${payment.orderId}`
+      `Venta con tarjeta - Pedido ${payment.orderId}`,
     );
 
     // Update driver wallet (if assigned) using unified service
@@ -240,7 +246,7 @@ export async function processSuccessfulPayment(paymentIntentId: string) {
         driverAmount,
         "delivery_fee",
         payment.orderId,
-        `Tarifa de entrega - Pedido ${payment.orderId}`
+        `Tarifa de entrega - Pedido ${payment.orderId}`,
       );
     }
 
@@ -280,8 +286,6 @@ export async function processSuccessfulPayment(paymentIntentId: string) {
     };
   }
 }
-
-
 
 export async function createSetupIntent(customerId: string) {
   try {

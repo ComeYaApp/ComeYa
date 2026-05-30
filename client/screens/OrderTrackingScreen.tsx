@@ -24,7 +24,12 @@ import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { CollapsibleMap } from "@/components/CollapsibleMap";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { Order } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { mockOrders } from "@/data/mockData";
@@ -45,7 +50,12 @@ const parseDeliveryAddress = (address: string | null): string => {
   try {
     const parsed = JSON.parse(address);
     if (typeof parsed === "object") {
-      const parts = [parsed.street, parsed.city, parsed.state, parsed.zipCode].filter(Boolean);
+      const parts = [
+        parsed.street,
+        parsed.city,
+        parsed.state,
+        parsed.zipCode,
+      ].filter(Boolean);
       return parts.join(", ") || address;
     }
     return address;
@@ -63,18 +73,30 @@ export default function OrderTrackingScreen() {
 
   const { orderId } = route.params;
   const [order, setOrder] = useState<Order | null>(null);
-  const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
+  const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
   const [pickupInfo, setPickupInfo] = useState<any>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [showQR, setShowQR] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [deliveryLocation, setDeliveryLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [businessLocation, setBusinessLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [deliveryLocation, setDeliveryLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [businessLocation, setBusinessLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
   const [selectedTip, setSelectedTip] = useState<number | null>(null);
   const [tipSent, setTipSent] = useState(false);
   const [sendingTip, setSendingTip] = useState(false);
-  const [dynamicETA, setDynamicETA] = useState<{ minutes: number; confidence: number } | null>(null);
+  const [dynamicETA, setDynamicETA] = useState<{
+    minutes: number;
+    confidence: number;
+  } | null>(null);
 
   const tipOptions = [10, 20, 30, 50];
 
@@ -100,7 +122,10 @@ export default function OrderTrackingScreen() {
     const fetchETA = async () => {
       if (!orderId) return;
       try {
-        const response = await apiRequest('GET', `/api/tracking/eta/${orderId}`);
+        const response = await apiRequest(
+          "GET",
+          `/api/tracking/eta/${orderId}`,
+        );
         const data = await response.json();
         if (data.success && data.eta) {
           setDynamicETA({
@@ -109,7 +134,7 @@ export default function OrderTrackingScreen() {
           });
         }
       } catch (error) {
-        console.log('ETA not available');
+        console.log("ETA not available");
       }
     };
 
@@ -147,18 +172,18 @@ export default function OrderTrackingScreen() {
 
   // Cargar info de pickup y actualizar cada 30s
   useEffect(() => {
-    if (orderType !== 'pickup' || !orderId) return;
-    
+    if (orderType !== "pickup" || !orderId) return;
+
     const fetchPickupInfo = async () => {
       try {
-        const response = await apiRequest('GET', `/api/pickup/${orderId}/info`);
+        const response = await apiRequest("GET", `/api/pickup/${orderId}/info`);
         const data = await response.json();
         if (data.success) {
           setPickupInfo(data.pickup);
           setTimeRemaining(data.pickup.timeRemaining);
         }
       } catch (error) {
-        console.log('Pickup info not available');
+        console.log("Pickup info not available");
       }
     };
 
@@ -170,11 +195,11 @@ export default function OrderTrackingScreen() {
   // Countdown timer - actualizar cada minuto
   useEffect(() => {
     if (timeRemaining === null || timeRemaining <= 0) return;
-    
+
     const timer = setInterval(() => {
-      setTimeRemaining(prev => prev! > 0 ? prev! - 1 : 0);
+      setTimeRemaining((prev) => (prev! > 0 ? prev! - 1 : 0));
     }, 60000);
-    
+
     return () => clearInterval(timer);
   }, [timeRemaining]);
 
@@ -187,16 +212,27 @@ export default function OrderTrackingScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
       // Get immediate fix
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setUserLocation({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
       // Watch for updates
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 20 },
-        (l) => setUserLocation({ latitude: l.coords.latitude, longitude: l.coords.longitude })
+        (l) =>
+          setUserLocation({
+            latitude: l.coords.latitude,
+            longitude: l.coords.longitude,
+          }),
       );
     })();
 
-    return () => { sub?.remove(); };
+    return () => {
+      sub?.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -218,8 +254,12 @@ export default function OrderTrackingScreen() {
                 : apiOrder.items,
             status: apiOrder.status,
             subtotal: apiOrder.subtotal / 100,
-            productosBase: apiOrder.productosBase ? apiOrder.productosBase / 100 : undefined,
-            nemyCommission: apiOrder.nemyCommission ? apiOrder.nemyCommission / 100 : undefined,
+            productosBase: apiOrder.productosBase
+              ? apiOrder.productosBase / 100
+              : undefined,
+            nemyCommission: apiOrder.nemyCommission
+              ? apiOrder.nemyCommission / 100
+              : undefined,
             deliveryFee: apiOrder.deliveryFee / 100,
             total: apiOrder.total / 100,
             paymentMethod: apiOrder.paymentMethod,
@@ -231,12 +271,15 @@ export default function OrderTrackingScreen() {
             deliveryPersonPhone: apiOrder.deliveryPersonPhone,
           };
           setOrder(transformedOrder);
-          setOrderType(apiOrder.orderType || 'delivery');
+          setOrderType(apiOrder.orderType || "delivery");
 
           // Cargar ubicación real del negocio
           if (apiOrder.businessId) {
             try {
-              const bizRes = await apiRequest("GET", `/api/business/${apiOrder.businessId}`);
+              const bizRes = await apiRequest(
+                "GET",
+                `/api/business/${apiOrder.businessId}`,
+              );
               const bizData = await bizRes.json();
               const biz = bizData.business;
               if (biz?.latitude && biz?.longitude) {
@@ -245,18 +288,25 @@ export default function OrderTrackingScreen() {
                   longitude: parseFloat(biz.longitude),
                 });
               }
-            } catch { /* sin ubicación del negocio */ }
+            } catch {
+              /* sin ubicación del negocio */
+            }
           }
 
           // Cargar foto del repartidor
           if (apiOrder.deliveryPersonId) {
             try {
-              const driverRes = await apiRequest("GET", `/api/users/${apiOrder.deliveryPersonId}`);
+              const driverRes = await apiRequest(
+                "GET",
+                `/api/users/${apiOrder.deliveryPersonId}`,
+              );
               const driverData = await driverRes.json();
               if (driverData.user?.profilePicture) {
                 setDriverPhoto(driverData.user.profilePicture);
               }
-            } catch { /* sin foto del repartidor */ }
+            } catch {
+              /* sin foto del repartidor */
+            }
           }
           return;
         }
@@ -379,11 +429,11 @@ export default function OrderTrackingScreen() {
     }
   };
 
-  const etaRange = dynamicETA 
-    ? `${dynamicETA.minutes} min` 
-    : getStatusMinutes(order.status) 
-    ? `${getStatusMinutes(order.status)!.min}-${getStatusMinutes(order.status)!.max} min` 
-    : null;
+  const etaRange = dynamicETA
+    ? `${dynamicETA.minutes} min`
+    : getStatusMinutes(order.status)
+      ? `${getStatusMinutes(order.status)!.min}-${getStatusMinutes(order.status)!.max} min`
+      : null;
 
   const estimatedTime = order.estimatedDelivery
     ? new Date(order.estimatedDelivery).toLocaleTimeString("es-ES", {
@@ -426,17 +476,36 @@ export default function OrderTrackingScreen() {
       >
         {/* Countdown Timer */}
         {dynamicETA && (
-          <View style={[styles.statusCard, { backgroundColor: theme.card }, Shadows.md]}>
+          <View
+            style={[
+              styles.statusCard,
+              { backgroundColor: theme.card },
+              Shadows.md,
+            ]}
+          >
             <View style={styles.businessRow}>
-              <View style={[styles.iconContainer, { backgroundColor: ComeYaColors.primary + '20' }]}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: ComeYaColors.primary + "20" },
+                ]}
+              >
                 <Feather name="clock" size={24} color={ComeYaColors.primary} />
               </View>
               <View style={styles.businessInfo}>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                  {order.status === 'pending' ? 'Esperando confirmación' :
-                   order.status === 'accepted' ? 'Pedido aceptado' : 
-                   order.status === 'preparing' ? 'Preparando tu pedido' :
-                   order.status === 'on_the_way' ? 'En camino' : 'Procesando'}
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary }}
+                >
+                  {order.status === "pending"
+                    ? "Esperando confirmación"
+                    : order.status === "accepted"
+                      ? "Pedido aceptado"
+                      : order.status === "preparing"
+                        ? "Preparando tu pedido"
+                        : order.status === "on_the_way"
+                          ? "En camino"
+                          : "Procesando"}
                 </ThemedText>
                 <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
                   {dynamicETA.minutes} min
@@ -447,15 +516,28 @@ export default function OrderTrackingScreen() {
         )}
 
         {/* Buscando repartidor - SOLO PARA DELIVERY */}
-        {orderType === 'delivery' && (order as any).searchingDriver && (
-          <View style={[styles.statusCard, { backgroundColor: ComeYaColors.warning + '15', borderWidth: 1, borderColor: ComeYaColors.warning }, Shadows.md]}>
+        {orderType === "delivery" && (order as any).searchingDriver && (
+          <View
+            style={[
+              styles.statusCard,
+              {
+                backgroundColor: ComeYaColors.warning + "15",
+                borderWidth: 1,
+                borderColor: ComeYaColors.warning,
+              },
+              Shadows.md,
+            ]}
+          >
             <View style={styles.businessRow}>
               <ActivityIndicator size="small" color={ComeYaColors.warning} />
               <View style={[styles.businessInfo, { marginLeft: Spacing.md }]}>
                 <ThemedText type="h4" style={{ color: ComeYaColors.warning }}>
                   Buscando repartidor disponible...
                 </ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary }}
+                >
                   Esto puede tomar unos minutos
                 </ThemedText>
               </View>
@@ -467,94 +549,194 @@ export default function OrderTrackingScreen() {
         <OrderProgressBar status={order.status} orderType={orderType} />
 
         {/* Timer para Pickup */}
-        {orderType === 'pickup' && pickupInfo && order.status !== 'delivered' && (
-          <View style={[styles.timerCard, { backgroundColor: theme.card }, Shadows.md]}>
-            {order.status === 'ready' ? (
-              <>
-                <Feather name="check-circle" size={40} color={ComeYaColors.success} />
-                <ThemedText type="h3" style={{ color: ComeYaColors.success, marginTop: Spacing.sm }}>
-                  ¡Tu pedido está listo!
-                </ThemedText>
-                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.xs }}>
-                  Puedes venir a recogerlo cuando quieras
-                </ThemedText>
-                <Pressable
-                  onPress={() => setShowQR(true)}
-                  style={[styles.codeContainer, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.lg }]}
-                >
-                  <ThemedText type="h1" style={{ fontFamily: "monospace", letterSpacing: 4 }}>
-                    {pickupInfo.code}
-                  </ThemedText>
-                  <Feather name="maximize" size={20} color={theme.textSecondary} style={{ marginTop: Spacing.xs }} />
-                </Pressable>
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
-                  Toca para ver QR Code
-                </ThemedText>
-              </>
-            ) : timeRemaining !== null && timeRemaining > 0 ? (
-              <>
-                <View style={[styles.timerCircle, { borderColor: ComeYaColors.primary }]}>
-                  <ThemedText type="h1" style={{ color: ComeYaColors.primary, fontSize: 36 }}>
-                    {timeRemaining}
-                  </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    minutos
-                  </ThemedText>
-                </View>
-                <View style={styles.progressBarContainer}>
-                  <View 
-                    style={[
-                      styles.progressBarFill, 
-                      { 
-                        width: `${pickupInfo.progress}%`,
-                        backgroundColor: ComeYaColors.primary 
-                      }
-                    ]} 
+        {orderType === "pickup" &&
+          pickupInfo &&
+          order.status !== "delivered" && (
+            <View
+              style={[
+                styles.timerCard,
+                { backgroundColor: theme.card },
+                Shadows.md,
+              ]}
+            >
+              {order.status === "ready" ? (
+                <>
+                  <Feather
+                    name="check-circle"
+                    size={40}
+                    color={ComeYaColors.success}
                   />
-                </View>
-                <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
-                  Tiempo estimado restante
-                </ThemedText>
-                {pickupInfo.pendingBefore > 0 && (
-                  <View style={[styles.queueBadge, { backgroundColor: ComeYaColors.warning + '20', marginTop: Spacing.md }]}>
-                    <Feather name="users" size={16} color={ComeYaColors.warning} />
-                    <ThemedText type="small" style={{ color: ComeYaColors.warning, marginLeft: Spacing.xs }}>
-                      Hay {pickupInfo.pendingBefore} pedido{pickupInfo.pendingBefore > 1 ? 's' : ''} antes del tuyo
+                  <ThemedText
+                    type="h3"
+                    style={{
+                      color: ComeYaColors.success,
+                      marginTop: Spacing.sm,
+                    }}
+                  >
+                    ¡Tu pedido está listo!
+                  </ThemedText>
+                  <ThemedText
+                    type="body"
+                    style={{
+                      color: theme.textSecondary,
+                      textAlign: "center",
+                      marginTop: Spacing.xs,
+                    }}
+                  >
+                    Puedes venir a recogerlo cuando quieras
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => setShowQR(true)}
+                    style={[
+                      styles.codeContainer,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        marginTop: Spacing.lg,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="h1"
+                      style={{ fontFamily: "monospace", letterSpacing: 4 }}
+                    >
+                      {pickupInfo.code}
+                    </ThemedText>
+                    <Feather
+                      name="maximize"
+                      size={20}
+                      color={theme.textSecondary}
+                      style={{ marginTop: Spacing.xs }}
+                    />
+                  </Pressable>
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: theme.textSecondary,
+                      marginTop: Spacing.sm,
+                    }}
+                  >
+                    Toca para ver QR Code
+                  </ThemedText>
+                </>
+              ) : timeRemaining !== null && timeRemaining > 0 ? (
+                <>
+                  <View
+                    style={[
+                      styles.timerCircle,
+                      { borderColor: ComeYaColors.primary },
+                    ]}
+                  >
+                    <ThemedText
+                      type="h1"
+                      style={{ color: ComeYaColors.primary, fontSize: 36 }}
+                    >
+                      {timeRemaining}
+                    </ThemedText>
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary }}
+                    >
+                      minutos
                     </ThemedText>
                   </View>
-                )}
-              </>
-            ) : (
-              <>
-                <Feather name="clock" size={40} color={ComeYaColors.primary} />
-                <ThemedText type="h4" style={{ marginTop: Spacing.sm }}>
-                  Preparando tu pedido
-                </ThemedText>
-              </>
-            )}
-          </View>
-        )}
+                  <View style={styles.progressBarContainer}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${pickupInfo.progress}%`,
+                          backgroundColor: ComeYaColors.primary,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <ThemedText
+                    type="body"
+                    style={{ color: theme.textSecondary, textAlign: "center" }}
+                  >
+                    Tiempo estimado restante
+                  </ThemedText>
+                  {pickupInfo.pendingBefore > 0 && (
+                    <View
+                      style={[
+                        styles.queueBadge,
+                        {
+                          backgroundColor: ComeYaColors.warning + "20",
+                          marginTop: Spacing.md,
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name="users"
+                        size={16}
+                        color={ComeYaColors.warning}
+                      />
+                      <ThemedText
+                        type="small"
+                        style={{
+                          color: ComeYaColors.warning,
+                          marginLeft: Spacing.xs,
+                        }}
+                      >
+                        Hay {pickupInfo.pendingBefore} pedido
+                        {pickupInfo.pendingBefore > 1 ? "s" : ""} antes del tuyo
+                      </ThemedText>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Feather
+                    name="clock"
+                    size={40}
+                    color={ComeYaColors.primary}
+                  />
+                  <ThemedText type="h4" style={{ marginTop: Spacing.sm }}>
+                    Preparando tu pedido
+                  </ThemedText>
+                </>
+              )}
+            </View>
+          )}
 
         {/* Botón Ya Llegué */}
-        {orderType === 'pickup' && order.status === 'ready' && !(order as any).customerArrivedAt && (
-          <Pressable
-            onPress={async () => {
-              try {
-                await apiRequest('POST', `/api/pickup/${orderId}/arrived`);
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                Alert.alert("✅ Notificado", "El negocio sabe que ya llegaste");
-              } catch (error) {
-                Alert.alert("Error", "No se pudo notificar al negocio");
-              }
-            }}
-            style={[styles.arrivedButton, { backgroundColor: ComeYaColors.primary }, Shadows.md]}
-          >
-            <Feather name="map-pin" size={20} color="#FFF" />
-            <ThemedText type="body" style={{ color: "#FFF", marginLeft: Spacing.sm, fontWeight: "600" }}>
-              Ya Llegué al Local
-            </ThemedText>
-          </Pressable>
-        )}
+        {orderType === "pickup" &&
+          order.status === "ready" &&
+          !(order as any).customerArrivedAt && (
+            <Pressable
+              onPress={async () => {
+                try {
+                  await apiRequest("POST", `/api/pickup/${orderId}/arrived`);
+                  Haptics.notificationAsync(
+                    Haptics.NotificationFeedbackType.Success,
+                  );
+                  Alert.alert(
+                    "✅ Notificado",
+                    "El negocio sabe que ya llegaste",
+                  );
+                } catch (error) {
+                  Alert.alert("Error", "No se pudo notificar al negocio");
+                }
+              }}
+              style={[
+                styles.arrivedButton,
+                { backgroundColor: ComeYaColors.primary },
+                Shadows.md,
+              ]}
+            >
+              <Feather name="map-pin" size={20} color="#FFF" />
+              <ThemedText
+                type="body"
+                style={{
+                  color: "#FFF",
+                  marginLeft: Spacing.sm,
+                  fontWeight: "600",
+                }}
+              >
+                Ya Llegué al Local
+              </ThemedText>
+            </Pressable>
+          )}
 
         <View
           style={[
@@ -606,7 +788,7 @@ export default function OrderTrackingScreen() {
         </View>
 
         {/* Mapa - Diferente según orderType */}
-        {orderType === 'delivery' ? (
+        {orderType === "delivery" ? (
           <CollapsibleMap
             businessLocation={businessLocation || undefined}
             deliveryPersonLocation={deliveryLocation || undefined}
@@ -615,12 +797,21 @@ export default function OrderTrackingScreen() {
             driverPhoto={driverPhoto || undefined}
             eta={etaRange ?? undefined}
             status={order.status}
-            onCallDriver={order.deliveryPersonPhone ? () => handleCall(order.deliveryPersonPhone!) : undefined}
-            onChatDriver={order.deliveryPersonId ? () => navigation.navigate("OrderChat", {
-              orderId: order.id,
-              receiverId: order.deliveryPersonId!,
-              receiverName: order.deliveryPersonName ?? "Repartidor",
-            }) : undefined}
+            onCallDriver={
+              order.deliveryPersonPhone
+                ? () => handleCall(order.deliveryPersonPhone!)
+                : undefined
+            }
+            onChatDriver={
+              order.deliveryPersonId
+                ? () =>
+                    navigation.navigate("OrderChat", {
+                      orderId: order.id,
+                      receiverId: order.deliveryPersonId!,
+                      receiverName: order.deliveryPersonName ?? "Repartidor",
+                    })
+                : undefined
+            }
           />
         ) : (
           <CollapsibleMap
@@ -639,17 +830,33 @@ export default function OrderTrackingScreen() {
           ]}
         >
           <View style={styles.addressHeader}>
-            <Feather name={orderType === 'pickup' ? "shopping-bag" : "map-pin"} size={20} color={ComeYaColors.primary} />
+            <Feather
+              name={orderType === "pickup" ? "shopping-bag" : "map-pin"}
+              size={20}
+              color={ComeYaColors.primary}
+            />
             <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
-              {orderType === 'pickup' ? 'Dirección del negocio' : 'Dirección de entrega'}
+              {orderType === "pickup"
+                ? "Dirección del negocio"
+                : "Dirección de entrega"}
             </ThemedText>
           </View>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             {order.deliveryAddress}
           </ThemedText>
-          {orderType === 'pickup' && order.status === 'ready' && (
-            <View style={{ marginTop: Spacing.md, padding: Spacing.md, backgroundColor: ComeYaColors.success + '15', borderRadius: BorderRadius.sm }}>
-              <ThemedText type="small" style={{ color: ComeYaColors.success, fontWeight: '600' }}>
+          {orderType === "pickup" && order.status === "ready" && (
+            <View
+              style={{
+                marginTop: Spacing.md,
+                padding: Spacing.md,
+                backgroundColor: ComeYaColors.success + "15",
+                borderRadius: BorderRadius.sm,
+              }}
+            >
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.success, fontWeight: "600" }}
+              >
                 ✅ Tu pedido está listo para recoger
               </ThemedText>
             </View>
@@ -666,7 +873,9 @@ export default function OrderTrackingScreen() {
           <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
             Detalles del pedido
           </ThemedText>
-          {order.items && Array.isArray(order.items) && order.items.length > 0 ? (
+          {order.items &&
+          Array.isArray(order.items) &&
+          order.items.length > 0 ? (
             order.items.map((item, index) => {
               const itemName = item.product?.name || item.name || "Producto";
               let itemPrice = item.product?.price || item.price || 0;
@@ -690,7 +899,7 @@ export default function OrderTrackingScreen() {
             </ThemedText>
           )}
           <View style={[styles.totalSection, { borderTopColor: theme.border }]}>
-            {orderType === 'delivery' && (
+            {orderType === "delivery" && (
               <View style={styles.itemRow}>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
                   Envío
@@ -709,19 +918,31 @@ export default function OrderTrackingScreen() {
           </View>
           <View style={styles.paymentRow}>
             <Feather name="credit-card" size={16} color={theme.textSecondary} />
-            <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}>
-              {order.paymentMethod === 'pago_movil' ? 'Pago Móvil' :
-               order.paymentMethod === 'binance_pay' ? 'Binance Pay' :
-               order.paymentMethod === 'zinli' ? 'Zinli' :
-               order.paymentMethod === 'zelle' ? 'Zelle' :
-               order.paymentMethod === 'paypal' ? 'PayPal' :
-               order.paymentMethod === 'cash' ? 'Efectivo' :
-               'Tarjeta'}
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}
+            >
+              {order.paymentMethod === "pago_movil"
+                ? "Pago Móvil"
+                : order.paymentMethod === "binance_pay"
+                  ? "Binance Pay"
+                  : order.paymentMethod === "zinli"
+                    ? "Zinli"
+                    : order.paymentMethod === "zelle"
+                      ? "Zelle"
+                      : order.paymentMethod === "paypal"
+                        ? "PayPal"
+                        : order.paymentMethod === "cash"
+                          ? "Efectivo"
+                          : "Tarjeta"}
             </ThemedText>
           </View>
         </View>
 
-        {order.status === "delivered" && order.deliveryPersonId && !tipSent && user?.role === "customer" ? (
+        {order.status === "delivered" &&
+        order.deliveryPersonId &&
+        !tipSent &&
+        user?.role === "customer" ? (
           <View
             style={[
               styles.tipCard,
@@ -757,7 +978,9 @@ export default function OrderTrackingScreen() {
                           ? ComeYaColors.primary
                           : theme.backgroundSecondary,
                       borderColor:
-                        selectedTip === tip ? ComeYaColors.primary : theme.border,
+                        selectedTip === tip
+                          ? ComeYaColors.primary
+                          : theme.border,
                     },
                   ]}
                 >
@@ -801,7 +1024,9 @@ export default function OrderTrackingScreen() {
           </View>
         ) : null}
 
-        {order.status === "delivered" && !(order as any).confirmedByCustomer && user?.role === "customer" ? (
+        {order.status === "delivered" &&
+        !(order as any).confirmedByCustomer &&
+        user?.role === "customer" ? (
           <Pressable
             onPress={async () => {
               Alert.alert(
@@ -814,10 +1039,16 @@ export default function OrderTrackingScreen() {
                     onPress: async () => {
                       try {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        const res = await apiRequest("POST", `/api/fund-release/confirm-delivery`, { orderId: order.id });
+                        const res = await apiRequest(
+                          "POST",
+                          `/api/fund-release/confirm-delivery`,
+                          { orderId: order.id },
+                        );
                         const data = await res.json();
                         if (data.success) {
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          Haptics.notificationAsync(
+                            Haptics.NotificationFeedbackType.Success,
+                          );
                           navigation.replace("Review", {
                             orderId: order.id,
                             businessId: order.businessId,
@@ -825,15 +1056,23 @@ export default function OrderTrackingScreen() {
                             deliveryPersonId: order.deliveryPersonId,
                           });
                         } else {
-                          Alert.alert("Error", data.error || "No se pudo confirmar la entrega");
+                          Alert.alert(
+                            "Error",
+                            data.error || "No se pudo confirmar la entrega",
+                          );
                         }
                       } catch (error: any) {
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                        Alert.alert("Error", error.message || "No se pudo confirmar la entrega");
+                        Haptics.notificationAsync(
+                          Haptics.NotificationFeedbackType.Error,
+                        );
+                        Alert.alert(
+                          "Error",
+                          error.message || "No se pudo confirmar la entrega",
+                        );
                       }
                     },
                   },
-                ]
+                ],
               );
             }}
             style={[
@@ -845,15 +1084,28 @@ export default function OrderTrackingScreen() {
             <Feather name="check-circle" size={20} color="#FFFFFF" />
             <ThemedText
               type="body"
-              style={{ color: "#FFFFFF", marginLeft: Spacing.sm, fontWeight: "600" }}
+              style={{
+                color: "#FFFFFF",
+                marginLeft: Spacing.sm,
+                fontWeight: "600",
+              }}
             >
               Confirmar que recibí mi pedido
             </ThemedText>
           </Pressable>
-        ) : order.status === "delivered" && (order as any).confirmedByCustomer && user?.role === "customer" ? (
+        ) : order.status === "delivered" &&
+          (order as any).confirmedByCustomer &&
+          user?.role === "customer" ? (
           <View style={[styles.confirmButton, { backgroundColor: "#E8F5E9" }]}>
             <Feather name="check-circle" size={20} color="#4CAF50" />
-            <ThemedText type="body" style={{ color: "#4CAF50", marginLeft: Spacing.sm, fontWeight: "600" }}>
+            <ThemedText
+              type="body"
+              style={{
+                color: "#4CAF50",
+                marginLeft: Spacing.sm,
+                fontWeight: "600",
+              }}
+            >
               Entrega confirmada ✔
             </ThemedText>
           </View>
@@ -894,7 +1146,11 @@ export default function OrderTrackingScreen() {
             }}
             style={[styles.reportButton, { borderColor: theme.border }]}
           >
-            <Feather name="alert-circle" size={18} color={ComeYaColors.warning} />
+            <Feather
+              name="alert-circle"
+              size={18}
+              color={ComeYaColors.warning}
+            />
             <ThemedText
               type="body"
               style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}
@@ -959,8 +1215,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   etaContainer: {
     alignItems: "flex-end",
@@ -1095,7 +1351,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.xl,
     borderRadius: BorderRadius.lg,
-    alignItems: 'center',
+    alignItems: "center",
   },
   arrivedButton: {
     flexDirection: "row",
@@ -1108,4 +1364,3 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
 });
-

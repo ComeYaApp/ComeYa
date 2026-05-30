@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import * as Haptics from "expo-haptics";
 import { ComeYaColors } from "../../../constants/theme";
 import { AdminOrder } from "../types/admin.types";
@@ -10,27 +16,38 @@ interface OrdersTabProps {
   onOrderPress: (order: AdminOrder) => void;
 }
 
-export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onOrderPress }) => {
+export const OrdersTab: React.FC<OrdersTabProps> = ({
+  orders,
+  onOrderPress,
+}) => {
   const { theme } = useTheme();
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "pending":   return "#f59e0b";
-      case "confirmed": return "#3b82f6";
-      case "preparing": return "#8b5cf6";
-      case "ready":     return "#10b981";
-      case "picked_up": return "#06b6d4";
-      case "delivered": return "#22c55e";
-      case "cancelled": return "#ef4444";
-      default:          return "#6b7280";
+      case "pending":
+        return "#f59e0b";
+      case "confirmed":
+        return "#3b82f6";
+      case "preparing":
+        return "#8b5cf6";
+      case "ready":
+        return "#10b981";
+      case "picked_up":
+        return "#06b6d4";
+      case "delivered":
+        return "#22c55e";
+      case "cancelled":
+        return "#ef4444";
+      default:
+        return "#6b7280";
     }
   };
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      pending:   "Pendiente",
+      pending: "Pendiente",
       confirmed: "Confirmado",
       preparing: "Preparando",
-      ready:     "Listo",
+      ready: "Listo",
       picked_up: "En camino",
       delivered: "Entregado",
       cancelled: "Cancelado",
@@ -50,14 +67,29 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onOrderPress }) =>
           }}
         >
           <View style={styles.orderHeader}>
-            <Text style={[styles.orderId, { color: theme.text }]}>#{order.id.slice(0, 8)}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-              <Text style={styles.statusText}>{getStatusLabel(order.status)}</Text>
+            <Text style={[styles.orderId, { color: theme.text }]}>
+              #{order.id.slice(0, 8)}
+            </Text>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: getStatusColor(order.status) },
+              ]}
+            >
+              <Text style={styles.statusText}>
+                {getStatusLabel(order.status)}
+              </Text>
             </View>
           </View>
-          <Text style={[styles.businessName, { color: theme.text }]}>{order.businessName}</Text>
-          <Text style={[styles.customerName, { color: theme.textSecondary }]}>Cliente: {order.customerName}</Text>
-          <Text style={styles.orderTotal}>Total: €{(order.total / 100).toFixed(2)}</Text>
+          <Text style={[styles.businessName, { color: theme.text }]}>
+            {order.businessName}
+          </Text>
+          <Text style={[styles.customerName, { color: theme.textSecondary }]}>
+            Cliente: {order.customerName}
+          </Text>
+          <Text style={styles.orderTotal}>
+            Total: €{(order.total / 100).toFixed(2)}
+          </Text>
           <Text style={[styles.orderDate, { color: theme.textSecondary }]}>
             {new Date(order.createdAt).toLocaleString("es-ES")}
           </Text>
@@ -68,14 +100,33 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onOrderPress }) =>
 };
 
 const styles = StyleSheet.create({
-  container:    { flex: 1 },
-  card:         { borderRadius: 12, padding: 16, marginBottom: 12, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.07, shadowRadius: 3 },
-  orderHeader:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  orderId:      { fontSize: 16, fontWeight: "600" },
-  statusBadge:  { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
-  statusText:   { color: "#fff", fontSize: 12, fontWeight: "600" },
+  container: { flex: 1 },
+  card: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 3,
+  },
+  orderHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  orderId: { fontSize: 16, fontWeight: "600" },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 },
+  statusText: { color: "#fff", fontSize: 12, fontWeight: "600" },
   businessName: { fontSize: 14, fontWeight: "600", marginBottom: 4 },
   customerName: { fontSize: 14, marginBottom: 4 },
-  orderTotal:   { fontSize: 14, fontWeight: "600", color: ComeYaColors.primary, marginBottom: 4 },
-  orderDate:    { fontSize: 12 },
+  orderTotal: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: ComeYaColors.primary,
+    marginBottom: 4,
+  },
+  orderDate: { fontSize: 12 },
 });

@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
-import * as Location from 'expo-location';
-import { apiRequest } from '@/lib/query-client';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
+import * as Location from "expo-location";
+import { apiRequest } from "@/lib/query-client";
 
 interface QueuedLocation {
   latitude: number;
@@ -21,9 +21,9 @@ interface CachedMapData {
   cachedAt: number;
 }
 
-const LOCATION_QUEUE_KEY = '@ComeYa_location_queue';
-const CACHED_MAPS_KEY = '@ComeYa_cached_maps';
-const LAST_LOCATION_KEY = '@ComeYa_last_location';
+const LOCATION_QUEUE_KEY = "@ComeYa_location_queue";
+const CACHED_MAPS_KEY = "@ComeYa_cached_maps";
+const LAST_LOCATION_KEY = "@ComeYa_last_location";
 
 class OfflineGPSService {
   private isOnline: boolean = true;
@@ -41,7 +41,7 @@ class OfflineGPSService {
       const wasOffline = !this.isOnline;
       this.isOnline = state.isConnected ?? false;
 
-      console.log(`📡 Network status: ${this.isOnline ? 'Online' : 'Offline'}`);
+      console.log(`📡 Network status: ${this.isOnline ? "Online" : "Offline"}`);
 
       // If we just came back online, process queue
       if (wasOffline && this.isOnline) {
@@ -59,7 +59,7 @@ class OfflineGPSService {
         console.log(`📦 Loaded ${this.locationQueue.length} queued locations`);
       }
     } catch (error) {
-      console.error('Error loading location queue:', error);
+      console.error("Error loading location queue:", error);
     }
   }
 
@@ -68,10 +68,10 @@ class OfflineGPSService {
     try {
       await AsyncStorage.setItem(
         LOCATION_QUEUE_KEY,
-        JSON.stringify(this.locationQueue)
+        JSON.stringify(this.locationQueue),
       );
     } catch (error) {
-      console.error('Error saving location queue:', error);
+      console.error("Error saving location queue:", error);
     }
   }
 
@@ -79,7 +79,7 @@ class OfflineGPSService {
   async queueLocation(location: QueuedLocation): Promise<void> {
     this.locationQueue.push(location);
     await this.saveQueue();
-    
+
     // Save as last known location
     await this.saveLastLocation(location);
 
@@ -93,27 +93,35 @@ class OfflineGPSService {
 
   // Process queued locations
   private async processQueue(): Promise<void> {
-    if (this.processingQueue || this.locationQueue.length === 0 || !this.isOnline) {
+    if (
+      this.processingQueue ||
+      this.locationQueue.length === 0 ||
+      !this.isOnline
+    ) {
       return;
     }
 
     this.processingQueue = true;
-    console.log(`🔄 Processing ${this.locationQueue.length} queued locations...`);
+    console.log(
+      `🔄 Processing ${this.locationQueue.length} queued locations...`,
+    );
 
     const batch = [...this.locationQueue];
     const failed: QueuedLocation[] = [];
 
     for (const location of batch) {
       try {
-        await apiRequest('POST', '/api/delivery/location', {
+        await apiRequest("POST", "/api/delivery/location", {
           latitude: location.latitude,
           longitude: location.longitude,
           timestamp: location.timestamp,
           orderId: location.orderId,
         });
-        console.log(`✅ Synced location from ${new Date(location.timestamp).toLocaleTimeString()}`);
+        console.log(
+          `✅ Synced location from ${new Date(location.timestamp).toLocaleTimeString()}`,
+        );
       } catch (error) {
-        console.error('Failed to sync location:', error);
+        console.error("Failed to sync location:", error);
         failed.push(location);
       }
     }
@@ -131,7 +139,7 @@ class OfflineGPSService {
     try {
       await AsyncStorage.setItem(LAST_LOCATION_KEY, JSON.stringify(location));
     } catch (error) {
-      console.error('Error saving last location:', error);
+      console.error("Error saving last location:", error);
     }
   }
 
@@ -143,7 +151,7 @@ class OfflineGPSService {
         return JSON.parse(stored);
       }
     } catch (error) {
-      console.error('Error getting last location:', error);
+      console.error("Error getting last location:", error);
     }
     return null;
   }
@@ -163,9 +171,9 @@ class OfflineGPSService {
       };
 
       await AsyncStorage.setItem(CACHED_MAPS_KEY, JSON.stringify(cached));
-      console.log('🗺️ Map region cached');
+      console.log("🗺️ Map region cached");
     } catch (error) {
-      console.error('Error caching map:', error);
+      console.error("Error caching map:", error);
     }
   }
 
@@ -175,7 +183,7 @@ class OfflineGPSService {
       const stored = await AsyncStorage.getItem(CACHED_MAPS_KEY);
       if (stored) {
         const cached: CachedMapData = JSON.parse(stored);
-        
+
         // Check if cache is still valid (7 days)
         const age = Date.now() - cached.cachedAt;
         if (age < 7 * 24 * 60 * 60 * 1000) {
@@ -183,7 +191,7 @@ class OfflineGPSService {
         }
       }
     } catch (error) {
-      console.error('Error getting cached map:', error);
+      console.error("Error getting cached map:", error);
     }
     return null;
   }
@@ -206,8 +214,8 @@ class OfflineGPSService {
         isFromCache: false,
       };
     } catch (error) {
-      console.log('⚠️ Could not get current location, using cached');
-      
+      console.log("⚠️ Could not get current location, using cached");
+
       // Fallback to last known location
       const lastKnown = await this.getLastKnownLocation();
       if (lastKnown) {
@@ -235,7 +243,7 @@ class OfflineGPSService {
   async clearQueue(): Promise<void> {
     this.locationQueue = [];
     await this.saveQueue();
-    console.log('🧹 Location queue cleared');
+    console.log("🧹 Location queue cleared");
   }
 }
 

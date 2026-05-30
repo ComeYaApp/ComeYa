@@ -43,19 +43,17 @@ router.post(
         })
         .where(eq(deliveryDrivers.userId, userId));
     } else {
-      await db
-        .insert(deliveryDrivers)
-        .values({
-          userId,
-          vehicleType,
-          vehiclePlate: vehiclePlate.toUpperCase(),
-          isAvailable: false,
-          totalDeliveries: 0,
-          rating: 0,
-          totalRatings: 0,
-          strikes: 0,
-          isBlocked: false,
-        });
+      await db.insert(deliveryDrivers).values({
+        userId,
+        vehicleType,
+        vehiclePlate: vehiclePlate.toUpperCase(),
+        isAvailable: false,
+        totalDeliveries: 0,
+        rating: 0,
+        totalRatings: 0,
+        strikes: 0,
+        isBlocked: false,
+      });
     }
 
     const [driver] = await db
@@ -107,15 +105,17 @@ router.post(
       .where(eq(deliveryDrivers.userId, userId));
 
     // Verificar si el driver está cerca de alguna entrega
-    const { checkAndUpdateArrivingStatus } = await import("./arrivingStatusService");
+    const { checkAndUpdateArrivingStatus } = await import(
+      "./arrivingStatusService"
+    );
     const activeOrders = await db
       .select()
       .from(orders)
       .where(
         and(
           eq(orders.deliveryPersonId, userId),
-          inArray(orders.status, ["picked_up", "on_the_way", "in_transit"])
-        )
+          inArray(orders.status, ["picked_up", "on_the_way", "in_transit"]),
+        ),
       );
 
     for (const order of activeOrders) {
@@ -158,9 +158,19 @@ router.get(
       return res.json({
         success: true,
         stats: {
-          totalDeliveries: 0, rating: 0, totalRatings: 0, completionRate: 100,
-          todayEarnings: 0, weekEarnings: 0, monthEarnings: 0, totalEarnings: 0,
-          balance: 0, avgDeliveryTime: 0, cashOwed: 0, availableToWithdraw: 0, pendingCashOrders: [],
+          totalDeliveries: 0,
+          rating: 0,
+          totalRatings: 0,
+          completionRate: 100,
+          todayEarnings: 0,
+          weekEarnings: 0,
+          monthEarnings: 0,
+          totalEarnings: 0,
+          balance: 0,
+          avgDeliveryTime: 0,
+          cashOwed: 0,
+          availableToWithdraw: 0,
+          pendingCashOrders: [],
         },
       });
     }
@@ -177,8 +187,8 @@ router.get(
       .where(
         and(
           eq(orders.deliveryPersonId, userId),
-          eq(orders.status, "delivered")
-        )
+          eq(orders.status, "delivered"),
+        ),
       );
 
     const now = new Date();
@@ -191,43 +201,61 @@ router.get(
     monthStart.setDate(now.getDate() - 30);
     monthStart.setHours(0, 0, 0, 0);
 
-    const todayOrders = completedOrders.filter(o => {
+    const todayOrders = completedOrders.filter((o) => {
       if (!o.deliveredAt) return false;
       const deliveredDate = new Date(o.deliveredAt);
       return deliveredDate >= todayStart;
     });
-    const weekOrders = completedOrders.filter(o => {
+    const weekOrders = completedOrders.filter((o) => {
       if (!o.deliveredAt) return false;
       const deliveredDate = new Date(o.deliveredAt);
       return deliveredDate >= weekStart;
     });
-    const monthOrders = completedOrders.filter(o => {
+    const monthOrders = completedOrders.filter((o) => {
       if (!o.deliveredAt) return false;
       const deliveredDate = new Date(o.deliveredAt);
       return deliveredDate >= monthStart;
     });
 
     // Driver gana 100% del deliveryFee
-    const todayEarnings = todayOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-    const weekEarnings = weekOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-    const monthEarnings = monthOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
-    const totalEarnings = completedOrders.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+    const todayEarnings = todayOrders.reduce(
+      (sum, o) => sum + (o.deliveryFee || 0),
+      0,
+    );
+    const weekEarnings = weekOrders.reduce(
+      (sum, o) => sum + (o.deliveryFee || 0),
+      0,
+    );
+    const monthEarnings = monthOrders.reduce(
+      (sum, o) => sum + (o.deliveryFee || 0),
+      0,
+    );
+    const totalEarnings = completedOrders.reduce(
+      (sum, o) => sum + (o.deliveryFee || 0),
+      0,
+    );
 
-    const avgTimeMinutes = completedOrders.length > 0
-      ? completedOrders.reduce((sum, order) => {
-          if (order.deliveredAt && order.createdAt) {
-            const diff = new Date(order.deliveredAt).getTime() - new Date(order.createdAt).getTime();
-            return sum + Math.floor(diff / 60000);
-          }
-          return sum;
-        }, 0) / completedOrders.length
-      : 0;
+    const avgTimeMinutes =
+      completedOrders.length > 0
+        ? completedOrders.reduce((sum, order) => {
+            if (order.deliveredAt && order.createdAt) {
+              const diff =
+                new Date(order.deliveredAt).getTime() -
+                new Date(order.createdAt).getTime();
+              return sum + Math.floor(diff / 60000);
+            }
+            return sum;
+          }, 0) / completedOrders.length
+        : 0;
 
     // Obtener resumen de efectivo
     const { cashSettlementService } = await import("./cashSettlementService");
     const cashSummary = await cashSettlementService.getDriverDebt(userId);
 
-    const canWithdraw = Math.max(0, (wallet?.balance || 0) - (wallet?.cashOwed || 0));
+    const canWithdraw = Math.max(
+      0,
+      (wallet?.balance || 0) - (wallet?.cashOwed || 0),
+    );
 
     res.json({
       success: true,
@@ -248,15 +276,21 @@ router.get(
         pendingCashOrders: cashSummary.pendingOrders || [],
       },
       // Historial de entregas para mostrar en pantalla
-      deliveries: completedOrders.map(o => ({
-        id: o.id,
-        businessName: o.businessName,
-        deliveryFee: o.deliveryFee || 0,
-        deliveryEarnings: o.deliveryEarnings || o.deliveryFee || 0,
-        deliveredAt: o.deliveredAt,
-        createdAt: o.createdAt,
-        paymentMethod: o.paymentMethod,
-      })).sort((a, b) => new Date(b.deliveredAt || b.createdAt).getTime() - new Date(a.deliveredAt || a.createdAt).getTime()),
+      deliveries: completedOrders
+        .map((o) => ({
+          id: o.id,
+          businessName: o.businessName,
+          deliveryFee: o.deliveryFee || 0,
+          deliveryEarnings: o.deliveryEarnings || o.deliveryFee || 0,
+          deliveredAt: o.deliveredAt,
+          createdAt: o.createdAt,
+          paymentMethod: o.paymentMethod,
+        }))
+        .sort(
+          (a, b) =>
+            new Date(b.deliveredAt || b.createdAt).getTime() -
+            new Date(a.deliveredAt || a.createdAt).getTime(),
+        ),
     });
   }),
 );
@@ -285,7 +319,11 @@ router.post(
         strikes: 0,
         isBlocked: false,
       });
-      [driver] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, userId)).limit(1);
+      [driver] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, userId))
+        .limit(1);
     }
 
     const newStatus = !driver.isAvailable;
@@ -324,12 +362,7 @@ router.get(
     const availableOrders = await db
       .select()
       .from(orders)
-      .where(
-        and(
-          eq(orders.status, "ready"),
-          isNullOp(orders.deliveryPersonId),
-        ),
-      )
+      .where(and(eq(orders.status, "ready"), isNullOp(orders.deliveryPersonId)))
       .limit(10);
 
     res.json({ orders: myOrders, availableOrders });
@@ -378,7 +411,11 @@ router.get(
         strikes: 0,
         isBlocked: false,
       });
-      [driver] = await db.select().from(deliveryDrivers).where(eq(deliveryDrivers.userId, userId)).limit(1);
+      [driver] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, userId))
+        .limit(1);
     }
 
     // SIN RESTRICCIÓN DE DISTANCIA - Muestra TODOS los pedidos disponibles
@@ -386,12 +423,7 @@ router.get(
     const availableOrders = await db
       .select()
       .from(orders)
-      .where(
-        and(
-          eq(orders.status, "ready"),
-          isNull(orders.deliveryPersonId),
-        ),
-      )
+      .where(and(eq(orders.status, "ready"), isNull(orders.deliveryPersonId)))
       .limit(100);
 
     res.json({ success: true, orders: availableOrders });
@@ -474,7 +506,7 @@ router.post(
 
     await db
       .update(orders)
-      .set({ 
+      .set({
         status: "picked_up",
         pickedUpAt: new Date(),
       })
@@ -509,12 +541,12 @@ router.put(
       throw new AuthorizationError("Not your order");
     }
 
-    await db
-      .update(orders)
-      .set({ status })
-      .where(eq(orders.id, orderId));
+    await db.update(orders).set({ status }).where(eq(orders.id, orderId));
 
-    logger.delivery(`Order status updated to ${status}`, { orderId, driverId: userId });
+    logger.delivery(`Order status updated to ${status}`, {
+      orderId,
+      driverId: userId,
+    });
 
     res.json({ success: true });
   }),
@@ -547,19 +579,33 @@ router.post(
       return res.status(400).json({ error: "Order already delivered" });
     }
 
-    if (order.status !== "picked_up" && order.status !== "on_the_way" && order.status !== "in_transit") {
+    if (
+      order.status !== "picked_up" &&
+      order.status !== "on_the_way" &&
+      order.status !== "in_transit"
+    ) {
       throw new ValidationError("Order must be picked up or on the way first");
     }
 
     if (latitude === undefined || longitude === undefined) {
-      throw new ValidationError("Se requiere la ubicación GPS para finalizar la entrega");
+      throw new ValidationError(
+        "Se requiere la ubicación GPS para finalizar la entrega",
+      );
     }
 
-    const deliveryLat = order.deliveryLatitude ?? (order as any).deliveryLat ?? (order as any).latitude;
-    const deliveryLng = order.deliveryLongitude ?? (order as any).deliveryLng ?? (order as any).longitude;
+    const deliveryLat =
+      order.deliveryLatitude ??
+      (order as any).deliveryLat ??
+      (order as any).latitude;
+    const deliveryLng =
+      order.deliveryLongitude ??
+      (order as any).deliveryLng ??
+      (order as any).longitude;
 
     if (!deliveryLat || !deliveryLng) {
-      throw new ValidationError("No hay coordenadas de entrega registradas para validar la entrega");
+      throw new ValidationError(
+        "No hay coordenadas de entrega registradas para validar la entrega",
+      );
     }
 
     const driverLat = Number(latitude);
@@ -567,11 +613,22 @@ router.post(
     const deliveryLatNum = Number(deliveryLat);
     const deliveryLngNum = Number(deliveryLng);
 
-    if ([driverLat, driverLng, deliveryLatNum, deliveryLngNum].some((value) => Number.isNaN(value))) {
-      throw new ValidationError("Coordenadas inválidas para validar la entrega");
+    if (
+      [driverLat, driverLng, deliveryLatNum, deliveryLngNum].some((value) =>
+        Number.isNaN(value),
+      )
+    ) {
+      throw new ValidationError(
+        "Coordenadas inválidas para validar la entrega",
+      );
     }
 
-    const distanceKm = calculateDistance(driverLat, driverLng, deliveryLatNum, deliveryLngNum);
+    const distanceKm = calculateDistance(
+      driverLat,
+      driverLng,
+      deliveryLatNum,
+      deliveryLngNum,
+    );
     if (distanceKm > DELIVERY_RADIUS_KM) {
       return res.status(400).json({
         error: `Debes estar dentro de ${Math.round(DELIVERY_RADIUS_KM * 1000)}m del punto de entrega para finalizar`,
@@ -582,11 +639,19 @@ router.post(
     // Mark as delivered
     const deliveredAt = new Date();
     const actualDeliveryTime = order.pickedUpAt
-      ? Math.floor((deliveredAt.getTime() - new Date(order.pickedUpAt).getTime()) / 60000)
+      ? Math.floor(
+          (deliveredAt.getTime() - new Date(order.pickedUpAt).getTime()) /
+            60000,
+        )
       : null;
-    const actualPrepTime = order.pickedUpAt && order.createdAt
-      ? Math.floor((new Date(order.pickedUpAt).getTime() - new Date(order.createdAt).getTime()) / 60000)
-      : null;
+    const actualPrepTime =
+      order.pickedUpAt && order.createdAt
+        ? Math.floor(
+            (new Date(order.pickedUpAt).getTime() -
+              new Date(order.createdAt).getTime()) /
+              60000,
+          )
+        : null;
 
     await db
       .update(orders)
@@ -608,36 +673,41 @@ router.post(
         userId,
         order.businessId,
         order.total,
-        order.deliveryFee
+        order.deliveryFee,
       );
-      
-      logger.delivery("Cash order completed - debt registered", { 
-        orderId, 
+
+      logger.delivery("Cash order completed - debt registered", {
+        orderId,
         driverId: userId,
         total: order.total,
       });
     } else {
       // Si es tarjeta, distribuir comisiones normalmente
-      const { calculateAndDistributeCommissions } = await import("./commissionService");
+      const { calculateAndDistributeCommissions } = await import(
+        "./commissionService"
+      );
       await calculateAndDistributeCommissions(orderId);
     }
 
     // Increment driver's delivery count
     await db
       .update(deliveryDrivers)
-      .set({ 
+      .set({
         totalDeliveries: sql`total_deliveries + 1`,
-        isAvailable: true 
+        isAvailable: true,
       })
       .where(eq(deliveryDrivers.userId, userId));
 
     // Update metrics
-    const { updateBusinessPrepTimeMetrics, updateDriverSpeedMetrics } = await import("./metricsService");
+    const { updateBusinessPrepTimeMetrics, updateDriverSpeedMetrics } =
+      await import("./metricsService");
     updateBusinessPrepTimeMetrics(order.businessId).catch(console.error);
     updateDriverSpeedMetrics(userId).catch(console.error);
 
     // Send notification to customer
-    const { sendOrderStatusNotification } = await import("./enhancedPushService");
+    const { sendOrderStatusNotification } = await import(
+      "./enhancedPushService"
+    );
     await sendOrderStatusNotification(orderId, order.userId, "delivered");
 
     logger.delivery("Order delivered", { orderId, driverId: userId });
@@ -690,7 +760,7 @@ router.get(
       .from(deliveryDrivers)
       .where(eq(deliveryDrivers.userId, deliveryPersonId))
       .limit(1);
-    
+
     if (!driver || !driver.currentLatitude || !driver.currentLongitude) {
       return res.json({ location: null });
     }

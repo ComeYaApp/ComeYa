@@ -1,6 +1,12 @@
-import { db } from './db';
-import { orders, businesses, products, userPreferences, aiRecommendations } from '@shared/schema-mysql';
-import { eq, desc, and, sql, gte } from 'drizzle-orm';
+import { db } from "./db";
+import {
+  orders,
+  businesses,
+  products,
+  userPreferences,
+  aiRecommendations,
+} from "@shared/schema-mysql";
+import { eq, desc, and, sql, gte } from "drizzle-orm";
 
 export class AIRecommendationsService {
   // Generar recomendaciones personalizadas
@@ -26,13 +32,20 @@ export class AIRecommendationsService {
     const recommendations = [];
 
     // 1. Negocios frecuentes
-    for (const [businessId, count] of Object.entries(businessFrequency).slice(0, 3)) {
-      const [business] = await db.select().from(businesses).where(eq(businesses.id, businessId)).limit(1);
+    for (const [businessId, count] of Object.entries(businessFrequency).slice(
+      0,
+      3,
+    )) {
+      const [business] = await db
+        .select()
+        .from(businesses)
+        .where(eq(businesses.id, businessId))
+        .limit(1);
       if (business) {
         recommendations.push({
           userId,
-          recommendationType: 'personalized',
-          itemType: 'business',
+          recommendationType: "personalized",
+          itemType: "business",
           itemId: businessId,
           confidenceScore: Math.min(95, 60 + (count as number) * 5),
           reason: `Has pedido aquí ${count} veces`,
@@ -42,11 +55,14 @@ export class AIRecommendationsService {
     }
 
     // 2. Productos frecuentes
-    for (const [productId, count] of Object.entries(productFrequency).slice(0, 3)) {
+    for (const [productId, count] of Object.entries(productFrequency).slice(
+      0,
+      3,
+    )) {
       recommendations.push({
         userId,
-        recommendationType: 'reorder',
-        itemType: 'product',
+        recommendationType: "reorder",
+        itemType: "product",
         itemId: productId,
         confidenceScore: Math.min(90, 50 + (count as number) * 10),
         reason: `Lo has pedido ${count} veces`,
@@ -55,7 +71,9 @@ export class AIRecommendationsService {
     }
 
     // Guardar recomendaciones
-    await db.delete(aiRecommendations).where(eq(aiRecommendations.userId, userId));
+    await db
+      .delete(aiRecommendations)
+      .where(eq(aiRecommendations.userId, userId));
     if (recommendations.length > 0) {
       await db.insert(aiRecommendations).values(recommendations);
     }
@@ -91,8 +109,8 @@ export class AIRecommendationsService {
       .where(
         and(
           eq(aiRecommendations.userId, userId),
-          gte(aiRecommendations.expiresAt, now)
-        )
+          gte(aiRecommendations.expiresAt, now),
+        ),
       )
       .orderBy(desc(aiRecommendations.confidenceScore));
 
@@ -100,11 +118,19 @@ export class AIRecommendationsService {
     const enriched = [];
     for (const rec of recommendations) {
       let itemData = null;
-      if (rec.itemType === 'business') {
-        const [business] = await db.select().from(businesses).where(eq(businesses.id, rec.itemId)).limit(1);
+      if (rec.itemType === "business") {
+        const [business] = await db
+          .select()
+          .from(businesses)
+          .where(eq(businesses.id, rec.itemId))
+          .limit(1);
         itemData = business;
-      } else if (rec.itemType === 'product') {
-        const [product] = await db.select().from(products).where(eq(products.id, rec.itemId)).limit(1);
+      } else if (rec.itemType === "product") {
+        const [product] = await db
+          .select()
+          .from(products)
+          .where(eq(products.id, rec.itemId))
+          .limit(1);
         itemData = product;
       }
 
@@ -121,17 +147,29 @@ export class AIRecommendationsService {
 
   // Actualizar preferencias del usuario
   static async updateUserPreferences(userId: string, preferences: any) {
-    const existing = await db.select().from(userPreferences).where(eq(userPreferences.userId, userId)).limit(1);
+    const existing = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
 
     if (existing.length > 0) {
       await db
         .update(userPreferences)
         .set({
-          cuisineTypes: preferences.cuisineTypes ? JSON.stringify(preferences.cuisineTypes) : null,
+          cuisineTypes: preferences.cuisineTypes
+            ? JSON.stringify(preferences.cuisineTypes)
+            : null,
           priceRange: preferences.priceRange,
-          dietaryRestrictions: preferences.dietaryRestrictions ? JSON.stringify(preferences.dietaryRestrictions) : null,
-          preferredOrderTimes: preferences.preferredOrderTimes ? JSON.stringify(preferences.preferredOrderTimes) : null,
-          favoriteCategories: preferences.favoriteCategories ? JSON.stringify(preferences.favoriteCategories) : null,
+          dietaryRestrictions: preferences.dietaryRestrictions
+            ? JSON.stringify(preferences.dietaryRestrictions)
+            : null,
+          preferredOrderTimes: preferences.preferredOrderTimes
+            ? JSON.stringify(preferences.preferredOrderTimes)
+            : null,
+          favoriteCategories: preferences.favoriteCategories
+            ? JSON.stringify(preferences.favoriteCategories)
+            : null,
           spiceLevel: preferences.spiceLevel,
           healthScore: preferences.healthScore,
         })
@@ -139,11 +177,19 @@ export class AIRecommendationsService {
     } else {
       await db.insert(userPreferences).values({
         userId,
-        cuisineTypes: preferences.cuisineTypes ? JSON.stringify(preferences.cuisineTypes) : null,
+        cuisineTypes: preferences.cuisineTypes
+          ? JSON.stringify(preferences.cuisineTypes)
+          : null,
         priceRange: preferences.priceRange,
-        dietaryRestrictions: preferences.dietaryRestrictions ? JSON.stringify(preferences.dietaryRestrictions) : null,
-        preferredOrderTimes: preferences.preferredOrderTimes ? JSON.stringify(preferences.preferredOrderTimes) : null,
-        favoriteCategories: preferences.favoriteCategories ? JSON.stringify(preferences.favoriteCategories) : null,
+        dietaryRestrictions: preferences.dietaryRestrictions
+          ? JSON.stringify(preferences.dietaryRestrictions)
+          : null,
+        preferredOrderTimes: preferences.preferredOrderTimes
+          ? JSON.stringify(preferences.preferredOrderTimes)
+          : null,
+        favoriteCategories: preferences.favoriteCategories
+          ? JSON.stringify(preferences.favoriteCategories)
+          : null,
         spiceLevel: preferences.spiceLevel,
         healthScore: preferences.healthScore,
       });
@@ -214,11 +260,11 @@ export class AIRecommendationsService {
 
     const recommendations = topBusinesses.map((business, index) => ({
       userId,
-      recommendationType: 'trending',
-      itemType: 'business',
+      recommendationType: "trending",
+      itemType: "business",
       itemId: business.id,
       confidenceScore: 80 - index * 5,
-      reason: 'Popular en tu área',
+      reason: "Popular en tu área",
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     }));
 

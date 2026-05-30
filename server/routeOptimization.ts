@@ -1,6 +1,6 @@
-import { db } from './db';
-import { orders, users } from '../shared/schema-mysql';
-import { eq, and, inArray } from 'drizzle-orm';
+import { db } from "./db";
+import { orders, users } from "../shared/schema-mysql";
+import { eq, and, inArray } from "drizzle-orm";
 
 interface Location {
   latitude: number;
@@ -28,14 +28,14 @@ function calculateDistance(loc1: Location, loc2: Location): number {
   const R = 6371; // Radio de la Tierra en km
   const dLat = toRad(loc2.latitude - loc1.latitude);
   const dLon = toRad(loc2.longitude - loc1.longitude);
-  
+
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(loc1.latitude)) *
-    Math.cos(toRad(loc2.latitude)) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
-  
+      Math.cos(toRad(loc2.latitude)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -47,7 +47,7 @@ function toRad(degrees: number): number {
 // Algoritmo del vecino más cercano con prioridad
 function nearestNeighborWithPriority(
   currentLocation: Location,
-  remainingStops: DeliveryStop[]
+  remainingStops: DeliveryStop[],
 ): DeliveryStop | null {
   if (remainingStops.length === 0) return null;
 
@@ -58,7 +58,7 @@ function nearestNeighborWithPriority(
     const distance = calculateDistance(currentLocation, stop.location);
     // Score = distancia / prioridad (menor score = mejor)
     const score = distance / stop.priority;
-    
+
     if (score < bestScore) {
       bestScore = score;
       bestStop = stop;
@@ -70,10 +70,10 @@ function nearestNeighborWithPriority(
 
 export async function optimizeMultipleDeliveries(
   driverId: number,
-  orderIds: number[]
+  orderIds: number[],
 ): Promise<OptimizedRoute | null> {
-  const { getSettingValue } = await import('./systemSettingsService');
-  
+  const { getSettingValue } = await import("./systemSettingsService");
+
   // Obtener ubicación actual del repartidor
   const [driver] = await db
     .select()
@@ -101,14 +101,14 @@ export async function optimizeMultipleDeliveries(
   }
 
   // Obtener configuraciones
-  const averageSpeed = await getSettingValue('delivery_average_speed_kmh', 20);
-  const stopTime = await getSettingValue('delivery_stop_time_minutes', 10);
+  const averageSpeed = await getSettingValue("delivery_average_speed_kmh", 20);
+  const stopTime = await getSettingValue("delivery_stop_time_minutes", 10);
 
   // Crear stops con prioridad basada en tiempo de espera
-  const stops: DeliveryStop[] = ordersList.map(order => {
+  const stops: DeliveryStop[] = ordersList.map((order) => {
     const waitTime = Date.now() - new Date(order.createdAt).getTime();
     const waitMinutes = waitTime / (1000 * 60);
-    
+
     // Prioridad: 1-5, aumenta con tiempo de espera
     let priority = 1;
     if (waitMinutes > 30) priority = 5;
@@ -122,7 +122,7 @@ export async function optimizeMultipleDeliveries(
         latitude: order.deliveryLatitude || 0,
         longitude: order.deliveryLongitude || 0,
       },
-      address: order.deliveryAddress || '',
+      address: order.deliveryAddress || "",
       estimatedTime: stopTime,
       priority,
     };
@@ -136,21 +136,26 @@ export async function optimizeMultipleDeliveries(
   let totalTime = 0;
 
   while (remainingStops.length > 0) {
-    const nextStop = nearestNeighborWithPriority(currentLocation, remainingStops);
-    
+    const nextStop = nearestNeighborWithPriority(
+      currentLocation,
+      remainingStops,
+    );
+
     if (!nextStop) break;
 
     const distance = calculateDistance(currentLocation, nextStop.location);
     totalDistance += distance;
-    
+
     // Tiempo = distancia / velocidad promedio + tiempo de entrega
     const travelTime = (distance / averageSpeed) * 60; // minutos
     totalTime += travelTime + nextStop.estimatedTime;
 
     optimizedStops.push(nextStop);
     currentLocation = nextStop.location;
-    
-    const index = remainingStops.findIndex(s => s.orderId === nextStop.orderId);
+
+    const index = remainingStops.findIndex(
+      (s) => s.orderId === nextStop.orderId,
+    );
     remainingStops.splice(index, 1);
   }
 
@@ -159,13 +164,13 @@ export async function optimizeMultipleDeliveries(
     stops: optimizedStops,
     totalDistance: Math.round(totalDistance * 100) / 100,
     totalTime: Math.round(totalTime),
-    sequence: optimizedStops.map(s => s.orderId),
+    sequence: optimizedStops.map((s) => s.orderId),
   };
 }
 
 export async function canDriverHandleMoreOrders(
   driverId: number,
-  maxOrders: number = 3
+  maxOrders: number = 3,
 ): Promise<boolean> {
   const activeOrders = await db
     .select()
@@ -173,8 +178,8 @@ export async function canDriverHandleMoreOrders(
     .where(
       and(
         eq(orders.deliveryPersonId, driverId),
-        inArray(orders.status, ['picked_up', 'ready'])
-      )
+        inArray(orders.status, ["picked_up", "ready"]),
+      ),
     );
 
   return activeOrders.length < maxOrders;
@@ -182,19 +187,19 @@ export async function canDriverHandleMoreOrders(
 
 export async function estimateDeliveryTime(
   driverLocation: Location,
-  deliveryLocation: Location
+  deliveryLocation: Location,
 ): Promise<number> {
-  const { getSettingValue } = await import('./systemSettingsService');
+  const { getSettingValue } = await import("./systemSettingsService");
   const distance = calculateDistance(driverLocation, deliveryLocation);
-  const averageSpeed = await getSettingValue('delivery_average_speed_kmh', 20); // km/h
-  const deliveryTime = await getSettingValue('delivery_stop_time_minutes', 10); // minutos para entrega
-  
+  const averageSpeed = await getSettingValue("delivery_average_speed_kmh", 20); // km/h
+  const deliveryTime = await getSettingValue("delivery_stop_time_minutes", 10); // minutos para entrega
+
   const travelTime = (distance / averageSpeed) * 60; // minutos
   return Math.round(travelTime + deliveryTime);
 }
 
 export async function getDriverCurrentRoute(
-  driverId: number
+  driverId: number,
 ): Promise<OptimizedRoute | null> {
   const activeOrders = await db
     .select()
@@ -202,8 +207,8 @@ export async function getDriverCurrentRoute(
     .where(
       and(
         eq(orders.deliveryPersonId, driverId),
-        inArray(orders.status, ['picked_up', 'ready'])
-      )
+        inArray(orders.status, ["picked_up", "ready"]),
+      ),
     );
 
   if (activeOrders.length === 0) {
@@ -212,6 +217,6 @@ export async function getDriverCurrentRoute(
 
   return optimizeMultipleDeliveries(
     driverId,
-    activeOrders.map(o => o.id)
+    activeOrders.map((o) => o.id),
   );
 }

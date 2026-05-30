@@ -20,7 +20,12 @@ import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { mockProducts } from "@/data/mockData";
 import { Product } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -68,7 +73,9 @@ export default function ProductDetailScreen() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/favorites/check", user?.id, productId] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/favorites/check", user?.id, productId],
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/favorites", user?.id] });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },

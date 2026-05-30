@@ -8,7 +8,7 @@ export function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const R = 6371;
   const dLat = toRad(lat2 - lat1);
@@ -71,23 +71,40 @@ export function estimateDeliveryTime(distance: number, prepTime = 20): number {
  * Valida si unas coordenadas están dentro de la zona de cobertura.
  * Lee el radio máximo desde system_settings (configurable por el admin).
  */
-export async function isInCoverageArea(latitude: number, longitude: number): Promise<boolean> {
+export async function isInCoverageArea(
+  latitude: number,
+  longitude: number,
+): Promise<boolean> {
   // Soria, España — centro configurable en el futuro
   const CENTER_LAT = 41.7636;
   const CENTER_LNG = -2.4677;
   const maxRadius = await getSettingValue("max_delivery_radius_km", 10);
 
-  const distance = calculateDistance(latitude, longitude, CENTER_LAT, CENTER_LNG);
+  const distance = calculateDistance(
+    latitude,
+    longitude,
+    CENTER_LAT,
+    CENTER_LNG,
+  );
   return distance <= maxRadius;
 }
 
 /**
  * Versión síncrona para cuando no se puede usar await
  */
-export function isInCoverageAreaSync(latitude: number, longitude: number, maxRadius = 10): boolean {
+export function isInCoverageAreaSync(
+  latitude: number,
+  longitude: number,
+  maxRadius = 10,
+): boolean {
   const CENTER_LAT = 41.7636;
   const CENTER_LNG = -2.4677;
 
-  const distance = calculateDistance(latitude, longitude, CENTER_LAT, CENTER_LNG);
+  const distance = calculateDistance(
+    latitude,
+    longitude,
+    CENTER_LAT,
+    CENTER_LNG,
+  );
   return distance <= maxRadius;
 }

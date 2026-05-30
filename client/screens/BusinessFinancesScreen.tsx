@@ -16,7 +16,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 type Period = "week" | "month" | "all";
@@ -84,11 +89,21 @@ export default function BusinessFinancesScreen() {
         apiRequest("GET", url),
         apiRequest("GET", payoutsUrl),
       ]);
-      const [finData, payData] = await Promise.all([finRes.json(), payRes.json()]);
+      const [finData, payData] = await Promise.all([
+        finRes.json(),
+        payRes.json(),
+      ]);
 
       if (finData.success) {
         setTransactions(finData.transactions || []);
-        setSummary(finData.summary || { totalEarnings: 0, pendingAmount: 0, completedAmount: 0, transactionCount: 0 });
+        setSummary(
+          finData.summary || {
+            totalEarnings: 0,
+            pendingAmount: 0,
+            completedAmount: 0,
+            transactionCount: 0,
+          },
+        );
       }
       if (payData.success) setPayouts(payData.payouts || []);
     } catch (error) {
@@ -151,12 +166,17 @@ export default function BusinessFinancesScreen() {
   if (loading) {
     return (
       <LinearGradient
-        colors={[theme.gradientStart || "#FFFFFF", theme.gradientEnd || "#F5F5F5"]}
+        colors={[
+          theme.gradientStart || "#FFFFFF",
+          theme.gradientEnd || "#F5F5F5",
+        ]}
         style={styles.container}
       >
         <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color={ComeYaColors.primary} />
-          <ThemedText style={{ marginTop: Spacing.md }}>Cargando finanzas...</ThemedText>
+          <ThemedText style={{ marginTop: Spacing.md }}>
+            Cargando finanzas...
+          </ThemedText>
         </View>
       </LinearGradient>
     );
@@ -164,13 +184,19 @@ export default function BusinessFinancesScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || "#FFFFFF", theme.gradientEnd || "#F5F5F5"]}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
     >
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + Spacing.md, paddingBottom: insets.bottom + 100 },
+          {
+            paddingTop: insets.top + Spacing.md,
+            paddingBottom: insets.bottom + 100,
+          },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -191,14 +217,22 @@ export default function BusinessFinancesScreen() {
         {/* Resumen Financiero */}
         <Animated.View
           entering={FadeInDown.springify()}
-          style={[styles.summaryCard, { backgroundColor: "#4CAF50" }, Shadows.lg]}
+          style={[
+            styles.summaryCard,
+            { backgroundColor: "#4CAF50" },
+            Shadows.lg,
+          ]}
         >
           <ThemedText type="body" style={{ color: "rgba(255,255,255,0.8)" }}>
             Ganancias Totales
           </ThemedText>
           <ThemedText
             type="h1"
-            style={{ color: "#FFFFFF", fontSize: 38, marginVertical: Spacing.sm }}
+            style={{
+              color: "#FFFFFF",
+              fontSize: 38,
+              marginVertical: Spacing.sm,
+            }}
           >
             €{summary.totalEarnings.toFixed(2)}
           </ThemedText>
@@ -212,7 +246,9 @@ export default function BusinessFinancesScreen() {
                   styles.periodButton,
                   {
                     backgroundColor:
-                      selectedPeriod === period ? "#FFFFFF" : "rgba(255,255,255,0.2)",
+                      selectedPeriod === period
+                        ? "#FFFFFF"
+                        : "rgba(255,255,255,0.2)",
                   },
                 ]}
               >
@@ -231,7 +267,10 @@ export default function BusinessFinancesScreen() {
 
           <View style={styles.summaryDetails}>
             <View style={styles.summaryItem}>
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.7)" }}>
+              <ThemedText
+                type="small"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
                 Completados
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
@@ -239,7 +278,10 @@ export default function BusinessFinancesScreen() {
               </ThemedText>
             </View>
             <View style={styles.summaryItem}>
-              <ThemedText type="small" style={{ color: "rgba(255,255,255,0.7)" }}>
+              <ThemedText
+                type="small"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
                 Pendientes
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
@@ -250,12 +292,19 @@ export default function BusinessFinancesScreen() {
         </Animated.View>
 
         {/* Sistema de Pagos */}
-        <View style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <View style={styles.infoHeader}>
             <Feather name="info" size={20} color={ComeYaColors.primary} />
-            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>Sistema de Pagos</ThemedText>
+            <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
+              Sistema de Pagos
+            </ThemedText>
           </View>
-          <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+          <ThemedText
+            type="body"
+            style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+          >
             • Recibes el 100% del precio base de tus productos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
@@ -274,30 +323,54 @@ export default function BusinessFinancesScreen() {
           <>
             <View style={styles.sectionHeader}>
               <ThemedText type="h3">Pagos Pendientes</ThemedText>
-              <Badge text={`${payouts.filter(p => p.status === "pending").length}`} variant="warning" />
+              <Badge
+                text={`${payouts.filter((p) => p.status === "pending").length}`}
+                variant="warning"
+              />
             </View>
             {payouts.map((payout, index) => (
               <Animated.View
                 key={payout.id}
                 entering={FadeInDown.delay(index * 40).springify()}
-                style={[styles.transactionCard, { backgroundColor: theme.card }, Shadows.sm]}
+                style={[
+                  styles.transactionCard,
+                  { backgroundColor: theme.card },
+                  Shadows.sm,
+                ]}
               >
                 <View style={styles.transactionHeader}>
                   <View style={{ flex: 1 }}>
                     <ThemedText type="body" style={{ fontWeight: "600" }}>
                       Pedido #{payout.orderId.slice(-6)}
                     </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      {PAYMENT_METHOD_LABELS[payout.method || ""] || "Sin método registrado"}
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary }}
+                    >
+                      {PAYMENT_METHOD_LABELS[payout.method || ""] ||
+                        "Sin método registrado"}
                     </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary }}
+                    >
                       {new Date(payout.createdAt).toLocaleDateString("es-VE", {
-                        day: "numeric", month: "short", year: "numeric",
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
                       })}
                     </ThemedText>
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
-                    <ThemedText type="h4" style={{ color: payout.status === "paid" ? ComeYaColors.success : ComeYaColors.warning }}>
+                    <ThemedText
+                      type="h4"
+                      style={{
+                        color:
+                          payout.status === "paid"
+                            ? ComeYaColors.success
+                            : ComeYaColors.warning,
+                      }}
+                    >
                       €{payout.amount.toFixed(2)}
                     </ThemedText>
                     <Badge
@@ -318,7 +391,13 @@ export default function BusinessFinancesScreen() {
         </View>
 
         {transactions.length === 0 ? (
-          <View style={[styles.emptyState, { backgroundColor: theme.card }, Shadows.sm]}>
+          <View
+            style={[
+              styles.emptyState,
+              { backgroundColor: theme.card },
+              Shadows.sm,
+            ]}
+          >
             <Feather name="inbox" size={48} color={theme.textSecondary} />
             <ThemedText
               type="body"
@@ -332,7 +411,11 @@ export default function BusinessFinancesScreen() {
             <Animated.View
               key={transaction.id}
               entering={FadeInDown.delay(index * 50).springify()}
-              style={[styles.transactionCard, { backgroundColor: theme.card }, Shadows.sm]}
+              style={[
+                styles.transactionCard,
+                { backgroundColor: theme.card },
+                Shadows.sm,
+              ]}
             >
               {/* Fila superior: pedido + monto */}
               <View style={styles.transactionHeader}>
@@ -340,23 +423,37 @@ export default function BusinessFinancesScreen() {
                   <ThemedText type="body" style={{ fontWeight: "600" }}>
                     Pedido #{transaction.orderId.slice(-6)}
                   </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    {new Date(transaction.createdAt).toLocaleDateString("es-VE", {
-                      day: "numeric", month: "short", year: "numeric",
-                      hour: "2-digit", minute: "2-digit",
-                    })}
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    {new Date(transaction.createdAt).toLocaleDateString(
+                      "es-VE",
+                      {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
                   </ThemedText>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <ThemedText type="h4" style={{ color: getStatusColor(transaction.status) }}>
+                  <ThemedText
+                    type="h4"
+                    style={{ color: getStatusColor(transaction.status) }}
+                  >
                     €{transaction.subtotal.toFixed(2)}
                   </ThemedText>
                   <Badge
                     text={getStatusLabel(transaction.status)}
                     variant={
-                      transaction.status === "delivered" ? "success"
-                      : transaction.status === "cancelled" ? "error"
-                      : "warning"
+                      transaction.status === "delivered"
+                        ? "success"
+                        : transaction.status === "cancelled"
+                          ? "error"
+                          : "warning"
                     }
                   />
                 </View>
@@ -366,33 +463,69 @@ export default function BusinessFinancesScreen() {
               <View style={styles.transactionDetails}>
                 {transaction.customerName ? (
                   <View style={styles.detailRow}>
-                    <Feather name="user" size={12} color={theme.textSecondary} />
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                    <Feather
+                      name="user"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary, marginLeft: 4 }}
+                    >
                       {transaction.customerName}
-                      {transaction.customerPhone ? ` · ${transaction.customerPhone}` : ""}
+                      {transaction.customerPhone
+                        ? ` · ${transaction.customerPhone}`
+                        : ""}
                     </ThemedText>
                   </View>
                 ) : null}
                 {transaction.paymentMethod ? (
                   <View style={styles.detailRow}>
-                    <Feather name="credit-card" size={12} color={theme.textSecondary} />
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
-                      {PAYMENT_METHOD_LABELS[transaction.paymentMethod] || transaction.paymentMethod}
+                    <Feather
+                      name="credit-card"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary, marginLeft: 4 }}
+                    >
+                      {PAYMENT_METHOD_LABELS[transaction.paymentMethod] ||
+                        transaction.paymentMethod}
                     </ThemedText>
                   </View>
                 ) : null}
                 {formatAddress(transaction.deliveryAddress) ? (
                   <View style={styles.detailRow}>
-                    <Feather name="map-pin" size={12} color={theme.textSecondary} />
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }} numberOfLines={1}>
+                    <Feather
+                      name="map-pin"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color: theme.textSecondary,
+                        marginLeft: 4,
+                        flex: 1,
+                      }}
+                      numberOfLines={1}
+                    >
                       {formatAddress(transaction.deliveryAddress)}
                     </ThemedText>
                   </View>
                 ) : null}
                 {transaction.deliveryFee > 0 ? (
                   <View style={styles.detailRow}>
-                    <Feather name="truck" size={12} color={theme.textSecondary} />
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+                    <Feather
+                      name="truck"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary, marginLeft: 4 }}
+                    >
                       Envío: €{transaction.deliveryFee.toFixed(2)}
                       {" · "}
                       Total: €{transaction.total.toFixed(2)}
@@ -401,8 +534,20 @@ export default function BusinessFinancesScreen() {
                 ) : null}
                 {transaction.notes ? (
                   <View style={styles.detailRow}>
-                    <Feather name="message-square" size={12} color={theme.textSecondary} />
-                    <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 4, flex: 1 }} numberOfLines={2}>
+                    <Feather
+                      name="message-square"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color: theme.textSecondary,
+                        marginLeft: 4,
+                        flex: 1,
+                      }}
+                      numberOfLines={2}
+                    >
                       {transaction.notes}
                     </ThemedText>
                   </View>

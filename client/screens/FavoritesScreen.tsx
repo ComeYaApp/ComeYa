@@ -20,7 +20,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 
@@ -135,7 +140,9 @@ export default function FavoritesScreen() {
       if (!user?.id) return { businesses: [], products: [], total: 0 };
       const response = await apiRequest("GET", `/api/favorites`);
       const data = await response.json();
-      return data.success ? data.favorites : { businesses: [], products: [], total: 0 };
+      return data.success
+        ? data.favorites
+        : { businesses: [], products: [], total: 0 };
     },
     enabled: !!user?.id,
   });
@@ -173,7 +180,7 @@ export default function FavoritesScreen() {
 
   const removeFavoriteMutation = useMutation({
     mutationFn: async (favorite: Favorite) => {
-      const itemType = favorite.businessId ? 'business' : 'product';
+      const itemType = favorite.businessId ? "business" : "product";
       const itemId = favorite.businessId || favorite.productId;
       await apiRequest("DELETE", `/api/favorites/${itemType}/${itemId}`);
     },
@@ -200,7 +207,10 @@ export default function FavoritesScreen() {
   if (favorites.length === 0 && !isLoading) {
     return (
       <LinearGradient
-        colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+        colors={[
+          theme.gradientStart || "#FFFFFF",
+          theme.gradientEnd || "#F5F5F5",
+        ]}
         style={[
           styles.container,
           {
@@ -222,7 +232,10 @@ export default function FavoritesScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}

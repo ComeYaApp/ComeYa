@@ -1,19 +1,15 @@
-import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
-import { theme } from '@/constants/theme';
+import React from "react";
+import { View, StyleSheet, ViewStyle } from "react-native";
+import { theme } from "@/constants/theme";
 
 interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle;
-  variant?: 'elevated' | 'outlined' | 'flat';
+  variant?: "elevated" | "outlined" | "flat";
 }
 
-export function Card({ children, style, variant = 'elevated' }: CardProps) {
-  return (
-    <View style={[styles.base, styles[variant], style]}>
-      {children}
-    </View>
-  );
+export function Card({ children, style, variant = "elevated" }: CardProps) {
+  return <View style={[styles.base, styles[variant], style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

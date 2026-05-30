@@ -20,7 +20,12 @@ import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import {
   DriversTab,
@@ -132,7 +137,12 @@ export default function AdminMenuScreen() {
   const [userRoleEdit, setUserRoleEdit] = useState("");
 
   // Debug modal state
-  console.log('Modal states:', { userModalVisible, orderModalVisible, selectedUser, selectedOrder });
+  console.log("Modal states:", {
+    userModalVisible,
+    orderModalVisible,
+    selectedUser,
+    selectedOrder,
+  });
 
   const fetchData = async () => {
     try {
@@ -195,7 +205,7 @@ export default function AdminMenuScreen() {
   };
 
   const handleOrderPress = (order: AdminOrder) => {
-    console.log('Order pressed:', order);
+    console.log("Order pressed:", order);
     setSelectedOrder(order);
     setOrderModalVisible(true);
     showToast(`Abriendo pedido #${order.id.slice(0, 8)}`, "info");
@@ -207,14 +217,14 @@ export default function AdminMenuScreen() {
       `¿Estás seguro de ${action.toLowerCase()} a ${user.name}?`,
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Confirmar", 
+        {
+          text: "Confirmar",
           onPress: () => {
             showToast(`Usuario ${action.toLowerCase()}`, "success");
             setUserModalVisible(false);
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -224,14 +234,14 @@ export default function AdminMenuScreen() {
       `¿Cambiar estado del pedido #${order.id.slice(0, 8)}?`,
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Confirmar", 
+        {
+          text: "Confirmar",
           onPress: () => {
             showToast(`Pedido ${action.toLowerCase()}`, "success");
             setOrderModalVisible(false);
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -243,11 +253,11 @@ export default function AdminMenuScreen() {
         business: "business",
         driver: "driver",
         admin: "admin",
-        super_admin: "super_admin"
+        super_admin: "super_admin",
       };
-      
+
       const serverRole = roleMap[userRoleEdit] || userRoleEdit;
-      
+
       await apiRequest("PUT", `/api/admin/users/${selectedUser.id}/role`, {
         role: serverRole,
       });
@@ -269,10 +279,7 @@ export default function AdminMenuScreen() {
         return <PaymentProofsTab theme={theme} showToast={showToast} />;
       case "businesses":
         return (
-          <BusinessesTab
-            businesses={businesses}
-            onBusinessPress={() => {}}
-          />
+          <BusinessesTab businesses={businesses} onBusinessPress={() => {}} />
         );
       case "users":
         return <UsersTab users={users} onUserPress={openUserModal} />;
@@ -290,7 +297,10 @@ export default function AdminMenuScreen() {
         return (
           <View style={styles.emptyState}>
             <Feather name="settings" size={48} color={theme.textSecondary} />
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+            >
               Sección en desarrollo
             </ThemedText>
           </View>
@@ -307,12 +317,12 @@ export default function AdminMenuScreen() {
               <Feather name="arrow-left" size={24} color={theme.text} />
             </Pressable>
             <ThemedText type="h2">
-              {menuItems.find(item => item.tab === activeTab)?.title}
+              {menuItems.find((item) => item.tab === activeTab)?.title}
             </ThemedText>
           </View>
         </View>
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
             <RefreshControl
@@ -347,11 +357,7 @@ export default function AdminMenuScreen() {
             <Pressable
               key={item.tab}
               onPress={() => handleMenuPress(item.tab)}
-              style={[
-                styles.card,
-                { backgroundColor: theme.card },
-                Shadows.sm,
-              ]}
+              style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}
             >
               <View
                 style={[
@@ -382,9 +388,13 @@ export default function AdminMenuScreen() {
         transparent
         onRequestClose={() => setUserModalVisible(false)}
       >
-        <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+        <View
+          style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+        >
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+            <View
+              style={[styles.modalHeader, { borderBottomColor: theme.border }]}
+            >
               <ThemedText type="h3">Detalles del Usuario</ThemedText>
               <Pressable onPress={() => setUserModalVisible(false)}>
                 <Feather name="x" size={24} color={theme.text} />
@@ -393,60 +403,125 @@ export default function AdminMenuScreen() {
             <ScrollView style={styles.modalBody}>
               {selectedUser ? (
                 <>
-                  <View style={[styles.userDetailCard, { backgroundColor: theme.backgroundSecondary }]}>
-                    <View style={[styles.avatar, { backgroundColor: ComeYaColors.primaryLight, width: 60, height: 60 }]}>
-                      <ThemedText type="h2" style={{ color: ComeYaColors.primaryDark }}>
+                  <View
+                    style={[
+                      styles.userDetailCard,
+                      { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.avatar,
+                        {
+                          backgroundColor: ComeYaColors.primaryLight,
+                          width: 60,
+                          height: 60,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        type="h2"
+                        style={{ color: ComeYaColors.primaryDark }}
+                      >
                         {selectedUser.name.charAt(0).toUpperCase()}
                       </ThemedText>
                     </View>
-                    <ThemedText type="h3" style={{ marginTop: Spacing.md }}>{selectedUser.name}</ThemedText>
-                    <ThemedText type="body" style={{ color: theme.textSecondary }}>{selectedUser.email}</ThemedText>
+                    <ThemedText type="h3" style={{ marginTop: Spacing.md }}>
+                      {selectedUser.name}
+                    </ThemedText>
+                    <ThemedText
+                      type="body"
+                      style={{ color: theme.textSecondary }}
+                    >
+                      {selectedUser.email}
+                    </ThemedText>
                     {selectedUser.phone ? (
-                      <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
+                      <ThemedText
+                        type="small"
+                        style={{ color: theme.textSecondary, marginTop: 4 }}
+                      >
                         {selectedUser.phone}
                       </ThemedText>
                     ) : null}
                   </View>
-                  
+
                   <View style={{ marginTop: Spacing.lg }}>
-                    <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+                    <ThemedText
+                      type="body"
+                      style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+                    >
                       Cambiar Rol
                     </ThemedText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
-                      {["customer", "business", "driver", "admin"].map((role) => (
-                        <Pressable
-                          key={role}
-                          onPress={() => setUserRoleEdit(role)}
-                          style={[
-                            styles.tab,
-                            {
-                              backgroundColor: userRoleEdit === role ? ComeYaColors.primary : "transparent",
-                              borderColor: ComeYaColors.primary,
-                            },
-                          ]}
-                        >
-                          <ThemedText
-                            type="small"
-                            style={{ color: userRoleEdit === role ? "#FFFFFF" : ComeYaColors.primary }}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: Spacing.sm,
+                      }}
+                    >
+                      {["customer", "business", "driver", "admin"].map(
+                        (role) => (
+                          <Pressable
+                            key={role}
+                            onPress={() => setUserRoleEdit(role)}
+                            style={[
+                              styles.tab,
+                              {
+                                backgroundColor:
+                                  userRoleEdit === role
+                                    ? ComeYaColors.primary
+                                    : "transparent",
+                                borderColor: ComeYaColors.primary,
+                              },
+                            ]}
                           >
-                            {role === "customer" ? "Cliente" : role === "business" ? "Negocio" : role === "driver" ? "Repartidor" : "ComeYa"}
-                          </ThemedText>
-                        </Pressable>
-                      ))}
+                            <ThemedText
+                              type="small"
+                              style={{
+                                color:
+                                  userRoleEdit === role
+                                    ? "#FFFFFF"
+                                    : ComeYaColors.primary,
+                              }}
+                            >
+                              {role === "customer"
+                                ? "Cliente"
+                                : role === "business"
+                                  ? "Negocio"
+                                  : role === "driver"
+                                    ? "Repartidor"
+                                    : "ComeYa"}
+                            </ThemedText>
+                          </Pressable>
+                        ),
+                      )}
                     </View>
                   </View>
-                  
-                  <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.lg }}>
-                    Registrado: {new Date(selectedUser.createdAt).toLocaleDateString()}
+
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: theme.textSecondary,
+                      marginTop: Spacing.lg,
+                    }}
+                  >
+                    Registrado:{" "}
+                    {new Date(selectedUser.createdAt).toLocaleDateString()}
                   </ThemedText>
                 </>
               ) : null}
             </ScrollView>
             <Pressable
               onPress={handleUpdateUserRole}
-              style={[styles.saveButton, { backgroundColor: ComeYaColors.primary }]}
+              style={[
+                styles.saveButton,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
             >
-              <ThemedText type="body" style={{ color: "#FFFFFF", fontWeight: "600" }}>
+              <ThemedText
+                type="body"
+                style={{ color: "#FFFFFF", fontWeight: "600" }}
+              >
                 Guardar Cambios
               </ThemedText>
             </Pressable>
@@ -461,8 +536,16 @@ export default function AdminMenuScreen() {
         presentationStyle="pageSheet"
         onRequestClose={() => setOrderModalVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'white', paddingTop: 50 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
+        <View style={{ flex: 1, backgroundColor: "white", paddingTop: 50 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              padding: 20,
+              borderBottomWidth: 1,
+              borderBottomColor: "#ccc",
+            }}
+          >
             <ThemedText type="h2">Detalles del Pedido</ThemedText>
             <Pressable onPress={() => setOrderModalVisible(false)}>
               <ThemedText>X</ThemedText>
@@ -471,19 +554,35 @@ export default function AdminMenuScreen() {
           {selectedOrder && (
             <View style={{ padding: 20 }}>
               <ThemedText type="h3">#{selectedOrder.id.slice(0, 8)}</ThemedText>
-              <ThemedText style={{ marginTop: 8 }}>Negocio: {selectedOrder.businessName}</ThemedText>
+              <ThemedText style={{ marginTop: 8 }}>
+                Negocio: {selectedOrder.businessName}
+              </ThemedText>
               <ThemedText>Cliente: {selectedOrder.customerName}</ThemedText>
-              <ThemedText>Total: €{(selectedOrder.total / 100).toFixed(2)}</ThemedText>
+              <ThemedText>
+                Total: €{(selectedOrder.total / 100).toFixed(2)}
+              </ThemedText>
               <ThemedText>Estado: {selectedOrder.status}</ThemedText>
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-                <Pressable 
-                  style={{ flex: 1, padding: 15, backgroundColor: '#10b981', borderRadius: 8, alignItems: 'center' }}
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>
+                <Pressable
+                  style={{
+                    flex: 1,
+                    padding: 15,
+                    backgroundColor: "#10b981",
+                    borderRadius: 8,
+                    alignItems: "center",
+                  }}
                   onPress={() => handleOrderAction("Confirmar", selectedOrder)}
                 >
                   <ThemedText style={{ color: "white" }}>Confirmar</ThemedText>
                 </Pressable>
-                <Pressable 
-                  style={{ flex: 1, padding: 15, backgroundColor: '#ef4444', borderRadius: 8, alignItems: 'center' }}
+                <Pressable
+                  style={{
+                    flex: 1,
+                    padding: 15,
+                    backgroundColor: "#ef4444",
+                    borderRadius: 8,
+                    alignItems: "center",
+                  }}
                   onPress={() => handleOrderAction("Cancelar", selectedOrder)}
                 >
                   <ThemedText style={{ color: "white" }}>Cancelar</ThemedText>

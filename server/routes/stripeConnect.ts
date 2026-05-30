@@ -12,24 +12,38 @@ const router = Router();
 
 async function getStripeAccountId(userId: string): Promise<string | null> {
   const [rows]: any = await db.execute(
-    sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`
+    sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`,
   );
   return rows[0]?.stripe_account_id || null;
 }
 
-async function saveStripeAccountId(userId: string, accountId: string, role: string) {
-  await db.execute(sql`UPDATE users SET stripe_account_id = ${accountId} WHERE id = ${userId}`);
+async function saveStripeAccountId(
+  userId: string,
+  accountId: string,
+  role: string,
+) {
+  await db.execute(
+    sql`UPDATE users SET stripe_account_id = ${accountId} WHERE id = ${userId}`,
+  );
   if (role === "business_owner") {
-    await db.execute(sql`UPDATE businesses SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE owner_id = ${userId}`);
+    await db.execute(
+      sql`UPDATE businesses SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE owner_id = ${userId}`,
+    );
   }
   if (role === "delivery_driver") {
-    await db.execute(sql`UPDATE delivery_drivers SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE user_id = ${userId}`);
+    await db.execute(
+      sql`UPDATE delivery_drivers SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE user_id = ${userId}`,
+    );
   }
 }
 
 async function markAccountActive(stripeAccountId: string) {
-  await db.execute(sql`UPDATE businesses SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`);
-  await db.execute(sql`UPDATE delivery_drivers SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`);
+  await db.execute(
+    sql`UPDATE businesses SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`,
+  );
+  await db.execute(
+    sql`UPDATE delivery_drivers SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`,
+  );
   logger.info(`✅ Stripe account marked active: ${stripeAccountId}`);
 }
 
@@ -64,7 +78,9 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
         // Verificar con Stripe si la cuenta puede recibir transferencias
         const stripe = getStripe();
-        const fullAccount = await stripe.accounts.retrieve(accountId).catch(() => null);
+        const fullAccount = await stripe.accounts
+          .retrieve(accountId)
+          .catch(() => null);
         if (fullAccount?.payouts_enabled && fullAccount?.details_submitted) {
           await markAccountActive(accountId);
         }
@@ -72,7 +88,9 @@ router.post("/webhook", async (req: Request, res: Response) => {
       }
     }
   } catch (err: any) {
-    logger.error(`Webhook handler error: ${err.message}`, { eventType: event.type });
+    logger.error(`Webhook handler error: ${err.message}`, {
+      eventType: event.type,
+    });
   }
 
   res.json({ received: true });
@@ -85,7 +103,11 @@ router.get("/status", authenticateToken, async (req, res) => {
     const accountId = await getStripeAccountId(req.user!.id);
 
     if (!accountId) {
-      return res.json({ hasAccount: false, onboardingComplete: false, canReceivePayments: false });
+      return res.json({
+        hasAccount: false,
+        onboardingComplete: false,
+        canReceivePayments: false,
+      });
     }
 
     const account = await stripe.accounts.retrieve(accountId);
@@ -114,14 +136,15 @@ router.post("/onboard", authenticateToken, async (req, res) => {
 
     if (!accountId) {
       const [userRows]: any = await db.execute(
-        sql`SELECT name, email FROM users WHERE id = ${req.user!.id} LIMIT 1`
+        sql`SELECT name, email FROM users WHERE id = ${req.user!.id} LIMIT 1`,
       );
       const user = userRows[0];
       const account = await stripe.accounts.create({
         type: "express",
         country: "ES",
         capabilities: { transfers: { requested: true } },
-        business_type: req.user!.role === "delivery_driver" ? "individual" : "company",
+        business_type:
+          req.user!.role === "delivery_driver" ? "individual" : "company",
         ...(user?.email && { email: user.email }),
         metadata: { userId: req.user!.id, role: req.user!.role },
       });
@@ -129,11 +152,12 @@ router.post("/onboard", authenticateToken, async (req, res) => {
       await saveStripeAccountId(req.user!.id, accountId, req.user!.role);
     }
 
-    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL;
+    const baseUrl =
+      process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL;
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${baseUrl}/api/connect/refresh?accountId=${accountId}`,
-      return_url:  `${baseUrl}/api/connect/return?userId=${req.user!.id}`,
+      return_url: `${baseUrl}/api/connect/return?userId=${req.user!.id}`,
       type: "account_onboarding",
     });
 
@@ -149,13 +173,15 @@ router.post("/refresh-onboarding", authenticateToken, async (req, res) => {
   try {
     const stripe = getStripe();
     const { accountId } = req.body;
-    if (!accountId) return res.status(400).json({ error: "accountId requerido" });
+    if (!accountId)
+      return res.status(400).json({ error: "accountId requerido" });
 
-    const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL;
+    const baseUrl =
+      process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL;
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${baseUrl}/api/connect/refresh?accountId=${accountId}`,
-      return_url:  `${baseUrl}/api/connect/return?userId=${req.user!.id}`,
+      return_url: `${baseUrl}/api/connect/return?userId=${req.user!.id}`,
       type: "account_onboarding",
     });
 
@@ -173,7 +199,7 @@ router.get("/return", async (req, res) => {
     try {
       const stripe = getStripe();
       const [userRows]: any = await db.execute(
-        sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`
+        sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`,
       );
       const stripeAccountId = userRows[0]?.stripe_account_id;
       if (stripeAccountId) {
@@ -182,7 +208,9 @@ router.get("/return", async (req, res) => {
           await markAccountActive(stripeAccountId);
         }
       }
-    } catch (e) { /* no bloquear el redirect */ }
+    } catch (e) {
+      /* no bloquear el redirect */
+    }
   }
 
   const deepLink = `comeya://stripe-connect-complete`;
@@ -230,9 +258,15 @@ router.get("/dashboard-link", authenticateToken, async (req, res) => {
 // ── DELETE /api/connect/disconnect ───────────────────────────────────────────
 router.delete("/disconnect", authenticateToken, async (req, res) => {
   try {
-    await db.execute(sql`UPDATE users SET stripe_account_id = NULL WHERE id = ${req.user!.id}`);
-    await db.execute(sql`UPDATE businesses SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE owner_id = ${req.user!.id}`);
-    await db.execute(sql`UPDATE delivery_drivers SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE user_id = ${req.user!.id}`);
+    await db.execute(
+      sql`UPDATE users SET stripe_account_id = NULL WHERE id = ${req.user!.id}`,
+    );
+    await db.execute(
+      sql`UPDATE businesses SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE owner_id = ${req.user!.id}`,
+    );
+    await db.execute(
+      sql`UPDATE delivery_drivers SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE user_id = ${req.user!.id}`,
+    );
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

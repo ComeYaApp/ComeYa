@@ -1,6 +1,6 @@
-import { db } from './db';
-import { reviews, businesses, users } from '../shared/schema-mysql';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { db } from "./db";
+import { reviews, businesses, users } from "../shared/schema-mysql";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 interface ReviewModerationResult {
   approved: boolean;
@@ -9,44 +9,57 @@ interface ReviewModerationResult {
 }
 
 const SPAM_KEYWORDS = [
-  'spam', 'fake', 'bot', 'scam', 'fraude',
-  'http://', 'https://', 'www.', '.com', '.mx',
-  'whatsapp', 'telegram', 'contacto',
+  "spam",
+  "fake",
+  "bot",
+  "scam",
+  "fraude",
+  "http://",
+  "https://",
+  "www.",
+  ".com",
+  ".mx",
+  "whatsapp",
+  "telegram",
+  "contacto",
 ];
 
 const OFFENSIVE_KEYWORDS = [
   // Agregar palabras ofensivas según contexto local
-  'idiota', 'estúpido', 'basura', 'porquería',
+  "idiota",
+  "estúpido",
+  "basura",
+  "porquería",
 ];
 
 export function moderateReview(
   rating: number,
-  comment: string
+  comment: string,
 ): ReviewModerationResult {
   const lowerComment = comment.toLowerCase();
 
   // Detectar spam
-  const hasSpamKeywords = SPAM_KEYWORDS.some(keyword => 
-    lowerComment.includes(keyword)
+  const hasSpamKeywords = SPAM_KEYWORDS.some((keyword) =>
+    lowerComment.includes(keyword),
   );
 
   if (hasSpamKeywords) {
     return {
       approved: false,
-      reason: 'Contenido detectado como spam',
+      reason: "Contenido detectado como spam",
       flagged: true,
     };
   }
 
   // Detectar lenguaje ofensivo
-  const hasOffensiveContent = OFFENSIVE_KEYWORDS.some(keyword =>
-    lowerComment.includes(keyword)
+  const hasOffensiveContent = OFFENSIVE_KEYWORDS.some((keyword) =>
+    lowerComment.includes(keyword),
   );
 
   if (hasOffensiveContent) {
     return {
       approved: false,
-      reason: 'Contenido ofensivo detectado',
+      reason: "Contenido ofensivo detectado",
       flagged: true,
     };
   }
@@ -55,33 +68,48 @@ export function moderateReview(
   if (comment.length < 10 && comment.length > 0) {
     return {
       approved: false,
-      reason: 'Reseña demasiado corta',
+      reason: "Reseña demasiado corta",
       flagged: true,
     };
   }
 
   // Detectar reseñas con solo mayúsculas (gritos)
-  const upperCaseRatio = (comment.match(/[A-Z]/g) || []).length / comment.length;
+  const upperCaseRatio =
+    (comment.match(/[A-Z]/g) || []).length / comment.length;
   if (upperCaseRatio > 0.7 && comment.length > 20) {
     return {
       approved: false,
-      reason: 'Uso excesivo de mayúsculas',
+      reason: "Uso excesivo de mayúsculas",
       flagged: true,
     };
   }
 
   // Detectar rating inconsistente con comentario
-  const positiveWords = ['excelente', 'bueno', 'rico', 'delicioso', 'rápido', 'genial'];
-  const negativeWords = ['malo', 'pésimo', 'horrible', 'tardado', 'frío', 'sucio'];
-  
-  const hasPositive = positiveWords.some(word => lowerComment.includes(word));
-  const hasNegative = negativeWords.some(word => lowerComment.includes(word));
+  const positiveWords = [
+    "excelente",
+    "bueno",
+    "rico",
+    "delicioso",
+    "rápido",
+    "genial",
+  ];
+  const negativeWords = [
+    "malo",
+    "pésimo",
+    "horrible",
+    "tardado",
+    "frío",
+    "sucio",
+  ];
+
+  const hasPositive = positiveWords.some((word) => lowerComment.includes(word));
+  const hasNegative = negativeWords.some((word) => lowerComment.includes(word));
 
   if (rating >= 4 && hasNegative && !hasPositive) {
     return {
       approved: true, // Aprobar pero marcar para revisión
       flagged: true,
-      reason: 'Rating inconsistente con comentario',
+      reason: "Rating inconsistente con comentario",
     };
   }
 
@@ -89,7 +117,7 @@ export function moderateReview(
     return {
       approved: true,
       flagged: true,
-      reason: 'Rating inconsistente con comentario',
+      reason: "Rating inconsistente con comentario",
     };
   }
 
@@ -104,7 +132,7 @@ export async function submitReview(
   orderId: number,
   businessId: number,
   rating: number,
-  comment: string
+  comment: string,
 ): Promise<{ reviewId: number; moderation: ReviewModerationResult }> {
   // Moderar la reseña
   const moderation = moderateReview(rating, comment);
@@ -142,12 +170,7 @@ export async function updateBusinessRating(businessId: number): Promise<void> {
       totalReviews: sql<number>`COUNT(*)`,
     })
     .from(reviews)
-    .where(
-      and(
-        eq(reviews.businessId, businessId),
-        eq(reviews.approved, true)
-      )
-    );
+    .where(and(eq(reviews.businessId, businessId), eq(reviews.approved, true)));
 
   const { avgRating, totalReviews } = result[0];
 
@@ -168,12 +191,12 @@ export async function approveReview(reviewId: number): Promise<void> {
     .limit(1);
 
   if (!review) {
-    throw new Error('Reseña no encontrada');
+    throw new Error("Reseña no encontrada");
   }
 
   await db
     .update(reviews)
-    .set({ 
+    .set({
       approved: true,
       flagged: false,
     })
@@ -184,11 +207,11 @@ export async function approveReview(reviewId: number): Promise<void> {
 
 export async function rejectReview(
   reviewId: number,
-  reason: string
+  reason: string,
 ): Promise<void> {
   await db
     .update(reviews)
-    .set({ 
+    .set({
       approved: false,
       moderationReason: reason,
     })
@@ -198,26 +221,21 @@ export async function rejectReview(
 export async function addBusinessResponse(
   reviewId: number,
   businessId: number,
-  response: string
+  response: string,
 ): Promise<void> {
   const [review] = await db
     .select()
     .from(reviews)
-    .where(
-      and(
-        eq(reviews.id, reviewId),
-        eq(reviews.businessId, businessId)
-      )
-    )
+    .where(and(eq(reviews.id, reviewId), eq(reviews.businessId, businessId)))
     .limit(1);
 
   if (!review) {
-    throw new Error('Reseña no encontrada o no pertenece a este negocio');
+    throw new Error("Reseña no encontrada o no pertenece a este negocio");
   }
 
   await db
     .update(reviews)
-    .set({ 
+    .set({
       businessResponse: response,
       businessResponseAt: new Date(),
     })
@@ -240,14 +258,11 @@ export async function getFlaggedReviews() {
 
 export async function getBusinessReviews(
   businessId: number,
-  includeUnapproved: boolean = false
+  includeUnapproved: boolean = false,
 ) {
   const conditions = includeUnapproved
     ? eq(reviews.businessId, businessId)
-    : and(
-        eq(reviews.businessId, businessId),
-        eq(reviews.approved, true)
-      );
+    : and(eq(reviews.businessId, businessId), eq(reviews.approved, true));
 
   return db
     .select({
@@ -282,9 +297,9 @@ export async function detectReviewAbuse(userId: number): Promise<boolean> {
 
   // Detectar si todas las reseñas son muy similares (spam)
   if (recentReviews.length >= 3) {
-    const comments = recentReviews.map(r => r.comment.toLowerCase());
+    const comments = recentReviews.map((r) => r.comment.toLowerCase());
     const uniqueComments = new Set(comments);
-    
+
     // Si más del 70% son idénticas
     if (uniqueComments.size / comments.length < 0.3) {
       return true;

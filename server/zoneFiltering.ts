@@ -8,7 +8,7 @@ export function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
-  lon2: number
+  lon2: number,
 ): number {
   const R = 6371; // Radio de la Tierra en km
   const dLat = toRad(lat2 - lat1);
@@ -56,8 +56,8 @@ export async function getAvailableOrdersForDriver(driverId: string) {
         or(
           eq(orders.status, "confirmed"),
           eq(orders.status, "ready"),
-          eq(orders.status, "preparing")
-        )
+          eq(orders.status, "preparing"),
+        ),
       );
 
     const ordersWithBusiness = [];
@@ -94,8 +94,8 @@ export async function getAvailableOrdersForDriver(driverId: string) {
       or(
         eq(orders.status, "confirmed"),
         eq(orders.status, "ready"),
-        eq(orders.status, "preparing")
-      )
+        eq(orders.status, "preparing"),
+      ),
     );
 
   const ordersInZone = [];
@@ -122,7 +122,7 @@ export async function getAvailableOrdersForDriver(driverId: string) {
       driverLat,
       driverLng,
       businessLat,
-      businessLng
+      businessLng,
     );
 
     if (distance <= MAX_DELIVERY_DISTANCE_KM) {

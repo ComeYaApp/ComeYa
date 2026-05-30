@@ -20,14 +20,19 @@ import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import { Image } from "expo-image";
-import { gpsService } from '@/services/gpsService';
+import { gpsService } from "@/services/gpsService";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { SmartOrderButton } from "@/components/SmartOrderButton";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -56,12 +61,20 @@ export default function DriverMyDeliveriesScreen() {
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [pickupOrderId, setPickupOrderId] = useState<string | null>(null);
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
-  const [proximityError, setProximityError] = useState<{ distanceMeters: number; maxDistanceMeters: number } | null>(null);
+  const [proximityError, setProximityError] = useState<{
+    distanceMeters: number;
+    maxDistanceMeters: number;
+  } | null>(null);
   const [gpsError, setGpsError] = useState(false);
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [deliveryPhotoUri, setDeliveryPhotoUri] = useState<string | null>(null);
-  const [pendingDeliveryOrderId, setPendingDeliveryOrderId] = useState<string | null>(null);
-  const [completedOrder, setCompletedOrder] = useState<{ earnings: number; businessName: string } | null>(null);
+  const [pendingDeliveryOrderId, setPendingDeliveryOrderId] = useState<
+    string | null
+  >(null);
+  const [completedOrder, setCompletedOrder] = useState<{
+    earnings: number;
+    businessName: string;
+  } | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -93,7 +106,7 @@ export default function DriverMyDeliveriesScreen() {
 
   useEffect(() => {
     const hasActiveOrders = orders.some((o: any) =>
-      ["preparing", "on_the_way"].includes(o.status)
+      ["preparing", "on_the_way"].includes(o.status),
     );
 
     if (hasActiveOrders && !isTracking) {
@@ -114,7 +127,7 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   const updateStatus = async (orderId: string, status: string) => {
-    console.log('updateStatus called:', orderId, status);
+    console.log("updateStatus called:", orderId, status);
     const previousOrders = orders;
     setActionOrderId(orderId);
     setOrders((prev: any[]) =>
@@ -124,27 +137,27 @@ export default function DriverMyDeliveriesScreen() {
     );
     try {
       let endpoint;
-      let method = 'POST';
-      
+      let method = "POST";
+
       // Usar los endpoints correctos según el estado
       switch (status) {
-        case 'picked_up':
-        case 'on_the_way':
+        case "picked_up":
+        case "on_the_way":
           // Nuevo endpoint para recoger pedido
           endpoint = `/api/orders/${orderId}/pickup`;
           break;
-        case 'delivered':
+        case "delivered":
           endpoint = `/api/orders/${orderId}/complete-delivery`;
           break;
         default:
           endpoint = `/api/delivery/orders/${orderId}/status`;
-          method = 'PUT';
+          method = "PUT";
       }
 
-      console.log('Using endpoint:', method, endpoint);
-      const body = method === 'PUT' ? { status } : {};
+      console.log("Using endpoint:", method, endpoint);
+      const body = method === "PUT" ? { status } : {};
       await apiRequest(method as any, endpoint, body);
-      
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       loadOrders();
     } catch (error) {
@@ -181,7 +194,10 @@ export default function DriverMyDeliveriesScreen() {
   const pickDeliveryPhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Cámara requerida", "Necesitas dar permiso de cámara para tomar la foto de entrega.");
+      Alert.alert(
+        "Cámara requerida",
+        "Necesitas dar permiso de cámara para tomar la foto de entrega.",
+      );
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -197,7 +213,10 @@ export default function DriverMyDeliveriesScreen() {
 
   const confirmDeliveryWithPhoto = async () => {
     if (!deliveryPhotoUri) {
-      Alert.alert("Foto requerida", "Debes tomar una foto de la entrega para continuar.");
+      Alert.alert(
+        "Foto requerida",
+        "Debes tomar una foto de la entrega para continuar.",
+      );
       return;
     }
     if (!pendingDeliveryOrderId) return;
@@ -209,14 +228,22 @@ export default function DriverMyDeliveriesScreen() {
   const confirmDelivery = async () => {
     if (pendingOrderId) {
       const previousOrders = orders;
-      const orderBeingDelivered = orders.find((o: any) => o.id === pendingOrderId);
-      
+      const orderBeingDelivered = orders.find(
+        (o: any) => o.id === pendingOrderId,
+      );
+
       try {
         setActionOrderId(pendingOrderId);
         const location = await gpsService.getCurrentLocation();
-        await completeDeliveryWithLocation(pendingOrderId, location, previousOrders, deliveryPhotoUri, orderBeingDelivered);
+        await completeDeliveryWithLocation(
+          pendingOrderId,
+          location,
+          previousOrders,
+          deliveryPhotoUri,
+          orderBeingDelivered,
+        );
       } catch (error) {
-        console.error('Error in confirmDelivery:', error);
+        console.error("Error in confirmDelivery:", error);
         setOrders(previousOrders);
         setActionOrderId(null);
       }
@@ -224,13 +251,13 @@ export default function DriverMyDeliveriesScreen() {
     setShowConfirmModal(false);
     setPendingOrderId(null);
   };
-  
+
   const completeDeliveryWithLocation = async (
     orderId: string,
     location: { latitude: number; longitude: number } | null,
     previousOrders: any[],
     photoUri: string | null = null,
-    orderData: any = null
+    orderData: any = null,
   ) => {
     setOrders((prev: any[]) =>
       prev.map((order) =>
@@ -243,15 +270,20 @@ export default function DriverMyDeliveriesScreen() {
       let photoBase64: string | null = null;
       if (photoUri) {
         try {
-          const FileSystem = await import('expo-file-system/legacy');
-          const encoding = (FileSystem as any)?.EncodingType?.Base64 || 'base64';
-          const base64 = await (FileSystem as any).readAsStringAsync(photoUri, { encoding });
-          const ext = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
-          photoBase64 = `data:image/${ext === 'png' ? 'png' : 'jpeg'};base64,${base64}`;
-        } catch { photoBase64 = null; }
+          const FileSystem = await import("expo-file-system/legacy");
+          const encoding =
+            (FileSystem as any)?.EncodingType?.Base64 || "base64";
+          const base64 = await (FileSystem as any).readAsStringAsync(photoUri, {
+            encoding,
+          });
+          const ext = photoUri.split(".").pop()?.toLowerCase() || "jpg";
+          photoBase64 = `data:image/${ext === "png" ? "png" : "jpeg"};base64,${base64}`;
+        } catch {
+          photoBase64 = null;
+        }
       }
 
-      await apiRequest('POST', `/api/orders/${orderId}/complete-delivery`, {
+      await apiRequest("POST", `/api/orders/${orderId}/complete-delivery`, {
         latitude: location?.latitude ?? null,
         longitude: location?.longitude ?? null,
         deliveryPhoto: photoBase64,
@@ -259,17 +291,18 @@ export default function DriverMyDeliveriesScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Mostrar pantalla post-entrega
       setCompletedOrder({
-        earnings: (orderData?.deliveryEarnings || orderData?.deliveryFee || 0) / 100,
+        earnings:
+          (orderData?.deliveryEarnings || orderData?.deliveryFee || 0) / 100,
         businessName: orderData?.businessName || "Pedido",
       });
       loadOrders();
     } catch (error: any) {
-      console.error('Error confirming delivery:', error);
+      console.error("Error confirming delivery:", error);
       let msg = error.message || "No se pudo confirmar la entrega";
       let distanceMeters: number | null = null;
       let maxDistanceMeters: number | null = null;
       try {
-        const jsonStart = msg.indexOf('{');
+        const jsonStart = msg.indexOf("{");
         if (jsonStart !== -1) {
           const parsed = JSON.parse(msg.slice(jsonStart));
           msg = parsed.error || msg;
@@ -291,7 +324,7 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   const cancelDelivery = () => {
-    console.log('User cancelled delivery confirmation');
+    console.log("User cancelled delivery confirmation");
     setShowConfirmModal(false);
     setPendingOrderId(null);
   };
@@ -301,7 +334,12 @@ export default function DriverMyDeliveriesScreen() {
     try {
       const parsed = JSON.parse(address);
       if (typeof parsed === "object") {
-        const parts = [parsed.street, parsed.city, parsed.state, parsed.zipCode].filter(Boolean);
+        const parts = [
+          parsed.street,
+          parsed.city,
+          parsed.state,
+          parsed.zipCode,
+        ].filter(Boolean);
         return parts.join(", ") || address;
       }
       return address;
@@ -316,24 +354,28 @@ export default function DriverMyDeliveriesScreen() {
     return Number.isFinite(num) ? num : null;
   };
 
-  const getOrderCoordinates = (order: any): { lat: number | null; lng: number | null } => {
-    const lat = [
-      order.deliveryLatitude,
-      order.deliveryLat,
-      order.latitude,
-      order.delivery_latitude,
-    ]
-      .map(parseCoordinate)
-      .find((value) => value !== null) ?? null;
+  const getOrderCoordinates = (
+    order: any,
+  ): { lat: number | null; lng: number | null } => {
+    const lat =
+      [
+        order.deliveryLatitude,
+        order.deliveryLat,
+        order.latitude,
+        order.delivery_latitude,
+      ]
+        .map(parseCoordinate)
+        .find((value) => value !== null) ?? null;
 
-    const lng = [
-      order.deliveryLongitude,
-      order.deliveryLng,
-      order.longitude,
-      order.delivery_longitude,
-    ]
-      .map(parseCoordinate)
-      .find((value) => value !== null) ?? null;
+    const lng =
+      [
+        order.deliveryLongitude,
+        order.deliveryLng,
+        order.longitude,
+        order.delivery_longitude,
+      ]
+        .map(parseCoordinate)
+        .find((value) => value !== null) ?? null;
 
     return { lat, lng };
   };
@@ -344,12 +386,14 @@ export default function DriverMyDeliveriesScreen() {
       android: `google.navigation:q=${lat},${lng}`,
       default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
     });
-    
+
     Linking.canOpenURL(url).then((supported) => {
       if (supported) {
         Linking.openURL(url);
       } else {
-        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`);
+        Linking.openURL(
+          `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`,
+        );
       }
     });
   };
@@ -360,15 +404,18 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   const openAppleMaps = (lat: number, lng: number, address: string) => {
-    const url = Platform.OS === "ios"
-      ? `maps:?daddr=${lat},${lng}&dirflg=d`
-      : `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
-    
+    const url =
+      Platform.OS === "ios"
+        ? `maps:?daddr=${lat},${lng}&dirflg=d`
+        : `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
+
     Linking.canOpenURL(url).then((supported) => {
       if (supported) {
         Linking.openURL(url);
       } else {
-        Linking.openURL(`https://maps.apple.com/?daddr=${encodeURIComponent(address)}&dirflg=d`);
+        Linking.openURL(
+          `https://maps.apple.com/?daddr=${encodeURIComponent(address)}&dirflg=d`,
+        );
       }
     });
   };
@@ -394,17 +441,22 @@ export default function DriverMyDeliveriesScreen() {
           text: "Waze",
           onPress: () => openWaze(lat, lng),
         },
-        ...(Platform.OS === "ios" ? [{
-          text: "Apple Maps",
-          onPress: () => openAppleMaps(lat, lng, address),
-        }] : []),
+        ...(Platform.OS === "ios"
+          ? [
+              {
+                text: "Apple Maps",
+                onPress: () => openAppleMaps(lat, lng, address),
+              },
+            ]
+          : []),
         { text: "Cancelar", style: "cancel" as const },
-      ]
+      ],
     );
   };
 
   const renderOrder = ({ item }: { item: any }) => {
-    const items = typeof item.items === "string" ? JSON.parse(item.items) : item.items;
+    const items =
+      typeof item.items === "string" ? JSON.parse(item.items) : item.items;
     const displayAddress = parseDeliveryAddress(item.deliveryAddress);
 
     return (
@@ -424,10 +476,10 @@ export default function DriverMyDeliveriesScreen() {
               item.status === "preparing"
                 ? "primary"
                 : item.status === "on_the_way"
-                ? "warning"
-                : item.status === "delivered"
-                ? "info"
-                : "secondary"
+                  ? "warning"
+                  : item.status === "delivered"
+                    ? "info"
+                    : "secondary"
             }
           />
         </View>
@@ -436,7 +488,11 @@ export default function DriverMyDeliveriesScreen() {
           <Feather name="map-pin" size={16} color={theme.textSecondary} />
           <ThemedText
             type="small"
-            style={{ color: theme.textSecondary, marginLeft: Spacing.xs, flex: 1 }}
+            style={{
+              color: theme.textSecondary,
+              marginLeft: Spacing.xs,
+              flex: 1,
+            }}
             numberOfLines={2}
           >
             {displayAddress}
@@ -445,11 +501,16 @@ export default function DriverMyDeliveriesScreen() {
 
         <View style={styles.orderFooter}>
           <ThemedText type="h4" style={{ color: ComeYaColors.success }}>
-            +€{((item.deliveryEarnings || item.deliveryFee || 0) / 100).toFixed(2)}
+            +€
+            {((item.deliveryEarnings || item.deliveryFee || 0) / 100).toFixed(
+              2,
+            )}
           </ThemedText>
           <View style={styles.mapButtons}>
             <Pressable
-              onPress={() => navigation.navigate("OrderTracking", { orderId: item.id })}
+              onPress={() =>
+                navigation.navigate("OrderTracking", { orderId: item.id })
+              }
               style={[
                 styles.trackButton,
                 { backgroundColor: theme.backgroundSecondary },
@@ -467,7 +528,10 @@ export default function DriverMyDeliveriesScreen() {
               onPress={() => showNavigationOptions(item)}
               style={[
                 styles.trackButton,
-                { backgroundColor: ComeYaColors.primary, marginLeft: Spacing.sm },
+                {
+                  backgroundColor: ComeYaColors.primary,
+                  marginLeft: Spacing.sm,
+                },
               ]}
             >
               <Feather name="navigation" size={16} color="#FFF" />
@@ -490,24 +554,28 @@ export default function DriverMyDeliveriesScreen() {
             onPress={(canProceed, buttonInfo) => {
               if (canProceed) {
                 switch (item.status) {
-                  case 'ready':
+                  case "ready":
                     handlePickedUp(item.id);
                     break;
-                  case 'picked_up':
-                  case 'preparing':
+                  case "picked_up":
+                  case "preparing":
                     handleOnTheWay(item.id);
                     break;
-                  case 'on_the_way':
+                  case "on_the_way":
                     handleDelivered(item.id);
                     break;
                   default:
-                    Alert.alert("Información", `${buttonInfo.message}\n\n${buttonInfo.nextAction}`, [{ text: "OK" }]);
+                    Alert.alert(
+                      "Información",
+                      `${buttonInfo.message}\n\n${buttonInfo.nextAction}`,
+                      [{ text: "OK" }],
+                    );
                 }
               } else {
                 Alert.alert(
                   "Estado del Pedido",
-                  `${buttonInfo.message}\n\n${buttonInfo.nextAction}${buttonInfo.requiresBusinessAction ? '\n\n⚠️ Se requiere que el negocio tome acción primero.' : ''}`,
-                  [{ text: "Entendido" }]
+                  `${buttonInfo.message}\n\n${buttonInfo.nextAction}${buttonInfo.requiresBusinessAction ? "\n\n⚠️ Se requiere que el negocio tome acción primero." : ""}`,
+                  [{ text: "Entendido" }],
                 );
               }
             }}
@@ -519,7 +587,9 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   const activeOrders = orders.filter((o: any) =>
-    ["ready", "picked_up", "preparing", "on_the_way", "delivered"].includes(o.status)
+    ["ready", "picked_up", "preparing", "on_the_way", "delivered"].includes(
+      o.status,
+    ),
   );
   const completedOrders = orders.filter((o: any) => o.status === "completed");
 
@@ -528,7 +598,11 @@ export default function DriverMyDeliveriesScreen() {
 
     return (
       <View
-        style={[styles.orderCard, { backgroundColor: theme.card, opacity: 0.8 }, Shadows.sm]}
+        style={[
+          styles.orderCard,
+          { backgroundColor: theme.card, opacity: 0.8 },
+          Shadows.sm,
+        ]}
       >
         <View style={styles.orderHeader}>
           <View>
@@ -544,7 +618,11 @@ export default function DriverMyDeliveriesScreen() {
           <Feather name="map-pin" size={16} color={theme.textSecondary} />
           <ThemedText
             type="small"
-            style={{ color: theme.textSecondary, marginLeft: Spacing.xs, flex: 1 }}
+            style={{
+              color: theme.textSecondary,
+              marginLeft: Spacing.xs,
+              flex: 1,
+            }}
             numberOfLines={2}
           >
             {displayAddress}
@@ -553,7 +631,10 @@ export default function DriverMyDeliveriesScreen() {
 
         <View style={styles.orderFooter}>
           <ThemedText type="h4" style={{ color: ComeYaColors.success }}>
-            +€{((item.deliveryEarnings || item.deliveryFee || 0) / 100).toFixed(2)}
+            +€
+            {((item.deliveryEarnings || item.deliveryFee || 0) / 100).toFixed(
+              2,
+            )}
           </ThemedText>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             Completado
@@ -565,7 +646,10 @@ export default function DriverMyDeliveriesScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -574,30 +658,53 @@ export default function DriverMyDeliveriesScreen() {
       {completedOrder && (
         <Modal visible transparent animationType="fade">
           <View style={styles.successOverlay}>
-            <Animated.View entering={ZoomIn.springify()} style={styles.successCard}>
+            <Animated.View
+              entering={ZoomIn.springify()}
+              style={styles.successCard}
+            >
               <View style={styles.successIconCircle}>
                 <Feather name="check-circle" size={56} color="#4CAF50" />
               </View>
-              <ThemedText type="h2" style={{ color: "#1B5E20", marginTop: 16, textAlign: "center" }}>
+              <ThemedText
+                type="h2"
+                style={{ color: "#1B5E20", marginTop: 16, textAlign: "center" }}
+              >
                 ¡Entrega completada!
               </ThemedText>
-              <ThemedText type="body" style={{ color: "#388E3C", marginTop: 8, textAlign: "center" }}>
+              <ThemedText
+                type="body"
+                style={{ color: "#388E3C", marginTop: 8, textAlign: "center" }}
+              >
                 {completedOrder.businessName}
               </ThemedText>
               <View style={styles.earningsBadge}>
-                <ThemedText type="h1" style={{ color: "#4CAF50", fontSize: 40 }}>
+                <ThemedText
+                  type="h1"
+                  style={{ color: "#4CAF50", fontSize: 40 }}
+                >
                   +€{completedOrder.earnings.toFixed(2)}
                 </ThemedText>
-                <ThemedText type="small" style={{ color: "#388E3C" }}>ganados</ThemedText>
+                <ThemedText type="small" style={{ color: "#388E3C" }}>
+                  ganados
+                </ThemedText>
               </View>
-              <ThemedText type="caption" style={{ color: "#666", textAlign: "center", marginBottom: 24 }}>
-                El cliente recibirá una notificación para confirmar la recepción.
+              <ThemedText
+                type="caption"
+                style={{ color: "#666", textAlign: "center", marginBottom: 24 }}
+              >
+                El cliente recibirá una notificación para confirmar la
+                recepción.
               </ThemedText>
               <Pressable
                 onPress={() => setCompletedOrder(null)}
                 style={styles.successButton}
               >
-                <ThemedText type="body" style={{ color: "#FFF", fontWeight: "700" }}>Continuar</ThemedText>
+                <ThemedText
+                  type="body"
+                  style={{ color: "#FFF", fontWeight: "700" }}
+                >
+                  Continuar
+                </ThemedText>
               </Pressable>
             </Animated.View>
           </View>
@@ -607,15 +714,22 @@ export default function DriverMyDeliveriesScreen() {
       {/* Modal foto de entrega */}
       <Modal visible={photoModalVisible} transparent animationType="slide">
         <View style={styles.photoModalOverlay}>
-          <Animated.View entering={FadeInDown.springify()} style={[styles.photoModalCard, { backgroundColor: theme.card }]}>
+          <Animated.View
+            entering={FadeInDown.springify()}
+            style={[styles.photoModalCard, { backgroundColor: theme.card }]}
+          >
             <View style={styles.photoModalHeader}>
               <ThemedText type="h3">Foto de entrega</ThemedText>
               <Pressable onPress={() => setPhotoModalVisible(false)}>
                 <Feather name="x" size={24} color={theme.text} />
               </Pressable>
             </View>
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: 16 }}>
-              Toma una foto del pedido entregado. Es obligatoria para confirmar la entrega.
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, marginBottom: 16 }}
+            >
+              Toma una foto del pedido entregado. Es obligatoria para confirmar
+              la entrega.
             </ThemedText>
 
             {deliveryPhotoUri ? (
@@ -625,25 +739,63 @@ export default function DriverMyDeliveriesScreen() {
                   style={styles.photoPreview}
                   contentFit="cover"
                 />
-                <ThemedText type="small" style={{ color: ComeYaColors.primary, textAlign: "center", marginTop: 8 }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: ComeYaColors.primary,
+                    textAlign: "center",
+                    marginTop: 8,
+                  }}
+                >
                   Toca para cambiar foto
                 </ThemedText>
               </Pressable>
             ) : (
-              <Pressable onPress={pickDeliveryPhoto} style={[styles.photoPlaceholder, { borderColor: theme.border }]}>
+              <Pressable
+                onPress={pickDeliveryPhoto}
+                style={[styles.photoPlaceholder, { borderColor: theme.border }]}
+              >
                 <Feather name="camera" size={40} color={theme.textSecondary} />
-                <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: 12 }}>Tomar foto</ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>Obligatoria para confirmar entrega</ThemedText>
+                <ThemedText
+                  type="body"
+                  style={{ color: theme.textSecondary, marginTop: 12 }}
+                >
+                  Tomar foto
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: 4 }}
+                >
+                  Obligatoria para confirmar entrega
+                </ThemedText>
               </Pressable>
             )}
 
             <Pressable
               onPress={confirmDeliveryWithPhoto}
               disabled={!deliveryPhotoUri}
-              style={[styles.confirmPhotoButton, { backgroundColor: deliveryPhotoUri ? "#4CAF50" : theme.backgroundSecondary }]}
+              style={[
+                styles.confirmPhotoButton,
+                {
+                  backgroundColor: deliveryPhotoUri
+                    ? "#4CAF50"
+                    : theme.backgroundSecondary,
+                },
+              ]}
             >
-              <Feather name="check-circle" size={18} color={deliveryPhotoUri ? "#FFF" : theme.textSecondary} />
-              <ThemedText type="body" style={{ color: deliveryPhotoUri ? "#FFF" : theme.textSecondary, marginLeft: 8, fontWeight: "700" }}>
+              <Feather
+                name="check-circle"
+                size={18}
+                color={deliveryPhotoUri ? "#FFF" : theme.textSecondary}
+              />
+              <ThemedText
+                type="body"
+                style={{
+                  color: deliveryPhotoUri ? "#FFF" : theme.textSecondary,
+                  marginLeft: 8,
+                  fontWeight: "700",
+                }}
+              >
                 Confirmar entrega
               </ThemedText>
             </Pressable>
@@ -656,7 +808,10 @@ export default function DriverMyDeliveriesScreen() {
           {isTracking ? (
             <View style={styles.trackingIndicator}>
               <View style={styles.trackingDot} />
-              <ThemedText type="small" style={{ color: ComeYaColors.success, marginLeft: Spacing.xs }}>
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.success, marginLeft: Spacing.xs }}
+              >
                 GPS Activo
               </ThemedText>
             </View>
@@ -697,7 +852,10 @@ export default function DriverMyDeliveriesScreen() {
 
         {completedOrders.length > 0 && (
           <>
-            <ThemedText type="h4" style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }}>
+            <ThemedText
+              type="h4"
+              style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }}
+            >
               Completadas ({completedOrders.length})
             </ThemedText>
             {completedOrders.map((item: any) => (
@@ -706,7 +864,7 @@ export default function DriverMyDeliveriesScreen() {
           </>
         )}
       </ScrollView>
-      
+
       <ConfirmModal
         visible={showConfirmModal}
         title="Marcar como entregado"
@@ -715,19 +873,26 @@ export default function DriverMyDeliveriesScreen() {
         onConfirm={confirmDelivery}
         onCancel={cancelDelivery}
       />
-      
+
       <ConfirmModal
         visible={showPickupModal}
         title="Confirmar Recogida"
         message="¿Ya recogiste el pedido?"
         onConfirm={confirmPickup}
-        onCancel={() => { setShowPickupModal(false); setPickupOrderId(null); }}
+        onCancel={() => {
+          setShowPickupModal(false);
+          setPickupOrderId(null);
+        }}
       />
 
       <ConfirmModal
         visible={proximityError !== null}
         title="📍 Muy lejos del cliente"
-        message={proximityError ? `Estás a ${proximityError.distanceMeters}m del cliente.\n\nDebes estar a menos de ${proximityError.maxDistanceMeters}m para marcar el pedido como entregado.` : ""}
+        message={
+          proximityError
+            ? `Estás a ${proximityError.distanceMeters}m del cliente.\n\nDebes estar a menos de ${proximityError.maxDistanceMeters}m para marcar el pedido como entregado.`
+            : ""
+        }
         confirmText="Entendido"
         cancelText=""
         onConfirm={() => setProximityError(null)}

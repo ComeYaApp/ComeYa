@@ -13,7 +13,12 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { API_CONFIG } from "@/constants/api";
 
 interface ConnectStatus {
@@ -30,7 +35,9 @@ export function StripeConnectSetup() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null);
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(
+    null,
+  );
   const [statusLoading, setStatusLoading] = useState(true);
 
   useEffect(() => {
@@ -43,9 +50,12 @@ export function StripeConnectSetup() {
       const token = user?.token;
       if (!token) return;
 
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/connect/status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}/api/connect/status`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       const data = await response.json();
       if (response.ok) {
         setConnectStatus(data);
@@ -64,16 +74,19 @@ export function StripeConnectSetup() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/connect/onboard`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}/api/connect/onboard`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            accountType: "driver",
+          }),
         },
-        body: JSON.stringify({
-          accountType: "driver",
-        }),
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -116,7 +129,7 @@ export function StripeConnectSetup() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ accountId: connectStatus.accountId }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -129,7 +142,10 @@ export function StripeConnectSetup() {
         }
       } else {
         const error = await response.json().catch(() => ({}));
-        Alert.alert("Error", error.error || "Error al actualizar configuración");
+        Alert.alert(
+          "Error",
+          error.error || "Error al actualizar configuración",
+        );
       }
     } catch (error) {
       Alert.alert("Error", "Error de conexión");
@@ -140,14 +156,18 @@ export function StripeConnectSetup() {
 
   if (statusLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.card }, Shadows.sm]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.card }, Shadows.sm]}
+      >
         <ActivityIndicator color={ComeYaColors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.card }, Shadows.sm]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.card }, Shadows.sm]}
+    >
       <View style={styles.header}>
         <View
           style={[
@@ -180,7 +200,11 @@ export function StripeConnectSetup() {
           </View>
 
           <View style={styles.infoBox}>
-            <Feather name="check-circle" size={16} color={ComeYaColors.success} />
+            <Feather
+              name="check-circle"
+              size={16}
+              color={ComeYaColors.success}
+            />
             <ThemedText
               type="caption"
               style={{ color: theme.textSecondary, marginLeft: 8, flex: 1 }}
@@ -229,7 +253,11 @@ export function StripeConnectSetup() {
           </View>
 
           <View style={styles.infoBox}>
-            <Feather name="alert-circle" size={16} color={ComeYaColors.warning} />
+            <Feather
+              name="alert-circle"
+              size={16}
+              color={ComeYaColors.warning}
+            />
             <ThemedText
               type="caption"
               style={{ color: theme.textSecondary, marginLeft: 8, flex: 1 }}

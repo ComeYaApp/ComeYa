@@ -1,1 +1,1 @@
-export { ComeYaLogo, RabbitFoodLogo } from './RabbitFoodLogo';
+export { ComeYaLogo, RabbitFoodLogo } from "./RabbitFoodLogo";

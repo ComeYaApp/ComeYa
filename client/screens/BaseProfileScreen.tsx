@@ -31,7 +31,12 @@ import { ThemeMode } from "@/contexts/AppContext";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
 // =============================================================================
@@ -122,9 +127,9 @@ export const themeOptions: ThemeOption[] = [
  */
 export function resolveProfileImageUrl(profileImage: string): string {
   if (!profileImage) return "";
-  
+
   // Base64 - return directly
-  if (profileImage.startsWith('data:image/')) {
+  if (profileImage.startsWith("data:image/")) {
     return profileImage;
   }
 
@@ -154,10 +159,14 @@ export function resolveProfileImageUrl(profileImage: string): string {
  */
 export function getThemeLabel(mode: ThemeMode): string {
   switch (mode) {
-    case "system": return "Sistema";
-    case "light": return "Claro";
-    case "dark": return "Oscuro";
-    default: return "Sistema";
+    case "system":
+      return "Sistema";
+    case "light":
+      return "Claro";
+    case "dark":
+      return "Oscuro";
+    default:
+      return "Sistema";
   }
 }
 
@@ -166,12 +175,17 @@ export function getThemeLabel(mode: ThemeMode): string {
  */
 export function getRoleLabel(role?: string): string {
   switch (role) {
-    case "customer": return "Cliente";
-    case "business_owner": return "Dueño de Negocio";
-    case "delivery_driver": return "Repartidor";
+    case "customer":
+      return "Cliente";
+    case "business_owner":
+      return "Dueño de Negocio";
+    case "delivery_driver":
+      return "Repartidor";
     case "admin":
-    case "super_admin": return "ComeYa";
-    default: return role || "Usuario";
+    case "super_admin":
+      return "ComeYa";
+    default:
+      return role || "Usuario";
   }
 }
 
@@ -181,7 +195,7 @@ export function getRoleLabel(role?: string): string {
 export function shareToSocialMedia(platform: string) {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   const message = encodeURIComponent(
-    "Descubre ComeYa - Tu delivery local de confianza en Soria. Pide comida y productos del mercado con un toque."
+    "Descubre ComeYa - Tu delivery local de confianza en Soria. Pide comida y productos del mercado con un toque.",
   );
   const url = encodeURIComponent("https://app.comeya.es");
 
@@ -222,7 +236,7 @@ export function renderPreferencesSection(
   showLanguageModal: boolean,
   setShowThemeModal: (v: boolean) => void,
   setShowNotificationsModal: (v: boolean) => void,
-  setShowLanguageModal: (v: boolean) => void
+  setShowLanguageModal: (v: boolean) => void,
 ) {
   return (
     <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
@@ -270,7 +284,7 @@ export function renderMasSection(
   showPrivacyModal: boolean,
   setShowTermsModal: (v: boolean) => void,
   setShowPrivacyModal: (v: boolean) => void,
-  handleShare: () => void
+  handleShare: () => void,
 ) {
   return (
     <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
@@ -351,7 +365,7 @@ export const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.lg,
   },
-  
+
   // Profile Card
   profileCard: {
     alignItems: "center",
@@ -383,7 +397,7 @@ export const styles = StyleSheet.create({
   userName: {
     marginBottom: Spacing.xs,
   },
-  
+
   // Sections
   section: {
     borderRadius: BorderRadius.lg,
@@ -394,7 +408,7 @@ export const styles = StyleSheet.create({
     padding: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
-  
+
   // Settings Item
   settingsItem: {
     flexDirection: "row",
@@ -413,7 +427,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     marginLeft: Spacing.md,
   },
-  
+
   // Social
   socialButtons: {
     flexDirection: "row",
@@ -429,7 +443,7 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  
+
   // Modal Overlay
   modalOverlay: {
     flex: 1,
@@ -487,7 +501,7 @@ export const styles = StyleSheet.create({
   logoutButton: {
     backgroundColor: ComeYaColors.error,
   },
-  
+
   // Theme Options
   themeOptions: {
     width: "100%",
@@ -501,7 +515,7 @@ export const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 2,
   },
-  
+
   // Switch
   switchRow: {
     flexDirection: "row",
@@ -511,13 +525,13 @@ export const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     marginBottom: Spacing.md,
   },
-  
+
   // Coming Soon
   comingSoon: {
     textAlign: "center",
     marginBottom: Spacing.md,
   },
-  
+
   // Full Screen Modal
   fullScreenModal: {
     flex: 1,
@@ -539,7 +553,7 @@ export const styles = StyleSheet.create({
   fullScreenContent: {
     flex: 1,
   },
-  
+
   // Edit Modal Card
   editModalCard: {
     position: "absolute",
@@ -592,14 +606,14 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: Spacing.xl,
   },
-  
+
   // Version
   version: {
     textAlign: "center",
     marginTop: Spacing.md,
     marginBottom: Spacing.xl,
   },
-  
+
   // Legal
   legalTitle: {
     marginTop: Spacing.lg,
@@ -609,15 +623,14 @@ export const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: Spacing.sm,
   },
-  
-// Info Card
+
+  // Info Card
   infoCard: {
     flexDirection: "row",
     alignItems: "flex-start",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
-},
-
+  },
 });
 
 // Shared styles end

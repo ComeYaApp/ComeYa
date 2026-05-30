@@ -116,13 +116,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = JSON.parse(stored);
         setUser(userData);
         setToken(userData.token || null); // Set token from user data
-        
+
         // Ensure token is also stored separately for easy access
         if (userData.token) {
           await AsyncStorage.setItem("token", userData.token);
         }
       }
-      
+
       // Load pending verification phone
       const pendingPhone = await AsyncStorage.getItem(PENDING_PHONE_KEY);
       if (pendingPhone) {
@@ -159,8 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
   ): Promise<{ success: boolean; requiresVerification?: boolean }> => {
     // Email → dev password login; Phone → trigger OTP flow first (no code validation here)
-    const isEmail = identifier.includes('@');
-    
+    const isEmail = identifier.includes("@");
+
     if (isEmail) {
       const response = await apiRequest("POST", "/api/auth/dev-email-login", {
         email: identifier,
@@ -205,13 +205,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password?: string,
   ): Promise<{ requiresVerification: boolean }> => {
     // Guardar datos temporalmente para crear usuario después de verificar
-    await AsyncStorage.setItem("@ComeYa_pending_signup", JSON.stringify({
-      name,
-      role,
-      phone,
-      email,
-      password,
-    }));
+    await AsyncStorage.setItem(
+      "@ComeYa_pending_signup",
+      JSON.stringify({
+        name,
+        role,
+        phone,
+        email,
+        password,
+      }),
+    );
 
     const response = await apiRequest("POST", "/api/auth/phone-signup", {
       name,
@@ -237,11 +240,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyPhone = async (phone: string, code: string) => {
     const normalizedPhone = normalizePhone(phone);
-    
+
     // Obtener datos de signup si existen
     const signupDataRaw = await AsyncStorage.getItem("@ComeYa_pending_signup");
     const signupData = signupDataRaw ? JSON.parse(signupDataRaw) : null;
-    
+
     const response = await apiRequest("POST", "/api/auth/phone-login", {
       phone: normalizedPhone,
       code,
@@ -393,7 +396,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.removeItem("token");
     await AsyncStorage.removeItem(PENDING_PHONE_KEY);
-    
+
     // Clear token cache
     try {
       const { clearTokenCache } = await import("@/lib/query-client");
@@ -401,7 +404,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       // Silent fail
     }
-    
+
     setUser(null);
     setToken(null);
     setPendingVerificationPhone(null);

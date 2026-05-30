@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
-FlatList,
+  FlatList,
   Pressable,
   RefreshControl,
   Switch,
@@ -18,14 +18,19 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
-import * as Haptics from 'expo-haptics';
+import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useBusiness } from "@/contexts/BusinessContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
@@ -33,14 +38,17 @@ export default function BusinessProductsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { selectedBusiness, businesses } = useBusiness();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-const [products, setProducts] = useState([]);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [products, setProducts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const filteredProducts = products.filter((p: any) => !search || p.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products.filter(
+    (p: any) => !search || p.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
   const [form, setForm] = useState({
     name: "",
@@ -51,7 +59,7 @@ const [products, setProducts] = useState([]);
 
   const loadProducts = async () => {
     try {
-      const url = selectedBusiness 
+      const url = selectedBusiness
         ? `/api/business/products?businessId=${selectedBusiness.id}`
         : "/api/business/products";
       const response = await apiRequest("GET", url);
@@ -74,11 +82,18 @@ const [products, setProducts] = useState([]);
     setRefreshing(false);
   };
 
-  const toggleAvailability = async (productId: string, currentStatus: boolean) => {
+  const toggleAvailability = async (
+    productId: string,
+    currentStatus: boolean,
+  ) => {
     try {
-      await apiRequest("PUT", `/api/business/products/${productId}/availability`, {
-        isAvailable: !currentStatus,
-      });
+      await apiRequest(
+        "PUT",
+        `/api/business/products/${productId}/availability`,
+        {
+          isAvailable: !currentStatus,
+        },
+      );
       loadProducts();
     } catch (error) {
       console.error("Error updating product:", error);
@@ -105,23 +120,27 @@ const [products, setProducts] = useState([]);
   const handleSave = async () => {
     try {
       const priceInCents = Math.round(parseFloat(form.price) * 100);
-      
+
       if (editingProduct) {
         await apiRequest("PUT", `/api/business/products/${editingProduct.id}`, {
           name: form.name,
           description: form.description,
           price: priceInCents,
-          image: form.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
+          image:
+            form.image ||
+            "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
         });
       } else {
         await apiRequest("POST", "/api/business/products", {
           name: form.name,
           description: form.description,
           price: priceInCents,
-          image: form.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
+          image:
+            form.image ||
+            "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
         });
       }
-      
+
       setShowModal(false);
       loadProducts();
     } catch (error) {
@@ -155,7 +174,7 @@ const [products, setProducts] = useState([]);
     setIsUploadingImage(true);
     try {
       let imageData: string;
-      
+
       if (Platform.OS === "web") {
         const response = await fetch(uri);
         const blob = await response.blob();
@@ -175,9 +194,13 @@ const [products, setProducts] = useState([]);
         imageData = `data:${mimeType};base64,${base64}`;
       }
 
-      const apiResponse = await apiRequest("POST", "/api/business/product-image", {
-        image: imageData,
-      });
+      const apiResponse = await apiRequest(
+        "POST",
+        "/api/business/product-image",
+        {
+          image: imageData,
+        },
+      );
 
       const data = await apiResponse.json();
 
@@ -196,10 +219,10 @@ const [products, setProducts] = useState([]);
   };
 
   const handleDelete = async (productId: string) => {
-    if (typeof window !== 'undefined' && window.confirm) {
-      if (!window.confirm('�Eliminar este producto?')) return;
+    if (typeof window !== "undefined" && window.confirm) {
+      if (!window.confirm("�Eliminar este producto?")) return;
     }
-    
+
     try {
       await apiRequest("DELETE", `/api/business/products/${productId}`);
       loadProducts();
@@ -232,18 +255,27 @@ const [products, setProducts] = useState([]);
         >
           {item.description}
         </ThemedText>
-        <ThemedText type="h4" style={{ color: ComeYaColors.primary, marginTop: Spacing.xs }}>
+        <ThemedText
+          type="h4"
+          style={{ color: ComeYaColors.primary, marginTop: Spacing.xs }}
+        >
           �{(item.price / 100).toFixed(2)}
         </ThemedText>
       </Pressable>
       <View style={styles.productActions}>
-        <Pressable onPress={() => handleDelete(item.id)} style={{ marginBottom: Spacing.sm }}>
+        <Pressable
+          onPress={() => handleDelete(item.id)}
+          style={{ marginBottom: Spacing.sm }}
+        >
           <Feather name="trash-2" size={20} color={ComeYaColors.error} />
         </Pressable>
         <Switch
           value={item.isAvailable === 1 || item.isAvailable === true}
           onValueChange={() =>
-            toggleAvailability(item.id, item.isAvailable === 1 || item.isAvailable === true)
+            toggleAvailability(
+              item.id,
+              item.isAvailable === 1 || item.isAvailable === true,
+            )
           }
           trackColor={{ false: "#767577", true: ComeYaColors.primary }}
           thumbColor="#fff"
@@ -254,7 +286,10 @@ const [products, setProducts] = useState([]);
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -270,10 +305,17 @@ const [products, setProducts] = useState([]);
                 navigation.navigate("MyBusinesses");
               }}
             >
-              <ThemedText type="caption" style={{ color: ComeYaColors.primary }}>
+              <ThemedText
+                type="caption"
+                style={{ color: ComeYaColors.primary }}
+              >
                 {selectedBusiness?.name || "Seleccionar negocio"}
               </ThemedText>
-              <Feather name="chevron-down" size={14} color={ComeYaColors.primary} />
+              <Feather
+                name="chevron-down"
+                size={14}
+                color={ComeYaColors.primary}
+              />
             </Pressable>
           ) : selectedBusiness ? (
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -289,7 +331,12 @@ const [products, setProducts] = useState([]);
         </Pressable>
       </View>
 
-<View style={[styles.searchBar, { backgroundColor: theme.backgroundSecondary }]}>
+      <View
+        style={[
+          styles.searchBar,
+          { backgroundColor: theme.backgroundSecondary },
+        ]}
+      >
         <Feather name="search" size={16} color={theme.textSecondary} />
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
@@ -337,65 +384,127 @@ const [products, setProducts] = useState([]);
             </View>
 
             <ScrollView style={styles.modalBody}>
-              <ThemedText type="small" style={{ marginBottom: Spacing.xs }}>Nombre</ThemedText>
+              <ThemedText type="small" style={{ marginBottom: Spacing.xs }}>
+                Nombre
+              </ThemedText>
               <TextInput
                 value={form.name}
                 onChangeText={(text) => setForm({ ...form, name: text })}
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text }]}
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.background, color: theme.text },
+                ]}
                 placeholder="Tacos al Pastor"
                 placeholderTextColor={theme.textSecondary}
               />
 
-              <ThemedText type="small" style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}>Descripci�n</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}
+              >
+                Descripci�n
+              </ThemedText>
               <TextInput
                 value={form.description}
                 onChangeText={(text) => setForm({ ...form, description: text })}
-                style={[styles.input, styles.textArea, { backgroundColor: theme.background, color: theme.text }]}
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  { backgroundColor: theme.background, color: theme.text },
+                ]}
                 placeholder="Deliciosos tacos..."
                 placeholderTextColor={theme.textSecondary}
                 multiline
                 numberOfLines={3}
               />
 
-              <ThemedText type="small" style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}>Precio</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}
+              >
+                Precio
+              </ThemedText>
               <TextInput
                 value={form.price}
                 onChangeText={(text) => setForm({ ...form, price: text })}
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text }]}
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.background, color: theme.text },
+                ]}
                 placeholder="25.00"
                 placeholderTextColor={theme.textSecondary}
                 keyboardType="decimal-pad"
               />
 
-              <ThemedText type="small" style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}>Imagen</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}
+              >
+                Imagen
+              </ThemedText>
               <View style={styles.imagePickerContainer}>
                 <Pressable
                   onPress={() => pickImage(true)}
-                  style={[styles.imageButton, { backgroundColor: theme.background }]}
+                  style={[
+                    styles.imageButton,
+                    { backgroundColor: theme.background },
+                  ]}
                 >
                   <Feather name="camera" size={20} color={theme.text} />
-                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>C�mara</ThemedText>
+                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
+                    C�mara
+                  </ThemedText>
                 </Pressable>
                 <Pressable
                   onPress={() => pickImage(false)}
-                  style={[styles.imageButton, { backgroundColor: theme.background }]}
+                  style={[
+                    styles.imageButton,
+                    { backgroundColor: theme.background },
+                  ]}
                 >
                   <Feather name="image" size={20} color={theme.text} />
-                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>Galer�a</ThemedText>
+                  <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
+                    Galer�a
+                  </ThemedText>
                 </Pressable>
               </View>
               {isUploadingImage ? (
-                <View style={[styles.previewImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.backgroundSecondary }]}>
-                  <ActivityIndicator size="large" color={ComeYaColors.primary} />
-                  <ThemedText type="small" style={{ marginTop: Spacing.sm }}>Subiendo imagen...</ThemedText>
+                <View
+                  style={[
+                    styles.previewImage,
+                    {
+                      justifyContent: "center",
+                      alignItems: "center",
+                      backgroundColor: theme.backgroundSecondary,
+                    },
+                  ]}
+                >
+                  <ActivityIndicator
+                    size="large"
+                    color={ComeYaColors.primary}
+                  />
+                  <ThemedText type="small" style={{ marginTop: Spacing.sm }}>
+                    Subiendo imagen...
+                  </ThemedText>
                 </View>
               ) : form.image ? (
-                <Image source={{ uri: form.image }} style={styles.previewImage} contentFit="cover" />
+                <Image
+                  source={{ uri: form.image }}
+                  style={styles.previewImage}
+                  contentFit="cover"
+                />
               ) : null}
               <TextInput
                 value={form.image}
                 onChangeText={(text) => setForm({ ...form, image: text })}
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, marginTop: Spacing.sm }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.background,
+                    color: theme.text,
+                    marginTop: Spacing.sm,
+                  },
+                ]}
                 placeholder="O pega una URL de imagen"
                 placeholderTextColor={theme.textSecondary}
               />
@@ -404,15 +513,23 @@ const [products, setProducts] = useState([]);
             <View style={styles.modalFooter}>
               <Pressable
                 onPress={() => setShowModal(false)}
-                style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <ThemedText type="body">Cancelar</ThemedText>
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                style={[styles.modalButton, { backgroundColor: ComeYaColors.primary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
               >
-                <ThemedText type="body" style={{ color: "#FFF" }}>Guardar</ThemedText>
+                <ThemedText type="body" style={{ color: "#FFF" }}>
+                  Guardar
+                </ThemedText>
               </Pressable>
             </View>
           </View>
@@ -470,7 +587,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginLeft: Spacing.sm,
   },
-searchBar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 16, marginBottom: 8, borderRadius: 10 },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 10,
+  },
   searchInput: { flex: 1, fontSize: 15 },
   emptyState: {
     alignItems: "center",

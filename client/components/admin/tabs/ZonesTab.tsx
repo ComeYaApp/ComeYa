@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, TextInput, Modal } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  TextInput,
+  Modal,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
@@ -24,10 +33,13 @@ interface DeliveryZone {
   updatedAt?: string;
 }
 
-export const ZonesTab: React.FC<ZonesTabProps> = ({ theme, showToast, onSelectZone }) => {
+export const ZonesTab: React.FC<ZonesTabProps> = ({
+  theme,
+  showToast,
+  onSelectZone,
+}) => {
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [loading, setLoading] = useState(true);
-
 
   useEffect(() => {
     loadZones();
@@ -44,8 +56,6 @@ export const ZonesTab: React.FC<ZonesTabProps> = ({ theme, showToast, onSelectZo
       setLoading(false);
     }
   };
-
-
 
   if (loading) {
     return (
@@ -65,25 +75,58 @@ export const ZonesTab: React.FC<ZonesTabProps> = ({ theme, showToast, onSelectZo
               No hay zonas de entrega configuradas
             </Text>
             <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-              Las zonas de entrega permiten definir áreas con tarifas específicas
+              Las zonas de entrega permiten definir áreas con tarifas
+              específicas
             </Text>
           </View>
         ) : (
           zones.map((zone) => (
-            <Pressable key={zone.id} style={[styles.zoneCard, { backgroundColor: theme.card }]} onPress={() => onSelectZone?.(zone)}>
+            <Pressable
+              key={zone.id}
+              style={[styles.zoneCard, { backgroundColor: theme.card }]}
+              onPress={() => onSelectZone?.(zone)}
+            >
               <View style={styles.zoneHeader}>
-                <Text style={[styles.zoneName, { color: theme.text }]}>{zone.name}</Text>
-                <View style={[styles.badge, { backgroundColor: zone.isActive ? ComeYaColors.success + "20" : "#ccc" }]}>
-                  <Text style={{ color: zone.isActive ? ComeYaColors.success : "#666", fontSize: 12 }}>
+                <Text style={[styles.zoneName, { color: theme.text }]}>
+                  {zone.name}
+                </Text>
+                <View
+                  style={[
+                    styles.badge,
+                    {
+                      backgroundColor: zone.isActive
+                        ? ComeYaColors.success + "20"
+                        : "#ccc",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      color: zone.isActive ? ComeYaColors.success : "#666",
+                      fontSize: 12,
+                    }}
+                  >
                     {zone.isActive ? "Activa" : "Inactiva"}
                   </Text>
                 </View>
               </View>
               <View style={styles.zoneDetails}>
-                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>{zone.description || 'Sin descripción'}</Text>
-                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Tarifa: €{isNaN(zone.deliveryFee) ? '0.00' : (zone.deliveryFee / 100).toFixed(2)}</Text>
-                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Tiempo máximo: {isNaN(zone.maxDeliveryTime) ? '0' : zone.maxDeliveryTime} min</Text>
-                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>Radio: {isNaN(zone.radiusKm) ? '0' : zone.radiusKm} km</Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                  {zone.description || "Sin descripción"}
+                </Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                  Tarifa: €
+                  {isNaN(zone.deliveryFee)
+                    ? "0.00"
+                    : (zone.deliveryFee / 100).toFixed(2)}
+                </Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                  Tiempo máximo:{" "}
+                  {isNaN(zone.maxDeliveryTime) ? "0" : zone.maxDeliveryTime} min
+                </Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 14 }}>
+                  Radio: {isNaN(zone.radiusKm) ? "0" : zone.radiusKm} km
+                </Text>
               </View>
             </Pressable>
           ))
@@ -143,5 +186,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 32,
   },
-
 });

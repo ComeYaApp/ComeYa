@@ -1,6 +1,6 @@
-import { db } from './db';
-import { wallets, users, orders } from '../shared/schema-mysql';
-import { eq, and, gt, lt } from 'drizzle-orm';
+import { db } from "./db";
+import { wallets, users, orders } from "../shared/schema-mysql";
+import { eq, and, gt, lt } from "drizzle-orm";
 
 // Configuración de límites
 const MAX_CASH_OWED = 50000; // $500 MXN máximo en efectivo pendiente
@@ -8,9 +8,10 @@ const LIQUIDATION_DEADLINE_DAYS = 7; // 7 días para liquidar
 const WARNING_THRESHOLD_DAYS = 5; // Advertencia a los 5 días
 
 export class CashSecurityService {
-  
   // Validar si el driver puede aceptar pedidos en efectivo
-  async canAcceptCashOrder(driverId: string): Promise<{ allowed: boolean; reason?: string }> {
+  async canAcceptCashOrder(
+    driverId: string,
+  ): Promise<{ allowed: boolean; reason?: string }> {
     const [wallet] = await db
       .select()
       .from(wallets)
@@ -34,7 +35,7 @@ export class CashSecurityService {
     if (wallet.cashOwed >= MAX_CASH_OWED) {
       return {
         allowed: false,
-        reason: `Debes liquidar tu efectivo pendiente ($${(wallet.cashOwed / 100).toFixed(2)}) antes de aceptar más pedidos en efectivo`
+        reason: `Debes liquidar tu efectivo pendiente ($${(wallet.cashOwed / 100).toFixed(2)}) antes de aceptar más pedidos en efectivo`,
       };
     }
 
@@ -43,7 +44,7 @@ export class CashSecurityService {
     if (hasOverdueDebt) {
       return {
         allowed: false,
-        reason: 'Tienes efectivo vencido sin liquidar. Contacta a soporte.'
+        reason: "Tienes efectivo vencido sin liquidar. Contacta a soporte.",
       };
     }
 
@@ -53,7 +54,7 @@ export class CashSecurityService {
   // Verificar si tiene deuda vencida
   async hasOverdueDebt(driverId: string): Promise<boolean> {
     const oldestCashOrder = await this.getOldestCashOrder(driverId);
-    
+
     if (!oldestCashOrder) {
       return false;
     }
@@ -70,10 +71,10 @@ export class CashSecurityService {
       .where(
         and(
           eq(orders.deliveryPersonId, driverId),
-          eq(orders.paymentMethod, 'cash'),
-          eq(orders.status, 'delivered'),
-          eq(orders.cashSettled, false)
-        )
+          eq(orders.paymentMethod, "cash"),
+          eq(orders.status, "delivered"),
+          eq(orders.cashSettled, false),
+        ),
       )
       .orderBy(orders.deliveredAt)
       .limit(1);
@@ -104,11 +105,13 @@ export class CashSecurityService {
       .update(users)
       .set({
         isActive: false,
-        blockedReason: `Efectivo pendiente sin liquidar: $${(wallet.cashOwed / 100).toFixed(2)}. Contacta a soporte.`
+        blockedReason: `Efectivo pendiente sin liquidar: $${(wallet.cashOwed / 100).toFixed(2)}. Contacta a soporte.`,
       })
       .where(eq(users.id, driverId));
 
-    console.log(`🚫 Driver ${driverId} bloqueado por efectivo vencido: $${(wallet.cashOwed / 100).toFixed(2)}`);
+    console.log(
+      `🚫 Driver ${driverId} bloqueado por efectivo vencido: $${(wallet.cashOwed / 100).toFixed(2)}`,
+    );
   }
 
   // Enviar advertencia antes del bloqueo
@@ -131,15 +134,17 @@ export class CashSecurityService {
     const daysPending = this.daysSince(oldestOrder.createdAt);
     const daysRemaining = LIQUIDATION_DEADLINE_DAYS - daysPending;
 
-    console.log(`⚠️ Advertencia enviada a driver ${driverId}: ${daysRemaining} días para liquidar $${(wallet.cashOwed / 100).toFixed(2)}`);
-    
+    console.log(
+      `⚠️ Advertencia enviada a driver ${driverId}: ${daysRemaining} días para liquidar $${(wallet.cashOwed / 100).toFixed(2)}`,
+    );
+
     // Aquí integrarías Twilio para enviar SMS
     // await sendSMS(driver.phone, `Tienes ${daysRemaining} días para liquidar $${wallet.cashOwed / 100} en efectivo.`);
   }
 
   // Cron job: Revisar deudas vencidas (ejecutar diariamente)
   async checkOverdueCashDebts(): Promise<void> {
-    console.log('🔍 Revisando deudas de efectivo vencidas...');
+    console.log("🔍 Revisando deudas de efectivo vencidas...");
 
     const driversWithDebt = await db
       .select()
@@ -148,7 +153,7 @@ export class CashSecurityService {
 
     for (const wallet of driversWithDebt) {
       const oldestOrder = await this.getOldestCashOrder(wallet.userId);
-      
+
       if (!oldestOrder) {
         continue;
       }
@@ -165,7 +170,7 @@ export class CashSecurityService {
       }
     }
 
-    console.log('✅ Revisión de deudas completada');
+    console.log("✅ Revisión de deudas completada");
   }
 
   // Obtener estadísticas de efectivo
@@ -175,7 +180,10 @@ export class CashSecurityService {
       .from(wallets)
       .where(gt(wallets.cashOwed, 0));
 
-    const totalCashOwed = driversWithDebt.reduce((sum, w) => sum + w.cashOwed, 0);
+    const totalCashOwed = driversWithDebt.reduce(
+      (sum, w) => sum + w.cashOwed,
+      0,
+    );
     const driversCount = driversWithDebt.length;
 
     const overdueDrivers = [];
@@ -190,7 +198,7 @@ export class CashSecurityService {
       totalCashOwed: totalCashOwed / 100,
       driversWithDebt: driversCount,
       overdueDrivers: overdueDrivers.length,
-      averageDebt: driversCount > 0 ? (totalCashOwed / driversCount) / 100 : 0,
+      averageDebt: driversCount > 0 ? totalCashOwed / driversCount / 100 : 0,
     };
   }
 }

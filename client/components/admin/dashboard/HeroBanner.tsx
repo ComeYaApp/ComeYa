@@ -7,7 +7,7 @@ const PRIMARY = "#DC2626";
 
 function fmt(cents: number) {
   if (cents >= 10_000_000) return `€${(cents / 100 / 1_000_000).toFixed(1)}M`;
-  if (cents >= 100_000)    return `€${(cents / 100 / 1_000).toFixed(1)}K`;
+  if (cents >= 100_000) return `€${(cents / 100 / 1_000).toFixed(1)}K`;
   return `€${(cents / 100).toFixed(0)}`;
 }
 
@@ -62,7 +62,11 @@ export function HeroBanner({ metrics, finance, lastUpdated }: Props) {
   ];
 
   const timeStr = lastUpdated
-    ? lastUpdated.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    ? lastUpdated.toLocaleTimeString("es-ES", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
     : "—";
 
   return (
@@ -84,7 +88,9 @@ export function HeroBanner({ metrics, finance, lastUpdated }: Props) {
               <View style={hero.liveRow}>
                 <View style={hero.liveDot} />
                 <Text style={hero.liveLabel}>EN VIVO</Text>
-                <Text style={[hero.liveTime, { color: isDark ? "#666" : "#aaa" }]}>
+                <Text
+                  style={[hero.liveTime, { color: isDark ? "#666" : "#aaa" }]}
+                >
                   · última actualización {timeStr}
                 </Text>
               </View>
@@ -99,19 +105,29 @@ export function HeroBanner({ metrics, finance, lastUpdated }: Props) {
               key={k.label}
               style={[
                 hero.kpiCard,
-                { backgroundColor: isDark ? "#111" : "#f8f8f8", borderColor: k.color + "30" },
+                {
+                  backgroundColor: isDark ? "#111" : "#f8f8f8",
+                  borderColor: k.color + "30",
+                },
               ]}
             >
               <View style={[hero.kpiIcon, { backgroundColor: k.color + "18" }]}>
                 <Feather name={k.icon} size={18} color={k.color} />
               </View>
-              <Text style={[hero.kpiValue, { color: isDark ? "#fff" : "#111" }]}>
+              <Text
+                style={[hero.kpiValue, { color: isDark ? "#fff" : "#111" }]}
+              >
                 {k.value}
               </Text>
-              <Text style={[hero.kpiLabel, { color: isDark ? "#888" : "#999" }]}>
+              <Text
+                style={[hero.kpiLabel, { color: isDark ? "#888" : "#999" }]}
+              >
                 {k.label}
               </Text>
-              <Text style={[hero.kpiSub, { color: isDark ? "#555" : "#bbb" }]} numberOfLines={1}>
+              <Text
+                style={[hero.kpiSub, { color: isDark ? "#555" : "#bbb" }]}
+                numberOfLines={1}
+              >
                 {k.sub}
               </Text>
               {k.trend && (
@@ -121,7 +137,12 @@ export function HeroBanner({ metrics, finance, lastUpdated }: Props) {
                     size={10}
                     color={k.trend.up ? "#10B981" : "#EF4444"}
                   />
-                  <Text style={[hero.trendText, { color: k.trend.up ? "#10B981" : "#EF4444" }]}>
+                  <Text
+                    style={[
+                      hero.trendText,
+                      { color: k.trend.up ? "#10B981" : "#EF4444" },
+                    ]}
+                  >
                     {k.trend.value}%
                   </Text>
                 </View>
@@ -135,24 +156,66 @@ export function HeroBanner({ metrics, finance, lastUpdated }: Props) {
 }
 
 const hero = StyleSheet.create({
-  wrap:        { borderRadius: 20, overflow: "hidden", marginBottom: 20, borderWidth: 1, borderColor: "rgba(0,0,0,0.06)" },
+  wrap: {
+    borderRadius: 20,
+    overflow: "hidden",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
   gradientBar: { height: 4, backgroundColor: PRIMARY },
-  inner:       { padding: 24, flexDirection: "row", alignItems: "center", gap: 24, flexWrap: "wrap" },
-  titleBlock:  { flex: 1, minWidth: 200 },
-  logoRow:     { flexDirection: "row", alignItems: "center", gap: 14 },
-  logoBadge:   { width: 48, height: 48, borderRadius: 14, backgroundColor: PRIMARY, justifyContent: "center", alignItems: "center" },
-  logoText:    { fontSize: 18, fontWeight: "900", color: "#fff" },
-  title:       { fontSize: 22, fontWeight: "800" },
-  liveRow:     { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
-  liveDot:     { width: 7, height: 7, borderRadius: 4, backgroundColor: "#10B981" },
-  liveLabel:   { fontSize: 10, fontWeight: "800", color: "#10B981", letterSpacing: 0.8 },
-  liveTime:    { fontSize: 10 },
-  kpiRow:      { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-  kpiCard:     { width: 148, borderRadius: 14, padding: 14, borderWidth: 1, gap: 2 },
-  kpiIcon:     { width: 34, height: 34, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 6 },
-  kpiValue:    { fontSize: 26, fontWeight: "800", lineHeight: 30 },
-  kpiLabel:    { fontSize: 11, fontWeight: "600", marginTop: 2 },
-  kpiSub:      { fontSize: 10, marginTop: 1 },
-  trendRow:    { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 },
-  trendText:   { fontSize: 10, fontWeight: "700" },
+  inner: {
+    padding: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 24,
+    flexWrap: "wrap",
+  },
+  titleBlock: { flex: 1, minWidth: 200 },
+  logoRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  logoBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: PRIMARY,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoText: { fontSize: 18, fontWeight: "900", color: "#fff" },
+  title: { fontSize: 22, fontWeight: "800" },
+  liveRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#10B981" },
+  liveLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#10B981",
+    letterSpacing: 0.8,
+  },
+  liveTime: { fontSize: 10 },
+  kpiRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+  kpiCard: {
+    width: 148,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    gap: 2,
+  },
+  kpiIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  kpiValue: { fontSize: 26, fontWeight: "800", lineHeight: 30 },
+  kpiLabel: { fontSize: 11, fontWeight: "600", marginTop: 2 },
+  kpiSub: { fontSize: 10, marginTop: 1 },
+  trendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 4,
+  },
+  trendText: { fontSize: 10, fontWeight: "700" },
 });

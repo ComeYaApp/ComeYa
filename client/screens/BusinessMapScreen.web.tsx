@@ -8,7 +8,12 @@ import { Image } from "expo-image";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import {
+  ComeYaColors,
+  Spacing,
+  BorderRadius,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,29 +52,41 @@ interface ActiveOrder {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending:    { label: "Esperando confirmación", color: "#F59E0B" },
-  confirmed:  { label: "Pedido confirmado",       color: "#3B82F6" },
-  preparing:  { label: "Preparando",              color: "#8B5CF6" },
-  ready:      { label: "Listo para recoger",      color: "#10B981" },
-  on_the_way: { label: "En camino 🛵",            color: ComeYaColors.success },
+  pending: { label: "Esperando confirmación", color: "#F59E0B" },
+  confirmed: { label: "Pedido confirmado", color: "#3B82F6" },
+  preparing: { label: "Preparando", color: "#8B5CF6" },
+  ready: { label: "Listo para recoger", color: "#10B981" },
+  on_the_way: { label: "En camino 🛵", color: ComeYaColors.success },
 };
 
 const CATEGORIES = [
-  { key: "all",        label: "Todos",    icon: "grid"        },
-  { key: "restaurant", label: "Comida",   icon: "coffee"      },
-  { key: "market",     label: "Mercado",  icon: "shopping-bag"},
-  { key: "pharmacy",   label: "Farmacia", icon: "plus-circle" },
+  { key: "all", label: "Todos", icon: "grid" },
+  { key: "restaurant", label: "Comida", icon: "coffee" },
+  { key: "market", label: "Mercado", icon: "shopping-bag" },
+  { key: "pharmacy", label: "Farmacia", icon: "plus-circle" },
 ];
 
 // Inyectar Google Maps script una sola vez
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) { resolve(); return; }
+    if ((window as any).google?.maps) {
+      resolve();
+      return;
+    }
     const existing = document.getElementById("gmap-script");
-    if (existing) { existing.addEventListener("load", () => resolve()); return; }
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      return;
+    }
     const script = document.createElement("script");
     script.id = "gmap-script";
-    const k = await fetch((process.env.EXPO_PUBLIC_BACKEND_URL||"")+"/api/config/maps-key").then(r=>r.json()).then(d=>d.key).catch(()=>GOOGLE_MAPS_API_KEY); script.src = `https://maps.googleapis.com/maps/api/js?key=${k}&libraries=geometry`;
+    const k = await fetch(
+      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
+    )
+      .then((r) => r.json())
+      .then((d) => d.key)
+      .catch(() => GOOGLE_MAPS_API_KEY);
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${k}&libraries=geometry`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
@@ -97,7 +114,10 @@ export default function BusinessMapScreen() {
   const [mapsReady, setMapsReady] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [showDriverPanel, setShowDriverPanel] = useState(false);
 
   // Cargar Google Maps
@@ -189,22 +209,41 @@ export default function BusinessMapScreen() {
         const data = await res.json();
         const allOrders = data.orders || [];
         const active = allOrders
-          .filter((o: any) => ['pending','confirmed','preparing','ready','on_the_way'].includes(
-            o.order?.status || o.status
-          ))
+          .filter((o: any) =>
+            [
+              "pending",
+              "confirmed",
+              "preparing",
+              "ready",
+              "on_the_way",
+            ].includes(o.order?.status || o.status),
+          )
           .map((o: any) => ({
             id: o.order?.id || o.id,
-            businessName: o.order?.businessName || o.businessName || 'Negocio',
+            businessName: o.order?.businessName || o.businessName || "Negocio",
             status: o.order?.status || o.status,
             deliveryPersonId: o.order?.deliveryPersonId || o.deliveryPersonId,
-            deliveryPersonName: o.order?.deliveryPersonName || o.deliveryPersonName,
-            deliveryPersonPhone: o.order?.deliveryPersonPhone || o.deliveryPersonPhone,
+            deliveryPersonName:
+              o.order?.deliveryPersonName || o.deliveryPersonName,
+            deliveryPersonPhone:
+              o.order?.deliveryPersonPhone || o.deliveryPersonPhone,
             vehicleType: o.order?.vehicleType || o.vehicleType,
             deliveryLatitude: o.order?.deliveryLatitude || o.deliveryLatitude,
-            deliveryLongitude: o.order?.deliveryLongitude || o.deliveryLongitude,
-            eta: (o.order?.estimatedDelivery || o.estimatedDelivery)
-              ? Math.max(0, Math.round((new Date(o.order?.estimatedDelivery || o.estimatedDelivery).getTime() - Date.now()) / 60000))
-              : undefined,
+            deliveryLongitude:
+              o.order?.deliveryLongitude || o.deliveryLongitude,
+            eta:
+              o.order?.estimatedDelivery || o.estimatedDelivery
+                ? Math.max(
+                    0,
+                    Math.round(
+                      (new Date(
+                        o.order?.estimatedDelivery || o.estimatedDelivery,
+                      ).getTime() -
+                        Date.now()) /
+                        60000,
+                    ),
+                  )
+                : undefined,
           }));
         setActiveOrders(active);
       } catch {}
@@ -217,78 +256,156 @@ export default function BusinessMapScreen() {
   // Polling GPS del repartidor cuando hay pedido on_the_way
   useEffect(() => {
     if (!mapsReady || !gmap.current) return;
-    const order = activeOrders.find(o => o.status === 'on_the_way');
+    const order = activeOrders.find((o) => o.status === "on_the_way");
     if (!order) {
       // Limpiar markers de repartidor si no hay pedido en camino
-      if (driverMarkerRef.current) { driverMarkerRef.current.setMap(null); driverMarkerRef.current = null; }
-      if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+      if (driverMarkerRef.current) {
+        driverMarkerRef.current.setMap(null);
+        driverMarkerRef.current = null;
+      }
+      if (routeLineRef.current) {
+        routeLineRef.current.setMap(null);
+        routeLineRef.current = null;
+      }
       return;
     }
 
     // Mostrar pin de casa (destino)
-    if (order.deliveryLatitude && order.deliveryLongitude && !homeMarkerRef.current) {
+    if (
+      order.deliveryLatitude &&
+      order.deliveryLongitude &&
+      !homeMarkerRef.current
+    ) {
       const google = (window as any).google;
-      const homePos = { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) };
+      const homePos = {
+        lat: parseFloat(order.deliveryLatitude),
+        lng: parseFloat(order.deliveryLongitude),
+      };
       const homeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="56"><circle cx="24" cy="22" r="20" fill="#DC2626" stroke="white" stroke-width="3"/><path d="M14 22l10-8 10 8M16 22v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="16,42 32,42 24,56" fill="#DC2626"/></svg>`;
       homeMarkerRef.current = new google.maps.Marker({
-        position: homePos, map: gmap.current, title: 'Tu dirección',
-        icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(homeSvg)}`, scaledSize: new google.maps.Size(48, 56), anchor: new google.maps.Point(24, 56) },
+        position: homePos,
+        map: gmap.current,
+        title: "Tu dirección",
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(homeSvg)}`,
+          scaledSize: new google.maps.Size(48, 56),
+          anchor: new google.maps.Point(24, 56),
+        },
         zIndex: 90,
       });
     }
 
     const pollDriver = async () => {
       try {
-        const res = await apiRequest('GET', `/api/delivery/location/${order.id}`);
+        const res = await apiRequest(
+          "GET",
+          `/api/delivery/location/${order.id}`,
+        );
         const data = await res.json();
         if (!data.location?.latitude || !data.location?.longitude) return;
         const google = (window as any).google;
-        const driverPos = { lat: parseFloat(data.location.latitude), lng: parseFloat(data.location.longitude) };
+        const driverPos = {
+          lat: parseFloat(data.location.latitude),
+          lng: parseFloat(data.location.longitude),
+        };
 
         // Cargar foto del repartidor si no la tenemos
         let driverPhoto = order.deliveryPersonPhoto || null;
         if (!driverPhoto && order.deliveryPersonId) {
           try {
-            const dr = await apiRequest('GET', `/api/users/${order.deliveryPersonId}`);
+            const dr = await apiRequest(
+              "GET",
+              `/api/users/${order.deliveryPersonId}`,
+            );
             const dd = await dr.json();
             driverPhoto = dd.user?.profilePicture || null;
-            setActiveOrders(prev => prev.map(o => o.id === order.id ? { ...o, deliveryPersonPhoto: driverPhoto || undefined } : o));
+            setActiveOrders((prev) =>
+              prev.map((o) =>
+                o.id === order.id
+                  ? { ...o, deliveryPersonPhoto: driverPhoto || undefined }
+                  : o,
+              ),
+            );
           } catch {}
         }
 
-        const vehicleIcon = order.vehicleType === 'car' ? '🚗' : order.vehicleType === 'bike' ? '🚲' : '🛵';
+        const vehicleIcon =
+          order.vehicleType === "car"
+            ? "🚗"
+            : order.vehicleType === "bike"
+              ? "🚲"
+              : "🛵";
         const driverSvg = driverPhoto
           ? `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="72"><defs><clipPath id="dc"><circle cx="28" cy="28" r="24"/></clipPath></defs><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><image href="${driverPhoto}" x="4" y="4" width="48" height="48" clip-path="url(#dc)" preserveAspectRatio="xMidYMid slice"/><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`
           : `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="72"><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><text x="28" y="36" text-anchor="middle" font-size="24">${vehicleIcon}</text><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`;
 
         if (driverMarkerRef.current) {
           driverMarkerRef.current.setPosition(driverPos);
-          driverMarkerRef.current.setIcon({ url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`, scaledSize: new google.maps.Size(64, 72), anchor: new google.maps.Point(28, 72) });
+          driverMarkerRef.current.setIcon({
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`,
+            scaledSize: new google.maps.Size(64, 72),
+            anchor: new google.maps.Point(28, 72),
+          });
         } else {
           driverMarkerRef.current = new google.maps.Marker({
-            position: driverPos, map: gmap.current,
-            title: order.deliveryPersonName || 'Repartidor',
-            icon: { url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`, scaledSize: new google.maps.Size(64, 72), anchor: new google.maps.Point(28, 72) },
+            position: driverPos,
+            map: gmap.current,
+            title: order.deliveryPersonName || "Repartidor",
+            icon: {
+              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`,
+              scaledSize: new google.maps.Size(64, 72),
+              anchor: new google.maps.Point(28, 72),
+            },
             zIndex: 999,
           });
-          driverMarkerRef.current.addListener('click', () => setShowDriverPanel(true));
+          driverMarkerRef.current.addListener("click", () =>
+            setShowDriverPanel(true),
+          );
         }
 
         // Ruta verde repartidor → casa
         if (order.deliveryLatitude && order.deliveryLongitude) {
-          const destPos = { lat: parseFloat(order.deliveryLatitude), lng: parseFloat(order.deliveryLongitude) };
+          const destPos = {
+            lat: parseFloat(order.deliveryLatitude),
+            lng: parseFloat(order.deliveryLongitude),
+          };
           const ds = new google.maps.DirectionsService();
-          ds.route({ origin: driverPos, destination: destPos, travelMode: google.maps.TravelMode.DRIVING },
+          ds.route(
+            {
+              origin: driverPos,
+              destination: destPos,
+              travelMode: google.maps.TravelMode.DRIVING,
+            },
             (result: any, status: any) => {
-              if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+              if (routeLineRef.current) {
+                routeLineRef.current.setMap(null);
+                routeLineRef.current = null;
+              }
               // Si Directions falla (API no habilitada), dibujar línea recta
-              const path = status === 'OK' ? result.routes[0].overview_path : [driverPos, destPos];
-              routeLineRef.current = new google.maps.Polyline({ path, geodesic: true, strokeColor: '#10B981', strokeOpacity: 0.9, strokeWeight: 5, map: gmap.current });
-            });
+              const path =
+                status === "OK"
+                  ? result.routes[0].overview_path
+                  : [driverPos, destPos];
+              routeLineRef.current = new google.maps.Polyline({
+                path,
+                geodesic: true,
+                strokeColor: "#10B981",
+                strokeOpacity: 0.9,
+                strokeWeight: 5,
+                map: gmap.current,
+              });
+            },
+          );
           // Ajustar bounds
           const b = new google.maps.LatLngBounds();
-          b.extend(driverPos); b.extend(destPos);
-          gmap.current.fitBounds(b, { top: 80, right: 80, bottom: 200, left: 80 });
+          b.extend(driverPos);
+          b.extend(destPos);
+          gmap.current.fitBounds(b, {
+            top: 80,
+            right: 80,
+            bottom: 200,
+            left: 80,
+          });
         }
         setShowDriverPanel(true);
       } catch {}
@@ -305,20 +422,22 @@ export default function BusinessMapScreen() {
     const google = (window as any).google;
 
     // Limpiar markers anteriores
-    markersRef.current.forEach(m => m.setMap(null));
+    markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    const filtered = categoryFilter === "all"
-      ? businesses
-      : businesses.filter(b => b.type === categoryFilter);
+    const filtered =
+      categoryFilter === "all"
+        ? businesses
+        : businesses.filter((b) => b.type === categoryFilter);
 
     filtered.forEach((b) => {
       const color = b.isOpen ? ComeYaColors.primary : "#9E9E9E";
-      const iconPath = b.type === "market"
-        ? "M9 6h10l1 2H8L9 6zM7 8l1 10h8l1-10H7zm3 3v4m4-4v4"
-        : b.type === "pharmacy"
-        ? "M12 5v14M5 12h14"
-        : "M8 10h8M10 10V8a1 1 0 011-1h2a1 1 0 011 1v2M8 14h8l-1 5H9l-1-5z";
+      const iconPath =
+        b.type === "market"
+          ? "M9 6h10l1 2H8L9 6zM7 8l1 10h8l1-10H7zm3 3v4m4-4v4"
+          : b.type === "pharmacy"
+            ? "M12 5v14M5 12h14"
+            : "M8 10h8M10 10V8a1 1 0 011-1h2a1 1 0 011 1v2M8 14h8l-1 5H9l-1-5z";
 
       const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="52"><rect x="2" y="2" width="136" height="38" rx="19" fill="${b.isOpen ? "#fff" : "#f0f0f0"}" stroke="${color}" stroke-width="2"/><circle cx="22" cy="21" r="11" fill="${color}"/><path d="${iconPath}" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" transform="translate(10,9)"/><text x="40" y="24" font-size="11" font-weight="bold" fill="${b.isOpen ? "#1a1a1a" : "#9E9E9E"}" font-family="Arial">${b.name.slice(0, 12)}${b.name.length > 12 ? "\u2026" : ""}</text><text x="40" y="36" font-size="9" fill="${color}" font-family="Arial">${b.isOpen ? b.deliveryTime : "Cerrado"}</text><polygon points="65,40 75,40 70,50" fill="${color}"/></svg>`;
 
@@ -350,16 +469,19 @@ export default function BusinessMapScreen() {
   }, [userLocation]);
 
   const handleDirections = useCallback((b: BusinessPin) => {
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}`, "_blank");
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}`,
+      "_blank",
+    );
   }, []);
 
-  const visibleCount = categoryFilter === "all"
-    ? businesses.length
-    : businesses.filter(b => b.type === categoryFilter).length;
+  const visibleCount =
+    categoryFilter === "all"
+      ? businesses.length
+      : businesses.filter((b) => b.type === categoryFilter).length;
 
   return (
     <View style={[s.container, { backgroundColor: theme.backgroundRoot }]}>
-
       {/* Mapa Google Maps */}
       <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
 
@@ -367,7 +489,10 @@ export default function BusinessMapScreen() {
       {(isLoading || !mapsReady) && (
         <View style={s.loadingOverlay}>
           <ActivityIndicator size="large" color={ComeYaColors.primary} />
-          <ThemedText type="body" style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.md, color: theme.textSecondary }}
+          >
             Cargando mapa...
           </ThemedText>
         </View>
@@ -383,7 +508,10 @@ export default function BusinessMapScreen() {
         </Pressable>
         <View style={[s.headerTitle, { backgroundColor: theme.card }]}>
           <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
-          <ThemedText type="body" style={{ fontWeight: "700", marginLeft: Spacing.xs }}>
+          <ThemedText
+            type="body"
+            style={{ fontWeight: "700", marginLeft: Spacing.xs }}
+          >
             {visibleCount} negocios
           </ThemedText>
         </View>
@@ -397,14 +525,33 @@ export default function BusinessMapScreen() {
 
       {/* Filtros */}
       <View style={[s.filtersRow, { top: insets.top + 58 }]}>
-        {CATEGORIES.map(cat => (
+        {CATEGORIES.map((cat) => (
           <Pressable
             key={cat.key}
             onPress={() => setCategoryFilter(cat.key)}
-            style={[s.filterChip, { backgroundColor: categoryFilter === cat.key ? ComeYaColors.primary : theme.card }]}
+            style={[
+              s.filterChip,
+              {
+                backgroundColor:
+                  categoryFilter === cat.key
+                    ? ComeYaColors.primary
+                    : theme.card,
+              },
+            ]}
           >
-            <Feather name={cat.icon as any} size={13} color={categoryFilter === cat.key ? "#fff" : theme.text} />
-            <ThemedText type="caption" style={{ marginLeft: 4, color: categoryFilter === cat.key ? "#fff" : theme.text, fontWeight: "600" }}>
+            <Feather
+              name={cat.icon as any}
+              size={13}
+              color={categoryFilter === cat.key ? "#fff" : theme.text}
+            />
+            <ThemedText
+              type="caption"
+              style={{
+                marginLeft: 4,
+                color: categoryFilter === cat.key ? "#fff" : theme.text,
+                fontWeight: "600",
+              }}
+            >
               {cat.label}
             </ThemedText>
           </Pressable>
@@ -412,74 +559,155 @@ export default function BusinessMapScreen() {
       </View>
 
       {/* Leyenda */}
-      <View style={[s.legend, { backgroundColor: theme.card, bottom: selected ? 300 : insets.bottom + Spacing.lg }]}>
+      <View
+        style={[
+          s.legend,
+          {
+            backgroundColor: theme.card,
+            bottom: selected ? 300 : insets.bottom + Spacing.lg,
+          },
+        ]}
+      >
         <View style={s.legendItem}>
-          <View style={[s.legendDot, { backgroundColor: ComeYaColors.primary }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Abierto</ThemedText>
+          <View
+            style={[s.legendDot, { backgroundColor: ComeYaColors.primary }]}
+          />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Abierto
+          </ThemedText>
         </View>
         <View style={s.legendItem}>
           <View style={[s.legendDot, { backgroundColor: "#9E9E9E" }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Cerrado</ThemedText>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Cerrado
+          </ThemedText>
         </View>
       </View>
 
       {/* Card negocio seleccionado */}
       {selected && (
         <Pressable
-          style={[s.card, { backgroundColor: theme.card, paddingBottom: insets.bottom + Spacing.md }, Shadows.lg]}
+          style={[
+            s.card,
+            {
+              backgroundColor: theme.card,
+              paddingBottom: insets.bottom + Spacing.md,
+            },
+            Shadows.lg,
+          ]}
           onPress={() => setSelected(null)}
         >
           <View style={s.cardHandle} />
           <View style={s.cardContent}>
             <Image
-              source={selected.image ? { uri: selected.image } : require("../../assets/images/delivery-hero.png")}
+              source={
+                selected.image
+                  ? { uri: selected.image }
+                  : require("../../assets/images/delivery-hero.png")
+              }
               style={s.cardImage}
               contentFit="cover"
             />
             <View style={s.cardInfo}>
               <View style={s.cardNameRow}>
-                <ThemedText type="h4" numberOfLines={1} style={{ flex: 1 }}>{selected.name}</ThemedText>
-                <View style={[s.statusBadge, { backgroundColor: selected.isOpen ? ComeYaColors.primary + "20" : "#9E9E9E20" }]}>
-                  <ThemedText type="caption" style={{ color: selected.isOpen ? ComeYaColors.primary : "#9E9E9E", fontWeight: "700" }}>
+                <ThemedText type="h4" numberOfLines={1} style={{ flex: 1 }}>
+                  {selected.name}
+                </ThemedText>
+                <View
+                  style={[
+                    s.statusBadge,
+                    {
+                      backgroundColor: selected.isOpen
+                        ? ComeYaColors.primary + "20"
+                        : "#9E9E9E20",
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: selected.isOpen ? ComeYaColors.primary : "#9E9E9E",
+                      fontWeight: "700",
+                    }}
+                  >
                     {selected.isOpen ? "Abierto" : "Cerrado"}
                   </ThemedText>
                 </View>
               </View>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }} numberOfLines={1}>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 2 }}
+                numberOfLines={1}
+              >
                 {selected.address}
               </ThemedText>
               <View style={s.cardMeta}>
                 <View style={s.metaItem}>
                   <Feather name="star" size={12} color="#FFB800" />
-                  <ThemedText type="caption" style={{ marginLeft: 3 }}>{selected.rating.toFixed(1)}</ThemedText>
+                  <ThemedText type="caption" style={{ marginLeft: 3 }}>
+                    {selected.rating.toFixed(1)}
+                  </ThemedText>
                 </View>
                 <View style={s.metaItem}>
                   <Feather name="clock" size={12} color={theme.textSecondary} />
-                  <ThemedText type="caption" style={{ marginLeft: 3, color: theme.textSecondary }}>{selected.deliveryTime}</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ marginLeft: 3, color: theme.textSecondary }}
+                  >
+                    {selected.deliveryTime}
+                  </ThemedText>
                 </View>
                 <View style={s.metaItem}>
                   <Feather name="truck" size={12} color={theme.textSecondary} />
-                  <ThemedText type="caption" style={{ marginLeft: 3, color: theme.textSecondary }}>€{selected.deliveryFee.toFixed(0)}</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ marginLeft: 3, color: theme.textSecondary }}
+                  >
+                    €{selected.deliveryFee.toFixed(0)}
+                  </ThemedText>
                 </View>
               </View>
             </View>
           </View>
           <View style={s.cardButtons}>
-            <Pressable onPress={() => handleDirections(selected)} style={[s.btnDirections, { borderColor: ComeYaColors.primary }]}>
-              <Feather name="navigation" size={16} color={ComeYaColors.primary} />
-              <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: "700", marginLeft: Spacing.xs }}>
+            <Pressable
+              onPress={() => handleDirections(selected)}
+              style={[s.btnDirections, { borderColor: ComeYaColors.primary }]}
+            >
+              <Feather
+                name="navigation"
+                size={16}
+                color={ComeYaColors.primary}
+              />
+              <ThemedText
+                type="small"
+                style={{
+                  color: ComeYaColors.primary,
+                  fontWeight: "700",
+                  marginLeft: Spacing.xs,
+                }}
+              >
                 Cómo llegar
               </ThemedText>
             </Pressable>
             <Pressable
               onPress={() => {
                 setSelected(null);
-                navigation.getParent()?.navigate("BusinessDetail", { businessId: selected.id });
+                navigation
+                  .getParent()
+                  ?.navigate("BusinessDetail", { businessId: selected.id });
               }}
               style={s.btnMenu}
             >
               <Feather name="book-open" size={16} color="#fff" />
-              <ThemedText type="small" style={{ color: "#fff", fontWeight: "700", marginLeft: Spacing.xs }}>
+              <ThemedText
+                type="small"
+                style={{
+                  color: "#fff",
+                  fontWeight: "700",
+                  marginLeft: Spacing.xs,
+                }}
+              >
                 Ver menú
               </ThemedText>
             </Pressable>
@@ -488,61 +716,153 @@ export default function BusinessMapScreen() {
       )}
 
       {/* Panel repartidor en camino */}
-      {showDriverPanel && activeOrders.find(o => o.status === 'on_the_way') && (() => {
-        const order = activeOrders.find(o => o.status === 'on_the_way')!;
-        const vehicleLabel = order.vehicleType === 'car' ? 'Coche 🚗' : order.vehicleType === 'bike' ? 'Bicicleta 🚲' : 'Moto 🛵';
-        return (
-          <View style={[s.driverPanel, { backgroundColor: theme.card, bottom: insets.bottom + 16 }]}>
-            <View style={s.driverPanelHeader}>
-              <View style={[s.driverPanelDot, { backgroundColor: '#10B981' }]} />
-              <ThemedText type="small" style={{ color: '#10B981', fontWeight: '700', flex: 1 }}>En camino 🛵</ThemedText>
-              <Pressable onPress={() => setShowDriverPanel(false)} style={s.driverPanelClose}>
-                <Feather name="x" size={16} color={theme.textSecondary} />
-              </Pressable>
-            </View>
-            <View style={s.driverRow}>
-              {order.deliveryPersonPhoto ? (
-                <Image source={{ uri: order.deliveryPersonPhoto }} style={s.driverPhoto} contentFit="cover" />
-              ) : (
-                <View style={[s.driverPhotoPlaceholder, { backgroundColor: '#10B98120' }]}>
-                  <Feather name="user" size={22} color="#10B981" />
-                </View>
-              )}
-              <View style={s.driverInfo}>
-                <ThemedText type="body" style={{ fontWeight: '700' }}>{order.deliveryPersonName || 'Repartidor'}</ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>{vehicleLabel}</ThemedText>
-                {order.eta !== undefined && (
-                  <ThemedText type="caption" style={{ color: '#10B981', fontWeight: '600' }}>Llega en ~{order.eta} min</ThemedText>
-                )}
-              </View>
-              <View style={s.driverActions}>
-                {order.deliveryPersonPhone && (
-                  <Pressable onPress={() => (window as any).open(`tel:${order.deliveryPersonPhone}`, '_self')} style={[s.driverBtn, { backgroundColor: '#DC2626' }]}>
-                    <Feather name="phone" size={16} color="#fff" />
-                  </Pressable>
-                )}
-                <Pressable onPress={() => navigation.navigate('OrderTracking', { orderId: order.id })} style={[s.driverBtn, { backgroundColor: '#10B981', marginTop: 6 }]}>
-                  <Feather name="map" size={16} color="#fff" />
+      {showDriverPanel &&
+        activeOrders.find((o) => o.status === "on_the_way") &&
+        (() => {
+          const order = activeOrders.find((o) => o.status === "on_the_way")!;
+          const vehicleLabel =
+            order.vehicleType === "car"
+              ? "Coche 🚗"
+              : order.vehicleType === "bike"
+                ? "Bicicleta 🚲"
+                : "Moto 🛵";
+          return (
+            <View
+              style={[
+                s.driverPanel,
+                { backgroundColor: theme.card, bottom: insets.bottom + 16 },
+              ]}
+            >
+              <View style={s.driverPanelHeader}>
+                <View
+                  style={[s.driverPanelDot, { backgroundColor: "#10B981" }]}
+                />
+                <ThemedText
+                  type="small"
+                  style={{ color: "#10B981", fontWeight: "700", flex: 1 }}
+                >
+                  En camino 🛵
+                </ThemedText>
+                <Pressable
+                  onPress={() => setShowDriverPanel(false)}
+                  style={s.driverPanelClose}
+                >
+                  <Feather name="x" size={16} color={theme.textSecondary} />
                 </Pressable>
               </View>
+              <View style={s.driverRow}>
+                {order.deliveryPersonPhoto ? (
+                  <Image
+                    source={{ uri: order.deliveryPersonPhoto }}
+                    style={s.driverPhoto}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View
+                    style={[
+                      s.driverPhotoPlaceholder,
+                      { backgroundColor: "#10B98120" },
+                    ]}
+                  >
+                    <Feather name="user" size={22} color="#10B981" />
+                  </View>
+                )}
+                <View style={s.driverInfo}>
+                  <ThemedText type="body" style={{ fontWeight: "700" }}>
+                    {order.deliveryPersonName || "Repartidor"}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    {vehicleLabel}
+                  </ThemedText>
+                  {order.eta !== undefined && (
+                    <ThemedText
+                      type="caption"
+                      style={{ color: "#10B981", fontWeight: "600" }}
+                    >
+                      Llega en ~{order.eta} min
+                    </ThemedText>
+                  )}
+                </View>
+                <View style={s.driverActions}>
+                  {order.deliveryPersonPhone && (
+                    <Pressable
+                      onPress={() =>
+                        (window as any).open(
+                          `tel:${order.deliveryPersonPhone}`,
+                          "_self",
+                        )
+                      }
+                      style={[s.driverBtn, { backgroundColor: "#DC2626" }]}
+                    >
+                      <Feather name="phone" size={16} color="#fff" />
+                    </Pressable>
+                  )}
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate("OrderTracking", {
+                        orderId: order.id,
+                      })
+                    }
+                    style={[
+                      s.driverBtn,
+                      { backgroundColor: "#10B981", marginTop: 6 },
+                    ]}
+                  >
+                    <Feather name="map" size={16} color="#fff" />
+                  </Pressable>
+                </View>
+              </View>
             </View>
-          </View>
-        );
-      })()}
+          );
+        })()}
 
       {/* Banner pedido activo */}
       {activeOrders.length > 0 && !selected && (
         <Pressable
-          onPress={() => navigation.navigate("OrderTracking", { orderId: activeOrders[0].id })}
-          style={[s.orderBanner, { backgroundColor: theme.card, bottom: insets.bottom + 16 }]}
+          onPress={() =>
+            navigation.navigate("OrderTracking", {
+              orderId: activeOrders[0].id,
+            })
+          }
+          style={[
+            s.orderBanner,
+            { backgroundColor: theme.card, bottom: insets.bottom + 16 },
+          ]}
         >
-          <View style={[s.orderBannerDot, { backgroundColor: STATUS_LABELS[activeOrders[0].status]?.color || ComeYaColors.primary }]} />
+          <View
+            style={[
+              s.orderBannerDot,
+              {
+                backgroundColor:
+                  STATUS_LABELS[activeOrders[0].status]?.color ||
+                  ComeYaColors.primary,
+              },
+            ]}
+          />
           <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-            <ThemedText type="caption" style={{ fontWeight: "700", color: STATUS_LABELS[activeOrders[0].status]?.color || ComeYaColors.primary }}>
+            <ThemedText
+              type="caption"
+              style={{
+                fontWeight: "700",
+                color:
+                  STATUS_LABELS[activeOrders[0].status]?.color ||
+                  ComeYaColors.primary,
+              }}
+            >
               {STATUS_LABELS[activeOrders[0].status]?.label || "Pedido activo"}
             </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }} numberOfLines={1}>
-              {activeOrders[0].businessName}{activeOrders[0].eta !== undefined ? ` · ${activeOrders[0].eta} min` : ""}
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary }}
+              numberOfLines={1}
+            >
+              {activeOrders[0].businessName}
+              {activeOrders[0].eta !== undefined
+                ? ` · ${activeOrders[0].eta} min`
+                : ""}
             </ThemedText>
           </View>
           <Feather name="chevron-right" size={18} color={theme.textSecondary} />
@@ -557,112 +877,212 @@ const DARK_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#212121" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
   { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#373737" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3c3c3c" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#373737" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#3c3c3c" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#000000" }],
+  },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
 ];
 
 const s = StyleSheet.create({
   container: { flex: 1 },
   loadingOverlay: {
-    position: "absolute", inset: 0,
-    justifyContent: "center", alignItems: "center",
+    position: "absolute",
+    inset: 0,
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.85)",
     zIndex: 20,
   } as any,
   header: {
-    position: "absolute", top: 0, left: 0, right: 0,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm,
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.sm,
     zIndex: 10,
   },
   floatBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    justifyContent: "center", alignItems: "center",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 4, elevation: 4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   headerTitle: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 4, elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   filtersRow: {
-    position: "absolute", left: 0, right: 0,
-    flexDirection: "row", paddingHorizontal: Spacing.lg,
-    gap: Spacing.sm, zIndex: 9,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    zIndex: 9,
   },
   filterChip: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: Spacing.md, paddingVertical: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
     borderRadius: BorderRadius.full,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
   },
   legend: {
-    position: "absolute", right: Spacing.lg,
-    flexDirection: "row", gap: Spacing.md,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
+    position: "absolute",
+    right: Spacing.lg,
+    flexDirection: "row",
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
   card: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: Spacing.lg,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15, shadowRadius: 12, elevation: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
     zIndex: 10,
   },
   cardHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: Spacing.md,
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E0E0E0",
+    alignSelf: "center",
+    marginBottom: Spacing.md,
   },
   cardContent: { flexDirection: "row", marginBottom: Spacing.md },
   cardImage: { width: 72, height: 72, borderRadius: BorderRadius.md },
   cardInfo: { flex: 1, marginLeft: Spacing.md },
   cardNameRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
-  statusBadge: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.full },
+  statusBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
   cardMeta: { flexDirection: "row", gap: Spacing.md, marginTop: Spacing.sm },
   metaItem: { flexDirection: "row", alignItems: "center" },
   cardButtons: { flexDirection: "row", gap: Spacing.md },
   btnDirections: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 2,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
   },
   btnMenu: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: Spacing.md, borderRadius: BorderRadius.md,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
     backgroundColor: ComeYaColors.primary,
   },
   orderBanner: {
-    position: "absolute", left: Spacing.lg, right: Spacing.lg,
-    flexDirection: "row", alignItems: "center",
-    padding: Spacing.md, borderRadius: BorderRadius.lg,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15, shadowRadius: 8, elevation: 8,
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
     zIndex: 10,
   },
   orderBannerDot: { width: 10, height: 10, borderRadius: 5 },
   driverPanel: {
-    position: 'absolute', left: Spacing.lg, right: Spacing.lg,
-    borderRadius: BorderRadius.lg, padding: Spacing.md,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18, shadowRadius: 10, elevation: 10, zIndex: 10,
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 10,
   },
-  driverPanelHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
+  driverPanelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
   driverPanelDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   driverPanelClose: { padding: 4 },
-  driverRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
+  driverRow: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
   driverPhoto: { width: 52, height: 52, borderRadius: 26 },
-  driverPhotoPlaceholder: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
+  driverPhotoPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   driverInfo: { flex: 1, gap: 2 },
-  driverActions: { alignItems: 'center' },
-  driverBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  driverActions: { alignItems: "center" },
+  driverBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

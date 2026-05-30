@@ -1,6 +1,11 @@
 // Intelligent Driver Assignment System for MOUZO - Production Ready
 import { db } from "./db";
-import { orders, businesses, users, deliveryDrivers } from "@shared/schema-mysql";
+import {
+  orders,
+  businesses,
+  users,
+  deliveryDrivers,
+} from "@shared/schema-mysql";
 import { eq, and, isNull } from "drizzle-orm";
 import { notifyDriverNewOrder, sendPushToUser } from "./enhancedPushService";
 
@@ -72,7 +77,7 @@ async function getAvailableDriversNear(
       );
 
     // Remap to match expected format
-    const drivers = driversData.map(d => ({
+    const drivers = driversData.map((d) => ({
       id: d.id,
       name: "",
       isOnline: d.isAvailable,

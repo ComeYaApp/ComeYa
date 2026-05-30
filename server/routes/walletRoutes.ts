@@ -6,7 +6,9 @@ const router = express.Router();
 // Get wallet balance
 router.get("/balance", authenticateToken, async (req, res) => {
   try {
-    const { wallets, businesses, transactions, orders } = await import("@shared/schema-mysql");
+    const { wallets, businesses, transactions, orders } = await import(
+      "@shared/schema-mysql"
+    );
     const { db } = await import("../db");
     const { eq, and } = await import("drizzle-orm");
     const { cashSettlementService } = await import("../cashSettlementService");
@@ -194,7 +196,8 @@ router.get("/balance", authenticateToken, async (req, res) => {
           pendingBalance: createdWallet.pendingBalance,
           cashOwed: createdWallet.cashOwed || 0,
           cashPending: createdWallet.cashPending || 0,
-          availableBalance: createdWallet.balance - (createdWallet.cashOwed || 0),
+          availableBalance:
+            createdWallet.balance - (createdWallet.cashOwed || 0),
           totalEarned: createdWallet.totalEarned,
           totalWithdrawn: createdWallet.totalWithdrawn,
           pendingCashOrders: [],
@@ -231,7 +234,9 @@ router.get("/balance", authenticateToken, async (req, res) => {
 // Get wallet transactions
 router.get("/transactions", authenticateToken, async (req, res) => {
   try {
-    const { transactions, businesses, wallets } = await import("@shared/schema-mysql");
+    const { transactions, businesses, wallets } = await import(
+      "@shared/schema-mysql"
+    );
     const { db } = await import("../db");
     const { eq, desc } = await import("drizzle-orm");
 
@@ -248,7 +253,10 @@ router.get("/transactions", authenticateToken, async (req, res) => {
           .where(eq(wallets.userId, business.id))
           .limit(1);
 
-        if (legacyWallet && (legacyWallet.balance !== 0 || legacyWallet.totalEarned !== 0)) {
+        if (
+          legacyWallet &&
+          (legacyWallet.balance !== 0 || legacyWallet.totalEarned !== 0)
+        ) {
           const [ownerWallet] = await db
             .select()
             .from(wallets)
@@ -312,15 +320,18 @@ router.post(
   async (req, res) => {
     try {
       const { financialService } = await import("../unifiedFinancialService");
-      
+
       // Validar permisos usando servicio centralizado
-      const canWithdraw = await financialService.canUserWithdraw(req.user!.id, req.user!.role);
+      const canWithdraw = await financialService.canUserWithdraw(
+        req.user!.id,
+        req.user!.role,
+      );
       if (!canWithdraw.allowed) {
         return res.status(403).json({ error: canWithdraw.reason });
       }
 
       const { requestWithdrawal } = await import("../withdrawalService");
-      
+
       const result = await requestWithdrawal({
         userId: req.user!.id,
         amount: req.body.amount,
@@ -332,7 +343,7 @@ router.post(
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
-  }
+  },
 );
 
 // Get withdrawal history
@@ -359,7 +370,7 @@ router.post(
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
-  }
+  },
 );
 
 export default router;

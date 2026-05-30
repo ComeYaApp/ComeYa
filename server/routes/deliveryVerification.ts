@@ -42,9 +42,9 @@ interface DeliveryVerification {
 // Documentos requeridos para verificación completa
 const REQUIRED_DOCS = [
   "idDocumentUrl",
-  "idDocumentBackUrl", 
+  "idDocumentBackUrl",
   "vehicleLicensePhoto",
-  "vehiclePhoto"
+  "vehiclePhoto",
 ];
 
 // ==========================================
@@ -81,7 +81,7 @@ router.post("/submit", async (req, res) => {
     } = req.body;
 
     // Obtener usuario actual
-const [user] = await db
+    const [user] = await db
       .select()
       .from(users)
       .where(eq(users.id, userId as string))
@@ -110,7 +110,8 @@ const [user] = await db
     const userUpdates: any = { verificationStatus: "pending" };
     if (idDocumentUrl) userUpdates.idDocumentUrl = idDocumentUrl;
     if (idDocumentBackUrl) userUpdates.idDocumentBackUrl = idDocumentBackUrl;
-    if (autonomoDocumentUrl) userUpdates.autonomoDocumentUrl = autonomoDocumentUrl;
+    if (autonomoDocumentUrl)
+      userUpdates.autonomoDocumentUrl = autonomoDocumentUrl;
 
     await db
       .update(users)
@@ -143,16 +144,14 @@ const [user] = await db
         .set(driverUpdates)
         .where(eq(deliveryDrivers.userId, userId as string));
     } else {
-      await db
-        .insert(deliveryDrivers)
-        .values({
-          id: crypto.randomUUID(),
-          userId,
-          ...driverUpdates,
-          isAvailable: false,
-          currentLatitude: null,
-          currentLongitude: null,
-        } as any);
+      await db.insert(deliveryDrivers).values({
+        id: crypto.randomUUID(),
+        userId,
+        ...driverUpdates,
+        isAvailable: false,
+        currentLatitude: null,
+        currentLongitude: null,
+      } as any);
     }
 
     // Notificar al admin (en background)
@@ -164,7 +163,9 @@ const [user] = await db
         userName: user.name,
         message: `Nuevo repartidor pendiente de verificación: ${user.name}`,
       });
-    } catch { /*silencioso*/ }
+    } catch {
+      /*silencioso*/
+    }
 
     res.json({
       success: true,
@@ -214,7 +215,9 @@ router.get("/status", authenticateToken, async (req, res) => {
       vehicleLicensePhoto: !!driver?.vehicleLicensePhoto,
     };
 
-    const completeDocs = REQUIRED_DOCS.filter(doc => docs[doc as keyof typeof docs]);
+    const completeDocs = REQUIRED_DOCS.filter(
+      (doc) => docs[doc as keyof typeof docs],
+    );
     const isComplete = completeDocs.length === REQUIRED_DOCS.length;
 
     // Estado: pending (docs faltantes) | in_review (docs completos esperando) | approved (isActive true) | rejected
@@ -229,7 +232,9 @@ router.get("/status", authenticateToken, async (req, res) => {
       success: true,
       status,
       isComplete,
-      missingDocuments: REQUIRED_DOCS.filter(doc => !docs[doc as keyof typeof docs]),
+      missingDocuments: REQUIRED_DOCS.filter(
+        (doc) => !docs[doc as keyof typeof docs],
+      ),
       documents: docs,
       vehicleInfo: {
         vehicleType: driver?.vehicleType,
@@ -263,7 +268,12 @@ router.post("/reset", authenticateToken, async (req, res) => {
 
     // No permitir reset si ya está aprobado y activo
     if (user.isActive && user.verificationStatus === "verified") {
-      return res.status(400).json({ error: "Ya estás verificado. Contacta soporte para modificar tus documentos." });
+      return res
+        .status(400)
+        .json({
+          error:
+            "Ya estás verificado. Contacta soporte para modificar tus documentos.",
+        });
     }
 
     // Resetear estado
@@ -277,7 +287,8 @@ router.post("/reset", authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      message: "Verificación reiniciada. Por favor, envía tus documentos nuevamente.",
+      message:
+        "Verificación reiniciada. Por favor, envía tus documentos nuevamente.",
     });
   } catch (error: any) {
     console.error("Error resetting verification:", error);
@@ -306,7 +317,9 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
     // Validar tamaño (5MB max)
     const estimatedBytes = Math.ceil(image.length * 0.75);
     if (estimatedBytes > 5 * 1024 * 1024) {
-      return res.status(400).json({ error: "La imagen es muy pesada. Máximo 5MB" });
+      return res
+        .status(400)
+        .json({ error: "La imagen es muy pesada. Máximo 5MB" });
     }
 
     // mapping de campos
@@ -332,11 +345,13 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
     }
 
     // Subir a Cloudinary
-    const documentKey = isUserField ? userFieldMap[documentType] : driverFieldMap[documentType];
+    const documentKey = isUserField
+      ? userFieldMap[documentType]
+      : driverFieldMap[documentType];
     const url = await CloudinaryService.uploadImage(
       image,
       "verification-docs",
-      `driver-${userId}-${documentKey}`
+      `driver-${userId}-${documentKey}`,
     );
 
     // atualizar campo correspondente
@@ -344,10 +359,7 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
       const updates: any = { verificationStatus: "pending" };
       updates[userFieldMap[documentType]] = url;
 
-      await db
-        .update(users)
-        .set(updates)
-        .where(eq(users.id, userId));
+      await db.update(users).set(updates).where(eq(users.id, userId));
     } else {
       // Buscar driver
       const [driver] = await db
@@ -366,15 +378,13 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
           .where(eq(deliveryDrivers.userId, userId));
       } else {
         // Crear nuevo registro
-        await db
-          .insert(deliveryDrivers)
-          .values({
-            id: crypto.randomUUID(),
-            userId,
-            ...updates,
-            isAvailable: false,
-            vehicleType: null,
-          } as any);
+        await db.insert(deliveryDrivers).values({
+          id: crypto.randomUUID(),
+          userId,
+          ...updates,
+          isAvailable: false,
+          vehicleType: null,
+        } as any);
       }
     }
 
@@ -386,7 +396,7 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      
+
       notifyAdmins({
         type: "document_updated",
         userId,
@@ -394,7 +404,9 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
         documentType,
         message: `Documento actualizado: ${documentType}`,
       });
-    } catch { /*silencioso*/ }
+    } catch {
+      /*silencioso*/
+    }
 
     res.json({
       success: true,

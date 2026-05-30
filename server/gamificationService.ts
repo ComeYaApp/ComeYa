@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from "./db";
 import {
   loyaltyPoints,
   loyaltyTransactions,
@@ -10,8 +10,8 @@ import {
   userAchievements,
   users,
   orders,
-} from '@shared/schema-mysql';
-import { eq, and, desc, gte, sql } from 'drizzle-orm';
+} from "@shared/schema-mysql";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
 
 export class GamificationService {
   // Inicializar puntos de usuario
@@ -29,7 +29,7 @@ export class GamificationService {
         currentPoints: 0,
         totalEarned: 0,
         totalRedeemed: 0,
-        tier: 'bronze',
+        tier: "bronze",
         pointsToNextTier: 1000,
       });
     }
@@ -55,7 +55,7 @@ export class GamificationService {
       .where(eq(loyaltyPoints.userId, userId))
       .limit(1);
 
-    if (!userPoints) return { success: false, error: 'Usuario no encontrado' };
+    if (!userPoints) return { success: false, error: "Usuario no encontrado" };
 
     const newPoints = userPoints.currentPoints + points;
     const newTotalEarned = userPoints.totalEarned + points;
@@ -90,17 +90,17 @@ export class GamificationService {
 
   // Verificar upgrade de tier
   private static async checkTierUpgrade(userId: string, totalEarned: number) {
-    let newTier = 'bronze';
+    let newTier = "bronze";
     let pointsToNext = 1000;
 
     if (totalEarned >= 10000) {
-      newTier = 'platinum';
+      newTier = "platinum";
       pointsToNext = 0;
     } else if (totalEarned >= 5000) {
-      newTier = 'gold';
+      newTier = "gold";
       pointsToNext = 10000 - totalEarned;
     } else if (totalEarned >= 2000) {
-      newTier = 'silver';
+      newTier = "silver";
       pointsToNext = 5000 - totalEarned;
     } else {
       pointsToNext = 2000 - totalEarned;
@@ -118,24 +118,38 @@ export class GamificationService {
 
   // Verificar y desbloquear achievements
   private static async checkAchievements(userId: string) {
-    const userOrders = await db.select().from(orders).where(eq(orders.userId, userId));
-    const completedOrders = userOrders.filter((o) => o.status === 'delivered');
+    const userOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.userId, userId));
+    const completedOrders = userOrders.filter((o) => o.status === "delivered");
     const orderCount = completedOrders.length;
-    const totalSpent = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const totalSpent = completedOrders.reduce(
+      (sum, o) => sum + (o.total || 0),
+      0,
+    );
 
-    const allAchievements = await db.select().from(achievements).where(eq(achievements.isActive, true));
+    const allAchievements = await db
+      .select()
+      .from(achievements)
+      .where(eq(achievements.isActive, true));
 
     for (const achievement of allAchievements) {
       let qualifies = false;
-      if (achievement.requirementType === 'order_count')  qualifies = orderCount  >= achievement.requirementValue;
-      if (achievement.requirementType === 'total_spent')  qualifies = totalSpent  >= achievement.requirementValue;
+      if (achievement.requirementType === "order_count")
+        qualifies = orderCount >= achievement.requirementValue;
+      if (achievement.requirementType === "total_spent")
+        qualifies = totalSpent >= achievement.requirementValue;
       // review_count se chequea desde reviewService al crear reseña
       if (qualifies) await this.unlockAchievement(userId, achievement.id);
     }
   }
 
   // Desbloquear achievement por ID
-  private static async unlockAchievement(userId: string, achievementId: string) {
+  private static async unlockAchievement(
+    userId: string,
+    achievementId: string,
+  ) {
     const [achievement] = await db
       .select()
       .from(achievements)
@@ -147,7 +161,12 @@ export class GamificationService {
     const [existing] = await db
       .select()
       .from(userAchievements)
-      .where(and(eq(userAchievements.userId, userId), eq(userAchievements.achievementId, achievementId)))
+      .where(
+        and(
+          eq(userAchievements.userId, userId),
+          eq(userAchievements.achievementId, achievementId),
+        ),
+      )
       .limit(1);
 
     if (existing) return;
@@ -162,7 +181,7 @@ export class GamificationService {
       await this.awardPoints({
         userId,
         points: achievement.rewardPoints,
-        type: 'achievement',
+        type: "achievement",
         description: `Logro desbloqueado: ${achievement.name}`,
       });
     }
@@ -208,17 +227,26 @@ export class GamificationService {
         unlockedAt: userAchievements.unlockedAt,
       })
       .from(userAchievements)
-      .leftJoin(achievements, eq(userAchievements.achievementId, achievements.id))
+      .leftJoin(
+        achievements,
+        eq(userAchievements.achievementId, achievements.id),
+      )
       .where(eq(userAchievements.userId, userId));
 
-    const allAchievements = await db.select().from(achievements).where(eq(achievements.isActive, true));
+    const allAchievements = await db
+      .select()
+      .from(achievements)
+      .where(eq(achievements.isActive, true));
 
     const unlockedIds = unlocked.map((u) => u.achievement?.id);
     const locked = allAchievements.filter((a) => !unlockedIds.includes(a.id));
 
     return {
       success: true,
-      unlocked: unlocked.map((u) => ({ ...u.achievement, unlockedAt: u.unlockedAt })),
+      unlocked: unlocked.map((u) => ({
+        ...u.achievement,
+        unlockedAt: u.unlockedAt,
+      })),
       locked,
     };
   }
@@ -232,11 +260,11 @@ export class GamificationService {
       .limit(1);
 
     if (!reward) {
-      return { success: false, error: 'Recompensa no encontrada' };
+      return { success: false, error: "Recompensa no encontrada" };
     }
 
     if (!reward.isAvailable) {
-      return { success: false, error: 'Recompensa no disponible' };
+      return { success: false, error: "Recompensa no disponible" };
     }
 
     const [userPoints] = await db
@@ -246,7 +274,7 @@ export class GamificationService {
       .limit(1);
 
     if (!userPoints || userPoints.currentPoints < reward.pointsCost) {
-      return { success: false, error: 'Puntos insuficientes' };
+      return { success: false, error: "Puntos insuficientes" };
     }
 
     // Descontar puntos
@@ -262,7 +290,7 @@ export class GamificationService {
     await db.insert(loyaltyTransactions).values({
       id: crypto.randomUUID(),
       userId,
-      type: 'redemption',
+      type: "redemption",
       points: -reward.pointsCost,
       description: `Canjeado: ${reward.title}`,
       rewardId,
@@ -275,7 +303,7 @@ export class GamificationService {
       userId,
       rewardId,
       pointsSpent: reward.pointsCost,
-      status: 'active',
+      status: "active",
       expiresAt: reward.expiresAt || null,
     });
 
@@ -299,7 +327,9 @@ export class GamificationService {
       success: true,
       rewards: rewards.map((r) => ({
         ...r,
-        canAfford: userPoints ? userPoints.currentPoints >= r.pointsCost : false,
+        canAfford: userPoints
+          ? userPoints.currentPoints >= r.pointsCost
+          : false,
       })),
       userPoints: userPoints?.currentPoints || 0,
     };

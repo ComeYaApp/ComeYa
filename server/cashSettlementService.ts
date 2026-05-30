@@ -1,6 +1,11 @@
 // Cash Settlement Service - Liquidación de Efectivo
 import { db } from "./db";
-import { wallets, transactions, orders, businesses } from "@shared/schema-mysql";
+import {
+  wallets,
+  transactions,
+  orders,
+  businesses,
+} from "@shared/schema-mysql";
 import { eq, and } from "drizzle-orm";
 import { financialService } from "./unifiedFinancialService";
 
@@ -11,9 +16,12 @@ export class CashSettlementService {
     driverId: string,
     businessId: string,
     total: number,
-    deliveryFee: number
+    deliveryFee: number,
   ): Promise<void> {
-    const commissions = await financialService.calculateCommissions(total, deliveryFee);
+    const commissions = await financialService.calculateCommissions(
+      total,
+      deliveryFee,
+    );
 
     const [business] = await db
       .select({ ownerId: businesses.ownerId })
@@ -125,7 +133,7 @@ export class CashSettlementService {
   async autoDeductCashDebt(
     driverId: string,
     orderId: string,
-    earnings: number
+    earnings: number,
   ): Promise<{ netEarnings: number; debtPaid: number }> {
     const [driverWallet] = await db
       .select()
@@ -175,7 +183,11 @@ export class CashSettlementService {
   }
 
   // Liberar fondos al negocio cuando se liquida efectivo
-  private async settleCashToBusinesses(tx: any, driverId: string, amount: number): Promise<void> {
+  private async settleCashToBusinesses(
+    tx: any,
+    driverId: string,
+    amount: number,
+  ): Promise<void> {
     // Obtener pedidos en efectivo pendientes de liquidar
     const cashOrders = await tx
       .select()
@@ -185,8 +197,8 @@ export class CashSettlementService {
           eq(orders.deliveryPersonId, driverId),
           eq(orders.paymentMethod, "cash"),
           eq(orders.status, "delivered"),
-          eq(orders.cashSettled, false)
-        )
+          eq(orders.cashSettled, false),
+        ),
       )
       .orderBy(orders.deliveredAt);
 
@@ -197,7 +209,7 @@ export class CashSettlementService {
 
       const commissions = await financialService.calculateCommissions(
         order.total,
-        order.deliveryFee
+        order.deliveryFee,
       );
 
       const orderDebt = commissions.business + commissions.platform;
@@ -283,8 +295,8 @@ export class CashSettlementService {
           eq(orders.deliveryPersonId, driverId),
           eq(orders.paymentMethod, "cash"),
           eq(orders.status, "delivered"),
-          eq(orders.cashSettled, false)
-        )
+          eq(orders.cashSettled, false),
+        ),
       )
       .orderBy(orders.deliveredAt);
 
@@ -292,7 +304,7 @@ export class CashSettlementService {
       cashOrders.map(async (order) => {
         const commissions = await financialService.calculateCommissions(
           order.total,
-          order.deliveryFee
+          order.deliveryFee,
         );
         return {
           orderId: order.id,
@@ -300,7 +312,7 @@ export class CashSettlementService {
           deliveredAt: order.deliveredAt!,
           businessName: order.businessName,
         };
-      })
+      }),
     );
 
     return {

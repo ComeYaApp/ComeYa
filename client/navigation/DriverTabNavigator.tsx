@@ -78,7 +78,7 @@ export default function DriverTabNavigator() {
         component={ProfileScreen}
         options={{
           title: "Perfil",
-          tabBarIcon: ({ color, size}) => (
+          tabBarIcon: ({ color, size }) => (
             <Feather name="user" size={size} color={color} />
           ),
         }}

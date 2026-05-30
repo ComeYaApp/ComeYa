@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
-import { Colors } from '../constants/Colors';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
+import { Colors } from "../constants/Colors";
+import { useAuth } from "../contexts/AuthContext";
 
 interface RecommendationData {
   personalizedForYou: Array<{
     id: string;
-    type: 'restaurant' | 'product' | 'category';
+    type: "restaurant" | "product" | "category";
     name: string;
     description: string;
     imageUrl: string;
@@ -52,7 +60,7 @@ interface RecommendationData {
 
 interface UserPreferences {
   cuisineTypes: string[];
-  priceRange: 'budget' | 'mid' | 'premium';
+  priceRange: "budget" | "mid" | "premium";
   dietaryRestrictions: string[];
   preferredOrderTimes: string[];
   favoriteCategories: string[];
@@ -62,10 +70,13 @@ interface UserPreferences {
 
 export default function AIRecommendationsScreen() {
   const { user } = useAuth();
-  const [recommendations, setRecommendations] = useState<RecommendationData | null>(null);
+  const [recommendations, setRecommendations] =
+    useState<RecommendationData | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'foryou' | 'trending' | 'predictions' | 'preferences'>('foryou');
+  const [activeTab, setActiveTab] = useState<
+    "foryou" | "trending" | "predictions" | "preferences"
+  >("foryou");
 
   useEffect(() => {
     if (user?.id) {
@@ -76,19 +87,23 @@ export default function AIRecommendationsScreen() {
 
   const loadRecommendations = async () => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/ai/personalized`, {
-        headers: { 'Authorization': `Bearer ${user?.token}` },
-      });
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/ai/personalized`,
+        {
+          headers: { Authorization: `Bearer ${user?.token}` },
+        },
+      );
       const data = await response.json();
-      
+
       if (data.success) {
         setRecommendations({
           personalizedForYou: data.recommendations.map((r: any) => ({
             id: r.id,
             type: r.itemType,
-            name: r.itemData?.name || 'Producto',
+            name: r.itemData?.name || "Producto",
             description: r.reason,
-            imageUrl: r.itemData?.image || 'https://via.placeholder.com/100x100',
+            imageUrl:
+              r.itemData?.image || "https://via.placeholder.com/100x100",
             rating: r.itemData?.rating ? r.itemData.rating / 10 : 4.5,
             price: r.itemData?.price,
             confidence: r.confidenceScore,
@@ -102,86 +117,99 @@ export default function AIRecommendationsScreen() {
         });
       }
     } catch (error) {
-      console.error('Error loading recommendations:', error);
+      console.error("Error loading recommendations:", error);
     }
   };
 
   const loadUserPreferences = async () => {
     try {
       const mockPreferences: UserPreferences = {
-        cuisineTypes: ['Mexicana', 'Italiana', 'Asiática'],
-        priceRange: 'mid',
-        dietaryRestrictions: ['Sin gluten'],
-        preferredOrderTimes: ['19:00-21:00', '13:00-15:00'],
-        favoriteCategories: ['Pizza', 'Tacos', 'Postres'],
+        cuisineTypes: ["Mexicana", "Italiana", "Asiática"],
+        priceRange: "mid",
+        dietaryRestrictions: ["Sin gluten"],
+        preferredOrderTimes: ["19:00-21:00", "13:00-15:00"],
+        favoriteCategories: ["Pizza", "Tacos", "Postres"],
         spiceLevel: 3,
         healthScore: 7,
       };
 
       setPreferences(mockPreferences);
     } catch (error) {
-      console.error('Error loading preferences:', error);
+      console.error("Error loading preferences:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const updatePreferences = async (newPreferences: Partial<UserPreferences>) => {
+  const updatePreferences = async (
+    newPreferences: Partial<UserPreferences>,
+  ) => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/ai/preferences`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`,
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/ai/preferences`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: JSON.stringify(newPreferences),
         },
-        body: JSON.stringify(newPreferences),
-      });
+      );
 
       if (response.ok) {
-        Alert.alert('Éxito', 'Preferencias actualizadas. Las recomendaciones mejorarán.');
+        Alert.alert(
+          "Éxito",
+          "Preferencias actualizadas. Las recomendaciones mejorarán.",
+        );
         loadRecommendations();
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudieron actualizar las preferencias');
+      Alert.alert("Error", "No se pudieron actualizar las preferencias");
     }
   };
 
   const orderRecommendation = async (itemId: string, type: string) => {
     Alert.alert(
-      'Ordenar Recomendación',
-      '¿Quieres agregar este elemento a tu carrito?',
+      "Ordenar Recomendación",
+      "¿Quieres agregar este elemento a tu carrito?",
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Agregar',
+          text: "Agregar",
           onPress: () => {
             // Navigate to product/restaurant detail
-            Alert.alert('Éxito', 'Agregado al carrito');
+            Alert.alert("Éxito", "Agregado al carrito");
           },
         },
-      ]
+      ],
     );
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'MXN',
+    return new Intl.NumberFormat("es-VE", {
+      style: "currency",
+      currency: "MXN",
     }).format(amount / 100);
   };
 
   const renderForYou = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Recomendado Para Ti</Text>
-      <Text style={styles.sectionSubtitle}>Basado en tu historial y preferencias</Text>
-      
+      <Text style={styles.sectionSubtitle}>
+        Basado en tu historial y preferencias
+      </Text>
+
       {recommendations?.personalizedForYou.map((item) => (
         <TouchableOpacity
           key={item.id}
           style={styles.recommendationCard}
           onPress={() => orderRecommendation(item.id, item.type)}
         >
-          <Image source={{ uri: item.imageUrl }} style={styles.recommendationImage} />
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={styles.recommendationImage}
+          />
           <View style={styles.recommendationInfo}>
             <View style={styles.recommendationHeader}>
               <Text style={styles.recommendationName}>{item.name}</Text>
@@ -190,17 +218,23 @@ export default function AIRecommendationsScreen() {
                 <Text style={styles.confidenceLabel}>match</Text>
               </View>
             </View>
-            
-            <Text style={styles.recommendationDescription}>{item.description}</Text>
+
+            <Text style={styles.recommendationDescription}>
+              {item.description}
+            </Text>
             <Text style={styles.recommendationReason}>💡 {item.reason}</Text>
-            
+
             <View style={styles.recommendationMeta}>
               <Text style={styles.recommendationRating}>⭐ {item.rating}</Text>
               {item.price && (
-                <Text style={styles.recommendationPrice}>{formatCurrency(item.price)}</Text>
+                <Text style={styles.recommendationPrice}>
+                  {formatCurrency(item.price)}
+                </Text>
               )}
               {item.estimatedTime && (
-                <Text style={styles.recommendationTime}>🕐 {item.estimatedTime} min</Text>
+                <Text style={styles.recommendationTime}>
+                  🕐 {item.estimatedTime} min
+                </Text>
               )}
             </View>
           </View>
@@ -213,7 +247,10 @@ export default function AIRecommendationsScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {recommendations?.basedOnWeather.map((item) => (
             <TouchableOpacity key={item.id} style={styles.weatherCard}>
-              <Image source={{ uri: item.imageUrl }} style={styles.weatherImage} />
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.weatherImage}
+              />
               <Text style={styles.weatherName}>{item.name}</Text>
               <Text style={styles.weatherReason}>{item.weatherReason}</Text>
             </TouchableOpacity>
@@ -226,7 +263,10 @@ export default function AIRecommendationsScreen() {
         <Text style={styles.sectionTitle}>Volver a Pedir</Text>
         {recommendations?.reorderSuggestions.map((item) => (
           <TouchableOpacity key={item.id} style={styles.reorderCard}>
-            <Image source={{ uri: item.imageUrl }} style={styles.reorderImage} />
+            <Image
+              source={{ uri: item.imageUrl }}
+              style={styles.reorderImage}
+            />
             <View style={styles.reorderInfo}>
               <Text style={styles.reorderName}>{item.name}</Text>
               <Text style={styles.reorderDetails}>
@@ -246,7 +286,7 @@ export default function AIRecommendationsScreen() {
     <ScrollView>
       <Text style={styles.sectionTitle}>Tendencias Ahora</Text>
       <Text style={styles.sectionSubtitle}>Lo más popular en tu área</Text>
-      
+
       {recommendations?.trendingNow.map((item, index) => (
         <TouchableOpacity key={item.id} style={styles.trendingCard}>
           <View style={styles.trendingRank}>
@@ -288,22 +328,26 @@ export default function AIRecommendationsScreen() {
   const renderPredictions = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Predicciones IA</Text>
-      <Text style={styles.sectionSubtitle}>Cuándo y qué es probable que pidas</Text>
-      
+      <Text style={styles.sectionSubtitle}>
+        Cuándo y qué es probable que pidas
+      </Text>
+
       {recommendations?.predictedOrders.map((prediction, index) => (
         <View key={index} style={styles.predictionCard}>
           <View style={styles.predictionHeader}>
             <Text style={styles.predictionDay}>{prediction.day}</Text>
             <View style={styles.probabilityContainer}>
-              <Text style={styles.probabilityText}>{prediction.probability}%</Text>
+              <Text style={styles.probabilityText}>
+                {prediction.probability}%
+              </Text>
               <Text style={styles.probabilityLabel}>probable</Text>
             </View>
           </View>
-          
+
           <Text style={styles.predictionTime}>
             Hora sugerida: {prediction.suggestedTime}
           </Text>
-          
+
           <View style={styles.suggestedItems}>
             <Text style={styles.suggestedItemsLabel}>Elementos sugeridos:</Text>
             <View style={styles.itemTags}>
@@ -314,7 +358,7 @@ export default function AIRecommendationsScreen() {
               ))}
             </View>
           </View>
-          
+
           <TouchableOpacity style={styles.scheduleButton}>
             <Text style={styles.scheduleButtonText}>Programar Pedido</Text>
           </TouchableOpacity>
@@ -327,19 +371,21 @@ export default function AIRecommendationsScreen() {
         <View style={styles.insightCard}>
           <Text style={styles.insightTitle}>🧠 Patrón Detectado</Text>
           <Text style={styles.insightText}>
-            Tiendes a pedir comida mexicana los viernes por la noche. 
-            ¿Quieres que te recordemos?
+            Tiendes a pedir comida mexicana los viernes por la noche. ¿Quieres
+            que te recordemos?
           </Text>
           <TouchableOpacity style={styles.insightButton}>
-            <Text style={styles.insightButtonText}>Configurar Recordatorio</Text>
+            <Text style={styles.insightButtonText}>
+              Configurar Recordatorio
+            </Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.insightCard}>
           <Text style={styles.insightTitle}>📊 Análisis de Gastos</Text>
           <Text style={styles.insightText}>
-            Gastas 15% menos cuando pides antes de las 7 PM. 
-            Te sugerimos pedir temprano para ahorrar.
+            Gastas 15% menos cuando pides antes de las 7 PM. Te sugerimos pedir
+            temprano para ahorrar.
           </Text>
         </View>
       </View>
@@ -349,27 +395,35 @@ export default function AIRecommendationsScreen() {
   const renderPreferences = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Preferencias de IA</Text>
-      <Text style={styles.sectionSubtitle}>Ayúdanos a mejorar tus recomendaciones</Text>
-      
+      <Text style={styles.sectionSubtitle}>
+        Ayúdanos a mejorar tus recomendaciones
+      </Text>
+
       <View style={styles.preferenceSection}>
         <Text style={styles.preferenceTitle}>Tipos de Cocina Favoritos</Text>
         <View style={styles.preferenceOptions}>
-          {['Mexicana', 'Italiana', 'Asiática', 'Americana', 'Vegetariana'].map((cuisine) => (
-            <TouchableOpacity
-              key={cuisine}
-              style={[
-                styles.preferenceOption,
-                preferences?.cuisineTypes.includes(cuisine) && styles.preferenceOptionActive
-              ]}
-            >
-              <Text style={[
-                styles.preferenceOptionText,
-                preferences?.cuisineTypes.includes(cuisine) && styles.preferenceOptionTextActive
-              ]}>
-                {cuisine}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {["Mexicana", "Italiana", "Asiática", "Americana", "Vegetariana"].map(
+            (cuisine) => (
+              <TouchableOpacity
+                key={cuisine}
+                style={[
+                  styles.preferenceOption,
+                  preferences?.cuisineTypes.includes(cuisine) &&
+                    styles.preferenceOptionActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.preferenceOptionText,
+                    preferences?.cuisineTypes.includes(cuisine) &&
+                      styles.preferenceOptionTextActive,
+                  ]}
+                >
+                  {cuisine}
+                </Text>
+              </TouchableOpacity>
+            ),
+          )}
         </View>
       </View>
 
@@ -377,21 +431,25 @@ export default function AIRecommendationsScreen() {
         <Text style={styles.preferenceTitle}>Rango de Precios</Text>
         <View style={styles.preferenceOptions}>
           {[
-            { key: 'budget', label: 'Económico ($)' },
-            { key: 'mid', label: 'Medio ($$)' },
-            { key: 'premium', label: 'Premium ($$$)' }
+            { key: "budget", label: "Económico ($)" },
+            { key: "mid", label: "Medio ($$)" },
+            { key: "premium", label: "Premium ($$$)" },
           ].map((range) => (
             <TouchableOpacity
               key={range.key}
               style={[
                 styles.preferenceOption,
-                preferences?.priceRange === range.key && styles.preferenceOptionActive
+                preferences?.priceRange === range.key &&
+                  styles.preferenceOptionActive,
               ]}
             >
-              <Text style={[
-                styles.preferenceOptionText,
-                preferences?.priceRange === range.key && styles.preferenceOptionTextActive
-              ]}>
+              <Text
+                style={[
+                  styles.preferenceOptionText,
+                  preferences?.priceRange === range.key &&
+                    styles.preferenceOptionTextActive,
+                ]}
+              >
                 {range.label}
               </Text>
             </TouchableOpacity>
@@ -407,7 +465,8 @@ export default function AIRecommendationsScreen() {
               key={level}
               style={[
                 styles.spiceLevel,
-                (preferences?.spiceLevel || 0) >= level && styles.spiceLevelActive
+                (preferences?.spiceLevel || 0) >= level &&
+                  styles.spiceLevelActive,
               ]}
             >
               <Text style={styles.spiceLevelText}>🌶️</Text>
@@ -427,7 +486,8 @@ export default function AIRecommendationsScreen() {
               key={score}
               style={[
                 styles.healthScore,
-                (preferences?.healthScore || 0) >= score && styles.healthScoreActive
+                (preferences?.healthScore || 0) >= score &&
+                  styles.healthScoreActive,
               ]}
             >
               <Text style={styles.healthScoreText}>{score}</Text>
@@ -440,7 +500,9 @@ export default function AIRecommendationsScreen() {
         style={styles.savePreferencesButton}
         onPress={() => updatePreferences(preferences || {})}
       >
-        <Text style={styles.savePreferencesButtonText}>Guardar Preferencias</Text>
+        <Text style={styles.savePreferencesButtonText}>
+          Guardar Preferencias
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -456,21 +518,26 @@ export default function AIRecommendationsScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Recomendaciones IA</Text>
-      
+
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
         {[
-          { key: 'foryou', label: 'Para Ti' },
-          { key: 'trending', label: 'Trending' },
-          { key: 'predictions', label: 'Predicciones' },
-          { key: 'preferences', label: 'Preferencias' },
+          { key: "foryou", label: "Para Ti" },
+          { key: "trending", label: "Trending" },
+          { key: "predictions", label: "Predicciones" },
+          { key: "preferences", label: "Preferencias" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key as any)}
           >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab.key && styles.activeTabText,
+              ]}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -479,10 +546,10 @@ export default function AIRecommendationsScreen() {
 
       {/* Tab Content */}
       <View style={styles.tabContent}>
-        {activeTab === 'foryou' && renderForYou()}
-        {activeTab === 'trending' && renderTrending()}
-        {activeTab === 'predictions' && renderPredictions()}
-        {activeTab === 'preferences' && renderPreferences()}
+        {activeTab === "foryou" && renderForYou()}
+        {activeTab === "trending" && renderTrending()}
+        {activeTab === "predictions" && renderPredictions()}
+        {activeTab === "preferences" && renderPreferences()}
       </View>
     </View>
   );
@@ -495,14 +562,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 20,
   },
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    backgroundColor: "white",
     marginHorizontal: 20,
     borderRadius: 12,
     padding: 4,
@@ -510,7 +577,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
   },
   activeTab: {
@@ -519,11 +586,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 11,
     color: Colors.light.tabIconDefault,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   activeTabText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   tabContent: {
     flex: 1,
@@ -531,7 +598,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 8,
   },
@@ -544,12 +611,12 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   recommendationCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    flexDirection: 'row',
-    shadowColor: '#000',
+    flexDirection: "row",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -565,23 +632,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recommendationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 4,
   },
   recommendationName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     flex: 1,
   },
   confidenceContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   confidenceText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.tint,
   },
   confidenceLabel: {
@@ -596,11 +663,11 @@ const styles = StyleSheet.create({
   recommendationReason: {
     fontSize: 12,
     color: Colors.light.tint,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     marginBottom: 8,
   },
   recommendationMeta: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   recommendationRating: {
@@ -609,7 +676,7 @@ const styles = StyleSheet.create({
   },
   recommendationPrice: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.tint,
   },
   recommendationTime: {
@@ -617,13 +684,13 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   weatherCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 12,
     marginRight: 12,
-    alignItems: 'center',
+    alignItems: "center",
     width: 120,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -637,24 +704,24 @@ const styles = StyleSheet.create({
   },
   weatherName: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 4,
   },
   weatherReason: {
     fontSize: 10,
     color: Colors.light.tabIconDefault,
-    textAlign: 'center',
+    textAlign: "center",
   },
   reorderCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -671,7 +738,7 @@ const styles = StyleSheet.create({
   },
   reorderName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 2,
   },
@@ -686,18 +753,18 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   reorderButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   trendingCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -708,14 +775,14 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: Colors.light.tint,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   trendingRankText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   trendingImage: {
     width: 60,
@@ -728,7 +795,7 @@ const styles = StyleSheet.create({
   },
   trendingName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -737,19 +804,19 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   trendingScore: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   trendingScoreText: {
     fontSize: 24,
   },
   similarUserCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -760,7 +827,7 @@ const styles = StyleSheet.create({
   },
   similarUserName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 2,
   },
@@ -777,37 +844,37 @@ const styles = StyleSheet.create({
   exploreButtonText: {
     color: Colors.light.tint,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   predictionCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   predictionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   predictionDay: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   probabilityContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   probabilityText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: 'green',
+    fontWeight: "bold",
+    color: "green",
   },
   probabilityLabel: {
     fontSize: 10,
@@ -823,13 +890,13 @@ const styles = StyleSheet.create({
   },
   suggestedItemsLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 8,
   },
   itemTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   itemTag: {
@@ -846,19 +913,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tint,
     paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   scheduleButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   insightCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -866,7 +933,7 @@ const styles = StyleSheet.create({
   },
   insightTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 8,
   },
@@ -879,19 +946,19 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
     paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   insightButtonText: {
     color: Colors.light.tint,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   preferenceSection: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -899,7 +966,7 @@ const styles = StyleSheet.create({
   },
   preferenceTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 12,
   },
@@ -909,8 +976,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   preferenceOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   preferenceOption: {
@@ -929,18 +996,18 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
   },
   preferenceOptionTextActive: {
-    color: 'white',
+    color: "white",
   },
   spiceLevelContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   spiceLevel: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.light.background,
   },
   spiceLevelActive: {
@@ -950,16 +1017,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   healthScoreContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   healthScore: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: Colors.light.background,
   },
   healthScoreActive: {
@@ -967,25 +1034,25 @@ const styles = StyleSheet.create({
   },
   healthScoreText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   savePreferencesButton: {
     backgroundColor: Colors.light.tint,
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
   },
   savePreferencesButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loadingText: {
     fontSize: 18,
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 50,
   },
 });

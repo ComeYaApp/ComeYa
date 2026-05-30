@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -6,19 +6,24 @@ import {
   Pressable,
   Alert,
   Switch,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { useTheme } from '@/hooks/useTheme';
-import { useOffline } from '@/hooks/useOffline';
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
-import { OfflineCacheService } from '@/services/OfflineCacheService';
-import { useToast } from '@/contexts/ToastContext';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { useTheme } from "@/hooks/useTheme";
+import { useOffline } from "@/hooks/useOffline";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
+import { OfflineCacheService } from "@/services/OfflineCacheService";
+import { useToast } from "@/contexts/ToastContext";
 
 export default function OfflineSettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -50,29 +55,29 @@ export default function OfflineSettingsScreen() {
 
   const handleClearCache = () => {
     Alert.alert(
-      'Limpiar Caché',
-      '¿Estás seguro? Se eliminarán todos los datos guardados offline.',
+      "Limpiar Caché",
+      "¿Estás seguro? Se eliminarán todos los datos guardados offline.",
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Limpiar',
-          style: 'destructive',
+          text: "Limpiar",
+          style: "destructive",
           onPress: async () => {
             setLoading(true);
             await OfflineCacheService.clear();
             await loadStats();
             setLoading(false);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            showToast('Caché limpiada', 'success');
+            showToast("Caché limpiada", "success");
           },
         },
-      ]
+      ],
     );
   };
 
   const handleSyncNow = async () => {
     if (isOffline) {
-      showToast('Sin conexión', 'error');
+      showToast("Sin conexión", "error");
       return;
     }
 
@@ -82,9 +87,9 @@ export default function OfflineSettingsScreen() {
       await OfflineCacheService.clearSyncQueue();
       await loadStats();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showToast('Sincronizado correctamente', 'success');
+      showToast("Sincronizado correctamente", "success");
     } catch (error) {
-      showToast('Error al sincronizar', 'error');
+      showToast("Error al sincronizar", "error");
     } finally {
       setLoading(false);
     }
@@ -93,33 +98,51 @@ export default function OfflineSettingsScreen() {
   return (
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
         <ThemedText type="h2">Modo Offline</ThemedText>
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Connection Status */}
-        <View style={[styles.statusCard, { backgroundColor: theme.card }, Shadows.md]}>
+        <View
+          style={[
+            styles.statusCard,
+            { backgroundColor: theme.card },
+            Shadows.md,
+          ]}
+        >
           <View style={styles.statusRow}>
             <View
               style={[
                 styles.statusDot,
-                { backgroundColor: isOnline ? ComeYaColors.success : ComeYaColors.error },
+                {
+                  backgroundColor: isOnline
+                    ? ComeYaColors.success
+                    : ComeYaColors.error,
+                },
               ]}
             />
             <View style={styles.statusInfo}>
-              <ThemedText type="h4">{isOnline ? 'Conectado' : 'Sin conexión'}</ThemedText>
+              <ThemedText type="h4">
+                {isOnline ? "Conectado" : "Sin conexión"}
+              </ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
                 {isOnline
-                  ? 'Todos los datos están sincronizados'
-                  : 'Usando datos guardados localmente'}
+                  ? "Todos los datos están sincronizados"
+                  : "Usando datos guardados localmente"}
               </ThemedText>
             </View>
             <Feather
-              name={isOnline ? 'wifi' : 'wifi-off'}
+              name={isOnline ? "wifi" : "wifi-off"}
               size={24}
               color={isOnline ? ComeYaColors.success : ComeYaColors.error}
             />
@@ -127,7 +150,9 @@ export default function OfflineSettingsScreen() {
         </View>
 
         {/* Cache Stats */}
-        <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
             Estadísticas de Caché
           </ThemedText>
@@ -136,7 +161,7 @@ export default function OfflineSettingsScreen() {
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Items guardados
             </ThemedText>
-            <ThemedText type="body" style={{ fontWeight: '600' }}>
+            <ThemedText type="body" style={{ fontWeight: "600" }}>
               {cacheStats.totalItems}
             </ThemedText>
           </View>
@@ -145,7 +170,7 @@ export default function OfflineSettingsScreen() {
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Espacio usado
             </ThemedText>
-            <ThemedText type="body" style={{ fontWeight: '600' }}>
+            <ThemedText type="body" style={{ fontWeight: "600" }}>
               {cacheStats.sizeInMB.toFixed(2)} MB
             </ThemedText>
           </View>
@@ -154,14 +179,19 @@ export default function OfflineSettingsScreen() {
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Acciones pendientes
             </ThemedText>
-            <ThemedText type="body" style={{ fontWeight: '600', color: ComeYaColors.warning }}>
+            <ThemedText
+              type="body"
+              style={{ fontWeight: "600", color: ComeYaColors.warning }}
+            >
               {syncQueueCount}
             </ThemedText>
           </View>
         </View>
 
         {/* Settings */}
-        <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
             Configuración
           </ThemedText>
@@ -201,8 +231,13 @@ export default function OfflineSettingsScreen() {
               ]}
             >
               <Feather name="refresh-cw" size={18} color="#FFFFFF" />
-              <ThemedText type="body" style={{ color: '#FFFFFF', marginLeft: 8, fontWeight: '600' }}>
-                {loading ? 'Sincronizando...' : `Sincronizar ahora (${syncQueueCount})`}
+              <ThemedText
+                type="body"
+                style={{ color: "#FFFFFF", marginLeft: 8, fontWeight: "600" }}
+              >
+                {loading
+                  ? "Sincronizando..."
+                  : `Sincronizar ahora (${syncQueueCount})`}
               </ThemedText>
             </Pressable>
           )}
@@ -212,14 +247,21 @@ export default function OfflineSettingsScreen() {
             disabled={loading}
             style={[
               styles.actionButton,
-              { backgroundColor: theme.backgroundSecondary, opacity: loading ? 0.5 : 1 },
+              {
+                backgroundColor: theme.backgroundSecondary,
+                opacity: loading ? 0.5 : 1,
+              },
               Shadows.sm,
             ]}
           >
             <Feather name="trash-2" size={18} color={ComeYaColors.error} />
             <ThemedText
               type="body"
-              style={{ color: ComeYaColors.error, marginLeft: 8, fontWeight: '600' }}
+              style={{
+                color: ComeYaColors.error,
+                marginLeft: 8,
+                fontWeight: "600",
+              }}
             >
               Limpiar caché
             </ThemedText>
@@ -227,11 +269,20 @@ export default function OfflineSettingsScreen() {
         </View>
 
         {/* Info */}
-        <View style={[styles.infoCard, { backgroundColor: ComeYaColors.primary + '10' }]}>
+        <View
+          style={[
+            styles.infoCard,
+            { backgroundColor: ComeYaColors.primary + "10" },
+          ]}
+        >
           <Feather name="info" size={20} color={ComeYaColors.primary} />
-          <ThemedText type="caption" style={{ flex: 1, marginLeft: Spacing.sm }}>
-            El modo offline te permite navegar y agregar al carrito sin conexión. Los cambios se
-            sincronizarán automáticamente cuando vuelvas a conectarte.
+          <ThemedText
+            type="caption"
+            style={{ flex: 1, marginLeft: Spacing.sm }}
+          >
+            El modo offline te permite navegar y agregar al carrito sin
+            conexión. Los cambios se sincronizarán automáticamente cuando
+            vuelvas a conectarte.
           </ThemedText>
         </View>
       </ScrollView>
@@ -244,24 +295,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.lg,
   },
   backButton: {
     width: 44,
     height: 44,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+    justifyContent: "center",
+    alignItems: "flex-start",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: Spacing.lg,
-    paddingBottom: Spacing['4xl'],
+    paddingBottom: Spacing["4xl"],
   },
   statusCard: {
     padding: Spacing.lg,
@@ -269,8 +320,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   statusDot: {
     width: 12,
@@ -287,14 +338,14 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: Spacing.sm,
   },
   settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: Spacing.sm,
   },
   settingInfo: {
@@ -305,14 +356,14 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: Spacing.lg,
     borderRadius: BorderRadius.lg,
   },
   infoCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
   },

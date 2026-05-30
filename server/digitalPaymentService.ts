@@ -1,6 +1,13 @@
 // Digital Payment Service - Integrado con UnifiedFinancialService
 import { db } from "./db";
-import { orders, paymentMethods, paymentProofs, systemSettings, users, businesses } from "@shared/schema-mysql";
+import {
+  orders,
+  paymentMethods,
+  paymentProofs,
+  systemSettings,
+  users,
+  businesses,
+} from "@shared/schema-mysql";
 import { eq, and, count, sum, gte } from "drizzle-orm";
 import { financialService } from "./unifiedFinancialService";
 import { autoVerificationService } from "./autoVerificationService";
@@ -43,7 +50,7 @@ export class DigitalPaymentService {
         .select()
         .from(paymentMethods)
         .where(eq(paymentMethods.isActive, true));
-      
+
       return methods;
     } catch (error: any) {
       logger.error("Error getting active payment methods:", error);
@@ -52,7 +59,9 @@ export class DigitalPaymentService {
   }
 
   // Submit payment proof (Pago Móvil, Binance Pay, Zinli, Zelle)
-  async submitPaymentProof(data: PaymentProofData): Promise<{ success: boolean; proofId?: string; message: string }> {
+  async submitPaymentProof(
+    data: PaymentProofData,
+  ): Promise<{ success: boolean; proofId?: string; message: string }> {
     try {
       const [order] = await db
         .select()
@@ -72,10 +81,12 @@ export class DigitalPaymentService {
       const [method] = await db
         .select()
         .from(paymentMethods)
-        .where(and(
-          eq(paymentMethods.provider, data.paymentProvider),
-          eq(paymentMethods.isActive, true)
-        ))
+        .where(
+          and(
+            eq(paymentMethods.provider, data.paymentProvider),
+            eq(paymentMethods.isActive, true),
+          ),
+        )
         .limit(1);
 
       if (!method) {
@@ -83,18 +94,25 @@ export class DigitalPaymentService {
       }
 
       if (!method.requiresManualVerification) {
-        return { success: false, message: "Este método no requiere comprobante" };
+        return {
+          success: false,
+          message: "Este método no requiere comprobante",
+        };
       }
 
       // Subir imagen a Cloudinary si es base64
       let imageUrl = data.proofImageUrl;
-      if (imageUrl && imageUrl.startsWith('data:image/')) {
-        imageUrl = await CloudinaryService.uploadImage(imageUrl, 'comprobantes', `proof-${data.orderId}`);
+      if (imageUrl && imageUrl.startsWith("data:image/")) {
+        imageUrl = await CloudinaryService.uploadImage(
+          imageUrl,
+          "comprobantes",
+          `proof-${data.orderId}`,
+        );
       }
 
       // Create payment proof with UUID
       const proofId = crypto.randomUUID();
-      
+
       await db.insert(paymentProofs).values({
         id: proofId,
         orderId: data.orderId,
@@ -114,17 +132,21 @@ export class DigitalPaymentService {
         .where(eq(paymentProofs.id, proofId))
         .limit(1);
 
-      logger.info(`💳 Payment proof submitted: Order ${data.orderId} - ${data.paymentProvider}`, {
-        orderId: data.orderId,
-        provider: data.paymentProvider,
-        reference: data.referenceNumber,
-      });
+      logger.info(
+        `💳 Payment proof submitted: Order ${data.orderId} - ${data.paymentProvider}`,
+        {
+          orderId: data.orderId,
+          provider: data.paymentProvider,
+          reference: data.referenceNumber,
+        },
+      );
 
       // 🤖 INTENTAR AUTO-VERIFICACIÓN (DESACTIVADO EN DESARROLLO)
-      const SKIP_AUTO_VERIFICATION = process.env.NODE_ENV === 'development';
-      
+      const SKIP_AUTO_VERIFICATION = process.env.NODE_ENV === "development";
+
       if (!SKIP_AUTO_VERIFICATION) {
-        const autoVerification = await autoVerificationService.shouldAutoApprove(proof.id);
+        const autoVerification =
+          await autoVerificationService.shouldAutoApprove(proof.id);
 
         if (autoVerification.autoApprove) {
           // ✅ AUTO-APROBAR
@@ -139,31 +161,35 @@ export class DigitalPaymentService {
             proof.id,
             "SYSTEM_AUTO",
             true,
-            `Auto-aprobado (Confianza: ${(autoVerification.confidence * 100).toFixed(0)}%, Riesgo: ${(autoVerification.riskScore * 100).toFixed(0)}%)`
+            `Auto-aprobado (Confianza: ${(autoVerification.confidence * 100).toFixed(0)}%, Riesgo: ${(autoVerification.riskScore * 100).toFixed(0)}%)`,
           );
 
           if (verificationResult.success) {
             return {
               success: true,
               proofId: proof.id,
-              message: "¡Pago verificado automáticamente! Tu pedido está confirmado.",
+              message:
+                "¡Pago verificado automáticamente! Tu pedido está confirmado.",
             };
           }
         } else {
           // ⚠️ REQUIERE VERIFICACIÓN MANUAL
-          logger.warn(`⚠️ Payment proof ${proof.id} requires manual verification`, {
-            proofId: proof.id,
-            reason: autoVerification.reason,
-            confidence: autoVerification.confidence,
-            riskScore: autoVerification.riskScore,
-          });
+          logger.warn(
+            `⚠️ Payment proof ${proof.id} requires manual verification`,
+            {
+              proofId: proof.id,
+              reason: autoVerification.reason,
+              confidence: autoVerification.confidence,
+              riskScore: autoVerification.riskScore,
+            },
+          );
 
           // Si el riesgo es muy alto, registrar como posible fraude
           if (autoVerification.riskScore > 0.7) {
             await autoVerificationService.logFraudAttempt(
               data.userId,
               proof.id,
-              autoVerification.reason
+              autoVerification.reason,
             );
           }
         }
@@ -197,7 +223,7 @@ export class DigitalPaymentService {
     proofId: string,
     adminId: string,
     approved: boolean,
-    notes?: string
+    notes?: string,
   ): Promise<PaymentVerificationResult> {
     try {
       const [proof] = await db
@@ -255,10 +281,14 @@ export class DigitalPaymentService {
         });
 
         // Push notification al cliente
-        await notifyPagoMovilStatus(proof.userId, 'verified', order.id);
+        await notifyPagoMovilStatus(proof.userId, "verified", order.id);
 
         // Push notification al negocio para que empiece a preparar
-        const [biz] = await db.select({ ownerId: businesses.ownerId }).from(businesses).where(eq(businesses.id, order.businessId)).limit(1);
+        const [biz] = await db
+          .select({ ownerId: businesses.ownerId })
+          .from(businesses)
+          .where(eq(businesses.id, order.businessId))
+          .limit(1);
         if (biz?.ownerId) {
           await sendPushToUser(biz.ownerId, {
             title: "💳 Pago confirmado — ¡A preparar!",
@@ -301,7 +331,7 @@ export class DigitalPaymentService {
         });
 
         // Push notification al cliente
-        await notifyPagoMovilStatus(proof.userId, 'rejected', order.id, notes);
+        await notifyPagoMovilStatus(proof.userId, "rejected", order.id, notes);
 
         return {
           success: true,
@@ -316,7 +346,10 @@ export class DigitalPaymentService {
   }
 
   // Process PayPal payment (automatic)
-  async processPayPalPayment(orderId: string, paypalTransactionId: string): Promise<PaymentVerificationResult> {
+  async processPayPalPayment(
+    orderId: string,
+    paypalTransactionId: string,
+  ): Promise<PaymentVerificationResult> {
     try {
       const [order] = await db
         .select()
@@ -334,8 +367,12 @@ export class DigitalPaymentService {
         .from(systemSettings)
         .where(eq(systemSettings.category, "payment_providers"));
 
-      const paypalClientId = settings.find(s => s.key === "paypal_client_id")?.value;
-      const paypalSecret = settings.find(s => s.key === "paypal_secret")?.value;
+      const paypalClientId = settings.find(
+        (s) => s.key === "paypal_client_id",
+      )?.value;
+      const paypalSecret = settings.find(
+        (s) => s.key === "paypal_secret",
+      )?.value;
 
       if (!paypalClientId || !paypalSecret) {
         return { success: false, message: "PayPal no configurado" };
@@ -360,7 +397,7 @@ export class DigitalPaymentService {
         // Calculate commissions
         const commissions = await financialService.calculateCommissions(
           order.totalAmount,
-          order.deliveryFee || 0
+          order.deliveryFee || 0,
         );
 
         // Get PayPal commission (5%)
@@ -370,13 +407,23 @@ export class DigitalPaymentService {
           .where(eq(paymentMethods.provider, "paypal"))
           .limit(1);
 
-        const paypalFee = paypalMethod ? Math.round(order.totalAmount * (paypalMethod.commissionPercentage / 100)) : 0;
+        const paypalFee = paypalMethod
+          ? Math.round(
+              order.totalAmount * (paypalMethod.commissionPercentage / 100),
+            )
+          : 0;
 
         // Get business owner ID
-        const [business] = await tx.select({ ownerId: businesses.ownerId }).from(businesses).where(eq(businesses.id, order.businessId)).limit(1);
-        
+        const [business] = await tx
+          .select({ ownerId: businesses.ownerId })
+          .from(businesses)
+          .where(eq(businesses.id, order.businessId))
+          .limit(1);
+
         if (!business?.ownerId) {
-          throw new Error(`Business owner not found for business ${order.businessId}`);
+          throw new Error(
+            `Business owner not found for business ${order.businessId}`,
+          );
         }
 
         // Distribute funds (deducting PayPal fee from business)
@@ -385,7 +432,7 @@ export class DigitalPaymentService {
           commissions.business - paypalFee,
           "order_payment",
           order.id,
-          `Pago de pedido #${order.id.slice(-6)} - PayPal (${paypalMethod?.commissionPercentage}% fee)`
+          `Pago de pedido #${order.id.slice(-6)} - PayPal (${paypalMethod?.commissionPercentage}% fee)`,
         );
 
         if (order.driverId) {
@@ -394,15 +441,20 @@ export class DigitalPaymentService {
             commissions.driver,
             "delivery_payment",
             order.id,
-            `Entrega de pedido #${order.id.slice(-6)}`
+            `Entrega de pedido #${order.id.slice(-6)}`,
           );
         }
 
         // Platform gets commission + PayPal fee
         const [adminUser] = await tx
           .select()
-          .from(await import("@shared/schema-mysql").then(m => m.users))
-          .where(eq((await import("@shared/schema-mysql").then(m => m.users)).role, "admin"))
+          .from(await import("@shared/schema-mysql").then((m) => m.users))
+          .where(
+            eq(
+              (await import("@shared/schema-mysql").then((m) => m.users)).role,
+              "admin",
+            ),
+          )
           .limit(1);
 
         if (adminUser) {
@@ -411,7 +463,7 @@ export class DigitalPaymentService {
             commissions.platform + paypalFee,
             "platform_commission",
             order.id,
-            `Comisión ComeYa + PayPal fee - Pedido #${order.id.slice(-6)}`
+            `Comisión ComeYa + PayPal fee - Pedido #${order.id.slice(-6)}`,
           );
         }
 
@@ -443,11 +495,12 @@ export class DigitalPaymentService {
       .orderBy(paymentProofs.submittedAt);
 
     // Convert relative URLs to absolute
-    const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
-    return proofs.map(proof => ({
+    const backendUrl =
+      process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    return proofs.map((proof) => ({
       ...proof,
-      proofImageUrl: proof.proofImageUrl?.startsWith('http') 
-        ? proof.proofImageUrl 
+      proofImageUrl: proof.proofImageUrl?.startsWith("http")
+        ? proof.proofImageUrl
         : `${backendUrl}${proof.proofImageUrl}`,
     }));
   }
@@ -457,25 +510,55 @@ export class DigitalPaymentService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [all, pending, approved, rejected, todayApproved, todayRejected] = await Promise.all([
-      db.select({ count: count() }).from(paymentProofs),
-      db.select({ count: count() }).from(paymentProofs).where(eq(paymentProofs.status, 'pending')),
-      db.select({ count: count(), total: sum(paymentProofs.amount) }).from(paymentProofs).where(eq(paymentProofs.status, 'approved')),
-      db.select({ count: count() }).from(paymentProofs).where(eq(paymentProofs.status, 'rejected')),
-      db.select({ count: count(), total: sum(paymentProofs.amount) }).from(paymentProofs).where(and(eq(paymentProofs.status, 'approved'), gte(paymentProofs.verifiedAt, today))),
-      db.select({ count: count() }).from(paymentProofs).where(and(eq(paymentProofs.status, 'rejected'), gte(paymentProofs.verifiedAt, today))),
-    ]);
+    const [all, pending, approved, rejected, todayApproved, todayRejected] =
+      await Promise.all([
+        db.select({ count: count() }).from(paymentProofs),
+        db
+          .select({ count: count() })
+          .from(paymentProofs)
+          .where(eq(paymentProofs.status, "pending")),
+        db
+          .select({ count: count(), total: sum(paymentProofs.amount) })
+          .from(paymentProofs)
+          .where(eq(paymentProofs.status, "approved")),
+        db
+          .select({ count: count() })
+          .from(paymentProofs)
+          .where(eq(paymentProofs.status, "rejected")),
+        db
+          .select({ count: count(), total: sum(paymentProofs.amount) })
+          .from(paymentProofs)
+          .where(
+            and(
+              eq(paymentProofs.status, "approved"),
+              gte(paymentProofs.verifiedAt, today),
+            ),
+          ),
+        db
+          .select({ count: count() })
+          .from(paymentProofs)
+          .where(
+            and(
+              eq(paymentProofs.status, "rejected"),
+              gte(paymentProofs.verifiedAt, today),
+            ),
+          ),
+      ]);
 
     // Agrupar por proveedor
     const byProvider = await db
-      .select({ provider: paymentProofs.paymentProvider, count: count(), total: sum(paymentProofs.amount) })
+      .select({
+        provider: paymentProofs.paymentProvider,
+        count: count(),
+        total: sum(paymentProofs.amount),
+      })
       .from(paymentProofs)
-      .where(eq(paymentProofs.status, 'approved'))
+      .where(eq(paymentProofs.status, "approved"))
       .groupBy(paymentProofs.paymentProvider);
 
     // Convertir array a Record<string, {count, amount}>
     const totalByMethod: Record<string, { count: number; amount: number }> = {};
-    byProvider.forEach(item => {
+    byProvider.forEach((item) => {
       totalByMethod[item.provider] = {
         count: item.count,
         amount: item.total || 0,

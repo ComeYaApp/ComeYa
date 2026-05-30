@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/lib/query-client";
 import { useAuth } from "./AuthContext";
@@ -39,14 +45,18 @@ interface BusinessContextType {
   getBusinessStats: (businessId: string) => Promise<BusinessStats>;
 }
 
-const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
+const BusinessContext = createContext<BusinessContextType | undefined>(
+  undefined,
+);
 
 const SELECTED_BUSINESS_KEY = "@ComeYa_selected_business";
 
 export function BusinessProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const loadBusinesses = useCallback(async () => {
@@ -59,7 +69,7 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiRequest("GET", "/api/business/my-businesses");
-      
+
       // Handle 404 gracefully - user might not have businesses yet
       if (response.status === 404) {
         console.log("No businesses found for user");
@@ -67,12 +77,12 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
         setSelectedBusiness(null);
         return;
       }
-      
+
       const data = await response.json();
-      
+
       if (data.success && data.businesses) {
         setBusinesses(data.businesses);
-        
+
         const savedId = await AsyncStorage.getItem(SELECTED_BUSINESS_KEY);
         if (savedId) {
           const saved = data.businesses.find((b: Business) => b.id === savedId);
@@ -116,11 +126,11 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
   const createBusiness = async (data: Partial<Business>): Promise<Business> => {
     const response = await apiRequest("POST", "/api/business/create", data);
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || "Error al crear negocio");
     }
-    
+
     await loadBusinesses();
     return result.business;
   };
@@ -128,34 +138,39 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
   const updateBusiness = async (id: string, data: Partial<Business>) => {
     const response = await apiRequest("PUT", `/api/business/${id}`, data);
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || "Error al actualizar negocio");
     }
-    
+
     await loadBusinesses();
   };
 
   const deleteBusiness = async (id: string) => {
     const response = await apiRequest("DELETE", `/api/business/${id}`);
     const result = await response.json();
-    
+
     if (!result.success) {
       throw new Error(result.error || "Error al eliminar negocio");
     }
-    
+
     if (selectedBusiness?.id === id) {
-      const remaining = businesses.filter(b => b.id !== id);
+      const remaining = businesses.filter((b) => b.id !== id);
       setSelectedBusiness(remaining.length > 0 ? remaining[0] : null);
     }
-    
+
     await loadBusinesses();
   };
 
-  const getBusinessStats = async (businessId: string): Promise<BusinessStats> => {
-    const response = await apiRequest("GET", `/api/business/${businessId}/stats`);
+  const getBusinessStats = async (
+    businessId: string,
+  ): Promise<BusinessStats> => {
+    const response = await apiRequest(
+      "GET",
+      `/api/business/${businessId}/stats`,
+    );
     const data = await response.json();
-    
+
     return {
       pendingOrders: data.pendingOrders || 0,
       todayOrders: data.todayOrders || 0,

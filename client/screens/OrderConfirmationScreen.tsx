@@ -17,7 +17,12 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
@@ -261,7 +266,10 @@ export default function OrderConfirmationScreen() {
                 onPress={handleSkipAndConfirm}
                 style={styles.skipButton}
               >
-                <ThemedText type="small" style={{ color: ComeYaColors.primary }}>
+                <ThemedText
+                  type="small"
+                  style={{ color: ComeYaColors.primary }}
+                >
                   Saltar y confirmar pedido
                 </ThemedText>
                 <Feather

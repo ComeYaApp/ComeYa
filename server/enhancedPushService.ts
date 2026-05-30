@@ -11,7 +11,7 @@ interface NotificationPayload {
 export async function sendOrderStatusNotification(
   orderId: string,
   userId: string,
-  newStatus: string
+  newStatus: string,
 ): Promise<void> {
   const [order] = await db
     .select()
@@ -108,7 +108,7 @@ export async function sendOrderStatusNotification(
       }
       break;
 
-case "delivered":
+    case "delivered":
       notification = {
         title: "¡Pedido entregado! 🎉",
         body: "¡Disfruta tu comida! Confirma la entrega para liberar el pago",
@@ -132,7 +132,7 @@ case "delivered":
 
 async function sendPushNotification(
   pushToken: string,
-  payload: NotificationPayload
+  payload: NotificationPayload,
 ): Promise<void> {
   try {
     const message = {
@@ -160,32 +160,51 @@ async function sendPushNotification(
 
 export async function notifyPagoMovilStatus(
   userId: string,
-  status: 'verified' | 'rejected',
+  status: "verified" | "rejected",
   orderId: string,
-  reason?: string
+  reason?: string,
 ): Promise<void> {
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
   if (!user || !user.pushToken) return;
 
-  const notification = status === 'verified'
-    ? { title: '✅ Pago verificado', body: 'Tu pago fue confirmado. Tu pedido está siendo procesado.', data: { orderId, screen: 'OrderTracking' } }
-    : { title: '❌ Pago rechazado', body: reason || 'Tu comprobante fue rechazado. Por favor verifica los datos.', data: { orderId, screen: 'PaymentProofUpload' } };
+  const notification =
+    status === "verified"
+      ? {
+          title: "✅ Pago verificado",
+          body: "Tu pago fue confirmado. Tu pedido está siendo procesado.",
+          data: { orderId, screen: "OrderTracking" },
+        }
+      : {
+          title: "❌ Pago rechazado",
+          body:
+            reason ||
+            "Tu comprobante fue rechazado. Por favor verifica los datos.",
+          data: { orderId, screen: "PaymentProofUpload" },
+        };
 
   await sendPushNotification(user.pushToken, notification);
 }
 
 export async function sendPushToUser(
   userId: string,
-  payload: { title: string; body: string; data?: Record<string, any> }
+  payload: { title: string; body: string; data?: Record<string, any> },
 ): Promise<void> {
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
   if (!user?.pushToken) return;
   await sendPushNotification(user.pushToken, payload);
 }
 
 export async function notifyDriverNewOrder(
   driverId: string,
-  orderId: string
+  orderId: string,
 ): Promise<void> {
   const [driver] = await db
     .select()

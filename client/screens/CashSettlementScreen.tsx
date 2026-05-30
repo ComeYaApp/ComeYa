@@ -14,7 +14,12 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -32,7 +37,7 @@ export default function CashSettlementScreen() {
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders || []);
-        
+
         // Calcular total correcto: business + platform por cada orden
         let totalAmount = 0;
         for (const order of data.orders || []) {
@@ -60,12 +65,15 @@ export default function CashSettlementScreen() {
 
   const handleSettle = async (orderId: string, amount: number) => {
     try {
-      console.log('🔵 Settling order:', orderId);
-      const response = await apiRequest("POST", `/api/cash-settlement/settle/${orderId}`);
-      console.log('🔵 Response status:', response.status);
+      console.log("🔵 Settling order:", orderId);
+      const response = await apiRequest(
+        "POST",
+        `/api/cash-settlement/settle/${orderId}`,
+      );
+      console.log("🔵 Response status:", response.status);
       const data = await response.json();
-      console.log('🔵 Settle response:', data);
-      
+      console.log("🔵 Settle response:", data);
+
       if (data.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showToast("Liquidación registrada", "success");
@@ -74,14 +82,15 @@ export default function CashSettlementScreen() {
         showToast(data.error || "Error", "error");
       }
     } catch (error: any) {
-      console.error('🔴 Settle error:', error);
+      console.error("🔴 Settle error:", error);
       showToast(error.message || "Error", "error");
     }
   };
 
   const renderOrder = ({ item }: { item: any }) => {
-    const items = typeof item.items === "string" ? JSON.parse(item.items) : item.items;
-    
+    const items =
+      typeof item.items === "string" ? JSON.parse(item.items) : item.items;
+
     // Calcular comisiones correctamente
     const subtotal = item.subtotal;
     const platformFee = Math.round(subtotal * 0.15); // 15% del subtotal
@@ -89,7 +98,9 @@ export default function CashSettlementScreen() {
     const totalToReceive = businessShare + platformFee; // Lo que el negocio debe recibir del repartidor
 
     return (
-      <View style={[styles.orderCard, { backgroundColor: theme.card }, Shadows.sm]}>
+      <View
+        style={[styles.orderCard, { backgroundColor: theme.card }, Shadows.sm]}
+      >
         <View style={styles.orderHeader}>
           <View style={{ flex: 1 }}>
             <ThemedText type="h4">Pedido #{item.id.slice(-6)}</ThemedText>
@@ -105,11 +116,17 @@ export default function CashSettlementScreen() {
         </View>
 
         <View style={styles.itemsList}>
-          {Array.isArray(items) && items.slice(0, 2).map((orderItem: any, index: number) => (
-            <ThemedText key={index} type="small" style={{ color: theme.textSecondary }}>
-              {orderItem.quantity}x {orderItem.name || orderItem.product?.name}
-            </ThemedText>
-          ))}
+          {Array.isArray(items) &&
+            items.slice(0, 2).map((orderItem: any, index: number) => (
+              <ThemedText
+                key={index}
+                type="small"
+                style={{ color: theme.textSecondary }}
+              >
+                {orderItem.quantity}x{" "}
+                {orderItem.name || orderItem.product?.name}
+              </ThemedText>
+            ))}
           {items.length > 2 && (
             <ThemedText type="small" style={{ color: theme.textSecondary }}>
               +{items.length - 2} más...
@@ -122,13 +139,17 @@ export default function CashSettlementScreen() {
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Subtotal productos
             </ThemedText>
-            <ThemedText type="body">€{(item.subtotal / 100).toFixed(2)}</ThemedText>
+            <ThemedText type="body">
+              €{(item.subtotal / 100).toFixed(2)}
+            </ThemedText>
           </View>
           <View>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Comisión plataforma (15%)
             </ThemedText>
-            <ThemedText type="body">€{(platformFee / 100).toFixed(2)}</ThemedText>
+            <ThemedText type="body">
+              €{(platformFee / 100).toFixed(2)}
+            </ThemedText>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -142,10 +163,16 @@ export default function CashSettlementScreen() {
 
         <Pressable
           onPress={() => handleSettle(item.id, totalToReceive)}
-          style={[styles.settleButton, { backgroundColor: ComeYaColors.success }]}
+          style={[
+            styles.settleButton,
+            { backgroundColor: ComeYaColors.success },
+          ]}
         >
           <Feather name="check-circle" size={18} color="#FFF" />
-          <ThemedText type="small" style={{ color: "#FFF", marginLeft: Spacing.xs }}>
+          <ThemedText
+            type="small"
+            style={{ color: "#FFF", marginLeft: Spacing.xs }}
+          >
             Marcar como Recibido
           </ThemedText>
         </Pressable>
@@ -157,12 +184,17 @@ export default function CashSettlementScreen() {
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <ThemedText type="h2">Liquidaciones de Efectivo</ThemedText>
-        <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.xs }}>
+        <ThemedText
+          type="small"
+          style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
+        >
           Registra cuando el repartidor te entregue el efectivo
         </ThemedText>
       </View>
 
-      <View style={[styles.totalCard, { backgroundColor: theme.card }, Shadows.md]}>
+      <View
+        style={[styles.totalCard, { backgroundColor: theme.card }, Shadows.md]}
+      >
         <View style={{ flex: 1 }}>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             Total pendiente de recibir
@@ -171,7 +203,12 @@ export default function CashSettlementScreen() {
             €{(total / 100).toFixed(2)}
           </ThemedText>
         </View>
-        <View style={[styles.countBadge, { backgroundColor: ComeYaColors.warning + "20" }]}>
+        <View
+          style={[
+            styles.countBadge,
+            { backgroundColor: ComeYaColors.warning + "20" },
+          ]}
+        >
           <ThemedText type="h3" style={{ color: ComeYaColors.warning }}>
             {orders.length}
           </ThemedText>
@@ -195,7 +232,11 @@ export default function CashSettlementScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Feather name="check-circle" size={64} color={ComeYaColors.success} />
+            <Feather
+              name="check-circle"
+              size={64}
+              color={ComeYaColors.success}
+            />
             <ThemedText
               type="h4"
               style={{ color: theme.textSecondary, marginTop: Spacing.lg }}

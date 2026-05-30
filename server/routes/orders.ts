@@ -1,7 +1,10 @@
 import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { sendPushToUser, sendOrderStatusNotification } from "../enhancedPushService";
+import {
+  sendPushToUser,
+  sendOrderStatusNotification,
+} from "../enhancedPushService";
 import { notifyNewOrder } from "../websocket";
 
 import { CONFIG } from "../config";
@@ -11,11 +14,11 @@ const router = express.Router();
 // TEST ENDPOINT - BORRAR DESPUÉS
 router.post("/test-ordertype", authenticateToken, async (req, res) => {
   const { orderType } = req.body;
-  return res.json({ 
-    received: orderType, 
+  return res.json({
+    received: orderType,
     type: typeof orderType,
-    isPickup: orderType === 'pickup',
-    body: req.body 
+    isPickup: orderType === "pickup",
+    body: req.body,
   });
 });
 
@@ -24,7 +27,7 @@ router.get("/", authenticateToken, async (req, res) => {
   try {
     const { orders, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const userOrders = await db
       .select({
         order: orders,
@@ -32,7 +35,7 @@ router.get("/", authenticateToken, async (req, res) => {
           id: businesses.id,
           name: businesses.name,
           image: businesses.image,
-        }
+        },
       })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
@@ -49,9 +52,11 @@ router.get("/", authenticateToken, async (req, res) => {
 // Get order by ID
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const { orders, businesses, products } = await import("@shared/schema-mysql");
+    const { orders, businesses, products } = await import(
+      "@shared/schema-mysql"
+    );
     const { db } = await import("../db");
-    
+
     const orderId = req.params.id as string;
     const [order] = await db
       .select({
@@ -62,7 +67,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
           image: businesses.image,
           phone: businesses.phone,
           address: businesses.address,
-        }
+        },
       })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
@@ -74,22 +79,25 @@ router.get("/:id", authenticateToken, async (req, res) => {
     }
 
     // Verify ownership
-    if (order.order.userId !== req.user!.id && 
-        req.user!.role !== "admin" && 
-        req.user!.role !== "delivery_driver") {
+    if (
+      order.order.userId !== req.user!.id &&
+      req.user!.role !== "admin" &&
+      req.user!.role !== "delivery_driver"
+    ) {
       return res.status(403).json({ error: "No autorizado" });
     }
 
     // Agregar flag si está buscando repartidor
-    const searchingDriver = order.order.status === "confirmed" && !order.order.deliveryPersonId;
+    const searchingDriver =
+      order.order.status === "confirmed" && !order.order.deliveryPersonId;
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       order: {
         ...order.order,
         business: order.business,
         searchingDriver,
-      }
+      },
     });
   } catch (error: any) {
     console.error("Get order error:", error);
@@ -100,26 +108,42 @@ router.get("/:id", authenticateToken, async (req, res) => {
 // Create order
 router.post("/", authenticateToken, async (req, res) => {
   try {
-    const { orders, businesses, products } = await import("@shared/schema-mysql");
+    const { orders, businesses, products } = await import(
+      "@shared/schema-mysql"
+    );
     const { db } = await import("../db");
-    
+
     const {
-      businessId, businessName, businessImage,
-      items: rawItems, deliveryAddress, deliveryAddressId,
-      deliveryLatitude, deliveryLongitude,
-      paymentMethod, notes,
-      subtotal: clientSubtotal, productosBase, nemyCommission,
-      deliveryFee: clientDeliveryFee, total: clientTotal,
-      substitutionPreference, itemSubstitutionPreferences,
-      cashPaymentAmount, cashChangeAmount,
-      couponCode, couponDiscount,
+      businessId,
+      businessName,
+      businessImage,
+      items: rawItems,
+      deliveryAddress,
+      deliveryAddressId,
+      deliveryLatitude,
+      deliveryLongitude,
+      paymentMethod,
+      notes,
+      subtotal: clientSubtotal,
+      productosBase,
+      nemyCommission,
+      deliveryFee: clientDeliveryFee,
+      total: clientTotal,
+      substitutionPreference,
+      itemSubstitutionPreferences,
+      cashPaymentAmount,
+      cashChangeAmount,
+      couponCode,
+      couponDiscount,
       orderType,
     } = req.body;
 
     // items puede llegar como array o como string JSON
     const items: any[] = Array.isArray(rawItems)
       ? rawItems
-      : (typeof rawItems === "string" ? JSON.parse(rawItems) : []);
+      : typeof rawItems === "string"
+        ? JSON.parse(rawItems)
+        : [];
 
     if (!businessId || !items || items.length === 0) {
       return res.status(400).json({ error: "Datos del pedido incompletos" });
@@ -129,10 +153,7 @@ router.post("/", authenticateToken, async (req, res) => {
     const [business] = await db
       .select()
       .from(businesses)
-      .where(and(
-        eq(businesses.id, businessId),
-        eq(businesses.isActive, true)
-      ))
+      .where(and(eq(businesses.id, businessId), eq(businesses.isActive, true)))
       .limit(1);
 
     if (!business) {
@@ -140,7 +161,9 @@ router.post("/", authenticateToken, async (req, res) => {
     }
 
     // Verify products exist and calculate total
-    const productIds = items.map((item: any) => item.productId || item.product?.id).filter(Boolean);
+    const productIds = items
+      .map((item: any) => item.productId || item.product?.id)
+      .filter(Boolean);
     const orderProducts = await db
       .select()
       .from(products)
@@ -150,16 +173,18 @@ router.post("/", authenticateToken, async (req, res) => {
     const validItems = [];
 
     for (const item of items) {
-      const product = orderProducts.find((p: any) => p.id === (item.productId || item.product?.id));
+      const product = orderProducts.find(
+        (p: any) => p.id === (item.productId || item.product?.id),
+      );
       if (!product || !product.isAvailable) {
-        return res.status(400).json({ 
-          error: `Producto no disponible: ${item.productId || item.product?.id}` 
+        return res.status(400).json({
+          error: `Producto no disponible: ${item.productId || item.product?.id}`,
         });
       }
 
       const itemTotal = product.price * item.quantity;
       subtotal += itemTotal;
-      
+
       validItems.push({
         productId: item.productId,
         quantity: item.quantity,
@@ -169,18 +194,24 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    const deliveryFee = orderType === 'pickup' ? 0 : (clientDeliveryFee ?? business.deliveryFee ?? await CONFIG.deliveryFee());
+    const deliveryFee =
+      orderType === "pickup"
+        ? 0
+        : (clientDeliveryFee ??
+          business.deliveryFee ??
+          (await CONFIG.deliveryFee()));
     const finalSubtotal = clientSubtotal ?? subtotal;
-    const nemyCommissionCalc = nemyCommission !== undefined && nemyCommission !== null 
-      ? nemyCommission 
-      : Math.round(finalSubtotal * (await CONFIG.commission()));
-    
+    const nemyCommissionCalc =
+      nemyCommission !== undefined && nemyCommission !== null
+        ? nemyCommission
+        : Math.round(finalSubtotal * (await CONFIG.commission()));
+
     // Validar que orderType sea válido y forzar a minúsculas
-    const validOrderType: 'pickup' | 'delivery' = 
-      typeof orderType === 'string' && orderType.toLowerCase() === 'pickup' 
-        ? 'pickup' 
-        : 'delivery';
-    
+    const validOrderType: "pickup" | "delivery" =
+      typeof orderType === "string" && orderType.toLowerCase() === "pickup"
+        ? "pickup"
+        : "delivery";
+
     // SIEMPRE usar el total del cliente - NO recalcular
     const total = clientTotal;
     // Calcular ganancias del negocio = subtotal base (sin comisión ComeYa ni delivery)
@@ -191,7 +222,10 @@ router.post("/", authenticateToken, async (req, res) => {
     let finalDeliveryLng = deliveryLongitude || null;
     if ((!finalDeliveryLat || !finalDeliveryLng) && deliveryAddress) {
       try {
-        const addrObj = typeof deliveryAddress === 'string' ? JSON.parse(deliveryAddress) : deliveryAddress;
+        const addrObj =
+          typeof deliveryAddress === "string"
+            ? JSON.parse(deliveryAddress)
+            : deliveryAddress;
         if (addrObj?.latitude) finalDeliveryLat = String(addrObj.latitude);
         if (addrObj?.longitude) finalDeliveryLng = String(addrObj.longitude);
       } catch {}
@@ -200,15 +234,25 @@ router.post("/", authenticateToken, async (req, res) => {
     // Si aún no hay coordenadas, geocodificar con Google Maps
     if ((!finalDeliveryLat || !finalDeliveryLng) && deliveryAddress) {
       try {
-        const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
+        const GMAPS_KEY =
+          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+          process.env.GOOGLE_MAPS_API_KEY ||
+          "";
         if (GMAPS_KEY) {
-          const addrText = typeof deliveryAddress === 'string'
-            ? deliveryAddress
-            : (deliveryAddress?.street || '') + ', Soria, España';
-          const query = encodeURIComponent(addrText.includes('Soria') ? addrText : addrText + ', Soria, España');
-          const geoRes = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`);
+          const addrText =
+            typeof deliveryAddress === "string"
+              ? deliveryAddress
+              : (deliveryAddress?.street || "") + ", Soria, España";
+          const query = encodeURIComponent(
+            addrText.includes("Soria")
+              ? addrText
+              : addrText + ", Soria, España",
+          );
+          const geoRes = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
+          );
           const geoData = await geoRes.json();
-          if (geoData.status === 'OK' && geoData.results[0]) {
+          if (geoData.status === "OK" && geoData.results[0]) {
             finalDeliveryLat = String(geoData.results[0].geometry.location.lat);
             finalDeliveryLng = String(geoData.results[0].geometry.location.lng);
           }
@@ -247,8 +291,8 @@ router.post("/", authenticateToken, async (req, res) => {
     await db.insert(orders).values(newOrder);
 
     // Si es pickup, generar código y QR
-    if (orderType === 'pickup') {
-      const { pickupService } = await import('../pickupService');
+    if (orderType === "pickup") {
+      const { pickupService } = await import("../pickupService");
       const estimatedMinutes = 20; // Default, el negocio lo ajustará
       await pickupService.createPickupOrder(orderId, estimatedMinutes);
     }
@@ -263,12 +307,17 @@ router.post("/", authenticateToken, async (req, res) => {
     }
 
     // WebSocket: Notificar en tiempo real
-    notifyNewOrder(businessId, { id: orderId, businessName: business.name, total, items: validItems });
+    notifyNewOrder(businessId, {
+      id: orderId,
+      businessName: business.name,
+      total,
+      items: validItems,
+    });
 
-    res.json({ 
+    res.json({
       success: true,
       orderId,
-      order: newOrder
+      order: newOrder,
     });
   } catch (error: any) {
     console.error("Create order error:", error);
@@ -283,16 +332,23 @@ router.post("/:id/confirm", authenticateToken, async (req, res) => {
     const { db } = await import("../db");
 
     const confirmId = req.params.id as string;
-    const [order] = await db.select().from(orders).where(eq(orders.id, confirmId)).limit(1);
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, confirmId))
+      .limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user!.id && req.user!.role !== "admin")
       return res.status(403).json({ error: "No autorizado" });
 
-    await db.update(orders).set({
-      status: "accepted",
-      confirmedToBusinessAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(orders.id, confirmId));
+    await db
+      .update(orders)
+      .set({
+        status: "accepted",
+        confirmedToBusinessAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, confirmId));
 
     // Notificar al cliente que el negocio aceptó
     await sendOrderStatusNotification(confirmId, order.userId, "accepted");
@@ -311,20 +367,29 @@ router.post("/:id/cancel-regret", authenticateToken, async (req, res) => {
     const { db } = await import("../db");
 
     const regretId = req.params.id as string;
-    const [order] = await db.select().from(orders).where(eq(orders.id, regretId)).limit(1);
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, regretId))
+      .limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user!.id && req.user!.role !== "admin")
       return res.status(403).json({ error: "No autorizado" });
     if (order.status !== "pending")
-      return res.status(400).json({ error: "Solo se puede cancelar un pedido pendiente" });
+      return res
+        .status(400)
+        .json({ error: "Solo se puede cancelar un pedido pendiente" });
 
-    await db.update(orders).set({
-      status: "cancelled" as any,
-      cancelledAt: new Date(),
-      cancelledBy: req.user!.id,
-      cancellationReason: "regret_period",
-      updatedAt: new Date(),
-    }).where(eq(orders.id, regretId));
+    await db
+      .update(orders)
+      .set({
+        status: "cancelled" as any,
+        cancelledAt: new Date(),
+        cancelledBy: req.user!.id,
+        cancellationReason: "regret_period",
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, regretId));
 
     res.json({ success: true, message: "Pedido cancelado sin penalización" });
   } catch (error: any) {
@@ -338,17 +403,26 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
   try {
     const { orders, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const { status } = req.body;
-    
+
     if (!status) {
       return res.status(400).json({ error: "Estado requerido" });
     }
 
     const validStatuses = [
-      "pending", "accepted", "preparing", "ready",
-      "assigned_driver", "picked_up", "on_the_way",
-      "in_transit", "arriving", "delivered", "cancelled", "refunded"
+      "pending",
+      "accepted",
+      "preparing",
+      "ready",
+      "assigned_driver",
+      "picked_up",
+      "on_the_way",
+      "in_transit",
+      "arriving",
+      "delivered",
+      "cancelled",
+      "refunded",
     ];
 
     if (!validStatuses.includes(status)) {
@@ -359,7 +433,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
     const [order] = await db
       .select({
         order: orders,
-        business: businesses
+        business: businesses,
       })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
@@ -372,10 +446,12 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
 
     // Check permissions
     // El repartidor NO puede poner "delivered" directamente — debe usar /complete-delivery
-    const canUpdate = 
+    const canUpdate =
       req.user!.role === "admin" ||
-      (req.user!.role === "business_owner" && order.business?.ownerId === req.user!.id) ||
-      (req.user!.role === "delivery_driver" && ["picked_up", "on_the_way", "in_transit", "arriving"].includes(status));
+      (req.user!.role === "business_owner" &&
+        order.business?.ownerId === req.user!.id) ||
+      (req.user!.role === "delivery_driver" &&
+        ["picked_up", "on_the_way", "in_transit", "arriving"].includes(status));
 
     if (!canUpdate) {
       return res.status(403).json({ error: "No autorizado" });
@@ -383,9 +459,9 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
 
     await db
       .update(orders)
-      .set({ 
+      .set({
         status,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(orders.id, statusId));
 
@@ -434,10 +510,14 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
 router.post("/:id/tip", authenticateToken, async (req, res) => {
   try {
     if (req.user!.role !== "customer") {
-      return res.status(403).json({ error: "Solo el cliente puede enviar propinas" });
+      return res
+        .status(403)
+        .json({ error: "Solo el cliente puede enviar propinas" });
     }
 
-    const { orders, wallets, transactions } = await import("@shared/schema-mysql");
+    const { orders, wallets, transactions } = await import(
+      "@shared/schema-mysql"
+    );
     const { db } = await import("../db");
     const { amount, deliveryPersonId } = req.body;
 
@@ -446,21 +526,35 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
     }
 
     const tipOrderId = req.params.id as string;
-    const [order] = await db.select().from(orders).where(eq(orders.id, tipOrderId)).limit(1);
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, tipOrderId))
+      .limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
-    if (order.userId !== req.user!.id) return res.status(403).json({ error: "No autorizado" });
-    if (order.status !== "delivered") return res.status(400).json({ error: "El pedido debe estar entregado" });
+    if (order.userId !== req.user!.id)
+      return res.status(403).json({ error: "No autorizado" });
+    if (order.status !== "delivered")
+      return res.status(400).json({ error: "El pedido debe estar entregado" });
 
     const driverId = deliveryPersonId || order.deliveryPersonId;
-    if (!driverId) return res.status(400).json({ error: "No hay repartidor asignado" });
+    if (!driverId)
+      return res.status(400).json({ error: "No hay repartidor asignado" });
 
     // Agregar propina a la wallet del repartidor
-    const [driverWallet] = await db.select().from(wallets).where(eq(wallets.userId, driverId)).limit(1);
+    const [driverWallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, driverId))
+      .limit(1);
     if (driverWallet) {
-      await db.update(wallets).set({
-        balance: driverWallet.balance + amount,
-        totalEarned: driverWallet.totalEarned + amount,
-      }).where(eq(wallets.userId, driverId));
+      await db
+        .update(wallets)
+        .set({
+          balance: driverWallet.balance + amount,
+          totalEarned: driverWallet.totalEarned + amount,
+        })
+        .where(eq(wallets.userId, driverId));
     }
 
     await db.insert(transactions).values({
@@ -495,9 +589,10 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
 
     // Solo el dueño del negocio o admin puede marcar como recogido
-    const canMark = 
+    const canMark =
       req.user!.role === "admin" ||
-      (req.user!.role === "business_owner" && order.business?.ownerId === req.user!.id);
+      (req.user!.role === "business_owner" &&
+        order.business?.ownerId === req.user!.id);
 
     if (!canMark) {
       return res.status(403).json({ error: "No autorizado" });
@@ -505,22 +600,33 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
 
     // Verificar que sea pickup y esté en estado ready
     if (order.order.orderType !== "pickup") {
-      return res.status(400).json({ error: "Solo para pedidos de tipo pickup" });
+      return res
+        .status(400)
+        .json({ error: "Solo para pedidos de tipo pickup" });
     }
 
     if (order.order.status !== "ready") {
-      return res.status(400).json({ error: "El pedido debe estar en estado 'listo'" });
+      return res
+        .status(400)
+        .json({ error: "El pedido debe estar en estado 'listo'" });
     }
 
     // Marcar como entregado
-    await db.update(orders).set({
-      status: "delivered",
-      deliveredAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(orders.id, pickupId));
+    await db
+      .update(orders)
+      .set({
+        status: "delivered",
+        deliveredAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, pickupId));
 
     // Notificar al cliente
-    await sendOrderStatusNotification(pickupId, order.order.userId, "delivered");
+    await sendOrderStatusNotification(
+      pickupId,
+      order.order.userId,
+      "delivered",
+    );
 
     // Liberar fondos (si aplica)
     const { fundReleaseService } = await import("../fundReleaseService");
@@ -552,35 +658,49 @@ router.put("/:id/complete", authenticateToken, async (req, res) => {
     }
 
     // Verificar que sea el dueño del negocio o admin
-    const canComplete = 
+    const canComplete =
       req.user!.role === "admin" ||
-      (req.user!.role === "business_owner" && order.business?.ownerId === req.user!.id);
+      (req.user!.role === "business_owner" &&
+        order.business?.ownerId === req.user!.id);
 
     if (!canComplete) {
       return res.status(403).json({ error: "No autorizado" });
     }
 
     // Verificar que el pedido esté en un estado válido para completar
-    const validStatuses = ["ready", "picked_up", "on_the_way", "in_transit", "arriving"];
+    const validStatuses = [
+      "ready",
+      "picked_up",
+      "on_the_way",
+      "in_transit",
+      "arriving",
+    ];
     if (!validStatuses.includes(order.order.status)) {
-      return res.status(400).json({ 
-        error: `No se puede completar un pedido en estado '${order.order.status}'` 
+      return res.status(400).json({
+        error: `No se puede completar un pedido en estado '${order.order.status}'`,
       });
     }
 
     // Marcar como entregado y confirmado
-    await db.update(orders).set({
-      status: "delivered",
-      deliveredAt: new Date(),
-      confirmedByCustomer: true,
-      confirmedByCustomerAt: new Date(),
-      fundsReleased: true,
-      fundsReleasedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(orders.id, completeId));
+    await db
+      .update(orders)
+      .set({
+        status: "delivered",
+        deliveredAt: new Date(),
+        confirmedByCustomer: true,
+        confirmedByCustomerAt: new Date(),
+        fundsReleased: true,
+        fundsReleasedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, completeId));
 
     // Notificar al cliente
-    await sendOrderStatusNotification(completeId, order.order.userId, "delivered");
+    await sendOrderStatusNotification(
+      completeId,
+      order.order.userId,
+      "delivered",
+    );
 
     // Crear payouts para negocio y repartidor
     try {
@@ -590,10 +710,10 @@ router.put("/:id/complete", authenticateToken, async (req, res) => {
       console.error(`Error creating payouts for order ${req.params.id}:`, e);
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Pedido completado exitosamente",
-      orderId: order.order.id
+      orderId: order.order.id,
     });
   } catch (error: any) {
     console.error("Complete order error:", error);
@@ -606,7 +726,7 @@ router.patch("/:id/cancel", authenticateToken, async (req, res) => {
   try {
     const { orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    
+
     const cancelId = req.params.id as string;
     const [order] = await db
       .select()
@@ -619,9 +739,8 @@ router.patch("/:id/cancel", authenticateToken, async (req, res) => {
     }
 
     // Check permissions
-    const canCancel = 
-      order.userId === req.user!.id ||
-      req.user!.role === "admin";
+    const canCancel =
+      order.userId === req.user!.id || req.user!.role === "admin";
 
     if (!canCancel) {
       return res.status(403).json({ error: "No autorizado" });
@@ -629,16 +748,16 @@ router.patch("/:id/cancel", authenticateToken, async (req, res) => {
 
     // Check if order can be cancelled
     if (!["pending", "confirmed", "accepted"].includes(order.status)) {
-      return res.status(400).json({ 
-        error: "El pedido no puede ser cancelado en su estado actual" 
+      return res.status(400).json({
+        error: "El pedido no puede ser cancelado en su estado actual",
       });
     }
 
     await db
       .update(orders)
-      .set({ 
+      .set({
         status: "cancelled",
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(orders.id, cancelId));
 

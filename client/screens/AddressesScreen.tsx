@@ -22,7 +22,12 @@ import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 interface Address {
@@ -232,7 +237,11 @@ export default function AddressesScreen() {
             onPress={() => setDefaultMutation.mutate(address.id)}
             style={[styles.actionButton, { borderColor: theme.border }]}
           >
-            <Feather name="check-circle" size={16} color={ComeYaColors.primary} />
+            <Feather
+              name="check-circle"
+              size={16}
+              color={ComeYaColors.primary}
+            />
             <ThemedText
               type="caption"
               style={{ color: ComeYaColors.primary, marginLeft: 4 }}

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import * as Location from 'expo-location';
+import { useState, useEffect, useRef, useCallback } from "react";
+import * as Location from "expo-location";
 
 // Cache for geocoding results
 const geocodingCache = new Map<string, any>();
@@ -32,7 +32,7 @@ export const useOptimizedGeocoding = () => {
     if (!address || address.length < 3) return null;
 
     const cacheKey = address.toLowerCase().trim();
-    
+
     // Check cache first
     if (geocodingCache.has(cacheKey)) {
       return geocodingCache.get(cacheKey);
@@ -49,30 +49,30 @@ export const useOptimizedGeocoding = () => {
 
     try {
       const result = await Location.geocodeAsync(address);
-      
+
       if (result && result.length > 0) {
         const coords = {
           latitude: result[0].latitude,
           longitude: result[0].longitude,
         };
-        
+
         // Cache the result
         geocodingCache.set(cacheKey, coords);
-        
+
         // Limit cache size
         if (geocodingCache.size > 100) {
           const firstKey = geocodingCache.keys().next().value;
           geocodingCache.delete(firstKey);
         }
-        
+
         return coords;
       }
-      
+
       return null;
     } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        setError('Error al buscar la dirección');
-        console.error('Geocoding error:', err);
+      if (err.name !== "AbortError") {
+        setError("Error al buscar la dirección");
+        console.error("Geocoding error:", err);
       }
       return null;
     } finally {
@@ -80,51 +80,55 @@ export const useOptimizedGeocoding = () => {
     }
   }, []);
 
-  const reverseGeocode = useCallback(async (coords: { latitude: number; longitude: number }) => {
-    const cacheKey = `${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}`;
-    
-    // Check cache first
-    if (reverseGeocodingCache.has(cacheKey)) {
-      return reverseGeocodingCache.get(cacheKey);
-    }
+  const reverseGeocode = useCallback(
+    async (coords: { latitude: number; longitude: number }) => {
+      const cacheKey = `${coords.latitude.toFixed(6)},${coords.longitude.toFixed(6)}`;
 
-    setIsLoading(true);
-    setError(null);
+      // Check cache first
+      if (reverseGeocodingCache.has(cacheKey)) {
+        return reverseGeocodingCache.get(cacheKey);
+      }
 
-    try {
-      const result = await Location.reverseGeocodeAsync(coords);
-      
-      if (result && result.length > 0) {
-        const address = {
-          street: result[0].street || '',
-          streetNumber: result[0].streetNumber || '',
-          city: result[0].city || '',
-          region: result[0].region || '',
-          postalCode: result[0].postalCode || '',
-          formattedAddress: `${result[0].street || ''} ${result[0].streetNumber || ''}, ${result[0].city || ''}`.trim(),
-        };
-        
-        // Cache the result
-        reverseGeocodingCache.set(cacheKey, address);
-        
-        // Limit cache size
-        if (reverseGeocodingCache.size > 100) {
-          const firstKey = reverseGeocodingCache.keys().next().value;
-          reverseGeocodingCache.delete(firstKey);
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const result = await Location.reverseGeocodeAsync(coords);
+
+        if (result && result.length > 0) {
+          const address = {
+            street: result[0].street || "",
+            streetNumber: result[0].streetNumber || "",
+            city: result[0].city || "",
+            region: result[0].region || "",
+            postalCode: result[0].postalCode || "",
+            formattedAddress:
+              `${result[0].street || ""} ${result[0].streetNumber || ""}, ${result[0].city || ""}`.trim(),
+          };
+
+          // Cache the result
+          reverseGeocodingCache.set(cacheKey, address);
+
+          // Limit cache size
+          if (reverseGeocodingCache.size > 100) {
+            const firstKey = reverseGeocodingCache.keys().next().value;
+            reverseGeocodingCache.delete(firstKey);
+          }
+
+          return address;
         }
-        
-        return address;
+
+        return null;
+      } catch (err: any) {
+        setError("Error al obtener la dirección");
+        console.error("Reverse geocoding error:", err);
+        return null;
+      } finally {
+        setIsLoading(false);
       }
-      
-      return null;
-    } catch (err: any) {
-      setError('Error al obtener la dirección');
-      console.error('Reverse geocoding error:', err);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const clearCache = useCallback(() => {
     geocodingCache.clear();
@@ -143,7 +147,7 @@ export const useOptimizedGeocoding = () => {
 // Memoization utility for expensive calculations
 export const useMemoizedCalculation = <T, P extends any[]>(
   fn: (...args: P) => T,
-  deps: P
+  deps: P,
 ): T => {
   const memoRef = useRef<{ deps: P; result: T } | null>(null);
 
@@ -160,15 +164,15 @@ export const useMemoizedCalculation = <T, P extends any[]>(
 // Deep equality check for dependencies
 const depsEqual = <T extends any[]>(a: T, b: T): boolean => {
   if (a.length !== b.length) return false;
-  
+
   for (let i = 0; i < a.length; i++) {
-    if (typeof a[i] === 'object' && typeof b[i] === 'object') {
+    if (typeof a[i] === "object" && typeof b[i] === "object") {
       if (JSON.stringify(a[i]) !== JSON.stringify(b[i])) return false;
     } else if (a[i] !== b[i]) {
       return false;
     }
   }
-  
+
   return true;
 };
 
@@ -179,12 +183,14 @@ export const usePerformanceMonitor = (componentName: string) => {
 
   useEffect(() => {
     renderCountRef.current += 1;
-    
+
     if (__DEV__) {
       const renderTime = Date.now() - startTimeRef.current;
-      console.log(`🔍 ${componentName} - Render #${renderCountRef.current} (${renderTime}ms)`);
+      console.log(
+        `🔍 ${componentName} - Render #${renderCountRef.current} (${renderTime}ms)`,
+      );
     }
-    
+
     startTimeRef.current = Date.now();
   });
 

@@ -51,7 +51,7 @@ export default function MainTabNavigator() {
   const isDelivery = user?.role === "delivery_driver";
   const isCustomer = !isAdmin && !isBusiness && !isDelivery;
 
-const tabBarHeight = Platform.select({
+  const tabBarHeight = Platform.select({
     ios: 56 + insets.bottom,
     android: 64 + Math.max(insets.bottom, 8),
     default: 64,
@@ -59,7 +59,15 @@ const tabBarHeight = Platform.select({
 
   return (
     <Tab.Navigator
-      initialRouteName={isAdmin ? "DashboardTab" : isDelivery ? "DeliveryTab" : isBusiness ? "BusinessTab" : "HomeTab"}
+      initialRouteName={
+        isAdmin
+          ? "DashboardTab"
+          : isDelivery
+            ? "DeliveryTab"
+            : isBusiness
+              ? "BusinessTab"
+              : "HomeTab"
+      }
       screenOptions={{
         tabBarActiveTintColor: ComeYaColors.primary,
         tabBarInactiveTintColor: theme.textSecondary,

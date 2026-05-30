@@ -18,10 +18,15 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
-import { gpsService } from '@/services/gpsService';
-import { GPS_CONFIG } from '@/constants/api';
+import { gpsService } from "@/services/gpsService";
+import { GPS_CONFIG } from "@/constants/api";
 
 export default function DriverAvailableOrdersScreen() {
   const insets = useSafeAreaInsets();
@@ -38,17 +43,17 @@ export default function DriverAvailableOrdersScreen() {
 
   const loadStatus = async () => {
     try {
-      console.log('🔍 Loading driver status...');
+      console.log("🔍 Loading driver status...");
       const response = await apiRequest("GET", "/api/delivery/status");
       const data = await response.json();
-      
-      console.log('📝 Status response:', data);
-      
-      if (data.success && typeof data.isOnline !== 'undefined') {
-        console.log('✅ Current status:', data.isOnline);
+
+      console.log("📝 Status response:", data);
+
+      if (data.success && typeof data.isOnline !== "undefined") {
+        console.log("✅ Current status:", data.isOnline);
         setIsOnline(data.isOnline);
       } else {
-        console.error('❌ Failed to load status:', data);
+        console.error("❌ Failed to load status:", data);
         // Set default to false if we can't get status
         setIsOnline(false);
       }
@@ -61,15 +66,18 @@ export default function DriverAvailableOrdersScreen() {
   const loadOrders = async () => {
     setLoadingOrders(true);
     try {
-      console.log('📦 Loading available orders...');
-      const response = await apiRequest("GET", "/api/delivery/available-orders");
+      console.log("📦 Loading available orders...");
+      const response = await apiRequest(
+        "GET",
+        "/api/delivery/available-orders",
+      );
       const data = await response.json();
-      console.log('📦 Orders response:', data);
+      console.log("📦 Orders response:", data);
       if (data.success) {
-        console.log('✅ Found orders:', data.orders?.length || 0);
+        console.log("✅ Found orders:", data.orders?.length || 0);
         setOrders(data.orders || []);
       } else {
-        console.error('❌ Failed to load orders:', data);
+        console.error("❌ Failed to load orders:", data);
       }
     } catch (error) {
       console.error("❌ Error loading orders:", error);
@@ -80,24 +88,29 @@ export default function DriverAvailableOrdersScreen() {
   const handleToggleStatus = async () => {
     setIsTogglingStatus(true);
     try {
-      console.log('🔄 Toggling driver status from:', isOnline);
-      const response = await apiRequest("POST", "/api/delivery/toggle-status", {});
+      console.log("🔄 Toggling driver status from:", isOnline);
+      const response = await apiRequest(
+        "POST",
+        "/api/delivery/toggle-status",
+        {},
+      );
       const data = await response.json();
-      
-      console.log('📝 Toggle response:', data);
-      
+
+      console.log("📝 Toggle response:", data);
+
       if (data.success) {
         // Use the isOnline value from server response if available
-        const newStatus = typeof data.isOnline !== 'undefined' ? data.isOnline : !isOnline;
-        console.log('✅ Status changed to:', newStatus);
+        const newStatus =
+          typeof data.isOnline !== "undefined" ? data.isOnline : !isOnline;
+        console.log("✅ Status changed to:", newStatus);
         setIsOnline(newStatus);
-        
+
         // Start/stop GPS tracking based on status
         if (newStatus) {
           if (!GPS_CONFIG.DISABLE_IN_DEV) {
             gpsService.startTracking();
           } else {
-            console.log('⚠️ GPS disabled by GPS_CONFIG.DISABLE_IN_DEV');
+            console.log("⚠️ GPS disabled by GPS_CONFIG.DISABLE_IN_DEV");
           }
         } else {
           gpsService.stopTracking();
@@ -105,10 +118,10 @@ export default function DriverAvailableOrdersScreen() {
         Haptics.notificationAsync(
           newStatus
             ? Haptics.NotificationFeedbackType.Success
-            : Haptics.NotificationFeedbackType.Warning
+            : Haptics.NotificationFeedbackType.Warning,
         );
       } else {
-        console.error('❌ Toggle failed:', data);
+        console.error("❌ Toggle failed:", data);
         Alert.alert("Error", data.error || "No se pudo cambiar el estado");
       }
     } catch (error) {
@@ -123,12 +136,12 @@ export default function DriverAvailableOrdersScreen() {
     loadStatus();
     loadOrders();
     const interval = setInterval(loadOrders, 5000);
-    
+
     // Start GPS tracking if online
     if (isOnline && !GPS_CONFIG.DISABLE_IN_DEV) {
       gpsService.startTracking();
     }
-    
+
     return () => {
       clearInterval(interval);
       gpsService.stopTracking();
@@ -146,7 +159,7 @@ export default function DriverAvailableOrdersScreen() {
       setShowOfflineModal(true);
       return;
     }
-    
+
     setPendingOrderId(orderId);
     setShowConfirmModal(true);
   };
@@ -160,9 +173,13 @@ export default function DriverAvailableOrdersScreen() {
     setOrders((prev: any[]) => prev.filter((o) => o.id !== orderId));
 
     try {
-      const response = await apiRequest("POST", `/api/delivery/accept/${orderId}`, {});
+      const response = await apiRequest(
+        "POST",
+        `/api/delivery/accept/${orderId}`,
+        {},
+      );
       const data = await response.json();
-      
+
       if (data.success) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert("Éxito", "Pedido aceptado exitosamente");
@@ -187,7 +204,8 @@ export default function DriverAvailableOrdersScreen() {
 
   const parseApiError = (rawMessage: string) => {
     const colonIndex = rawMessage.indexOf(":");
-    const payload = colonIndex >= 0 ? rawMessage.slice(colonIndex + 1).trim() : rawMessage;
+    const payload =
+      colonIndex >= 0 ? rawMessage.slice(colonIndex + 1).trim() : rawMessage;
     try {
       const parsed = JSON.parse(payload);
       return parsed?.error || parsed?.message || rawMessage;
@@ -202,9 +220,14 @@ export default function DriverAvailableOrdersScreen() {
   };
 
   const renderOrder = ({ item }: { item: any }) => {
-    const items = typeof item.items === "string" ? JSON.parse(item.items) : item.items;
-    const distanceKm = item.distanceKm ? (item.distanceKm / 1000).toFixed(1) : null;
-    const estimatedMin = item.estimatedMinutes || (distanceKm ? Math.round(parseFloat(distanceKm) * 3) : null);
+    const items =
+      typeof item.items === "string" ? JSON.parse(item.items) : item.items;
+    const distanceKm = item.distanceKm
+      ? (item.distanceKm / 1000).toFixed(1)
+      : null;
+    const estimatedMin =
+      item.estimatedMinutes ||
+      (distanceKm ? Math.round(parseFloat(distanceKm) * 3) : null);
 
     return (
       <View
@@ -224,14 +247,22 @@ export default function DriverAvailableOrdersScreen() {
         <View style={styles.routeRow}>
           <View style={styles.routePoint}>
             <View style={[styles.routeDot, { backgroundColor: "#FF9800" }]} />
-            <ThemedText type="small" style={{ color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, flex: 1 }}
+              numberOfLines={1}
+            >
               {item.businessAddress || item.businessName}
             </ThemedText>
           </View>
           <View style={[styles.routeLine, { backgroundColor: theme.border }]} />
           <View style={styles.routePoint}>
             <View style={[styles.routeDot, { backgroundColor: "#9C27B0" }]} />
-            <ThemedText type="small" style={{ color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, flex: 1 }}
+              numberOfLines={1}
+            >
               {item.deliveryAddress}
             </ThemedText>
           </View>
@@ -242,37 +273,63 @@ export default function DriverAvailableOrdersScreen() {
           {distanceKm && (
             <View style={styles.metricChip}>
               <Feather name="map-pin" size={13} color={theme.textSecondary} />
-              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>{distanceKm} km</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ color: theme.textSecondary, marginLeft: 4 }}
+              >
+                {distanceKm} km
+              </ThemedText>
             </View>
           )}
           {estimatedMin && (
             <View style={styles.metricChip}>
               <Feather name="clock" size={13} color={theme.textSecondary} />
-              <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>~{estimatedMin} min</ThemedText>
+              <ThemedText
+                type="small"
+                style={{ color: theme.textSecondary, marginLeft: 4 }}
+              >
+                ~{estimatedMin} min
+              </ThemedText>
             </View>
           )}
           <View style={styles.metricChip}>
-            <Feather name={item.paymentMethod === "cash" ? "dollar-sign" : "credit-card"} size={13} color={theme.textSecondary} />
-            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>
+            <Feather
+              name={
+                item.paymentMethod === "cash" ? "dollar-sign" : "credit-card"
+              }
+              size={13}
+              color={theme.textSecondary}
+            />
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, marginLeft: 4 }}
+            >
               {item.paymentMethod === "cash" ? "Efectivo" : "Digital"}
             </ThemedText>
           </View>
           <View style={styles.metricChip}>
             <Feather name="package" size={13} color={theme.textSecondary} />
-            <ThemedText type="small" style={{ color: theme.textSecondary, marginLeft: 4 }}>{items.length} prod.</ThemedText>
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, marginLeft: 4 }}
+            >
+              {items.length} prod.
+            </ThemedText>
           </View>
         </View>
 
         <View style={styles.orderFooter}>
           <View>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>Tu ganancia</ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              Tu ganancia
+            </ThemedText>
             <ThemedText type="h3" style={{ color: ComeYaColors.success }}>
               €{((item.deliveryFee || 0) / 100).toFixed(2)}
             </ThemedText>
           </View>
           <Pressable
             onPress={() => {
-              console.log('🔥 Button pressed for order:', item.id);
+              console.log("🔥 Button pressed for order:", item.id);
               handleAcceptOrder(item.id);
             }}
             disabled={!!acceptingOrderId}
@@ -291,7 +348,11 @@ export default function DriverAvailableOrdersScreen() {
             )}
             <ThemedText
               type="body"
-              style={{ color: "#FFF", marginLeft: Spacing.xs, fontWeight: "600" }}
+              style={{
+                color: "#FFF",
+                marginLeft: Spacing.xs,
+                fontWeight: "600",
+              }}
             >
               {acceptingOrderId === item.id ? "Aceptando..." : "Aceptar"}
             </ThemedText>
@@ -303,19 +364,34 @@ export default function DriverAvailableOrdersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg, backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + Spacing.lg,
+            backgroundColor: theme.background,
+          },
+        ]}
+      >
         <View style={styles.headerTop}>
           <ThemedText type="h2">Pedidos Disponibles</ThemedText>
           <View style={styles.statusToggle}>
             <View
               style={[
                 styles.statusIndicator,
-                { backgroundColor: isOnline ? ComeYaColors.success : theme.textSecondary },
+                {
+                  backgroundColor: isOnline
+                    ? ComeYaColors.success
+                    : theme.textSecondary,
+                },
               ]}
             />
             <ThemedText
               type="small"
-              style={{ marginHorizontal: Spacing.xs, color: isOnline ? ComeYaColors.success : theme.textSecondary }}
+              style={{
+                marginHorizontal: Spacing.xs,
+                color: isOnline ? ComeYaColors.success : theme.textSecondary,
+              }}
             >
               {isOnline ? "En línea" : "Desconectado"}
             </ThemedText>
@@ -323,15 +399,34 @@ export default function DriverAvailableOrdersScreen() {
               value={isOnline}
               onValueChange={handleToggleStatus}
               disabled={isTogglingStatus}
-              trackColor={{ false: theme.border, true: ComeYaColors.success + "60" }}
+              trackColor={{
+                false: theme.border,
+                true: ComeYaColors.success + "60",
+              }}
               thumbColor={isOnline ? ComeYaColors.success : theme.textSecondary}
             />
           </View>
         </View>
         {!isOnline && (
-          <View style={[styles.offlineWarning, { backgroundColor: ComeYaColors.warning + "20" }]}>
-            <Feather name="alert-circle" size={16} color={ComeYaColors.warning} />
-            <ThemedText type="small" style={{ color: ComeYaColors.warning, marginLeft: Spacing.xs, flex: 1 }}>
+          <View
+            style={[
+              styles.offlineWarning,
+              { backgroundColor: ComeYaColors.warning + "20" },
+            ]}
+          >
+            <Feather
+              name="alert-circle"
+              size={16}
+              color={ComeYaColors.warning}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                color: ComeYaColors.warning,
+                marginLeft: Spacing.xs,
+                flex: 1,
+              }}
+            >
               Activa tu estado para recibir pedidos
             </ThemedText>
           </View>
@@ -374,7 +469,7 @@ export default function DriverAvailableOrdersScreen() {
           </View>
         }
       />
-      
+
       <ConfirmModal
         visible={showConfirmModal}
         title="Aceptar Pedido"
@@ -382,7 +477,7 @@ export default function DriverAvailableOrdersScreen() {
         onConfirm={confirmAccept}
         onCancel={cancelAccept}
       />
-      
+
       <ConfirmModal
         visible={showOfflineModal}
         title="Estado Requerido"

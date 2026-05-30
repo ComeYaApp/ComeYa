@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, TextInput, Alert } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  TextInput,
+  Alert,
+} from "react-native";
 import * as Haptics from "expo-haptics";
 import { Feather } from "@expo/vector-icons";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
@@ -17,7 +26,9 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
   onBusinessPress,
 }) => {
   const { theme } = useTheme();
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
+    null,
+  );
   const [modalVisible, setModalVisible] = useState(false);
   const [customCommission, setCustomCommission] = useState("");
   const [saving, setSaving] = useState(false);
@@ -32,36 +43,50 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
   const handleSaveCommission = async () => {
     if (!selectedBusiness) return;
 
-    const commissionValue = customCommission.trim() === "" ? null : parseFloat(customCommission);
+    const commissionValue =
+      customCommission.trim() === "" ? null : parseFloat(customCommission);
 
-    if (commissionValue !== null && (isNaN(commissionValue) || commissionValue < 0 || commissionValue > 100)) {
-      Alert.alert("Error", "La comisión debe ser un número entre 0 y 100, o déjalo vacío para usar la comisión global.");
+    if (
+      commissionValue !== null &&
+      (isNaN(commissionValue) || commissionValue < 0 || commissionValue > 100)
+    ) {
+      Alert.alert(
+        "Error",
+        "La comisión debe ser un número entre 0 y 100, o déjalo vacío para usar la comisión global.",
+      );
       return;
     }
 
     setSaving(true);
     try {
-      await apiRequest("PUT", `/api/admin/businesses/${selectedBusiness.id}/commission`, {
-        customCommission: commissionValue,
-      });
+      await apiRequest(
+        "PUT",
+        `/api/admin/businesses/${selectedBusiness.id}/commission`,
+        {
+          customCommission: commissionValue,
+        },
+      );
 
       Alert.alert(
         "Éxito",
         commissionValue === null
           ? "Se usará la comisión global del sistema"
-          : `Comisión personalizada establecida en ${commissionValue}%`
+          : `Comisión personalizada establecida en ${commissionValue}%`,
       );
 
       setModalVisible(false);
       // Actualizar la lista
       onBusinessPress(selectedBusiness);
     } catch (error: any) {
-      Alert.alert("Error", error.message || "No se pudo actualizar la comisión");
+      Alert.alert(
+        "Error",
+        error.message || "No se pudo actualizar la comisión",
+      );
     } finally {
       setSaving(false);
     }
   };
-  
+
   return (
     <>
       <ScrollView style={styles.container}>
@@ -72,23 +97,47 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
             onPress={() => handleBusinessPress(business)}
           >
             <View style={styles.businessHeader}>
-              <Text style={[styles.businessName, { color: theme.text }]}>{business.name}</Text>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: business.isActive ? ComeYaColors.success : ComeYaColors.error }
-              ]}>
+              <Text style={[styles.businessName, { color: theme.text }]}>
+                {business.name}
+              </Text>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: business.isActive
+                      ? ComeYaColors.success
+                      : ComeYaColors.error,
+                  },
+                ]}
+              >
                 <Text style={styles.statusText}>
-                  {business.isActive ? 'Activo' : 'Inactivo'}
+                  {business.isActive ? "Activo" : "Inactivo"}
                 </Text>
               </View>
             </View>
-            <Text style={[styles.businessType, { color: theme.textSecondary }]}>{business.type === 'restaurant' ? 'Restaurante' : 'Mercado'}</Text>
-            <Text style={[styles.businessAddress, { color: theme.textSecondary }]}>{business.address || 'Sin dirección'}</Text>
-            <Text style={[styles.businessPhone, { color: theme.textSecondary }]}>{business.phone || 'Sin teléfono'}</Text>
+            <Text style={[styles.businessType, { color: theme.textSecondary }]}>
+              {business.type === "restaurant" ? "Restaurante" : "Mercado"}
+            </Text>
+            <Text
+              style={[styles.businessAddress, { color: theme.textSecondary }]}
+            >
+              {business.address || "Sin dirección"}
+            </Text>
+            <Text
+              style={[styles.businessPhone, { color: theme.textSecondary }]}
+            >
+              {business.phone || "Sin teléfono"}
+            </Text>
             <View style={styles.commissionRow}>
               <Feather name="percent" size={14} color={ComeYaColors.primary} />
-              <Text style={[styles.commissionText, { color: theme.textSecondary }]}>
-                Comisión: {business.customCommission !== null && business.customCommission !== undefined ? `${business.customCommission}% (personalizada)` : "Global del sistema"}
+              <Text
+                style={[styles.commissionText, { color: theme.textSecondary }]}
+              >
+                Comisión:{" "}
+                {business.customCommission !== null &&
+                business.customCommission !== undefined
+                  ? `${business.customCommission}% (personalizada)`
+                  : "Global del sistema"}
               </Text>
             </View>
           </TouchableOpacity>
@@ -103,19 +152,34 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Comisión Personalizada</Text>
+            <View
+              style={[styles.modalHeader, { borderBottomColor: theme.border }]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Comisión Personalizada
+              </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Feather name="x" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={[styles.businessNameModal, { color: theme.text }]}>{selectedBusiness?.name}</Text>
-              
-              <Text style={[styles.label, { color: theme.text }]}>Comisión (%)</Text>
+              <Text style={[styles.businessNameModal, { color: theme.text }]}>
+                {selectedBusiness?.name}
+              </Text>
+
+              <Text style={[styles.label, { color: theme.text }]}>
+                Comisión (%)
+              </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
                 value={customCommission}
                 onChangeText={setCustomCommission}
                 placeholder="Ej: 15 (vacío = usar global)"
@@ -123,23 +187,42 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
                 keyboardType="decimal-pad"
               />
 
-              <View style={[styles.infoBox, { backgroundColor: ComeYaColors.primary + "10" }]}>
+              <View
+                style={[
+                  styles.infoBox,
+                  { backgroundColor: ComeYaColors.primary + "10" },
+                ]}
+              >
                 <Feather name="info" size={16} color={ComeYaColors.primary} />
-                <Text style={[styles.infoText, { color: ComeYaColors.primary }]}>
-                  Deja vacío para usar la comisión global del sistema. Ingresa un número entre 0-100 para establecer una comisión personalizada.
+                <Text
+                  style={[styles.infoText, { color: ComeYaColors.primary }]}
+                >
+                  Deja vacío para usar la comisión global del sistema. Ingresa
+                  un número entre 0-100 para establecer una comisión
+                  personalizada.
                 </Text>
               </View>
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  style={[styles.button, styles.cancelButton, { borderColor: theme.border }]}
+                  style={[
+                    styles.button,
+                    styles.cancelButton,
+                    { borderColor: theme.border },
+                  ]}
                   onPress={() => setModalVisible(false)}
                   disabled={saving}
                 >
-                  <Text style={[styles.buttonText, { color: theme.text }]}>Cancelar</Text>
+                  <Text style={[styles.buttonText, { color: theme.text }]}>
+                    Cancelar
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.button, styles.saveButton, { backgroundColor: ComeYaColors.primary }]}
+                  style={[
+                    styles.button,
+                    styles.saveButton,
+                    { backgroundColor: ComeYaColors.primary },
+                  ]}
                   onPress={handleSaveCommission}
                   disabled={saving}
                 >

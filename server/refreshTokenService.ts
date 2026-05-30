@@ -1,12 +1,14 @@
-import jwt from 'jsonwebtoken';
-import { db } from './db';
-import { refreshTokens } from '../shared/schema-mysql';
-import { eq, and, lt } from 'drizzle-orm';
+import jwt from "jsonwebtoken";
+import { db } from "./db";
+import { refreshTokens } from "../shared/schema-mysql";
+import { eq, and, lt } from "drizzle-orm";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'comeya-secret-key-change-in-production';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'comeya-refresh-secret-change-in-production';
-const ACCESS_TOKEN_EXPIRY = '30d'; // 30 días
-const REFRESH_TOKEN_EXPIRY = '90d'; // 90 días
+const JWT_SECRET =
+  process.env.JWT_SECRET || "comeya-secret-key-change-in-production";
+const REFRESH_SECRET =
+  process.env.REFRESH_SECRET || "comeya-refresh-secret-change-in-production";
+const ACCESS_TOKEN_EXPIRY = "30d"; // 30 días
+const REFRESH_TOKEN_EXPIRY = "90d"; // 90 días
 
 interface TokenPayload {
   userId: number;
@@ -25,7 +27,7 @@ export function generateRefreshToken(payload: TokenPayload): string {
 export async function storeRefreshToken(
   userId: number,
   token: string,
-  expiresAt: Date
+  expiresAt: Date,
 ): Promise<void> {
   await db.insert(refreshTokens).values({
     userId,
@@ -35,7 +37,9 @@ export async function storeRefreshToken(
   });
 }
 
-export async function verifyRefreshToken(token: string): Promise<TokenPayload | null> {
+export async function verifyRefreshToken(
+  token: string,
+): Promise<TokenPayload | null> {
   try {
     // Verificar firma del token
     const decoded = jwt.verify(token, REFRESH_SECRET) as TokenPayload;
@@ -45,10 +49,7 @@ export async function verifyRefreshToken(token: string): Promise<TokenPayload | 
       .select()
       .from(refreshTokens)
       .where(
-        and(
-          eq(refreshTokens.token, token),
-          eq(refreshTokens.revoked, false)
-        )
+        and(eq(refreshTokens.token, token), eq(refreshTokens.revoked, false)),
       )
       .limit(1);
 
@@ -80,10 +81,7 @@ export async function revokeAllUserTokens(userId: string): Promise<void> {
     .update(refreshTokens)
     .set({ revoked: true })
     .where(
-      and(
-        eq(refreshTokens.userId, userId),
-        eq(refreshTokens.revoked, false)
-      )
+      and(eq(refreshTokens.userId, userId), eq(refreshTokens.revoked, false)),
     );
 }
 
@@ -92,7 +90,7 @@ export async function rotateRefreshToken(oldToken: string): Promise<{
   refreshToken: string;
 } | null> {
   const payload = await verifyRefreshToken(oldToken);
-  
+
   if (!payload) {
     return null;
   }
@@ -117,12 +115,13 @@ export async function rotateRefreshToken(oldToken: string): Promise<{
 
 export async function cleanupExpiredTokens(): Promise<void> {
   const now = new Date();
-  await db
-    .delete(refreshTokens)
-    .where(lt(refreshTokens.expiresAt, now));
+  await db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, now));
 }
 
 // Limpiar tokens expirados cada 24 horas
-setInterval(() => {
-  cleanupExpiredTokens().catch(console.error);
-}, 24 * 60 * 60 * 1000);
+setInterval(
+  () => {
+    cleanupExpiredTokens().catch(console.error);
+  },
+  24 * 60 * 60 * 1000,
+);

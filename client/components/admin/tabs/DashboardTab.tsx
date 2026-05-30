@@ -1,10 +1,22 @@
 import React from "react";
-import { View, Text, ScrollView, StyleSheet, Platform, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Platform,
+  TouchableOpacity,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ComeYaColors, Spacing } from "../../../constants/theme";
 import { useTheme } from "@/hooks/useTheme";
-import { DashboardMetrics, ActiveOrder, OnlineDriver, AdminStats } from "../types/admin.types";
+import {
+  DashboardMetrics,
+  ActiveOrder,
+  OnlineDriver,
+  AdminStats,
+} from "../types/admin.types";
 
 interface DashboardTabProps {
   metrics: DashboardMetrics | null;
@@ -66,108 +78,209 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     return statusMap[status?.toLowerCase()] || status;
   };
 
-  const isDriverAvailable = (driver: OnlineDriver) => driver.activeOrder === null;
+  const isDriverAvailable = (driver: OnlineDriver) =>
+    driver.activeOrder === null;
   const [showAllOrders, setShowAllOrders] = React.useState(false);
-  const displayedOrders = showAllOrders ? activeOrders : activeOrders.slice(0, 5);
+  const displayedOrders = showAllOrders
+    ? activeOrders
+    : activeOrders.slice(0, 5);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingTop: insets.top + 16, paddingBottom: 100 }}>
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>Métricas en Tiempo Real</Text>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{
+        padding: 16,
+        paddingTop: insets.top + 16,
+        paddingBottom: 100,
+      }}
+    >
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        Métricas en Tiempo Real
+      </Text>
       <View style={styles.metricsGrid}>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
           <Text style={styles.metricValue}>{metrics?.ordersToday || 0}</Text>
-          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Pedidos hoy</Text>
+          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+            Pedidos hoy
+          </Text>
         </View>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.metricValue, { color: ComeYaColors.error }]}>
             {metrics?.cancelledToday || 0}
           </Text>
-          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Cancelados</Text>
+          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+            Cancelados
+          </Text>
         </View>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
-          <Text style={styles.metricValue}>{metrics?.avgDeliveryTime || 35}m</Text>
-          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Tiempo prom.</Text>
+          <Text style={styles.metricValue}>
+            {metrics?.avgDeliveryTime || 35}m
+          </Text>
+          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+            Tiempo prom.
+          </Text>
         </View>
         <View style={[styles.metricCard, { backgroundColor: theme.card }]}>
           <Text style={[styles.metricValue, { color: ComeYaColors.success }]}>
             {metrics?.driversOnline || 0}/{metrics?.totalDrivers || 1}
           </Text>
-          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Repartidores</Text>
+          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+            Repartidores
+          </Text>
         </View>
       </View>
 
       <View style={styles.secondaryMetricsGrid}>
-        <View style={[styles.metricCard, styles.secondaryMetric, { backgroundColor: theme.card }]}>
+        <View
+          style={[
+            styles.metricCard,
+            styles.secondaryMetric,
+            { backgroundColor: theme.card },
+          ]}
+        >
           <Feather name="package" size={20} color={ComeYaColors.primary} />
-          <Text style={[styles.secondaryValue, { color: theme.text }]}>{activeOrders.length}</Text>
-          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Pedidos activos</Text>
+          <Text style={[styles.secondaryValue, { color: theme.text }]}>
+            {activeOrders.length}
+          </Text>
+          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+            Pedidos activos
+          </Text>
         </View>
-        <View style={[styles.metricCard, styles.secondaryMetric, { backgroundColor: theme.card }]}>
+        <View
+          style={[
+            styles.metricCard,
+            styles.secondaryMetric,
+            { backgroundColor: theme.card },
+          ]}
+        >
           <Feather name="pause-circle" size={20} color={ComeYaColors.warning} />
-          <Text style={[styles.secondaryValue, { color: theme.text }]}>{metrics?.pausedBusinesses || 0}</Text>
-          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Pausados</Text>
+          <Text style={[styles.secondaryValue, { color: theme.text }]}>
+            {metrics?.pausedBusinesses || 0}
+          </Text>
+          <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+            Pausados
+          </Text>
         </View>
       </View>
 
       <View style={styles.mapSection}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Mapa en tiempo real</Text>
-        <TouchableOpacity 
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Mapa en tiempo real
+        </Text>
+        <TouchableOpacity
           style={[styles.mapPlaceholder, { backgroundColor: theme.card }]}
           onPress={() => navigation?.navigate?.("MapView")}
           activeOpacity={0.7}
         >
           <Feather name="map" size={48} color={ComeYaColors.primary} />
-          <Text style={[styles.mapText, { color: theme.text, fontWeight: "600" }]}>
+          <Text
+            style={[styles.mapText, { color: theme.text, fontWeight: "600" }]}
+          >
             Ver mapa de negocios
           </Text>
           <Text style={[styles.mapSubtext, { color: theme.textSecondary }]}>
-            {onlineDrivers.length} repartidores | {activeOrders.length} pedidos activos
+            {onlineDrivers.length} repartidores | {activeOrders.length} pedidos
+            activos
           </Text>
         </TouchableOpacity>
       </View>
 
       {stats ? (
         <View style={styles.statsSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Resumen General</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Resumen General
+          </Text>
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
               <Feather name="users" size={24} color={ComeYaColors.primary} />
-              <Text style={[styles.statValue, { color: theme.text }]}>{stats.totalUsers}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Usuarios</Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                {stats.totalUsers}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                Usuarios
+              </Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
               <Feather name="shopping-bag" size={24} color="#3498DB" />
-              <Text style={[styles.statValue, { color: theme.text }]}>{stats.totalOrders}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pedidos</Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                {stats.totalOrders}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                Pedidos
+              </Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
-              <Feather name="dollar-sign" size={24} color={ComeYaColors.success} />
-              <Text style={[styles.statValue, { color: theme.text }]}>€{(stats.totalRevenue / 100).toFixed(0)}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Ingresos</Text>
+              <Feather
+                name="dollar-sign"
+                size={24}
+                color={ComeYaColors.success}
+              />
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                €{(stats.totalRevenue / 100).toFixed(0)}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                Ingresos
+              </Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card }]}>
               <Feather name="clock" size={24} color={ComeYaColors.warning} />
-              <Text style={[styles.statValue, { color: theme.text }]}>{stats.pendingOrders}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>
+                {stats.pendingOrders}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+                Pendientes
+              </Text>
             </View>
           </View>
 
-          <Text style={[styles.sectionTitle, { marginTop: Spacing.lg, color: theme.text }]}>Usuarios por rol</Text>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { marginTop: Spacing.lg, color: theme.text },
+            ]}
+          >
+            Usuarios por rol
+          </Text>
           <View style={styles.rolesGrid}>
-            <View key="customers" style={[styles.roleCard, { backgroundColor: theme.card }]}>
-              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>Clientes</Text>
-              <Text style={styles.roleValue}>{stats.usersByRole.customers}</Text>
+            <View
+              key="customers"
+              style={[styles.roleCard, { backgroundColor: theme.card }]}
+            >
+              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>
+                Clientes
+              </Text>
+              <Text style={styles.roleValue}>
+                {stats.usersByRole.customers}
+              </Text>
             </View>
-            <View key="businesses" style={[styles.roleCard, { backgroundColor: theme.card }]}>
-              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>Negocios</Text>
-              <Text style={styles.roleValue}>{stats.usersByRole.businesses}</Text>
+            <View
+              key="businesses"
+              style={[styles.roleCard, { backgroundColor: theme.card }]}
+            >
+              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>
+                Negocios
+              </Text>
+              <Text style={styles.roleValue}>
+                {stats.usersByRole.businesses}
+              </Text>
             </View>
-            <View key="delivery" style={[styles.roleCard, { backgroundColor: theme.card }]}>
-              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>Repartidores</Text>
+            <View
+              key="delivery"
+              style={[styles.roleCard, { backgroundColor: theme.card }]}
+            >
+              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>
+                Repartidores
+              </Text>
               <Text style={styles.roleValue}>{stats.usersByRole.delivery}</Text>
             </View>
-            <View key="admins" style={[styles.roleCard, { backgroundColor: theme.card }]}>
-              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>Admins</Text>
+            <View
+              key="admins"
+              style={[styles.roleCard, { backgroundColor: theme.card }]}
+            >
+              <Text style={[styles.roleLabel, { color: theme.textSecondary }]}>
+                Admins
+              </Text>
               <Text style={styles.roleValue}>{stats.usersByRole.admins}</Text>
             </View>
           </View>
@@ -176,17 +289,23 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Pedidos activos hoy ({activeOrders.length})</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Pedidos activos hoy ({activeOrders.length})
+          </Text>
           {activeOrders.length > 5 ? (
             <TouchableOpacity onPress={() => setShowAllOrders((prev) => !prev)}>
-              <Text style={styles.linkText}>{showAllOrders ? "Ver menos" : "Ver todos"}</Text>
+              <Text style={styles.linkText}>
+                {showAllOrders ? "Ver menos" : "Ver todos"}
+              </Text>
             </TouchableOpacity>
           ) : null}
         </View>
         {activeOrders.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.card }]}>
             <Feather name="inbox" size={32} color="#ccc" />
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No hay pedidos activos</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No hay pedidos activos
+            </Text>
           </View>
         ) : (
           displayedOrders.map((order) => (
@@ -198,16 +317,33 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             >
               <View style={styles.orderHeader}>
                 <View style={styles.orderInfo}>
-                  <Text style={[styles.orderCustomer, { color: theme.text }]}>{order.customer?.name || "Cliente"}</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + "20" }]}>
-                    <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+                  <Text style={[styles.orderCustomer, { color: theme.text }]}>
+                    {order.customer?.name || "Cliente"}
+                  </Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(order.status) + "20" },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusText,
+                        { color: getStatusColor(order.status) },
+                      ]}
+                    >
                       {translateStatus(order.status)}
                     </Text>
                   </View>
                 </View>
-                <Text style={styles.orderTotal}>€{((order.total || 0) / 100).toFixed(2)}</Text>
+                <Text style={styles.orderTotal}>
+                  €{((order.total || 0) / 100).toFixed(2)}
+                </Text>
               </View>
-              <Text style={[styles.orderAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+              <Text
+                style={[styles.orderAddress, { color: theme.textSecondary }]}
+                numberOfLines={1}
+              >
                 {order.deliveryAddress?.address || "Sin dirección"}
               </Text>
               <Text style={styles.orderDriver}>
@@ -219,11 +355,15 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Repartidores Online ({onlineDrivers.length})</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          Repartidores Online ({onlineDrivers.length})
+        </Text>
         {onlineDrivers.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.card }]}>
             <Feather name="truck" size={32} color="#ccc" />
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No hay repartidores online</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No hay repartidores online
+            </Text>
           </View>
         ) : (
           onlineDrivers.map((driver) => (
@@ -234,23 +374,48 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               onPress={() => onDriverPress?.(driver)}
             >
               <View style={styles.driverInfo}>
-                <View style={[styles.driverAvatar, { backgroundColor: ComeYaColors.primaryLight }]}>
+                <View
+                  style={[
+                    styles.driverAvatar,
+                    { backgroundColor: ComeYaColors.primaryLight },
+                  ]}
+                >
                   <Feather name="user" size={16} color={ComeYaColors.primary} />
                 </View>
-                <Text style={[styles.driverName, { color: theme.text }]}>{driver.name}</Text>
+                <Text style={[styles.driverName, { color: theme.text }]}>
+                  {driver.name}
+                </Text>
               </View>
-              <View style={[
-                styles.availabilityBadge, 
-                { backgroundColor: isDriverAvailable(driver) ? ComeYaColors.success + "20" : ComeYaColors.warning + "20" }
-              ]}>
-                <View style={[
-                  styles.availabilityDot,
-                  { backgroundColor: isDriverAvailable(driver) ? ComeYaColors.success : ComeYaColors.warning }
-                ]} />
-                <Text style={[
-                  styles.availabilityText,
-                  { color: isDriverAvailable(driver) ? ComeYaColors.success : ComeYaColors.warning }
-                ]}>
+              <View
+                style={[
+                  styles.availabilityBadge,
+                  {
+                    backgroundColor: isDriverAvailable(driver)
+                      ? ComeYaColors.success + "20"
+                      : ComeYaColors.warning + "20",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.availabilityDot,
+                    {
+                      backgroundColor: isDriverAvailable(driver)
+                        ? ComeYaColors.success
+                        : ComeYaColors.warning,
+                    },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.availabilityText,
+                    {
+                      color: isDriverAvailable(driver)
+                        ? ComeYaColors.success
+                        : ComeYaColors.warning,
+                    },
+                  ]}
+                >
                   {isDriverAvailable(driver) ? "Disponible" : "Ocupado"}
                 </Text>
               </View>

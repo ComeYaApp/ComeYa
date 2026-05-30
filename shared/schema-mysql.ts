@@ -28,11 +28,13 @@ export const users = mysqlTable("users", {
   // Datos personales España
   dni: varchar("dni", { length: 20 }), // DNI/NIE
   address: text("address"), // Dirección completa
-// Verificación de identidad
+  // Verificación de identidad
   idDocumentUrl: text("id_document_url"), // Foto DNI/NIE anverso
   idDocumentBackUrl: text("id_document_back_url"), // Foto DNI/NIE reverso
   autonomoDocumentUrl: text("autonomo_document_url"), // Cert. autónomo/empresa
-  verificationStatus: varchar("verification_status", { length: 20 }).default("pending"), // pending, verified, rejected
+  verificationStatus: varchar("verification_status", { length: 20 }).default(
+    "pending",
+  ), // pending, verified, rejected
   verificationNotes: text("verification_notes"),
   // Legacy Venezuela (mantener para no romper)
   // Legacy — mantener columnas para no romper BD existente
@@ -79,7 +81,9 @@ export const orders = mysqlTable("orders", {
   deliveryFee: int("delivery_fee").notNull(),
   total: int("total").notNull(),
   paymentMethod: text("payment_method").notNull(),
-  paymentProvider: varchar("payment_provider", { length: 50 }).default("stripe_bizum"),
+  paymentProvider: varchar("payment_provider", { length: 50 }).default(
+    "stripe_bizum",
+  ),
   orderType: text("order_type"), // delivery | pickup
   estimatedPickupTime: int("estimated_pickup_time"), // minutos estimados para pickup
   pickupReadyAt: timestamp("pickup_ready_at"), // cuando el pedido estuvo listo para recoger
@@ -154,7 +158,9 @@ export const orders = mysqlTable("orders", {
   // Compartir tracking
   trackingToken: varchar("tracking_token", { length: 255 }), // Token para compartir tracking
   trackingTokenExpires: timestamp("tracking_token_expires"),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 export const businesses = mysqlTable("businesses", {
@@ -208,14 +214,18 @@ export const businesses = mysqlTable("businesses", {
   verificationExpires: timestamp("verification_expires"),
   // Stripe Connect
   stripeAccountId: varchar("stripe_account_id", { length: 255 }),
-  stripeAccountStatus: varchar("stripe_account_status", { length: 50 }).default("not_connected"), // not_connected, pending, active
+  stripeAccountStatus: varchar("stripe_account_status", { length: 50 }).default(
+    "not_connected",
+  ), // not_connected, pending, active
   // Niveles de partner
   partnerLevel: varchar("partner_level", { length: 20 }).default("bronze"), // bronze, silver, gold, platinum
   partnerLevelUpdatedAt: timestamp("partner_level_updated_at"),
   customCommission: int("custom_commission"), // null = usa global, numero = % especifico para este negocio
   totalOrdersCompleted: int("total_orders_completed").default(0),
   totalRevenueGenerated: int("total_revenue_generated").default(0), // en centavos
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Wallets - billetera para cada usuario
@@ -253,7 +263,9 @@ export const transactions = mysqlTable("transactions", {
   metadata: text("metadata"), // JSON con info adicional
   pagoMovilReference: text("pago_movil_reference"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Payments - registro de pagos de Stripe
@@ -273,7 +285,9 @@ export const payments = mysqlTable("payments", {
   pagoMovilReference: text("pago_movil_reference"),
   processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Alias para compatibilidad con paymentService.ts
@@ -364,7 +378,9 @@ export const products = mysqlTable("products", {
 
 // Pago Móvil Verifications
 export const pagoMovilVerifications = mysqlTable("pago_movil_verifications", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   orderId: varchar("order_id", { length: 255 }).notNull(),
   userId: varchar("user_id", { length: 255 }).notNull(),
   reference: varchar("reference", { length: 50 }).notNull().unique(),
@@ -380,14 +396,18 @@ export const pagoMovilVerifications = mysqlTable("pago_movil_verifications", {
   verifiedAt: timestamp("verified_at"),
   rejectedReason: text("rejected_reason"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Payment Accounts - Cuentas de pago configuradas por cada usuario/negocio
 // Negocio/Driver: donde RECIBEN sus pagos del admin
 // Cliente: cuenta ORIGEN para pre-llenar checkout
 export const paymentAccounts = mysqlTable("payment_accounts", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull(),
   method: varchar("method", { length: 50 }).notNull(), // pago_movil, binance, zinli, zelle, cash
   isDefault: boolean("is_default").notNull().default(false),
@@ -405,13 +425,17 @@ export const paymentAccounts = mysqlTable("payment_accounts", {
   // Metadata
   label: varchar("label", { length: 100 }), // ej: "Mi Banesco principal"
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Payouts - Lo que el admin debe pagar a negocio/driver por cada pedido entregado
 // Reemplaza withdrawals + withdrawalRequests con algo simple y sin bugs
 export const payouts = mysqlTable("payouts", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   orderId: varchar("order_id", { length: 255 }).notNull(),
   recipientId: varchar("recipient_id", { length: 255 }).notNull(), // negocio o driver
   recipientType: varchar("recipient_type", { length: 20 }).notNull(), // business, driver
@@ -461,7 +485,9 @@ export const deliveryDrivers = mysqlTable("delivery_drivers", {
   gpsAccuracyAverage: int("gps_accuracy_average").default(0), // precisión promedio en metros
   // Stripe Connect
   stripeAccountId: varchar("stripe_account_id", { length: 255 }),
-  stripeAccountStatus: varchar("stripe_account_status", { length: 50 }).default("not_connected"),
+  stripeAccountStatus: varchar("stripe_account_status", { length: 50 }).default(
+    "not_connected",
+  ),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -583,7 +609,9 @@ export const reviewResponses = mysqlTable("review_responses", {
   responseText: text("response_text").notNull(),
   respondedBy: varchar("responded_by", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Review Tags - Tags predefinidos para reviews
@@ -602,7 +630,9 @@ export const reviewTags = mysqlTable("review_tags", {
 
 // Call logs for automatic business calls
 export const callLogs = mysqlTable("call_logs", {
-  id: varchar("id", { length: 255 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   orderId: varchar("order_id", { length: 255 }).notNull(),
   businessId: varchar("business_id", { length: 255 }).notNull(),
   callSid: varchar("call_sid", { length: 255 }),
@@ -744,23 +774,34 @@ export type DeliveryProof = typeof deliveryProofs.$inferSelect;
 
 // Payment Methods - Métodos de pago disponibles
 export const paymentMethods = mysqlTable("payment_methods", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   name: varchar("name", { length: 100 }).notNull(),
   provider: varchar("provider", { length: 50 }).notNull().unique(),
   displayName: varchar("display_name", { length: 100 }).notNull(),
   isActive: boolean("is_active").default(true),
-  requiresManualVerification: boolean("requires_manual_verification").default(false),
-  commissionPercentage: decimal("commission_percentage", { precision: 5, scale: 2 }).default("0.00"),
+  requiresManualVerification: boolean("requires_manual_verification").default(
+    false,
+  ),
+  commissionPercentage: decimal("commission_percentage", {
+    precision: 5,
+    scale: 2,
+  }).default("0.00"),
   iconUrl: varchar("icon_url", { length: 255 }),
   instructions: text("instructions"),
   config: text("config"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Payment Proofs - Comprobantes de pago
 export const paymentProofs = mysqlTable("payment_proofs", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   orderId: varchar("order_id", { length: 255 }),
   giftCardId: varchar("gift_card_id", { length: 255 }),
   userId: varchar("user_id", { length: 255 }).notNull(),
@@ -774,7 +815,9 @@ export const paymentProofs = mysqlTable("payment_proofs", {
   verificationNotes: text("verification_notes"),
   submittedAt: timestamp("submitted_at").default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 export type PaymentMethod = typeof paymentMethods.$inferSelect;
@@ -784,7 +827,9 @@ export type Payout = typeof payouts.$inferSelect;
 
 // Coupon Usage - Uso de cupones por usuario
 export const couponUsage = mysqlTable("coupon_usage", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   couponId: varchar("coupon_id", { length: 255 }).notNull(),
   userId: varchar("user_id", { length: 255 }).notNull(),
   orderId: varchar("order_id", { length: 255 }).notNull(),
@@ -794,7 +839,9 @@ export const couponUsage = mysqlTable("coupon_usage", {
 
 // Loyalty Points - Puntos de lealtad por usuario
 export const loyaltyPoints = mysqlTable("loyalty_points", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull().unique(),
   currentPoints: int("current_points").default(0),
   totalEarned: int("total_earned").default(0),
@@ -803,12 +850,16 @@ export const loyaltyPoints = mysqlTable("loyalty_points", {
   tierUpdatedAt: timestamp("tier_updated_at"),
   pointsToNextTier: int("points_to_next_tier").default(1000),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Loyalty Transactions - Historial de puntos
 export const loyaltyTransactions = mysqlTable("loyalty_transactions", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull(),
   type: varchar("type", { length: 50 }).notNull(),
   points: int("points").notNull(),
@@ -821,7 +872,9 @@ export const loyaltyTransactions = mysqlTable("loyalty_transactions", {
 
 // Loyalty Rewards - Recompensas disponibles
 export const loyaltyRewards = mysqlTable("loyalty_rewards", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   pointsCost: int("points_cost").notNull(),
@@ -835,12 +888,16 @@ export const loyaltyRewards = mysqlTable("loyalty_rewards", {
   imageUrl: text("image_url"),
   terms: text("terms"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // Loyalty Redemptions - Canjes de recompensas
 export const loyaltyRedemptions = mysqlTable("loyalty_redemptions", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull(),
   rewardId: varchar("reward_id", { length: 255 }).notNull(),
   pointsSpent: int("points_spent").notNull(),
@@ -853,7 +910,9 @@ export const loyaltyRedemptions = mysqlTable("loyalty_redemptions", {
 
 // Loyalty Challenges - Desafíos para ganar puntos
 export const loyaltyChallenges = mysqlTable("loyalty_challenges", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   type: varchar("type", { length: 50 }).notNull(),
@@ -866,22 +925,31 @@ export const loyaltyChallenges = mysqlTable("loyalty_challenges", {
 });
 
 // Loyalty Challenge Progress - Progreso de usuarios en challenges
-export const loyaltyChallengeProgress = mysqlTable("loyalty_challenge_progress", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
-  userId: varchar("user_id", { length: 255 }).notNull(),
-  challengeId: varchar("challenge_id", { length: 255 }).notNull(),
-  progress: int("progress").default(0),
-  completed: boolean("completed").default(false),
-  completedAt: timestamp("completed_at"),
-  claimed: boolean("claimed").default(false),
-  claimedAt: timestamp("claimed_at"),
-  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
-});
+export const loyaltyChallengeProgress = mysqlTable(
+  "loyalty_challenge_progress",
+  {
+    id: varchar("id", { length: 255 })
+      .primaryKey()
+      .default(sql`(UUID())`),
+    userId: varchar("user_id", { length: 255 }).notNull(),
+    challengeId: varchar("challenge_id", { length: 255 }).notNull(),
+    progress: int("progress").default(0),
+    completed: boolean("completed").default(false),
+    completedAt: timestamp("completed_at"),
+    claimed: boolean("claimed").default(false),
+    claimedAt: timestamp("claimed_at"),
+    createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").default(
+      sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+    ),
+  },
+);
 
 // Achievements - Logros
 export const achievements = mysqlTable("achievements", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   icon: varchar("icon", { length: 100 }),
@@ -896,7 +964,9 @@ export const achievements = mysqlTable("achievements", {
 
 // User Achievements - Logros desbloqueados por usuarios
 export const userAchievements = mysqlTable("user_achievements", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull(),
   achievementId: varchar("achievement_id", { length: 255 }).notNull(),
   unlockedAt: timestamp("unlocked_at").default(sql`CURRENT_TIMESTAMP`),
@@ -908,13 +978,16 @@ export type LoyaltyTransaction = typeof loyaltyTransactions.$inferSelect;
 export type LoyaltyReward = typeof loyaltyRewards.$inferSelect;
 export type LoyaltyRedemption = typeof loyaltyRedemptions.$inferSelect;
 export type LoyaltyChallenge = typeof loyaltyChallenges.$inferSelect;
-export type LoyaltyChallengeProgress = typeof loyaltyChallengeProgress.$inferSelect;
+export type LoyaltyChallengeProgress =
+  typeof loyaltyChallengeProgress.$inferSelect;
 export type Achievement = typeof achievements.$inferSelect;
 export type UserAchievement = typeof userAchievements.$inferSelect;
 
 // User Favorites - Favoritos de usuarios
 export const userFavorites = mysqlTable("user_favorites", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull(),
   itemType: varchar("item_type", { length: 50 }).notNull(),
   itemId: varchar("item_id", { length: 255 }).notNull(),
@@ -923,7 +996,9 @@ export const userFavorites = mysqlTable("user_favorites", {
 
 // User Preferences - Preferencias de usuario para IA
 export const userPreferences = mysqlTable("user_preferences", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull().unique(),
   cuisineTypes: text("cuisine_types"),
   priceRange: varchar("price_range", { length: 20 }).default("mid"),
@@ -933,12 +1008,16 @@ export const userPreferences = mysqlTable("user_preferences", {
   spiceLevel: int("spice_level").default(3),
   healthScore: int("health_score").default(5),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 // AI Recommendations - Recomendaciones generadas por IA
 export const aiRecommendations = mysqlTable("ai_recommendations", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull(),
   recommendationType: varchar("recommendation_type", { length: 50 }).notNull(),
   itemType: varchar("item_type", { length: 50 }).notNull(),
@@ -953,7 +1032,9 @@ export const aiRecommendations = mysqlTable("ai_recommendations", {
 
 // Support Tickets - Tickets de soporte
 export const supportTickets = mysqlTable("support_tickets", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull(),
   orderId: varchar("order_id", { length: 255 }),
   subject: varchar("subject", { length: 255 }).notNull(),
@@ -962,7 +1043,9 @@ export const supportTickets = mysqlTable("support_tickets", {
   status: varchar("status", { length: 50 }).default("open"),
   assignedTo: varchar("assigned_to", { length: 255 }),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
   resolvedAt: timestamp("resolved_at"),
 });
 
@@ -973,7 +1056,9 @@ export type SupportTicket = typeof supportTickets.$inferSelect;
 
 // Group Orders - Pedidos grupales
 export const groupOrders = mysqlTable("group_orders", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   creatorId: varchar("creator_id", { length: 255 }).notNull(),
   businessId: varchar("business_id", { length: 255 }).notNull(),
   businessName: varchar("business_name", { length: 255 }).notNull(),
@@ -991,7 +1076,9 @@ export const groupOrders = mysqlTable("group_orders", {
 });
 
 export const groupOrderParticipants = mysqlTable("group_order_participants", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   groupOrderId: varchar("group_order_id", { length: 255 }).notNull(),
   userId: varchar("user_id", { length: 255 }).notNull(),
   userName: varchar("user_name", { length: 255 }).notNull(),
@@ -1005,7 +1092,9 @@ export const groupOrderParticipants = mysqlTable("group_order_participants", {
 });
 
 export const groupOrderInvitations = mysqlTable("group_order_invitations", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   groupOrderId: varchar("group_order_id", { length: 255 }).notNull(),
   invitedBy: varchar("invited_by", { length: 255 }).notNull(),
   invitedUserId: varchar("invited_user_id", { length: 255 }),
@@ -1021,7 +1110,9 @@ export type GroupOrderInvitation = typeof groupOrderInvitations.$inferSelect;
 
 // Subscriptions - Suscripciones premium
 export const subscriptions = mysqlTable("subscriptions", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull().unique(),
   plan: varchar("plan", { length: 50 }).notNull().default("free"),
   status: varchar("status", { length: 50 }).notNull().default("active"),
@@ -1032,11 +1123,15 @@ export const subscriptions = mysqlTable("subscriptions", {
   currentPeriodEnd: timestamp("current_period_end").notNull(),
   cancelledAt: timestamp("cancelled_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 export const subscriptionBenefits = mysqlTable("subscription_benefits", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   plan: varchar("plan", { length: 50 }).notNull(),
   benefitType: varchar("benefit_type", { length: 50 }).notNull(),
   benefitValue: int("benefit_value"),
@@ -1045,7 +1140,9 @@ export const subscriptionBenefits = mysqlTable("subscription_benefits", {
 });
 
 export const subscriptionPlans = mysqlTable("subscription_plans", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   planKey: varchar("plan_key", { length: 50 }).notNull().unique(),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
@@ -1056,7 +1153,9 @@ export const subscriptionPlans = mysqlTable("subscription_plans", {
   color: varchar("color", { length: 20 }).default("#DC2626"),
   icon: varchar("icon", { length: 50 }).default("star"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 export type Subscription = typeof subscriptions.$inferSelect;
@@ -1065,7 +1164,9 @@ export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 
 // Gift Cards - Tarjetas regalo
 export const giftCards = mysqlTable("gift_cards", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   code: varchar("code", { length: 50 }).notNull().unique(),
   amount: int("original_amount").notNull(),
   balance: int("balance").notNull(),
@@ -1082,7 +1183,9 @@ export const giftCards = mysqlTable("gift_cards", {
 });
 
 export const giftCardTransactions = mysqlTable("gift_card_transactions", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   giftCardId: varchar("gift_card_id", { length: 255 }).notNull(),
   orderId: varchar("order_id", { length: 255 }),
   amount: int("amount").notNull(),
@@ -1091,7 +1194,9 @@ export const giftCardTransactions = mysqlTable("gift_card_transactions", {
 });
 
 export const giftCardDesigns = mysqlTable("gift_card_designs", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   name: varchar("name", { length: 100 }).notNull().unique(),
   imageUrl: text("image_url").notNull(),
   category: varchar("category", { length: 50 }).default("general"),
@@ -1106,7 +1211,9 @@ export type GiftCardDesign = typeof giftCardDesigns.$inferSelect;
 
 // Ticket Messages - Mensajes de conversación en tickets de soporte
 export const ticketMessages = mysqlTable("ticket_messages", {
-  id: varchar("id", { length: 255 }).primaryKey().default(sql`(UUID())`),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
   ticketId: varchar("ticket_id", { length: 255 }).notNull(),
   senderId: varchar("sender_id", { length: 255 }).notNull(),
   senderType: varchar("sender_type", { length: 20 }).notNull(), // user, admin
@@ -1118,16 +1225,20 @@ export type TicketMessage = typeof ticketMessages.$inferSelect;
 
 // Business Categories - Categorías de negocios (farmacia, restaurante, ferretería, etc.)
 export const businessCategories = mysqlTable("business_categories", {
-  id:           varchar("id",          { length: 255 }).primaryKey().default(sql`(UUID())`),
-  name:         varchar("name",        { length: 100 }).notNull(),
-  slug:         varchar("slug",        { length: 100 }).notNull().unique(),
-  icon:         varchar("icon",        { length: 50  }).notNull().default("grid"),
-  color:        varchar("color",       { length: 20  }).notNull().default("#6B7280"),
-  description:  text("description"),
-  isActive:     boolean("is_active").notNull().default(true),
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  name: varchar("name", { length: 100 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  icon: varchar("icon", { length: 50 }).notNull().default("grid"),
+  color: varchar("color", { length: 20 }).notNull().default("#6B7280"),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
   displayOrder: int("display_order").notNull().default(0),
-  createdAt:    timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  updatedAt:    timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
 });
 
 export type BusinessCategory = typeof businessCategories.$inferSelect;

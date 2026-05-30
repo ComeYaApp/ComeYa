@@ -18,7 +18,8 @@ class Logger {
 
   private getMinLevel(): LogLevel {
     if (this.minLevel === null) {
-      this.minLevel = process.env.NODE_ENV === "production" ? LogLevel.INFO : LogLevel.DEBUG;
+      this.minLevel =
+        process.env.NODE_ENV === "production" ? LogLevel.INFO : LogLevel.DEBUG;
     }
     return this.minLevel;
   }

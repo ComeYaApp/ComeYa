@@ -29,7 +29,7 @@ export class UnifiedFinancialService {
   // Get commission rates with caching and validation
   async getCommissionRates(): Promise<CommissionRates> {
     const now = Date.now();
-    
+
     if (this.cachedRates && now < this.cacheExpiry) {
       return this.cachedRates;
     }
@@ -41,24 +41,33 @@ export class UnifiedFinancialService {
         .where(eq(systemSettings.category, "commissions"));
 
       const platformRate = parseFloat(
-        settings.find((s) => s.key === "platform_commission_rate")?.value || "0.15"
+        settings.find((s) => s.key === "platform_commission_rate")?.value ||
+          "0.15",
       );
       const businessRate = parseFloat(
-        settings.find((s) => s.key === "business_commission_rate")?.value || "1.00"
+        settings.find((s) => s.key === "business_commission_rate")?.value ||
+          "1.00",
       );
       const driverRate = parseFloat(
-        settings.find((s) => s.key === "driver_commission_rate")?.value || "1.00"
+        settings.find((s) => s.key === "driver_commission_rate")?.value ||
+          "1.00",
       );
 
       // Validate ranges for the new model: 15% markup sobre productos, 100% del producto al negocio, 100% del delivery al driver
       if (platformRate < 0 || platformRate > 1) {
-        throw new Error(`Platform commission (markup) must be between 0% and 100% of products. Current: ${(platformRate * 100).toFixed(2)}%`);
+        throw new Error(
+          `Platform commission (markup) must be between 0% and 100% of products. Current: ${(platformRate * 100).toFixed(2)}%`,
+        );
       }
       if (businessRate <= 0 || businessRate > 1) {
-        throw new Error(`Business share must be between 0 and 1 (representa % del precio base de productos). Current: ${businessRate}`);
+        throw new Error(
+          `Business share must be between 0 and 1 (representa % del precio base de productos). Current: ${businessRate}`,
+        );
       }
       if (driverRate <= 0 || driverRate > 1) {
-        throw new Error(`Driver share must be between 0 and 1 (representa % de la tarifa de entrega). Current: ${driverRate}`);
+        throw new Error(
+          `Driver share must be between 0 and 1 (representa % de la tarifa de entrega). Current: ${driverRate}`,
+        );
       }
 
       this.cachedRates = {
@@ -81,7 +90,7 @@ export class UnifiedFinancialService {
     deliveryFee: number = 0,
     productosBase?: number,
     nemyCommission?: number,
-    businessOwnerId?: string
+    businessOwnerId?: string,
   ): Promise<{
     platform: number;
     business: number;
@@ -92,19 +101,25 @@ export class UnifiedFinancialService {
     const safeDeliveryFee = Math.max(0, deliveryFee || 0);
 
     // Si nos dan productosBase o nemyCommission, respetarlos para backwards compatibility
-    let productBase = productosBase && productosBase > 0
-      ? productosBase
-      : safeTotal - safeDeliveryFee;
+    let productBase =
+      productosBase && productosBase > 0
+        ? productosBase
+        : safeTotal - safeDeliveryFee;
 
     // Si el total ya incluye comisión MOUZO, removerla para aislar el producto
     if (!productosBase || productosBase <= 0) {
       const baseWithoutDelivery = safeTotal - safeDeliveryFee;
-      productBase = baseWithoutDelivery > 0 ? Math.round(baseWithoutDelivery / 1.15) : 0;
+      productBase =
+        baseWithoutDelivery > 0 ? Math.round(baseWithoutDelivery / 1.15) : 0;
     }
 
-    const platformAmount = nemyCommission && nemyCommission > 0
-      ? nemyCommission
-      : Math.round(productBase * await this.getBusinessCommissionRate(businessOwnerId));
+    const platformAmount =
+      nemyCommission && nemyCommission > 0
+        ? nemyCommission
+        : Math.round(
+            productBase *
+              (await this.getBusinessCommissionRate(businessOwnerId)),
+          );
 
     const businessAmount = productBase;
     const driverAmount = safeDeliveryFee;
@@ -131,7 +146,7 @@ export class UnifiedFinancialService {
     userId: string,
     amount: number,
     orderId?: string,
-    description?: string
+    description?: string,
   ): Promise<void> {
     return await db.transaction(async (tx) => {
       let [wallet] = await tx
@@ -171,18 +186,21 @@ export class UnifiedFinancialService {
           newDebt: newCashOwed,
           debtIncrease: amount,
           timestamp: new Date().toISOString(),
-          source: 'cash_delivery_system'
-        })
+          source: "cash_delivery_system",
+        }),
       });
 
       // Log for audit trail
-      logger.warn(`💵 Cash debt updated: User ${userId} - $${(amount/100).toFixed(2)} - Total debt: $${(newCashOwed/100).toFixed(2)}`, {
-        userId,
-        amount,
-        orderId,
-        previousDebt: wallet.cashOwed,
-        newDebt: newCashOwed
-      });
+      logger.warn(
+        `💵 Cash debt updated: User ${userId} - $${(amount / 100).toFixed(2)} - Total debt: $${(newCashOwed / 100).toFixed(2)}`,
+        {
+          userId,
+          amount,
+          orderId,
+          previousDebt: wallet.cashOwed,
+          newDebt: newCashOwed,
+        },
+      );
     });
   }
 
@@ -193,7 +211,7 @@ export class UnifiedFinancialService {
     type: string,
     orderId?: string,
     description?: string,
-    usePendingBalance: boolean = false // NEW: Use pending balance instead of available
+    usePendingBalance: boolean = false, // NEW: Use pending balance instead of available
   ): Promise<void> {
     return await db.transaction(async (tx) => {
       // First, verify user exists
@@ -224,7 +242,7 @@ export class UnifiedFinancialService {
           totalEarned: 0,
           totalWithdrawn: 0,
         });
-        
+
         [wallet] = await tx
           .select()
           .from(wallets)
@@ -237,12 +255,16 @@ export class UnifiedFinancialService {
       }
 
       // Determine which balance to update
-      const targetBalance = usePendingBalance ? wallet.pendingBalance : wallet.balance;
+      const targetBalance = usePendingBalance
+        ? wallet.pendingBalance
+        : wallet.balance;
       const newBalance = targetBalance + amount;
-      
+
       // Validate balance won't go negative
       if (newBalance < 0) {
-        throw new Error(`Insufficient balance. Current: ${targetBalance}, Requested: ${amount}`);
+        throw new Error(
+          `Insufficient balance. Current: ${targetBalance}, Requested: ${amount}`,
+        );
       }
 
       // Update wallet
@@ -251,7 +273,8 @@ export class UnifiedFinancialService {
           .update(wallets)
           .set({
             pendingBalance: newBalance,
-            totalEarned: amount > 0 ? wallet.totalEarned + amount : wallet.totalEarned,
+            totalEarned:
+              amount > 0 ? wallet.totalEarned + amount : wallet.totalEarned,
             updatedAt: new Date(),
           })
           .where(eq(wallets.userId, userId));
@@ -260,7 +283,8 @@ export class UnifiedFinancialService {
           .update(wallets)
           .set({
             balance: newBalance,
-            totalEarned: amount > 0 ? wallet.totalEarned + amount : wallet.totalEarned,
+            totalEarned:
+              amount > 0 ? wallet.totalEarned + amount : wallet.totalEarned,
             updatedAt: new Date(),
           })
           .where(eq(wallets.userId, userId));
@@ -282,27 +306,35 @@ export class UnifiedFinancialService {
           userType: user.role,
           userName: user.name,
           timestamp: new Date().toISOString(),
-          source: 'unified_financial_service',
-          isPending: usePendingBalance
-        })
+          source: "unified_financial_service",
+          isPending: usePendingBalance,
+        }),
       });
 
       // Log for audit trail
       const balanceType = usePendingBalance ? "pending" : "available";
-      logger.info(`💰 Wallet updated (${balanceType}): ${user.name} (${userId}) - ${type} - $${(amount/100).toFixed(2)}`, {
-        userId,
-        type,
-        amount,
-        orderId,
-        balanceBefore: targetBalance,
-        balanceAfter: newBalance,
-        isPending: usePendingBalance
-      });
+      logger.info(
+        `💰 Wallet updated (${balanceType}): ${user.name} (${userId}) - ${type} - $${(amount / 100).toFixed(2)}`,
+        {
+          userId,
+          type,
+          amount,
+          orderId,
+          balanceBefore: targetBalance,
+          balanceAfter: newBalance,
+          isPending: usePendingBalance,
+        },
+      );
     });
   }
 
   // Validate order total calculation
-  validateOrderTotal(subtotal: number, deliveryFee: number, tax: number, total: number): boolean {
+  validateOrderTotal(
+    subtotal: number,
+    deliveryFee: number,
+    tax: number,
+    total: number,
+  ): boolean {
     const calculatedTotal = subtotal + deliveryFee + tax;
     return calculatedTotal === total;
   }
@@ -351,10 +383,16 @@ export class UnifiedFinancialService {
   }
 
   // Check if user can withdraw
-  async canUserWithdraw(userId: string, userRole: string): Promise<{ allowed: boolean; reason?: string }> {
+  async canUserWithdraw(
+    userId: string,
+    userRole: string,
+  ): Promise<{ allowed: boolean; reason?: string }> {
     // Only business_owner, delivery_driver, and admin can withdraw
-    if (!['business_owner', 'delivery_driver', 'admin'].includes(userRole)) {
-      return { allowed: false, reason: 'Solo negocios, repartidores y administradores pueden retirar' };
+    if (!["business_owner", "delivery_driver", "admin"].includes(userRole)) {
+      return {
+        allowed: false,
+        reason: "Solo negocios, repartidores y administradores pueden retirar",
+      };
     }
 
     const wallet = await this.getWallet(userId);
@@ -362,11 +400,17 @@ export class UnifiedFinancialService {
     const availableBalance = wallet.balance - (wallet.cashOwed || 0);
 
     if (availableBalance < MINIMUM_WITHDRAWAL) {
-      return { allowed: false, reason: `Saldo mínimo para retiro: $${MINIMUM_WITHDRAWAL / 100} MXN` };
+      return {
+        allowed: false,
+        reason: `Saldo mínimo para retiro: $${MINIMUM_WITHDRAWAL / 100} MXN`,
+      };
     }
 
     if (wallet.cashOwed > 0) {
-      return { allowed: false, reason: 'Debes liquidar tu efectivo pendiente antes de retirar' };
+      return {
+        allowed: false,
+        reason: "Debes liquidar tu efectivo pendiente antes de retirar",
+      };
     }
 
     return { allowed: true };
@@ -378,26 +422,26 @@ export class UnifiedFinancialService {
 
     // Card - available for all
     methods.push({
-      id: 'card',
-      name: 'Tarjeta',
-      icon: 'card-outline',
+      id: "card",
+      name: "Tarjeta",
+      icon: "card-outline",
       available: true,
     });
 
     // Cash - available for all
     methods.push({
-      id: 'cash',
-      name: 'Efectivo',
-      icon: 'cash-outline',
+      id: "cash",
+      name: "Efectivo",
+      icon: "cash-outline",
       available: true,
     });
 
     // Wallet - available for all with balance
     const wallet = await this.getWallet(userId);
     methods.push({
-      id: 'wallet',
-      name: 'Billetera MOUZO',
-      icon: 'wallet-outline',
+      id: "wallet",
+      name: "Billetera MOUZO",
+      icon: "wallet-outline",
       available: wallet.balance > 0,
       balance: wallet.balance,
     });
@@ -411,7 +455,7 @@ export class UnifiedFinancialService {
     userRole: string;
     orderId: string;
     amount: number;
-    method: 'card' | 'cash' | 'wallet';
+    method: "card" | "cash" | "wallet";
     businessId: string;
     driverId?: string;
   }) {
@@ -419,8 +463,8 @@ export class UnifiedFinancialService {
 
     try {
       switch (method) {
-        case 'card':
-          const { createPaymentIntent } = await import('./paymentService');
+        case "card":
+          const { createPaymentIntent } = await import("./paymentService");
           return await createPaymentIntent({
             orderId,
             amount,
@@ -429,8 +473,8 @@ export class UnifiedFinancialService {
             driverId,
           });
 
-        case 'cash':
-          const { processCashPayment } = await import('./cashPaymentService');
+        case "cash":
+          const { processCashPayment } = await import("./cashPaymentService");
           return await processCashPayment({
             orderId,
             customerId: userId,
@@ -439,11 +483,17 @@ export class UnifiedFinancialService {
             orderTotal: amount,
           });
 
-        case 'wallet':
-          return await this.processWalletPayment(userId, orderId, amount, businessId, driverId);
+        case "wallet":
+          return await this.processWalletPayment(
+            userId,
+            orderId,
+            amount,
+            businessId,
+            driverId,
+          );
 
         default:
-          return { success: false, error: 'Método de pago no soportado' };
+          return { success: false, error: "Método de pago no soportado" };
       }
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -456,7 +506,7 @@ export class UnifiedFinancialService {
     orderId: string,
     amount: number,
     businessId: string,
-    driverId?: string
+    driverId?: string,
   ) {
     return await db.transaction(async (tx) => {
       const [wallet] = await tx
@@ -466,7 +516,7 @@ export class UnifiedFinancialService {
         .limit(1);
 
       if (!wallet || wallet.balance < amount) {
-        throw new Error('Saldo insuficiente en billetera');
+        throw new Error("Saldo insuficiente en billetera");
       }
 
       // Deduct from wallet
@@ -479,16 +529,16 @@ export class UnifiedFinancialService {
         .where(eq(wallets.userId, userId));
 
       // Create payment record
-      const { payments } = await import('@shared/schema-mysql');
+      const { payments } = await import("@shared/schema-mysql");
       await tx.insert(payments).values({
         orderId,
         customerId: userId,
         businessId,
         driverId,
         amount,
-        currency: 'MXN',
-        status: 'succeeded',
-        paymentMethod: 'wallet',
+        currency: "MXN",
+        status: "succeeded",
+        paymentMethod: "wallet",
         processedAt: new Date(),
       });
 
@@ -497,34 +547,35 @@ export class UnifiedFinancialService {
         walletId: wallet.id,
         userId,
         orderId,
-        type: 'wallet_payment',
+        type: "wallet_payment",
         amount: -amount,
         balanceBefore: wallet.balance,
         balanceAfter: wallet.balance - amount,
         description: `Pago con billetera - Pedido #${orderId.slice(-6)}`,
-        status: 'completed',
+        status: "completed",
       });
 
       // Update order
-      const { orders } = await import('@shared/schema-mysql');
+      const { orders } = await import("@shared/schema-mysql");
       await tx
         .update(orders)
         .set({
-          status: 'paid',
-          paymentMethod: 'wallet',
+          status: "paid",
+          paymentMethod: "wallet",
           paidAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(orders.id, orderId));
 
-      return { success: true, message: 'Pago procesado con billetera' };
+      return { success: true, message: "Pago procesado con billetera" };
     });
   }
 
   async getBusinessCommissionRate(ownerId?: string): Promise<number> {
     if (!ownerId) return 0.15;
     try {
-      const discount = await SubscriptionService.getBusinessCommissionDiscount(ownerId);
+      const discount =
+        await SubscriptionService.getBusinessCommissionDiscount(ownerId);
       return discount.commissionRate;
     } catch {
       return 0.15;

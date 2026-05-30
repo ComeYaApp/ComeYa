@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 
 interface CacheItem<T> {
   data: T;
@@ -8,13 +8,13 @@ interface CacheItem<T> {
 }
 
 export class OfflineCacheService {
-  private static readonly CACHE_PREFIX = '@ComeYa_cache_';
-  private static readonly BUSINESSES_KEY = 'businesses';
-  private static readonly PRODUCTS_KEY = 'products';
-  private static readonly CART_KEY = 'cart';
-  private static readonly FAVORITES_KEY = 'favorites';
-  private static readonly USER_KEY = 'user';
-  private static readonly ORDERS_KEY = 'orders';
+  private static readonly CACHE_PREFIX = "@ComeYa_cache_";
+  private static readonly BUSINESSES_KEY = "businesses";
+  private static readonly PRODUCTS_KEY = "products";
+  private static readonly CART_KEY = "cart";
+  private static readonly FAVORITES_KEY = "favorites";
+  private static readonly USER_KEY = "user";
+  private static readonly ORDERS_KEY = "orders";
 
   // Verificar conexión
   static async isOnline(): Promise<boolean> {
@@ -23,7 +23,11 @@ export class OfflineCacheService {
   }
 
   // Guardar en caché
-  static async set<T>(key: string, data: T, expiresIn: number = 3600000): Promise<void> {
+  static async set<T>(
+    key: string,
+    data: T,
+    expiresIn: number = 3600000,
+  ): Promise<void> {
     try {
       const cacheItem: CacheItem<T> = {
         data,
@@ -32,10 +36,10 @@ export class OfflineCacheService {
       };
       await AsyncStorage.setItem(
         `${this.CACHE_PREFIX}${key}`,
-        JSON.stringify(cacheItem)
+        JSON.stringify(cacheItem),
       );
     } catch (error) {
-      console.error('Cache set error:', error);
+      console.error("Cache set error:", error);
     }
   }
 
@@ -56,7 +60,7 @@ export class OfflineCacheService {
 
       return cacheItem.data;
     } catch (error) {
-      console.error('Cache get error:', error);
+      console.error("Cache get error:", error);
       return null;
     }
   }
@@ -66,7 +70,7 @@ export class OfflineCacheService {
     try {
       await AsyncStorage.removeItem(`${this.CACHE_PREFIX}${key}`);
     } catch (error) {
-      console.error('Cache remove error:', error);
+      console.error("Cache remove error:", error);
     }
   }
 
@@ -77,7 +81,7 @@ export class OfflineCacheService {
       const cacheKeys = keys.filter((key) => key.startsWith(this.CACHE_PREFIX));
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      console.error('Cache clear error:', error);
+      console.error("Cache clear error:", error);
     }
   }
 
@@ -92,12 +96,17 @@ export class OfflineCacheService {
   }
 
   // Guardar productos de un negocio
-  static async cacheBusinessProducts(businessId: string, products: any[]): Promise<void> {
+  static async cacheBusinessProducts(
+    businessId: string,
+    products: any[],
+  ): Promise<void> {
     await this.set(`${this.PRODUCTS_KEY}_${businessId}`, products, 1800000); // 30 min
   }
 
   // Obtener productos cacheados
-  static async getCachedBusinessProducts(businessId: string): Promise<any[] | null> {
+  static async getCachedBusinessProducts(
+    businessId: string,
+  ): Promise<any[] | null> {
     return this.get<any[]>(`${this.PRODUCTS_KEY}_${businessId}`);
   }
 
@@ -142,7 +151,7 @@ export class OfflineCacheService {
   }
 
   // Cola de sincronización (acciones pendientes)
-  private static readonly SYNC_QUEUE_KEY = 'sync_queue';
+  private static readonly SYNC_QUEUE_KEY = "sync_queue";
 
   static async addToSyncQueue(action: {
     type: string;
@@ -156,7 +165,7 @@ export class OfflineCacheService {
       queue.push(action);
       await AsyncStorage.setItem(this.SYNC_QUEUE_KEY, JSON.stringify(queue));
     } catch (error) {
-      console.error('Add to sync queue error:', error);
+      console.error("Add to sync queue error:", error);
     }
   }
 
@@ -165,7 +174,7 @@ export class OfflineCacheService {
       const queue = await AsyncStorage.getItem(this.SYNC_QUEUE_KEY);
       return queue ? JSON.parse(queue) : [];
     } catch (error) {
-      console.error('Get sync queue error:', error);
+      console.error("Get sync queue error:", error);
       return [];
     }
   }
@@ -174,7 +183,7 @@ export class OfflineCacheService {
     try {
       await AsyncStorage.removeItem(this.SYNC_QUEUE_KEY);
     } catch (error) {
-      console.error('Clear sync queue error:', error);
+      console.error("Clear sync queue error:", error);
     }
   }
 
@@ -184,12 +193,14 @@ export class OfflineCacheService {
       queue.splice(index, 1);
       await AsyncStorage.setItem(this.SYNC_QUEUE_KEY, JSON.stringify(queue));
     } catch (error) {
-      console.error('Remove from sync queue error:', error);
+      console.error("Remove from sync queue error:", error);
     }
   }
 
   // Sincronizar cola cuando vuelva la conexión
-  static async syncQueue(apiRequest: (method: string, endpoint: string, data?: any) => Promise<any>): Promise<void> {
+  static async syncQueue(
+    apiRequest: (method: string, endpoint: string, data?: any) => Promise<any>,
+  ): Promise<void> {
     const isOnline = await this.isOnline();
     if (!isOnline) return;
 
@@ -227,7 +238,7 @@ export class OfflineCacheService {
 
       return totalSize;
     } catch (error) {
-      console.error('Get cache size error:', error);
+      console.error("Get cache size error:", error);
       return 0;
     }
   }
@@ -249,7 +260,7 @@ export class OfflineCacheService {
         sizeInMB: totalSize / (1024 * 1024),
       };
     } catch (error) {
-      console.error('Get cache stats error:', error);
+      console.error("Get cache stats error:", error);
       return { totalItems: 0, totalSize: 0, sizeInMB: 0 };
     }
   }

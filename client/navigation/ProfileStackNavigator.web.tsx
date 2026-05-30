@@ -19,21 +19,36 @@ const Stack = createNativeStackNavigator();
 export default function ProfileStackNavigatorWeb() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProfileMain"     component={ProfileScreenWeb} />
-      <Stack.Screen name="SavedAddresses"  component={SavedAddressesScreen} />
-      <Stack.Screen name="AddAddress"      component={AddAddressScreen} />
-      <Stack.Screen name="LocationPicker"  component={LocationPickerScreen} />
-      <Stack.Screen name="PaymentWalletSetup" component={PaymentWalletSetupScreen} />
-      <Stack.Screen name="Terms"           component={TermsScreen} />
-      <Stack.Screen name="Privacy"         component={PrivacyScreen} />
+      <Stack.Screen name="ProfileMain" component={ProfileScreenWeb} />
+      <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
+      <Stack.Screen name="AddAddress" component={AddAddressScreen} />
+      <Stack.Screen name="LocationPicker" component={LocationPickerScreen} />
+      <Stack.Screen
+        name="PaymentWalletSetup"
+        component={PaymentWalletSetupScreen}
+      />
+      <Stack.Screen name="Terms" component={TermsScreen} />
+      <Stack.Screen name="Privacy" component={PrivacyScreen} />
       {/* Pantallas de negocio accesibles desde perfil */}
       <Stack.Screen name="BusinessHours" component={BusinessHoursScreenWeb} />
       <Stack.Screen name="BusinessOrders" component={BusinessOrdersScreenWeb} />
-      <Stack.Screen name="BusinessProducts" component={BusinessProductsScreenWeb} />
+      <Stack.Screen
+        name="BusinessProducts"
+        component={BusinessProductsScreenWeb}
+      />
       <Stack.Screen name="BusinessStats" component={BusinessStatsScreenWeb} />
-      <Stack.Screen name="BusinessDashboard" component={BusinessDashboardScreenWeb} />
-      <Stack.Screen name="MyBusinesses" component={BusinessDashboardScreenWeb} />
-      <Stack.Screen name="BusinessManage" component={BusinessDashboardScreenWeb} />
+      <Stack.Screen
+        name="BusinessDashboard"
+        component={BusinessDashboardScreenWeb}
+      />
+      <Stack.Screen
+        name="MyBusinesses"
+        component={BusinessDashboardScreenWeb}
+      />
+      <Stack.Screen
+        name="BusinessManage"
+        component={BusinessDashboardScreenWeb}
+      />
     </Stack.Navigator>
   );
 }

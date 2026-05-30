@@ -21,7 +21,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import { NativeMap } from "@/components/NativeMap";
@@ -158,16 +163,6 @@ interface SystemSetting {
   description: string;
 }
 
-
-
-
-
-
-
-
-
-
-
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -279,7 +274,11 @@ export default function AdminScreen() {
       setStats(statsData);
       setUsers(usersData.users || []);
       setOrders(ordersData.orders || []);
-      setBusinesses(Array.isArray(businessesData) ? businessesData : businessesData.businesses || []);
+      setBusinesses(
+        Array.isArray(businessesData)
+          ? businessesData
+          : businessesData.businesses || [],
+      );
     } catch (error) {
       console.error("Error fetching admin data:", error);
       showToast("Error al cargar datos del panel", "error");
@@ -314,7 +313,11 @@ export default function AdminScreen() {
       try {
         if (activeTab === "dashboard") {
           await fetchDashboardData();
-        } else if (activeTab === "users" || activeTab === "orders" || activeTab === "businesses") {
+        } else if (
+          activeTab === "users" ||
+          activeTab === "orders" ||
+          activeTab === "businesses"
+        ) {
           await fetchData();
         } else if (activeTab === "logs") {
           await fetchAdminLogs();
@@ -323,18 +326,18 @@ export default function AdminScreen() {
         console.error("Error loading tab data:", error);
       }
     };
-    
+
     loadTabData();
   }, [activeTab]);
 
   // Auto-refresh solo para dashboard
   useEffect(() => {
     if (activeTab !== "dashboard") return;
-    
+
     const interval = setInterval(() => {
       fetchDashboardData().catch(console.error);
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, [activeTab]);
 
@@ -446,11 +449,11 @@ export default function AdminScreen() {
         business: "business",
         driver: "driver",
         admin: "admin",
-        super_admin: "super_admin"
+        super_admin: "super_admin",
       };
-      
+
       const serverRole = roleMap[userRoleEdit] || userRoleEdit;
-      
+
       await apiRequest("PUT", `/api/admin/users/${selectedUser.id}/role`, {
         role: serverRole,
       });
@@ -709,31 +712,32 @@ export default function AdminScreen() {
           <OrdersTab orders={orders} onOrderPress={openOrderModal} />
         )}
 
-        {activeTab === "businesses" && (
-          <BusinessesTab
-            businesses={businesses}
-            onAddBusiness={() => {
-              setEditingBusiness(null);
-              setBusinessForm({
-                name: "",
-                type: "restaurant",
-                description: "",
-                image: "",
-                address: "",
-                phone: "",
-                deliveryFee: "25",
-                minOrderAmount: "50",
-                isActive: true,
-              });
-              setShowBusinessModal(true);
-            }}
-            onEditBusiness={openEditBusiness}
-            onManageProducts={(id: string) => {
-              setSelectedBusinessId(id);
-              setActiveTab("products");
-            }}
-          /> as any
-        )}
+        {activeTab === "businesses" &&
+          ((
+            <BusinessesTab
+              businesses={businesses}
+              onAddBusiness={() => {
+                setEditingBusiness(null);
+                setBusinessForm({
+                  name: "",
+                  type: "restaurant",
+                  description: "",
+                  image: "",
+                  address: "",
+                  phone: "",
+                  deliveryFee: "25",
+                  minOrderAmount: "50",
+                  isActive: true,
+                });
+                setShowBusinessModal(true);
+              }}
+              onEditBusiness={openEditBusiness}
+              onManageProducts={(id: string) => {
+                setSelectedBusinessId(id);
+                setActiveTab("products");
+              }}
+            />
+          ) as any)}
 
         {activeTab === "products" ? (
           <View style={styles.listContainer}>
@@ -894,7 +898,9 @@ export default function AdminScreen() {
                             <View
                               style={[
                                 styles.badge,
-                                { backgroundColor: ComeYaColors.warning + "20" },
+                                {
+                                  backgroundColor: ComeYaColors.warning + "20",
+                                },
                               ]}
                             >
                               <ThemedText
@@ -1047,34 +1053,28 @@ export default function AdminScreen() {
           </View>
         )}
 
-        {activeTab === "drivers" && (
-          <DriversTab showToast={showToast} /> as any
-        )}
+        {activeTab === "drivers" &&
+          ((<DriversTab showToast={showToast} />) as any)}
 
-        {activeTab === "coupons" && (
-          <CouponsTab showToast={showToast} onSelectCoupon={() => {}} /> as any
-        )}
+        {activeTab === "coupons" &&
+          ((
+            <CouponsTab showToast={showToast} onSelectCoupon={() => {}} />
+          ) as any)}
 
-        {activeTab === "support" && (
-          <SupportTab showToast={showToast} /> as any
-        )}
+        {activeTab === "support" &&
+          ((<SupportTab showToast={showToast} />) as any)}
 
-        {activeTab === "zones" && (
-          <ZonesTab showToast={showToast} onSelectZone={() => {}} /> as any
-        )}
+        {activeTab === "zones" &&
+          ((<ZonesTab showToast={showToast} onSelectZone={() => {}} />) as any)}
 
-        {activeTab === "settings" && (
-          <SettingsTab showToast={showToast} /> as any
-        )}
+        {activeTab === "settings" &&
+          ((<SettingsTab showToast={showToast} />) as any)}
       </ScrollView>
 
       <Modal visible={showBusinessModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: theme.background },
-            ]}
+            style={[styles.modalContent, { backgroundColor: theme.background }]}
           >
             <View style={styles.modalHeader}>
               <ThemedText type="h3">
@@ -1598,9 +1598,13 @@ export default function AdminScreen() {
       </Modal>
 
       <Modal visible={showUserModal} animationType="slide" transparent>
-        <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+        <View
+          style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+        >
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+            <View
+              style={[styles.modalHeader, { borderBottomColor: theme.border }]}
+            >
               <ThemedText type="h3">Detalles del Usuario</ThemedText>
               <Pressable onPress={() => setShowUserModal(false)}>
                 <Feather name="x" size={24} color={theme.text} />
@@ -1609,85 +1613,169 @@ export default function AdminScreen() {
             <ScrollView style={styles.modalBody}>
               {selectedUser ? (
                 <>
-                  <View style={[styles.userDetailCard, { backgroundColor: theme.backgroundSecondary }]}>
-                    <View style={[styles.avatar, { backgroundColor: ComeYaColors.primaryLight, width: 60, height: 60 }]}>
-                      <ThemedText type="h2" style={{ color: ComeYaColors.primaryDark }}>
+                  <View
+                    style={[
+                      styles.userDetailCard,
+                      { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.avatar,
+                        {
+                          backgroundColor: ComeYaColors.primaryLight,
+                          width: 60,
+                          height: 60,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        type="h2"
+                        style={{ color: ComeYaColors.primaryDark }}
+                      >
                         {selectedUser.name.charAt(0).toUpperCase()}
                       </ThemedText>
                     </View>
-                    <ThemedText type="h3" style={{ marginTop: Spacing.md }}>{selectedUser.name}</ThemedText>
-                    <ThemedText type="body" style={{ color: theme.textSecondary }}>{selectedUser.email}</ThemedText>
+                    <ThemedText type="h3" style={{ marginTop: Spacing.md }}>
+                      {selectedUser.name}
+                    </ThemedText>
+                    <ThemedText
+                      type="body"
+                      style={{ color: theme.textSecondary }}
+                    >
+                      {selectedUser.email}
+                    </ThemedText>
                     {selectedUser.phone ? (
-                      <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
+                      <ThemedText
+                        type="small"
+                        style={{ color: theme.textSecondary, marginTop: 4 }}
+                      >
                         {selectedUser.phone}
                       </ThemedText>
                     ) : null}
                   </View>
                   <View style={{ marginTop: Spacing.lg }}>
-                    <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+                    <ThemedText
+                      type="body"
+                      style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+                    >
                       Estado de verificación
                     </ThemedText>
                     <View style={{ flexDirection: "row", gap: Spacing.md }}>
                       <View style={styles.infoChip}>
                         <Feather
-                          name={selectedUser.emailVerified ? "check-circle" : "x-circle"}
+                          name={
+                            selectedUser.emailVerified
+                              ? "check-circle"
+                              : "x-circle"
+                          }
                           size={14}
-                          color={selectedUser.emailVerified ? ComeYaColors.success : ComeYaColors.error}
+                          color={
+                            selectedUser.emailVerified
+                              ? ComeYaColors.success
+                              : ComeYaColors.error
+                          }
                         />
                         <ThemedText type="caption" style={{ marginLeft: 4 }}>
-                          Email {selectedUser.emailVerified ? "verificado" : "sin verificar"}
+                          Email{" "}
+                          {selectedUser.emailVerified
+                            ? "verificado"
+                            : "sin verificar"}
                         </ThemedText>
                       </View>
                       <View style={styles.infoChip}>
                         <Feather
-                          name={(selectedUser as any).phoneVerified ? "check-circle" : "x-circle"}
+                          name={
+                            (selectedUser as any).phoneVerified
+                              ? "check-circle"
+                              : "x-circle"
+                          }
                           size={14}
-                          color={(selectedUser as any).phoneVerified ? ComeYaColors.success : ComeYaColors.error}
+                          color={
+                            (selectedUser as any).phoneVerified
+                              ? ComeYaColors.success
+                              : ComeYaColors.error
+                          }
                         />
                         <ThemedText type="caption" style={{ marginLeft: 4 }}>
-                          Tel {(selectedUser as any).phoneVerified ? "verificado" : "sin verificar"}
+                          Tel{" "}
+                          {(selectedUser as any).phoneVerified
+                            ? "verificado"
+                            : "sin verificar"}
                         </ThemedText>
                       </View>
                     </View>
                   </View>
                   <View style={{ marginTop: Spacing.lg }}>
-                    <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+                    <ThemedText
+                      type="body"
+                      style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+                    >
                       Cambiar Rol
                     </ThemedText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
-                      {["customer", "business", "driver", "admin"].map((role) => (
-                        <Pressable
-                          key={role}
-                          onPress={() => setUserRoleEdit(role)}
-                          style={[
-                            styles.tab,
-                            {
-                              backgroundColor: userRoleEdit === role ? ComeYaColors.primary : "transparent",
-                              borderColor: ComeYaColors.primary,
-                            },
-                          ]}
-                        >
-                          <ThemedText
-                            type="small"
-                            style={{ color: userRoleEdit === role ? "#FFFFFF" : ComeYaColors.primary }}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: Spacing.sm,
+                      }}
+                    >
+                      {["customer", "business", "driver", "admin"].map(
+                        (role) => (
+                          <Pressable
+                            key={role}
+                            onPress={() => setUserRoleEdit(role)}
+                            style={[
+                              styles.tab,
+                              {
+                                backgroundColor:
+                                  userRoleEdit === role
+                                    ? ComeYaColors.primary
+                                    : "transparent",
+                                borderColor: ComeYaColors.primary,
+                              },
+                            ]}
                           >
-                            {getRoleLabel(role)}
-                          </ThemedText>
-                        </Pressable>
-                      ))}
+                            <ThemedText
+                              type="small"
+                              style={{
+                                color:
+                                  userRoleEdit === role
+                                    ? "#FFFFFF"
+                                    : ComeYaColors.primary,
+                              }}
+                            >
+                              {getRoleLabel(role)}
+                            </ThemedText>
+                          </Pressable>
+                        ),
+                      )}
                     </View>
                   </View>
-                  <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.lg }}>
-                    Registrado: {new Date(selectedUser.createdAt).toLocaleDateString()}
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: theme.textSecondary,
+                      marginTop: Spacing.lg,
+                    }}
+                  >
+                    Registrado:{" "}
+                    {new Date(selectedUser.createdAt).toLocaleDateString()}
                   </ThemedText>
                 </>
               ) : null}
             </ScrollView>
             <Pressable
               onPress={handleUpdateUserRole}
-              style={[styles.saveButton, { backgroundColor: ComeYaColors.primary }]}
+              style={[
+                styles.saveButton,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
             >
-              <ThemedText type="body" style={{ color: "#FFFFFF", fontWeight: "600" }}>
+              <ThemedText
+                type="body"
+                style={{ color: "#FFFFFF", fontWeight: "600" }}
+              >
                 Guardar Cambios
               </ThemedText>
             </Pressable>
@@ -1696,9 +1784,18 @@ export default function AdminScreen() {
       </Modal>
 
       <Modal visible={showOrderModal} animationType="slide" transparent>
-        <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
-          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}> 
-            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+        <View
+          style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
+          >
+            <View
+              style={[styles.modalHeader, { borderBottomColor: theme.border }]}
+            >
               <ThemedText type="h3">Detalles del Pedido</ThemedText>
               <Pressable onPress={() => setShowOrderModal(false)}>
                 <Feather name="x" size={24} color={theme.text} />
@@ -1707,62 +1804,173 @@ export default function AdminScreen() {
             <ScrollView style={styles.modalBody}>
               {selectedOrder ? (
                 <>
-                  <View style={[styles.userDetailCard, { backgroundColor: theme.backgroundSecondary }]}>
-                    <View style={[styles.orderIcon, { backgroundColor: ComeYaColors.primaryLight, width: 50, height: 50 }]}>
-                      <Feather name="package" size={24} color={ComeYaColors.primary} />
+                  <View
+                    style={[
+                      styles.userDetailCard,
+                      { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.orderIcon,
+                        {
+                          backgroundColor: ComeYaColors.primaryLight,
+                          width: 50,
+                          height: 50,
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name="package"
+                        size={24}
+                        color={ComeYaColors.primary}
+                      />
                     </View>
                     <ThemedText type="h3" style={{ marginTop: Spacing.md }}>
                       #{selectedOrder.id.slice(0, 8)}
                     </ThemedText>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(selectedOrder.status) + "20", marginTop: Spacing.xs }]}>
-                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(selectedOrder.status) }]} />
-                      <ThemedText type="caption" style={{ color: getStatusColor(selectedOrder.status), marginLeft: 6 }}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            getStatusColor(selectedOrder.status) + "20",
+                          marginTop: Spacing.xs,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.statusDot,
+                          {
+                            backgroundColor: getStatusColor(
+                              selectedOrder.status,
+                            ),
+                          },
+                        ]}
+                      />
+                      <ThemedText
+                        type="caption"
+                        style={{
+                          color: getStatusColor(selectedOrder.status),
+                          marginLeft: 6,
+                        }}
+                      >
                         {getStatusLabel(selectedOrder.status)}
                       </ThemedText>
                     </View>
                   </View>
 
-                  <View style={[styles.detailSection, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.md }]}>
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        marginTop: Spacing.md,
+                      },
+                    ]}
+                  >
                     <View style={styles.detailRow}>
-                      <Feather name="user" size={16} color={theme.textSecondary} />
+                      <Feather
+                        name="user"
+                        size={16}
+                        color={theme.textSecondary}
+                      />
                       <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
-                        <ThemedText type="small" style={{ color: theme.textSecondary }}>Cliente</ThemedText>
-                        <ThemedText type="body">{selectedOrder.customerName}</ThemedText>
+                        <ThemedText
+                          type="small"
+                          style={{ color: theme.textSecondary }}
+                        >
+                          Cliente
+                        </ThemedText>
+                        <ThemedText type="body">
+                          {selectedOrder.customerName}
+                        </ThemedText>
                         {selectedOrder.customerPhone ? (
-                          <ThemedText type="small" style={{ color: theme.textSecondary }}>{selectedOrder.customerPhone}</ThemedText>
+                          <ThemedText
+                            type="small"
+                            style={{ color: theme.textSecondary }}
+                          >
+                            {selectedOrder.customerPhone}
+                          </ThemedText>
                         ) : null}
                       </View>
                     </View>
                   </View>
 
-                  <View style={[styles.detailSection, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.sm }]}>
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        marginTop: Spacing.sm,
+                      },
+                    ]}
+                  >
                     <View style={styles.detailRow}>
-                      <Feather name="shopping-bag" size={16} color={theme.textSecondary} />
+                      <Feather
+                        name="shopping-bag"
+                        size={16}
+                        color={theme.textSecondary}
+                      />
                       <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
-                        <ThemedText type="small" style={{ color: theme.textSecondary }}>Negocio</ThemedText>
-                        <ThemedText type="body">{selectedOrder.businessName}</ThemedText>
+                        <ThemedText
+                          type="small"
+                          style={{ color: theme.textSecondary }}
+                        >
+                          Negocio
+                        </ThemedText>
+                        <ThemedText type="body">
+                          {selectedOrder.businessName}
+                        </ThemedText>
                       </View>
                     </View>
                   </View>
 
-                  <View style={[styles.detailSection, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.sm }]}>
+                  <View
+                    style={[
+                      styles.detailSection,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        marginTop: Spacing.sm,
+                      },
+                    ]}
+                  >
                     <View style={styles.detailRow}>
-                      <Feather name="map-pin" size={16} color={theme.textSecondary} />
+                      <Feather
+                        name="map-pin"
+                        size={16}
+                        color={theme.textSecondary}
+                      />
                       <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
-                        <ThemedText type="small" style={{ color: theme.textSecondary }}>Dirección de entrega</ThemedText>
-                        <ThemedText type="body">{selectedOrder.deliveryAddress}</ThemedText>
+                        <ThemedText
+                          type="small"
+                          style={{ color: theme.textSecondary }}
+                        >
+                          Dirección de entrega
+                        </ThemedText>
+                        <ThemedText type="body">
+                          {selectedOrder.deliveryAddress}
+                        </ThemedText>
                       </View>
                     </View>
-                    {selectedOrder.deliveryLatitude && selectedOrder.deliveryLongitude ? (
+                    {selectedOrder.deliveryLatitude &&
+                    selectedOrder.deliveryLongitude ? (
                       <Pressable
                         onPress={() => {
                           const url = `https://www.google.com/maps?q=${selectedOrder.deliveryLatitude},${selectedOrder.deliveryLongitude}`;
                           Linking.openURL(url);
                         }}
-                        style={[styles.mapButton, { backgroundColor: ComeYaColors.primary }]}
+                        style={[
+                          styles.mapButton,
+                          { backgroundColor: ComeYaColors.primary },
+                        ]}
                       >
                         <Feather name="map" size={16} color="#FFFFFF" />
-                        <ThemedText type="small" style={{ color: "#FFFFFF", marginLeft: Spacing.xs }}>
+                        <ThemedText
+                          type="small"
+                          style={{ color: "#FFFFFF", marginLeft: Spacing.xs }}
+                        >
                           Ver en Mapa
                         </ThemedText>
                       </Pressable>
@@ -1770,69 +1978,190 @@ export default function AdminScreen() {
                   </View>
 
                   <View style={{ marginTop: Spacing.lg }}>
-                    <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+                    <ThemedText
+                      type="body"
+                      style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+                    >
                       Resumen del Pedido
                     </ThemedText>
-                    <View style={[styles.detailSection, { backgroundColor: theme.backgroundSecondary }]}>
+                    <View
+                      style={[
+                        styles.detailSection,
+                        { backgroundColor: theme.backgroundSecondary },
+                      ]}
+                    >
                       {(() => {
                         try {
                           const items = JSON.parse(selectedOrder.items);
                           return items.map((item: any, index: number) => (
-                            <View key={index} style={[styles.detailRow, { borderBottomWidth: index < items.length - 1 ? 1 : 0, borderBottomColor: theme.border }]}>
-                              <ThemedText type="body" style={{ flex: 1 }}>{item.quantity}x {item.name}</ThemedText>
-                              <ThemedText type="body">€{((item.price * item.quantity) / 100).toFixed(2)}</ThemedText>
+                            <View
+                              key={index}
+                              style={[
+                                styles.detailRow,
+                                {
+                                  borderBottomWidth:
+                                    index < items.length - 1 ? 1 : 0,
+                                  borderBottomColor: theme.border,
+                                },
+                              ]}
+                            >
+                              <ThemedText type="body" style={{ flex: 1 }}>
+                                {item.quantity}x {item.name}
+                              </ThemedText>
+                              <ThemedText type="body">
+                                €
+                                {((item.price * item.quantity) / 100).toFixed(
+                                  2,
+                                )}
+                              </ThemedText>
                             </View>
                           ));
                         } catch {
-                          return <ThemedText type="body" style={{ color: theme.textSecondary }}>Items no disponibles</ThemedText>;
+                          return (
+                            <ThemedText
+                              type="body"
+                              style={{ color: theme.textSecondary }}
+                            >
+                              Items no disponibles
+                            </ThemedText>
+                          );
                         }
                       })()}
                     </View>
                   </View>
 
                   <View style={{ marginTop: Spacing.lg }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.xs }}>
-                      <ThemedText type="body" style={{ color: theme.textSecondary }}>Subtotal</ThemedText>
-                      <ThemedText type="body">€{(selectedOrder.subtotal / 100).toFixed(2)}</ThemedText>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: Spacing.xs,
+                      }}
+                    >
+                      <ThemedText
+                        type="body"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        Subtotal
+                      </ThemedText>
+                      <ThemedText type="body">
+                        €{(selectedOrder.subtotal / 100).toFixed(2)}
+                      </ThemedText>
                     </View>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.xs }}>
-                      <ThemedText type="body" style={{ color: theme.textSecondary }}>Envío</ThemedText>
-                      <ThemedText type="body">€{(selectedOrder.deliveryFee / 100).toFixed(2)}</ThemedText>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: Spacing.xs,
+                      }}
+                    >
+                      <ThemedText
+                        type="body"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        Envío
+                      </ThemedText>
+                      <ThemedText type="body">
+                        €{(selectedOrder.deliveryFee / 100).toFixed(2)}
+                      </ThemedText>
                     </View>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.sm, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: theme.border }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: Spacing.sm,
+                        paddingTop: Spacing.sm,
+                        borderTopWidth: 1,
+                        borderTopColor: theme.border,
+                      }}
+                    >
                       <ThemedText type="h4">Total</ThemedText>
-                      <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
+                      <ThemedText
+                        type="h4"
+                        style={{ color: ComeYaColors.primary }}
+                      >
                         €{(selectedOrder.total / 100).toFixed(2)}
                       </ThemedText>
                     </View>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                      <ThemedText type="body" style={{ color: theme.textSecondary }}>Método de pago</ThemedText>
-                      <ThemedText type="body">{selectedOrder.paymentMethod === "card" ? "Tarjeta" : "Efectivo"}</ThemedText>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <ThemedText
+                        type="body"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        Método de pago
+                      </ThemedText>
+                      <ThemedText type="body">
+                        {selectedOrder.paymentMethod === "card"
+                          ? "Tarjeta"
+                          : "Efectivo"}
+                      </ThemedText>
                     </View>
                   </View>
 
-                  {selectedOrder.platformFee || selectedOrder.businessEarnings || selectedOrder.deliveryEarnings ? (
+                  {selectedOrder.platformFee ||
+                  selectedOrder.businessEarnings ||
+                  selectedOrder.deliveryEarnings ? (
                     <View style={{ marginTop: Spacing.lg }}>
-                      <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+                      <ThemedText
+                        type="body"
+                        style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+                      >
                         Distribución de Comisiones
                       </ThemedText>
-                      <View style={[styles.detailSection, { backgroundColor: theme.backgroundSecondary }]}>
+                      <View
+                        style={[
+                          styles.detailSection,
+                          { backgroundColor: theme.backgroundSecondary },
+                        ]}
+                      >
                         {selectedOrder.platformFee ? (
                           <View style={styles.detailRow}>
-                            <ThemedText type="body" style={{ color: theme.textSecondary }}>Plataforma (15% productos)</ThemedText>
-                            <ThemedText type="body">€{(selectedOrder.platformFee / 100).toFixed(2)}</ThemedText>
+                            <ThemedText
+                              type="body"
+                              style={{ color: theme.textSecondary }}
+                            >
+                              Plataforma (15% productos)
+                            </ThemedText>
+                            <ThemedText type="body">
+                              €{(selectedOrder.platformFee / 100).toFixed(2)}
+                            </ThemedText>
                           </View>
                         ) : null}
                         {selectedOrder.businessEarnings ? (
                           <View style={styles.detailRow}>
-                            <ThemedText type="body" style={{ color: theme.textSecondary }}>Negocio (100% productos)</ThemedText>
-                            <ThemedText type="body">€{(selectedOrder.businessEarnings / 100).toFixed(2)}</ThemedText>
+                            <ThemedText
+                              type="body"
+                              style={{ color: theme.textSecondary }}
+                            >
+                              Negocio (100% productos)
+                            </ThemedText>
+                            <ThemedText type="body">
+                              €
+                              {(selectedOrder.businessEarnings / 100).toFixed(
+                                2,
+                              )}
+                            </ThemedText>
                           </View>
                         ) : null}
                         {selectedOrder.deliveryEarnings ? (
                           <View style={styles.detailRow}>
-                            <ThemedText type="body" style={{ color: theme.textSecondary }}>Repartidor (100% delivery)</ThemedText>
-                            <ThemedText type="body">€{(selectedOrder.deliveryEarnings / 100).toFixed(2)}</ThemedText>
+                            <ThemedText
+                              type="body"
+                              style={{ color: theme.textSecondary }}
+                            >
+                              Repartidor (100% delivery)
+                            </ThemedText>
+                            <ThemedText type="body">
+                              €
+                              {(selectedOrder.deliveryEarnings / 100).toFixed(
+                                2,
+                              )}
+                            </ThemedText>
                           </View>
                         ) : null}
                       </View>
@@ -1841,35 +2170,70 @@ export default function AdminScreen() {
 
                   {selectedOrder.notes ? (
                     <View style={{ marginTop: Spacing.lg }}>
-                      <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+                      <ThemedText
+                        type="body"
+                        style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+                      >
                         Notas del cliente
                       </ThemedText>
-                      <View style={[styles.detailSection, { backgroundColor: theme.backgroundSecondary }]}>
-                        <ThemedText type="body">{selectedOrder.notes}</ThemedText>
+                      <View
+                        style={[
+                          styles.detailSection,
+                          { backgroundColor: theme.backgroundSecondary },
+                        ]}
+                      >
+                        <ThemedText type="body">
+                          {selectedOrder.notes}
+                        </ThemedText>
                       </View>
                     </View>
                   ) : null}
 
                   <View style={{ marginTop: Spacing.lg }}>
-                    <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+                    <ThemedText
+                      type="body"
+                      style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+                    >
                       Cambiar Estado
                     </ThemedText>
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm }}>
-                      {["pending", "confirmed", "preparing", "ready", "picked_up", "delivered", "cancelled"].map((status) => (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: Spacing.sm,
+                      }}
+                    >
+                      {[
+                        "pending",
+                        "confirmed",
+                        "preparing",
+                        "ready",
+                        "picked_up",
+                        "delivered",
+                        "cancelled",
+                      ].map((status) => (
                         <Pressable
                           key={status}
                           onPress={() => handleUpdateOrderStatus(status)}
                           style={[
                             styles.tab,
                             {
-                              backgroundColor: selectedOrder.status === status ? getStatusColor(status) : "transparent",
+                              backgroundColor:
+                                selectedOrder.status === status
+                                  ? getStatusColor(status)
+                                  : "transparent",
                               borderColor: getStatusColor(status),
                             },
                           ]}
                         >
                           <ThemedText
                             type="small"
-                            style={{ color: selectedOrder.status === status ? "#FFFFFF" : getStatusColor(status) }}
+                            style={{
+                              color:
+                                selectedOrder.status === status
+                                  ? "#FFFFFF"
+                                  : getStatusColor(status),
+                            }}
                           >
                             {getStatusLabel(status)}
                           </ThemedText>
@@ -1878,12 +2242,22 @@ export default function AdminScreen() {
                     </View>
                   </View>
 
-                  <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: Spacing.lg }}>
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: theme.textSecondary,
+                      marginTop: Spacing.lg,
+                    }}
+                  >
                     Creado: {new Date(selectedOrder.createdAt).toLocaleString()}
                   </ThemedText>
                   {selectedOrder.deliveredAt ? (
-                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                      Entregado: {new Date(selectedOrder.deliveredAt).toLocaleString()}
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary }}
+                    >
+                      Entregado:{" "}
+                      {new Date(selectedOrder.deliveredAt).toLocaleString()}
                     </ThemedText>
                   ) : null}
                 </>
@@ -1891,9 +2265,15 @@ export default function AdminScreen() {
             </ScrollView>
             <Pressable
               onPress={() => setShowOrderModal(false)}
-              style={[styles.saveButton, { backgroundColor: theme.backgroundSecondary }]}
+              style={[
+                styles.saveButton,
+                { backgroundColor: theme.backgroundSecondary },
+              ]}
             >
-              <ThemedText type="body" style={{ color: theme.text, fontWeight: "600" }}>
+              <ThemedText
+                type="body"
+                style={{ color: theme.text, fontWeight: "600" }}
+              >
                 Cerrar
               </ThemedText>
             </Pressable>

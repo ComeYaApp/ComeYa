@@ -11,10 +11,10 @@ export default function AuthCallbackScreen() {
     (async () => {
       try {
         const params = new URLSearchParams(window.location.search);
-        const token   = params.get("token");
+        const token = params.get("token");
         const refresh = params.get("refresh");
-        const role    = params.get("role");
-        const name    = params.get("name") || "";
+        const role = params.get("role");
+        const name = params.get("name") || "";
 
         if (!token || !role) {
           setError("Parámetros de autenticación inválidos.");
@@ -60,7 +60,12 @@ export default function AuthCallbackScreen() {
 }
 
 const s = StyleSheet.create({
-  root:  { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
-  text:  { marginTop: 16, fontSize: 15, color: "#666" },
+  root: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  text: { marginTop: 16, fontSize: 15, color: "#666" },
   error: { fontSize: 15, color: "#DC2626", textAlign: "center", padding: 24 },
 });

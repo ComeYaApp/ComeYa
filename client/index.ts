@@ -7,16 +7,22 @@ import App from "@/App";
 if (typeof document !== "undefined") {
   const originalWarn = console.warn.bind(console);
   const originalError = console.error.bind(console);
-  
+
   console.warn = (...args: any[]) => {
-    const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-    if (msg.includes("aria-hidden") || msg.includes("Blocked aria-hidden")) return;
+    const msg = args
+      .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
+      .join(" ");
+    if (msg.includes("aria-hidden") || msg.includes("Blocked aria-hidden"))
+      return;
     originalWarn(...args);
   };
-  
+
   console.error = (...args: any[]) => {
-    const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-    if (msg.includes("aria-hidden") || msg.includes("Blocked aria-hidden")) return;
+    const msg = args
+      .map((a) => (typeof a === "string" ? a : JSON.stringify(a)))
+      .join(" ");
+    if (msg.includes("aria-hidden") || msg.includes("Blocked aria-hidden"))
+      return;
     originalError(...args);
   };
 

@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable, TextInput } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TextInput,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +14,12 @@ import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -39,12 +50,18 @@ export default function AdminBankAccountScreen() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/weekly-settlement/admin/bank-account", data);
+      const response = await apiRequest(
+        "POST",
+        "/api/weekly-settlement/admin/bank-account",
+        data,
+      );
       return response.json();
     },
     onSuccess: () => {
       showToast("Cuenta bancaria guardada", "success");
-      queryClient.invalidateQueries({ queryKey: ["/api/weekly-settlement/admin/bank-account"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/weekly-settlement/admin/bank-account"],
+      });
     },
   });
 
@@ -73,19 +90,33 @@ export default function AdminBankAccountScreen() {
     <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <ThemedText type="h2">Cuenta Bancaria</ThemedText>
-        <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
+        <ThemedText
+          type="caption"
+          style={{ color: theme.textSecondary, marginTop: 4 }}
+        >
           Los drivers depositarán aquí sus liquidaciones
         </ThemedText>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={[styles.card, { backgroundColor: theme.card }, Shadows.md]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.card }, Shadows.md]}
+        >
           <View style={styles.inputGroup}>
-            <ThemedText type="body" style={{ fontWeight: "600", marginBottom: 8 }}>
+            <ThemedText
+              type="body"
+              style={{ fontWeight: "600", marginBottom: 8 }}
+            >
               Banco *
             </ThemedText>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               placeholder="Ej: BBVA, Santander, Banorte"
               placeholderTextColor={theme.textSecondary}
               value={bankName}
@@ -94,11 +125,20 @@ export default function AdminBankAccountScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <ThemedText type="body" style={{ fontWeight: "600", marginBottom: 8 }}>
+            <ThemedText
+              type="body"
+              style={{ fontWeight: "600", marginBottom: 8 }}
+            >
               Titular de la cuenta *
             </ThemedText>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               placeholder="Nombre completo o razón social"
               placeholderTextColor={theme.textSecondary}
               value={accountHolder}
@@ -107,26 +147,47 @@ export default function AdminBankAccountScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <ThemedText type="body" style={{ fontWeight: "600", marginBottom: 8 }}>
+            <ThemedText
+              type="body"
+              style={{ fontWeight: "600", marginBottom: 8 }}
+            >
               CLABE Interbancaria * (18 dígitos)
             </ThemedText>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, fontFamily: "monospace" }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                  fontFamily: "monospace",
+                },
+              ]}
               placeholder="000000000000000000"
               placeholderTextColor={theme.textSecondary}
               value={clabe}
-              onChangeText={(text) => setClabe(text.replace(/\D/g, "").slice(0, 18))}
+              onChangeText={(text) =>
+                setClabe(text.replace(/\D/g, "").slice(0, 18))
+              }
               keyboardType="numeric"
               maxLength={18}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <ThemedText type="body" style={{ fontWeight: "600", marginBottom: 8 }}>
+            <ThemedText
+              type="body"
+              style={{ fontWeight: "600", marginBottom: 8 }}
+            >
               Número de cuenta (opcional)
             </ThemedText>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               placeholder="Número de cuenta"
               placeholderTextColor={theme.textSecondary}
               value={accountNumber}
@@ -135,11 +196,20 @@ export default function AdminBankAccountScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <ThemedText type="body" style={{ fontWeight: "600", marginBottom: 8 }}>
+            <ThemedText
+              type="body"
+              style={{ fontWeight: "600", marginBottom: 8 }}
+            >
               Notas (opcional)
             </ThemedText>
             <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: theme.text,
+                },
+              ]}
               placeholder="Información adicional"
               placeholderTextColor={theme.textSecondary}
               value={notes}
@@ -152,20 +222,41 @@ export default function AdminBankAccountScreen() {
           <Pressable
             onPress={handleSave}
             disabled={saveMutation.isPending}
-            style={[styles.saveButton, { backgroundColor: ComeYaColors.primary, opacity: saveMutation.isPending ? 0.5 : 1 }]}
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: ComeYaColors.primary,
+                opacity: saveMutation.isPending ? 0.5 : 1,
+              },
+            ]}
           >
             <Feather name="save" size={20} color="#FFF" />
-            <ThemedText type="body" style={{ color: "#FFF", marginLeft: 8, fontWeight: "600" }}>
+            <ThemedText
+              type="body"
+              style={{ color: "#FFF", marginLeft: 8, fontWeight: "600" }}
+            >
               {saveMutation.isPending ? "Guardando..." : "Guardar Cuenta"}
             </ThemedText>
           </Pressable>
         </View>
 
         {data?.bankAccount && (
-          <View style={[styles.previewCard, { backgroundColor: ComeYaColors.success + "20" }]}>
-            <Feather name="check-circle" size={24} color={ComeYaColors.success} />
+          <View
+            style={[
+              styles.previewCard,
+              { backgroundColor: ComeYaColors.success + "20" },
+            ]}
+          >
+            <Feather
+              name="check-circle"
+              size={24}
+              color={ComeYaColors.success}
+            />
             <View style={{ flex: 1, marginLeft: Spacing.md }}>
-              <ThemedText type="body" style={{ fontWeight: "600", marginBottom: 4 }}>
+              <ThemedText
+                type="body"
+                style={{ fontWeight: "600", marginBottom: 4 }}
+              >
                 Cuenta activa
               </ThemedText>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>

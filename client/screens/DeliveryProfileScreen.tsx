@@ -27,7 +27,12 @@ import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import {
@@ -36,7 +41,8 @@ import {
   styles as baseStyles,
 } from "./BaseProfileScreen";
 
-type DeliveryProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type DeliveryProfileNavigationProp =
+  NativeStackNavigationProp<RootStackParamList>;
 
 interface DriverStats {
   rating: number;
@@ -64,12 +70,14 @@ export default function DeliveryProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
 
   const [profileImage, setProfileImage] = useState<string>("");
-  const [profileImageVersion, setProfileImageVersion] = useState<number>(Date.now());
+  const [profileImageVersion, setProfileImageVersion] = useState<number>(
+    Date.now(),
+  );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const [driverStats, setDriverStats] = useState<DriverStats | null>(null);
-const [driverStrikes, setDriverStrikes] = useState(0);
+  const [driverStrikes, setDriverStrikes] = useState(0);
   const maxStrikes = 5;
 
   // Preview modal state
@@ -77,9 +85,11 @@ const [driverStrikes, setDriverStrikes] = useState(0);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Helper to resolve document URL
-  const resolveDocumentUrl = (url: string | null | undefined): string | null => {
+  const resolveDocumentUrl = (
+    url: string | null | undefined,
+  ): string | null => {
     if (!url) return null;
-    if (url.startsWith('data:image/')) return url;
+    if (url.startsWith("data:image/")) return url;
     if (/^https?:\/\//i.test(url)) return url;
     const apiBase = getApiUrl().replace(/\/+$/, "");
     return `${apiBase}${url.startsWith("/") ? "" : "/"}${url}`;
@@ -117,7 +127,7 @@ const [driverStrikes, setDriverStrikes] = useState(0);
             rating: statusData.rating || 0,
             totalDeliveries: statusData.totalDeliveries || 0,
             vehicleType: profileData.vehicleType,
-vehiclePlate: profileData.vehiclePlate,
+            vehiclePlate: profileData.vehiclePlate,
             verificationStatus: user?.isActive ? "verified" : "pending",
             // Personal documents
             idDocumentUrl: profileData.idDocumentUrl,
@@ -177,7 +187,11 @@ vehiclePlate: profileData.vehiclePlate,
           name: "profile.jpg",
         } as any);
 
-        const response = await apiRequest("POST", "/api/users/profile-image", formData);
+        const response = await apiRequest(
+          "POST",
+          "/api/users/profile-image",
+          formData,
+        );
         const data = await response.json();
 
         if (data.success) {
@@ -199,9 +213,15 @@ vehiclePlate: profileData.vehiclePlate,
 
   const getVehicleLabel = () => {
     if (!driverStats?.vehicleType) return "No registrado";
-    const typeLabel = driverStats.vehicleType === "car" ? "Coche" : 
-                      driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta";
-    return driverStats.vehiclePlate ? `${typeLabel} · ${driverStats.vehiclePlate}` : typeLabel;
+    const typeLabel =
+      driverStats.vehicleType === "car"
+        ? "Coche"
+        : driverStats.vehicleType === "motorcycle"
+          ? "Moto"
+          : "Bicicleta";
+    return driverStats.vehiclePlate
+      ? `${typeLabel} · ${driverStats.vehiclePlate}`
+      : typeLabel;
   };
 
   const styles = StyleSheet.create({
@@ -292,7 +312,7 @@ vehiclePlate: profileData.vehiclePlate,
       flexDirection: "row",
       gap: 4,
     },
-strikeIndicator: {
+    strikeIndicator: {
       width: 20,
       height: 12,
       borderRadius: 2,
@@ -314,7 +334,7 @@ strikeIndicator: {
       flexWrap: "wrap",
       gap: Spacing.sm,
     },
-docItem: {
+    docItem: {
       width: "30%",
       aspectRatio: 1,
       borderRadius: BorderRadius.md,
@@ -333,9 +353,29 @@ docItem: {
       justifyContent: "center",
       alignItems: "center",
     },
-previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.9)", paddingTop: insets.top },
-    previewModalImage: { width: "90%", height: "70%", borderRadius: BorderRadius.md },
-    previewModalClose: { position: "absolute", top: insets.top + 10, right: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
+    previewModalContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.9)",
+      paddingTop: insets.top,
+    },
+    previewModalImage: {
+      width: "90%",
+      height: "70%",
+      borderRadius: BorderRadius.md,
+    },
+    previewModalClose: {
+      position: "absolute",
+      top: insets.top + 10,
+      right: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: "rgba(255,255,255,0.2)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
   });
 
   const getRoleLabelText = () => {
@@ -349,7 +389,12 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color={ComeYaColors.primary} />
       </View>
     );
@@ -357,7 +402,10 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || "#FFFFFF", theme.gradientEnd || "#F5F5F5"]}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -384,11 +432,21 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
               contentFit="cover"
             />
             {isUploadingImage ? (
-              <View style={[styles.editBadge, { backgroundColor: ComeYaColors.primary }]}>
+              <View
+                style={[
+                  styles.editBadge,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
+              >
                 <ActivityIndicator size="small" color="#FFFFFF" />
               </View>
             ) : (
-              <View style={[styles.editBadge, { backgroundColor: ComeYaColors.primary }]}>
+              <View
+                style={[
+                  styles.editBadge,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
+              >
                 <Feather name="camera" size={14} color="#FFFFFF" />
               </View>
             )}
@@ -396,7 +454,10 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
           <ThemedText type="h2" style={styles.userName}>
             {user?.name || "Usuario"}
           </ThemedText>
-          <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
+          <ThemedText
+            type="body"
+            style={{ color: theme.textSecondary, textAlign: "center" }}
+          >
             {user?.phone || "Sin teléfono"}
           </ThemedText>
           <Badge
@@ -416,31 +477,56 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
           {driverStats && (
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <ThemedText type="h3" style={[styles.statValue, { color: "#FF9800" }]}>
-                  {driverStats.rating > 0 ? (driverStats.rating / 10).toFixed(1) : "—"}
+                <ThemedText
+                  type="h3"
+                  style={[styles.statValue, { color: "#FF9800" }]}
+                >
+                  {driverStats.rating > 0
+                    ? (driverStats.rating / 10).toFixed(1)
+                    : "—"}
                 </ThemedText>
-                <ThemedText type="caption" style={styles.statLabel}>Rating</ThemedText>
+                <ThemedText type="caption" style={styles.statLabel}>
+                  Rating
+                </ThemedText>
               </View>
               <View style={styles.statCard}>
-                <ThemedText type="h3" style={[styles.statValue, { color: ComeYaColors.primary }]}>
+                <ThemedText
+                  type="h3"
+                  style={[styles.statValue, { color: ComeYaColors.primary }]}
+                >
                   {driverStats.totalDeliveries}
                 </ThemedText>
-                <ThemedText type="caption" style={styles.statLabel}>Entregas</ThemedText>
+                <ThemedText type="caption" style={styles.statLabel}>
+                  Entregas
+                </ThemedText>
               </View>
               <View style={styles.statCard}>
                 <Feather
-                  name={driverStats.verificationStatus === "verified" ? "check-circle" : "clock"}
+                  name={
+                    driverStats.verificationStatus === "verified"
+                      ? "check-circle"
+                      : "clock"
+                  }
                   size={20}
-                  color={driverStats.verificationStatus === "verified" ? ComeYaColors.success : ComeYaColors.warning}
+                  color={
+                    driverStats.verificationStatus === "verified"
+                      ? ComeYaColors.success
+                      : ComeYaColors.warning
+                  }
                 />
-                <ThemedText type="caption" style={[styles.statLabel, { marginTop: 2 }]}>
-                  {driverStats.verificationStatus === "verified" ? "Verificado" : "Pendiente"}
+                <ThemedText
+                  type="caption"
+                  style={[styles.statLabel, { marginTop: 2 }]}
+                >
+                  {driverStats.verificationStatus === "verified"
+                    ? "Verificado"
+                    : "Pendiente"}
                 </ThemedText>
               </View>
             </View>
           )}
 
-<SettingsItem
+          <SettingsItem
             icon="truck"
             label="Mi vehículo"
             value={getVehicleLabel()}
@@ -453,38 +539,95 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
           {/* Documentos personales */}
           <View style={styles.documentsSection}>
             <View style={styles.docHeader}>
-              <Feather name="file-text" size={18} color={ComeYaColors.primary} />
-              <ThemedText type="body" style={{ marginLeft: Spacing.sm, fontWeight: "600" }}>
+              <Feather
+                name="file-text"
+                size={18}
+                color={ComeYaColors.primary}
+              />
+              <ThemedText
+                type="body"
+                style={{ marginLeft: Spacing.sm, fontWeight: "600" }}
+              >
                 Documentos personales
               </ThemedText>
             </View>
-<View style={styles.docGrid}>
+            <View style={styles.docGrid}>
               {[
-                { key: "idDocumentUrl", label: "DNI/NIE frente", icon: "credit-card", url: driverStats?.idDocumentUrl },
-                { key: "idDocumentBackUrl", label: "DNI/NIE reverso", icon: "credit-card", url: driverStats?.idDocumentBackUrl },
-                { key: "autonomoDocUrl", label: "Autónomo", icon: "file-text", url: driverStats?.autonomoDocumentUrl },
+                {
+                  key: "idDocumentUrl",
+                  label: "DNI/NIE frente",
+                  icon: "credit-card",
+                  url: driverStats?.idDocumentUrl,
+                },
+                {
+                  key: "idDocumentBackUrl",
+                  label: "DNI/NIE reverso",
+                  icon: "credit-card",
+                  url: driverStats?.idDocumentBackUrl,
+                },
+                {
+                  key: "autonomoDocUrl",
+                  label: "Autónomo",
+                  icon: "file-text",
+                  url: driverStats?.autonomoDocumentUrl,
+                },
               ].map((doc) => {
                 const docUrl = doc.url || undefined;
                 const hasDoc = !!docUrl;
-                const resolvedUrl = hasDoc ? (resolveDocumentUrl(docUrl) || docUrl) : undefined;
+                const resolvedUrl = hasDoc
+                  ? resolveDocumentUrl(docUrl) || docUrl
+                  : undefined;
                 return (
-                  <Pressable key={doc.key} style={[styles.docItem, { backgroundColor: hasDoc ? ComeYaColors.success + "15" : theme.backgroundSecondary }]} onPress={() => handlePreviewDocument(docUrl)} disabled={!hasDoc}>
+                  <Pressable
+                    key={doc.key}
+                    style={[
+                      styles.docItem,
+                      {
+                        backgroundColor: hasDoc
+                          ? ComeYaColors.success + "15"
+                          : theme.backgroundSecondary,
+                      },
+                    ]}
+                    onPress={() => handlePreviewDocument(docUrl)}
+                    disabled={!hasDoc}
+                  >
                     {hasDoc && resolvedUrl ? (
-                      <Image source={{ uri: resolvedUrl }} style={styles.docItemImage} contentFit="cover" />
+                      <Image
+                        source={{ uri: resolvedUrl }}
+                        style={styles.docItemImage}
+                        contentFit="cover"
+                      />
                     ) : (
                       <View style={styles.docItemPlaceholder}>
-                        <Feather name={doc.icon as any} size={16} color={theme.textSecondary} />
+                        <Feather
+                          name={doc.icon as any}
+                          size={16}
+                          color={theme.textSecondary}
+                        />
                       </View>
                     )}
-                    <ThemedText type="caption" style={{ marginTop: 4, color: hasDoc ? ComeYaColors.success : theme.textSecondary }}>
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        marginTop: 4,
+                        color: hasDoc
+                          ? ComeYaColors.success
+                          : theme.textSecondary,
+                      }}
+                    >
                       {hasDoc ? "Ver" : doc.label}
                     </ThemedText>
                   </Pressable>
                 );
               })}
             </View>
-            <Pressable onPress={() => navigation.navigate("EditProfile" as any)}>
-              <ThemedText type="caption" style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}>
+            <Pressable
+              onPress={() => navigation.navigate("EditProfile" as any)}
+            >
+              <ThemedText
+                type="caption"
+                style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}
+              >
                 Ver/Actualizar documentos →
               </ThemedText>
             </Pressable>
@@ -494,38 +637,96 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
           <View style={styles.documentsSection}>
             <View style={styles.docHeader}>
               <Feather name="truck" size={18} color={ComeYaColors.warning} />
-              <ThemedText type="body" style={{ marginLeft: Spacing.sm, fontWeight: "600" }}>
+              <ThemedText
+                type="body"
+                style={{ marginLeft: Spacing.sm, fontWeight: "600" }}
+              >
                 Documentos del vehículo
               </ThemedText>
             </View>
-<View style={styles.docGrid}>
+            <View style={styles.docGrid}>
               {[
-                { key: "vehiclePlatePhoto", label: "Matrícula", icon: "camera", url: driverStats?.vehiclePlatePhoto },
-                { key: "vehicleItvPhoto", label: "ITV", icon: "check-square", url: driverStats?.vehicleItvPhoto },
-                { key: "vehicleInsurancePhoto", label: "Seguro", icon: "shield", url: driverStats?.vehicleInsurancePhoto },
-                { key: "vehicleLicensePhoto", label: "Licencia", icon: "credit-card", url: driverStats?.vehicleLicensePhoto },
+                {
+                  key: "vehiclePlatePhoto",
+                  label: "Matrícula",
+                  icon: "camera",
+                  url: driverStats?.vehiclePlatePhoto,
+                },
+                {
+                  key: "vehicleItvPhoto",
+                  label: "ITV",
+                  icon: "check-square",
+                  url: driverStats?.vehicleItvPhoto,
+                },
+                {
+                  key: "vehicleInsurancePhoto",
+                  label: "Seguro",
+                  icon: "shield",
+                  url: driverStats?.vehicleInsurancePhoto,
+                },
+                {
+                  key: "vehicleLicensePhoto",
+                  label: "Licencia",
+                  icon: "credit-card",
+                  url: driverStats?.vehicleLicensePhoto,
+                },
               ].map((doc) => {
                 const docUrl = doc.url || undefined;
                 const hasDoc = !!docUrl;
-                const resolvedUrl = hasDoc ? (resolveDocumentUrl(docUrl) || docUrl) : undefined;
+                const resolvedUrl = hasDoc
+                  ? resolveDocumentUrl(docUrl) || docUrl
+                  : undefined;
                 return (
-                  <Pressable key={doc.key} style={[styles.docItem, { backgroundColor: hasDoc ? ComeYaColors.success + "15" : theme.backgroundSecondary }]} onPress={() => handlePreviewDocument(docUrl)} disabled={!hasDoc}>
+                  <Pressable
+                    key={doc.key}
+                    style={[
+                      styles.docItem,
+                      {
+                        backgroundColor: hasDoc
+                          ? ComeYaColors.success + "15"
+                          : theme.backgroundSecondary,
+                      },
+                    ]}
+                    onPress={() => handlePreviewDocument(docUrl)}
+                    disabled={!hasDoc}
+                  >
                     {hasDoc && resolvedUrl ? (
-                      <Image source={{ uri: resolvedUrl }} style={styles.docItemImage} contentFit="cover" />
+                      <Image
+                        source={{ uri: resolvedUrl }}
+                        style={styles.docItemImage}
+                        contentFit="cover"
+                      />
                     ) : (
                       <View style={styles.docItemPlaceholder}>
-                        <Feather name={doc.icon as any} size={16} color={theme.textSecondary} />
+                        <Feather
+                          name={doc.icon as any}
+                          size={16}
+                          color={theme.textSecondary}
+                        />
                       </View>
                     )}
-                    <ThemedText type="caption" style={{ marginTop: 4, color: hasDoc ? ComeYaColors.success : theme.textSecondary }}>
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        marginTop: 4,
+                        color: hasDoc
+                          ? ComeYaColors.success
+                          : theme.textSecondary,
+                      }}
+                    >
                       {hasDoc ? "Ver" : doc.label}
                     </ThemedText>
                   </Pressable>
                 );
               })}
             </View>
-            <Pressable onPress={() => navigation.navigate("EditProfile" as any)}>
-              <ThemedText type="caption" style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}>
+            <Pressable
+              onPress={() => navigation.navigate("EditProfile" as any)}
+            >
+              <ThemedText
+                type="caption"
+                style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}
+              >
                 Ver/Actualizar documentos →
               </ThemedText>
             </Pressable>
@@ -552,8 +753,14 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
                   style={[
                     styles.strikeIndicator,
                     {
-                      backgroundColor: index < driverStrikes ? ComeYaColors.error : theme.backgroundSecondary,
-                      borderColor: index < driverStrikes ? ComeYaColors.error : theme.border,
+                      backgroundColor:
+                        index < driverStrikes
+                          ? ComeYaColors.error
+                          : theme.backgroundSecondary,
+                      borderColor:
+                        index < driverStrikes
+                          ? ComeYaColors.error
+                          : theme.border,
                     },
                   ]}
                 />
@@ -581,7 +788,7 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
             label="Mis entregas"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("DriverMyDeliveries" as any);
+              navigation.navigate("DriverDeliveries" as any);
             }}
           />
           <SettingsItem
@@ -619,7 +826,13 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
           <SettingsItem
             icon="moon"
             label="Tema"
-            value={themeMode === "system" ? "Sistema" : themeMode === "light" ? "Claro" : "Oscuro"}
+            value={
+              themeMode === "system"
+                ? "Sistema"
+                : themeMode === "light"
+                  ? "Claro"
+                  : "Oscuro"
+            }
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               showToast("Configuración de tema coming soon", "info");
@@ -657,6 +870,14 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
               navigation.navigate("Terms" as any);
             }}
           />
+          <SettingsItem
+            icon="shield"
+            label="Política de privacidad"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.navigate("Privacy" as any);
+            }}
+          />
         </View>
 
         {/* Logout */}
@@ -667,19 +888,34 @@ previewModalContainer: { flex: 1, justifyContent: "center", alignItems: "center"
             danger
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              showToast("Funcionalidad de cierre de sesión coming soon", "info");
+              showToast(
+                "Funcionalidad de cierre de sesión coming soon",
+                "info",
+              );
             }}
           />
-</View>
+        </View>
       </ScrollView>
 
       {/* Image Preview Modal */}
-      <Modal visible={showPreviewModal} transparent animationType="fade" onRequestClose={() => setShowPreviewModal(false)}>
+      <Modal
+        visible={showPreviewModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPreviewModal(false)}
+      >
         <View style={styles.previewModalContainer}>
           {previewImage && (
-            <Image source={{ uri: previewImage }} style={styles.previewModalImage} contentFit="contain" />
+            <Image
+              source={{ uri: previewImage }}
+              style={styles.previewModalImage}
+              contentFit="contain"
+            />
           )}
-          <Pressable style={styles.previewModalClose} onPress={() => setShowPreviewModal(false)}>
+          <Pressable
+            style={styles.previewModalClose}
+            onPress={() => setShowPreviewModal(false)}
+          >
             <Feather name="x" size={24} color="#fff" />
           </Pressable>
         </View>

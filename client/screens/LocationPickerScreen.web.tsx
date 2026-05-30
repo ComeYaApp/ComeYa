@@ -1,17 +1,33 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { Feather } from '@expo/vector-icons';
-import { ThemedText } from '@/components/ThemedText';
-import { useTheme } from '@/hooks/useTheme';
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
+import React, { useState, useEffect, useRef } from "react";
+import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
+import { ThemedText } from "@/components/ThemedText";
+import { useTheme } from "@/hooks/useTheme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) { resolve(); return; }
+    if ((window as any).google?.maps) {
+      resolve();
+      return;
+    }
     const existing = document.getElementById("gmap-script");
-    if (existing) { existing.addEventListener("load", () => resolve()); return; }
-    const key = await fetch((process.env.EXPO_PUBLIC_BACKEND_URL||"")+"/api/config/maps-key").then(r=>r.json()).then(d=>d.key).catch(()=>"");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      return;
+    }
+    const key = await fetch(
+      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
+    )
+      .then((r) => r.json())
+      .then((d) => d.key)
+      .catch(() => "");
     const script = document.createElement("script");
     script.id = "gmap-script";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geocoding`;
@@ -31,12 +47,17 @@ export default function LocationPickerScreen() {
   const markerRef = useRef<any>(null);
 
   const [mapsReady, setMapsReady] = useState(false);
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [address, setAddress] = useState('');
+  const [location, setLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadGoogleMaps().then(() => setMapsReady(true)).catch(console.error);
+    loadGoogleMaps()
+      .then(() => setMapsReady(true))
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -44,8 +65,10 @@ export default function LocationPickerScreen() {
     const google = (window as any).google;
 
     gmap.current = new google.maps.Map(mapRef.current, {
-      center: SORIA, zoom: 15,
-      disableDefaultUI: true, zoomControl: true,
+      center: SORIA,
+      zoom: 15,
+      disableDefaultUI: true,
+      zoomControl: true,
       styles: isDark ? DARK_STYLE : [],
       gestureHandling: "greedy",
     });
@@ -71,16 +94,21 @@ export default function LocationPickerScreen() {
       // Geocodificación inversa
       try {
         const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            setAddress(results[0].formatted_address);
-          }
-        });
+        geocoder.geocode(
+          { location: { lat, lng } },
+          (results: any, status: any) => {
+            if (status === "OK" && results[0]) {
+              setAddress(results[0].formatted_address);
+            }
+          },
+        );
       } catch {}
     };
 
     // Actualizar al arrastrar
-    markerRef.current.addListener("dragend", (e: any) => updateLocation(e.latLng));
+    markerRef.current.addListener("dragend", (e: any) =>
+      updateLocation(e.latLng),
+    );
 
     // Actualizar al hacer click en el mapa
     gmap.current.addListener("click", (e: any) => {
@@ -103,20 +131,25 @@ export default function LocationPickerScreen() {
 
   const handleGetLocation = () => {
     setLoading(true);
-    navigator.geolocation?.getCurrentPosition((pos) => {
-      const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      gmap.current?.panTo(loc);
-      gmap.current?.setZoom(17);
-      markerRef.current?.setPosition(loc);
-      setLocation({ latitude: loc.lat, longitude: loc.lng });
-      setLoading(false);
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        gmap.current?.panTo(loc);
+        gmap.current?.setZoom(17);
+        markerRef.current?.setPosition(loc);
+        setLocation({ latitude: loc.lat, longitude: loc.lng });
+        setLoading(false);
 
-      const google = (window as any).google;
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ location: loc }, (results: any, status: any) => {
-        if (status === "OK" && results[0]) setAddress(results[0].formatted_address);
-      });
-    }, () => setLoading(false), { enableHighAccuracy: true });
+        const google = (window as any).google;
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: loc }, (results: any, status: any) => {
+          if (status === "OK" && results[0])
+            setAddress(results[0].formatted_address);
+        });
+      },
+      () => setLoading(false),
+      { enableHighAccuracy: true },
+    );
   };
 
   const handleConfirm = () => {
@@ -130,7 +163,10 @@ export default function LocationPickerScreen() {
   return (
     <View style={[s.container, { backgroundColor: theme.backgroundRoot }]}>
       {/* Mapa */}
-      <div ref={mapRef} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 160 }} />
+      <div
+        ref={mapRef}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 160 }}
+      />
 
       {!mapsReady && (
         <View style={s.loading}>
@@ -139,9 +175,17 @@ export default function LocationPickerScreen() {
       )}
 
       {/* Instrucción flotante */}
-      <View style={[s.instruction, { backgroundColor: theme.card, top: Spacing.xl }]}>
+      <View
+        style={[
+          s.instruction,
+          { backgroundColor: theme.card, top: Spacing.xl },
+        ]}
+      >
         <Feather name="move" size={16} color={ComeYaColors.primary} />
-        <ThemedText type="caption" style={{ marginLeft: Spacing.xs, color: theme.textSecondary }}>
+        <ThemedText
+          type="caption"
+          style={{ marginLeft: Spacing.xs, color: theme.textSecondary }}
+        >
           Toca el mapa o arrastra el pin para ajustar
         </ThemedText>
       </View>
@@ -151,30 +195,66 @@ export default function LocationPickerScreen() {
         {address ? (
           <View style={s.addressRow}>
             <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
-            <ThemedText type="small" style={{ flex: 1, marginLeft: Spacing.sm, color: theme.text }} numberOfLines={2}>
+            <ThemedText
+              type="small"
+              style={{ flex: 1, marginLeft: Spacing.sm, color: theme.text }}
+              numberOfLines={2}
+            >
               {address}
             </ThemedText>
           </View>
         ) : (
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+          <ThemedText
+            type="small"
+            style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}
+          >
             Selecciona una ubicación en el mapa
           </ThemedText>
         )}
 
         <View style={s.buttons}>
-          <Pressable onPress={handleGetLocation} style={[s.btnSecondary, { borderColor: ComeYaColors.primary }]} disabled={loading}>
-            {loading
-              ? <ActivityIndicator size="small" color={ComeYaColors.primary} />
-              : <><Feather name="navigation" size={16} color={ComeYaColors.primary} /><ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: "600", marginLeft: 6 }}>Mi ubicación</ThemedText></>
-            }
+          <Pressable
+            onPress={handleGetLocation}
+            style={[s.btnSecondary, { borderColor: ComeYaColors.primary }]}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color={ComeYaColors.primary} />
+            ) : (
+              <>
+                <Feather
+                  name="navigation"
+                  size={16}
+                  color={ComeYaColors.primary}
+                />
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: ComeYaColors.primary,
+                    fontWeight: "600",
+                    marginLeft: 6,
+                  }}
+                >
+                  Mi ubicación
+                </ThemedText>
+              </>
+            )}
           </Pressable>
           <Pressable
             onPress={handleConfirm}
-            style={[s.btnPrimary, { backgroundColor: location ? ComeYaColors.primary : "#ccc" }]}
+            style={[
+              s.btnPrimary,
+              { backgroundColor: location ? ComeYaColors.primary : "#ccc" },
+            ]}
             disabled={!location}
           >
             <Feather name="check" size={16} color="#fff" />
-            <ThemedText type="small" style={{ color: "#fff", fontWeight: "700", marginLeft: 6 }}>Confirmar</ThemedText>
+            <ThemedText
+              type="small"
+              style={{ color: "#fff", fontWeight: "700", marginLeft: 6 }}
+            >
+              Confirmar
+            </ThemedText>
           </Pressable>
         </View>
       </View>
@@ -185,36 +265,80 @@ export default function LocationPickerScreen() {
 const DARK_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#212121" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#373737" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#373737" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#000000" }],
+  },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
 ];
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  loading: { position: "absolute", inset: 0, justifyContent: "center", alignItems: "center", zIndex: 20 } as any,
+  loading: {
+    position: "absolute",
+    inset: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 20,
+  } as any,
   instruction: {
-    position: "absolute", left: Spacing.lg, right: Spacing.lg,
-    flexDirection: "row", alignItems: "center",
-    padding: Spacing.md, borderRadius: BorderRadius.full,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4,
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.full,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
     zIndex: 10,
   },
   panel: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    height: 160, padding: Spacing.lg,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 160,
+    padding: Spacing.lg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
     zIndex: 10,
   },
-  addressRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: Spacing.md },
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: Spacing.md,
+  },
   buttons: { flexDirection: "row", gap: Spacing.md },
   btnSecondary: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: Spacing.md, borderRadius: BorderRadius.md, borderWidth: 2,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
   },
   btnPrimary: {
-    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    paddingVertical: Spacing.md, borderRadius: BorderRadius.md,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
   },
 });

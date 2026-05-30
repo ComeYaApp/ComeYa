@@ -20,7 +20,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -58,7 +63,10 @@ function StarRating({
   return (
     <View style={styles.ratingSection}>
       {label && (
-        <ThemedText type="body" style={{ marginBottom: Spacing.xs, fontWeight: "600" }}>
+        <ThemedText
+          type="body"
+          style={{ marginBottom: Spacing.xs, fontWeight: "600" }}
+        >
           {label}
         </ThemedText>
       )}
@@ -190,7 +198,12 @@ export default function ReviewScreenEnhanced() {
   });
 
   const handleSubmit = () => {
-    if (foodRating === 0 && deliveryRating === 0 && packagingRating === 0 && driverRating === 0) {
+    if (
+      foodRating === 0 &&
+      deliveryRating === 0 &&
+      packagingRating === 0 &&
+      driverRating === 0
+    ) {
       showToast("Por favor califica al menos un aspecto", "warning");
       return;
     }
@@ -221,7 +234,11 @@ export default function ReviewScreenEnhanced() {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="shopping-bag" size={20} color={ComeYaColors.primary} />
+            <Feather
+              name="shopping-bag"
+              size={20}
+              color={ComeYaColors.primary}
+            />
             <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
               {businessName}
             </ThemedText>
@@ -236,9 +253,17 @@ export default function ReviewScreenEnhanced() {
           >
             Califica diferentes aspectos de tu pedido
           </ThemedText>
-          
-          <StarRating rating={foodRating} onRate={setFoodRating} label="Comida" />
-          <StarRating rating={packagingRating} onRate={setPackagingRating} label="Empaque" />
+
+          <StarRating
+            rating={foodRating}
+            onRate={setFoodRating}
+            label="Comida"
+          />
+          <StarRating
+            rating={packagingRating}
+            onRate={setPackagingRating}
+            label="Empaque"
+          />
         </Animated.View>
 
         {deliveryPersonId ? (
@@ -256,15 +281,27 @@ export default function ReviewScreenEnhanced() {
                 Entrega
               </ThemedText>
             </View>
-            <StarRating rating={deliveryRating} onRate={setDeliveryRating} label="Velocidad" />
-            <StarRating rating={driverRating} onRate={setDriverRating} label="Repartidor" />
+            <StarRating
+              rating={deliveryRating}
+              onRate={setDeliveryRating}
+              label="Velocidad"
+            />
+            <StarRating
+              rating={driverRating}
+              onRate={setDriverRating}
+              label="Repartidor"
+            />
           </Animated.View>
         ) : null}
 
         {availableTags.length > 0 && (
           <Animated.View
             entering={FadeInDown.delay(250)}
-            style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+            style={[
+              styles.section,
+              { backgroundColor: theme.card },
+              Shadows.sm,
+            ]}
           >
             <View style={styles.sectionHeader}>
               <Feather name="tag" size={20} color="#FF9800" />
@@ -346,7 +383,10 @@ export default function ReviewScreenEnhanced() {
               </View>
             ))}
             {photos.length < 3 && (
-              <Pressable onPress={handlePickImage} style={[styles.addPhotoBtn, { borderColor: theme.border }]}>
+              <Pressable
+                onPress={handlePickImage}
+                style={[styles.addPhotoBtn, { borderColor: theme.border }]}
+              >
                 <Feather name="plus" size={24} color={theme.textSecondary} />
               </Pressable>
             )}

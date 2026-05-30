@@ -33,7 +33,7 @@ async function calculateCommissionsForOrder(order: {
     order.total,
     order.deliveryFee || 0,
     order.productosBase || undefined,
-    order.nemyCommission || undefined
+    order.nemyCommission || undefined,
   );
   return {
     platformAmount: commissions.platform,

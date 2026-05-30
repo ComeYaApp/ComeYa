@@ -1,5 +1,11 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
 import * as Haptics from "expo-haptics";
 import { ComeYaColors } from "../../../constants/theme";
 import { AdminUser } from "../types/admin.types";
@@ -55,18 +61,26 @@ export const UsersTab: React.FC<UsersTabProps> = ({ users, onUserPress }) => {
           }}
         >
           <View style={styles.userHeader}>
-            <Text style={[styles.userName, { color: theme.text }]}>{user.name}</Text>
+            <Text style={[styles.userName, { color: theme.text }]}>
+              {user.name}
+            </Text>
             <View
               style={[
                 styles.roleBadge,
                 { backgroundColor: getRoleBadgeColor(user.role) },
               ]}
             >
-              <Text style={styles.roleBadgeText}>{getRoleLabel(user.role)}</Text>
+              <Text style={styles.roleBadgeText}>
+                {getRoleLabel(user.role)}
+              </Text>
             </View>
           </View>
-          <Text style={[styles.userPhone, { color: theme.textSecondary }]}>{user.phone}</Text>
-          <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{user.email || "Sin email"}</Text>
+          <Text style={[styles.userPhone, { color: theme.textSecondary }]}>
+            {user.phone}
+          </Text>
+          <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
+            {user.email || "Sin email"}
+          </Text>
         </TouchableOpacity>
       ))}
     </ScrollView>

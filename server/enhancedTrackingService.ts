@@ -1,7 +1,7 @@
-import { db } from './db';
-import { orders, deliveryDrivers, proximityAlerts } from '@shared/schema-mysql';
-import { eq, and } from 'drizzle-orm';
-import { sendPushToUser } from './enhancedPushService';
+import { db } from "./db";
+import { orders, deliveryDrivers, proximityAlerts } from "@shared/schema-mysql";
+import { eq, and } from "drizzle-orm";
+import { sendPushToUser } from "./enhancedPushService";
 
 interface Location {
   latitude: number;
@@ -34,7 +34,7 @@ export class EnhancedTrackingService {
     latitude: number,
     longitude: number,
     heading?: number,
-    speed?: number
+    speed?: number,
   ) {
     // Actualizar ubicación del repartidor
     await db
@@ -53,8 +53,8 @@ export class EnhancedTrackingService {
       .where(
         and(
           eq(orders.deliveryPersonId, driverId),
-          eq(orders.status, 'on_the_way')
-        )
+          eq(orders.status, "on_the_way"),
+        ),
       );
 
     // Verificar proximidad para cada pedido
@@ -71,7 +71,12 @@ export class EnhancedTrackingService {
       const distanceMeters = distance * 1000;
 
       // Notificar si está cerca
-      await this.checkProximityAlerts(order.id, order.userId, driverId, distanceMeters);
+      await this.checkProximityAlerts(
+        order.id,
+        order.userId,
+        driverId,
+        distanceMeters,
+      );
     }
 
     return {
@@ -85,12 +90,16 @@ export class EnhancedTrackingService {
     orderId: string,
     customerId: string,
     driverId: string,
-    distanceMeters: number
+    distanceMeters: number,
   ) {
     const alerts = [
-      { type: 'nearby', distance: 500, message: 'Tu repartidor está a 500m' },
-      { type: 'approaching', distance: 200, message: 'Tu repartidor está llegando (200m)' },
-      { type: 'arrived', distance: 50, message: '¡Tu repartidor ha llegado!' },
+      { type: "nearby", distance: 500, message: "Tu repartidor está a 500m" },
+      {
+        type: "approaching",
+        distance: 200,
+        message: "Tu repartidor está llegando (200m)",
+      },
+      { type: "arrived", distance: 50, message: "¡Tu repartidor ha llegado!" },
     ];
 
     for (const alert of alerts) {
@@ -102,8 +111,8 @@ export class EnhancedTrackingService {
           .where(
             and(
               eq(proximityAlerts.orderId, orderId),
-              eq(proximityAlerts.alertType, alert.type)
-            )
+              eq(proximityAlerts.alertType, alert.type),
+            ),
           )
           .limit(1);
 
@@ -114,7 +123,7 @@ export class EnhancedTrackingService {
             driverId,
             alertType: alert.type,
             distance: Math.round(distanceMeters),
-            destinationType: 'customer',
+            destinationType: "customer",
             notificationSent: true,
           });
 
@@ -122,7 +131,7 @@ export class EnhancedTrackingService {
           await sendPushToUser(customerId, {
             title: alert.message,
             body: `Pedido #${orderId.slice(-6)}`,
-            data: { orderId, screen: 'OrderTracking', type: alert.type },
+            data: { orderId, screen: "OrderTracking", type: alert.type },
           });
         }
       }
@@ -140,8 +149,16 @@ export class EnhancedTrackingService {
     if (!order || !order.deliveryPersonId) return;
 
     const timeAlerts = [
-      { type: 'eta_5min', threshold: 5, message: '¡Tu pedido llega en 5 minutos!' },
-      { type: 'eta_2min', threshold: 2, message: '¡Tu pedido llega en 2 minutos!' },
+      {
+        type: "eta_5min",
+        threshold: 5,
+        message: "¡Tu pedido llega en 5 minutos!",
+      },
+      {
+        type: "eta_2min",
+        threshold: 2,
+        message: "¡Tu pedido llega en 2 minutos!",
+      },
     ];
 
     for (const alert of timeAlerts) {
@@ -153,8 +170,8 @@ export class EnhancedTrackingService {
           .where(
             and(
               eq(proximityAlerts.orderId, orderId),
-              eq(proximityAlerts.alertType, alert.type)
-            )
+              eq(proximityAlerts.alertType, alert.type),
+            ),
           )
           .limit(1);
 
@@ -164,14 +181,14 @@ export class EnhancedTrackingService {
             driverId: order.deliveryPersonId,
             alertType: alert.type,
             distance: 0,
-            destinationType: 'customer',
+            destinationType: "customer",
             notificationSent: true,
           });
 
           await sendPushToUser(order.userId, {
             title: alert.message,
             body: `Pedido #${orderId.slice(-6)}`,
-            data: { orderId, screen: 'OrderTracking', type: alert.type },
+            data: { orderId, screen: "OrderTracking", type: alert.type },
           });
         }
       }
@@ -187,7 +204,7 @@ export class EnhancedTrackingService {
       .limit(1);
 
     if (!order || !order.deliveryPersonId) {
-      return { success: false, error: 'Pedido sin repartidor asignado' };
+      return { success: false, error: "Pedido sin repartidor asignado" };
     }
 
     const [driver] = await db
@@ -197,7 +214,10 @@ export class EnhancedTrackingService {
       .limit(1);
 
     if (!driver || !driver.currentLatitude || !driver.currentLongitude) {
-      return { success: false, error: 'Ubicación del repartidor no disponible' };
+      return {
+        success: false,
+        error: "Ubicación del repartidor no disponible",
+      };
     }
 
     return {
@@ -249,16 +269,16 @@ export class EnhancedTrackingService {
     };
 
     const distance = this.calculateDistance(driverLocation, customerLocation);
-    
+
     // Velocidad promedio: 30 km/h en ciudad
     const avgSpeed = 30;
     const etaMinutes = Math.ceil((distance / avgSpeed) * 60);
 
     // Agregar tiempo de preparación si aún está en el negocio
     let totalETA = etaMinutes;
-    if (order.status === 'preparing') {
+    if (order.status === "preparing") {
       totalETA += 15; // 15 min de preparación
-    } else if (order.status === 'accepted') {
+    } else if (order.status === "accepted") {
       totalETA += 20; // 20 min de preparación + recogida
     }
 

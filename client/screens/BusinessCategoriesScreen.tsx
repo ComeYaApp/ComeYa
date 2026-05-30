@@ -13,7 +13,12 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
 interface Category {
@@ -63,7 +68,11 @@ export default function BusinessCategoriesScreen() {
   const handleSave = async () => {
     try {
       if (editingCategory) {
-        await apiRequest("PUT", `/api/business/categories/${editingCategory.id}`, form);
+        await apiRequest(
+          "PUT",
+          `/api/business/categories/${editingCategory.id}`,
+          form,
+        );
       } else {
         await apiRequest("POST", "/api/business/categories", form);
       }
@@ -77,7 +86,9 @@ export default function BusinessCategoriesScreen() {
 
   const toggleActive = async (id: string, isActive: boolean) => {
     try {
-      await apiRequest("PUT", `/api/business/categories/${id}`, { isActive: !isActive });
+      await apiRequest("PUT", `/api/business/categories/${id}`, {
+        isActive: !isActive,
+      });
       loadCategories();
     } catch (error) {
       console.error("Error updating category:", error);
@@ -85,8 +96,13 @@ export default function BusinessCategoriesScreen() {
   };
 
   const renderCategory = ({ item }: { item: Category }) => (
-    <View style={[styles.categoryCard, { backgroundColor: theme.card }, Shadows.sm]}>
-      <Pressable onPress={() => openEditModal(item)} style={styles.categoryInfo}>
+    <View
+      style={[styles.categoryCard, { backgroundColor: theme.card }, Shadows.sm]}
+    >
+      <Pressable
+        onPress={() => openEditModal(item)}
+        style={styles.categoryInfo}
+      >
         <ThemedText type="h4">{item.name}</ThemedText>
         <ThemedText type="caption" style={{ color: theme.textSecondary }}>
           {item.description}
@@ -103,7 +119,10 @@ export default function BusinessCategoriesScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -155,7 +174,10 @@ export default function BusinessCategoriesScreen() {
               <TextInput
                 value={form.name}
                 onChangeText={(text) => setForm({ ...form, name: text })}
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text }]}
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.background, color: theme.text },
+                ]}
                 placeholder="Entradas, Platos principales..."
                 placeholderTextColor={theme.textSecondary}
               />
@@ -184,13 +206,19 @@ export default function BusinessCategoriesScreen() {
             <View style={styles.modalFooter}>
               <Pressable
                 onPress={() => setShowModal(false)}
-                style={[styles.modalButton, { backgroundColor: theme.backgroundSecondary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <ThemedText type="body">Cancelar</ThemedText>
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                style={[styles.modalButton, { backgroundColor: ComeYaColors.primary }]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
               >
                 <ThemedText type="body" style={{ color: "#FFF" }}>
                   Guardar

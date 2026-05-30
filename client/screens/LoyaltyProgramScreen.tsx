@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Image, Modal } from 'react-native';
-import { Colors } from '../constants/Colors';
-import { useAuth } from '../contexts/AuthContext';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Image,
+  Modal,
+} from "react-native";
+import { Colors } from "../constants/Colors";
+import { useAuth } from "../contexts/AuthContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 interface LoyaltyData {
   currentPoints: number;
   totalEarned: number;
-  level: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+  level: "Bronze" | "Silver" | "Gold" | "Platinum";
   nextLevel: string;
   pointsToNext: number;
   subscription: {
     isActive: boolean;
-    type: 'basic' | 'premium' | 'vip';
+    type: "basic" | "premium" | "vip";
     benefits: string[];
     monthlyFee: number;
     savings: number;
@@ -22,14 +31,14 @@ interface LoyaltyData {
     title: string;
     description: string;
     pointsCost: number;
-    type: 'discount' | 'freeDelivery' | 'cashback' | 'product';
+    type: "discount" | "freeDelivery" | "cashback" | "product";
     value: number;
     available: boolean;
     expiresAt?: string;
   }>;
   history: Array<{
     id: string;
-    type: 'earned' | 'redeemed';
+    type: "earned" | "redeemed";
     points: number;
     description: string;
     date: string;
@@ -40,7 +49,9 @@ export default function LoyaltyProgramScreen() {
   const { user } = useAuth();
   const [loyaltyData, setLoyaltyData] = useState<LoyaltyData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'rewards' | 'subscription' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "rewards" | "subscription" | "history"
+  >("overview");
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   useEffect(() => {
@@ -50,11 +61,14 @@ export default function LoyaltyProgramScreen() {
   const loadLoyaltyData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/loyalty/dashboard`, {
-        headers: { 'Authorization': `Bearer ${user?.token}` },
-      });
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/loyalty/dashboard`,
+        {
+          headers: { Authorization: `Bearer ${user?.token}` },
+        },
+      );
       const data = await response.json();
-      
+
       if (data.success) {
         const mockData: LoyaltyData = {
           currentPoints: data.dashboard.points.currentPoints,
@@ -64,13 +78,13 @@ export default function LoyaltyProgramScreen() {
           pointsToNext: data.dashboard.points.pointsToNextTier,
           subscription: {
             isActive: false,
-            type: 'premium',
+            type: "premium",
             benefits: [
-              'Entregas gratis ilimitadas',
-              '20% descuento en todos los pedidos',
-              'Soporte prioritario 24/7',
-              'Acceso a ofertas exclusivas',
-              'Puntos dobles en pedidos'
+              "Entregas gratis ilimitadas",
+              "20% descuento en todos los pedidos",
+              "Soporte prioritario 24/7",
+              "Acceso a ofertas exclusivas",
+              "Puntos dobles en pedidos",
             ],
             monthlyFee: 9900,
             savings: 15000,
@@ -86,7 +100,7 @@ export default function LoyaltyProgramScreen() {
           })),
           history: data.dashboard.recentActivity.map((a: any) => ({
             id: a.id,
-            type: a.type === 'earned' ? 'earned' : 'redeemed',
+            type: a.type === "earned" ? "earned" : "redeemed",
             points: a.points,
             description: a.description,
             date: new Date(a.createdAt).toLocaleDateString(),
@@ -94,105 +108,128 @@ export default function LoyaltyProgramScreen() {
         };
         setLoyaltyData(mockData);
       }
-
     } catch (error) {
-      console.error('Error loading loyalty data:', error);
+      console.error("Error loading loyalty data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const getNextTierName = (tier: string) => {
-    const tiers = ['bronze', 'silver', 'gold', 'platinum'];
+    const tiers = ["bronze", "silver", "gold", "platinum"];
     const idx = tiers.indexOf(tier.toLowerCase());
-    return idx >= 0 && idx < tiers.length - 1 ? tiers[idx + 1].charAt(0).toUpperCase() + tiers[idx + 1].slice(1) : 'Max';
+    return idx >= 0 && idx < tiers.length - 1
+      ? tiers[idx + 1].charAt(0).toUpperCase() + tiers[idx + 1].slice(1)
+      : "Max";
   };
 
   const redeemReward = async (rewardId: string) => {
-    const reward = loyaltyData?.rewards.find(r => r.id === rewardId);
+    const reward = loyaltyData?.rewards.find((r) => r.id === rewardId);
     if (!reward || !loyaltyData) return;
 
     if (loyaltyData.currentPoints < reward.pointsCost) {
-      Alert.alert('Puntos insuficientes', 'No tienes suficientes puntos para canjear esta recompensa');
+      Alert.alert(
+        "Puntos insuficientes",
+        "No tienes suficientes puntos para canjear esta recompensa",
+      );
       return;
     }
 
     Alert.alert(
-      'Confirmar Canje',
+      "Confirmar Canje",
       `¿Quieres canjear "${reward.title}" por ${reward.pointsCost} puntos?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Canjear',
+          text: "Canjear",
           onPress: async () => {
             try {
-              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/loyalty/redeem`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${user?.token}`,
+              const response = await fetch(
+                `${process.env.EXPO_PUBLIC_API_URL}/api/loyalty/redeem`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${user?.token}`,
+                  },
+                  body: JSON.stringify({ rewardId }),
                 },
-                body: JSON.stringify({ rewardId }),
-              });
+              );
 
               if (response.ok) {
-                Alert.alert('¡Éxito!', 'Recompensa canjeada correctamente');
+                Alert.alert("¡Éxito!", "Recompensa canjeada correctamente");
                 loadLoyaltyData();
               }
             } catch (error) {
-              Alert.alert('Error', 'No se pudo canjear la recompensa');
+              Alert.alert("Error", "No se pudo canjear la recompensa");
             }
           },
         },
-      ]
+      ],
     );
   };
 
-  const subscribeToProgram = async (type: 'basic' | 'premium' | 'vip') => {
+  const subscribeToProgram = async (type: "basic" | "premium" | "vip") => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/loyalty/subscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}`,
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/loyalty/subscribe`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: JSON.stringify({ subscriptionType: type }),
         },
-        body: JSON.stringify({ subscriptionType: type }),
-      });
+      );
 
       if (response.ok) {
-        Alert.alert('¡Bienvenido!', 'Te has suscrito exitosamente al programa premium');
+        Alert.alert(
+          "¡Bienvenido!",
+          "Te has suscrito exitosamente al programa premium",
+        );
         setShowSubscriptionModal(false);
         loadLoyaltyData();
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo procesar la suscripción');
+      Alert.alert("Error", "No se pudo procesar la suscripción");
     }
   };
 
   const getLevelColor = (level: string) => {
     switch (level) {
-      case 'Bronze': return '#CD7F32';
-      case 'Silver': return '#C0C0C0';
-      case 'Gold': return '#FFD700';
-      case 'Platinum': return '#E5E4E2';
-      default: return Colors.light.tint;
+      case "Bronze":
+        return "#CD7F32";
+      case "Silver":
+        return "#C0C0C0";
+      case "Gold":
+        return "#FFD700";
+      case "Platinum":
+        return "#E5E4E2";
+      default:
+        return Colors.light.tint;
     }
   };
 
   const getLevelIcon = (level: string) => {
     switch (level) {
-      case 'Bronze': return '🥉';
-      case 'Silver': return '🥈';
-      case 'Gold': return '🥇';
-      case 'Platinum': return '💎';
-      default: return '⭐';
+      case "Bronze":
+        return "🥉";
+      case "Silver":
+        return "🥈";
+      case "Gold":
+        return "🥇";
+      case "Platinum":
+        return "💎";
+      default:
+        return "⭐";
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: 'MXN',
+    return new Intl.NumberFormat("es-VE", {
+      style: "currency",
+      currency: "MXN",
     }).format(amount / 100);
   };
 
@@ -200,13 +237,15 @@ export default function LoyaltyProgramScreen() {
     <ScrollView>
       {/* Level Card */}
       <LinearGradient
-        colors={[getLevelColor(loyaltyData?.level || 'Bronze'), '#ffffff']}
+        colors={[getLevelColor(loyaltyData?.level || "Bronze"), "#ffffff"]}
         style={styles.levelCard}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.levelHeader}>
-          <Text style={styles.levelIcon}>{getLevelIcon(loyaltyData?.level || 'Bronze')}</Text>
+          <Text style={styles.levelIcon}>
+            {getLevelIcon(loyaltyData?.level || "Bronze")}
+          </Text>
           <View style={styles.levelInfo}>
             <Text style={styles.levelTitle}>Nivel {loyaltyData?.level}</Text>
             <Text style={styles.levelSubtitle}>
@@ -214,14 +253,16 @@ export default function LoyaltyProgramScreen() {
             </Text>
           </View>
         </View>
-        
+
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View 
+            <View
               style={[
-                styles.progressFill, 
-                { width: `${((3000 - (loyaltyData?.pointsToNext || 0)) / 3000) * 100}%` }
-              ]} 
+                styles.progressFill,
+                {
+                  width: `${((3000 - (loyaltyData?.pointsToNext || 0)) / 3000) * 100}%`,
+                },
+              ]}
             />
           </View>
         </View>
@@ -230,11 +271,15 @@ export default function LoyaltyProgramScreen() {
       {/* Points Summary */}
       <View style={styles.pointsGrid}>
         <View style={styles.pointsCard}>
-          <Text style={styles.pointsValue}>{loyaltyData?.currentPoints.toLocaleString()}</Text>
+          <Text style={styles.pointsValue}>
+            {loyaltyData?.currentPoints.toLocaleString()}
+          </Text>
           <Text style={styles.pointsLabel}>Puntos Actuales</Text>
         </View>
         <View style={styles.pointsCard}>
-          <Text style={styles.pointsValue}>{loyaltyData?.totalEarned.toLocaleString()}</Text>
+          <Text style={styles.pointsValue}>
+            {loyaltyData?.totalEarned.toLocaleString()}
+          </Text>
           <Text style={styles.pointsLabel}>Total Ganados</Text>
         </View>
       </View>
@@ -243,25 +288,25 @@ export default function LoyaltyProgramScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
         <View style={styles.quickActions}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.quickAction}
-            onPress={() => setActiveTab('rewards')}
+            onPress={() => setActiveTab("rewards")}
           >
             <Text style={styles.quickActionIcon}>🎁</Text>
             <Text style={styles.quickActionText}>Canjear Puntos</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.quickAction}
             onPress={() => setShowSubscriptionModal(true)}
           >
             <Text style={styles.quickActionIcon}>⭐</Text>
             <Text style={styles.quickActionText}>Ser Premium</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.quickAction}
-            onPress={() => setActiveTab('history')}
+            onPress={() => setActiveTab("history")}
           >
             <Text style={styles.quickActionIcon}>📊</Text>
             <Text style={styles.quickActionText}>Ver Historial</Text>
@@ -277,25 +322,31 @@ export default function LoyaltyProgramScreen() {
             <Text style={styles.earnIcon}>🛒</Text>
             <View style={styles.earnInfo}>
               <Text style={styles.earnTitle}>Realizar Pedidos</Text>
-              <Text style={styles.earnDescription}>1 punto por cada $10 pesos</Text>
+              <Text style={styles.earnDescription}>
+                1 punto por cada $10 pesos
+              </Text>
             </View>
             <Text style={styles.earnPoints}>+10pts</Text>
           </View>
-          
+
           <View style={styles.earnMethod}>
             <Text style={styles.earnIcon}>⭐</Text>
             <View style={styles.earnInfo}>
               <Text style={styles.earnTitle}>Dejar Reseñas</Text>
-              <Text style={styles.earnDescription}>Reseña con 4+ estrellas</Text>
+              <Text style={styles.earnDescription}>
+                Reseña con 4+ estrellas
+              </Text>
             </View>
             <Text style={styles.earnPoints}>+50pts</Text>
           </View>
-          
+
           <View style={styles.earnMethod}>
             <Text style={styles.earnIcon}>👥</Text>
             <View style={styles.earnInfo}>
               <Text style={styles.earnTitle}>Referir Amigos</Text>
-              <Text style={styles.earnDescription}>Por cada amigo que se registre</Text>
+              <Text style={styles.earnDescription}>
+                Por cada amigo que se registre
+              </Text>
             </View>
             <Text style={styles.earnPoints}>+200pts</Text>
           </View>
@@ -310,40 +361,55 @@ export default function LoyaltyProgramScreen() {
       <Text style={styles.sectionSubtitle}>
         Tienes {loyaltyData?.currentPoints.toLocaleString()} puntos para canjear
       </Text>
-      
+
       {loyaltyData?.rewards.map((reward) => (
-        <View key={reward.id} style={[
-          styles.rewardCard,
-          !reward.available && styles.rewardCardDisabled
-        ]}>
+        <View
+          key={reward.id}
+          style={[
+            styles.rewardCard,
+            !reward.available && styles.rewardCardDisabled,
+          ]}
+        >
           <View style={styles.rewardHeader}>
             <View style={styles.rewardInfo}>
               <Text style={styles.rewardTitle}>{reward.title}</Text>
               <Text style={styles.rewardDescription}>{reward.description}</Text>
               {reward.expiresAt && (
-                <Text style={styles.rewardExpiry}>Expira: {reward.expiresAt}</Text>
+                <Text style={styles.rewardExpiry}>
+                  Expira: {reward.expiresAt}
+                </Text>
               )}
             </View>
             <View style={styles.rewardValue}>
               <Text style={styles.rewardValueText}>
-                {reward.type === 'discount' ? `${reward.value}%` : formatCurrency(reward.value)}
+                {reward.type === "discount"
+                  ? `${reward.value}%`
+                  : formatCurrency(reward.value)}
               </Text>
             </View>
           </View>
-          
+
           <View style={styles.rewardFooter}>
             <Text style={styles.rewardCost}>{reward.pointsCost} puntos</Text>
             <TouchableOpacity
               style={[
                 styles.redeemButton,
-                (!reward.available || (loyaltyData?.currentPoints || 0) < reward.pointsCost) && styles.redeemButtonDisabled
+                (!reward.available ||
+                  (loyaltyData?.currentPoints || 0) < reward.pointsCost) &&
+                  styles.redeemButtonDisabled,
               ]}
               onPress={() => redeemReward(reward.id)}
-              disabled={!reward.available || (loyaltyData?.currentPoints || 0) < reward.pointsCost}
+              disabled={
+                !reward.available ||
+                (loyaltyData?.currentPoints || 0) < reward.pointsCost
+              }
             >
               <Text style={styles.redeemButtonText}>
-                {!reward.available ? 'No Disponible' : 
-                 (loyaltyData?.currentPoints || 0) < reward.pointsCost ? 'Puntos Insuficientes' : 'Canjear'}
+                {!reward.available
+                  ? "No Disponible"
+                  : (loyaltyData?.currentPoints || 0) < reward.pointsCost
+                    ? "Puntos Insuficientes"
+                    : "Canjear"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -355,21 +421,24 @@ export default function LoyaltyProgramScreen() {
   const renderSubscription = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Programa Premium</Text>
-      
+
       {loyaltyData?.subscription.isActive ? (
         <View style={styles.activeSubscription}>
-          <Text style={styles.activeSubscriptionTitle}>¡Eres Miembro Premium! ⭐</Text>
+          <Text style={styles.activeSubscriptionTitle}>
+            ¡Eres Miembro Premium! ⭐
+          </Text>
           <Text style={styles.activeSubscriptionSubtitle}>
-            Has ahorrado {formatCurrency(loyaltyData.subscription.savings)} este mes
+            Has ahorrado {formatCurrency(loyaltyData.subscription.savings)} este
+            mes
           </Text>
         </View>
       ) : (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.subscriptionCard}
           onPress={() => setShowSubscriptionModal(true)}
         >
           <LinearGradient
-            colors={['#FF6B6B', '#4ECDC4']}
+            colors={["#FF6B6B", "#4ECDC4"]}
             style={styles.subscriptionGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -398,18 +467,21 @@ export default function LoyaltyProgramScreen() {
   const renderHistory = () => (
     <ScrollView>
       <Text style={styles.sectionTitle}>Historial de Puntos</Text>
-      
+
       {loyaltyData?.history.map((item) => (
         <View key={item.id} style={styles.historyItem}>
           <View style={styles.historyInfo}>
             <Text style={styles.historyDescription}>{item.description}</Text>
             <Text style={styles.historyDate}>{item.date}</Text>
           </View>
-          <Text style={[
-            styles.historyPoints,
-            { color: item.type === 'earned' ? 'green' : 'red' }
-          ]}>
-            {item.type === 'earned' ? '+' : ''}{item.points}
+          <Text
+            style={[
+              styles.historyPoints,
+              { color: item.type === "earned" ? "green" : "red" },
+            ]}
+          >
+            {item.type === "earned" ? "+" : ""}
+            {item.points}
           </Text>
         </View>
       ))}
@@ -427,21 +499,26 @@ export default function LoyaltyProgramScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Programa de Lealtad</Text>
-      
+
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
         {[
-          { key: 'overview', label: 'Resumen' },
-          { key: 'rewards', label: 'Recompensas' },
-          { key: 'subscription', label: 'Premium' },
-          { key: 'history', label: 'Historial' },
+          { key: "overview", label: "Resumen" },
+          { key: "rewards", label: "Recompensas" },
+          { key: "subscription", label: "Premium" },
+          { key: "history", label: "Historial" },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.tab, activeTab === tab.key && styles.activeTab]}
             onPress={() => setActiveTab(tab.key as any)}
           >
-            <Text style={[styles.tabText, activeTab === tab.key && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === tab.key && styles.activeTabText,
+              ]}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -450,10 +527,10 @@ export default function LoyaltyProgramScreen() {
 
       {/* Tab Content */}
       <View style={styles.tabContent}>
-        {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'rewards' && renderRewards()}
-        {activeTab === 'subscription' && renderSubscription()}
-        {activeTab === 'history' && renderHistory()}
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "rewards" && renderRewards()}
+        {activeTab === "subscription" && renderSubscription()}
+        {activeTab === "history" && renderHistory()}
       </View>
 
       {/* Subscription Modal */}
@@ -473,7 +550,7 @@ export default function LoyaltyProgramScreen() {
 
           <ScrollView style={styles.modalContent}>
             <LinearGradient
-              colors={['#FF6B6B', '#4ECDC4']}
+              colors={["#FF6B6B", "#4ECDC4"]}
               style={styles.premiumCard}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -483,7 +560,8 @@ export default function LoyaltyProgramScreen() {
                 {formatCurrency(loyaltyData?.subscription.monthlyFee || 0)}/mes
               </Text>
               <Text style={styles.premiumSavings}>
-                Ahorra hasta {formatCurrency(loyaltyData?.subscription.savings || 0)} al mes
+                Ahorra hasta{" "}
+                {formatCurrency(loyaltyData?.subscription.savings || 0)} al mes
               </Text>
             </LinearGradient>
 
@@ -498,7 +576,7 @@ export default function LoyaltyProgramScreen() {
 
             <TouchableOpacity
               style={styles.subscribeButton}
-              onPress={() => subscribeToProgram('premium')}
+              onPress={() => subscribeToProgram("premium")}
             >
               <Text style={styles.subscribeButtonText}>Suscribirme Ahora</Text>
             </TouchableOpacity>
@@ -516,14 +594,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     paddingVertical: 20,
   },
   tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    backgroundColor: "white",
     marginHorizontal: 20,
     borderRadius: 12,
     padding: 4,
@@ -531,7 +609,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
   },
   activeTab: {
@@ -540,11 +618,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 12,
     color: Colors.light.tabIconDefault,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   activeTabText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
   tabContent: {
     flex: 1,
@@ -554,15 +632,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
   levelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
   },
   levelIcon: {
@@ -574,15 +652,15 @@ const styles = StyleSheet.create({
   },
   levelTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    fontWeight: "bold",
+    color: "white",
+    textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   levelSubtitle: {
     fontSize: 14,
-    color: 'white',
+    color: "white",
     opacity: 0.9,
   },
   progressContainer: {
@@ -590,27 +668,27 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: "rgba(255,255,255,0.3)",
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   progressFill: {
-    height: '100%',
-    backgroundColor: 'white',
+    height: "100%",
+    backgroundColor: "white",
     borderRadius: 4,
   },
   pointsGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 20,
   },
   pointsCard: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -618,7 +696,7 @@ const styles = StyleSheet.create({
   },
   pointsValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.tint,
     marginBottom: 4,
   },
@@ -627,11 +705,11 @@ const styles = StyleSheet.create({
     color: Colors.light.tabIconDefault,
   },
   section: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -639,7 +717,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 16,
   },
@@ -649,11 +727,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   quickAction: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 12,
   },
   quickActionIcon: {
@@ -663,14 +741,14 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 12,
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
   },
   earnMethods: {
     gap: 12,
   },
   earnMethod: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     backgroundColor: Colors.light.background,
     borderRadius: 8,
@@ -684,7 +762,7 @@ const styles = StyleSheet.create({
   },
   earnTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 2,
   },
@@ -694,15 +772,15 @@ const styles = StyleSheet.create({
   },
   earnPoints: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: 'green',
+    fontWeight: "bold",
+    color: "green",
   },
   rewardCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -712,8 +790,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   rewardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 12,
   },
   rewardInfo: {
@@ -721,7 +799,7 @@ const styles = StyleSheet.create({
   },
   rewardTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
     marginBottom: 4,
   },
@@ -732,24 +810,24 @@ const styles = StyleSheet.create({
   },
   rewardExpiry: {
     fontSize: 12,
-    color: 'orange',
+    color: "orange",
   },
   rewardValue: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   rewardValueText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.tint,
   },
   rewardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   rewardCost: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   redeemButton: {
@@ -762,48 +840,48 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tabIconDefault,
   },
   redeemButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   subscriptionCard: {
     borderRadius: 16,
     marginBottom: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   subscriptionGradient: {
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
   },
   subscriptionTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     marginBottom: 8,
   },
   subscriptionPrice: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     marginBottom: 8,
   },
   subscriptionCTA: {
     fontSize: 16,
-    color: 'white',
+    color: "white",
     opacity: 0.9,
   },
   activeSubscription: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 12,
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
     borderWidth: 2,
     borderColor: Colors.light.tint,
   },
   activeSubscriptionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.light.tint,
     marginBottom: 8,
   },
@@ -812,8 +890,8 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
   },
   benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   benefitIcon: {
@@ -826,10 +904,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   historyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "white",
     borderRadius: 8,
     padding: 16,
     marginBottom: 8,
@@ -848,23 +926,23 @@ const styles = StyleSheet.create({
   },
   historyPoints: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.light.text,
   },
   modalCancel: {
@@ -878,24 +956,24 @@ const styles = StyleSheet.create({
   premiumCard: {
     borderRadius: 16,
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
   },
   premiumTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     marginBottom: 8,
   },
   premiumPrice: {
     fontSize: 36,
-    fontWeight: 'bold',
-    color: 'white',
+    fontWeight: "bold",
+    color: "white",
     marginBottom: 8,
   },
   premiumSavings: {
     fontSize: 16,
-    color: 'white',
+    color: "white",
     opacity: 0.9,
   },
   benefitsList: {
@@ -905,18 +983,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.tint,
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   subscribeButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loadingText: {
     fontSize: 18,
     color: Colors.light.text,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 50,
   },
 });

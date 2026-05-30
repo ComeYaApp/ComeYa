@@ -14,7 +14,12 @@ import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type CartScreenNavigationProp = NativeStackNavigationProp<
@@ -31,36 +36,44 @@ export default function CartScreen() {
   const { user } = useAuth();
   const [addresses, setAddresses] = React.useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = React.useState<any>(null);
-  const [calculatedDeliveryFee, setCalculatedDeliveryFee] = React.useState<number | null>(null);
+  const [calculatedDeliveryFee, setCalculatedDeliveryFee] = React.useState<
+    number | null
+  >(null);
 
   const [businessData, setBusinessData] = React.useState<any>(null);
 
   React.useEffect(() => {
     if (!cart?.businessId) return;
-    import('@/lib/query-client').then(({ apiRequest }) => {
-      apiRequest('GET', `/api/businesses/${cart.businessId}`)
-        .then(r => r.json())
-        .then(data => { if (data.success) setBusinessData(data.business); })
+    import("@/lib/query-client").then(({ apiRequest }) => {
+      apiRequest("GET", `/api/businesses/${cart.businessId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) setBusinessData(data.business);
+        })
         .catch(() => {});
     });
   }, [cart?.businessId]);
 
   const business = businessData;
-  
+
   // Cargar direcciones del usuario
   const loadAddresses = React.useCallback(async () => {
     if (!user?.id) return;
     try {
-      const { apiRequest } = await import('@/lib/query-client');
-      const response = await apiRequest('GET', `/api/users/${user.id}/addresses`);
+      const { apiRequest } = await import("@/lib/query-client");
+      const response = await apiRequest(
+        "GET",
+        `/api/users/${user.id}/addresses`,
+      );
       const data = await response.json();
       if (data.success) {
         setAddresses(data.addresses);
-        const defaultAddr = data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
+        const defaultAddr =
+          data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
         setSelectedAddress(defaultAddr);
       }
     } catch (error) {
-      console.error('Error loading addresses:', error);
+      console.error("Error loading addresses:", error);
     }
   }, [user?.id]);
 
@@ -77,19 +90,30 @@ export default function CartScreen() {
   // Calcular delivery fee REAL basado en distancia
   React.useEffect(() => {
     const calculateFee = async () => {
-      if (!selectedAddress || !business || !selectedAddress.latitude || !selectedAddress.longitude || !business.latitude || !business.longitude) {
+      if (
+        !selectedAddress ||
+        !business ||
+        !selectedAddress.latitude ||
+        !selectedAddress.longitude ||
+        !business.latitude ||
+        !business.longitude
+      ) {
         setCalculatedDeliveryFee((business?.deliveryFee || 300) / 100);
         return;
       }
-      
+
       try {
-        const { apiRequest } = await import('@/lib/query-client');
-        const response = await apiRequest('POST', '/api/orders/calculate-delivery', {
-          businessLat: business.latitude,
-          businessLng: business.longitude,
-          deliveryLat: selectedAddress.latitude,
-          deliveryLng: selectedAddress.longitude,
-        });
+        const { apiRequest } = await import("@/lib/query-client");
+        const response = await apiRequest(
+          "POST",
+          "/api/orders/calculate-delivery",
+          {
+            businessLat: business.latitude,
+            businessLng: business.longitude,
+            deliveryLat: selectedAddress.latitude,
+            deliveryLng: selectedAddress.longitude,
+          },
+        );
         const data = await response.json();
         if (data.success) {
           setCalculatedDeliveryFee(data.deliveryFee / 100);
@@ -97,16 +121,22 @@ export default function CartScreen() {
           setCalculatedDeliveryFee((business.deliveryFee || 300) / 100);
         }
       } catch (error) {
-        console.error('Error calculating delivery fee:', error);
+        console.error("Error calculating delivery fee:", error);
         setCalculatedDeliveryFee((business?.deliveryFee || 300) / 100);
       }
     };
     calculateFee();
   }, [selectedAddress, business]);
 
-  const [orderType, setOrderType] = React.useState<'delivery' | 'pickup'>('delivery');
+  const [orderType, setOrderType] = React.useState<"delivery" | "pickup">(
+    "delivery",
+  );
 
-  const deliveryFee = orderType === 'pickup' ? 0 : (calculatedDeliveryFee ?? (businessData?.deliveryFee ? businessData.deliveryFee / 100 : 3));
+  const deliveryFee =
+    orderType === "pickup"
+      ? 0
+      : (calculatedDeliveryFee ??
+        (businessData?.deliveryFee ? businessData.deliveryFee / 100 : 3));
   const minimumOrder = business?.minimumOrder || 0;
 
   // Los precios de los productos YA incluyen la comisión del 15%
@@ -237,7 +267,10 @@ export default function CartScreen() {
                   ) : null}
                   <ThemedText
                     type="h4"
-                    style={{ color: ComeYaColors.primary, marginTop: Spacing.sm }}
+                    style={{
+                      color: ComeYaColors.primary,
+                      marginTop: Spacing.sm,
+                    }}
                   >
                     €{itemTotal.toFixed(2)}
                   </ThemedText>
@@ -302,44 +335,118 @@ export default function CartScreen() {
         ]}
       >
         {/* Selector Delivery / Pickup */}
-        <View style={[styles.orderTypeRow, { backgroundColor: theme.backgroundSecondary, borderRadius: BorderRadius.md, marginBottom: Spacing.md }]}>
+        <View
+          style={[
+            styles.orderTypeRow,
+            {
+              backgroundColor: theme.backgroundSecondary,
+              borderRadius: BorderRadius.md,
+              marginBottom: Spacing.md,
+            },
+          ]}
+        >
           <Pressable
-            onPress={() => { setOrderType('delivery'); Haptics.selectionAsync(); }}
-            style={[styles.orderTypeBtn, orderType === 'delivery' && { backgroundColor: ComeYaColors.primary, borderRadius: BorderRadius.md }]}
+            onPress={() => {
+              setOrderType("delivery");
+              Haptics.selectionAsync();
+            }}
+            style={[
+              styles.orderTypeBtn,
+              orderType === "delivery" && {
+                backgroundColor: ComeYaColors.primary,
+                borderRadius: BorderRadius.md,
+              },
+            ]}
           >
-            <Feather name="truck" size={16} color={orderType === 'delivery' ? '#fff' : theme.textSecondary} />
-            <ThemedText type="small" style={{ marginLeft: 6, color: orderType === 'delivery' ? '#fff' : theme.textSecondary, fontWeight: '600' }}>Envío a domicilio</ThemedText>
+            <Feather
+              name="truck"
+              size={16}
+              color={orderType === "delivery" ? "#fff" : theme.textSecondary}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                marginLeft: 6,
+                color: orderType === "delivery" ? "#fff" : theme.textSecondary,
+                fontWeight: "600",
+              }}
+            >
+              Envío a domicilio
+            </ThemedText>
           </Pressable>
           <Pressable
-            onPress={() => { setOrderType('pickup'); Haptics.selectionAsync(); }}
-            style={[styles.orderTypeBtn, orderType === 'pickup' && { backgroundColor: ComeYaColors.primary, borderRadius: BorderRadius.md }]}
+            onPress={() => {
+              setOrderType("pickup");
+              Haptics.selectionAsync();
+            }}
+            style={[
+              styles.orderTypeBtn,
+              orderType === "pickup" && {
+                backgroundColor: ComeYaColors.primary,
+                borderRadius: BorderRadius.md,
+              },
+            ]}
           >
-            <Feather name="shopping-bag" size={16} color={orderType === 'pickup' ? '#fff' : theme.textSecondary} />
-            <ThemedText type="small" style={{ marginLeft: 6, color: orderType === 'pickup' ? '#fff' : theme.textSecondary, fontWeight: '600' }}>Recoger en local</ThemedText>
+            <Feather
+              name="shopping-bag"
+              size={16}
+              color={orderType === "pickup" ? "#fff" : theme.textSecondary}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                marginLeft: 6,
+                color: orderType === "pickup" ? "#fff" : theme.textSecondary,
+                fontWeight: "600",
+              }}
+            >
+              Recoger en local
+            </ThemedText>
           </Pressable>
         </View>
 
         <View style={styles.summaryRow}>
-          <ThemedText type="body" style={{ color: theme.textSecondary }}>Subtotal</ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            Subtotal
+          </ThemedText>
           <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
         </View>
-        {orderType === 'delivery' && (
+        {orderType === "delivery" && (
           <View style={styles.summaryRow}>
-            <ThemedText type="body" style={{ color: theme.textSecondary }}>Envío</ThemedText>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Envío
+            </ThemedText>
             <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
           </View>
         )}
-        {orderType === 'pickup' && (
-          <View style={[styles.summaryRow, { backgroundColor: ComeYaColors.success + '15', padding: Spacing.sm, borderRadius: BorderRadius.sm }]}>
-            <ThemedText type="small" style={{ color: ComeYaColors.success }}>🎉 Sin coste de envío al recoger en local</ThemedText>
+        {orderType === "pickup" && (
+          <View
+            style={[
+              styles.summaryRow,
+              {
+                backgroundColor: ComeYaColors.success + "15",
+                padding: Spacing.sm,
+                borderRadius: BorderRadius.sm,
+              },
+            ]}
+          >
+            <ThemedText type="small" style={{ color: ComeYaColors.success }}>
+              🎉 Sin coste de envío al recoger en local
+            </ThemedText>
           </View>
         )}
         <View style={[styles.summaryRow, styles.totalRow]}>
           <ThemedText type="h3">Total</ThemedText>
-          <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>€{total.toFixed(2)}</ThemedText>
+          <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
+            €{total.toFixed(2)}
+          </ThemedText>
         </View>
-        <Button onPress={handleCheckout} disabled={!canProceed} style={styles.checkoutButton}>
-          {canProceed ? 'Continuar al pago' : `Mínimo €${minimumOrder}`}
+        <Button
+          onPress={handleCheckout}
+          disabled={!canProceed}
+          style={styles.checkoutButton}
+        >
+          {canProceed ? "Continuar al pago" : `Mínimo €${minimumOrder}`}
         </Button>
       </View>
     </View>

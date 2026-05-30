@@ -19,7 +19,8 @@ const DEFAULT_SETTINGS = [
     value: "1.00",
     type: "number",
     category: "commissions",
-    description: "Porcentaje del precio base de productos que recibe el negocio (100%)",
+    description:
+      "Porcentaje del precio base de productos que recibe el negocio (100%)",
     isPublic: false,
   },
   {
@@ -27,7 +28,8 @@ const DEFAULT_SETTINGS = [
     value: "1.00",
     type: "number",
     category: "commissions",
-    description: "Porcentaje de la tarifa de entrega que recibe el repartidor (100%)",
+    description:
+      "Porcentaje de la tarifa de entrega que recibe el repartidor (100%)",
     isPublic: false,
   },
   // Payments
@@ -101,7 +103,8 @@ const DEFAULT_SETTINGS = [
     value: "300",
     type: "number",
     category: "operations",
-    description: "Tarifa de entrega por defecto para nuevos negocios (centavos de euro)",
+    description:
+      "Tarifa de entrega por defecto para nuevos negocios (centavos de euro)",
     isPublic: true,
   },
   {
@@ -109,7 +112,8 @@ const DEFAULT_SETTINGS = [
     value: "1000",
     type: "number",
     category: "operations",
-    description: "Pedido mínimo por defecto para nuevos negocios (centavos de euro)",
+    description:
+      "Pedido mínimo por defecto para nuevos negocios (centavos de euro)",
     isPublic: true,
   },
   {

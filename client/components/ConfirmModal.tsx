@@ -2,7 +2,12 @@ import React from "react";
 import { View, StyleSheet, Modal, Pressable } from "react-native";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -35,17 +40,25 @@ export function ConfirmModal({
       onRequestClose={onCancel}
     >
       <Pressable style={styles.overlay} onPress={onCancel}>
-        <Pressable style={[styles.modal, { backgroundColor: theme.card }, Shadows.lg]}>
+        <Pressable
+          style={[styles.modal, { backgroundColor: theme.card }, Shadows.lg]}
+        >
           <ThemedText type="h3" style={styles.title}>
             {title}
           </ThemedText>
-          <ThemedText type="body" style={[styles.message, { color: theme.textSecondary }]}>
+          <ThemedText
+            type="body"
+            style={[styles.message, { color: theme.textSecondary }]}
+          >
             {message}
           </ThemedText>
           <View style={styles.buttons}>
             <Pressable
               onPress={onCancel}
-              style={[styles.button, { backgroundColor: theme.backgroundSecondary }]}
+              style={[
+                styles.button,
+                { backgroundColor: theme.backgroundSecondary },
+              ]}
             >
               <ThemedText type="body">{cancelText}</ThemedText>
             </Pressable>
@@ -55,7 +68,9 @@ export function ConfirmModal({
                 styles.button,
                 {
                   backgroundColor:
-                    variant === "danger" ? ComeYaColors.error : ComeYaColors.primary,
+                    variant === "danger"
+                      ? ComeYaColors.error
+                      : ComeYaColors.primary,
                 },
               ]}
             >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -6,28 +6,40 @@ import {
   Pressable,
   Platform,
   ActivityIndicator,
-} from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/navigation/RootStackNavigator';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+} from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
-import { useTheme } from '@/hooks/useTheme';
-import { useAuth } from '@/contexts/AuthContext';
-import { apiRequest } from '@/lib/query-client';
-import { isInCoverageArea, SORIA_CENTER } from '@/utils/coverage';
-import { checkDuplicateAddress, suggestSimilarAddresses, Address } from '@/utils/addressValidation';
-import { useDebounce, usePerformanceMonitor } from '@/hooks/usePerformance';
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
-import * as Location from 'expo-location';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { Input } from "@/components/Input";
+import { Button } from "@/components/Button";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiRequest } from "@/lib/query-client";
+import { isInCoverageArea, SORIA_CENTER } from "@/utils/coverage";
+import {
+  checkDuplicateAddress,
+  suggestSimilarAddresses,
+  Address,
+} from "@/utils/addressValidation";
+import { useDebounce, usePerformanceMonitor } from "@/hooks/usePerformance";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
+import * as Location from "expo-location";
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AddAddress'>;
+type NavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "AddAddress"
+>;
 
 export default function AddAddressScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -35,34 +47,45 @@ export default function AddAddressScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { user } = useAuth();
-  usePerformanceMonitor('AddAddressScreen');
+  usePerformanceMonitor("AddAddressScreen");
 
-  const existingAddress = (route.params as any)?.address as Partial<Address> | undefined;
+  const existingAddress = (route.params as any)?.address as
+    | Partial<Address>
+    | undefined;
   const fromCheckout = Boolean((route.params as any)?.fromCheckout);
 
   const { data: addressesData } = useQuery<{ addresses: Address[] }>({
-    queryKey: ['/api/users', user?.id, 'addresses'],
+    queryKey: ["/api/users", user?.id, "addresses"],
     enabled: !!user?.id,
   });
   const existingAddresses = addressesData?.addresses || [];
 
-  const [label, setLabel] = useState(existingAddress?.label || '');
-  const [street, setStreet] = useState(existingAddress?.street || '');
-  const [city, setCity] = useState(existingAddress?.city || 'Soria');
-  const [state, setState] = useState(existingAddress?.state || 'España');
-  const [zipCode, setZipCode] = useState(existingAddress?.zipCode || '');
+  const [label, setLabel] = useState(existingAddress?.label || "");
+  const [street, setStreet] = useState(existingAddress?.street || "");
+  const [city, setCity] = useState(existingAddress?.city || "Soria");
+  const [state, setState] = useState(existingAddress?.state || "España");
+  const [zipCode, setZipCode] = useState(existingAddress?.zipCode || "");
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [touched, setTouched] = useState(false);
-  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
-    existingAddress?.latitude && existingAddress?.longitude &&
-    isInCoverageArea(existingAddress.latitude, existingAddress.longitude)
-      ? { latitude: existingAddress.latitude, longitude: existingAddress.longitude }
+  const [coordinates, setCoordinates] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(
+    existingAddress?.latitude &&
+      existingAddress?.longitude &&
+      isInCoverageArea(existingAddress.latitude, existingAddress.longitude)
+      ? {
+          latitude: existingAddress.latitude,
+          longitude: existingAddress.longitude,
+        }
       : null,
   );
-  const [duplicateWarning, setDuplicateWarning] = useState<Address | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState<Address | null>(
+    null,
+  );
   const [suggestions, setSuggestions] = useState<Address[]>([]);
 
   const debouncedStreet = useDebounce(street, 300);
@@ -70,18 +93,30 @@ export default function AddAddressScreen() {
   useEffect(() => {
     if (coordinates && street && existingAddresses.length > 0) {
       const duplicate = checkDuplicateAddress(
-        { latitude: coordinates.latitude, longitude: coordinates.longitude, street },
+        {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          street,
+        },
         existingAddresses,
       );
       setDuplicateWarning(duplicate);
     } else {
       setDuplicateWarning(null);
     }
-  }, [coordinates?.latitude, coordinates?.longitude, street, existingAddresses.length]);
+  }, [
+    coordinates?.latitude,
+    coordinates?.longitude,
+    street,
+    existingAddresses.length,
+  ]);
 
   useEffect(() => {
     if (debouncedStreet.length >= 3 && existingAddresses.length > 0) {
-      const similar = suggestSimilarAddresses(debouncedStreet, existingAddresses);
+      const similar = suggestSimilarAddresses(
+        debouncedStreet,
+        existingAddresses,
+      );
       setSuggestions(similar);
     } else {
       setSuggestions([]);
@@ -99,22 +134,31 @@ export default function AddAddressScreen() {
     setTouched(true);
     setError(null);
 
-    if (!label.trim() || !street.trim()) {
-      setError('Por favor completa todos los campos requeridos');
+    // Validación mejorada
+    const missingFields = [];
+    if (!label.trim()) missingFields.push("etiqueta");
+    if (!street.trim()) missingFields.push("calle");
+
+    if (missingFields.length > 0) {
+      setError(`Completa estos campos requeridos: ${missingFields.join(", ")}`);
       return;
     }
 
-    const finalCoordinates = coordinates || (Platform.OS === 'web' ? SORIA_CENTER : null);
+    const finalCoordinates =
+      coordinates || (Platform.OS === "web" ? SORIA_CENTER : null);
 
     if (!finalCoordinates) {
-      setError('Por favor selecciona la ubicación en el mapa');
+      setError("Por favor selecciona la ubicación en el mapa");
       return;
     }
 
     // En web sin GPS, siempre usar centro de Soria — no validar cobertura
-    const coordsToValidate = (Platform.OS === 'web' && !coordinates) ? SORIA_CENTER : finalCoordinates;
-    if (!isInCoverageArea(coordsToValidate.latitude, coordsToValidate.longitude)) {
-      setError('La ubicación está fuera de nuestra zona de cobertura');
+    const coordsToValidate =
+      Platform.OS === "web" && !coordinates ? SORIA_CENTER : finalCoordinates;
+    if (
+      !isInCoverageArea(coordsToValidate.latitude, coordsToValidate.longitude)
+    ) {
+      setError("La ubicación está fuera de nuestra zona de cobertura");
       return;
     }
 
@@ -131,28 +175,35 @@ export default function AddAddressScreen() {
       };
 
       const response = existingAddress?.id
-        ? await apiRequest('PUT', `/api/users/${user?.id}/addresses/${existingAddress.id}`, payload)
-        : await apiRequest('POST', `/api/users/${user?.id}/addresses`, payload);
+        ? await apiRequest(
+            "PUT",
+            `/api/users/${user?.id}/addresses/${existingAddress.id}`,
+            payload,
+          )
+        : await apiRequest("POST", `/api/users/${user?.id}/addresses`, payload);
 
       if (response.ok) {
         const responseData = await response.json().catch(() => ({}));
-        const savedId = (responseData as any)?.address?.id || (responseData as any)?.id || existingAddress?.id;
+        const savedId =
+          (responseData as any)?.address?.id ||
+          (responseData as any)?.id ||
+          existingAddress?.id;
         setSuccess(true);
         setTimeout(() => {
           if (fromCheckout && savedId) {
-            navigation.navigate('Checkout' as never, {
+            navigation.navigate("Checkout", {
               addressRefreshToken: Date.now(),
               selectedAddressId: savedId,
-            } as never);
+            });
           } else {
             navigation.goBack();
           }
         }, 500);
       } else {
-        setError('No se pudo guardar la dirección. Intenta de nuevo.');
+        setError("No se pudo guardar la dirección. Intenta de nuevo.");
       }
     } catch {
-      setError('Error de conexión. Verifica tu internet.');
+      setError("Error de conexión. Verifica tu internet.");
     } finally {
       setLoading(false);
     }
@@ -170,9 +221,24 @@ export default function AddAddressScreen() {
       >
         {/* Error banner */}
         {error && (
-          <View style={[styles.banner, { backgroundColor: ComeYaColors.error + '15', borderColor: ComeYaColors.error + '40' }]}>
+          <View
+            style={[
+              styles.banner,
+              {
+                backgroundColor: ComeYaColors.error + "15",
+                borderColor: ComeYaColors.error + "40",
+              },
+            ]}
+          >
             <Feather name="alert-circle" size={16} color={ComeYaColors.error} />
-            <ThemedText type="small" style={{ color: ComeYaColors.error, flex: 1, marginLeft: Spacing.sm }}>
+            <ThemedText
+              type="small"
+              style={{
+                color: ComeYaColors.error,
+                flex: 1,
+                marginLeft: Spacing.sm,
+              }}
+            >
               {error}
             </ThemedText>
           </View>
@@ -180,10 +246,31 @@ export default function AddAddressScreen() {
 
         {/* Success banner */}
         {success && (
-          <View style={[styles.banner, { backgroundColor: ComeYaColors.success + '15', borderColor: ComeYaColors.success + '40' }]}>
-            <Feather name="check-circle" size={16} color={ComeYaColors.success} />
-            <ThemedText type="small" style={{ color: ComeYaColors.success, flex: 1, marginLeft: Spacing.sm }}>
-              {existingAddress?.id ? 'Dirección actualizada' : 'Dirección guardada correctamente'}
+          <View
+            style={[
+              styles.banner,
+              {
+                backgroundColor: ComeYaColors.success + "15",
+                borderColor: ComeYaColors.success + "40",
+              },
+            ]}
+          >
+            <Feather
+              name="check-circle"
+              size={16}
+              color={ComeYaColors.success}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                color: ComeYaColors.success,
+                flex: 1,
+                marginLeft: Spacing.sm,
+              }}
+            >
+              {existingAddress?.id
+                ? "Dirección actualizada"
+                : "Dirección guardada correctamente"}
             </ThemedText>
           </View>
         )}
@@ -192,25 +279,36 @@ export default function AddAddressScreen() {
         <Pressable
           style={[
             styles.gpsButton,
-            { backgroundColor: ComeYaColors.primary, opacity: locating ? 0.7 : 1 },
+            {
+              backgroundColor: ComeYaColors.primary,
+              opacity: locating ? 0.7 : 1,
+            },
             Shadows.sm,
           ]}
           onPress={async () => {
             setLocating(true);
             setError(null);
             try {
-              const { status } = await Location.requestForegroundPermissionsAsync();
-              if (status !== 'granted') {
-                setError('Se necesita permiso de ubicación para usar el GPS');
+              const { status } =
+                await Location.requestForegroundPermissionsAsync();
+              if (status !== "granted") {
+                setError("Se necesita permiso de ubicación para usar el GPS");
                 return;
               }
-              const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+              const pos = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.High,
+              });
               const { latitude, longitude } = pos.coords;
               setCoordinates({ latitude, longitude });
-              const [place] = await Location.reverseGeocodeAsync({ latitude, longitude });
+              const [place] = await Location.reverseGeocodeAsync({
+                latitude,
+                longitude,
+              });
               if (place) {
-                const streetParts = [place.street, place.streetNumber].filter(Boolean);
-                if (streetParts.length > 0) setStreet(streetParts.join(' '));
+                const streetParts = [place.street, place.streetNumber].filter(
+                  Boolean,
+                );
+                if (streetParts.length > 0) setStreet(streetParts.join(" "));
                 if (place.postalCode) setZipCode(place.postalCode);
                 // Solo sobreescribir ciudad/provincia si el GPS devuelve valores
                 // (en producción en Soria serán correctos)
@@ -218,27 +316,37 @@ export default function AddAddressScreen() {
                 if (place.region) setState(place.region);
               }
             } catch {
-              setError('No se pudo obtener la ubicación. Intenta de nuevo.');
+              setError("No se pudo obtener la ubicación. Intenta de nuevo.");
             } finally {
               setLocating(false);
             }
           }}
           disabled={locating}
         >
-          {locating
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Feather name="navigation" size={18} color="#fff" />}
-          <ThemedText type="body" style={{ color: '#fff', fontWeight: '600', marginLeft: Spacing.sm }}>
-            {locating ? 'Obteniendo ubicación...' : 'Usar mi ubicación actual'}
+          {locating ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Feather name="navigation" size={18} color="#fff" />
+          )}
+          <ThemedText
+            type="body"
+            style={{ color: "#fff", fontWeight: "600", marginLeft: Spacing.sm }}
+          >
+            {locating ? "Obteniendo ubicación..." : "Usar mi ubicación actual"}
           </ThemedText>
         </Pressable>
 
-        <View style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <Input
             label="Calle y número *"
             leftIcon="map-pin"
             value={street}
-            onChangeText={(t) => { setStreet(t); setError(null); }}
+            onChangeText={(t) => {
+              setStreet(t);
+              setError(null);
+            }}
             placeholder="Ej: Calle Mayor 12"
             autoCapitalize="words"
             onBlur={() => setTouched(true)}
@@ -246,20 +354,40 @@ export default function AddAddressScreen() {
 
           {/* Suggestions */}
           {suggestions.length > 0 && (
-            <View style={[styles.suggestionsBox, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}>
+            <View
+              style={[
+                styles.suggestionsBox,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}
+              >
                 Direcciones similares:
               </ThemedText>
               {suggestions.map((addr) => (
                 <Pressable
                   key={addr.id}
-                  style={[styles.suggestionItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  style={[
+                    styles.suggestionItem,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
                   onPress={() => handleSuggestionSelect(addr)}
                 >
-                  <ThemedText type="small" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
+                  <ThemedText
+                    type="small"
+                    style={{ color: ComeYaColors.primary, fontWeight: "600" }}
+                  >
                     {addr.label}
                   </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginTop: 2 }}
+                  >
                     {addr.street}
                   </ThemedText>
                 </Pressable>
@@ -269,13 +397,31 @@ export default function AddAddressScreen() {
 
           {/* Duplicate warning */}
           {duplicateWarning && (
-            <View style={[styles.banner, { backgroundColor: ComeYaColors.warning + '15', borderColor: ComeYaColors.warning + '40' }]}>
-              <Feather name="alert-triangle" size={16} color={ComeYaColors.warning} />
+            <View
+              style={[
+                styles.banner,
+                {
+                  backgroundColor: ComeYaColors.warning + "15",
+                  borderColor: ComeYaColors.warning + "40",
+                },
+              ]}
+            >
+              <Feather
+                name="alert-triangle"
+                size={16}
+                color={ComeYaColors.warning}
+              />
               <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                <ThemedText type="small" style={{ color: ComeYaColors.warning, fontWeight: '600' }}>
+                <ThemedText
+                  type="small"
+                  style={{ color: ComeYaColors.warning, fontWeight: "600" }}
+                >
                   Similar a "{duplicateWarning.label}"
                 </ThemedText>
-                <ThemedText type="caption" style={{ color: ComeYaColors.warning }}>
+                <ThemedText
+                  type="caption"
+                  style={{ color: ComeYaColors.warning }}
+                >
                   {duplicateWarning.street}
                 </ThemedText>
               </View>
@@ -289,7 +435,11 @@ export default function AddAddressScreen() {
             onChangeText={setLabel}
             placeholder="Casa, Trabajo, etc."
             onBlur={() => setTouched(true)}
-            error={touched && !label.trim() ? 'Necesitamos una etiqueta para identificar la dirección' : undefined}
+            error={
+              touched && !label.trim()
+                ? "Necesitamos una etiqueta para identificar la dirección"
+                : undefined
+            }
           />
 
           <Input
@@ -317,18 +467,20 @@ export default function AddAddressScreen() {
         </View>
 
         {/* Map picker / web notice */}
-        {Platform.OS !== 'web' ? (
+        {Platform.OS !== "web" ? (
           <Pressable
             style={[
               styles.mapButton,
               {
-                backgroundColor: coordinates ? ComeYaColors.primary + '15' : theme.card,
+                backgroundColor: coordinates
+                  ? ComeYaColors.primary + "15"
+                  : theme.card,
                 borderColor: coordinates ? ComeYaColors.primary : theme.border,
               },
               Shadows.sm,
             ]}
             onPress={() =>
-              navigation.navigate('LocationPicker', {
+              navigation.navigate("LocationPicker", {
                 onLocationSelected: (coords: any, addr: any) => {
                   setCoordinates(coords);
                   if (!street && addr) setStreet(addr);
@@ -337,7 +489,7 @@ export default function AddAddressScreen() {
             }
           >
             <Feather
-              name={coordinates ? 'check-circle' : 'map-pin'}
+              name={coordinates ? "check-circle" : "map-pin"}
               size={20}
               color={coordinates ? ComeYaColors.primary : theme.textSecondary}
             />
@@ -346,17 +498,33 @@ export default function AddAddressScreen() {
               style={{
                 marginLeft: Spacing.sm,
                 color: coordinates ? ComeYaColors.primary : theme.textSecondary,
-                fontWeight: '600',
+                fontWeight: "600",
               }}
             >
-              {coordinates ? 'Ubicación seleccionada' : 'Seleccionar en mapa *'}
+              {coordinates ? "Ubicación seleccionada" : "Seleccionar en mapa *"}
             </ThemedText>
           </Pressable>
         ) : (
-          <View style={[styles.banner, { backgroundColor: ComeYaColors.primary + '10', borderColor: ComeYaColors.primary + '30' }]}>
+          <View
+            style={[
+              styles.banner,
+              {
+                backgroundColor: ComeYaColors.primary + "10",
+                borderColor: ComeYaColors.primary + "30",
+              },
+            ]}
+          >
             <Feather name="globe" size={16} color={ComeYaColors.primary} />
-            <ThemedText type="small" style={{ color: ComeYaColors.primary, flex: 1, marginLeft: Spacing.sm }}>
-              En la versión web se usará la ubicación del centro de Soria por defecto.
+            <ThemedText
+              type="small"
+              style={{
+                color: ComeYaColors.primary,
+                flex: 1,
+                marginLeft: Spacing.sm,
+              }}
+            >
+              En la versión web se usará la ubicación del centro de Soria por
+              defecto.
             </ThemedText>
           </View>
         )}
@@ -367,7 +535,11 @@ export default function AddAddressScreen() {
           loading={loading}
           style={styles.saveButton}
         >
-          {success ? 'Guardado ✓' : existingAddress?.id ? 'Actualizar dirección' : 'Guardar dirección'}
+          {success
+            ? "Guardado ✓"
+            : existingAddress?.id
+              ? "Actualizar dirección"
+              : "Guardar dirección"}
         </Button>
       </ScrollView>
     </ThemedView>
@@ -382,8 +554,8 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   banner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     borderWidth: 1,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
@@ -407,23 +579,23 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   mapButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
   },
   gpsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
   },
   saveButton: {
-    width: '100%',
+    width: "100%",
   },
 });

@@ -1291,8 +1291,10 @@ export class DatabaseStorage implements IStorage {
     feePerKm?: number,
   ): Promise<number> {
     const { getSettingValue } = await import("./systemSettingsService");
-    const actualBaseFee = baseFee ?? await getSettingValue("delivery_base_fee", 300);
-    const actualFeePerKm = feePerKm ?? await getSettingValue("delivery_fee_per_km", 50);
+    const actualBaseFee =
+      baseFee ?? (await getSettingValue("delivery_base_fee", 300));
+    const actualFeePerKm =
+      feePerKm ?? (await getSettingValue("delivery_fee_per_km", 50));
     return actualBaseFee + Math.ceil(distanceKm) * actualFeePerKm;
   }
 

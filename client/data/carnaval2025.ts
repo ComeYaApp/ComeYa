@@ -76,7 +76,8 @@ export const carnavalEvents: CarnavalEvent[] = [
     time: "11:30",
     category: "Cultural",
     location: "Plaza de Toros",
-    description: "Ceremonia oficial de apertura del Carnaval San Cristóbal 2025.",
+    description:
+      "Ceremonia oficial de apertura del Carnaval San Cristóbal 2025.",
   },
   {
     id: "e6",
@@ -372,7 +373,8 @@ export const carnavalEvents: CarnavalEvent[] = [
     time: "19:00",
     category: "Tradición",
     location: "Centro",
-    description: "Baile tradicional en honor a los hijos ausentes de San Cristóbal.",
+    description:
+      "Baile tradicional en honor a los hijos ausentes de San Cristóbal.",
   },
   {
     id: "e34",
@@ -382,7 +384,8 @@ export const carnavalEvents: CarnavalEvent[] = [
     time: "21:00",
     category: "Cultural",
     location: "Jardín Constitución",
-    description: "Evento de elección de la reina del Carnaval San Cristóbal 2025.",
+    description:
+      "Evento de elección de la reina del Carnaval San Cristóbal 2025.",
   },
   {
     id: "e35",

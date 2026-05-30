@@ -20,16 +20,31 @@ import { Button } from "@/components/Button";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
-import { calculateDistance, calculateDeliveryFee, estimateDeliveryTime } from "@/utils/distance";
+import {
+  calculateDistance,
+  calculateDeliveryFee,
+  estimateDeliveryTime,
+} from "@/utils/distance";
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 
 type SubstitutionOption = "refund" | "call" | "substitute";
 
-type PaymentMethod = "stripe_card" | "stripe_bizum" | "paypal" | "bizum_manual" | "sepa" | "binance";
+type PaymentMethod =
+  | "stripe_card"
+  | "stripe_bizum"
+  | "paypal"
+  | "bizum_manual"
+  | "sepa"
+  | "binance";
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -44,61 +59,73 @@ export default function CheckoutScreen({ route }: any) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { presentPaymentSheet } = useStripePaymentSheet();
-  
+
   // Usar subtotal del carrito directamente
   const subtotal = cartSubtotal;
-  
+
   // Obtener orderType de los parámetros de navegación con validación estricta
-  const orderType: 'delivery' | 'pickup' = route?.params?.orderType === 'pickup' ? 'pickup' : 'delivery';
+  const orderType: "delivery" | "pickup" =
+    route?.params?.orderType === "pickup" ? "pickup" : "delivery";
 
   // FORZAR que orderType se mantenga durante toda la sesión
   // useMemo en lugar de useState para que se actualice si cambian los params
-  const confirmedOrderType = React.useMemo<'delivery' | 'pickup'>(
-    () => route?.params?.orderType === 'pickup' ? 'pickup' : 'delivery',
-    [route?.params?.orderType]
+  const confirmedOrderType = React.useMemo<"delivery" | "pickup">(
+    () => (route?.params?.orderType === "pickup" ? "pickup" : "delivery"),
+    [route?.params?.orderType],
   );
 
   const [addresses, setAddresses] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [dynamicDeliveryFee, setDynamicDeliveryFee] = useState<number | null>(null);
+  const [dynamicDeliveryFee, setDynamicDeliveryFee] = useState<number | null>(
+    null,
+  );
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("stripe_card");
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>("stripe_card");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
 
   // Cargar método de pago guardado como default
   useEffect(() => {
     const loadDefaultPayment = async () => {
       try {
-        const res = await apiRequest('GET', '/api/payouts/accounts');
+        const res = await apiRequest("GET", "/api/payouts/accounts");
         const data = await res.json();
         if (data.success && data.accounts?.length > 0) {
-          const defaultAcc = data.accounts.find((a: any) => a.isDefault) || data.accounts[0];
+          const defaultAcc =
+            data.accounts.find((a: any) => a.isDefault) || data.accounts[0];
           if (defaultAcc && !route?.params?.selectedPaymentMethod) {
             const providerMap: Record<string, PaymentMethod> = {
-              bizum: 'stripe_bizum',
-              tarjeta: 'stripe_card',
-              paypal: 'paypal',
+              bizum: "stripe_bizum",
+              tarjeta: "stripe_card",
+              paypal: "paypal",
             };
             const provider = providerMap[defaultAcc.method];
             if (provider) {
               setPaymentMethod(provider);
               const detail =
-                defaultAcc.method === 'bizum'   ? defaultAcc.pagoMovilPhone :
-                defaultAcc.method === 'tarjeta' ? `**** ${defaultAcc.zellePhone}` :
-                defaultAcc.zelleEmail;
+                defaultAcc.method === "bizum"
+                  ? defaultAcc.pagoMovilPhone
+                  : defaultAcc.method === "tarjeta"
+                    ? `**** ${defaultAcc.zellePhone}`
+                    : defaultAcc.zelleEmail;
               setSelectedPaymentMethod({
                 provider,
                 displayName:
-                  defaultAcc.method === 'bizum'   ? 'Bizum' :
-                  defaultAcc.method === 'tarjeta' ? 'Tarjeta' : 'PayPal',
-                instructions: detail || 'Método guardado',
+                  defaultAcc.method === "bizum"
+                    ? "Bizum"
+                    : defaultAcc.method === "tarjeta"
+                      ? "Tarjeta"
+                      : "PayPal",
+                instructions: detail || "Método guardado",
               });
             }
           }
         }
-      } catch { /* silencioso */ }
+      } catch {
+        /* silencioso */
+      }
     };
     loadDefaultPayment();
   }, []);
@@ -120,33 +147,47 @@ export default function CheckoutScreen({ route }: any) {
   const [couponLoading, setCouponLoading] = useState(false);
   const [addressPickerVisible, setAddressPickerVisible] = useState(false);
 
-  const loadAddresses = React.useCallback(async (preferredId?: string) => {
-    if (!user?.id) return;
-    try {
-      const response = await apiRequest("GET", `/api/users/${user.id}/addresses`);
-      const data = await response.json();
-      console.log('📍 Addresses loaded:', data.addresses?.length || 0, data.addresses);
-      const fetchedAddresses = data.addresses || [];
-      setAddresses(fetchedAddresses);
-      setSelectedAddress((current: any) => {
-        if (preferredId) {
-          const preferred = fetchedAddresses.find((a: any) => a.id === preferredId);
-          if (preferred) return preferred;
-        }
-        if (current) {
-          const updated = fetchedAddresses.find((a: any) => a.id === current.id);
-          if (updated) return updated;
-        }
-        return (
-          fetchedAddresses.find((a: any) => a.isDefault) ||
-          fetchedAddresses[0] ||
-          null
+  const loadAddresses = React.useCallback(
+    async (preferredId?: string) => {
+      if (!user?.id) return;
+      try {
+        const response = await apiRequest(
+          "GET",
+          `/api/users/${user.id}/addresses`,
         );
-      });
-    } catch (error) {
-      console.error('Error loading addresses:', error);
-    }
-  }, [user?.id]);
+        const data = await response.json();
+        console.log(
+          "📍 Addresses loaded:",
+          data.addresses?.length || 0,
+          data.addresses,
+        );
+        const fetchedAddresses = data.addresses || [];
+        setAddresses(fetchedAddresses);
+        setSelectedAddress((current: any) => {
+          if (preferredId) {
+            const preferred = fetchedAddresses.find(
+              (a: any) => a.id === preferredId,
+            );
+            if (preferred) return preferred;
+          }
+          if (current) {
+            const updated = fetchedAddresses.find(
+              (a: any) => a.id === current.id,
+            );
+            if (updated) return updated;
+          }
+          return (
+            fetchedAddresses.find((a: any) => a.isDefault) ||
+            fetchedAddresses[0] ||
+            null
+          );
+        });
+      } catch (error) {
+        console.error("Error loading addresses:", error);
+      }
+    },
+    [user?.id],
+  );
 
   useEffect(() => {
     loadAddresses(route?.params?.selectedAddressId);
@@ -155,10 +196,13 @@ export default function CheckoutScreen({ route }: any) {
   useFocusEffect(
     React.useCallback(() => {
       loadAddresses();
-      
+
       // Manejar selección de método de pago
       if (route?.params?.selectedPaymentMethod) {
-        console.log('📱 Setting payment method:', route.params.selectedPaymentMethod);
+        console.log(
+          "📱 Setting payment method:",
+          route.params.selectedPaymentMethod,
+        );
         setSelectedPaymentMethod(route.params.selectedPaymentMethod);
         setPaymentMethod(route.params.selectedPaymentMethod.provider);
         // Limpiar el parámetro
@@ -172,7 +216,12 @@ export default function CheckoutScreen({ route }: any) {
       loadAddresses(route.params.selectedAddressId);
       navigation.setParams({ addressRefreshToken: undefined } as any);
     }
-  }, [route?.params?.addressRefreshToken, route?.params?.selectedAddressId, loadAddresses, navigation]);
+  }, [
+    route?.params?.addressRefreshToken,
+    route?.params?.selectedAddressId,
+    loadAddresses,
+    navigation,
+  ]);
 
   useEffect(() => {
     if (cart?.businessId) {
@@ -182,7 +231,10 @@ export default function CheckoutScreen({ route }: any) {
 
   const loadBusiness = async () => {
     try {
-      const response = await apiRequest("GET", `/api/businesses/${cart?.businessId}`);
+      const response = await apiRequest(
+        "GET",
+        `/api/businesses/${cart?.businessId}`,
+      );
       const data = await response.json();
       setBusiness(data.business);
     } catch (error) {
@@ -190,20 +242,32 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
-  const deliveryFee = confirmedOrderType === 'pickup' ? 0 : (route?.params?.calculatedDeliveryFee ?? (dynamicDeliveryFee ?? (business?.deliveryFee ? Math.max(business.deliveryFee, 250) / 100 : 2.5)));
-  const effectiveDeliveryFee = subDeliveryFee !== null ? subDeliveryFee / 100 : deliveryFee;
-  
+  const deliveryFee =
+    confirmedOrderType === "pickup"
+      ? 0
+      : (route?.params?.calculatedDeliveryFee ??
+        dynamicDeliveryFee ??
+        (business?.deliveryFee
+          ? Math.max(business.deliveryFee, 250) / 100
+          : 2.5));
+  const effectiveDeliveryFee =
+    subDeliveryFee !== null ? subDeliveryFee / 100 : deliveryFee;
+
   const [tip, setTip] = useState(0);
-  const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
+  const total =
+    subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
 
   // Beneficios de suscripción
   useEffect(() => {
     if (!user?.id) return;
     const subtotalCents = Math.round(subtotal * 100);
     const deliveryFeeCents = Math.round(deliveryFee * 100);
-    apiRequest('GET', `/api/subscriptions/benefits-preview?subtotal=${subtotalCents}&deliveryFee=${deliveryFeeCents}`)
-      .then(r => r.json())
-      .then(data => {
+    apiRequest(
+      "GET",
+      `/api/subscriptions/benefits-preview?subtotal=${subtotalCents}&deliveryFee=${deliveryFeeCents}`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
         if (data.success && data.isActive) {
           setSubDiscount(data.discount / 100);
           setSubDeliveryFee(data.deliveryFee);
@@ -211,24 +275,30 @@ export default function CheckoutScreen({ route }: any) {
           setSubDiscount(0);
           setSubDeliveryFee(null);
         }
-      }).catch(() => {});
+      })
+      .catch(() => {});
   }, [subtotal, deliveryFee, user?.id]);
 
   // Calcular delivery fee dinámico cuando cambia la dirección
   useEffect(() => {
-    if (business && selectedAddress && selectedAddress.latitude && selectedAddress.longitude) {
+    if (
+      business &&
+      selectedAddress &&
+      selectedAddress.latitude &&
+      selectedAddress.longitude
+    ) {
       calculateFee();
     }
   }, [business, selectedAddress]);
 
   const calculateFee = async () => {
     if (!business || !selectedAddress) return;
-    
+
     const distance = calculateDistance(
       business.latitude || 41.7636,
       business.longitude || -2.4677,
       selectedAddress.latitude,
-      selectedAddress.longitude
+      selectedAddress.longitude,
     );
     const fee = await calculateDeliveryFee(distance);
     const time = estimateDeliveryTime(distance);
@@ -251,16 +321,21 @@ export default function CheckoutScreen({ route }: any) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const finalItemSubstitutions = showItemSubstitutions ? itemSubstitutions : {};
+      const finalItemSubstitutions = showItemSubstitutions
+        ? itemSubstitutions
+        : {};
       const subtotalCents = Math.round(subtotal * 100);
       // Calcular base sin comisión (revertir el markup del 15%)
       const baseSubtotalCents = Math.round(subtotalCents / 1.15);
       const commissionCents = subtotalCents - baseSubtotalCents;
       const deliveryFeeCents = Math.round(deliveryFee * 100);
-      const discountCents = appliedCoupon ? Math.round(couponDiscount * 100) : 0;
+      const discountCents = appliedCoupon
+        ? Math.round(couponDiscount * 100)
+        : 0;
       const tipCents = Math.round(tip * 100);
       // El total que valida el servidor
-      const orderTotal = baseSubtotalCents + commissionCents + deliveryFeeCents - discountCents;
+      const orderTotal =
+        baseSubtotalCents + commissionCents + deliveryFeeCents - discountCents;
       const totalAmount = orderTotal + tipCents;
 
       const orderResponse = await apiRequest("POST", "/api/orders", {
@@ -282,7 +357,10 @@ export default function CheckoutScreen({ route }: any) {
         deliveryLatitude: selectedAddress.latitude,
         deliveryLongitude: selectedAddress.longitude,
         substitutionPreference: globalSubstitution,
-        itemSubstitutionPreferences: Object.keys(finalItemSubstitutions).length > 0 ? JSON.stringify(finalItemSubstitutions) : null,
+        itemSubstitutionPreferences:
+          Object.keys(finalItemSubstitutions).length > 0
+            ? JSON.stringify(finalItemSubstitutions)
+            : null,
         couponCode: appliedCoupon ? couponCode.toUpperCase() : null,
         couponDiscount: discountCents || null,
       });
@@ -304,7 +382,7 @@ export default function CheckoutScreen({ route }: any) {
         Haptics.notificationAsync(
           result.success
             ? Haptics.NotificationFeedbackType.Success
-            : Haptics.NotificationFeedbackType.Error
+            : Haptics.NotificationFeedbackType.Error,
         );
         setIsLoading(false);
 
@@ -316,7 +394,7 @@ export default function CheckoutScreen({ route }: any) {
               { name: "OrderTracking", params: { orderId } },
             ],
           });
-        } else if (result.error !== 'Pago cancelado') {
+        } else if (result.error !== "Pago cancelado") {
           showToast(result.error || "Error al procesar el pago", "error");
         }
         return;
@@ -336,9 +414,12 @@ export default function CheckoutScreen({ route }: any) {
             params: {
               orderId,
               amount: totalAmount,
-              paymentMethod: paymentMethod === 'bizum_manual' ? 'bizum'
-                           : paymentMethod === 'sepa'         ? 'sepa'
-                           : 'paypal',
+              paymentMethod:
+                paymentMethod === "bizum_manual"
+                  ? "bizum"
+                  : paymentMethod === "sepa"
+                    ? "sepa"
+                    : "paypal",
             },
           },
         ],
@@ -401,16 +482,22 @@ export default function CheckoutScreen({ route }: any) {
       const data = await response.json();
 
       if (data.valid) {
-        const discount = data.discountType === "percentage"
-          ? ((subtotal + deliveryFee) * data.discount) / 100
-          : data.discount / 100;
-        
-        const maxDiscount = data.coupon.maxDiscountAmount ? data.coupon.maxDiscountAmount / 100 : discount;
+        const discount =
+          data.discountType === "percentage"
+            ? ((subtotal + deliveryFee) * data.discount) / 100
+            : data.discount / 100;
+
+        const maxDiscount = data.coupon.maxDiscountAmount
+          ? data.coupon.maxDiscountAmount / 100
+          : discount;
         const finalDiscount = Math.min(discount, maxDiscount);
 
         setAppliedCoupon(data.coupon);
         setCouponDiscount(finalDiscount);
-        showToast(`¡Cupón aplicado! Ahorras €${finalDiscount.toFixed(2)}`, "success");
+        showToast(
+          `¡Cupón aplicado! Ahorras €${finalDiscount.toFixed(2)}`,
+          "success",
+        );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
         showToast(data.error || "Cupón inválido", "error");
@@ -504,7 +591,9 @@ export default function CheckoutScreen({ route }: any) {
               <Pressable
                 onPress={() => {
                   setAddressPickerVisible(false);
-                  navigation.navigate("AddAddress", { fromCheckout: true } as never);
+                  navigation.navigate("AddAddress", {
+                    fromCheckout: true,
+                  } as never);
                 }}
                 style={[
                   styles.manageAddressButton,
@@ -514,7 +603,10 @@ export default function CheckoutScreen({ route }: any) {
                 <Feather name="plus" size={16} color={ComeYaColors.primary} />
                 <ThemedText
                   type="small"
-                  style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+                  style={{
+                    color: ComeYaColors.primary,
+                    marginLeft: Spacing.xs,
+                  }}
                 >
                   Nueva dirección
                 </ThemedText>
@@ -532,7 +624,10 @@ export default function CheckoutScreen({ route }: any) {
                 <Feather name="map" size={16} color={ComeYaColors.primary} />
                 <ThemedText
                   type="small"
-                  style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+                  style={{
+                    color: ComeYaColors.primary,
+                    marginLeft: Spacing.xs,
+                  }}
                 >
                   Ver todas
                 </ThemedText>
@@ -562,7 +657,9 @@ export default function CheckoutScreen({ route }: any) {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
+            >
               <Feather name="map-pin" size={20} color={ComeYaColors.primary} />
               <ThemedText type="h4" style={styles.sectionTitle}>
                 Dirección de entrega
@@ -576,14 +673,21 @@ export default function CheckoutScreen({ route }: any) {
               style={styles.inlineLink}
             >
               <Feather name="edit-3" size={16} color={ComeYaColors.primary} />
-              <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+              >
                 Cambiar
               </ThemedText>
             </Pressable>
           </View>
           {addresses.length === 0 ? (
             <Pressable
-              onPress={() => navigation.navigate("AddAddress", { fromCheckout: true } as never)}
+              onPress={() =>
+                navigation.navigate("AddAddress", {
+                  fromCheckout: true,
+                } as never)
+              }
               style={[
                 styles.addressCard,
                 {
@@ -597,7 +701,10 @@ export default function CheckoutScreen({ route }: any) {
                 <Feather name="plus" size={20} color={ComeYaColors.primary} />
                 <ThemedText
                   type="body"
-                  style={{ color: ComeYaColors.primary, marginLeft: Spacing.sm }}
+                  style={{
+                    color: ComeYaColors.primary,
+                    marginLeft: Spacing.sm,
+                  }}
                 >
                   Agregar dirección
                 </ThemedText>
@@ -622,15 +729,24 @@ export default function CheckoutScreen({ route }: any) {
                   },
                 ]}
                 accessibilityLabel={`Dirección ${addr.label}: ${addr.street}, ${addr.city}`}
-                accessibilityHint={selectedAddress?.id === addr.id ? 'Dirección seleccionada' : 'Toca para seleccionar esta dirección'}
+                accessibilityHint={
+                  selectedAddress?.id === addr.id
+                    ? "Dirección seleccionada"
+                    : "Toca para seleccionar esta dirección"
+                }
                 accessibilityRole="radio"
-                accessibilityState={{ checked: selectedAddress?.id === addr.id }}
+                accessibilityState={{
+                  checked: selectedAddress?.id === addr.id,
+                }}
               >
                 <View style={styles.addressContent}>
                   <ThemedText type="body" style={{ fontWeight: "600" }}>
                     {addr.label}
                   </ThemedText>
-                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  <ThemedText
+                    type="small"
+                    style={{ color: theme.textSecondary }}
+                  >
                     {addr.street}, {addr.city}
                   </ThemedText>
                 </View>
@@ -648,20 +764,43 @@ export default function CheckoutScreen({ route }: any) {
           {selectedAddress ? (
             <View style={styles.addressActionsRow}>
               <Pressable
-                onPress={() => navigation.navigate("AddAddress", { address: selectedAddress, fromCheckout: true } as never)}
-                style={[styles.manageAddressButton, { backgroundColor: theme.backgroundSecondary }]}
+                onPress={() =>
+                  navigation.navigate("AddAddress", {
+                    address: selectedAddress,
+                    fromCheckout: true,
+                  } as never)
+                }
+                style={[
+                  styles.manageAddressButton,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <Feather name="edit-2" size={16} color={ComeYaColors.primary} />
-                <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: ComeYaColors.primary,
+                    marginLeft: Spacing.xs,
+                  }}
+                >
                   Editar esta
                 </ThemedText>
               </Pressable>
               <Pressable
                 onPress={() => navigation.navigate("SavedAddresses" as never)}
-                style={[styles.manageAddressButton, { backgroundColor: theme.backgroundSecondary }]}
+                style={[
+                  styles.manageAddressButton,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <Feather name="map" size={16} color={ComeYaColors.primary} />
-                <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: ComeYaColors.primary,
+                    marginLeft: Spacing.xs,
+                  }}
+                >
                   Gestionar direcciones
                 </ThemedText>
               </Pressable>
@@ -673,7 +812,11 @@ export default function CheckoutScreen({ route }: any) {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="credit-card" size={20} color={ComeYaColors.primary} />
+            <Feather
+              name="credit-card"
+              size={20}
+              color={ComeYaColors.primary}
+            />
             <ThemedText type="h4" style={styles.sectionTitle}>
               Método de pago
             </ThemedText>
@@ -689,12 +832,15 @@ export default function CheckoutScreen({ route }: any) {
               style={styles.inlineLink}
             >
               <Feather name="edit-3" size={16} color={ComeYaColors.primary} />
-              <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+              >
                 Cambiar
               </ThemedText>
             </Pressable>
           </View>
-          
+
           <Pressable
             style={[
               styles.paymentOption,
@@ -705,27 +851,44 @@ export default function CheckoutScreen({ route }: any) {
             ]}
           >
             <View style={styles.paymentContent}>
-              <Feather 
-                name={paymentMethod === "stripe_card" ? "credit-card" :
-                      paymentMethod === "stripe_bizum" ? "smartphone" :
-                      paymentMethod === "paypal" ? "dollar-sign" :
-                      "zap"} 
-                size={24} 
-                color={theme.text} 
+              <Feather
+                name={
+                  paymentMethod === "stripe_card"
+                    ? "credit-card"
+                    : paymentMethod === "stripe_bizum"
+                      ? "smartphone"
+                      : paymentMethod === "paypal"
+                        ? "dollar-sign"
+                        : "zap"
+                }
+                size={24}
+                color={theme.text}
               />
               <View style={styles.paymentText}>
                 <ThemedText type="body" style={{ fontWeight: "600" }}>
                   {selectedPaymentMethod?.displayName ||
-                    (paymentMethod === "stripe_card" ? "Tarjeta" :
-                     paymentMethod === "stripe_bizum" ? "Bizum" :
-                     paymentMethod === "paypal" ? "PayPal" : "Binance Pay")}
+                    (paymentMethod === "stripe_card"
+                      ? "Tarjeta"
+                      : paymentMethod === "stripe_bizum"
+                        ? "Bizum"
+                        : paymentMethod === "paypal"
+                          ? "PayPal"
+                          : "Binance Pay")}
                 </ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                  {selectedPaymentMethod?.instructions || "Pago seguro y automático"}
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary }}
+                >
+                  {selectedPaymentMethod?.instructions ||
+                    "Pago seguro y automático"}
                 </ThemedText>
               </View>
             </View>
-            <Feather name="check-circle" size={20} color={ComeYaColors.primary} />
+            <Feather
+              name="check-circle"
+              size={20}
+              color={ComeYaColors.primary}
+            />
           </Pressable>
         </View>
 
@@ -739,25 +902,49 @@ export default function CheckoutScreen({ route }: any) {
               Cupón de descuento
             </ThemedText>
           </View>
-          
+
           {appliedCoupon ? (
-            <View style={[styles.appliedCouponBox, { backgroundColor: ComeYaColors.success + "15", borderColor: ComeYaColors.success }]}>
+            <View
+              style={[
+                styles.appliedCouponBox,
+                {
+                  backgroundColor: ComeYaColors.success + "15",
+                  borderColor: ComeYaColors.success,
+                },
+              ]}
+            >
               <View style={{ flex: 1 }}>
-                <ThemedText type="body" style={{ fontWeight: "600", color: ComeYaColors.success }}>
+                <ThemedText
+                  type="body"
+                  style={{ fontWeight: "600", color: ComeYaColors.success }}
+                >
                   {couponCode.toUpperCase()}
                 </ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary, marginTop: 4 }}>
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: 4 }}
+                >
                   Ahorras €{couponDiscount.toFixed(2)}
                 </ThemedText>
               </View>
-              <Pressable onPress={handleRemoveCoupon} style={styles.removeCouponButton}>
+              <Pressable
+                onPress={handleRemoveCoupon}
+                style={styles.removeCouponButton}
+              >
                 <Feather name="x" size={20} color={ComeYaColors.error} />
               </Pressable>
             </View>
           ) : (
             <View style={styles.couponInputContainer}>
               <TextInput
-                style={[styles.couponInput, { color: theme.text, backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}
+                style={[
+                  styles.couponInput,
+                  {
+                    color: theme.text,
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
                 value={couponCode}
                 onChangeText={setCouponCode}
                 placeholder="Ingresa tu código"
@@ -768,12 +955,23 @@ export default function CheckoutScreen({ route }: any) {
               <Pressable
                 onPress={handleApplyCoupon}
                 disabled={couponLoading || !couponCode.trim()}
-                style={[styles.applyCouponButton, { backgroundColor: couponLoading || !couponCode.trim() ? theme.textSecondary : ComeYaColors.primary }]}
+                style={[
+                  styles.applyCouponButton,
+                  {
+                    backgroundColor:
+                      couponLoading || !couponCode.trim()
+                        ? theme.textSecondary
+                        : ComeYaColors.primary,
+                  },
+                ]}
               >
                 {couponLoading ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
-                  <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#FFF", fontWeight: "600" }}
+                  >
                     Aplicar
                   </ThemedText>
                 )}
@@ -929,25 +1127,48 @@ export default function CheckoutScreen({ route }: any) {
         </View>
 
         {/* Propina al repartidor */}
-        <View style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <View style={styles.sectionHeader}>
             <Feather name="heart" size={20} color={ComeYaColors.primary} />
-            <ThemedText type="h4" style={styles.sectionTitle}>Propina al repartidor</ThemedText>
+            <ThemedText type="h4" style={styles.sectionTitle}>
+              Propina al repartidor
+            </ThemedText>
           </View>
-          <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+          <ThemedText
+            type="small"
+            style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
+          >
             Opcional — 100% va al repartidor
           </ThemedText>
           <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-            {[0, 1, 2, 5].map(t => (
+            {[0, 1, 2, 5].map((t) => (
               <Pressable
                 key={t}
-                onPress={() => { setTip(t); Haptics.selectionAsync(); }}
-                style={[styles.tipChip, {
-                  backgroundColor: tip === t ? ComeYaColors.primary : theme.backgroundSecondary,
-                  borderColor: tip === t ? ComeYaColors.primary : theme.border,
-                }]}
+                onPress={() => {
+                  setTip(t);
+                  Haptics.selectionAsync();
+                }}
+                style={[
+                  styles.tipChip,
+                  {
+                    backgroundColor:
+                      tip === t
+                        ? ComeYaColors.primary
+                        : theme.backgroundSecondary,
+                    borderColor:
+                      tip === t ? ComeYaColors.primary : theme.border,
+                  },
+                ]}
               >
-                <ThemedText type="small" style={{ color: tip === t ? "#FFF" : theme.text, fontWeight: "600" }}>
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: tip === t ? "#FFF" : theme.text,
+                    fontWeight: "600",
+                  }}
+                >
                   {t === 0 ? "Sin propina" : `€${t}`}
                 </ThemedText>
               </Pressable>
@@ -959,7 +1180,11 @@ export default function CheckoutScreen({ route }: any) {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <View style={styles.sectionHeader}>
-            <Feather name="shopping-bag" size={20} color={ComeYaColors.primary} />
+            <Feather
+              name="shopping-bag"
+              size={20}
+              color={ComeYaColors.primary}
+            />
             <ThemedText type="h4" style={styles.sectionTitle}>
               Resumen del pedido
             </ThemedText>
@@ -999,17 +1224,28 @@ export default function CheckoutScreen({ route }: any) {
           </ThemedText>
           <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
         </View>
-        {confirmedOrderType === 'delivery' && (
+        {confirmedOrderType === "delivery" && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
-              Envío {estimatedTime ? `(~${estimatedTime} min)` : ''}
+              Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
             </ThemedText>
             <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
           </View>
         )}
-        {confirmedOrderType === 'pickup' && (
-          <View style={[styles.totalRow, { backgroundColor: ComeYaColors.success + '15', padding: Spacing.sm, borderRadius: BorderRadius.sm }]}>
-            <ThemedText type="small" style={{ color: ComeYaColors.success }}>🎉 Sin coste de envío al recoger en local</ThemedText>
+        {confirmedOrderType === "pickup" && (
+          <View
+            style={[
+              styles.totalRow,
+              {
+                backgroundColor: ComeYaColors.success + "15",
+                padding: Spacing.sm,
+                borderRadius: BorderRadius.sm,
+              },
+            ]}
+          >
+            <ThemedText type="small" style={{ color: ComeYaColors.success }}>
+              🎉 Sin coste de envío al recoger en local
+            </ThemedText>
           </View>
         )}
         {couponDiscount > 0 && (
@@ -1024,20 +1260,30 @@ export default function CheckoutScreen({ route }: any) {
         )}
         {tip > 0 && (
           <View style={styles.totalRow}>
-            <ThemedText type="body" style={{ color: theme.textSecondary }}>Propina</ThemedText>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Propina
+            </ThemedText>
             <ThemedText type="body">€{tip.toFixed(2)}</ThemedText>
           </View>
         )}
         {subDiscount > 0 && (
           <View style={styles.totalRow}>
-            <ThemedText type="body" style={{ color: '#7C3AED' }}>⭐ Descuento Premium</ThemedText>
-            <ThemedText type="body" style={{ color: '#7C3AED' }}>-€{subDiscount.toFixed(2)}</ThemedText>
+            <ThemedText type="body" style={{ color: "#7C3AED" }}>
+              ⭐ Descuento Premium
+            </ThemedText>
+            <ThemedText type="body" style={{ color: "#7C3AED" }}>
+              -€{subDiscount.toFixed(2)}
+            </ThemedText>
           </View>
         )}
-        {subDeliveryFee === 0 && confirmedOrderType === 'delivery' && (
+        {subDeliveryFee === 0 && confirmedOrderType === "delivery" && (
           <View style={styles.totalRow}>
-            <ThemedText type="body" style={{ color: '#7C3AED' }}>⭐ Envío gratis Premium</ThemedText>
-            <ThemedText type="body" style={{ color: '#7C3AED' }}>€0.00</ThemedText>
+            <ThemedText type="body" style={{ color: "#7C3AED" }}>
+              ⭐ Envío gratis Premium
+            </ThemedText>
+            <ThemedText type="body" style={{ color: "#7C3AED" }}>
+              €0.00
+            </ThemedText>
           </View>
         )}
         <View style={[styles.totalRow, styles.grandTotal]}>
@@ -1046,10 +1292,7 @@ export default function CheckoutScreen({ route }: any) {
             €{total.toFixed(2)}
           </ThemedText>
         </View>
-        <Button
-          onPress={handlePlaceOrder}
-          disabled={isLoading}
-        >
+        <Button onPress={handlePlaceOrder} disabled={isLoading}>
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (

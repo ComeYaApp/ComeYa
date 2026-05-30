@@ -19,12 +19,18 @@ import { ThemedText } from "@/components/ThemedText";
 import { BusinessCard } from "@/components/BusinessCard";
 import { BusinessCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { Business } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 
-type BusinessListScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type BusinessListScreenNavigationProp =
+  NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const COLUMN_GAP = Spacing.lg * 2 + Spacing.sm; // paddingHorizontal * 2 + gap between columns
@@ -66,8 +72,13 @@ export default function BusinessListScreen() {
         name: b.name,
         description: b.description || "",
         type: b.type || "restaurant",
-        profileImage: b.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
-        bannerImage: b.cover_image || b.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
+        profileImage:
+          b.image ||
+          "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
+        bannerImage:
+          b.cover_image ||
+          b.image ||
+          "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
         rating: (b.rating || 0) / 100,
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || "30-45 min",
@@ -104,7 +115,7 @@ export default function BusinessListScreen() {
     setActiveFilters((prev) =>
       prev.includes(filterId)
         ? prev.filter((f) => f !== filterId)
-        : [...prev, filterId]
+        : [...prev, filterId],
     );
   };
 
@@ -129,7 +140,7 @@ export default function BusinessListScreen() {
         (b) =>
           b.name.toLowerCase().includes(query) ||
           b.description.toLowerCase().includes(query) ||
-          b.categories.some((cat) => cat.toLowerCase().includes(query))
+          b.categories.some((cat) => cat.toLowerCase().includes(query)),
       );
     }
 
@@ -158,7 +169,10 @@ export default function BusinessListScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || "#FFFFFF", theme.gradientEnd || "#F5F5F5"]}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -167,7 +181,14 @@ export default function BusinessListScreen() {
         data={results}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
-          <View style={[styles.cardWrapper, index % 2 === 0 ? { marginRight: Spacing.sm / 2 } : { marginLeft: Spacing.sm / 2 }]}>
+          <View
+            style={[
+              styles.cardWrapper,
+              index % 2 === 0
+                ? { marginRight: Spacing.sm / 2 }
+                : { marginLeft: Spacing.sm / 2 },
+            ]}
+          >
             <BusinessCard
               business={item}
               onPress={() =>
@@ -194,8 +215,12 @@ export default function BusinessListScreen() {
               </Pressable>
               <View style={styles.headerTextContainer}>
                 <ThemedText type="h2">Explorar Negocios</ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                  {results.length} {results.length === 1 ? "negocio" : "negocios"}
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary }}
+                >
+                  {results.length}{" "}
+                  {results.length === 1 ? "negocio" : "negocios"}
                 </ThemedText>
               </View>
             </View>
@@ -290,7 +315,11 @@ export default function BusinessListScreen() {
                   style={({ pressed }) => [
                     styles.filterChip,
                     activeFilters.includes(filter.id)
-                      ? { backgroundColor: ComeYaColors.primaryLight, borderWidth: 1, borderColor: ComeYaColors.primary }
+                      ? {
+                          backgroundColor: ComeYaColors.primaryLight,
+                          borderWidth: 1,
+                          borderColor: ComeYaColors.primary,
+                        }
                       : { backgroundColor: theme.card },
                     { opacity: pressed ? 0.8 : 1 },
                   ]}
@@ -311,7 +340,9 @@ export default function BusinessListScreen() {
                         ? ComeYaColors.primary
                         : theme.text,
                       marginLeft: 4,
-                      fontWeight: activeFilters.includes(filter.id) ? "600" : "400",
+                      fontWeight: activeFilters.includes(filter.id)
+                        ? "600"
+                        : "400",
                     }}
                   >
                     {filter.label}
@@ -327,8 +358,8 @@ export default function BusinessListScreen() {
                   {activeTab === "all"
                     ? "Todos los negocios"
                     : activeTab === "restaurant"
-                    ? "Restaurantes"
-                    : "Mercados"}
+                      ? "Restaurantes"
+                      : "Mercados"}
                 </ThemedText>
               </View>
             ) : null}

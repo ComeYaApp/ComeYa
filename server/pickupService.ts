@@ -24,11 +24,14 @@ export const pickupService = {
     const pickupCode = generatePickupCode();
     const qrData = generateQRData(orderId, pickupCode);
 
-    await db.update(orders).set({
-      pickupCode,
-      pickupQrCode: qrData,
-      estimatedPickupTime: estimatedMinutes,
-    }).where(eq(orders.id, orderId));
+    await db
+      .update(orders)
+      .set({
+        pickupCode,
+        pickupQrCode: qrData,
+        estimatedPickupTime: estimatedMinutes,
+      })
+      .where(eq(orders.id, orderId));
 
     return { pickupCode, qrData };
   },
@@ -36,30 +39,34 @@ export const pickupService = {
   // Calcular tiempo restante
   getTimeRemaining(order: any): number | null {
     if (!order.estimatedPickupTime || !order.createdAt) return null;
-    
+
     const createdAt = new Date(order.createdAt).getTime();
     const now = Date.now();
     const estimatedMs = order.estimatedPickupTime * 60 * 1000;
     const elapsed = now - createdAt;
     const remaining = Math.max(0, estimatedMs - elapsed);
-    
+
     return Math.ceil(remaining / 60000); // minutos
   },
 
   // Calcular progreso (0-100)
   getProgress(order: any): number {
     if (!order.estimatedPickupTime || !order.createdAt) return 0;
-    
+
     const createdAt = new Date(order.createdAt).getTime();
     const now = Date.now();
     const estimatedMs = order.estimatedPickupTime * 60 * 1000;
     const elapsed = now - createdAt;
-    
+
     return Math.min(100, Math.round((elapsed / estimatedMs) * 100));
   },
 
   // Enviar notificación según progreso
-  async sendProgressNotification(orderId: string, userId: string, progress: number) {
+  async sendProgressNotification(
+    orderId: string,
+    userId: string,
+    progress: number,
+  ) {
     let title = "";
     let body = "";
 
@@ -88,10 +95,13 @@ export const pickupService = {
 
   // Marcar como listo para recoger
   async markReadyForPickup(orderId: string, userId: string) {
-    await db.update(orders).set({
-      status: "ready",
-      pickupReadyAt: new Date(),
-    }).where(eq(orders.id, orderId));
+    await db
+      .update(orders)
+      .set({
+        status: "ready",
+        pickupReadyAt: new Date(),
+      })
+      .where(eq(orders.id, orderId));
 
     // Notificación al cliente
     await sendPushToUser(userId, {
@@ -105,9 +115,12 @@ export const pickupService = {
 
   // Cliente avisa que llegó
   async customerArrived(orderId: string, businessOwnerId: string) {
-    await db.update(orders).set({
-      customerArrivedAt: new Date(),
-    }).where(eq(orders.id, orderId));
+    await db
+      .update(orders)
+      .set({
+        customerArrivedAt: new Date(),
+      })
+      .where(eq(orders.id, orderId));
 
     // Notificar al negocio
     await sendPushToUser(businessOwnerId, {
@@ -119,20 +132,23 @@ export const pickupService = {
 
   // Validar código de pickup
   async validatePickupCode(orderId: string, code: string): Promise<boolean> {
-    const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
     return order?.pickupCode === code;
   },
 
   // Obtener estadísticas de tiempos por negocio
   async getBusinessAverageTime(businessId: string): Promise<number> {
-    const result = await db.select().from(orders).where(
-      eq(orders.businessId, businessId)
-    );
+    const result = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.businessId, businessId));
 
-    const pickupOrders = result.filter(o => 
-      o.orderType === "pickup" && 
-      o.pickupReadyAt && 
-      o.createdAt
+    const pickupOrders = result.filter(
+      (o) => o.orderType === "pickup" && o.pickupReadyAt && o.createdAt,
     );
 
     if (pickupOrders.length === 0) return 20; // Default 20 min
@@ -140,27 +156,32 @@ export const pickupService = {
     const totalMinutes = pickupOrders.reduce((sum, order) => {
       const created = new Date(order.createdAt!).getTime();
       const ready = new Date(order.pickupReadyAt!).getTime();
-      return sum + ((ready - created) / 60000);
+      return sum + (ready - created) / 60000;
     }, 0);
 
     return Math.round(totalMinutes / pickupOrders.length);
   },
 
   // Contar pedidos pendientes del negocio (zona de espera)
-  async getPendingOrdersCount(businessId: string, beforeOrderId: string): Promise<number> {
-    const allOrders = await db.select().from(orders).where(
-      eq(orders.businessId, businessId)
-    );
+  async getPendingOrdersCount(
+    businessId: string,
+    beforeOrderId: string,
+  ): Promise<number> {
+    const allOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.businessId, businessId));
 
-    const targetOrder = allOrders.find(o => o.id === beforeOrderId);
+    const targetOrder = allOrders.find((o) => o.id === beforeOrderId);
     if (!targetOrder) return 0;
 
     const targetCreatedAt = new Date(targetOrder.createdAt!).getTime();
 
-    return allOrders.filter(o => 
-      o.orderType === "pickup" &&
-      ["accepted", "preparing"].includes(o.status) &&
-      new Date(o.createdAt!).getTime() < targetCreatedAt
+    return allOrders.filter(
+      (o) =>
+        o.orderType === "pickup" &&
+        ["accepted", "preparing"].includes(o.status) &&
+        new Date(o.createdAt!).getTime() < targetCreatedAt,
     ).length;
   },
 };

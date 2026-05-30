@@ -26,7 +26,12 @@ import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import {
@@ -46,7 +51,9 @@ export default function AdminProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
 
   const [profileImage, setProfileImage] = useState<string>("");
-  const [profileImageVersion, setProfileImageVersion] = useState<number>(Date.now());
+  const [profileImageVersion, setProfileImageVersion] = useState<number>(
+    Date.now(),
+  );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -89,7 +96,11 @@ export default function AdminProfileScreen() {
           name: "profile.jpg",
         } as any);
 
-        const response = await apiRequest("POST", "/api/users/profile-image", formData);
+        const response = await apiRequest(
+          "POST",
+          "/api/users/profile-image",
+          formData,
+        );
         const data = await response.json();
 
         if (data.success) {
@@ -180,7 +191,12 @@ export default function AdminProfileScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color={ComeYaColors.primary} />
       </View>
     );
@@ -188,7 +204,10 @@ export default function AdminProfileScreen() {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || "#FFFFFF", theme.gradientEnd || "#F5F5F5"]}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -215,11 +234,21 @@ export default function AdminProfileScreen() {
               contentFit="cover"
             />
             {isUploadingImage ? (
-              <View style={[styles.editBadge, { backgroundColor: ComeYaColors.primary }]}>
+              <View
+                style={[
+                  styles.editBadge,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
+              >
                 <ActivityIndicator size="small" color="#FFFFFF" />
               </View>
             ) : (
-              <View style={[styles.editBadge, { backgroundColor: ComeYaColors.primary }]}>
+              <View
+                style={[
+                  styles.editBadge,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
+              >
                 <Feather name="camera" size={14} color="#FFFFFF" />
               </View>
             )}
@@ -227,7 +256,10 @@ export default function AdminProfileScreen() {
           <ThemedText type="h2" style={styles.userName}>
             {user?.name || "Administrador"}
           </ThemedText>
-          <ThemedText type="body" style={{ color: theme.textSecondary, textAlign: "center" }}>
+          <ThemedText
+            type="body"
+            style={{ color: theme.textSecondary, textAlign: "center" }}
+          >
             {user?.phone || "Sin teléfono"}
           </ThemedText>
           <Badge
@@ -248,7 +280,7 @@ export default function AdminProfileScreen() {
             label="Dashboard"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminDashboard" as any);
+              navigation.navigate("DashboardTab" as any);
             }}
           />
           <SettingsItem
@@ -256,7 +288,7 @@ export default function AdminProfileScreen() {
             label="Usuarios"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminUsers" as any);
+              navigation.navigate("AdminTab" as any);
             }}
           />
           <SettingsItem
@@ -264,7 +296,7 @@ export default function AdminProfileScreen() {
             label="Negocios"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminBusinesses" as any);
+              navigation.navigate("AdminTab" as any);
             }}
           />
           <SettingsItem
@@ -272,7 +304,7 @@ export default function AdminProfileScreen() {
             label="Repartidores"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminDrivers" as any);
+              navigation.navigate("AdminTab" as any);
             }}
           />
           <SettingsItem
@@ -280,7 +312,7 @@ export default function AdminProfileScreen() {
             label="Pedidos"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminOrders" as any);
+              navigation.navigate("AdminTab" as any);
             }}
           />
         </View>
@@ -296,7 +328,7 @@ export default function AdminProfileScreen() {
             label="Pagos"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminFinance" as any);
+              navigation.navigate("FinanceTab" as any);
             }}
           />
           <SettingsItem
@@ -312,7 +344,7 @@ export default function AdminProfileScreen() {
             label="Settlemente"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminSettlements" as any);
+              navigation.navigate("AdminTab" as any);
             }}
           />
           <SettingsItem
@@ -320,7 +352,7 @@ export default function AdminProfileScreen() {
             label="Auditoría financiera"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminFinancialAudit" as any);
+              navigation.navigate("AdminTab" as any);
             }}
           />
         </View>
@@ -336,7 +368,7 @@ export default function AdminProfileScreen() {
             label="Mapa en vivo"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminMap" as any);
+              navigation.navigate("MapTab" as any);
             }}
           />
           <SettingsItem
@@ -344,7 +376,7 @@ export default function AdminProfileScreen() {
             label="Seguimiento"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTracking" as any);
+              navigation.navigate("MapTab" as any);
             }}
           />
         </View>
@@ -360,7 +392,7 @@ export default function AdminProfileScreen() {
             label="Configuración"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("SystemConfig" as any);
+              navigation.navigate("AdminTab" as any);
             }}
           />
           <SettingsItem
@@ -371,7 +403,7 @@ export default function AdminProfileScreen() {
               showToast("Base de datos coming soon", "info");
             }}
           />
-<SettingsItem
+          <SettingsItem
             icon="server"
             label="Servicios"
             onPress={() => {
@@ -405,7 +437,10 @@ export default function AdminProfileScreen() {
             danger
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              showToast("Funcionalidad de cierre de sesión coming soon", "info");
+              showToast(
+                "Funcionalidad de cierre de sesión coming soon",
+                "info",
+              );
             }}
           />
         </View>

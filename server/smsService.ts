@@ -40,7 +40,12 @@ function formatPhoneNumber(phone: string): string {
   }
 
   // Número español de 9 dígitos (móvil: 6xx/7xx, fijo: 9xx)
-  if (cleaned.length === 9 && (cleaned.startsWith("6") || cleaned.startsWith("7") || cleaned.startsWith("9"))) {
+  if (
+    cleaned.length === 9 &&
+    (cleaned.startsWith("6") ||
+      cleaned.startsWith("7") ||
+      cleaned.startsWith("9"))
+  ) {
     return `+34${cleaned}`;
   }
 

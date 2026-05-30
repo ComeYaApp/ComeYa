@@ -4,13 +4,13 @@ import { Feather } from "@expo/vector-icons";
 import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import HomeStackNavigator    from "@/navigation/HomeStackNavigator";
-import OrdersStackNavigator  from "@/navigation/OrdersStackNavigator";
+import HomeStackNavigator from "@/navigation/HomeStackNavigator";
+import OrdersStackNavigator from "@/navigation/OrdersStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import ProfileStackNavigatorWeb from "@/navigation/ProfileStackNavigator.web";
-import BusinessMapScreen     from "@/screens/BusinessMapScreen";
-import AdminDashboardScreen  from "@/screens/AdminDashboardScreen.web";
-import AdminMapScreen        from "@/screens/AdminMapScreen.web";
+import BusinessMapScreen from "@/screens/BusinessMapScreen";
+import AdminDashboardScreen from "@/screens/AdminDashboardScreen.web";
+import AdminMapScreen from "@/screens/AdminMapScreen.web";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import DriverDashboardScreen from "@/screens/DriverDashboardScreen.web";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -20,29 +20,32 @@ import { ComeYaColors, Spacing } from "@/constants/theme";
 
 // Navigators móviles nativos (sin circular dependency — NO importar MainTabNavigator aquí)
 import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
-import DriverTabNavigator   from "@/navigation/DriverTabNavigator";
+import DriverTabNavigator from "@/navigation/DriverTabNavigator";
 
 // Pantallas móviles admin
 import AdminDashboardScreenMobile from "@/screens/AdminDashboardScreen";
-import AdminFinanceScreen         from "@/screens/AdminFinanceScreen";
-import AdminMapScreenMobile       from "@/screens/AdminMapScreen";
+import AdminFinanceScreen from "@/screens/AdminFinanceScreen";
+import AdminMapScreenMobile from "@/screens/AdminMapScreen";
 
 // Pantallas web del business
 import BusinessDashboardScreenWeb from "@/screens/BusinessDashboardScreen.web";
-import BusinessOrdersScreenWeb    from "@/screens/BusinessOrdersScreen.web";
-import BusinessProductsScreenWeb  from "@/screens/BusinessProductsScreen.web";
-import BusinessHoursScreenWeb     from "@/screens/BusinessHoursScreen.web";
-import BusinessStatsScreenWeb     from "@/screens/BusinessStatsScreen.web";
+import BusinessOrdersScreenWeb from "@/screens/BusinessOrdersScreen.web";
+import BusinessProductsScreenWeb from "@/screens/BusinessProductsScreen.web";
+import BusinessHoursScreenWeb from "@/screens/BusinessHoursScreen.web";
+import BusinessStatsScreenWeb from "@/screens/BusinessStatsScreen.web";
 import BusinessDeliveryMapScreen from "@/screens/BusinessDeliveryMapScreen.web";
 
-import ProfileScreenWeb           from "@/screens/ProfileScreen.web";
+import ProfileScreenWeb from "@/screens/ProfileScreen.web";
 
 // Stack GPS del negocio
 const BusinessMapStack = createNativeStackNavigator();
 function BusinessMapStackNavigator() {
   return (
     <BusinessMapStack.Navigator screenOptions={{ headerShown: false }}>
-      <BusinessMapStack.Screen name="BusinessDeliveryMapMain" component={BusinessDeliveryMapScreen} />
+      <BusinessMapStack.Screen
+        name="BusinessDeliveryMapMain"
+        component={BusinessDeliveryMapScreen}
+      />
     </BusinessMapStack.Navigator>
   );
 }
@@ -62,14 +65,38 @@ const BusinessStack = createNativeStackNavigator();
 function BusinessStackNavigator() {
   return (
     <BusinessStack.Navigator screenOptions={{ headerShown: false }}>
-      <BusinessStack.Screen name="BusinessDashboard" component={BusinessDashboardScreenWeb} />
-      <BusinessStack.Screen name="BusinessOrders"    component={BusinessOrdersScreenWeb} />
-      <BusinessStack.Screen name="BusinessProducts"  component={BusinessProductsScreenWeb} />
-      <BusinessStack.Screen name="BusinessHours"     component={BusinessHoursScreenWeb} />
-      <BusinessStack.Screen name="BusinessStats"     component={BusinessStatsScreenWeb} />
-      <BusinessStack.Screen name="BusinessProfile"   component={ProfileScreenWeb} />
-      <BusinessStack.Screen name="MyBusinesses"      component={BusinessDashboardScreenWeb} />
-      <BusinessStack.Screen name="BusinessManage"    component={BusinessDashboardScreenWeb} />
+      <BusinessStack.Screen
+        name="BusinessDashboard"
+        component={BusinessDashboardScreenWeb}
+      />
+      <BusinessStack.Screen
+        name="BusinessOrders"
+        component={BusinessOrdersScreenWeb}
+      />
+      <BusinessStack.Screen
+        name="BusinessProducts"
+        component={BusinessProductsScreenWeb}
+      />
+      <BusinessStack.Screen
+        name="BusinessHours"
+        component={BusinessHoursScreenWeb}
+      />
+      <BusinessStack.Screen
+        name="BusinessStats"
+        component={BusinessStatsScreenWeb}
+      />
+      <BusinessStack.Screen
+        name="BusinessProfile"
+        component={ProfileScreenWeb}
+      />
+      <BusinessStack.Screen
+        name="MyBusinesses"
+        component={BusinessDashboardScreenWeb}
+      />
+      <BusinessStack.Screen
+        name="BusinessManage"
+        component={BusinessDashboardScreenWeb}
+      />
     </BusinessStack.Navigator>
   );
 }
@@ -94,7 +121,7 @@ function MobileTabNavigator() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const isAdmin    = user?.role === "admin" || user?.role === "super_admin";
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isCustomer = !isAdmin;
 
   const tabBarStyle = {
@@ -119,26 +146,90 @@ function MobileTabNavigator() {
     >
       {isAdmin && (
         <>
-          <Tab.Screen name="DashboardTab" component={AdminDashboardScreenMobile}
-            options={{ title: "Dashboard", tabBarIcon: ({ color, size }) => <Feather name="bar-chart-2" size={size} color={color} /> }} />
-          <Tab.Screen name="FinanceTab" component={AdminFinanceScreen}
-            options={{ title: "Finanzas", tabBarIcon: ({ color, size }) => <Feather name="dollar-sign" size={size} color={color} /> }} />
-          <Tab.Screen name="MapTab" component={AdminMapScreenMobile}
-            options={{ title: "Mapa", tabBarIcon: ({ color, size }) => <Feather name="map" size={size} color={color} /> }} />
-          <Tab.Screen name="ProfileTab" component={ProfileStackNavigator}
-            options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }} />
+          <Tab.Screen
+            name="DashboardTab"
+            component={AdminDashboardScreenMobile}
+            options={{
+              title: "Dashboard",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="bar-chart-2" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="FinanceTab"
+            component={AdminFinanceScreen}
+            options={{
+              title: "Finanzas",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="dollar-sign" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={AdminMapScreenMobile}
+            options={{
+              title: "Mapa",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="ProfileTab"
+            component={ProfileStackNavigator}
+            options={{
+              title: "Perfil",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="user" size={size} color={color} />
+              ),
+            }}
+          />
         </>
       )}
       {isCustomer && (
         <>
-          <Tab.Screen name="HomeTab" component={HomeStackNavigator}
-            options={{ title: "Inicio", tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> }} />
-          <Tab.Screen name="OrdersTab" component={OrdersStackNavigator}
-            options={{ title: "Pedidos", tabBarIcon: ({ color, size }) => <Feather name="shopping-bag" size={size} color={color} /> }} />
-          <Tab.Screen name="MapTab" component={MapStackNavigator}
-            options={{ title: "Mapa", tabBarIcon: ({ color, size }) => <Feather name="map-pin" size={size} color={color} /> }} />
-          <Tab.Screen name="ProfileTab" component={ProfileStackNavigator}
-            options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }} />
+          <Tab.Screen
+            name="HomeTab"
+            component={HomeStackNavigator}
+            options={{
+              title: "Inicio",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="home" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="OrdersTab"
+            component={OrdersStackNavigator}
+            options={{
+              title: "Pedidos",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="shopping-bag" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={MapStackNavigator}
+            options={{
+              title: "Mapa",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map-pin" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="ProfileTab"
+            component={ProfileStackNavigator}
+            options={{
+              title: "Perfil",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="user" size={size} color={color} />
+              ),
+            }}
+          />
         </>
       )}
     </Tab.Navigator>
@@ -152,7 +243,7 @@ export default function MainTabNavigator() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
-  const isAdmin    = user?.role === "admin" || user?.role === "super_admin";
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isBusiness = user?.role === "business_owner";
   const isDelivery = user?.role === "delivery_driver";
   const isCustomer = !isAdmin && !isBusiness && !isDelivery;
@@ -161,7 +252,7 @@ export default function MainTabNavigator() {
   if (width < MOBILE_BREAKPOINT) {
     if (isBusiness) return <BusinessTabNavigator />;
     if (isDelivery) return <DriverTabNavigator />;
-    return <MobileTabNavigator />;  // admin y cliente
+    return <MobileTabNavigator />; // admin y cliente
   }
 
   // ── Desktop web (>= 768px): sidebars completos ──
@@ -182,7 +273,15 @@ export default function MainTabNavigator() {
 
   return (
     <Tab.Navigator
-      initialRouteName={isAdmin ? "DashboardTab" : isDelivery ? "DeliveryTab" : isBusiness ? "BusinessTab" : "HomeTab"}
+      initialRouteName={
+        isAdmin
+          ? "DashboardTab"
+          : isDelivery
+            ? "DeliveryTab"
+            : isBusiness
+              ? "BusinessTab"
+              : "HomeTab"
+      }
       screenOptions={{
         tabBarActiveTintColor: ComeYaColors.primary,
         tabBarInactiveTintColor: theme.textSecondary,
@@ -193,43 +292,125 @@ export default function MainTabNavigator() {
     >
       {isAdmin && (
         <>
-          <Tab.Screen name="DashboardTab" component={AdminDashboardScreen}
-            options={{ title: "Panel Admin", tabBarIcon: ({ color, size }) => <Feather name="bar-chart-2" size={size} color={color} /> }} />
-          <Tab.Screen name="MapTab" component={AdminMapScreen}
-            options={{ title: "Mapa GPS", tabBarIcon: ({ color, size }) => <Feather name="map" size={size} color={color} /> }} />
-          <Tab.Screen name="ProfileTab" component={ProfileStackNavigator}
-            options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }} />
+          <Tab.Screen
+            name="DashboardTab"
+            component={AdminDashboardScreen}
+            options={{
+              title: "Panel Admin",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="bar-chart-2" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={AdminMapScreen}
+            options={{
+              title: "Mapa GPS",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="ProfileTab"
+            component={ProfileStackNavigator}
+            options={{
+              title: "Perfil",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="user" size={size} color={color} />
+              ),
+            }}
+          />
         </>
       )}
 
       {isCustomer && (
         <>
-          <Tab.Screen name="HomeTab" component={HomeStackNavigator}
-            options={{ title: "Inicio", tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> }} />
-          <Tab.Screen name="OrdersTab" component={OrdersStackNavigator}
-            options={{ title: "Pedidos", tabBarIcon: ({ color, size }) => <Feather name="shopping-bag" size={size} color={color} /> }} />
-          <Tab.Screen name="MapTab" component={MapStackNavigator}
-            options={{ title: "Mapa", tabBarIcon: ({ color, size }) => <Feather name="map-pin" size={size} color={color} /> }} />
+          <Tab.Screen
+            name="HomeTab"
+            component={HomeStackNavigator}
+            options={{
+              title: "Inicio",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="home" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="OrdersTab"
+            component={OrdersStackNavigator}
+            options={{
+              title: "Pedidos",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="shopping-bag" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={MapStackNavigator}
+            options={{
+              title: "Mapa",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map-pin" size={size} color={color} />
+              ),
+            }}
+          />
         </>
       )}
 
       {isDelivery && (
-        <Tab.Screen name="DeliveryTab" component={DriverDashboardScreen}
-          options={{ title: "Panel Repartidor", tabBarIcon: ({ color, size }) => <Feather name="truck" size={size} color={color} /> }} />
+        <Tab.Screen
+          name="DeliveryTab"
+          component={DriverDashboardScreen}
+          options={{
+            title: "Panel Repartidor",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="truck" size={size} color={color} />
+            ),
+          }}
+        />
       )}
 
       {isBusiness && (
         <>
-          <Tab.Screen name="BusinessTab" component={BusinessStackNavigator}
-            options={{ title: "Mi Negocio", tabBarIcon: ({ color, size }) => <Feather name="briefcase" size={size} color={color} /> }} />
-          <Tab.Screen name="MapTab" component={BusinessMapStackNavigator}
-            options={{ title: "Mapa GPS", tabBarIcon: ({ color, size }) => <Feather name="map" size={size} color={color} /> }} />
+          <Tab.Screen
+            name="BusinessTab"
+            component={BusinessStackNavigator}
+            options={{
+              title: "Mi Negocio",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="briefcase" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={BusinessMapStackNavigator}
+            options={{
+              title: "Mapa GPS",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map" size={size} color={color} />
+              ),
+            }}
+          />
         </>
       )}
 
       {!isAdmin && !isDelivery && (
-        <Tab.Screen name="ProfileTab" component={isBusiness ? ProfileStackNavigatorWeb : ProfileStackNavigator}
-          options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }} />
+        <Tab.Screen
+          name="ProfileTab"
+          component={
+            isBusiness ? ProfileStackNavigatorWeb : ProfileStackNavigator
+          }
+          options={{
+            title: "Perfil",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="user" size={size} color={color} />
+            ),
+          }}
+        />
       )}
     </Tab.Navigator>
   );

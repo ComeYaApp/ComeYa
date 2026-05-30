@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, Pressable, Modal, StyleSheet, Image, SafeAreaView, Linking } from "react-native";
+import {
+  View,
+  ScrollView,
+  Pressable,
+  Modal,
+  StyleSheet,
+  Image,
+  SafeAreaView,
+  Linking,
+} from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
-import { SettingsItem, resolveProfileImageUrl, styles as baseStyles } from "./BaseProfileScreen";
+import {
+  SettingsItem,
+  resolveProfileImageUrl,
+  styles as baseStyles,
+} from "./BaseProfileScreen";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
@@ -87,8 +100,9 @@ const styles = StyleSheet.create({
 export default function CustomerProfileScreen() {
   const { user, logout } = useAuth();
   const { theme, themeMode, setThemeMode } = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   const [subscription, setSubscription] = useState<any>(null);
   const [profileImageVersion, setProfileImageVersion] = useState(0);
   const [showAddressesModal, setShowAddressesModal] = useState(false);
@@ -97,12 +111,11 @@ export default function CustomerProfileScreen() {
   const [showSubscriptionsModal, setShowSubscriptionsModal] = useState(false);
   const [showGiftCardsModal, setShowGiftCardsModal] = useState(false);
   const [showGroupOrderModal, setShowGroupOrderModal] = useState(false);
-  const [showScheduledOrdersModal, setShowScheduledOrdersModal] = useState(false);
+  const [showScheduledOrdersModal, setShowScheduledOrdersModal] =
+    useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
-const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
@@ -116,7 +129,9 @@ const [showLanguageModal, setShowLanguageModal] = useState(false);
       const res = await apiRequest("GET", "/api/subscriptions/my-subscription");
       const data = await res.json();
       if (data.subscription) setSubscription(data.subscription);
-    } catch { /* silencioso */ }
+    } catch {
+      /* silencioso */
+    }
   };
 
   const renderProfileHeader = () => {
@@ -131,11 +146,16 @@ const [showLanguageModal, setShowLanguageModal] = useState(false);
           {fullUrl ? (
             <Image source={{ uri: fullUrl }} style={styles.profileImage} />
           ) : (
-            <View style={[styles.profileImagePlaceholder, { backgroundColor: theme.card }]}>
+            <View
+              style={[
+                styles.profileImagePlaceholder,
+                { backgroundColor: theme.card },
+              ]}
+            >
               <Feather name="user" size={40} color={theme.textSecondary} />
             </View>
           )}
-<Pressable
+          <Pressable
             style={styles.editImageButton}
             onPress={() => navigation.navigate("EditProfile" as any)}
           >
@@ -145,7 +165,7 @@ const [showLanguageModal, setShowLanguageModal] = useState(false);
         <ThemedText type="h2" style={styles.userName}>
           {user?.name || "Usuario"}
         </ThemedText>
-<ThemedText type="body" style={{ color: theme.textSecondary }}>
+        <ThemedText type="body" style={{ color: theme.textSecondary }}>
           {user?.email}
         </ThemedText>
         {subscription && (
@@ -159,23 +179,63 @@ const [showLanguageModal, setShowLanguageModal] = useState(false);
     );
   };
 
-const renderCustomerMenuItems = () => {
-    const items: { icon: keyof typeof Feather.glyphMap; label: string; onPress: () => void }[] = [
-      { icon: "map-pin", label: "Direcciones guardadas", onPress: () => navigation.navigate("Addresses" as any) },
-      { icon: "credit-card", label: "Métodos de pago", onPress: () => navigation.navigate("PaymentMethods" as any) },
-      { icon: "gift", label: "Mis puntos y recompensas", onPress: () => navigation.navigate("Loyalty" as any) },
-      { icon: "star", label: "Suscripciones", onPress: () => navigation.navigate("Subscriptions" as any) },
-      { icon: "tag", label: "Mis Gift Cards", onPress: () => navigation.navigate("GiftCards" as any) },
-      { icon: "users", label: "Pedido grupal", onPress: () => navigation.navigate("GroupOrder" as any) },
-      { icon: "clock", label: "Pedidos programados", onPress: () => navigation.navigate("ScheduledOrders" as any) },
+  const renderCustomerMenuItems = () => {
+    const items: {
+      icon: keyof typeof Feather.glyphMap;
+      label: string;
+      onPress: () => void;
+    }[] = [
+      {
+        icon: "map-pin",
+        label: "Direcciones guardadas",
+        onPress: () => navigation.navigate("SavedAddresses" as any),
+      },
+      {
+        icon: "credit-card",
+        label: "Métodos de pago",
+        onPress: () => navigation.navigate("DigitalPaymentMethod" as any),
+      },
+      {
+        icon: "gift",
+        label: "Mis puntos y recompensas",
+        onPress: () => navigation.navigate("Gamification" as any),
+      },
+      {
+        icon: "star",
+        label: "Suscripciones",
+        onPress: () => navigation.navigate("Subscriptions" as any),
+      },
+      {
+        icon: "tag",
+        label: "Mis Gift Cards",
+        onPress: () => navigation.navigate("GiftCards" as any),
+      },
+      {
+        icon: "users",
+        label: "Pedido grupal",
+        onPress: () => navigation.navigate("GroupOrder" as any),
+      },
+      {
+        icon: "clock",
+        label: "Pedidos programados",
+        onPress: () => navigation.navigate("ScheduledOrders" as any),
+      },
     ];
 
     return (
       <View style={styles.section}>
         {items.map((item, index) => (
           <View key={index}>
-<SettingsItem icon={item.icon} label={item.label} onPress={item.onPress} />
-            {index < items.length - 1 && <View style={[styles.divider, { backgroundColor: theme.divider }]} />}
+            <SettingsItem
+              icon={item.icon}
+              label={item.label}
+              onPress={item.onPress}
+            />
+            {index < items.length - 1 && (
+              <View
+                style={[styles.divider, { backgroundColor: theme.divider }]}
+              />
+            )}
           </View>
         ))}
       </View>
@@ -183,45 +243,100 @@ const renderCustomerMenuItems = () => {
   };
 
   return (
-<SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {renderProfileHeader()}
         {renderCustomerMenuItems()}
-        
-<View style={styles.section}>
+
+        <View style={styles.section}>
           <ThemedText type="caption" style={styles.sectionTitle}>
             PREFERENCIAS
           </ThemedText>
-          <SettingsItem icon="moon" label="Tema" onPress={() => setShowThemeModal(true)} />
-          <SettingsItem icon="bell" label="Notificaciones" onPress={() => setShowNotificationsModal(true)} />
-          <SettingsItem icon="globe" label="Idioma" onPress={() => setShowLanguageModal(true)} />
+          <SettingsItem
+            icon="moon"
+            label="Tema"
+            onPress={() => setShowThemeModal(true)}
+          />
+          <SettingsItem
+            icon="bell"
+            label="Notificaciones"
+            onPress={() => setShowNotificationsModal(true)}
+          />
+          <SettingsItem
+            icon="globe"
+            label="Idioma"
+            onPress={() => setShowLanguageModal(true)}
+          />
         </View>
 
-{/* Más section */}
+        {/* Más section */}
         <View style={styles.section}>
           <ThemedText type="caption" style={styles.sectionTitle}>
             Más
           </ThemedText>
-          <SettingsItem icon="share-2" label="Compartir ComeYa" onPress={() => {
-            const message = encodeURIComponent("Descubre ComeYa - Tu delivery local de confianza. https://app.comeya.es");
-            Linking.openURL(`whatsapp://send?text=${message}`).catch(() => {});
-          }} />
-          <SettingsItem icon="help-circle" label="Ayuda y soporte" onPress={() => navigation.navigate("Support" as any)} />
-          <SettingsItem icon="file-text" label="Términos y condiciones" onPress={() => setShowTermsModal(true)} />
-          <SettingsItem icon="shield" label="Política de privacidad" onPress={() => setShowPrivacyModal(true)} />
-          <SettingsItem icon="log-out" label="Cerrar sesión" onPress={() => setShowLogoutModal(true)} danger />
+          <SettingsItem
+            icon="share-2"
+            label="Compartir ComeYa"
+            onPress={() => {
+              const message = encodeURIComponent(
+                "Descubre ComeYa - Tu delivery local de confianza. https://app.comeya.es",
+              );
+              Linking.openURL(`whatsapp://send?text=${message}`).catch(
+                () => {},
+              );
+            }}
+          />
+          <SettingsItem
+            icon="help-circle"
+            label="Ayuda y soporte"
+            onPress={() => navigation.navigate("Support" as any)}
+          />
+          <SettingsItem
+            icon="file-text"
+            label="Términos y condiciones"
+            onPress={() => navigation.navigate("Terms" as any)}
+          />
+          <SettingsItem
+            icon="shield"
+            label="Política de privacidad"
+            onPress={() => navigation.navigate("Privacy" as any)}
+          />
+          <SettingsItem
+            icon="log-out"
+            label="Cerrar sesión"
+            onPress={() => setShowLogoutModal(true)}
+            danger
+          />
         </View>
       </ScrollView>
 
-<Modal visible={showAddressesModal} transparent animationType="fade">
+      <Modal visible={showAddressesModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowAddressesModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowAddressesModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="map-pin" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Direcciones guardadas</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Funcióncoming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowAddressesModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Direcciones guardadas
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Funcióncoming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowAddressesModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -229,13 +344,32 @@ const renderCustomerMenuItems = () => {
 
       <Modal visible={showPaymentMethodsModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowPaymentMethodsModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowPaymentMethodsModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <Feather name="credit-card" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Métodos de pago</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Funcióncoming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowPaymentMethodsModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <Feather
+              name="credit-card"
+              size={40}
+              color={ComeYaColors.primary}
+            />
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Métodos de pago
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Funcióncoming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowPaymentMethodsModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -243,13 +377,28 @@ const renderCustomerMenuItems = () => {
 
       <Modal visible={showPointsModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowPointsModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowPointsModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="gift" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Mis puntos y recompensas</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Funcióncoming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowPointsModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Mis puntos y recompensas
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Funcióncoming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowPointsModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -257,13 +406,28 @@ const renderCustomerMenuItems = () => {
 
       <Modal visible={showSubscriptionsModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowSubscriptionsModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowSubscriptionsModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="star" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Suscripciones</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Funcióncoming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowSubscriptionsModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Suscripciones
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Funcióncoming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowSubscriptionsModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -271,13 +435,28 @@ const renderCustomerMenuItems = () => {
 
       <Modal visible={showGiftCardsModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowGiftCardsModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowGiftCardsModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="tag" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Mis Gift Cards</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Funcióncoming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowGiftCardsModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Mis Gift Cards
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Funcióncoming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowGiftCardsModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -285,35 +464,72 @@ const renderCustomerMenuItems = () => {
 
       <Modal visible={showGroupOrderModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowGroupOrderModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowGroupOrderModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="users" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Pedido grupal</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Funcióncoming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowGroupOrderModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Pedido grupal
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Funcióncoming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowGroupOrderModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
       </Modal>
 
-      <Modal visible={showScheduledOrdersModal} transparent animationType="fade">
+      <Modal
+        visible={showScheduledOrdersModal}
+        transparent
+        animationType="fade"
+      >
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowScheduledOrdersModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowScheduledOrdersModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="clock" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Pedidos programados</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Funcióncoming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowScheduledOrdersModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Pedidos programados
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Funcióncoming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowScheduledOrdersModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
       </Modal>
 
-<Modal visible={showThemeModal} transparent animationType="fade">
+      <Modal visible={showThemeModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowThemeModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowThemeModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <ThemedText type="h3" style={styles.modalTitle}>
               Seleccionar tema
@@ -331,9 +547,13 @@ const renderCustomerMenuItems = () => {
                   setShowThemeModal(false);
                 }}
               >
-<ThemedText type="body">{option.label}</ThemedText>
+                <ThemedText type="body">{option.label}</ThemedText>
                 {themeMode === option.value && (
-                  <Feather name="check" size={20} color={ComeYaColors.primary} />
+                  <Feather
+                    name="check"
+                    size={20}
+                    color={ComeYaColors.primary}
+                  />
                 )}
               </Pressable>
             ))}
@@ -341,15 +561,30 @@ const renderCustomerMenuItems = () => {
         </View>
       </Modal>
 
-<Modal visible={showNotificationsModal} transparent animationType="fade">
+      <Modal visible={showNotificationsModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowNotificationsModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowNotificationsModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="bell" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Notificaciones</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Función coming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowNotificationsModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Notificaciones
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Función coming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowNotificationsModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -357,13 +592,28 @@ const renderCustomerMenuItems = () => {
 
       <Modal visible={showLanguageModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowLanguageModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowLanguageModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Feather name="globe" size={40} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={styles.modalTitle}>Idioma</ThemedText>
-            <ThemedText type="body" style={styles.modalMessage}>Función coming soon...</ThemedText>
-            <Pressable style={[styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]} onPress={() => setShowLanguageModal(false)}>
-              <ThemedText type="body" style={{ color: "#fff" }}>Entendido</ThemedText>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Idioma
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalMessage}>
+              Función coming soon...
+            </ThemedText>
+            <Pressable
+              style={[
+                styles.modalButtonFull,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+              onPress={() => setShowLanguageModal(false)}
+            >
+              <ThemedText type="body" style={{ color: "#fff" }}>
+                Entendido
+              </ThemedText>
             </Pressable>
           </View>
         </View>
@@ -371,23 +621,34 @@ const renderCustomerMenuItems = () => {
 
       <Modal visible={showLogoutModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowLogoutModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowLogoutModal(false)}
+          />
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <ThemedText type="h3" style={styles.modalTitle}>
               Cerrar sesión
             </ThemedText>
-<ThemedText type="body" style={styles.modalText}>
+            <ThemedText type="body" style={styles.modalText}>
               ¿Estás seguro de que quieres cerrar sesión?
             </ThemedText>
             <View style={styles.modalButtons}>
               <Pressable
-                style={[styles.modalButton, styles.modalButtonCancel, { backgroundColor: theme.background }]}
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonCancel,
+                  { backgroundColor: theme.background },
+                ]}
                 onPress={() => setShowLogoutModal(false)}
               >
                 <ThemedText type="body">Cancelar</ThemedText>
               </Pressable>
               <Pressable
-                style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: "#ef4444" }]}
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonConfirm,
+                  { backgroundColor: "#ef4444" },
+                ]}
                 onPress={() => {
                   setShowLogoutModal(false);
                   logout();
@@ -398,53 +659,9 @@ const renderCustomerMenuItems = () => {
                 </ThemedText>
               </Pressable>
             </View>
-</View>
-        </View>
-      </Modal>
-
-      <Modal visible={showTermsModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowTermsModal(false)} />
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <ThemedText type="h3" style={styles.modalTitle}>
-              Términos y condiciones
-            </ThemedText>
-            <ThemedText type="body" style={styles.modalText}>
-              Al usar ComeYa aceptas nuestros términos y condiciones...
-            </ThemedText>
-            <Pressable
-              style={[styles.modalButton, styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]}
-              onPress={() => setShowTermsModal(false)}
-            >
-<ThemedText type="body" style={{ color: "#fff" }}>
-                Cerrar
-              </ThemedText>
-            </Pressable>
           </View>
         </View>
       </Modal>
-
-<Modal visible={showPrivacyModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowPrivacyModal(false)} />
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <ThemedText type="h3" style={styles.modalTitle}>
-              Política de privacidad
-            </ThemedText>
-            <ThemedText type="body" style={styles.modalText}>
-              Tu privacidad es importante para nosotros...
-            </ThemedText>
-            <Pressable
-              style={[styles.modalButton, styles.modalButtonFull, { backgroundColor: ComeYaColors.primary }]}
-              onPress={() => setShowPrivacyModal(false)}
-            >
-<ThemedText type="body" style={{ color: "#fff" }}>
-                Cerrar
-              </ThemedText>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-</SafeAreaView>
+    </SafeAreaView>
   );
 }

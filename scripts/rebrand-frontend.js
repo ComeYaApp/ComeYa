@@ -1,23 +1,21 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 // Directories to search
-const searchDirs = [
-  path.join(__dirname, '../client'),
-];
+const searchDirs = [path.join(__dirname, "../client")];
 
 // File extensions to process
-const extensions = ['.tsx', '.ts', '.jsx', '.js', '.json'];
+const extensions = [".tsx", ".ts", ".jsx", ".js", ".json"];
 
 // Replacement mappings
 const replacements = [
-  { from: /MOUZO/g, to: 'Rabbit Food' },
-  { from: /Mouzo/g, to: 'Rabbit Food' },
-  { from: /mouzo/g, to: 'rabbitfood' },
-  { from: /MouzoColors/g, to: 'RabbitFoodColors' },
-  { from: /@nemy_/g, to: '@rabbitfood_' },
-  { from: /nemy-ca\.pem/g, to: 'nemy-ca.pem' }, // Keep NEMY database references
-  { from: /nemydb/g, to: 'nemydb' }, // Keep NEMY database references
+  { from: /MOUZO/g, to: "Rabbit Food" },
+  { from: /Mouzo/g, to: "Rabbit Food" },
+  { from: /mouzo/g, to: "rabbitfood" },
+  { from: /MouzoColors/g, to: "RabbitFoodColors" },
+  { from: /@nemy_/g, to: "@rabbitfood_" },
+  { from: /nemy-ca\.pem/g, to: "nemy-ca.pem" }, // Keep NEMY database references
+  { from: /nemydb/g, to: "nemydb" }, // Keep NEMY database references
 ];
 
 let filesProcessed = 0;
@@ -31,7 +29,7 @@ function shouldProcessFile(filePath) {
 
 function processFile(filePath) {
   try {
-    let content = fs.readFileSync(filePath, 'utf8');
+    let content = fs.readFileSync(filePath, "utf8");
     let originalContent = content;
     let fileReplacements = 0;
 
@@ -44,10 +42,12 @@ function processFile(filePath) {
     });
 
     if (content !== originalContent) {
-      fs.writeFileSync(filePath, content, 'utf8');
+      fs.writeFileSync(filePath, content, "utf8");
       filesChanged++;
       totalReplacements += fileReplacements;
-      console.log(`✓ ${path.relative(process.cwd(), filePath)} (${fileReplacements} changes)`);
+      console.log(
+        `✓ ${path.relative(process.cwd(), filePath)} (${fileReplacements} changes)`,
+      );
     }
 
     filesProcessed++;
@@ -59,13 +59,13 @@ function processFile(filePath) {
 function walkDirectory(dir) {
   const files = fs.readdirSync(dir);
 
-  files.forEach(file => {
+  files.forEach((file) => {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
 
     if (stat.isDirectory()) {
       // Skip node_modules and other build directories
-      if (!['node_modules', 'dist', 'build', '.expo', '.git'].includes(file)) {
+      if (!["node_modules", "dist", "build", ".expo", ".git"].includes(file)) {
         walkDirectory(filePath);
       }
     } else if (shouldProcessFile(filePath)) {
@@ -74,18 +74,18 @@ function walkDirectory(dir) {
   });
 }
 
-console.log('🐰 Rabbit Food Rebranding Script\n');
-console.log('Replacing MOUZO references in frontend...\n');
+console.log("🐰 Rabbit Food Rebranding Script\n");
+console.log("Replacing MOUZO references in frontend...\n");
 
-searchDirs.forEach(dir => {
+searchDirs.forEach((dir) => {
   if (fs.existsSync(dir)) {
     console.log(`📁 Processing: ${path.relative(process.cwd(), dir)}\n`);
     walkDirectory(dir);
   }
 });
 
-console.log('\n📊 Summary:');
+console.log("\n📊 Summary:");
 console.log(`   Files processed: ${filesProcessed}`);
 console.log(`   Files changed: ${filesChanged}`);
 console.log(`   Total replacements: ${totalReplacements}`);
-console.log('\n✅ Rebranding complete!\n');
+console.log("\n✅ Rebranding complete!\n");

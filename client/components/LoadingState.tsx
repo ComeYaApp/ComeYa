@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
-import { theme } from '@/constants/theme';
+import React from "react";
+import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
+import { theme } from "@/constants/theme";
 
 interface LoadingStateProps {
   loading?: boolean;
@@ -14,7 +14,7 @@ export function LoadingState({
   loading,
   error,
   empty,
-  emptyMessage = 'No hay datos disponibles',
+  emptyMessage = "No hay datos disponibles",
   children,
 }: LoadingStateProps) {
   if (loading) {
@@ -48,8 +48,8 @@ export function LoadingState({
 const styles = StyleSheet.create({
   center: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: theme.spacing.xl,
   },
   loadingText: {
@@ -60,11 +60,11 @@ const styles = StyleSheet.create({
   errorText: {
     ...theme.typography.body,
     color: theme.colors.error,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyText: {
     ...theme.typography.body,
     color: theme.colors.text.secondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

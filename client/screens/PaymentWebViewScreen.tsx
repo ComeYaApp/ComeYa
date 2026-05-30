@@ -1,10 +1,10 @@
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import { useNavigation } from '@react-navigation/native';
-import { ThemedText } from '@/components/ThemedText';
-import { ComeYaColors } from '@/constants/theme';
-import { useTheme } from '@/hooks/useTheme';
+import React, { useEffect } from "react";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
+import * as WebBrowser from "expo-web-browser";
+import { useNavigation } from "@react-navigation/native";
+import { ThemedText } from "@/components/ThemedText";
+import { ComeYaColors } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Props {
   route: {
@@ -32,21 +32,24 @@ export default function PaymentWebViewScreen({ route }: Props) {
     }
 
     const result = await WebBrowser.openBrowserAsync(paymentUrl, {
-      dismissButtonStyle: 'cancel',
+      dismissButtonStyle: "cancel",
       presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
     });
 
     // Cuando el usuario cierra el navegador, volver a pedidos
     (navigation as any).reset({
       index: 0,
-      routes: [{ name: 'Main' }],
+      routes: [{ name: "Main" }],
     });
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       <ActivityIndicator size="large" color={ComeYaColors.primary} />
-      <ThemedText type="body" style={{ marginTop: 16, color: theme.textSecondary }}>
+      <ThemedText
+        type="body"
+        style={{ marginTop: 16, color: theme.textSecondary }}
+      >
         Abriendo pasarela de pago...
       </ThemedText>
     </View>
@@ -54,5 +57,5 @@ export default function PaymentWebViewScreen({ route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

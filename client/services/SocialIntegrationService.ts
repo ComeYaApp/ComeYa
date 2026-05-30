@@ -1,4 +1,4 @@
-import { Share, Linking, Platform } from 'react-native';
+import { Share, Linking, Platform } from "react-native";
 
 export class SocialIntegrationService {
   // Compartir pedido en WhatsApp
@@ -9,9 +9,11 @@ export class SocialIntegrationService {
     items: any[];
   }) {
     const { orderId, businessName, total, items } = data;
-    
-    const itemsList = items.map((item) => `• ${item.quantity}x ${item.product?.name || item.name}`).join('\n');
-    
+
+    const itemsList = items
+      .map((item) => `• ${item.quantity}x ${item.product?.name || item.name}`)
+      .join("\n");
+
     const message = `🍔 ¡Acabo de pedir en ${businessName}!\n\n${itemsList}\n\nTotal: Bs.${total.toFixed(2)}\n\n📱 Descarga ComeYa y pide tú también:\nComeYa://download`;
 
     const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
@@ -28,8 +30,8 @@ export class SocialIntegrationService {
         return { success: true };
       }
     } catch (error) {
-      console.error('WhatsApp share error:', error);
-      return { success: false, error: 'No se pudo abrir WhatsApp' };
+      console.error("WhatsApp share error:", error);
+      return { success: false, error: "No se pudo abrir WhatsApp" };
     }
   }
 
@@ -51,8 +53,8 @@ export class SocialIntegrationService {
       });
       return { success: true };
     } catch (error) {
-      console.error('Share business error:', error);
-      return { success: false, error: 'Error al compartir' };
+      console.error("Share business error:", error);
+      return { success: false, error: "Error al compartir" };
     }
   }
 
@@ -63,12 +65,12 @@ export class SocialIntegrationService {
     try {
       await Share.share({
         message,
-        title: 'Únete a ComeYa',
+        title: "Únete a ComeYa",
       });
       return { success: true };
     } catch (error) {
-      console.error('Share referral error:', error);
-      return { success: false, error: 'Error al compartir' };
+      console.error("Share referral error:", error);
+      return { success: false, error: "Error al compartir" };
     }
   }
 
@@ -81,14 +83,17 @@ export class SocialIntegrationService {
       if (canOpen) {
         // Instagram Stories requiere implementación nativa más compleja
         // Por ahora, abrimos Instagram
-        await Linking.openURL('instagram://');
-        return { success: true, message: 'Abre Instagram y comparte manualmente' };
+        await Linking.openURL("instagram://");
+        return {
+          success: true,
+          message: "Abre Instagram y comparte manualmente",
+        };
       } else {
-        return { success: false, error: 'Instagram no instalado' };
+        return { success: false, error: "Instagram no instalado" };
       }
     } catch (error) {
-      console.error('Instagram share error:', error);
-      return { success: false, error: 'Error al abrir Instagram' };
+      console.error("Instagram share error:", error);
+      return { success: false, error: "Error al abrir Instagram" };
     }
   }
 
@@ -108,8 +113,8 @@ export class SocialIntegrationService {
         return { success: true };
       }
     } catch (error) {
-      console.error('Facebook share error:', error);
-      return { success: false, error: 'Error al compartir en Facebook' };
+      console.error("Facebook share error:", error);
+      return { success: false, error: "Error al compartir en Facebook" };
     }
   }
 
@@ -126,12 +131,12 @@ export class SocialIntegrationService {
     try {
       await Share.share({
         message,
-        title: 'Logro desbloqueado en ComeYa',
+        title: "Logro desbloqueado en ComeYa",
       });
       return { success: true };
     } catch (error) {
-      console.error('Share achievement error:', error);
-      return { success: false, error: 'Error al compartir' };
+      console.error("Share achievement error:", error);
+      return { success: false, error: "Error al compartir" };
     }
   }
 
@@ -143,19 +148,26 @@ export class SocialIntegrationService {
   }) {
     const { position, points, userName } = data;
 
-    const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : '🏅';
+    const medal =
+      position === 1
+        ? "🥇"
+        : position === 2
+          ? "🥈"
+          : position === 3
+            ? "🥉"
+            : "🏅";
 
     const message = `${medal} ¡${userName} está en el puesto #${position}!\n\n⭐ ${points} puntos\n\n📱 Compite tú también en ComeYa!`;
 
     try {
       await Share.share({
         message,
-        title: 'Ranking en ComeYa',
+        title: "Ranking en ComeYa",
       });
       return { success: true };
     } catch (error) {
-      console.error('Share leaderboard error:', error);
-      return { success: false, error: 'Error al compartir' };
+      console.error("Share leaderboard error:", error);
+      return { success: false, error: "Error al compartir" };
     }
   }
 
@@ -173,8 +185,8 @@ export class SocialIntegrationService {
       }
       return { success: true };
     } catch (error) {
-      console.error('Open Instagram error:', error);
-      return { success: false, error: 'Error al abrir Instagram' };
+      console.error("Open Instagram error:", error);
+      return { success: false, error: "Error al abrir Instagram" };
     }
   }
 
@@ -192,8 +204,8 @@ export class SocialIntegrationService {
       }
       return { success: true };
     } catch (error) {
-      console.error('Open Facebook error:', error);
-      return { success: false, error: 'Error al abrir Facebook' };
+      console.error("Open Facebook error:", error);
+      return { success: false, error: "Error al abrir Facebook" };
     }
   }
 }

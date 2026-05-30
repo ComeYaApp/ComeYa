@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary } from "cloudinary";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -6,7 +6,14 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export type UploadFolder = 'profiles' | 'businesses' | 'products' | 'comprobantes' | 'reviews' | 'delivery-proofs' | 'verification-docs';
+export type UploadFolder =
+  | "profiles"
+  | "businesses"
+  | "products"
+  | "comprobantes"
+  | "reviews"
+  | "delivery-proofs"
+  | "verification-docs";
 
 export class CloudinaryService {
   /**
@@ -16,21 +23,22 @@ export class CloudinaryService {
    * @param publicId - ID público opcional (si no se provee, Cloudinary genera uno)
    * @returns URL segura de la imagen subida
    */
-  static async uploadImage(base64Image: string, folder: UploadFolder, publicId?: string): Promise<string> {
+  static async uploadImage(
+    base64Image: string,
+    folder: UploadFolder,
+    publicId?: string,
+  ): Promise<string> {
     try {
       const result = await cloudinary.uploader.upload(base64Image, {
         folder: `comeya/${folder}`,
         public_id: publicId,
-        resource_type: 'image',
-        transformation: [
-          { quality: 'auto:good' },
-          { fetch_format: 'auto' },
-        ],
+        resource_type: "image",
+        transformation: [{ quality: "auto:good" }, { fetch_format: "auto" }],
       });
 
       return result.secure_url;
     } catch (error: any) {
-      console.error('Cloudinary upload error:', error);
+      console.error("Cloudinary upload error:", error);
       throw new Error(`Error al subir imagen: ${error.message}`);
     }
   }
@@ -43,7 +51,7 @@ export class CloudinaryService {
     try {
       await cloudinary.uploader.destroy(publicId);
     } catch (error: any) {
-      console.error('Cloudinary delete error:', error);
+      console.error("Cloudinary delete error:", error);
       throw new Error(`Error al eliminar imagen: ${error.message}`);
     }
   }

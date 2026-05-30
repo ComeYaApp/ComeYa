@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,12 +10,12 @@ import {
   Dimensions,
   Animated,
   RefreshControl,
-} from 'react-native';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Colors } from '../constants/Colors';
+} from "react-native";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { Colors } from "../constants/Colors";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 interface UserLevel {
   id: string;
@@ -32,7 +32,7 @@ interface Reward {
   title: string;
   description: string;
   pointsCost: number;
-  type: 'discount' | 'freeDelivery' | 'cashback' | 'product';
+  type: "discount" | "freeDelivery" | "cashback" | "product";
   value: number;
   available: boolean;
   expiresAt?: string;
@@ -45,7 +45,7 @@ interface Challenge {
   progress: number;
   target: number;
   reward: number;
-  type: 'orders' | 'spending' | 'reviews' | 'referrals';
+  type: "orders" | "spending" | "reviews" | "referrals";
   expiresAt: string;
   completed: boolean;
 }
@@ -61,10 +61,12 @@ interface Subscription {
 
 export default function LoyaltyScreen() {
   const [userPoints, setUserPoints] = useState(2450);
-  const [userLevel, setUserLevel] = useState('gold');
+  const [userLevel, setUserLevel] = useState("gold");
   const [totalSpent, setTotalSpent] = useState(15750);
   const [ordersCount, setOrdersCount] = useState(87);
-  const [activeTab, setActiveTab] = useState<'overview' | 'rewards' | 'challenges' | 'premium'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "rewards" | "challenges" | "premium"
+  >("overview");
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,173 +74,195 @@ export default function LoyaltyScreen() {
 
   const levels: UserLevel[] = [
     {
-      id: 'bronze',
-      name: 'Bronce',
+      id: "bronze",
+      name: "Bronce",
       minPoints: 0,
       maxPoints: 999,
-      color: '#CD7F32',
-      benefits: ['5% cashback', 'Soporte básico'],
-      icon: 'medal'
+      color: "#CD7F32",
+      benefits: ["5% cashback", "Soporte básico"],
+      icon: "medal",
     },
     {
-      id: 'silver',
-      name: 'Plata',
+      id: "silver",
+      name: "Plata",
       minPoints: 1000,
       maxPoints: 2499,
-      color: '#C0C0C0',
-      benefits: ['8% cashback', 'Entrega gratis 1x/mes', 'Soporte prioritario'],
-      icon: 'medal'
+      color: "#C0C0C0",
+      benefits: ["8% cashback", "Entrega gratis 1x/mes", "Soporte prioritario"],
+      icon: "medal",
     },
     {
-      id: 'gold',
-      name: 'Oro',
+      id: "gold",
+      name: "Oro",
       minPoints: 2500,
       maxPoints: 4999,
-      color: '#FFD700',
-      benefits: ['12% cashback', 'Entrega gratis ilimitada', 'Descuentos exclusivos', 'Soporte VIP'],
-      icon: 'medal'
+      color: "#FFD700",
+      benefits: [
+        "12% cashback",
+        "Entrega gratis ilimitada",
+        "Descuentos exclusivos",
+        "Soporte VIP",
+      ],
+      icon: "medal",
     },
     {
-      id: 'platinum',
-      name: 'Platino',
+      id: "platinum",
+      name: "Platino",
       minPoints: 5000,
       maxPoints: 9999,
-      color: '#E5E4E2',
-      benefits: ['15% cashback', 'Entrega gratis + express', 'Acceso anticipado', 'Concierge personal'],
-      icon: 'diamond'
+      color: "#E5E4E2",
+      benefits: [
+        "15% cashback",
+        "Entrega gratis + express",
+        "Acceso anticipado",
+        "Concierge personal",
+      ],
+      icon: "diamond",
     },
     {
-      id: 'diamond',
-      name: 'Diamante',
+      id: "diamond",
+      name: "Diamante",
       minPoints: 10000,
       maxPoints: 999999,
-      color: '#B9F2FF',
-      benefits: ['20% cashback', 'Beneficios premium', 'Eventos exclusivos', 'Gerente dedicado'],
-      icon: 'diamond'
-    }
+      color: "#B9F2FF",
+      benefits: [
+        "20% cashback",
+        "Beneficios premium",
+        "Eventos exclusivos",
+        "Gerente dedicado",
+      ],
+      icon: "diamond",
+    },
   ];
 
   const rewards: Reward[] = [
     {
-      id: '1',
-      title: '20% Descuento',
-      description: 'En tu próximo pedido',
+      id: "1",
+      title: "20% Descuento",
+      description: "En tu próximo pedido",
       pointsCost: 500,
-      type: 'discount',
+      type: "discount",
       value: 20,
-      available: true
+      available: true,
     },
     {
-      id: '2',
-      title: 'Entrega Gratis',
-      description: 'Válido por 30 días',
+      id: "2",
+      title: "Entrega Gratis",
+      description: "Válido por 30 días",
       pointsCost: 300,
-      type: 'freeDelivery',
+      type: "freeDelivery",
       value: 1,
-      available: true
+      available: true,
     },
     {
-      id: '3',
-      title: '$50 Cashback',
-      description: 'Directo a tu billetera',
+      id: "3",
+      title: "$50 Cashback",
+      description: "Directo a tu billetera",
       pointsCost: 1000,
-      type: 'cashback',
+      type: "cashback",
       value: 50,
-      available: true
+      available: true,
     },
     {
-      id: '4',
-      title: 'Tacos Gratis',
-      description: 'Orden de 3 tacos en El Güero',
+      id: "4",
+      title: "Tacos Gratis",
+      description: "Orden de 3 tacos en El Güero",
       pointsCost: 800,
-      type: 'product',
+      type: "product",
       value: 85,
       available: false,
-      expiresAt: '2024-02-01'
-    }
+      expiresAt: "2024-02-01",
+    },
   ];
 
   const challenges: Challenge[] = [
     {
-      id: '1',
-      title: 'Explorador Semanal',
-      description: 'Ordena de 3 restaurantes diferentes',
+      id: "1",
+      title: "Explorador Semanal",
+      description: "Ordena de 3 restaurantes diferentes",
       progress: 2,
       target: 3,
       reward: 200,
-      type: 'orders',
-      expiresAt: '2024-01-21',
-      completed: false
+      type: "orders",
+      expiresAt: "2024-01-21",
+      completed: false,
     },
     {
-      id: '2',
-      title: 'Gran Gastador',
-      description: 'Gasta $500 este mes',
+      id: "2",
+      title: "Gran Gastador",
+      description: "Gasta $500 este mes",
       progress: 350,
       target: 500,
       reward: 300,
-      type: 'spending',
-      expiresAt: '2024-01-31',
-      completed: false
+      type: "spending",
+      expiresAt: "2024-01-31",
+      completed: false,
     },
     {
-      id: '3',
-      title: 'Crítico Gastronómico',
-      description: 'Deja 5 reseñas con fotos',
+      id: "3",
+      title: "Crítico Gastronómico",
+      description: "Deja 5 reseñas con fotos",
       progress: 5,
       target: 5,
       reward: 150,
-      type: 'reviews',
-      expiresAt: '2024-01-25',
-      completed: true
-    }
+      type: "reviews",
+      expiresAt: "2024-01-25",
+      completed: true,
+    },
   ];
 
   const subscriptions: Subscription[] = [
     {
-      id: 'basic',
-      name: 'ComeYa Plus',
+      id: "basic",
+      name: "ComeYa Plus",
       price: 99,
       benefits: [
-        'Entrega gratis ilimitada',
-        '10% descuento en todos los pedidos',
-        'Soporte prioritario',
-        'Acceso a ofertas exclusivas'
+        "Entrega gratis ilimitada",
+        "10% descuento en todos los pedidos",
+        "Soporte prioritario",
+        "Acceso a ofertas exclusivas",
       ],
-      savings: 300
+      savings: 300,
     },
     {
-      id: 'premium',
-      name: 'ComeYa Premium',
+      id: "premium",
+      name: "ComeYa Premium",
       price: 199,
       benefits: [
-        'Todo de ComeYa Plus',
-        '15% descuento en todos los pedidos',
-        'Entrega express gratis',
-        'Cashback del 5%',
-        'Acceso anticipado a nuevos restaurantes',
-        'Concierge gastronómico'
+        "Todo de ComeYa Plus",
+        "15% descuento en todos los pedidos",
+        "Entrega express gratis",
+        "Cashback del 5%",
+        "Acceso anticipado a nuevos restaurantes",
+        "Concierge gastronómico",
       ],
       popular: true,
-      savings: 600
-    }
+      savings: 600,
+    },
   ];
 
   const getCurrentLevel = () => {
-    return levels.find(level => level.id === userLevel) || levels[0];
+    return levels.find((level) => level.id === userLevel) || levels[0];
   };
 
   const getNextLevel = () => {
-    const currentLevelIndex = levels.findIndex(level => level.id === userLevel);
-    return currentLevelIndex < levels.length - 1 ? levels[currentLevelIndex + 1] : null;
+    const currentLevelIndex = levels.findIndex(
+      (level) => level.id === userLevel,
+    );
+    return currentLevelIndex < levels.length - 1
+      ? levels[currentLevelIndex + 1]
+      : null;
   };
 
   const getLevelProgress = () => {
     const current = getCurrentLevel();
     const next = getNextLevel();
     if (!next) return 100;
-    
-    const progress = ((userPoints - current.minPoints) / (next.minPoints - current.minPoints)) * 100;
+
+    const progress =
+      ((userPoints - current.minPoints) /
+        (next.minPoints - current.minPoints)) *
+      100;
     return Math.min(progress, 100);
   };
 
@@ -252,32 +276,38 @@ export default function LoyaltyScreen() {
 
   const redeemReward = (reward: Reward) => {
     if (userPoints < reward.pointsCost) {
-      Alert.alert('Puntos Insuficientes', 'No tienes suficientes puntos para canjear esta recompensa');
+      Alert.alert(
+        "Puntos Insuficientes",
+        "No tienes suficientes puntos para canjear esta recompensa",
+      );
       return;
     }
 
     Alert.alert(
-      'Confirmar Canje',
+      "Confirmar Canje",
       `¿Canjear ${reward.title} por ${reward.pointsCost} puntos?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Canjear',
+          text: "Canjear",
           onPress: () => {
-            setUserPoints(prev => prev - reward.pointsCost);
+            setUserPoints((prev) => prev - reward.pointsCost);
             setShowRewardModal(false);
-            Alert.alert('¡Éxito!', 'Recompensa canjeada exitosamente');
-          }
-        }
-      ]
+            Alert.alert("¡Éxito!", "Recompensa canjeada exitosamente");
+          },
+        },
+      ],
     );
   };
 
   const claimChallenge = (challenge: Challenge) => {
     if (!challenge.completed) return;
 
-    setUserPoints(prev => prev + challenge.reward);
-    Alert.alert('¡Desafío Completado!', `Has ganado ${challenge.reward} puntos`);
+    setUserPoints((prev) => prev + challenge.reward);
+    Alert.alert(
+      "¡Desafío Completado!",
+      `Has ganado ${challenge.reward} puntos`,
+    );
   };
 
   useEffect(() => {
@@ -289,25 +319,35 @@ export default function LoyaltyScreen() {
   }, [userPoints]);
 
   const renderOverviewTab = () => (
-    <ScrollView 
+    <ScrollView
       style={styles.tabContent}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
     >
       {/* Level Card */}
       <LinearGradient
-        colors={[getCurrentLevel().color, getCurrentLevel().color + '80']}
+        colors={[getCurrentLevel().color, getCurrentLevel().color + "80"]}
         style={styles.levelCard}
       >
         <View style={styles.levelHeader}>
           <View style={styles.levelInfo}>
-            <Ionicons name={getCurrentLevel().icon as any} size={32} color="white" />
+            <Ionicons
+              name={getCurrentLevel().icon as any}
+              size={32}
+              color="white"
+            />
             <View style={styles.levelText}>
               <Text style={styles.levelName}>{getCurrentLevel().name}</Text>
-              <Text style={styles.levelPoints}>{userPoints.toLocaleString()} puntos</Text>
+              <Text style={styles.levelPoints}>
+                {userPoints.toLocaleString()} puntos
+              </Text>
             </View>
           </View>
           <View style={styles.levelBadge}>
-            <Text style={styles.levelBadgeText}>Nivel {levels.findIndex(l => l.id === userLevel) + 1}</Text>
+            <Text style={styles.levelBadgeText}>
+              Nivel {levels.findIndex((l) => l.id === userLevel) + 1}
+            </Text>
           </View>
         </View>
 
@@ -322,17 +362,17 @@ export default function LoyaltyScreen() {
               </Text>
             </View>
             <View style={styles.progressBar}>
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.progressFill,
                   {
                     width: animatedValue.interpolate({
                       inputRange: [0, 100],
-                      outputRange: ['0%', '100%'],
-                      extrapolate: 'clamp',
-                    })
-                  }
-                ]} 
+                      outputRange: ["0%", "100%"],
+                      extrapolate: "clamp",
+                    }),
+                  },
+                ]}
               />
             </View>
           </View>
@@ -363,7 +403,11 @@ export default function LoyaltyScreen() {
         <Text style={styles.sectionTitle}>Beneficios Actuales</Text>
         {getCurrentLevel().benefits.map((benefit, index) => (
           <View key={index} style={styles.benefitItem}>
-            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={Colors.success}
+            />
             <Text style={styles.benefitText}>{benefit}</Text>
           </View>
         ))}
@@ -378,11 +422,13 @@ export default function LoyaltyScreen() {
           </View>
           <View style={styles.activityDetails}>
             <Text style={styles.activityTitle}>+50 puntos</Text>
-            <Text style={styles.activityDescription}>Pedido en Tacos El Güero</Text>
+            <Text style={styles.activityDescription}>
+              Pedido en Tacos El Güero
+            </Text>
           </View>
           <Text style={styles.activityTime}>Hace 2h</Text>
         </View>
-        
+
         <View style={styles.activityItem}>
           <View style={styles.activityIcon}>
             <Ionicons name="gift" size={16} color={Colors.primary} />
@@ -407,7 +453,10 @@ export default function LoyaltyScreen() {
       {rewards.map((reward) => (
         <TouchableOpacity
           key={reward.id}
-          style={[styles.rewardCard, !reward.available && styles.rewardCardDisabled]}
+          style={[
+            styles.rewardCard,
+            !reward.available && styles.rewardCardDisabled,
+          ]}
           onPress={() => {
             setSelectedReward(reward);
             setShowRewardModal(true);
@@ -415,23 +464,36 @@ export default function LoyaltyScreen() {
           disabled={!reward.available}
         >
           <View style={styles.rewardIcon}>
-            <Ionicons 
+            <Ionicons
               name={
-                reward.type === 'discount' ? 'pricetag' :
-                reward.type === 'freeDelivery' ? 'bicycle' :
-                reward.type === 'cashback' ? 'wallet' :
-                'gift'
-              } 
-              size={24} 
-              color={reward.available ? Colors.primary : Colors.gray} 
+                reward.type === "discount"
+                  ? "pricetag"
+                  : reward.type === "freeDelivery"
+                    ? "bicycle"
+                    : reward.type === "cashback"
+                      ? "wallet"
+                      : "gift"
+              }
+              size={24}
+              color={reward.available ? Colors.primary : Colors.gray}
             />
           </View>
-          
+
           <View style={styles.rewardDetails}>
-            <Text style={[styles.rewardTitle, !reward.available && styles.rewardTitleDisabled]}>
+            <Text
+              style={[
+                styles.rewardTitle,
+                !reward.available && styles.rewardTitleDisabled,
+              ]}
+            >
               {reward.title}
             </Text>
-            <Text style={[styles.rewardDescription, !reward.available && styles.rewardDescriptionDisabled]}>
+            <Text
+              style={[
+                styles.rewardDescription,
+                !reward.available && styles.rewardDescriptionDisabled,
+              ]}
+            >
               {reward.description}
             </Text>
             {reward.expiresAt && (
@@ -440,12 +502,22 @@ export default function LoyaltyScreen() {
               </Text>
             )}
           </View>
-          
+
           <View style={styles.rewardCost}>
-            <Text style={[styles.rewardPoints, !reward.available && styles.rewardPointsDisabled]}>
+            <Text
+              style={[
+                styles.rewardPoints,
+                !reward.available && styles.rewardPointsDisabled,
+              ]}
+            >
               {reward.pointsCost}
             </Text>
-            <Text style={[styles.rewardPointsLabel, !reward.available && styles.rewardPointsLabelDisabled]}>
+            <Text
+              style={[
+                styles.rewardPointsLabel,
+                !reward.available && styles.rewardPointsLabelDisabled,
+              ]}
+            >
               puntos
             </Text>
           </View>
@@ -465,34 +537,43 @@ export default function LoyaltyScreen() {
         <View key={challenge.id} style={styles.challengeCard}>
           <View style={styles.challengeHeader}>
             <View style={styles.challengeIcon}>
-              <Ionicons 
+              <Ionicons
                 name={
-                  challenge.type === 'orders' ? 'restaurant' :
-                  challenge.type === 'spending' ? 'card' :
-                  challenge.type === 'reviews' ? 'star' :
-                  'people'
-                } 
-                size={20} 
-                color={challenge.completed ? Colors.success : Colors.primary} 
+                  challenge.type === "orders"
+                    ? "restaurant"
+                    : challenge.type === "spending"
+                      ? "card"
+                      : challenge.type === "reviews"
+                        ? "star"
+                        : "people"
+                }
+                size={20}
+                color={challenge.completed ? Colors.success : Colors.primary}
               />
             </View>
             <View style={styles.challengeInfo}>
               <Text style={styles.challengeTitle}>{challenge.title}</Text>
-              <Text style={styles.challengeDescription}>{challenge.description}</Text>
+              <Text style={styles.challengeDescription}>
+                {challenge.description}
+              </Text>
             </View>
             <View style={styles.challengeReward}>
-              <Text style={styles.challengeRewardPoints}>+{challenge.reward}</Text>
+              <Text style={styles.challengeRewardPoints}>
+                +{challenge.reward}
+              </Text>
               <Text style={styles.challengeRewardLabel}>puntos</Text>
             </View>
           </View>
 
           <View style={styles.challengeProgress}>
             <View style={styles.challengeProgressBar}>
-              <View 
+              <View
                 style={[
                   styles.challengeProgressFill,
-                  { width: `${(challenge.progress / challenge.target) * 100}%` }
-                ]} 
+                  {
+                    width: `${(challenge.progress / challenge.target) * 100}%`,
+                  },
+                ]}
               />
             </View>
             <Text style={styles.challengeProgressText}>
@@ -505,7 +586,7 @@ export default function LoyaltyScreen() {
               Expira: {new Date(challenge.expiresAt).toLocaleDateString()}
             </Text>
             {challenge.completed && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.claimButton}
                 onPress={() => claimChallenge(challenge)}
               >
@@ -526,10 +607,13 @@ export default function LoyaltyScreen() {
       </Text>
 
       {subscriptions.map((subscription) => (
-        <View key={subscription.id} style={[
-          styles.subscriptionCard,
-          subscription.popular && styles.popularSubscription
-        ]}>
+        <View
+          key={subscription.id}
+          style={[
+            styles.subscriptionCard,
+            subscription.popular && styles.popularSubscription,
+          ]}
+        >
           {subscription.popular && (
             <View style={styles.popularBadge}>
               <Text style={styles.popularBadgeText}>MÁS POPULAR</Text>
@@ -539,7 +623,9 @@ export default function LoyaltyScreen() {
           <View style={styles.subscriptionHeader}>
             <Text style={styles.subscriptionName}>{subscription.name}</Text>
             <View style={styles.subscriptionPrice}>
-              <Text style={styles.subscriptionPriceAmount}>${subscription.price}</Text>
+              <Text style={styles.subscriptionPriceAmount}>
+                ${subscription.price}
+              </Text>
               <Text style={styles.subscriptionPriceLabel}>/mes</Text>
             </View>
           </View>
@@ -557,14 +643,18 @@ export default function LoyaltyScreen() {
             ))}
           </View>
 
-          <TouchableOpacity style={[
-            styles.subscriptionButton,
-            subscription.popular && styles.popularSubscriptionButton
-          ]}>
-            <Text style={[
-              styles.subscriptionButtonText,
-              subscription.popular && styles.popularSubscriptionButtonText
-            ]}>
+          <TouchableOpacity
+            style={[
+              styles.subscriptionButton,
+              subscription.popular && styles.popularSubscriptionButton,
+            ]}
+          >
+            <Text
+              style={[
+                styles.subscriptionButtonText,
+                subscription.popular && styles.popularSubscriptionButtonText,
+              ]}
+            >
               Suscribirse Ahora
             </Text>
           </TouchableOpacity>
@@ -602,48 +692,68 @@ export default function LoyaltyScreen() {
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
-          onPress={() => setActiveTab('overview')}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "overview" && styles.activeTab]}
+          onPress={() => setActiveTab("overview")}
         >
-          <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "overview" && styles.activeTabText,
+            ]}
+          >
             Resumen
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'rewards' && styles.activeTab]}
-          onPress={() => setActiveTab('rewards')}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "rewards" && styles.activeTab]}
+          onPress={() => setActiveTab("rewards")}
         >
-          <Text style={[styles.tabText, activeTab === 'rewards' && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "rewards" && styles.activeTabText,
+            ]}
+          >
             Recompensas
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'challenges' && styles.activeTab]}
-          onPress={() => setActiveTab('challenges')}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "challenges" && styles.activeTab]}
+          onPress={() => setActiveTab("challenges")}
         >
-          <Text style={[styles.tabText, activeTab === 'challenges' && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "challenges" && styles.activeTabText,
+            ]}
+          >
             Desafíos
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'premium' && styles.activeTab]}
-          onPress={() => setActiveTab('premium')}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "premium" && styles.activeTab]}
+          onPress={() => setActiveTab("premium")}
         >
-          <Text style={[styles.tabText, activeTab === 'premium' && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "premium" && styles.activeTabText,
+            ]}
+          >
             Premium
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && renderOverviewTab()}
-      {activeTab === 'rewards' && renderRewardsTab()}
-      {activeTab === 'challenges' && renderChallengesTab()}
-      {activeTab === 'premium' && renderPremiumTab()}
+      {activeTab === "overview" && renderOverviewTab()}
+      {activeTab === "rewards" && renderRewardsTab()}
+      {activeTab === "challenges" && renderChallengesTab()}
+      {activeTab === "premium" && renderPremiumTab()}
 
       {/* Reward Modal */}
       <Modal visible={showRewardModal} transparent animationType="slide">
@@ -652,42 +762,52 @@ export default function LoyaltyScreen() {
             {selectedReward && (
               <>
                 <View style={styles.modalHeader}>
-                  <Ionicons 
+                  <Ionicons
                     name={
-                      selectedReward.type === 'discount' ? 'pricetag' :
-                      selectedReward.type === 'freeDelivery' ? 'bicycle' :
-                      selectedReward.type === 'cashback' ? 'wallet' :
-                      'gift'
-                    } 
-                    size={48} 
-                    color={Colors.primary} 
+                      selectedReward.type === "discount"
+                        ? "pricetag"
+                        : selectedReward.type === "freeDelivery"
+                          ? "bicycle"
+                          : selectedReward.type === "cashback"
+                            ? "wallet"
+                            : "gift"
+                    }
+                    size={48}
+                    color={Colors.primary}
                   />
                   <Text style={styles.modalTitle}>{selectedReward.title}</Text>
-                  <Text style={styles.modalDescription}>{selectedReward.description}</Text>
+                  <Text style={styles.modalDescription}>
+                    {selectedReward.description}
+                  </Text>
                 </View>
 
                 <View style={styles.modalCost}>
                   <Text style={styles.modalCostLabel}>Costo:</Text>
-                  <Text style={styles.modalCostValue}>{selectedReward.pointsCost} puntos</Text>
+                  <Text style={styles.modalCostValue}>
+                    {selectedReward.pointsCost} puntos
+                  </Text>
                 </View>
 
                 <View style={styles.modalBalance}>
                   <Text style={styles.modalBalanceLabel}>Tu saldo:</Text>
-                  <Text style={styles.modalBalanceValue}>{userPoints.toLocaleString()} puntos</Text>
+                  <Text style={styles.modalBalanceValue}>
+                    {userPoints.toLocaleString()} puntos
+                  </Text>
                 </View>
 
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.modalCancelButton}
                     onPress={() => setShowRewardModal(false)}
                   >
                     <Text style={styles.modalCancelText}>Cancelar</Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
+
+                  <TouchableOpacity
                     style={[
                       styles.modalRedeemButton,
-                      userPoints < selectedReward.pointsCost && styles.modalRedeemButtonDisabled
+                      userPoints < selectedReward.pointsCost &&
+                        styles.modalRedeemButtonDisabled,
                     ]}
                     onPress={() => redeemReward(selectedReward)}
                     disabled={userPoints < selectedReward.pointsCost}
@@ -710,29 +830,29 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
   },
   tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
+    flexDirection: "row",
+    backgroundColor: "white",
     paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
   tab: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 15,
   },
   activeTab: {
@@ -742,11 +862,11 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     color: Colors.gray,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   activeTabText: {
     color: Colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   tabContent: {
     flex: 1,
@@ -758,82 +878,82 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   levelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   levelInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 15,
   },
   levelText: {
     gap: 5,
   },
   levelName: {
-    color: 'white',
+    color: "white",
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   levelPoints: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
     opacity: 0.9,
   },
   levelBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: "rgba(255,255,255,0.2)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 15,
   },
   levelBadgeText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   progressContainer: {
     gap: 10,
   },
   progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   progressText: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
   },
   progressPoints: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
     opacity: 0.8,
   },
   progressBar: {
     height: 8,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: "rgba(255,255,255,0.3)",
     borderRadius: 4,
   },
   progressFill: {
-    height: '100%',
-    backgroundColor: 'white',
+    height: "100%",
+    backgroundColor: "white",
     borderRadius: 4,
   },
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 15,
     marginBottom: 20,
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     padding: 15,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
   },
   statValue: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
   },
   statLabel: {
@@ -841,14 +961,14 @@ const styles = StyleSheet.create({
     color: Colors.gray,
   },
   benefitsContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
     marginBottom: 15,
   },
@@ -858,8 +978,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   benefitItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     marginBottom: 10,
   },
@@ -868,13 +988,13 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   activityContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
   },
   activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
@@ -884,8 +1004,8 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   activityDetails: {
@@ -893,7 +1013,7 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   activityDescription: {
@@ -906,12 +1026,12 @@ const styles = StyleSheet.create({
     color: Colors.gray,
   },
   rewardCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   rewardCardDisabled: {
     opacity: 0.6,
@@ -921,8 +1041,8 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 15,
   },
   rewardDetails: {
@@ -930,7 +1050,7 @@ const styles = StyleSheet.create({
   },
   rewardTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   rewardTitleDisabled: {
@@ -950,11 +1070,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   rewardCost: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   rewardPoints: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.primary,
   },
   rewardPointsDisabled: {
@@ -968,14 +1088,14 @@ const styles = StyleSheet.create({
     color: Colors.lightGray,
   },
   challengeCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
     marginBottom: 15,
   },
   challengeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
   },
   challengeIcon: {
@@ -983,8 +1103,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 15,
   },
   challengeInfo: {
@@ -992,7 +1112,7 @@ const styles = StyleSheet.create({
   },
   challengeTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   challengeDescription: {
@@ -1001,11 +1121,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   challengeReward: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   challengeRewardPoints: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.success,
   },
   challengeRewardLabel: {
@@ -1013,8 +1133,8 @@ const styles = StyleSheet.create({
     color: Colors.gray,
   },
   challengeProgress: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     marginBottom: 15,
   },
@@ -1025,7 +1145,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   challengeProgressFill: {
-    height: '100%',
+    height: "100%",
     backgroundColor: Colors.primary,
     borderRadius: 4,
   },
@@ -1035,9 +1155,9 @@ const styles = StyleSheet.create({
     minWidth: 40,
   },
   challengeFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   challengeExpiry: {
     fontSize: 12,
@@ -1050,23 +1170,23 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   claimButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   subscriptionCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 15,
     padding: 20,
     marginBottom: 20,
-    position: 'relative',
+    position: "relative",
   },
   popularSubscription: {
     borderWidth: 2,
     borderColor: Colors.primary,
   },
   popularBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: -10,
     left: 20,
     backgroundColor: Colors.primary,
@@ -1075,27 +1195,27 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   popularBadgeText: {
-    color: 'white',
+    color: "white",
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   subscriptionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   subscriptionName: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
   },
   subscriptionPrice: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   subscriptionPriceAmount: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.primary,
   },
   subscriptionPriceLabel: {
@@ -1111,8 +1231,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   subscriptionBenefit: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     marginBottom: 8,
   },
@@ -1124,22 +1244,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   popularSubscriptionButton: {
     backgroundColor: Colors.primary,
   },
   subscriptionButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   popularSubscriptionButtonText: {
-    color: 'white',
+    color: "white",
   },
   trialBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 20,
     borderRadius: 15,
     gap: 15,
@@ -1148,18 +1268,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   trialTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   trialDescription: {
-    color: 'white',
+    color: "white",
     fontSize: 14,
     opacity: 0.9,
     marginTop: 4,
   },
   trialButton: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
@@ -1167,28 +1287,28 @@ const styles = StyleSheet.create({
   trialButtonText: {
     color: Colors.primary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 20,
     padding: 30,
     width: width - 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.text,
     marginTop: 15,
     marginBottom: 10,
@@ -1196,11 +1316,11 @@ const styles = StyleSheet.create({
   modalDescription: {
     fontSize: 14,
     color: Colors.gray,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalCost: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     marginBottom: 15,
   },
@@ -1210,12 +1330,12 @@ const styles = StyleSheet.create({
   },
   modalCostValue: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.primary,
   },
   modalBalance: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     marginBottom: 30,
   },
@@ -1225,39 +1345,39 @@ const styles = StyleSheet.create({
   },
   modalBalanceValue: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: Colors.success,
   },
   modalButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 15,
-    width: '100%',
+    width: "100%",
   },
   modalCancelButton: {
     flex: 1,
     backgroundColor: Colors.background,
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalRedeemButton: {
     flex: 1,
     backgroundColor: Colors.primary,
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalRedeemButtonDisabled: {
     backgroundColor: Colors.gray,
   },
   modalCancelText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   modalRedeemText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
+    fontWeight: "600",
+    color: "white",
   },
 });

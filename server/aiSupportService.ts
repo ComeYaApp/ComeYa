@@ -1,13 +1,14 @@
-import { GoogleGenAI } from '@google/genai';
-import { db } from './db';
-import { supportChats, supportMessages } from '../shared/schema-mysql';
-import { eq, desc } from 'drizzle-orm';
+import { GoogleGenAI } from "@google/genai";
+import { db } from "./db";
+import { supportChats, supportMessages } from "../shared/schema-mysql";
+import { eq, desc } from "drizzle-orm";
 
 const genAI = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+  apiKey:
+    process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
 });
 
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const COMEYA_CONTEXT = `
 Eres un asistente de soporte para ComeYa, una plataforma de delivery en Soria, Espana.
@@ -89,7 +90,7 @@ export async function createSupportChat(userId: string): Promise<string> {
   await db.insert(supportChats).values({
     id: chatId,
     userId,
-    status: 'active',
+    status: "active",
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -99,7 +100,7 @@ export async function createSupportChat(userId: string): Promise<string> {
 export async function sendSupportMessage(
   chatId: string,
   userId: string,
-  message: string
+  message: string,
 ): Promise<string> {
   await db.insert(supportMessages).values({
     id: crypto.randomUUID(),
@@ -117,8 +118,8 @@ export async function sendSupportMessage(
     .orderBy(desc(supportMessages.createdAt))
     .limit(10);
 
-  const chatMessages = history.reverse().map(msg => ({
-    role: msg.isBot ? 'model' : 'user',
+  const chatMessages = history.reverse().map((msg) => ({
+    role: msg.isBot ? "model" : "user",
     parts: [{ text: msg.message }],
   }));
 
@@ -129,12 +130,13 @@ export async function sendSupportMessage(
         maxOutputTokens: 500,
         temperature: 0.7,
       },
-      systemInstruction: COMEYA_CONTEXT + '\n\n' + FAQS,
+      systemInstruction: COMEYA_CONTEXT + "\n\n" + FAQS,
     });
 
     const result = await chat.sendMessage(message);
-    const botResponse = result.response.text() ||
-      'Lo siento, no pude procesar tu mensaje. Intenta de nuevo.';
+    const botResponse =
+      result.response.text() ||
+      "Lo siento, no pude procesar tu mensaje. Intenta de nuevo.";
 
     await db.insert(supportMessages).values({
       id: crypto.randomUUID(),
@@ -145,12 +147,16 @@ export async function sendSupportMessage(
       createdAt: new Date(),
     });
 
-    await db.update(supportChats).set({ updatedAt: new Date() }).where(eq(supportChats.id, chatId));
+    await db
+      .update(supportChats)
+      .set({ updatedAt: new Date() })
+      .where(eq(supportChats.id, chatId));
 
     return botResponse;
   } catch (error) {
-    console.error('Error generating AI response:', error);
-    const fallback = 'Disculpa, estoy teniendo problemas tecnicos. Contacta a support@comeya.es o intenta mas tarde.';
+    console.error("Error generating AI response:", error);
+    const fallback =
+      "Disculpa, estoy teniendo problemas tecnicos. Contacta a support@comeya.es o intenta mas tarde.";
     await db.insert(supportMessages).values({
       id: crypto.randomUUID(),
       chatId,
@@ -172,10 +178,16 @@ export async function getChatHistory(chatId: string) {
 }
 
 export async function closeSupportChat(chatId: string): Promise<void> {
-  await db.update(supportChats).set({ status: 'closed', updatedAt: new Date() }).where(eq(supportChats.id, chatId));
+  await db
+    .update(supportChats)
+    .set({ status: "closed", updatedAt: new Date() })
+    .where(eq(supportChats.id, chatId));
 }
 
 export async function escalateToHuman(chatId: string): Promise<void> {
-  await db.update(supportChats).set({ status: 'escalated', updatedAt: new Date() }).where(eq(supportChats.id, chatId));
+  await db
+    .update(supportChats)
+    .set({ status: "escalated", updatedAt: new Date() })
+    .where(eq(supportChats.id, chatId));
   console.log(`Chat ${chatId} escalated to human support`);
 }

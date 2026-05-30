@@ -22,10 +22,10 @@ interface Props {
 export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
   const { isDark } = useTheme();
 
-  const bg     = isDark ? "#1a1a1a" : "#fff";
+  const bg = isDark ? "#1a1a1a" : "#fff";
   const border = isDark ? "#2a2a2a" : "#f0f0f0";
-  const text   = isDark ? "#fff"    : "#111";
-  const sub    = isDark ? "#666"    : "#aaa";
+  const text = isDark ? "#fff" : "#111";
+  const sub = isDark ? "#666" : "#aaa";
 
   const alerts: Alert[] = [];
 
@@ -45,7 +45,10 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
   const pendingPayouts = finance?.pendingPayouts ?? 0;
   if (pendingPayouts > 0) {
     const amt = finance?.pendingPayoutAmount ?? 0;
-    const fmtAmt = amt >= 100_000 ? `€${(amt / 100 / 1_000).toFixed(1)}K` : `€${(amt / 100).toFixed(0)}`;
+    const fmtAmt =
+      amt >= 100_000
+        ? `€${(amt / 100 / 1_000).toFixed(1)}K`
+        : `€${(amt / 100).toFixed(0)}`;
     alerts.push({
       id: "payouts",
       icon: "send",
@@ -77,7 +80,9 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
           <View style={[ap.iconWrap, { backgroundColor: "#10B98115" }]}>
             <Feather name="check-circle" size={15} color="#10B981" />
           </View>
-          <Text style={[ap.title, { color: text }]}>Sin alertas pendientes</Text>
+          <Text style={[ap.title, { color: text }]}>
+            Sin alertas pendientes
+          </Text>
         </View>
         <Text style={[ap.empty, { color: sub }]}>Todo está al día ✓</Text>
       </View>
@@ -114,7 +119,10 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
           </View>
           <Pressable
             onPress={a.onPress}
-            style={[ap.actionBtn, { backgroundColor: a.color + "18", borderColor: a.color + "40" }]}
+            style={[
+              ap.actionBtn,
+              { backgroundColor: a.color + "18", borderColor: a.color + "40" },
+            ]}
           >
             <Text style={[ap.actionTxt, { color: a.color }]}>{a.action}</Text>
             <Feather name="arrow-right" size={11} color={a.color} />
@@ -126,17 +134,55 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
 }
 
 const ap = StyleSheet.create({
-  card:       { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 16 },
-  header:     { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
-  iconWrap:   { width: 30, height: 30, borderRadius: 8, justifyContent: "center", alignItems: "center" },
-  title:      { flex: 1, fontSize: 14, fontWeight: "700" },
-  countBadge: { width: 20, height: 20, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  countTxt:   { fontSize: 10, fontWeight: "800", color: "#fff" },
-  alertRow:   { flexDirection: "row", alignItems: "center", gap: 12, padding: 12, borderRadius: 10, borderLeftWidth: 3 },
-  alertIcon:  { width: 34, height: 34, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  card: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 16 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 14,
+  },
+  iconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  title: { flex: 1, fontSize: 14, fontWeight: "700" },
+  countBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  countTxt: { fontSize: 10, fontWeight: "800", color: "#fff" },
+  alertRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+  },
+  alertIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   alertTitle: { fontSize: 13, fontWeight: "700" },
-  alertDesc:  { fontSize: 11, marginTop: 2 },
-  actionBtn:  { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
-  actionTxt:  { fontSize: 11, fontWeight: "700" },
-  empty:      { fontSize: 13, textAlign: "center", paddingVertical: 8 },
+  alertDesc: { fontSize: 11, marginTop: 2 },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  actionTxt: { fontSize: 11, fontWeight: "700" },
+  empty: { fontSize: 13, textAlign: "center", paddingVertical: 8 },
 });

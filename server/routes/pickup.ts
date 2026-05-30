@@ -11,19 +11,28 @@ router.get("/:orderId/info", authenticateToken, async (req, res) => {
     const { orders } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const [order] = await db.select().from(orders).where(eq(orders.id, req.params.orderId)).limit(1);
-    
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, req.params.orderId))
+      .limit(1);
+
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
 
     if (order.orderType !== "pickup") {
-      return res.status(400).json({ error: "Este pedido no es de tipo pickup" });
+      return res
+        .status(400)
+        .json({ error: "Este pedido no es de tipo pickup" });
     }
 
     const timeRemaining = pickupService.getTimeRemaining(order);
     const progress = pickupService.getProgress(order);
-    const pendingBefore = await pickupService.getPendingOrdersCount(order.businessId, order.id);
+    const pendingBefore = await pickupService.getPendingOrdersCount(
+      order.businessId,
+      order.id,
+    );
 
     res.json({
       success: true,
@@ -50,7 +59,8 @@ router.post("/:orderId/arrived", authenticateToken, async (req, res) => {
     const { orders, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const [order] = await db.select({ order: orders, business: businesses })
+    const [order] = await db
+      .select({ order: orders, business: businesses })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
       .where(eq(orders.id, req.params.orderId))
@@ -65,10 +75,15 @@ router.post("/:orderId/arrived", authenticateToken, async (req, res) => {
     }
 
     if (order.order.orderType !== "pickup") {
-      return res.status(400).json({ error: "Este pedido no es de tipo pickup" });
+      return res
+        .status(400)
+        .json({ error: "Este pedido no es de tipo pickup" });
     }
 
-    await pickupService.customerArrived(req.params.orderId, order.business?.ownerId!);
+    await pickupService.customerArrived(
+      req.params.orderId,
+      order.business?.ownerId!,
+    );
 
     res.json({ success: true, message: "Negocio notificado de tu llegada" });
   } catch (error: any) {
@@ -85,10 +100,13 @@ router.post("/:orderId/update-time", authenticateToken, async (req, res) => {
     const { estimatedMinutes } = req.body;
 
     if (!estimatedMinutes || estimatedMinutes < 5 || estimatedMinutes > 120) {
-      return res.status(400).json({ error: "Tiempo estimado inválido (5-120 min)" });
+      return res
+        .status(400)
+        .json({ error: "Tiempo estimado inválido (5-120 min)" });
     }
 
-    const [order] = await db.select({ order: orders, business: businesses })
+    const [order] = await db
+      .select({ order: orders, business: businesses })
       .from(orders)
       .leftJoin(businesses, eq(orders.businessId, businesses.id))
       .where(eq(orders.id, req.params.orderId))
@@ -98,13 +116,19 @@ router.post("/:orderId/update-time", authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
 
-    if (order.business?.ownerId !== req.user!.id && req.user!.role !== "admin") {
+    if (
+      order.business?.ownerId !== req.user!.id &&
+      req.user!.role !== "admin"
+    ) {
       return res.status(403).json({ error: "No autorizado" });
     }
 
-    await db.update(orders).set({
-      estimatedPickupTime: estimatedMinutes,
-    }).where(eq(orders.id, req.params.orderId));
+    await db
+      .update(orders)
+      .set({
+        estimatedPickupTime: estimatedMinutes,
+      })
+      .where(eq(orders.id, req.params.orderId));
 
     // Notificar al cliente del cambio
     const { sendPushToUser } = await import("../enhancedPushService");
@@ -130,7 +154,10 @@ router.post("/:orderId/validate-code", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Código inválido" });
     }
 
-    const isValid = await pickupService.validatePickupCode(req.params.orderId, code);
+    const isValid = await pickupService.validatePickupCode(
+      req.params.orderId,
+      code,
+    );
 
     res.json({ success: true, valid: isValid });
   } catch (error: any) {
@@ -142,7 +169,9 @@ router.post("/:orderId/validate-code", authenticateToken, async (req, res) => {
 // Obtener tiempo promedio del negocio
 router.get("/business/:businessId/average-time", async (req, res) => {
   try {
-    const avgTime = await pickupService.getBusinessAverageTime(req.params.businessId);
+    const avgTime = await pickupService.getBusinessAverageTime(
+      req.params.businessId,
+    );
     res.json({ success: true, averageMinutes: avgTime });
   } catch (error: any) {
     console.error("Get average time error:", error);

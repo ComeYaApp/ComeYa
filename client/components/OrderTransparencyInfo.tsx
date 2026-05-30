@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { ThemedText } from './ThemedText';
-import { Spacing, BorderRadius, ComeYaColors } from '@/constants/theme';
-import { Feather } from '@expo/vector-icons';
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import { ThemedText } from "./ThemedText";
+import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
+import { Feather } from "@expo/vector-icons";
 
 interface OrderTransparencyInfoProps {
   status: string;
@@ -21,26 +21,26 @@ export function OrderTransparencyInfo({
 }: OrderTransparencyInfoProps) {
   const getStatusMessage = () => {
     switch (status) {
-      case 'pending':
-        return 'Esperando confirmación del negocio';
-      case 'accepted':
-        return 'El negocio aceptó tu pedido';
-      case 'preparing':
-        return 'Preparando tu pedido';
-      case 'ready':
-        return 'Tu pedido está listo';
-      case 'assigned_driver':
-        return 'Repartidor asignado';
-      case 'picked_up':
-      case 'on_the_way':
-      case 'in_transit':
-        return 'En camino a tu ubicación';
-      case 'arriving':
-        return 'El repartidor está muy cerca';
-      case 'delivered':
-        return 'Pedido entregado';
+      case "pending":
+        return "Esperando confirmación del negocio";
+      case "accepted":
+        return "El negocio aceptó tu pedido";
+      case "preparing":
+        return "Preparando tu pedido";
+      case "ready":
+        return "Tu pedido está listo";
+      case "assigned_driver":
+        return "Repartidor asignado";
+      case "picked_up":
+      case "on_the_way":
+      case "in_transit":
+        return "En camino a tu ubicación";
+      case "arriving":
+        return "El repartidor está muy cerca";
+      case "delivered":
+        return "Pedido entregado";
       default:
-        return 'Procesando pedido';
+        return "Procesando pedido";
     }
   };
 
@@ -115,14 +115,14 @@ export function OrderTransparencyInfo({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginVertical: Spacing.md,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: Spacing.sm,
   },
   textContainer: {
@@ -130,29 +130,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    color: '#666',
+    color: "#666",
     marginBottom: 2,
   },
   value: {
-    color: '#000',
-    fontWeight: '600',
+    color: "#000",
+    fontWeight: "600",
   },
   driverInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: Spacing.sm,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     paddingHorizontal: Spacing.xs,
     paddingVertical: 2,
     borderRadius: 4,
   },
   ratingText: {
     marginLeft: 4,
-    color: '#000',
-    fontWeight: '600',
+    color: "#000",
+    fontWeight: "600",
   },
 });

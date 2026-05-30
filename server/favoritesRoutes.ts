@@ -3,13 +3,13 @@ import { authenticateToken } from "./authMiddleware";
 
 const router = express.Router();
 
-console.log('🔧 Favorites routes loaded');
+console.log("🔧 Favorites routes loaded");
 
 // Get user favorites
 router.get("/:userId", authenticateToken, async (req, res) => {
   try {
     const userId = req.params.userId;
-    console.log('🔍 GETTING FAVORITES FOR:', userId);
+    console.log("🔍 GETTING FAVORITES FOR:", userId);
 
     const { favorites, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("./db");
@@ -69,8 +69,10 @@ router.post("/", authenticateToken, async (req, res) => {
       .where(
         and(
           eq(favorites.userId, userId),
-          businessId ? eq(favorites.businessId, businessId) : eq(favorites.productId, productId)
-        )
+          businessId
+            ? eq(favorites.businessId, businessId)
+            : eq(favorites.productId, productId),
+        ),
       )
       .limit(1);
 
@@ -125,8 +127,8 @@ router.get("/check/:userId/:itemId", authenticateToken, async (req, res) => {
       .where(
         and(
           eq(favorites.userId, userId),
-          or(eq(favorites.businessId, itemId), eq(favorites.productId, itemId))
-        )
+          or(eq(favorites.businessId, itemId), eq(favorites.productId, itemId)),
+        ),
       )
       .limit(1);
 

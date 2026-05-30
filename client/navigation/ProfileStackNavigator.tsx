@@ -18,7 +18,7 @@ import { useScreenOptions } from "@/hooks/useScreenOptions";
 // Wrapper component that renders the correct profile screen based on user role
 function RoleBasedProfile() {
   const { user } = useAuth();
-  
+
   switch (user?.role) {
     case "business_owner":
       return <BusinessProfileScreen />;
@@ -38,7 +38,10 @@ export type ProfileStackParamList = {
   SavedAddresses: undefined;
   AddAddress: { address?: any; fromCheckout?: boolean } | undefined;
   LocationPicker: {
-    onLocationSelected: (coords: { latitude: number; longitude: number }, address: string) => void;
+    onLocationSelected: (
+      coords: { latitude: number; longitude: number },
+      address: string,
+    ) => void;
   };
   PaymentMethods: undefined;
   Terms: undefined;
@@ -52,7 +55,7 @@ export default function ProfileStackNavigator() {
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
-<Stack.Screen
+      <Stack.Screen
         name="Profile"
         component={RoleBasedProfile}
         options={{

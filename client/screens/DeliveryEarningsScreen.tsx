@@ -21,7 +21,12 @@ import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 
 interface EarningsData {
   earnings: {
@@ -60,7 +65,6 @@ interface Transaction {
 }
 
 type Period = "today" | "week" | "month";
-
 
 function StatCard({
   icon,
@@ -110,37 +114,54 @@ export default function DeliveryEarningsScreen() {
     enabled: !!user?.id,
   });
 
-  const { data: walletData, refetch: refetchWallet } = useQuery<{ success: boolean; wallet: { balance: number; cashOwed: number; pendingBalance: number; totalEarned: number; availableBalance: number } }>({
+  const { data: walletData, refetch: refetchWallet } = useQuery<{
+    success: boolean;
+    wallet: {
+      balance: number;
+      cashOwed: number;
+      pendingBalance: number;
+      totalEarned: number;
+      availableBalance: number;
+    };
+  }>({
     queryKey: ["/api/wallet/balance"],
     enabled: !!user?.id,
   });
 
   // DEBUG: Log wallet data
-  console.log('🔍 Wallet Data:', walletData);
-  console.log('👤 User ID:', user?.id);
+  console.log("🔍 Wallet Data:", walletData);
+  console.log("👤 User ID:", user?.id);
 
-  const { data: transactionsData, refetch: refetchTransactions } = useQuery<{ success: boolean; transactions: Transaction[] }>({
+  const { data: transactionsData, refetch: refetchTransactions } = useQuery<{
+    success: boolean;
+    transactions: Transaction[];
+  }>({
     queryKey: ["/api/wallet/transactions"],
     enabled: !!user?.id,
   });
 
-
-
   // DEBUG: Log transactions
-  console.log('💳 Transactions:', transactionsData);
+  console.log("💳 Transactions:", transactionsData);
 
   const withdrawMutation = useMutation({
     mutationFn: async (amount: number) => {
-      const response = await apiRequest("POST", "/api/wallet/withdraw", { amount: Math.round(amount * 100) });
+      const response = await apiRequest("POST", "/api/wallet/withdraw", {
+        amount: Math.round(amount * 100),
+      });
       return response.json();
     },
     onSuccess: (data) => {
       if (data.success) {
-        Alert.alert("Solicitud Enviada", "Tu solicitud de retiro ha sido enviada. Recibirás el pago en 1-3 días hábiles.");
+        Alert.alert(
+          "Solicitud Enviada",
+          "Tu solicitud de retiro ha sido enviada. Recibirás el pago en 1-3 días hábiles.",
+        );
         setWithdrawModalVisible(false);
         setWithdrawAmount("");
         queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/wallet/transactions"] });
+        queryClient.invalidateQueries({
+          queryKey: ["/api/wallet/transactions"],
+        });
       } else {
         Alert.alert("Error", data.error || "No se pudo procesar el retiro");
       }
@@ -152,11 +173,18 @@ export default function DeliveryEarningsScreen() {
 
   const submitProofMutation = useMutation({
     mutationFn: async (data: { proofUrl: string }) => {
-      const response = await apiRequest("POST", "/api/weekly-settlement/driver/submit-proof", { settlementId: "manual", ...data });
+      const response = await apiRequest(
+        "POST",
+        "/api/weekly-settlement/driver/submit-proof",
+        { settlementId: "manual", ...data },
+      );
       return response.json();
     },
     onSuccess: () => {
-      Alert.alert("Comprobante Enviado", "Tu comprobante está en revisión. Te notificaremos cuando sea aprobado.");
+      Alert.alert(
+        "Comprobante Enviado",
+        "Tu comprobante está en revisión. Te notificaremos cuando sea aprobado.",
+      );
       setDepositInfoModalVisible(false);
       setProofUrl("");
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/balance"] });
@@ -184,7 +212,12 @@ export default function DeliveryEarningsScreen() {
   const wallet: WalletData & { cashOwed: number; canWithdraw: number } = {
     balance: (walletData?.wallet?.balance ?? 0) / 100,
     cashOwed: (walletData?.wallet?.cashOwed ?? 0) / 100,
-    canWithdraw: Math.max(0, ((walletData?.wallet?.balance ?? 0) - (walletData?.wallet?.cashOwed ?? 0))) / 100,
+    canWithdraw:
+      Math.max(
+        0,
+        (walletData?.wallet?.balance ?? 0) -
+          (walletData?.wallet?.cashOwed ?? 0),
+      ) / 100,
     pendingBalance: (walletData?.wallet?.pendingBalance ?? 0) / 100,
     totalEarned: (walletData?.wallet?.totalEarned ?? 0) / 100,
   };
@@ -217,7 +250,10 @@ export default function DeliveryEarningsScreen() {
       return;
     }
     if (amount > wallet.canWithdraw) {
-      Alert.alert("Error", "No tienes suficiente saldo disponible. Debes liquidar tu deuda en efectivo primero.");
+      Alert.alert(
+        "Error",
+        "No tienes suficiente saldo disponible. Debes liquidar tu deuda en efectivo primero.",
+      );
       return;
     }
     if (amount < 50) {
@@ -229,7 +265,12 @@ export default function DeliveryEarningsScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("es-VE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleDateString("es-VE", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const getTransactionIcon = (type: string) => {
@@ -303,252 +344,445 @@ export default function DeliveryEarningsScreen() {
         }
       >
         <>
-            <Animated.View
-              entering={FadeInDown.springify()}
-              style={[styles.walletCard, { backgroundColor: wallet.cashOwed > 0 ? ComeYaColors.error : ComeYaColors.success }, Shadows.lg]}
-            >
-              <ThemedText type="body" style={{ color: "rgba(255,255,255,0.8)" }}>
-                {wallet.cashOwed > 0 ? "🚨 Debes Depositar" : "✅ Disponible para Retirar"}
-              </ThemedText>
-              <ThemedText
-                type="h1"
-                style={{ color: "#FFFFFF", fontSize: 42, marginVertical: Spacing.sm }}
-              >
-                €{wallet.cashOwed > 0 ? wallet.cashOwed.toFixed(2) : wallet.canWithdraw.toFixed(2)}
-              </ThemedText>
-              
-              {wallet.cashOwed > 0 ? (
-                <View style={styles.deadlineRow}>
-                  <Feather name="clock" size={16} color="rgba(255,255,255,0.9)" />
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", marginLeft: 4, fontWeight: "600" }}>
-                    Fecha límite: Domingo 11:59 PM (o serás bloqueado el lunes)
-                  </ThemedText>
-                </View>
-              ) : null}
-              
-              <View style={styles.balanceBreakdown}>
-                <View style={styles.breakdownRow}>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>📱 Balance digital (tarjeta):</ThemedText>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>€{wallet.balance.toFixed(2)}</ThemedText>
-                </View>
-                <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.3)", paddingTop: 8, marginTop: 8 }]}>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>💵 Efectivo cobrado (en tu bolsillo):</ThemedText>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>€{(transactions.filter(t => t.type === 'delivery_income').reduce((sum, t) => sum + t.amount, 0) / 100).toFixed(2)}</ThemedText>
-                </View>
-                <View style={styles.breakdownRow}>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>🏦 Debes depositar a ComeYa:</ThemedText>
-                  <ThemedText type="caption" style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}>-€{wallet.cashOwed.toFixed(2)}</ThemedText>
-                </View>
-                {wallet.canWithdraw > 0 ? (
-                  <View style={[styles.breakdownRow, { borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.3)", paddingTop: 8, marginTop: 8 }]}>
-                    <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.7)" }}>Disponible para retirar:</ThemedText>
-                    <ThemedText type="caption" style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}>€{wallet.canWithdraw.toFixed(2)}</ThemedText>
-                  </View>
-                ) : null}
-              </View>
-              
-              <Pressable
-                onPress={() => wallet.canWithdraw > 0 ? setWithdrawModalVisible(true) : setDepositInfoModalVisible(true)}
-                style={[styles.withdrawButton]}
-              >
-                <Feather name={wallet.canWithdraw > 0 ? "arrow-up-circle" : "info"} size={20} color={wallet.cashOwed > 0 ? "#FFF" : ComeYaColors.success} />
-                <ThemedText type="body" style={{ color: wallet.cashOwed > 0 ? "#FFF" : ComeYaColors.success, marginLeft: Spacing.xs, fontWeight: "600" }}>
-                  {wallet.canWithdraw > 0 ? "Solicitar Retiro" : "Ver datos de depósito"}
-                </ThemedText>
-              </Pressable>
-            </Animated.View>
-
-            <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.md }]}>
-              <Feather name="alert-triangle" size={20} color={theme.textSecondary} />
-              <View style={{ flex: 1, marginLeft: Spacing.md }}>
-                <ThemedText type="body" style={{ fontWeight: "600" }}>¿Cómo leemos este saldo?</ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                  Balance digital = pagos con tarjeta listos para retiro. Efectivo cobrado = dinero que tienes en mano.
-                </ThemedText>
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                  Si cobraste en efectivo, la comisión de ComeYa aparece como "Debes depositar". Hasta saldarla, los retiros quedan retenidos.
-                </ThemedText>
-              </View>
-            </View>
-
-            <View style={[styles.totalCard, { backgroundColor: theme.card }, Shadows.md]}>
-              <View style={styles.totalRow}>
-                <View>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    Total ganado histórico
-                  </ThemedText>
-                  <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-                    €{wallet.totalEarned.toFixed(2)}
-                  </ThemedText>
-                </View>
-                <View style={[styles.iconCircle, { backgroundColor: ComeYaColors.primary + "20" }]}>
-                  <Feather name="award" size={24} color={ComeYaColors.primary} />
-                </View>
-              </View>
-            </View>
-
-            <ThemedText type="h3" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>
-              Historial de Transacciones
+          <Animated.View
+            entering={FadeInDown.springify()}
+            style={[
+              styles.walletCard,
+              {
+                backgroundColor:
+                  wallet.cashOwed > 0
+                    ? ComeYaColors.error
+                    : ComeYaColors.success,
+              },
+              Shadows.lg,
+            ]}
+          >
+            <ThemedText type="body" style={{ color: "rgba(255,255,255,0.8)" }}>
+              {wallet.cashOwed > 0
+                ? "🚨 Debes Depositar"
+                : "✅ Disponible para Retirar"}
             </ThemedText>
-            
+            <ThemedText
+              type="h1"
+              style={{
+                color: "#FFFFFF",
+                fontSize: 42,
+                marginVertical: Spacing.sm,
+              }}
+            >
+              €
+              {wallet.cashOwed > 0
+                ? wallet.cashOwed.toFixed(2)
+                : wallet.canWithdraw.toFixed(2)}
+            </ThemedText>
+
             {wallet.cashOwed > 0 ? (
-              <View style={[styles.infoCard, { backgroundColor: theme.backgroundSecondary, marginBottom: Spacing.md }]}>
-                <Feather name="info" size={20} color={ComeYaColors.primary} />
-                <View style={{ flex: 1, marginLeft: Spacing.md }}>
-                  <ThemedText type="body" style={{ fontWeight: "600" }}>¿Por qué debo depositar?</ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                    Cobraste efectivo al cliente. Los €{wallet.cashOwed.toFixed(2)} son la comisión de ComeYa (15% de productos) que debes entregar. Hasta que deposites, tus retiros quedan retenidos.
-                  </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
-                    Deposita antes del viernes y sube tu comprobante: al aprobarlo liberamos tu saldo digital y desaparece esta deuda.
-                  </ThemedText>
-                </View>
+              <View style={styles.deadlineRow}>
+                <Feather name="clock" size={16} color="rgba(255,255,255,0.9)" />
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: "rgba(255,255,255,0.9)",
+                    marginLeft: 4,
+                    fontWeight: "600",
+                  }}
+                >
+                  Fecha límite: Domingo 11:59 PM (o serás bloqueado el lunes)
+                </ThemedText>
               </View>
             ) : null}
 
-            {transactions.length > 0 ? (
-              transactions.slice(0, 10).map((tx, index) => (
-                <Animated.View
-                  key={tx.id}
-                  entering={FadeInRight.delay(index * 50).springify()}
-                  style={[styles.transactionItem, { backgroundColor: theme.card }, Shadows.sm]}
+            <View style={styles.balanceBreakdown}>
+              <View style={styles.breakdownRow}>
+                <ThemedText
+                  type="caption"
+                  style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}
                 >
-                  <View style={[styles.txIcon, { backgroundColor: getTransactionColor(tx.type) + "20" }]}>
-                    <Feather name={getTransactionIcon(tx.type) as any} size={20} color={getTransactionColor(tx.type)} />
-                  </View>
-                  <View style={styles.txInfo}>
-                    <ThemedText type="body">{tx.description}</ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      {formatDate(tx.createdAt)}
-                    </ThemedText>
-                  </View>
+                  📱 Balance digital (tarjeta):
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
+                >
+                  €{wallet.balance.toFixed(2)}
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.breakdownRow,
+                  {
+                    borderTopWidth: 1,
+                    borderTopColor: "rgba(255,255,255,0.3)",
+                    paddingTop: 8,
+                    marginTop: 8,
+                  },
+                ]}
+              >
+                <ThemedText
+                  type="caption"
+                  style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}
+                >
+                  💵 Efectivo cobrado (en tu bolsillo):
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
+                >
+                  €
+                  {(
+                    transactions
+                      .filter((t) => t.type === "delivery_income")
+                      .reduce((sum, t) => sum + t.amount, 0) / 100
+                  ).toFixed(2)}
+                </ThemedText>
+              </View>
+              <View style={styles.breakdownRow}>
+                <ThemedText
+                  type="caption"
+                  style={{ color: "rgba(255,255,255,0.9)", fontWeight: "600" }}
+                >
+                  🏦 Debes depositar a ComeYa:
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
+                >
+                  -€{wallet.cashOwed.toFixed(2)}
+                </ThemedText>
+              </View>
+              {wallet.canWithdraw > 0 ? (
+                <View
+                  style={[
+                    styles.breakdownRow,
+                    {
+                      borderTopWidth: 1,
+                      borderTopColor: "rgba(255,255,255,0.3)",
+                      paddingTop: 8,
+                      marginTop: 8,
+                    },
+                  ]}
+                >
                   <ThemedText
-                    type="body"
+                    type="caption"
+                    style={{ color: "rgba(255,255,255,0.7)" }}
+                  >
+                    Disponible para retirar:
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
                     style={{
-                      color: tx.amount < 0 ? ComeYaColors.error : ComeYaColors.success,
+                      color: "rgba(255,255,255,0.9)",
                       fontWeight: "600",
                     }}
                   >
-                    {tx.amount < 0 ? "-" : "+"}€{(Math.abs(tx.amount) / 100).toFixed(2)}
+                    €{wallet.canWithdraw.toFixed(2)}
                   </ThemedText>
-                </Animated.View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Feather name="inbox" size={48} color={theme.textSecondary} />
-                <ThemedText type="body" style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
-                  No hay transacciones aún
-                </ThemedText>
-              </View>
-            )}
-            
-            <ThemedText type="h3" style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }}>
-              📊 Ganancias por Período
-            </ThemedText>
-            
-            <Animated.View
-              entering={FadeInDown.delay(100).springify()}
-              style={[
-                styles.earningsCard,
-                { backgroundColor: ComeYaColors.primary },
-                Shadows.lg,
-              ]}
+                </View>
+              ) : null}
+            </View>
+
+            <Pressable
+              onPress={() =>
+                wallet.canWithdraw > 0
+                  ? setWithdrawModalVisible(true)
+                  : setDepositInfoModalVisible(true)
+              }
+              style={[styles.withdrawButton]}
             >
-              <ThemedText type="body" style={{ color: "rgba(255,255,255,0.8)" }}>
-                {periodLabels[selectedPeriod]}
-              </ThemedText>
+              <Feather
+                name={wallet.canWithdraw > 0 ? "arrow-up-circle" : "info"}
+                size={20}
+                color={wallet.cashOwed > 0 ? "#FFF" : ComeYaColors.success}
+              />
               <ThemedText
-                type="h1"
+                type="body"
                 style={{
-                  color: "#FFFFFF",
-                  fontSize: 42,
-                  marginVertical: Spacing.sm,
+                  color: wallet.cashOwed > 0 ? "#FFF" : ComeYaColors.success,
+                  marginLeft: Spacing.xs,
+                  fontWeight: "600",
                 }}
               >
-                €{getEarningsForPeriod().toFixed(2)}
+                {wallet.canWithdraw > 0
+                  ? "Solicitar Retiro"
+                  : "Ver datos de depósito"}
               </ThemedText>
-              <View style={styles.tipsRow}>
-                <Feather name="gift" size={16} color="rgba(255,255,255,0.8)" />
+            </Pressable>
+          </Animated.View>
+
+          <View
+            style={[
+              styles.infoCard,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                marginTop: Spacing.md,
+              },
+            ]}
+          >
+            <Feather
+              name="alert-triangle"
+              size={20}
+              color={theme.textSecondary}
+            />
+            <View style={{ flex: 1, marginLeft: Spacing.md }}>
+              <ThemedText type="body" style={{ fontWeight: "600" }}>
+                ¿Cómo leemos este saldo?
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 4 }}
+              >
+                Balance digital = pagos con tarjeta listos para retiro. Efectivo
+                cobrado = dinero que tienes en mano.
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 4 }}
+              >
+                Si cobraste en efectivo, la comisión de ComeYa aparece como
+                "Debes depositar". Hasta saldarla, los retiros quedan retenidos.
+              </ThemedText>
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.totalCard,
+              { backgroundColor: theme.card },
+              Shadows.md,
+            ]}
+          >
+            <View style={styles.totalRow}>
+              <View>
                 <ThemedText
                   type="caption"
-                  style={{ color: "rgba(255,255,255,0.8)", marginLeft: 4 }}
+                  style={{ color: theme.textSecondary }}
                 >
-                  +€{earnings.tips.toFixed(2)} en propinas
+                  Total ganado histórico
+                </ThemedText>
+                <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
+                  €{wallet.totalEarned.toFixed(2)}
                 </ThemedText>
               </View>
-
-              <View style={styles.periodSelector}>
-                {(["today", "week", "month"] as Period[]).map((period) => (
-                  <Pressable
-                    key={period}
-                    onPress={() => {
-                      setSelectedPeriod(period);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                    style={[
-                      styles.periodButton,
-                      {
-                        backgroundColor:
-                          selectedPeriod === period
-                            ? "#FFFFFF"
-                            : "rgba(255,255,255,0.2)",
-                      },
-                    ]}
-                  >
-                    <ThemedText
-                      type="caption"
-                      style={{
-                        color:
-                          selectedPeriod === period
-                            ? ComeYaColors.primary
-                            : "#FFFFFF",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {periodLabels[period]}
-                    </ThemedText>
-                  </Pressable>
-                ))}
+              <View
+                style={[
+                  styles.iconCircle,
+                  { backgroundColor: ComeYaColors.primary + "20" },
+                ]}
+              >
+                <Feather name="award" size={24} color={ComeYaColors.primary} />
               </View>
-            </Animated.View>
-
-            <ThemedText
-              type="h3"
-              style={{ marginBottom: Spacing.md, marginTop: Spacing.lg }}
-            >
-              📈 Estadísticas
-            </ThemedText>
-
-            <View style={styles.statsGrid}>
-              <StatCard
-                icon="truck"
-                label="Entregas totales"
-                value={stats.totalDeliveries}
-                color="#4CAF50"
-                delay={200}
-              />
-              <StatCard
-                icon="star"
-                label="Calificación"
-                value={stats.averageRating.toFixed(1)}
-                color="#FF9800"
-                delay={250}
-              />
-              <StatCard
-                icon="check-circle"
-                label="Completadas"
-                value={`${stats.completionRate}%`}
-                color="#2196F3"
-                delay={300}
-              />
-              <StatCard
-                icon="clock"
-                label="Tiempo prom."
-                value={`${stats.avgDeliveryTime}m`}
-                color="#9C27B0"
-                delay={350}
-              />
             </View>
+          </View>
+
+          <ThemedText
+            type="h3"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}
+          >
+            Historial de Transacciones
+          </ThemedText>
+
+          {wallet.cashOwed > 0 ? (
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  marginBottom: Spacing.md,
+                },
+              ]}
+            >
+              <Feather name="info" size={20} color={ComeYaColors.primary} />
+              <View style={{ flex: 1, marginLeft: Spacing.md }}>
+                <ThemedText type="body" style={{ fontWeight: "600" }}>
+                  ¿Por qué debo depositar?
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary, marginTop: 4 }}
+                >
+                  Cobraste efectivo al cliente. Los €
+                  {wallet.cashOwed.toFixed(2)} son la comisión de ComeYa (15% de
+                  productos) que debes entregar. Hasta que deposites, tus
+                  retiros quedan retenidos.
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary, marginTop: 4 }}
+                >
+                  Deposita antes del viernes y sube tu comprobante: al aprobarlo
+                  liberamos tu saldo digital y desaparece esta deuda.
+                </ThemedText>
+              </View>
+            </View>
+          ) : null}
+
+          {transactions.length > 0 ? (
+            transactions.slice(0, 10).map((tx, index) => (
+              <Animated.View
+                key={tx.id}
+                entering={FadeInRight.delay(index * 50).springify()}
+                style={[
+                  styles.transactionItem,
+                  { backgroundColor: theme.card },
+                  Shadows.sm,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.txIcon,
+                    { backgroundColor: getTransactionColor(tx.type) + "20" },
+                  ]}
+                >
+                  <Feather
+                    name={getTransactionIcon(tx.type) as any}
+                    size={20}
+                    color={getTransactionColor(tx.type)}
+                  />
+                </View>
+                <View style={styles.txInfo}>
+                  <ThemedText type="body">{tx.description}</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    {formatDate(tx.createdAt)}
+                  </ThemedText>
+                </View>
+                <ThemedText
+                  type="body"
+                  style={{
+                    color:
+                      tx.amount < 0 ? ComeYaColors.error : ComeYaColors.success,
+                    fontWeight: "600",
+                  }}
+                >
+                  {tx.amount < 0 ? "-" : "+"}€
+                  {(Math.abs(tx.amount) / 100).toFixed(2)}
+                </ThemedText>
+              </Animated.View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Feather name="inbox" size={48} color={theme.textSecondary} />
+              <ThemedText
+                type="body"
+                style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+              >
+                No hay transacciones aún
+              </ThemedText>
+            </View>
+          )}
+
+          <ThemedText
+            type="h3"
+            style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }}
+          >
+            📊 Ganancias por Período
+          </ThemedText>
+
+          <Animated.View
+            entering={FadeInDown.delay(100).springify()}
+            style={[
+              styles.earningsCard,
+              { backgroundColor: ComeYaColors.primary },
+              Shadows.lg,
+            ]}
+          >
+            <ThemedText type="body" style={{ color: "rgba(255,255,255,0.8)" }}>
+              {periodLabels[selectedPeriod]}
+            </ThemedText>
+            <ThemedText
+              type="h1"
+              style={{
+                color: "#FFFFFF",
+                fontSize: 42,
+                marginVertical: Spacing.sm,
+              }}
+            >
+              €{getEarningsForPeriod().toFixed(2)}
+            </ThemedText>
+            <View style={styles.tipsRow}>
+              <Feather name="gift" size={16} color="rgba(255,255,255,0.8)" />
+              <ThemedText
+                type="caption"
+                style={{ color: "rgba(255,255,255,0.8)", marginLeft: 4 }}
+              >
+                +€{earnings.tips.toFixed(2)} en propinas
+              </ThemedText>
+            </View>
+
+            <View style={styles.periodSelector}>
+              {(["today", "week", "month"] as Period[]).map((period) => (
+                <Pressable
+                  key={period}
+                  onPress={() => {
+                    setSelectedPeriod(period);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  style={[
+                    styles.periodButton,
+                    {
+                      backgroundColor:
+                        selectedPeriod === period
+                          ? "#FFFFFF"
+                          : "rgba(255,255,255,0.2)",
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color:
+                        selectedPeriod === period
+                          ? ComeYaColors.primary
+                          : "#FFFFFF",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {periodLabels[period]}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          </Animated.View>
+
+          <ThemedText
+            type="h3"
+            style={{ marginBottom: Spacing.md, marginTop: Spacing.lg }}
+          >
+            📈 Estadísticas
+          </ThemedText>
+
+          <View style={styles.statsGrid}>
+            <StatCard
+              icon="truck"
+              label="Entregas totales"
+              value={stats.totalDeliveries}
+              color="#4CAF50"
+              delay={200}
+            />
+            <StatCard
+              icon="star"
+              label="Calificación"
+              value={stats.averageRating.toFixed(1)}
+              color="#FF9800"
+              delay={250}
+            />
+            <StatCard
+              icon="check-circle"
+              label="Completadas"
+              value={`${stats.completionRate}%`}
+              color="#2196F3"
+              delay={300}
+            />
+            <StatCard
+              icon="clock"
+              label="Tiempo prom."
+              value={`${stats.avgDeliveryTime}m`}
+              color="#9C27B0"
+              delay={350}
+            />
+          </View>
         </>
       </ScrollView>
 
@@ -567,12 +801,25 @@ export default function DeliveryEarningsScreen() {
               </Pressable>
             </View>
 
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
+            >
               Disponible para retirar: €{wallet.canWithdraw.toFixed(2)}
             </ThemedText>
 
-            <View style={[styles.inputContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-              <ThemedText type="h3" style={{ marginRight: Spacing.xs }}>$</ThemedText>
+            <View
+              style={[
+                styles.inputContainer,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <ThemedText type="h3" style={{ marginRight: Spacing.xs }}>
+                $
+              </ThemedText>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
                 placeholder="0.00"
@@ -583,17 +830,31 @@ export default function DeliveryEarningsScreen() {
               />
             </View>
 
-            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.sm }}>
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+            >
               Mínimo $50. El retiro se procesa en 1-3 días hábiles.
             </ThemedText>
 
             <Pressable
               onPress={handleWithdraw}
               disabled={withdrawMutation.isPending}
-              style={[styles.confirmButton, { backgroundColor: ComeYaColors.primary, opacity: withdrawMutation.isPending ? 0.5 : 1 }]}
+              style={[
+                styles.confirmButton,
+                {
+                  backgroundColor: ComeYaColors.primary,
+                  opacity: withdrawMutation.isPending ? 0.5 : 1,
+                },
+              ]}
             >
-              <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
-                {withdrawMutation.isPending ? "Procesando..." : "Confirmar Retiro"}
+              <ThemedText
+                type="body"
+                style={{ color: "#FFF", fontWeight: "600" }}
+              >
+                {withdrawMutation.isPending
+                  ? "Procesando..."
+                  : "Confirmar Retiro"}
               </ThemedText>
             </Pressable>
           </View>
@@ -615,22 +876,51 @@ export default function DeliveryEarningsScreen() {
               </Pressable>
             </View>
 
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}
+            >
               Deposita €{wallet.cashOwed.toFixed(2)} a la siguiente cuenta:
             </ThemedText>
 
             {/* Datos bancarios removidos - usar sección wallet */}
-            <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}>
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}
+            >
               Contacta al administrador para obtener los datos de depósito.
             </ThemedText>
 
-            <View style={{ borderTopWidth: 1, borderTopColor: theme.border, paddingTop: Spacing.lg }}>
-              <ThemedText type="body" style={{ fontWeight: "600", marginBottom: Spacing.sm }}>
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: theme.border,
+                paddingTop: Spacing.lg,
+              }}
+            >
+              <ThemedText
+                type="body"
+                style={{ fontWeight: "600", marginBottom: Spacing.sm }}
+              >
                 ¿Ya depositaste? Sube tu comprobante
               </ThemedText>
-              
-              <View style={[styles.inputContainer, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, marginBottom: Spacing.md }]}>
-                <Feather name="image" size={20} color={theme.textSecondary} style={{ marginRight: Spacing.xs }} />
+
+              <View
+                style={[
+                  styles.inputContainer,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                    marginBottom: Spacing.md,
+                  },
+                ]}
+              >
+                <Feather
+                  name="image"
+                  size={20}
+                  color={theme.textSecondary}
+                  style={{ marginRight: Spacing.xs }}
+                />
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
                   placeholder="URL del comprobante"
@@ -649,10 +939,21 @@ export default function DeliveryEarningsScreen() {
                   submitProofMutation.mutate({ proofUrl: proofUrl.trim() });
                 }}
                 disabled={submitProofMutation.isPending}
-                style={[styles.confirmButton, { backgroundColor: ComeYaColors.success, opacity: submitProofMutation.isPending ? 0.5 : 1 }]}
+                style={[
+                  styles.confirmButton,
+                  {
+                    backgroundColor: ComeYaColors.success,
+                    opacity: submitProofMutation.isPending ? 0.5 : 1,
+                  },
+                ]}
               >
-                <ThemedText type="body" style={{ color: "#FFF", fontWeight: "600" }}>
-                  {submitProofMutation.isPending ? "Enviando..." : "Enviar Comprobante"}
+                <ThemedText
+                  type="body"
+                  style={{ color: "#FFF", fontWeight: "600" }}
+                >
+                  {submitProofMutation.isPending
+                    ? "Enviando..."
+                    : "Enviar Comprobante"}
                 </ThemedText>
               </Pressable>
             </View>

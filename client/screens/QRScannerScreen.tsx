@@ -36,7 +36,11 @@ export default function QRScannerScreen() {
       const orderId = data;
 
       // Marcar pedido como entregado
-      const response = await apiRequest("PUT", `/api/orders/${orderId}/complete`, {});
+      const response = await apiRequest(
+        "PUT",
+        `/api/orders/${orderId}/complete`,
+        {},
+      );
       const result = await response.json();
 
       if (result.success) {
@@ -48,7 +52,7 @@ export default function QRScannerScreen() {
               text: "OK",
               onPress: () => navigation.goBack(),
             },
-          ]
+          ],
         );
       } else {
         throw new Error(result.message || "Error al completar pedido");
@@ -56,7 +60,8 @@ export default function QRScannerScreen() {
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error.message || "No se pudo completar el pedido. Verifica el código QR.",
+        error.message ||
+          "No se pudo completar el pedido. Verifica el código QR.",
         [
           {
             text: "Reintentar",
@@ -70,7 +75,7 @@ export default function QRScannerScreen() {
             onPress: () => navigation.goBack(),
             style: "cancel",
           },
-        ]
+        ],
       );
     }
   };
@@ -87,17 +92,29 @@ export default function QRScannerScreen() {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <Feather name="camera-off" size={64} color={theme.textSecondary} />
-        <ThemedText type="h3" style={{ marginTop: Spacing.lg, textAlign: "center" }}>
+        <ThemedText
+          type="h3"
+          style={{ marginTop: Spacing.lg, textAlign: "center" }}
+        >
           Sin acceso a la cámara
         </ThemedText>
-        <ThemedText style={{ marginTop: Spacing.sm, textAlign: "center", color: theme.textSecondary }}>
-          Necesitas habilitar el permiso de cámara en la configuración de tu dispositivo.
+        <ThemedText
+          style={{
+            marginTop: Spacing.sm,
+            textAlign: "center",
+            color: theme.textSecondary,
+          }}
+        >
+          Necesitas habilitar el permiso de cámara en la configuración de tu
+          dispositivo.
         </ThemedText>
         <Pressable
           style={[styles.button, { backgroundColor: ComeYaColors.primary }]}
           onPress={() => navigation.goBack()}
         >
-          <ThemedText style={{ color: "#FFF", fontWeight: "600" }}>Volver</ThemedText>
+          <ThemedText style={{ color: "#FFF", fontWeight: "600" }}>
+            Volver
+          </ThemedText>
         </Pressable>
       </View>
     );
@@ -114,7 +131,10 @@ export default function QRScannerScreen() {
         }}
       >
         <View style={styles.overlay}>
-          <Pressable style={styles.closeButton} onPress={() => navigation.goBack()}>
+          <Pressable
+            style={styles.closeButton}
+            onPress={() => navigation.goBack()}
+          >
             <Feather name="x" size={24} color="#FFF" />
           </Pressable>
 
@@ -126,10 +146,19 @@ export default function QRScannerScreen() {
           </View>
 
           <View style={styles.instructions}>
-            <ThemedText type="h3" style={{ color: "#FFF", textAlign: "center" }}>
+            <ThemedText
+              type="h3"
+              style={{ color: "#FFF", textAlign: "center" }}
+            >
               Escanea el código QR
             </ThemedText>
-            <ThemedText style={{ color: "rgba(255,255,255,0.8)", textAlign: "center", marginTop: Spacing.sm }}>
+            <ThemedText
+              style={{
+                color: "rgba(255,255,255,0.8)",
+                textAlign: "center",
+                marginTop: Spacing.sm,
+              }}
+            >
               Apunta la cámara al código QR del pedido del cliente
             </ThemedText>
           </View>

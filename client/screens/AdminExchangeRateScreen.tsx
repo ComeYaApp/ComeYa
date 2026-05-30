@@ -1,5 +1,5 @@
 // Admin Exchange Rate Settings Screen
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -9,23 +9,28 @@ import {
   Switch,
   RefreshControl,
   Pressable,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useNavigation } from '@react-navigation/native';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useNavigation } from "@react-navigation/native";
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { Button } from '@/components/Button';
-import { useTheme } from '@/hooks/useTheme';
-import { useToast } from '@/contexts/ToastContext';
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from '@/constants/theme';
-import { apiRequest } from '@/lib/query-client';
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { Button } from "@/components/Button";
+import { useTheme } from "@/hooks/useTheme";
+import { useToast } from "@/contexts/ToastContext";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
+import { apiRequest } from "@/lib/query-client";
 
 interface ExchangeRateData {
   rate: number;
-  source: 'alcambio' | 'manual' | 'fallback';
+  source: "alcambio" | "manual" | "fallback";
   lastUpdated?: string;
 }
 
@@ -38,7 +43,7 @@ export default function AdminExchangeRateScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentRate, setCurrentRate] = useState<ExchangeRateData | null>(null);
-  const [manualRate, setManualRate] = useState('');
+  const [manualRate, setManualRate] = useState("");
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -48,7 +53,7 @@ export default function AdminExchangeRateScreen() {
 
   const loadCurrentRate = async () => {
     try {
-      const response = await apiRequest('GET', '/api/admin/exchange-rate');
+      const response = await apiRequest("GET", "/api/admin/exchange-rate");
       const data = await response.json();
 
       if (data.success !== false) {
@@ -60,8 +65,8 @@ export default function AdminExchangeRateScreen() {
         setManualRate(data.rate.toFixed(2));
       }
     } catch (error) {
-      console.error('Error loading exchange rate:', error);
-      showToast('Error al cargar la tasa', 'error');
+      console.error("Error loading exchange rate:", error);
+      showToast("Error al cargar la tasa", "error");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -77,7 +82,7 @@ export default function AdminExchangeRateScreen() {
     const rate = parseFloat(manualRate);
 
     if (isNaN(rate) || rate <= 0) {
-      showToast('Ingresa una tasa válida', 'error');
+      showToast("Ingresa una tasa válida", "error");
       return;
     }
 
@@ -85,19 +90,21 @@ export default function AdminExchangeRateScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const response = await apiRequest('POST', '/api/admin/exchange-rate', { rate });
+      const response = await apiRequest("POST", "/api/admin/exchange-rate", {
+        rate,
+      });
       const data = await response.json();
 
       if (data.success) {
-        showToast(data.message, 'success');
+        showToast(data.message, "success");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         loadCurrentRate();
       } else {
-        showToast(data.message || 'Error al actualizar', 'error');
+        showToast(data.message || "Error al actualizar", "error");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (error) {
-      showToast('Error al actualizar la tasa', 'error');
+      showToast("Error al actualizar la tasa", "error");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setUpdating(false);
@@ -109,18 +116,22 @@ export default function AdminExchangeRateScreen() {
     Haptics.selectionAsync();
 
     try {
-      const response = await apiRequest('POST', '/api/admin/exchange-rate/auto-update', { enabled });
+      const response = await apiRequest(
+        "POST",
+        "/api/admin/exchange-rate/auto-update",
+        { enabled },
+      );
       const data = await response.json();
 
       if (data.success) {
-        showToast(data.message, 'success');
+        showToast(data.message, "success");
         loadCurrentRate();
       } else {
-        showToast(data.message || 'Error', 'error');
+        showToast(data.message || "Error", "error");
         setAutoUpdateEnabled(!enabled);
       }
     } catch (error) {
-      showToast('Error al cambiar configuración', 'error');
+      showToast("Error al cambiar configuración", "error");
       setAutoUpdateEnabled(!enabled);
     }
   };
@@ -130,18 +141,22 @@ export default function AdminExchangeRateScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const response = await apiRequest('POST', '/api/admin/exchange-rate/force-update', {});
+      const response = await apiRequest(
+        "POST",
+        "/api/admin/exchange-rate/force-update",
+        {},
+      );
       const data = await response.json();
 
       if (data.rate) {
-        showToast(`Tasa actualizada: ${data.rate} Bs/USD`, 'success');
+        showToast(`Tasa actualizada: ${data.rate} Bs/USD`, "success");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         loadCurrentRate();
       } else {
-        showToast('No se pudo obtener la tasa', 'error');
+        showToast("No se pudo obtener la tasa", "error");
       }
     } catch (error) {
-      showToast('Error al actualizar desde AlCambio', 'error');
+      showToast("Error al actualizar desde AlCambio", "error");
     } finally {
       setUpdating(false);
     }
@@ -151,17 +166,26 @@ export default function AdminExchangeRateScreen() {
     if (!currentRate) return null;
 
     const badges = {
-      alcambio: { label: 'AlCambio.app', color: '#4CAF50', icon: 'globe' },
-      manual: { label: 'Manual', color: '#FF9800', icon: 'edit-3' },
-      fallback: { label: 'Por defecto', color: '#9E9E9E', icon: 'alert-circle' },
+      alcambio: { label: "AlCambio.app", color: "#4CAF50", icon: "globe" },
+      manual: { label: "Manual", color: "#FF9800", icon: "edit-3" },
+      fallback: {
+        label: "Por defecto",
+        color: "#9E9E9E",
+        icon: "alert-circle",
+      },
     };
 
     const badge = badges[currentRate.source];
 
     return (
-      <View style={[styles.sourceBadge, { backgroundColor: badge.color + '20' }]}>
+      <View
+        style={[styles.sourceBadge, { backgroundColor: badge.color + "20" }]}
+      >
         <Feather name={badge.icon as any} size={14} color={badge.color} />
-        <ThemedText type="caption" style={{ color: badge.color, marginLeft: 4, fontWeight: '600' }}>
+        <ThemedText
+          type="caption"
+          style={{ color: badge.color, marginLeft: 4, fontWeight: "600" }}
+        >
           {badge.label}
         </ThemedText>
       </View>
@@ -172,7 +196,10 @@ export default function AdminExchangeRateScreen() {
     return (
       <ThemedView style={styles.container}>
         <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
             <Feather name="arrow-left" size={24} color={theme.text} />
           </Pressable>
           <ThemedText type="h2">Tasa de Cambio</ThemedText>
@@ -188,7 +215,10 @@ export default function AdminExchangeRateScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
         <ThemedText type="h2">Tasa de Cambio</ThemedText>
@@ -200,14 +230,29 @@ export default function AdminExchangeRateScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={ComeYaColors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={ComeYaColors.primary}
+          />
         }
       >
         {/* Current Rate Card */}
-        <View style={[styles.card, { backgroundColor: theme.card }, Shadows.md]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.card }, Shadows.md]}
+        >
           <View style={styles.cardHeader}>
-            <View style={[styles.iconCircle, { backgroundColor: ComeYaColors.primaryLight }]}>
-              <Feather name="dollar-sign" size={28} color={ComeYaColors.primary} />
+            <View
+              style={[
+                styles.iconCircle,
+                { backgroundColor: ComeYaColors.primaryLight },
+              ]}
+            >
+              <Feather
+                name="dollar-sign"
+                size={28}
+                color={ComeYaColors.primary}
+              />
             </View>
             <View style={{ flex: 1 }}>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
@@ -225,29 +270,46 @@ export default function AdminExchangeRateScreen() {
           <View style={styles.sourceRow}>
             {getSourceBadge()}
             {currentRate?.lastUpdated && (
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: 8 }}>
-                Actualizado: {new Date(currentRate.lastUpdated).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginLeft: 8 }}
+              >
+                Actualizado:{" "}
+                {new Date(currentRate.lastUpdated).toLocaleTimeString("es-VE", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </ThemedText>
             )}
           </View>
         </View>
 
         {/* Auto-Update Toggle */}
-        <View style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <View style={styles.settingRow}>
             <View style={{ flex: 1 }}>
-              <ThemedText type="body" style={{ fontWeight: '600' }}>
+              <ThemedText type="body" style={{ fontWeight: "600" }}>
                 Actualización Automática
               </ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 4 }}
+              >
                 Obtener tasa desde AlCambio.app cada 5 minutos
               </ThemedText>
             </View>
             <Switch
               value={autoUpdateEnabled}
               onValueChange={handleToggleAutoUpdate}
-              trackColor={{ false: theme.border, true: ComeYaColors.primary + '80' }}
-              thumbColor={autoUpdateEnabled ? ComeYaColors.primary : theme.textSecondary}
+              trackColor={{
+                false: theme.border,
+                true: ComeYaColors.primary + "80",
+              }}
+              thumbColor={
+                autoUpdateEnabled ? ComeYaColors.primary : theme.textSecondary
+              }
             />
           </View>
 
@@ -255,15 +317,30 @@ export default function AdminExchangeRateScreen() {
             <Button
               onPress={handleForceUpdate}
               disabled={updating}
-              style={{ marginTop: Spacing.md, backgroundColor: theme.backgroundSecondary }}
+              style={{
+                marginTop: Spacing.md,
+                backgroundColor: theme.backgroundSecondary,
+              }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+              >
                 {updating ? (
-                  <ActivityIndicator size="small" color={ComeYaColors.primary} />
+                  <ActivityIndicator
+                    size="small"
+                    color={ComeYaColors.primary}
+                  />
                 ) : (
-                  <Feather name="refresh-cw" size={18} color={ComeYaColors.primary} />
+                  <Feather
+                    name="refresh-cw"
+                    size={18}
+                    color={ComeYaColors.primary}
+                  />
                 )}
-                <ThemedText type="body" style={{ color: ComeYaColors.primary, fontWeight: '600' }}>
+                <ThemedText
+                  type="body"
+                  style={{ color: ComeYaColors.primary, fontWeight: "600" }}
+                >
                   Actualizar Ahora
                 </ThemedText>
               </View>
@@ -272,19 +349,27 @@ export default function AdminExchangeRateScreen() {
         </View>
 
         {/* Manual Rate Update */}
-        <View style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}>
+        <View
+          style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}
+        >
           <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
             Actualizar Manualmente
           </ThemedText>
-          <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
+          <ThemedText
+            type="caption"
+            style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
+          >
             {autoUpdateEnabled
-              ? 'Esta tasa se usará como fallback si AlCambio no responde'
-              : 'Esta será la tasa fija que se usará en la plataforma'}
+              ? "Esta tasa se usará como fallback si AlCambio no responde"
+              : "Esta será la tasa fija que se usará en la plataforma"}
           </ThemedText>
 
           <View style={styles.inputRow}>
             <View style={{ flex: 1 }}>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: 4 }}
+              >
                 Tasa (Bs/USD)
               </ThemedText>
               <TextInput
@@ -308,20 +393,36 @@ export default function AdminExchangeRateScreen() {
               disabled={updating}
               style={{ marginTop: 20, paddingHorizontal: Spacing.xl }}
             >
-              {updating ? <ActivityIndicator size="small" color="#FFF" /> : 'Guardar'}
+              {updating ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                "Guardar"
+              )}
             </Button>
           </View>
         </View>
 
         {/* Info Card */}
-        <View style={[styles.infoCard, { backgroundColor: '#2196F320', borderColor: '#2196F3' }]}>
+        <View
+          style={[
+            styles.infoCard,
+            { backgroundColor: "#2196F320", borderColor: "#2196F3" },
+          ]}
+        >
           <Feather name="info" size={20} color="#2196F3" />
           <View style={{ flex: 1, marginLeft: Spacing.md }}>
-            <ThemedText type="small" style={{ color: '#2196F3', lineHeight: 20 }}>
-              <ThemedText type="small" style={{ fontWeight: '600', color: '#2196F3' }}>
+            <ThemedText
+              type="small"
+              style={{ color: "#2196F3", lineHeight: 20 }}
+            >
+              <ThemedText
+                type="small"
+                style={{ fontWeight: "600", color: "#2196F3" }}
+              >
                 AlCambio.app
-              </ThemedText>
-              {' '}es una fuente confiable que actualiza la tasa USDT en tiempo real. La tasa se cachea por 5 minutos para optimizar rendimiento.
+              </ThemedText>{" "}
+              es una fuente confiable que actualiza la tasa USDT en tiempo real.
+              La tasa se cachea por 5 minutos para optimizar rendimiento.
             </ThemedText>
           </View>
         </View>
@@ -335,29 +436,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.lg,
   },
   backButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+    justifyContent: "center",
+    alignItems: "flex-start",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: Spacing.lg,
-    paddingBottom: Spacing['4xl'],
+    paddingBottom: Spacing["4xl"],
   },
   card: {
     padding: Spacing.lg,
@@ -365,38 +466,38 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
   iconCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: Spacing.md,
   },
   sourceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: Spacing.sm,
   },
   sourceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: BorderRadius.md,
   },
   settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     gap: Spacing.md,
   },
   input: {
@@ -405,10 +506,10 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   infoCard: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,

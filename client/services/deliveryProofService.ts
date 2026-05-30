@@ -1,6 +1,6 @@
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
-import { apiRequest } from '@/lib/query-client';
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import { apiRequest } from "@/lib/query-client";
 
 export interface DeliveryProof {
   orderId: string;
@@ -26,7 +26,7 @@ class DeliveryProofService {
   // Request camera permissions
   async requestCameraPermissions(): Promise<boolean> {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    return status === 'granted';
+    return status === "granted";
   }
 
   // Capture delivery photo
@@ -34,11 +34,13 @@ class DeliveryProofService {
     try {
       const hasPermission = await this.requestCameraPermissions();
       if (!hasPermission) {
-        throw new Error('Se requiere permiso de cámara para tomar la foto de entrega');
+        throw new Error(
+          "Se requiere permiso de cámara para tomar la foto de entrega",
+        );
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.7, // Compress to reduce upload size
@@ -51,7 +53,7 @@ class DeliveryProofService {
 
       return null;
     } catch (error) {
-      console.error('Error capturing photo:', error);
+      console.error("Error capturing photo:", error);
       throw error;
     }
   }
@@ -64,7 +66,7 @@ class DeliveryProofService {
       });
       return base64;
     } catch (error) {
-      console.error('Error converting image to base64:', error);
+      console.error("Error converting image to base64:", error);
       throw error;
     }
   }
@@ -79,7 +81,7 @@ class DeliveryProofService {
       const route = this.routeBreadcrumbs.get(proof.orderId) || [];
 
       // Submit to backend
-      await apiRequest('POST', `/api/delivery/proof/${proof.orderId}`, {
+      await apiRequest("POST", `/api/delivery/proof/${proof.orderId}`, {
         photoBase64,
         latitude: proof.latitude,
         longitude: proof.longitude,
@@ -88,12 +90,12 @@ class DeliveryProofService {
         route: route.slice(-50), // Send last 50 points
       });
 
-      console.log('✅ Delivery proof submitted');
+      console.log("✅ Delivery proof submitted");
 
       // Clear route for this order
       this.routeBreadcrumbs.delete(proof.orderId);
     } catch (error) {
-      console.error('Error submitting delivery proof:', error);
+      console.error("Error submitting delivery proof:", error);
       throw error;
     }
   }
@@ -111,13 +113,15 @@ class DeliveryProofService {
     const route = this.routeBreadcrumbs.get(orderId);
     if (route) {
       route.push(point);
-      
+
       // Keep only last 100 points to avoid memory issues
       if (route.length > 100) {
         route.shift();
       }
 
-      console.log(`📍 Route point added for ${orderId} (${route.length} points)`);
+      console.log(
+        `📍 Route point added for ${orderId} (${route.length} points)`,
+      );
     }
   }
 
@@ -146,7 +150,7 @@ class DeliveryProofService {
         prev.latitude,
         prev.longitude,
         curr.latitude,
-        curr.longitude
+        curr.longitude,
       );
     }
 
@@ -158,7 +162,7 @@ class DeliveryProofService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;

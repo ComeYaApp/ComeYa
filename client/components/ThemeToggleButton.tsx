@@ -14,7 +14,7 @@ export function ThemeToggleButton() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await setThemeMode(isDark ? "light" : "dark");
     } catch (error) {
-      console.error('Theme toggle error:', error);
+      console.error("Theme toggle error:", error);
     }
   };
 

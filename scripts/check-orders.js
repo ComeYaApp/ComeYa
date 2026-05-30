@@ -1,23 +1,23 @@
 // Script para verificar órdenes y estadísticas
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
 
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: ".env.local" });
 
 async function checkOrders() {
   const mysqlUrl = process.env.MYSQL_DATABASE_URL || process.env.DATABASE_URL;
   const url = new URL(mysqlUrl);
-  
+
   const connection = await mysql.createConnection({
     host: url.hostname,
-    port: parseInt(url.port || '3306'),
+    port: parseInt(url.port || "3306"),
     user: url.username,
     password: url.password,
     database: url.pathname.slice(1),
     ssl: { rejectUnauthorized: false },
   });
 
-  console.log('✅ Connected to database\n');
+  console.log("✅ Connected to database\n");
 
   // Ver todas las órdenes
   const [orders] = await connection.execute(`
@@ -32,7 +32,7 @@ async function checkOrders() {
     ORDER BY created_at DESC
   `);
 
-  console.log('📦 TODAS LAS ÓRDENES:');
+  console.log("📦 TODAS LAS ÓRDENES:");
   console.table(orders);
 
   // Ver órdenes de hoy por negocio
@@ -49,7 +49,7 @@ async function checkOrders() {
     GROUP BY b.id, b.name
   `);
 
-  console.log('\n📊 ÓRDENES DE HOY POR NEGOCIO:');
+  console.log("\n📊 ÓRDENES DE HOY POR NEGOCIO:");
   console.table(todayOrders);
 
   // Ver negocios
@@ -57,7 +57,7 @@ async function checkOrders() {
     SELECT id, name, owner_id FROM businesses WHERE is_active = 1
   `);
 
-  console.log('\n🏪 NEGOCIOS ACTIVOS:');
+  console.log("\n🏪 NEGOCIOS ACTIVOS:");
   console.table(businesses);
 
   await connection.end();

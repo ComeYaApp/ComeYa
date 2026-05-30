@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { View, StyleSheet, ActivityIndicator, Text, TouchableOpacity } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
@@ -9,10 +15,21 @@ import { apiRequest } from "@/lib/query-client";
 
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) { resolve(); return; }
+    if ((window as any).google?.maps) {
+      resolve();
+      return;
+    }
     const existing = document.getElementById("gmap-script");
-    if (existing) { existing.addEventListener("load", () => resolve()); return; }
-    const key = await fetch((process.env.EXPO_PUBLIC_BACKEND_URL||"")+"/api/config/maps-key").then(r=>r.json()).then(d=>d.key).catch(()=>"");
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      return;
+    }
+    const key = await fetch(
+      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
+    )
+      .then((r) => r.json())
+      .then((d) => d.key)
+      .catch(() => "");
     const script = document.createElement("script");
     script.id = "gmap-script";
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
@@ -40,8 +57,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 const createMarkerIcon = (emoji: string, bgColor: string, size = 40) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-    <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 2}" fill="${bgColor}" stroke="white" stroke-width="2"/>
-    <text x="${size/2}" y="${size/2 + 6}" text-anchor="middle" fill="white" font-size="18" font-weight="bold">${emoji}</text>
+    <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${bgColor}" stroke="white" stroke-width="2"/>
+    <text x="${size / 2}" y="${size / 2 + 6}" text-anchor="middle" fill="white" font-size="18" font-weight="bold">${emoji}</text>
   </svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
@@ -55,14 +72,17 @@ export default function AdminMapScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>("deliveries");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ businesses: 0, drivers: 0, orders: 0 });
-  const [locationStats, setLocationStats] = useState({ withCoords: 0, withoutCoords: 0 });
+  const [locationStats, setLocationStats] = useState({
+    withCoords: 0,
+    withoutCoords: 0,
+  });
 
   const bg = theme.backgroundRoot;
   const card = theme.card;
   const sub = theme.textSecondary;
 
   const clearMarkers = useCallback(() => {
-    markersRef.current.forEach(m => m.setMap(null));
+    markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
   }, []);
 
@@ -100,7 +120,10 @@ export default function AdminMapScreen() {
       const [bizRes, driversRes, trackingRes] = await Promise.all([
         apiRequest("GET", "/api/admin/businesses"),
         apiRequest("GET", "/api/admin/drivers"),
-        apiRequest("GET", "/api/admin/tracking/global").catch(() => ({ ok: false, json: () => Promise.resolve({ success: false, orders: [] }) })),
+        apiRequest("GET", "/api/admin/tracking/global").catch(() => ({
+          ok: false,
+          json: () => Promise.resolve({ success: false, orders: [] }),
+        })),
       ]);
 
       const bizData = await bizRes.json();
@@ -108,19 +131,22 @@ export default function AdminMapScreen() {
       const trackingData = await trackingRes.json();
 
       const businesses = bizData.businesses || [];
-      const drivers = (driversData.drivers || []).filter((d: any) => d.currentLatitude && d.currentLongitude);
+      const drivers = (driversData.drivers || []).filter(
+        (d: any) => d.currentLatitude && d.currentLongitude,
+      );
       const activeOrders = trackingData.orders || [];
 
       let withCoords = 0;
       let withoutCoords = 0;
       businesses.forEach((b: any) => {
-        if (b.latitude && b.longitude) withCoords++; else withoutCoords++;
+        if (b.latitude && b.longitude) withCoords++;
+        else withoutCoords++;
       });
 
-      setStats({ 
-        businesses: businesses.length, 
-        drivers: drivers.length, 
-        orders: activeOrders.length 
+      setStats({
+        businesses: businesses.length,
+        drivers: drivers.length,
+        orders: activeOrders.length,
       });
       setLocationStats({ withCoords, withoutCoords });
 
@@ -133,25 +159,33 @@ export default function AdminMapScreen() {
 
           const typeInfo = BIZ_ICONS[b.type] || BIZ_ICONS.default;
           const iconUrl = createMarkerIcon(
-            typeInfo.icon === "coffee" ? "🍽️" : 
-            typeInfo.icon === "shopping-bag" ? "🛒" : 
-            typeInfo.icon === "shopping-cart" ? "🛍️" : "🏠",
-            typeInfo.color
+            typeInfo.icon === "coffee"
+              ? "🍽️"
+              : typeInfo.icon === "shopping-bag"
+                ? "🛒"
+                : typeInfo.icon === "shopping-cart"
+                  ? "🛍️"
+                  : "🏠",
+            typeInfo.color,
           );
 
           const marker = new google.maps.Marker({
             position: { lat, lng },
             map: gmap.current,
-            title: `${b.name}\n📍 ${b.address || 'Sin dirección'}`,
-            icon: { url: iconUrl, scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 20) },
+            title: `${b.name}\n📍 ${b.address || "Sin dirección"}`,
+            icon: {
+              url: iconUrl,
+              scaledSize: new google.maps.Size(40, 40),
+              anchor: new google.maps.Point(20, 20),
+            },
           });
 
           const info = new google.maps.InfoWindow({
             content: `<div style="padding:10px;max-width:200px;">
               <strong style="font-size:14px;color:#111;">${b.name}</strong>
-              <p style="margin:4px 0;font-size:12px;color:#666;">📍 ${b.address || 'Sin dirección'}</p>
-              <p style="margin:4px 0;font-size:11px;color:${b.isOpen ? '#10B981' : '#EF4444'};">
-                ${b.isOpen ? '✅ Abierto' : '❌ Cerrado'}
+              <p style="margin:4px 0;font-size:12px;color:#666;">📍 ${b.address || "Sin dirección"}</p>
+              <p style="margin:4px 0;font-size:11px;color:${b.isOpen ? "#10B981" : "#EF4444"};">
+                ${b.isOpen ? "✅ Abierto" : "❌ Cerrado"}
               </p>
             </div>`,
           });
@@ -171,15 +205,19 @@ export default function AdminMapScreen() {
           const marker = new google.maps.Marker({
             position: { lat, lng },
             map: gmap.current,
-            title: `${d.name || 'Repartidor'}\n📱 ${d.phone || 'Sin teléfono'}`,
-            icon: { url: iconUrl, scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 20) },
+            title: `${d.name || "Repartidor"}\n📱 ${d.phone || "Sin teléfono"}`,
+            icon: {
+              url: iconUrl,
+              scaledSize: new google.maps.Size(40, 40),
+              anchor: new google.maps.Point(20, 20),
+            },
           });
 
           const info = new google.maps.InfoWindow({
             content: `<div style="padding:10px;max-width:200px;">
-              <strong style="font-size:14px;color:#111;">${d.name || 'Repartidor'}</strong>
-              <p style="margin:4px 0;font-size:12px;color:#666;">📱 ${d.phone || 'Sin teléfono'}</p>
-              <p style="margin:4px 0;font-size:11px;color:#10B981;">✅ ${d.isOnline ? 'En línea' : 'Desconectado'}</p>
+              <strong style="font-size:14px;color:#111;">${d.name || "Repartidor"}</strong>
+              <p style="margin:4px 0;font-size:12px;color:#666;">📱 ${d.phone || "Sin teléfono"}</p>
+              <p style="margin:4px 0;font-size:11px;color:#10B981;">✅ ${d.isOnline ? "En línea" : "Desconectado"}</p>
             </div>`,
           });
           marker.addListener("click", () => info.open(gmap.current, marker));
@@ -199,7 +237,11 @@ export default function AdminMapScreen() {
               position: { lat: o.business.lat, lng: o.business.lng },
               map: gmap.current,
               title: `🏪 ${o.business.name} - Pedido ${o.orderNumber}`,
-              icon: { url: bizIcon, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36) },
+              icon: {
+                url: bizIcon,
+                scaledSize: new google.maps.Size(36, 36),
+                anchor: new google.maps.Point(18, 36),
+              },
               zIndex: 100,
             });
 
@@ -210,7 +252,9 @@ export default function AdminMapScreen() {
                 <span style="color:${statusColor}">● ${o.status}</span>
               </div>`,
             });
-            bizMarker.addListener("click", () => bizInfo.open(gmap.current, bizMarker));
+            bizMarker.addListener("click", () =>
+              bizInfo.open(gmap.current, bizMarker),
+            );
             markersRef.current.push(bizMarker);
           }
 
@@ -221,7 +265,11 @@ export default function AdminMapScreen() {
               position: { lat: o.delivery.lat, lng: o.delivery.lng },
               map: gmap.current,
               title: `🏠 Entrega - ${o.orderNumber}`,
-              icon: { url: custIcon, scaledSize: new google.maps.Size(36, 36), anchor: new google.maps.Point(18, 36) },
+              icon: {
+                url: custIcon,
+                scaledSize: new google.maps.Size(36, 36),
+                anchor: new google.maps.Point(18, 36),
+              },
               zIndex: 50,
             });
 
@@ -231,7 +279,9 @@ export default function AdminMapScreen() {
                 <span>📦 pedido: ${o.orderNumber}</span>
               </div>`,
             });
-            custMarker.addListener("click", () => custInfo.open(gmap.current, custMarker));
+            custMarker.addListener("click", () =>
+              custInfo.open(gmap.current, custMarker),
+            );
             markersRef.current.push(custMarker);
           }
 
@@ -242,7 +292,11 @@ export default function AdminMapScreen() {
               position: { lat: o.driver.lat, lng: o.driver.lng },
               map: gmap.current,
               title: `🛵 ${o.driver.name} - ${o.orderNumber}`,
-              icon: { url: driverIcon, scaledSize: new google.maps.Size(40, 40), anchor: new google.maps.Point(20, 20) },
+              icon: {
+                url: driverIcon,
+                scaledSize: new google.maps.Size(40, 40),
+                anchor: new google.maps.Point(20, 20),
+              },
               zIndex: 200,
             });
 
@@ -253,7 +307,9 @@ export default function AdminMapScreen() {
                 <span style="color:${statusColor}">● ${o.status}</span>
               </div>`,
             });
-            driverMarker.addListener("click", () => driverInfo.open(gmap.current, driverMarker));
+            driverMarker.addListener("click", () =>
+              driverInfo.open(gmap.current, driverMarker),
+            );
             markersRef.current.push(driverMarker);
           }
 
@@ -275,7 +331,6 @@ export default function AdminMapScreen() {
           }
         });
       }
-
     } catch (err) {
       console.error("Error loading map data:", err);
     }
@@ -312,15 +367,27 @@ export default function AdminMapScreen() {
           {VIEW_OPTIONS.map((opt) => (
             <TouchableOpacity
               key={opt.id}
-              onPress={() => { setViewMode(opt.id); setTimeout(loadMapData, 100); }}
-              style={[s.toggleBtn, viewMode === opt.id && { backgroundColor: ComeYaColors.primary }]}
+              onPress={() => {
+                setViewMode(opt.id);
+                setTimeout(loadMapData, 100);
+              }}
+              style={[
+                s.toggleBtn,
+                viewMode === opt.id && {
+                  backgroundColor: ComeYaColors.primary,
+                },
+              ]}
             >
-              <Feather name={opt.icon as any} size={16} color={viewMode === opt.id ? "#fff" : sub} />
+              <Feather
+                name={opt.icon as any}
+                size={16}
+                color={viewMode === opt.id ? "#fff" : sub}
+              />
             </TouchableOpacity>
           ))}
         </View>
         <Text style={[s.viewLabel, { color: card }]}>
-          {VIEW_OPTIONS.find(v => v.id === viewMode)?.label}
+          {VIEW_OPTIONS.find((v) => v.id === viewMode)?.label}
         </Text>
       </View>
 
@@ -333,7 +400,7 @@ export default function AdminMapScreen() {
             <Text style={s.statLabel}>Negocios</Text>
           </View>
         </View>
-        
+
         <View style={[s.statCard, s.statBorderGreen]}>
           <Text style={s.statEmoji}>🛵</Text>
           <View>
@@ -366,7 +433,7 @@ export default function AdminMapScreen() {
           <Text style={s.legendText}>Repartidor</Text>
         </View>
         <View style={s.legendItem}>
-          <Text style={{color: '#10B981'}}>───</Text>
+          <Text style={{ color: "#10B981" }}>───</Text>
           <Text style={s.legendText}>Ruta</Text>
         </View>
       </View>
@@ -377,27 +444,80 @@ export default function AdminMapScreen() {
 const DARK_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#212121" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#373737" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#373737" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#000000" }],
+  },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
 ];
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  loading: { position: "absolute", inset: 0, justifyContent: "center", alignItems: "center", zIndex: 100 } as any,
+  loading: {
+    position: "absolute",
+    inset: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  } as any,
   controls: { position: "absolute", zIndex: 10 },
-  viewToggle: { flexDirection: "row", borderRadius: 10, overflow: "hidden", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
+  viewToggle: {
+    flexDirection: "row",
+    borderRadius: 10,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   toggleBtn: { padding: 12 },
-  viewLabel: { fontSize: 10, fontWeight: "600", marginTop: 6, textAlign: "center" },
+  viewLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 6,
+    textAlign: "center",
+  },
   statsPanel: { position: "absolute", right: Spacing.lg, zIndex: 10, gap: 8 },
-  statCard: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 25, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4 },
+  statCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   statBorderBlue: { borderLeftWidth: 3, borderLeftColor: "#DC2626" },
   statBorderGreen: { borderLeftWidth: 3, borderLeftColor: "#10B981" },
   statBorderYellow: { borderLeftWidth: 3, borderLeftColor: "#F59E0B" },
   statEmoji: { fontSize: 24 },
   statValue: { fontSize: 18, fontWeight: "800", color: "#fff" },
   statLabel: { fontSize: 10, color: "#9CA3AF" },
-  legend: { position: "absolute", zIndex: 10, flexDirection: "row", gap: 16, backgroundColor: "rgba(255,255,255,0.95)", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4 },
+  legend: {
+    position: "absolute",
+    zIndex: 10,
+    flexDirection: "row",
+    gap: 16,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendText: { fontSize: 11, fontWeight: "600", color: "#4B5563" },
 });

@@ -1,4 +1,4 @@
-import { apiRequest } from '@/lib/query-client';
+import { apiRequest } from "@/lib/query-client";
 
 export interface DeliveryPoint {
   orderId: string;
@@ -15,7 +15,7 @@ export interface OptimizedRoute {
   distance: number; // meters
   duration: number; // seconds
   address: string;
-  type: 'pickup' | 'delivery';
+  type: "pickup" | "delivery";
 }
 
 class RouteOptimizationService {
@@ -24,7 +24,7 @@ class RouteOptimizationService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
@@ -43,7 +43,7 @@ class RouteOptimizationService {
   // Nearest neighbor algorithm for route optimization
   async optimizeRoute(
     currentLocation: { latitude: number; longitude: number },
-    deliveryPoints: DeliveryPoint[]
+    deliveryPoints: DeliveryPoint[],
   ): Promise<OptimizedRoute[]> {
     if (deliveryPoints.length === 0) return [];
     if (deliveryPoints.length === 1) {
@@ -55,18 +55,18 @@ class RouteOptimizationService {
             currentLocation.latitude,
             currentLocation.longitude,
             deliveryPoints[0].latitude,
-            deliveryPoints[0].longitude
+            deliveryPoints[0].longitude,
           ),
           duration: this.estimateDuration(
             this.calculateDistance(
               currentLocation.latitude,
               currentLocation.longitude,
               deliveryPoints[0].latitude,
-              deliveryPoints[0].longitude
-            )
+              deliveryPoints[0].longitude,
+            ),
           ),
           address: deliveryPoints[0].address,
-          type: deliveryPoints[0].priority === 1 ? 'pickup' : 'delivery',
+          type: deliveryPoints[0].priority === 1 ? "pickup" : "delivery",
         },
       ];
     }
@@ -90,7 +90,7 @@ class RouteOptimizationService {
           current.latitude,
           current.longitude,
           point.latitude,
-          point.longitude
+          point.longitude,
         );
         if (distance < minDistance) {
           minDistance = distance;
@@ -105,7 +105,7 @@ class RouteOptimizationService {
         distance: minDistance,
         duration: this.estimateDuration(minDistance),
         address: nearest.address,
-        type: 'pickup',
+        type: "pickup",
       });
 
       current = { latitude: nearest.latitude, longitude: nearest.longitude };
@@ -122,7 +122,7 @@ class RouteOptimizationService {
           current.latitude,
           current.longitude,
           point.latitude,
-          point.longitude
+          point.longitude,
         );
         if (distance < minDistance) {
           minDistance = distance;
@@ -137,7 +137,7 @@ class RouteOptimizationService {
         distance: minDistance,
         duration: this.estimateDuration(minDistance),
         address: nearest.address,
-        type: 'delivery',
+        type: "delivery",
       });
 
       current = { latitude: nearest.latitude, longitude: nearest.longitude };
@@ -158,37 +158,42 @@ class RouteOptimizationService {
   async getOptimizedRouteWithTraffic(
     currentLocation: { latitude: number; longitude: number },
     deliveryPoints: DeliveryPoint[],
-    googleMapsApiKey: string
+    googleMapsApiKey: string,
   ): Promise<OptimizedRoute[]> {
     try {
       // Use Google Maps Distance Matrix API for accurate times
       const origins = `${currentLocation.latitude},${currentLocation.longitude}`;
       const destinations = deliveryPoints
         .map((p) => `${p.latitude},${p.longitude}`)
-        .join('|');
+        .join("|");
 
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origins}&destinations=${destinations}&mode=driving&departure_time=now&key=${googleMapsApiKey}`
+        `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origins}&destinations=${destinations}&mode=driving&departure_time=now&key=${googleMapsApiKey}`,
       );
 
       const data = await response.json();
 
-      if (data.status === 'OK' && data.rows[0]) {
+      if (data.status === "OK" && data.rows[0]) {
         const elements = data.rows[0].elements;
         const routesWithTraffic = deliveryPoints.map((point, index) => ({
           orderId: point.orderId,
           sequence: index + 1,
           distance: elements[index]?.distance?.value || 0,
-          duration: elements[index]?.duration_in_traffic?.value || elements[index]?.duration?.value || 0,
+          duration:
+            elements[index]?.duration_in_traffic?.value ||
+            elements[index]?.duration?.value ||
+            0,
           address: point.address,
-          type: (point.priority === 1 ? 'pickup' : 'delivery') as 'pickup' | 'delivery',
+          type: (point.priority === 1 ? "pickup" : "delivery") as
+            | "pickup"
+            | "delivery",
         }));
 
         // Sort by duration (nearest first)
         return routesWithTraffic.sort((a, b) => a.duration - b.duration);
       }
     } catch (error) {
-      console.error('Error getting route with traffic:', error);
+      console.error("Error getting route with traffic:", error);
     }
 
     // Fallback to basic optimization

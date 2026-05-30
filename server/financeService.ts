@@ -1,8 +1,14 @@
 // Central Finance Service - Manages all financial data consistently
-import { db } from './db';
-import { users, businesses, orders, wallets, transactions } from '@shared/schema-mysql';
-import { eq, and, gte, sum, count, desc } from 'drizzle-orm';
-import { financialService } from './unifiedFinancialService';
+import { db } from "./db";
+import {
+  users,
+  businesses,
+  orders,
+  wallets,
+  transactions,
+} from "@shared/schema-mysql";
+import { eq, and, gte, sum, count, desc } from "drizzle-orm";
+import { financialService } from "./unifiedFinancialService";
 
 export interface FinancialMetrics {
   totalUsers: number;
@@ -33,7 +39,6 @@ export interface FinancialMetrics {
 }
 
 export class FinanceService {
-  
   // Get comprehensive financial metrics
   static async getFinancialMetrics(): Promise<FinancialMetrics> {
     try {
@@ -41,7 +46,7 @@ export class FinanceService {
       const [allUsers, allOrders, allBusinesses] = await Promise.all([
         db.select().from(users),
         db.select().from(orders),
-        db.select().from(businesses)
+        db.select().from(businesses),
       ]);
 
       // Calculate today's date range
@@ -53,10 +58,13 @@ export class FinanceService {
       });
 
       // Calculate revenue metrics
-      const completedOrders = allOrders.filter((o) => o.status === 'delivered');
-      const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+      const completedOrders = allOrders.filter((o) => o.status === "delivered");
+      const totalRevenue = completedOrders.reduce(
+        (sum, order) => sum + (order.total || 0),
+        0,
+      );
       const todayRevenue = todayOrders
-        .filter((o) => o.status === 'delivered')
+        .filter((o) => o.status === "delivered")
         .reduce((sum, order) => sum + (order.total || 0), 0);
 
       // Calcular comisiones usando el modelo real (15% markup sobre productos, 100% delivery al driver)
@@ -65,10 +73,11 @@ export class FinanceService {
       let driverPayouts = 0;
 
       for (const order of completedOrders) {
-        const { platform, business, driver } = await financialService.calculateCommissions(
-          order.total || 0,
-          order.deliveryFee || 0
-        );
+        const { platform, business, driver } =
+          await financialService.calculateCommissions(
+            order.total || 0,
+            order.deliveryFee || 0,
+          );
         platformCommission += platform;
         businessPayouts += business;
         driverPayouts += driver;
@@ -76,20 +85,22 @@ export class FinanceService {
 
       // Count users by role
       const usersByRole = {
-        customers: allUsers.filter((u) => u.role === 'customer').length,
-        businesses: allUsers.filter((u) => u.role === 'business_owner').length,
-        delivery: allUsers.filter((u) => u.role === 'delivery_driver').length,
-        admins: allUsers.filter((u) => u.role === 'admin' || u.role === 'super_admin').length,
+        customers: allUsers.filter((u) => u.role === "customer").length,
+        businesses: allUsers.filter((u) => u.role === "business_owner").length,
+        delivery: allUsers.filter((u) => u.role === "delivery_driver").length,
+        admins: allUsers.filter(
+          (u) => u.role === "admin" || u.role === "super_admin",
+        ).length,
       };
 
       // Count orders by status
       const ordersByStatus = {
-        pending: allOrders.filter((o) => o.status === 'pending').length,
-        confirmed: allOrders.filter((o) => o.status === 'confirmed').length,
-        preparing: allOrders.filter((o) => o.status === 'preparing').length,
-        on_the_way: allOrders.filter((o) => o.status === 'on_the_way').length,
-        delivered: allOrders.filter((o) => o.status === 'delivered').length,
-        cancelled: allOrders.filter((o) => o.status === 'cancelled').length,
+        pending: allOrders.filter((o) => o.status === "pending").length,
+        confirmed: allOrders.filter((o) => o.status === "confirmed").length,
+        preparing: allOrders.filter((o) => o.status === "preparing").length,
+        on_the_way: allOrders.filter((o) => o.status === "on_the_way").length,
+        delivered: allOrders.filter((o) => o.status === "delivered").length,
+        cancelled: allOrders.filter((o) => o.status === "cancelled").length,
       };
 
       return {
@@ -108,7 +119,7 @@ export class FinanceService {
         ordersByStatus,
       };
     } catch (error) {
-      console.error('Error calculating financial metrics:', error);
+      console.error("Error calculating financial metrics:", error);
       throw error;
     }
   }
@@ -122,14 +133,14 @@ export class FinanceService {
         .where(eq(orders.userId, userId))
         .orderBy(desc(orders.createdAt));
 
-      return userOrders.map(order => ({
+      return userOrders.map((order) => ({
         ...order,
         total: order.total || 0,
         subtotal: order.subtotal || 0,
         deliveryFee: order.deliveryFee || 0,
       }));
     } catch (error) {
-      console.error('Error fetching user orders:', error);
+      console.error("Error fetching user orders:", error);
       throw error;
     }
   }
@@ -142,20 +153,25 @@ export class FinanceService {
         .from(orders)
         .where(eq(orders.businessId, businessId));
 
-      const completedOrders = businessOrders.filter(o => o.status === 'delivered');
-      const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+      const completedOrders = businessOrders.filter(
+        (o) => o.status === "delivered",
+      );
+      const totalRevenue = completedOrders.reduce(
+        (sum, order) => sum + (order.total || 0),
+        0,
+      );
       let businessEarnings = 0;
       for (const order of completedOrders) {
         const { business } = await financialService.calculateCommissions(
           order.total || 0,
-          order.deliveryFee || 0
+          order.deliveryFee || 0,
         );
         businessEarnings += business;
       }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayOrders = businessOrders.filter(order => {
+      const todayOrders = businessOrders.filter((order) => {
         const orderDate = new Date(order.createdAt);
         return orderDate >= today;
       });
@@ -163,16 +179,18 @@ export class FinanceService {
       return {
         totalOrders: businessOrders.length,
         completedOrders: completedOrders.length,
-        pendingOrders: businessOrders.filter(o => o.status === 'pending').length,
+        pendingOrders: businessOrders.filter((o) => o.status === "pending")
+          .length,
         totalRevenue: Math.round(totalRevenue / 100),
         businessEarnings: Math.round(businessEarnings / 100),
         todayOrders: todayOrders.length,
-        averageOrderValue: completedOrders.length > 0 
-          ? Math.round(totalRevenue / completedOrders.length / 100) 
-          : 0,
+        averageOrderValue:
+          completedOrders.length > 0
+            ? Math.round(totalRevenue / completedOrders.length / 100)
+            : 0,
       };
     } catch (error) {
-      console.error('Error calculating business metrics:', error);
+      console.error("Error calculating business metrics:", error);
       throw error;
     }
   }
@@ -185,28 +203,33 @@ export class FinanceService {
         .from(orders)
         .where(eq(orders.deliveryPersonId, driverId));
 
-      const completedOrders = driverOrders.filter(o => o.status === 'delivered');
-      const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+      const completedOrders = driverOrders.filter(
+        (o) => o.status === "delivered",
+      );
+      const totalRevenue = completedOrders.reduce(
+        (sum, order) => sum + (order.total || 0),
+        0,
+      );
       let driverEarnings = 0;
       for (const order of completedOrders) {
         const { driver } = await financialService.calculateCommissions(
           order.total || 0,
-          order.deliveryFee || 0
+          order.deliveryFee || 0,
         );
         driverEarnings += driver;
       }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayOrders = driverOrders.filter(order => {
+      const todayOrders = driverOrders.filter((order) => {
         const orderDate = new Date(order.createdAt);
-        return orderDate >= today && order.status === 'delivered';
+        return orderDate >= today && order.status === "delivered";
       });
       let todayEarnings = 0;
       for (const order of todayOrders) {
         const { driver } = await financialService.calculateCommissions(
           order.total || 0,
-          order.deliveryFee || 0
+          order.deliveryFee || 0,
         );
         todayEarnings += driver;
       }
@@ -216,12 +239,13 @@ export class FinanceService {
         totalEarnings: Math.round(driverEarnings / 100),
         todayDeliveries: todayOrders.length,
         todayEarnings: Math.round(todayEarnings / 100),
-        averageEarningsPerDelivery: completedOrders.length > 0 
-          ? Math.round(driverEarnings / completedOrders.length / 100) 
-          : 0,
+        averageEarningsPerDelivery:
+          completedOrders.length > 0
+            ? Math.round(driverEarnings / completedOrders.length / 100)
+            : 0,
       };
     } catch (error) {
-      console.error('Error calculating driver metrics:', error);
+      console.error("Error calculating driver metrics:", error);
       throw error;
     }
   }
@@ -231,7 +255,7 @@ export class FinanceService {
     try {
       // Get all orders and recalculate totals
       const allOrders = await db.select().from(orders);
-      
+
       for (const order of allOrders) {
         // Get order items
         const items = await db
@@ -240,7 +264,10 @@ export class FinanceService {
           .where(eq(orderItems.orderId, order.id));
 
         // Recalculate totals
-        const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const subtotal = items.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0,
+        );
         const deliveryFee = order.deliveryFee || 0;
         const tax = Math.round(subtotal * 0.08); // 8% tax
         const total = subtotal + deliveryFee + tax;
@@ -257,9 +284,9 @@ export class FinanceService {
           .where(eq(orders.id, order.id));
       }
 
-      console.log('Order data synchronized successfully');
+      console.log("Order data synchronized successfully");
     } catch (error) {
-      console.error('Error syncing order data:', error);
+      console.error("Error syncing order data:", error);
       throw error;
     }
   }

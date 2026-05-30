@@ -22,7 +22,10 @@ function normalizeDayName(value?: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function resolveTodaySchedule(hours: any, dayOfWeek: number): DaySchedule | null {
+function resolveTodaySchedule(
+  hours: any,
+  dayOfWeek: number,
+): DaySchedule | null {
   if (!hours) return null;
 
   if (Array.isArray(hours)) {
@@ -32,10 +35,20 @@ function resolveTodaySchedule(hours: any, dayOfWeek: number): DaySchedule | null
     }
 
     const todayName = normalizeDayName(
-      ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"][dayOfWeek],
+      [
+        "domingo",
+        "lunes",
+        "martes",
+        "miercoles",
+        "jueves",
+        "viernes",
+        "sabado",
+      ][dayOfWeek],
     );
 
-    const byName = hours.find((entry: DaySchedule) => normalizeDayName(entry?.day) === todayName);
+    const byName = hours.find(
+      (entry: DaySchedule) => normalizeDayName(entry?.day) === todayName,
+    );
     return byName || null;
   }
 
@@ -44,9 +57,19 @@ function resolveTodaySchedule(hours: any, dayOfWeek: number): DaySchedule | null
     return byKey;
   }
 
-  const todayName = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"][dayOfWeek];
+  const todayName = [
+    "domingo",
+    "lunes",
+    "martes",
+    "miercoles",
+    "jueves",
+    "viernes",
+    "sabado",
+  ][dayOfWeek];
   const dayNameKeys = Object.keys(hours);
-  const namedKey = dayNameKeys.find((key) => normalizeDayName(key) === todayName);
+  const namedKey = dayNameKeys.find(
+    (key) => normalizeDayName(key) === todayName,
+  );
 
   return namedKey ? hours[namedKey] : null;
 }
@@ -97,7 +120,10 @@ export class BusinessHoursService {
         );
       }
 
-      return currentTimeInMinutes >= openTimeInMinutes && currentTimeInMinutes <= closeTimeInMinutes;
+      return (
+        currentTimeInMinutes >= openTimeInMinutes &&
+        currentTimeInMinutes <= closeTimeInMinutes
+      );
     } catch {
       return true;
     }
@@ -111,14 +137,16 @@ export class BusinessHoursService {
       if (!business.openingHours) continue;
 
       const shouldBeOpen = await this.isBusinessOpen(business.id);
-      
+
       if (business.isOpen !== shouldBeOpen) {
         await db
           .update(businesses)
           .set({ isOpen: shouldBeOpen })
           .where(eq(businesses.id, business.id));
-        
-        console.log(`📍 ${business.name}: ${shouldBeOpen ? 'ABIERTO' : 'CERRADO'}`);
+
+        console.log(
+          `📍 ${business.name}: ${shouldBeOpen ? "ABIERTO" : "CERRADO"}`,
+        );
       }
     }
   }

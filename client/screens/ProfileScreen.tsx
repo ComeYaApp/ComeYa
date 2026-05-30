@@ -30,7 +30,12 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp, ThemeMode } from "@/contexts/AppContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 
@@ -102,7 +107,7 @@ const themeOptions: { value: ThemeMode; label: string }[] = [
 
 function resolveProfileImageUrl(profileImage: string): string {
   // Base64 - devolver directamente
-  if (profileImage.startsWith('data:image/')) {
+  if (profileImage.startsWith("data:image/")) {
     return profileImage;
   }
 
@@ -147,8 +152,10 @@ export default function ProfileScreen() {
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showAddressesModal, setShowAddressesModal] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
-const [editTab, setEditTab] = useState<"datos" | "seguridad" | "profesion">("datos");
-  
+  const [editTab, setEditTab] = useState<"datos" | "seguridad" | "profesion">(
+    "datos",
+  );
+
   // Professional data for drivers/business owners
   const [professionalData, setProfessionalData] = useState<{
     vehicleType: string | null;
@@ -172,7 +179,10 @@ const [editTab, setEditTab] = useState<"datos" | "seguridad" | "profesion">("dat
   const [editCurrentPassword, setEditCurrentPassword] = useState("");
   const [editNewPassword, setEditNewPassword] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-const [notificationStatus, setNotificationStatus] = useState<Notifications.PermissionStatus>("undetermined" as Notifications.PermissionStatus);
+  const [notificationStatus, setNotificationStatus] =
+    useState<Notifications.PermissionStatus>(
+      "undetermined" as Notifications.PermissionStatus,
+    );
 
   const approvalStatus =
     user?.role === "business_owner" || user?.role === "delivery_driver"
@@ -180,10 +190,16 @@ const [notificationStatus, setNotificationStatus] = useState<Notifications.Permi
         ? { text: "Aprobado", variant: "success" as const }
         : { text: "En revision", variant: "warning" as const }
       : null;
-const [driverStrikes, setDriverStrikes] = useState(0);
+  const [driverStrikes, setDriverStrikes] = useState(0);
   const maxStrikes = 3;
-  const [driverStats, setDriverStats] = useState<{ rating: number; totalDeliveries: number; vehicleType: string | null; vehiclePlate: string | null; verificationStatus: string } | null>(null);
-  
+  const [driverStats, setDriverStats] = useState<{
+    rating: number;
+    totalDeliveries: number;
+    vehicleType: string | null;
+    vehiclePlate: string | null;
+    verificationStatus: string;
+  } | null>(null);
+
   // Vehicle editing state
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [vehicleForm, setVehicleForm] = useState({
@@ -193,15 +209,17 @@ const [driverStrikes, setDriverStrikes] = useState(0);
     vehiclePlate: "",
     vehicleColor: "",
   });
-const [isSavingVehicle, setIsSavingVehicle] = useState(false);
-  const [uploadingDocument, setUploadingDocument] = useState<string | null>(null);
+  const [isSavingVehicle, setIsSavingVehicle] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState<string | null>(
+    null,
+  );
 
   // Upload document image
   const uploadDocument = async (documentType: string, uri: string) => {
     setUploadingDocument(documentType);
     try {
       let imageData: string;
-      
+
       if (Platform.OS === "web") {
         const response = await fetch(uri);
         const blob = await response.blob();
@@ -221,15 +239,21 @@ const [isSavingVehicle, setIsSavingVehicle] = useState(false);
 
       const estimatedBytes = Math.ceil(imageData.length * 0.75);
       if (estimatedBytes > 2 * 1024 * 1024) {
-        throw new Error("La imagen es muy pesada. Usa una foto mas ligera (~2MB max)");
+        throw new Error(
+          "La imagen es muy pesada. Usa una foto mas ligera (~2MB max)",
+        );
       }
 
-const apiResponse = await apiRequest("POST", "/api/users/verification-document", {
-        key: documentType,
-        image: imageData,
-      });
+      const apiResponse = await apiRequest(
+        "POST",
+        "/api/users/verification-document",
+        {
+          key: documentType,
+          image: imageData,
+        },
+      );
 
-const data = await apiResponse.json();
+      const data = await apiResponse.json();
       if (data.success) {
         // Update local professional data with the URL from server (Cloudinary URL)
         const fieldMap: Record<string, string> = {
@@ -245,12 +269,14 @@ const data = await apiResponse.json();
         const field = fieldMap[documentType];
         if (field) {
           // Use the Cloudinary URL returned by server, not the base64
-          setProfessionalData(prev => prev ? { ...prev, [field]: data.url } : null);
+          setProfessionalData((prev) =>
+            prev ? { ...prev, [field]: data.url } : null,
+          );
         }
-        
+
         // Note: Server now handles verification status reset automatically
         // Do NOT call reset-verification here - it would cause unnecessary reset
-        
+
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showToast(data.message || "Documento actualizado", "success");
       } else {
@@ -285,7 +311,7 @@ const data = await apiResponse.json();
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showToast("Permisos de galería denegados", "error");
+      showToast("Permisos de galerï¿½a denegados", "error");
       return;
     }
 
@@ -303,27 +329,29 @@ const data = await apiResponse.json();
     }
   };
 
-// Document preview modal state
+  // Document preview modal state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Helper to resolve document URL
-  const resolveDocumentUrl = (url: string | null | undefined): string | null => {
+  const resolveDocumentUrl = (
+    url: string | null | undefined,
+  ): string | null => {
     if (!url) return null;
-    if (url.startsWith('data:image/')) return url;
+    if (url.startsWith("data:image/")) return url;
     if (/^https?:\/\//i.test(url)) return url;
     const apiBase = getApiUrl().replace(/\/+$/, "");
     return `${apiBase}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
   // Document upload button component with image preview
-  const DocumentUploadButton = ({ 
-    documentType, 
-    label, 
+  const DocumentUploadButton = ({
+    documentType,
+    label,
     currentUrl,
-  }: { 
-    documentType: string; 
-    label: string; 
+  }: {
+    documentType: string;
+    label: string;
     currentUrl: string | null | undefined;
   }) => {
     const isUploading = uploadingDocument === documentType;
@@ -332,34 +360,64 @@ const data = await apiResponse.json();
 
     return (
       <View style={{ marginBottom: Spacing.md }}>
-        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.xs }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: Spacing.xs,
+          }}
+        >
           {hasDocument ? (
-            <Feather name="check-circle" size={16} color={ComeYaColors.success} />
+            <Feather
+              name="check-circle"
+              size={16}
+              color={ComeYaColors.success}
+            />
           ) : (
             <Feather name="circle" size={16} color={theme.textSecondary} />
           )}
-          <ThemedText type="body" style={{ marginLeft: Spacing.xs, color: theme.text }}>
+          <ThemedText
+            type="body"
+            style={{ marginLeft: Spacing.xs, color: theme.text }}
+          >
             {label}
           </ThemedText>
         </View>
-        
+
         {/* Document thumbnail preview */}
         {hasDocument && documentImageUrl ? (
-          <Pressable 
-            onPress={() => { setPreviewImage(documentImageUrl); setShowPreviewModal(true); }}
+          <Pressable
+            onPress={() => {
+              setPreviewImage(documentImageUrl);
+              setShowPreviewModal(true);
+            }}
             style={{ marginBottom: Spacing.sm }}
           >
-            <Image 
+            <Image
               source={{ uri: documentImageUrl }}
-              style={{ width: "100%", height: 120, borderRadius: BorderRadius.md }}
+              style={{
+                width: "100%",
+                height: 120,
+                borderRadius: BorderRadius.md,
+              }}
               contentFit="cover"
             />
-            <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 }}>
+            <View
+              style={{
+                position: "absolute",
+                bottom: 8,
+                right: 8,
+                backgroundColor: "rgba(0,0,0,0.6)",
+                borderRadius: 12,
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+              }}
+            >
               <Feather name="maximize-2" size={14} color="#fff" />
             </View>
           </Pressable>
         ) : null}
-        
+
         <Pressable
           onPress={() => pickDocumentImage(documentType)}
           disabled={isUploading}
@@ -369,7 +427,9 @@ const data = await apiResponse.json();
             justifyContent: "center",
             padding: Spacing.sm,
             borderRadius: BorderRadius.md,
-            backgroundColor: isUploading ? theme.backgroundSecondary : ComeYaColors.primaryLight,
+            backgroundColor: isUploading
+              ? theme.backgroundSecondary
+              : ComeYaColors.primaryLight,
             borderWidth: 1,
             borderColor: isUploading ? theme.border : ComeYaColors.primary,
           }}
@@ -378,12 +438,15 @@ const data = await apiResponse.json();
             <ActivityIndicator size="small" color={ComeYaColors.primary} />
           ) : (
             <>
-              <Feather 
-                name={hasDocument ? "refresh-cw" : "upload"} 
-                size={16} 
-                color={ComeYaColors.primary} 
+              <Feather
+                name={hasDocument ? "refresh-cw" : "upload"}
+                size={16}
+                color={ComeYaColors.primary}
               />
-              <ThemedText type="caption" style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}>
+              <ThemedText
+                type="caption"
+                style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+              >
                 {hasDocument ? "Actualizar" : "Subir"}
               </ThemedText>
             </>
@@ -396,21 +459,30 @@ const data = await apiResponse.json();
   useEffect(() => {
     const loadSubscription = async () => {
       try {
-        const res = await apiRequest("GET", "/api/subscriptions/my-subscription");
+        const res = await apiRequest(
+          "GET",
+          "/api/subscriptions/my-subscription",
+        );
         const data = await res.json();
         if (data.subscription) setSubscription(data.subscription);
-      } catch { /* silencioso */ }
+      } catch {
+        /* silencioso */
+      }
     };
     loadSubscription();
   }, []);
 
-const saveProfile = async () => {
-    if (!editName.trim()) { showToast("El nombre es requerido", "error"); return; }
+  const saveProfile = async () => {
+    if (!editName.trim()) {
+      showToast("El nombre es requerido", "error");
+      return;
+    }
     setIsSavingProfile(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const isDriverOrBusiness = user?.role === "delivery_driver" || user?.role === "business_owner";
-      
+      const isDriverOrBusiness =
+        user?.role === "delivery_driver" || user?.role === "business_owner";
+
       const res = await apiRequest("PUT", "/api/users/profile", {
         name: editName.trim(),
         email: editEmail.trim(),
@@ -418,13 +490,22 @@ const saveProfile = async () => {
       });
       const data = await res.json();
       if (data.success || data.user) {
-        // Si es driver o negocio,resetear verificación si cambió información crítica (DNI)
+        // Si es driver o negocio,resetear verificaciï¿½n si cambiï¿½ informaciï¿½n crï¿½tica (DNI)
         if (isDriverOrBusiness && editDni.trim()) {
           try {
-            await apiRequest("POST", `/api/users/${user?.id}/reset-verification`);
-            showToast("Perfil actualizado. Tu verificación está en revisión.", "success");
+            await apiRequest(
+              "POST",
+              `/api/users/${user?.id}/reset-verification`,
+            );
+            showToast(
+              "Perfil actualizado. Tu verificaciï¿½n estï¿½ en revisiï¿½n.",
+              "success",
+            );
           } catch {
-            showToast("Perfil actualizado. Contacta soporte para re-verificar.", "warning");
+            showToast(
+              "Perfil actualizado. Contacta soporte para re-verificar.",
+              "warning",
+            );
           }
         } else {
           await updateUser({ name: editName.trim(), email: editEmail.trim() });
@@ -435,7 +516,7 @@ const saveProfile = async () => {
         showToast(data.message || "Error al actualizar perfil", "error");
       }
     } catch {
-      showToast("Error de conexión", "error");
+      showToast("Error de conexiï¿½n", "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -443,10 +524,15 @@ const saveProfile = async () => {
 
   const changePassword = async () => {
     if (!editCurrentPassword || !editNewPassword) {
-      showToast("Completa todos los campos", "error"); return;
+      showToast("Completa todos los campos", "error");
+      return;
     }
     if (editNewPassword.length < 6) {
-      showToast("La nueva contraseña debe tener al menos 6 caracteres", "error"); return;
+      showToast(
+        "La nueva contraseï¿½a debe tener al menos 6 caracteres",
+        "error",
+      );
+      return;
     }
     setIsSavingProfile(true);
     try {
@@ -456,23 +542,23 @@ const saveProfile = async () => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Contraseña cambiada correctamente", "success");
+        showToast("Contraseï¿½a cambiada correctamente", "success");
         setEditCurrentPassword("");
         setEditNewPassword("");
         setShowEditProfileModal(false);
       } else {
-        showToast(data.message || "Error al cambiar contraseña", "error");
+        showToast(data.message || "Error al cambiar contraseï¿½a", "error");
       }
     } catch {
-      showToast("Error de conexión", "error");
-} finally {
+      showToast("Error de conexiï¿½n", "error");
+    } finally {
       setIsSavingProfile(false);
     }
   };
 
   const saveVehicle = async () => {
     if (!vehicleForm.vehicleType) {
-      showToast("Selecciona un tipo de vehículo", "error");
+      showToast("Selecciona un tipo de vehï¿½culo", "error");
       return;
     }
     setIsSavingVehicle(true);
@@ -486,19 +572,23 @@ const saveProfile = async () => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Vehículo guardado", "success");
+        showToast("Vehï¿½culo guardado", "success");
         setShowVehicleModal(false);
         // Actualizar driverStats local
-        setDriverStats(prev => prev ? {
-          ...prev,
-          vehicleType: vehicleForm.vehicleType,
-          vehiclePlate: vehicleForm.vehiclePlate.trim().toUpperCase(),
-        } : null);
+        setDriverStats((prev) =>
+          prev
+            ? {
+                ...prev,
+                vehicleType: vehicleForm.vehicleType,
+                vehiclePlate: vehicleForm.vehiclePlate.trim().toUpperCase(),
+              }
+            : null,
+        );
       } else {
-        showToast(data.message || "Error al guardar vehículo", "error");
+        showToast(data.message || "Error al guardar vehï¿½culo", "error");
       }
     } catch {
-      showToast("Error de conexión", "error");
+      showToast("Error de conexiï¿½n", "error");
     } finally {
       setIsSavingVehicle(false);
     }
@@ -540,8 +630,8 @@ const saveProfile = async () => {
         if (data.success && data.user) {
           if (data.user.profileImage) {
             const img = data.user.profileImage;
-            // Si es base64, usarla directamente sin añadir ?v=
-            if (img.startsWith('data:image/')) {
+            // Si es base64, usarla directamente sin aï¿½adir ?v=
+            if (img.startsWith("data:image/")) {
               setProfileImage(img);
             } else {
               const version = Date.now();
@@ -556,7 +646,7 @@ const saveProfile = async () => {
         console.log("Error loading profile from server:", error);
       }
     };
-    
+
     if (user) {
       loadProfileFromServer();
     }
@@ -565,7 +655,7 @@ const saveProfile = async () => {
   useEffect(() => {
     if (user?.profileImage) {
       const img = user.profileImage;
-      if (img.startsWith('data:image/')) {
+      if (img.startsWith("data:image/")) {
         setProfileImage(img);
       } else {
         const version = profileImageVersion || Date.now();
@@ -592,14 +682,14 @@ const saveProfile = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     // Web: usar input file directo
-    if (Platform.OS === 'web') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
+    if (Platform.OS === "web") {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
       input.onchange = async (e: any) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const { fileToBase64 } = await import('@/utils/uploadImageWeb');
+        const { fileToBase64 } = await import("@/utils/uploadImageWeb");
         const base64 = await fileToBase64(file);
         await uploadImage(URL.createObjectURL(file));
       };
@@ -609,7 +699,7 @@ const saveProfile = async () => {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showToast("Permisos de galería denegados", "error");
+      showToast("Permisos de galerï¿½a denegados", "error");
       return;
     }
 
@@ -632,7 +722,7 @@ const saveProfile = async () => {
     setIsUploadingImage(true);
     try {
       let imageData: string;
-      
+
       if (Platform.OS === "web") {
         // On web, fetch the blob and convert to base64
         const response = await fetch(uri);
@@ -657,7 +747,9 @@ const saveProfile = async () => {
       // Reject images larger than ~2 MB to avoid backend failures
       const estimatedBytes = Math.ceil(imageData.length * 0.75);
       if (estimatedBytes > 2 * 1024 * 1024) {
-        throw new Error("La imagen es muy pesada. Usa una foto mas ligera (~2MB max)");
+        throw new Error(
+          "La imagen es muy pesada. Usa una foto mas ligera (~2MB max)",
+        );
       }
 
       const apiResponse = await apiRequest("POST", "/api/user/profile-image", {
@@ -669,8 +761,8 @@ const saveProfile = async () => {
       if (data.success && data.profileImage) {
         const img = data.profileImage;
         let fullUrl: string;
-        
-        if (img.startsWith('data:image/')) {
+
+        if (img.startsWith("data:image/")) {
           // Base64: usar directamente, sin ?v=
           fullUrl = img;
         } else {
@@ -678,13 +770,13 @@ const saveProfile = async () => {
           setProfileImageVersion(version);
           fullUrl = `${resolveProfileImageUrl(img)}?v=${version}`;
         }
-        
+
         // Force image cache clear
         setProfileImage(null);
         setTimeout(() => {
           setProfileImage(fullUrl);
         }, 100);
-        
+
         await updateUser({ profileImage: img });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showToast("Imagen actualizada", "success");
@@ -696,7 +788,7 @@ const saveProfile = async () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const friendly = error?.message || "No se pudo subir la imagen";
       showToast(friendly, "error");
-      // Si el backend devolvió texto de error completo (ej. 400: ...), muéstralo para diagnóstico en dispositivo.
+      // Si el backend devolviï¿½ texto de error completo (ej. 400: ...), muï¿½stralo para diagnï¿½stico en dispositivo.
       if (error?.message && error.message.includes(":")) {
         showToast(error.message, "error");
       }
@@ -710,7 +802,7 @@ const saveProfile = async () => {
     try {
       await Share.share({
         message:
-      "Descubre ComeYa - Tu delivery local de confianza en Soria. Pide comida y productos del mercado con un toque. https://app.comeya.es",
+          "Descubre ComeYa - Tu delivery local de confianza en Soria. Pide comida y productos del mercado con un toque. https://app.comeya.es",
         title: "ComeYa - Delivery en Soria",
       });
     } catch (error) {
@@ -742,7 +834,7 @@ const saveProfile = async () => {
     }
 
     Linking.openURL(shareUrl).catch(() => {
-      console.log("No se pudo abrir la aplicación");
+      console.log("No se pudo abrir la aplicaciï¿½n");
     });
   };
 
@@ -757,15 +849,18 @@ const saveProfile = async () => {
     await logout();
   };
 
-useEffect(() => {
+  useEffect(() => {
     if (showNotificationsModal) {
       syncNotificationStatus();
     }
   }, [showNotificationsModal]);
 
-// Load professional data when edit modal opens (for drivers/business owners)
+  // Load professional data when edit modal opens (for drivers/business owners)
   useEffect(() => {
-    if (showEditProfileModal && (user?.role === "delivery_driver" || user?.role === "business_owner")) {
+    if (
+      showEditProfileModal &&
+      (user?.role === "delivery_driver" || user?.role === "business_owner")
+    ) {
       const loadProfessionalData = async () => {
         try {
           const res = await apiRequest("GET", "/api/users/profile/full");
@@ -835,7 +930,10 @@ useEffect(() => {
       }
 
       if (finalStatus !== "granted") {
-        showToast("Activa permisos de notificación en ajustes del sistema", "error");
+        showToast(
+          "Activa permisos de notificaciï¿½n en ajustes del sistema",
+          "error",
+        );
         return;
       }
       await updateSettings({ notificationsEnabled: true });
@@ -851,7 +949,7 @@ useEffect(() => {
       case "customer":
         return "Cliente";
       case "business_owner":
-        return "Dueño de Negocio";
+        return "Dueï¿½o de Negocio";
       case "delivery_driver":
         return "Repartidor";
       case "admin":
@@ -864,7 +962,10 @@ useEffect(() => {
 
   return (
     <LinearGradient
-      colors={[theme.gradientStart || '#FFFFFF', theme.gradientEnd || '#F5F5F5']}
+      colors={[
+        theme.gradientStart || "#FFFFFF",
+        theme.gradientEnd || "#F5F5F5",
+      ]}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
@@ -875,7 +976,8 @@ useEffect(() => {
           styles.scrollContent,
           {
             paddingTop: Spacing.md,
-            paddingBottom: Spacing.xl + Math.max(tabBarHeight, insets.bottom + 64),
+            paddingBottom:
+              Spacing.xl + Math.max(tabBarHeight, insets.bottom + 64),
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -887,8 +989,8 @@ useEffect(() => {
             Shadows.md,
           ]}
         >
-          <Pressable 
-            style={styles.avatarContainer} 
+          <Pressable
+            style={styles.avatarContainer}
             onPress={pickImage}
             disabled={isUploadingImage}
           >
@@ -903,7 +1005,12 @@ useEffect(() => {
               contentFit="cover"
             />
             {isUploadingImage ? (
-              <View style={[styles.editBadge, { backgroundColor: ComeYaColors.primary }]}>
+              <View
+                style={[
+                  styles.editBadge,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
+              >
                 <ActivityIndicator size="small" color="#FFFFFF" />
               </View>
             ) : (
@@ -921,7 +1028,7 @@ useEffect(() => {
             {user?.name || "Usuario"}
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-      {user?.phone || "Sin teléfono"}
+            {user?.phone || "Sin telï¿½fono"}
           </ThemedText>
           <Badge
             text={getRoleLabel()}
@@ -935,14 +1042,32 @@ useEffect(() => {
               style={{ marginTop: Spacing.xs }}
             />
           ) : null}
-          {subscription && (user?.role === "customer" || user?.role === "business_owner") && (
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: Spacing.sm, backgroundColor: ComeYaColors.primary + "18", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
-              <Feather name="star" size={13} color={ComeYaColors.primary} />
-              <ThemedText type="caption" style={{ color: ComeYaColors.primary, fontWeight: "700", marginLeft: 4 }}>
-                {subscription.planName || "Premium"} activo
-              </ThemedText>
-            </View>
-          )}
+          {subscription &&
+            (user?.role === "customer" || user?.role === "business_owner") && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: Spacing.sm,
+                  backgroundColor: ComeYaColors.primary + "18",
+                  borderRadius: 20,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                }}
+              >
+                <Feather name="star" size={13} color={ComeYaColors.primary} />
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: ComeYaColors.primary,
+                    fontWeight: "700",
+                    marginLeft: 4,
+                  }}
+                >
+                  {subscription.planName || "Premium"} activo
+                </ThemedText>
+              </View>
+            )}
         </View>
 
         <View
@@ -951,7 +1076,7 @@ useEffect(() => {
           <ThemedText type="h4" style={styles.sectionTitle}>
             Cuenta
           </ThemedText>
-<SettingsItem
+          <SettingsItem
             icon="user"
             label="Editar mi perfil"
             onPress={() => {
@@ -970,9 +1095,9 @@ useEffect(() => {
                   navigation.navigate("BusinessMore" as any);
                 }}
               />
-<SettingsItem
+              <SettingsItem
                 icon="clock"
-                label="Horarios de atención"
+                label="Horarios de atenciï¿½n"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   navigation.navigate("BusinessHours" as any);
@@ -988,12 +1113,12 @@ useEffect(() => {
               />
               <SettingsItem
                 icon="credit-card"
-                label="Métodos de pago"
+                label="Mï¿½todos de pago"
                 onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
               />
             </>
           )}
-        {/* Sección cliente: features avanzadas */}
+          {/* Secciï¿½n cliente: features avanzadas */}
           {user?.role === "customer" && (
             <>
               <SettingsItem
@@ -1006,8 +1131,8 @@ useEffect(() => {
               />
               <SettingsItem
                 icon="credit-card"
-                label="Métodos de pago"
-                value="Bizum · Tarjeta · PayPal"
+                label="Mï¿½todos de pago"
+                value="Bizum ï¿½ Tarjeta ï¿½ PayPal"
                 onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
               />
               <SettingsItem
@@ -1056,45 +1181,109 @@ useEffect(() => {
 
         {user?.role === "delivery_driver" && (
           <View
-            style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+            style={[
+              styles.section,
+              { backgroundColor: theme.card },
+              Shadows.sm,
+            ]}
           >
             <ThemedText type="h4" style={styles.sectionTitle}>
               Estado del Repartidor
             </ThemedText>
 
-            {/* Stats rápidas */}
+            {/* Stats rï¿½pidas */}
             {driverStats && (
-              <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
-                <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center" }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 10,
+                  paddingHorizontal: Spacing.lg,
+                  marginBottom: Spacing.md,
+                }}
+              >
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.backgroundSecondary,
+                    borderRadius: 12,
+                    padding: 12,
+                    alignItems: "center",
+                  }}
+                >
                   <ThemedText type="h3" style={{ color: "#FF9800" }}>
-                    {driverStats.rating > 0 ? (driverStats.rating / 10).toFixed(1) : "—"}
+                    {driverStats.rating > 0
+                      ? (driverStats.rating / 10).toFixed(1)
+                      : "ï¿½"}
                   </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>Rating</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    Rating
+                  </ThemedText>
                 </View>
-                <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center" }}>
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.backgroundSecondary,
+                    borderRadius: 12,
+                    padding: 12,
+                    alignItems: "center",
+                  }}
+                >
                   <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
                     {driverStats.totalDeliveries}
                   </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>Entregas</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    Entregas
+                  </ThemedText>
                 </View>
-                <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary, borderRadius: 12, padding: 12, alignItems: "center" }}>
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: theme.backgroundSecondary,
+                    borderRadius: 12,
+                    padding: 12,
+                    alignItems: "center",
+                  }}
+                >
                   <Feather
-                    name={driverStats.verificationStatus === "verified" ? "check-circle" : "clock"}
+                    name={
+                      driverStats.verificationStatus === "verified"
+                        ? "check-circle"
+                        : "clock"
+                    }
                     size={20}
-                    color={driverStats.verificationStatus === "verified" ? ComeYaColors.success : ComeYaColors.warning}
+                    color={
+                      driverStats.verificationStatus === "verified"
+                        ? ComeYaColors.success
+                        : ComeYaColors.warning
+                    }
                   />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
-                    {driverStats.verificationStatus === "verified" ? "Verificado" : "Pendiente"}
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginTop: 2 }}
+                  >
+                    {driverStats.verificationStatus === "verified"
+                      ? "Verificado"
+                      : "Pendiente"}
                   </ThemedText>
                 </View>
               </View>
             )}
 
-{/* Vehículo */}
-<SettingsItem
+            {/* Vehï¿½culo */}
+            <SettingsItem
               icon="truck"
-              label="Mi vehículo"
-              value={driverStats?.vehicleType ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` · ${driverStats.vehiclePlate}` : ""}` : "No registrado"}
+              label="Mi vehï¿½culo"
+              value={
+                driverStats?.vehicleType
+                  ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` ï¿½ ${driverStats.vehiclePlate}` : ""}`
+                  : "No registrado"
+              }
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 // Pre-fill form with existing data
@@ -1111,22 +1300,29 @@ useEffect(() => {
             <View style={styles.strikesContainer}>
               <View style={styles.strikesHeader}>
                 <View style={styles.strikesIconContainer}>
-                  <Feather 
-                    name="alert-triangle" 
-                    size={24} 
-                    color={driverStrikes > 0 ? ComeYaColors.warning : ComeYaColors.success} 
+                  <Feather
+                    name="alert-triangle"
+                    size={24}
+                    color={
+                      driverStrikes > 0
+                        ? ComeYaColors.warning
+                        : ComeYaColors.success
+                    }
                   />
                 </View>
                 <View style={styles.strikesInfo}>
                   <ThemedText type="body" style={{ fontWeight: "600" }}>
                     Strikes Acumulados
                   </ThemedText>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                    {driverStrikes === 0 
-                      ? "Sin strikes - Excelente trabajo" 
-                      : driverStrikes >= maxStrikes 
-                        ? "Cuenta en riesgo de suspensión"
-                        : `${maxStrikes - driverStrikes} strikes restantes antes de suspensión`}
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    {driverStrikes === 0
+                      ? "Sin strikes - Excelente trabajo"
+                      : driverStrikes >= maxStrikes
+                        ? "Cuenta en riesgo de suspensiï¿½n"
+                        : `${maxStrikes - driverStrikes} strikes restantes antes de suspensiï¿½n`}
                   </ThemedText>
                 </View>
               </View>
@@ -1137,23 +1333,47 @@ useEffect(() => {
                     style={[
                       styles.strikeIndicator,
                       {
-                        backgroundColor: index < driverStrikes ? ComeYaColors.error : theme.backgroundSecondary,
-                        borderColor: index < driverStrikes ? ComeYaColors.error : theme.border,
+                        backgroundColor:
+                          index < driverStrikes
+                            ? ComeYaColors.error
+                            : theme.backgroundSecondary,
+                        borderColor:
+                          index < driverStrikes
+                            ? ComeYaColors.error
+                            : theme.border,
                       },
                     ]}
                   >
                     {index < driverStrikes ? (
                       <Feather name="x" size={16} color="#FFF" />
                     ) : (
-                      <Feather name="check" size={16} color={ComeYaColors.success} />
+                      <Feather
+                        name="check"
+                        size={16}
+                        color={ComeYaColors.success}
+                      />
                     )}
                   </View>
                 ))}
               </View>
-              <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary }]}>
+              <View
+                style={[
+                  styles.strikeInfoCard,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
+              >
                 <Feather name="info" size={16} color={theme.textSecondary} />
-                <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-                  Los strikes se acumulan por cancelaciones injustificadas, quejas de clientes o incumplimiento de normas. Con 3 strikes tu cuenta puede ser suspendida.
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: theme.textSecondary,
+                    marginLeft: Spacing.sm,
+                    flex: 1,
+                  }}
+                >
+                  Los strikes se acumulan por cancelaciones injustificadas,
+                  quejas de clientes o incumplimiento de normas. Con 3 strikes
+                  tu cuenta puede ser suspendida.
                 </ThemedText>
               </View>
             </View>
@@ -1187,7 +1407,7 @@ useEffect(() => {
           <SettingsItem
             icon="globe"
             label="Idioma"
-            value="Español"
+            value="Espaï¿½ol"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowLanguageModal(true);
@@ -1199,7 +1419,7 @@ useEffect(() => {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <ThemedText type="h4" style={styles.sectionTitle}>
-            Más
+            Mï¿½s
           </ThemedText>
           <SettingsItem
             icon="share-2"
@@ -1242,7 +1462,7 @@ useEffect(() => {
           />
           <SettingsItem
             icon="file-text"
-            label="Términos y condiciones"
+            label="Tï¿½rminos y condiciones"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowTermsModal(true);
@@ -1250,7 +1470,7 @@ useEffect(() => {
           />
           <SettingsItem
             icon="shield"
-            label="Política de privacidad"
+            label="Polï¿½tica de privacidad"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowPrivacyModal(true);
@@ -1263,7 +1483,7 @@ useEffect(() => {
         >
           <SettingsItem
             icon="log-out"
-            label="Cerrar sesión"
+            label="Cerrar sesiï¿½n"
             onPress={handleLogout}
             danger
           />
@@ -1292,13 +1512,13 @@ useEffect(() => {
               <Feather name="log-out" size={28} color={ComeYaColors.error} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
-              Cerrar sesión
+              Cerrar sesiï¿½n
             </ThemedText>
             <ThemedText
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              ¿Estás seguro que deseas cerrar sesión?
+              ï¿½Estï¿½s seguro que deseas cerrar sesiï¿½n?
             </ThemedText>
             <View style={styles.modalButtons}>
               <Pressable
@@ -1321,7 +1541,7 @@ useEffect(() => {
                   type="body"
                   style={{ color: "#FFFFFF", fontWeight: "600" }}
                 >
-                  Cerrar sesión
+                  Cerrar sesiï¿½n
                 </ThemedText>
               </Pressable>
             </View>
@@ -1450,12 +1670,34 @@ useEffect(() => {
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              Recibe alertas sobre tus pedidos y promociones especiales. Si el permiso está bloqueado, debes activarlo en la configuración del sistema.
+              Recibe alertas sobre tus pedidos y promociones especiales. Si el
+              permiso estï¿½ bloqueado, debes activarlo en la configuraciï¿½n del
+              sistema.
             </ThemedText>
-            <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginBottom: Spacing.md }]}>
+            <View
+              style={[
+                styles.strikeInfoCard,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  marginBottom: Spacing.md,
+                },
+              ]}
+            >
               <Feather name="info" size={16} color={theme.textSecondary} />
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-                Estado del permiso: {notificationStatus === "granted" ? "Permitido" : notificationStatus === "denied" ? "Bloqueado" : "Sin solicitar"}
+              <ThemedText
+                type="caption"
+                style={{
+                  color: theme.textSecondary,
+                  marginLeft: Spacing.sm,
+                  flex: 1,
+                }}
+              >
+                Estado del permiso:{" "}
+                {notificationStatus === "granted"
+                  ? "Permitido"
+                  : notificationStatus === "denied"
+                    ? "Bloqueado"
+                    : "Sin solicitar"}
               </ThemedText>
             </View>
             <View style={styles.switchRow}>
@@ -1470,13 +1712,23 @@ useEffect(() => {
                   true: ComeYaColors.primaryLight,
                 }}
                 thumbColor={
-                  settings.notificationsEnabled ? ComeYaColors.primary : "#f4f3f4"
+                  settings.notificationsEnabled
+                    ? ComeYaColors.primary
+                    : "#f4f3f4"
                 }
               />
             </View>
             {notificationStatus === "denied" ? (
               <Pressable
-                style={[styles.modalButtonFull, { backgroundColor: theme.backgroundSecondary, borderWidth: 1, borderColor: theme.border, marginTop: Spacing.sm }]}
+                style={[
+                  styles.modalButtonFull,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    marginTop: Spacing.sm,
+                  },
+                ]}
                 onPress={() => Linking.openSettings()}
               >
                 <ThemedText type="body" style={{ color: theme.text }}>
@@ -1538,7 +1790,7 @@ useEffect(() => {
                   type="body"
                   style={{ color: ComeYaColors.primary, fontWeight: "600" }}
                 >
-                  Español
+                  Espaï¿½ol
                 </ThemedText>
                 <Feather
                   name="check"
@@ -1552,7 +1804,7 @@ useEffect(() => {
               type="small"
               style={[styles.comingSoon, { color: theme.textSecondary }]}
             >
-              Más idiomas próximamente...
+              Mï¿½s idiomas prï¿½ximamente...
             </ThemedText>
             <Pressable
               style={[
@@ -1586,7 +1838,7 @@ useEffect(() => {
               { borderBottomColor: theme.border },
             ]}
           >
-            <ThemedText type="h3">Términos y condiciones</ThemedText>
+            <ThemedText type="h3">Tï¿½rminos y condiciones</ThemedText>
             <Pressable
               style={[
                 styles.closeButton,
@@ -1607,79 +1859,110 @@ useEffect(() => {
             <ThemedText type="h4" style={styles.legalTitle}>
               Ultima actualizacion: Febrero 2026
             </ThemedText>
-            
-          <ThemedText type="body" style={styles.legalText}>
-              Bienvenido a ComeYa. Al utilizar nuestra aplicacion, aceptas estos terminos y condiciones. Por favor, leelos cuidadosamente.
+
+            <ThemedText type="body" style={styles.legalText}>
+              Bienvenido a ComeYa. Al utilizar nuestra aplicacion, aceptas estos
+              terminos y condiciones. Por favor, leelos cuidadosamente.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               1. Aceptacion de Terminos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Al descargar, instalar o usar la aplicacion ComeYa, confirmas que has leido, entendido y aceptas estar sujeto a estos Terminos y Condiciones. Si no estas de acuerdo, no uses la aplicacion.
+              Al descargar, instalar o usar la aplicacion ComeYa, confirmas que
+              has leido, entendido y aceptas estar sujeto a estos Terminos y
+              Condiciones. Si no estas de acuerdo, no uses la aplicacion.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               2. Descripcion del Servicio
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa es una plataforma de delivery local que conecta a clientes con negocios locales y repartidores en Soria, Espana. Facilitamos la compra y entrega de alimentos, productos de mercado y otros articulos de negocios participantes.
+              ComeYa es una plataforma de delivery local que conecta a clientes
+              con negocios locales y repartidores en Soria, Espana. Facilitamos
+              la compra y entrega de alimentos, productos de mercado y otros
+              articulos de negocios participantes.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               3. Registro y Cuenta
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para usar ComeYa debes registrarte con un numero de telefono valido espanol (+34). Eres responsable de mantener la confidencialidad de tu cuenta y de todas las actividades que ocurran bajo ella. Debes proporcionar informacion veraz y actualizada.
+              Para usar ComeYa debes registrarte con un numero de telefono
+              valido espanol (+34). Eres responsable de mantener la
+              confidencialidad de tu cuenta y de todas las actividades que
+              ocurran bajo ella. Debes proporcionar informacion veraz y
+              actualizada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               4. Pedidos y Pagos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Los precios mostrados incluyen IVA. Los cargos de envio se calculan segun la distancia y se muestran antes de confirmar tu pedido. Aceptamos pagos con tarjeta de credito/debito, Bizum y efectivo. Los pedidos pueden cancelarse sin penalizacion dentro de los primeros 60 segundos.
+              Los precios mostrados incluyen IVA. Los cargos de envio se
+              calculan segun la distancia y se muestran antes de confirmar tu
+              pedido. Aceptamos pagos con tarjeta de credito/debito, Bizum y
+              efectivo. Los pedidos pueden cancelarse sin penalizacion dentro de
+              los primeros 60 segundos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               5. Entregas
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Los tiempos de entrega son estimados y pueden variar segun la demanda, condiciones climaticas y trafico en Soria. ComeYa no se hace responsable por retrasos fuera de nuestro control. Debes estar disponible para recibir tu pedido en la direccion indicada.
+              Los tiempos de entrega son estimados y pueden variar segun la
+              demanda, condiciones climaticas y trafico en Soria. ComeYa no se
+              hace responsable por retrasos fuera de nuestro control. Debes
+              estar disponible para recibir tu pedido en la direccion indicada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               6. Cancelaciones y Reembolsos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Puedes cancelar tu pedido sin cargo dentro de los primeros 60 segundos. Despues de este periodo, pueden aplicar cargos segun el estado del pedido. Los reembolsos se procesan en 5-10 dias habiles al metodo de pago original.
+              Puedes cancelar tu pedido sin cargo dentro de los primeros 60
+              segundos. Despues de este periodo, pueden aplicar cargos segun el
+              estado del pedido. Los reembolsos se procesan en 5-10 dias habiles
+              al metodo de pago original.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               7. Conducta del Usuario
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Te comprometes a usar ComeYa de manera responsable y respetuosa. Esta prohibido el uso fraudulento, el acoso a repartidores o negocios, y cualquier actividad ilegal. ComeYa se reserva el derecho de suspender cuentas que violen estas normas.
+              Te comprometes a usar ComeYa de manera responsable y respetuosa.
+              Esta prohibido el uso fraudulento, el acoso a repartidores o
+              negocios, y cualquier actividad ilegal. ComeYa se reserva el
+              derecho de suspender cuentas que violen estas normas.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               8. Limitacion de Responsabilidad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa actua como intermediario entre clientes, negocios y repartidores en Soria. No somos responsables por la calidad de los productos, alergenos no declarados, o problemas de salud derivados del consumo. Los negocios son responsables de la preparacion y calidad de sus productos.
+              ComeYa actua como intermediario entre clientes, negocios y
+              repartidores en Soria. No somos responsables por la calidad de los
+              productos, alergenos no declarados, o problemas de salud derivados
+              del consumo. Los negocios son responsables de la preparacion y
+              calidad de sus productos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               9. Modificaciones
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa puede modificar estos terminos en cualquier momento. Te notificaremos de cambios significativos. El uso continuado de la aplicacion constituye aceptacion de los nuevos terminos.
+              ComeYa puede modificar estos terminos en cualquier momento. Te
+              notificaremos de cambios significativos. El uso continuado de la
+              aplicacion constituye aceptacion de los nuevos terminos.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               10. Contacto
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para dudas o comentarios sobre estos terminos, contactanos a traves de la seccion de Ayuda y Soporte en la aplicacion o al correo soporte@comeya.es
+              Para dudas o comentarios sobre estos terminos, contactanos a
+              traves de la seccion de Ayuda y Soporte en la aplicacion o al
+              correo soporte@comeya.es
             </ThemedText>
           </ScrollView>
         </View>
@@ -1725,77 +2008,110 @@ useEffect(() => {
             </ThemedText>
 
             <ThemedText type="body" style={styles.legalText}>
-              En ComeYa, tu privacidad es nuestra prioridad. Esta politica describe como recopilamos, usamos y protegemos tu informacion personal conforme al Reglamento General de Proteccion de Datos (RGPD).
+              En ComeYa, tu privacidad es nuestra prioridad. Esta politica
+              describe como recopilamos, usamos y protegemos tu informacion
+              personal conforme al Reglamento General de Proteccion de Datos
+              (RGPD).
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               1. Datos que Recopilamos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Recopilamos: nombre completo, numero de telefono espanol (+34), direcciones de entrega en Soria, historial de pedidos, datos de pago (procesados de forma segura por Stripe), ubicacion GPS (solo repartidores durante entregas activas), y preferencias de usuario.
+              Recopilamos: nombre completo, numero de telefono espanol (+34),
+              direcciones de entrega en Soria, historial de pedidos, datos de
+              pago (procesados de forma segura por Stripe), ubicacion GPS (solo
+              repartidores durante entregas activas), y preferencias de usuario.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               2. Uso de la Informacion
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Usamos tu informacion para: procesar y entregar tus pedidos en Soria, verificar tu identidad, procesar pagos, enviarte notificaciones sobre tus pedidos, mejorar nuestros servicios, y cumplir con obligaciones legales en Espana.
+              Usamos tu informacion para: procesar y entregar tus pedidos en
+              Soria, verificar tu identidad, procesar pagos, enviarte
+              notificaciones sobre tus pedidos, mejorar nuestros servicios, y
+              cumplir con obligaciones legales en Espana.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               3. Terceros con Acceso a tus Datos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Compartimos datos minimos con: negocios locales de Soria (nombre y direccion para preparar pedidos), repartidores (nombre y direccion de entrega), Stripe (pagos), Twilio (SMS de verificacion), Google Maps (rutas), y Cloudinary (imagenes). No vendemos tus datos a terceros.
+              Compartimos datos minimos con: negocios locales de Soria (nombre y
+              direccion para preparar pedidos), repartidores (nombre y direccion
+              de entrega), Stripe (pagos), Twilio (SMS de verificacion), Google
+              Maps (rutas), y Cloudinary (imagenes). No vendemos tus datos a
+              terceros.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               4. Seguridad de Datos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Implementamos: contrasenas cifradas con bcrypt, comunicaciones HTTPS/TLS, tokens JWT con expiracion automatica, rate limiting anti-fuerza bruta, y auditoria de accesos. En caso de brecha, te notificaremos en 72 horas segun el RGPD.
+              Implementamos: contrasenas cifradas con bcrypt, comunicaciones
+              HTTPS/TLS, tokens JWT con expiracion automatica, rate limiting
+              anti-fuerza bruta, y auditoria de accesos. En caso de brecha, te
+              notificaremos en 72 horas segun el RGPD.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               5. Tus Derechos (RGPD)
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Como usuario en la Union Europea tienes derecho a: acceder a tus datos, rectificar informacion incorrecta, solicitar la eliminacion ("derecho al olvido"), portabilidad de datos (JSON/CSV), oponerte al tratamiento, y presentar reclamacion ante la AEPD (aepd.es). Respondemos en maximo 30 dias.
+              Como usuario en la Union Europea tienes derecho a: acceder a tus
+              datos, rectificar informacion incorrecta, solicitar la eliminacion
+              ("derecho al olvido"), portabilidad de datos (JSON/CSV), oponerte
+              al tratamiento, y presentar reclamacion ante la AEPD (aepd.es).
+              Respondemos en maximo 30 dias.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               6. Retencion de Datos
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Datos de cuenta activa: mientras mantengas tu cuenta. Historial de pedidos: 5 anos (obligacion fiscal). Ubicacion GPS: maximo 30 dias tras la entrega. Cuenta eliminada: datos anonimizados en 30 dias, salvo los requeridos por ley espanola.
+              Datos de cuenta activa: mientras mantengas tu cuenta. Historial de
+              pedidos: 5 anos (obligacion fiscal). Ubicacion GPS: maximo 30 dias
+              tras la entrega. Cuenta eliminada: datos anonimizados en 30 dias,
+              salvo los requeridos por ley espanola.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               7. Permisos de la App Android
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              La app solicita: Ubicacion (para repartidores y mostrar negocios cercanos), Camara (escanear QR y fotos de perfil), Almacenamiento (seleccionar imagenes), Notificaciones (alertas de pedidos). Puedes revocar permisos en Ajustes del dispositivo.
+              La app solicita: Ubicacion (para repartidores y mostrar negocios
+              cercanos), Camara (escanear QR y fotos de perfil), Almacenamiento
+              (seleccionar imagenes), Notificaciones (alertas de pedidos).
+              Puedes revocar permisos en Ajustes del dispositivo.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               8. Menores de Edad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              ComeYa no esta dirigido a menores de 16 anos. No recopilamos intencionalmente informacion de menores. Si eres padre/madre y crees que tu hijo ha proporcionado datos, contactanos para eliminarlos inmediatamente.
+              ComeYa no esta dirigido a menores de 16 anos. No recopilamos
+              intencionalmente informacion de menores. Si eres padre/madre y
+              crees que tu hijo ha proporcionado datos, contactanos para
+              eliminarlos inmediatamente.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
               9. Cambios a esta Politica
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Podemos actualizar esta politica periodicamente. Te notificaremos de cambios significativos a traves de la aplicacion o por SMS. El uso continuado implica aceptacion de la politica actualizada.
+              Podemos actualizar esta politica periodicamente. Te notificaremos
+              de cambios significativos a traves de la aplicacion o por SMS. El
+              uso continuado implica aceptacion de la politica actualizada.
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              10. Contacto — Privacidad
+              10. Contacto ï¿½ Privacidad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
-              Para ejercer tus derechos o resolver dudas sobre privacidad, contactanos a traves de Ayuda y Soporte en la app o al correo: privacidad@comeya.es
+              Para ejercer tus derechos o resolver dudas sobre privacidad,
+              contactanos a traves de Ayuda y Soporte en la app o al correo:
+              privacidad@comeya.es
             </ThemedText>
           </ScrollView>
         </View>
@@ -1808,41 +2124,101 @@ useEffect(() => {
         onRequestClose={() => setShowEditProfileModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowEditProfileModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowEditProfileModal(false)}
+          />
           <View style={[styles.editModalCard, { backgroundColor: theme.card }]}>
             {/* Header */}
-            <View style={[styles.editModalHeader, { borderBottomColor: theme.border }]}>
+            <View
+              style={[
+                styles.editModalHeader,
+                { borderBottomColor: theme.border },
+              ]}
+            >
               <ThemedText type="h3">Editar perfil</ThemedText>
-              <Pressable onPress={() => setShowEditProfileModal(false)} style={styles.editModalClose}>
+              <Pressable
+                onPress={() => setShowEditProfileModal(false)}
+                style={styles.editModalClose}
+              >
                 <Feather name="x" size={22} color={theme.text} />
               </Pressable>
             </View>
-{/* Tabs */}
-<View style={[styles.editModalTabs, { borderBottomColor: theme.border }]}>
-              {(["datos", "seguridad", "profesion"] as const).map(tab => (
+            {/* Tabs */}
+            <View
+              style={[
+                styles.editModalTabs,
+                { borderBottomColor: theme.border },
+              ]}
+            >
+              {(["datos", "seguridad", "profesion"] as const).map((tab) => (
                 <Pressable
                   key={tab}
                   onPress={() => setEditTab(tab)}
-                  style={[styles.editModalTab, editTab === tab && { borderBottomColor: ComeYaColors.primary, borderBottomWidth: 2 }]}
+                  style={[
+                    styles.editModalTab,
+                    editTab === tab && {
+                      borderBottomColor: ComeYaColors.primary,
+                      borderBottomWidth: 2,
+                    },
+                  ]}
                 >
-                  <ThemedText type="body" style={{ fontWeight: "600", color: editTab === tab ? ComeYaColors.primary : theme.textSecondary }}>
-                    {tab === "datos" ? "Datos" : tab === "seguridad" ? "Seguridad" : "Profesión"}
+                  <ThemedText
+                    type="body"
+                    style={{
+                      fontWeight: "600",
+                      color:
+                        editTab === tab
+                          ? ComeYaColors.primary
+                          : theme.textSecondary,
+                    }}
+                  >
+                    {tab === "datos"
+                      ? "Datos"
+                      : tab === "seguridad"
+                        ? "Seguridad"
+                        : "Profesiï¿½n"}
                   </ThemedText>
                 </Pressable>
               ))}
             </View>
-<ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.editModalBody}
+              keyboardShouldPersistTaps="handled"
+            >
               {editTab === "datos" ? (
                 <>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Nombre</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginBottom: 4 }}
+                  >
+                    Nombre
+                  </ThemedText>
                   <TextInput
                     value={editName}
                     onChangeText={setEditName}
                     placeholder="Tu nombre"
                     placeholderTextColor={theme.textSecondary}
-                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                    style={[
+                      styles.editInput,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
                   />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Email</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: theme.textSecondary,
+                      marginBottom: 4,
+                      marginTop: 12,
+                    }}
+                  >
+                    Email
+                  </ThemedText>
                   <TextInput
                     value={editEmail}
                     onChangeText={setEditEmail}
@@ -1850,141 +2226,294 @@ useEffect(() => {
                     placeholderTextColor={theme.textSecondary}
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                    style={[
+                      styles.editInput,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
                   />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>DNI / Cédula</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: theme.textSecondary,
+                      marginBottom: 4,
+                      marginTop: 12,
+                    }}
+                  >
+                    DNI / Cï¿½dula
+                  </ThemedText>
                   <TextInput
                     value={editDni}
                     onChangeText={setEditDni}
-                    placeholder="Número de documento"
+                    placeholder="Nï¿½mero de documento"
                     placeholderTextColor={theme.textSecondary}
-                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                    style={[
+                      styles.editInput,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
                   />
                   <Pressable
                     onPress={saveProfile}
                     disabled={isSavingProfile}
-                    style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingProfile ? 0.7 : 1 }]}
+                    style={[
+                      styles.editSaveBtn,
+                      {
+                        backgroundColor: ComeYaColors.primary,
+                        opacity: isSavingProfile ? 0.7 : 1,
+                      },
+                    ]}
                   >
-                    {isSavingProfile
-                      ? <ActivityIndicator color="#fff" size="small" />
-                      : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar cambios</ThemedText>
-                    }
+                    {isSavingProfile ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <ThemedText
+                        type="body"
+                        style={{ color: "#fff", fontWeight: "700" }}
+                      >
+                        Guardar cambios
+                      </ThemedText>
+                    )}
                   </Pressable>
                 </>
               ) : editTab === "seguridad" ? (
                 <>
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Contraseña actual</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginBottom: 4 }}
+                  >
+                    Contraseï¿½a actual
+                  </ThemedText>
                   <TextInput
                     value={editCurrentPassword}
                     onChangeText={setEditCurrentPassword}
-                    placeholder="••••••••"
+                    placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
                     placeholderTextColor={theme.textSecondary}
                     secureTextEntry
-                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                    style={[
+                      styles.editInput,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
                   />
-                  <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Nueva contraseña</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: theme.textSecondary,
+                      marginBottom: 4,
+                      marginTop: 12,
+                    }}
+                  >
+                    Nueva contraseï¿½a
+                  </ThemedText>
                   <TextInput
                     value={editNewPassword}
                     onChangeText={setEditNewPassword}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="Mï¿½nimo 6 caracteres"
                     placeholderTextColor={theme.textSecondary}
                     secureTextEntry
-                    style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                    style={[
+                      styles.editInput,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
                   />
                   <Pressable
                     onPress={changePassword}
                     disabled={isSavingProfile}
-                    style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingProfile ? 0.7 : 1 }]}
+                    style={[
+                      styles.editSaveBtn,
+                      {
+                        backgroundColor: ComeYaColors.primary,
+                        opacity: isSavingProfile ? 0.7 : 1,
+                      },
+                    ]}
                   >
-                    {isSavingProfile
-                      ? <ActivityIndicator color="#fff" size="small" />
-                      : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Cambiar contraseña</ThemedText>
-                    }
+                    {isSavingProfile ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <ThemedText
+                        type="body"
+                        style={{ color: "#fff", fontWeight: "700" }}
+                      >
+                        Cambiar contraseï¿½a
+                      </ThemedText>
+                    )}
                   </Pressable>
                 </>
-) : (
-                // Profesión tab - solo documentos personales para drivers/business owners
-                // Los datos del vehículo están en "Mi vehículo"
+              ) : (
+                // Profesiï¿½n tab - solo documentos personales para drivers/business owners
+                // Los datos del vehï¿½culo estï¿½n en "Mi vehï¿½culo"
                 <>
-                  <ThemedText type="body" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
-                    {user?.role === "delivery_driver" 
-                      ? "Para gestionar tu vehículo y sus documentos, ve a 'Mi vehículo' en la pantalla de perfil."
-                      : "Gestiona tus documentos de verificación abajo."}
+                  <ThemedText
+                    type="body"
+                    style={{
+                      color: theme.textSecondary,
+                      marginBottom: Spacing.md,
+                    }}
+                  >
+                    {user?.role === "delivery_driver"
+                      ? "Para gestionar tu vehï¿½culo y sus documentos, ve a 'Mi vehï¿½culo' en la pantalla de perfil."
+                      : "Gestiona tus documentos de verificaciï¿½n abajo."}
                   </ThemedText>
-                  
+
                   {user?.role === "business_owner" && (
                     <>
-                      <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>Documentos</ThemedText>
-                      <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginBottom: Spacing.md }]}>
-                        <Feather name="info" size={16} color={theme.textSecondary} />
-                        <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-                          Aquí puedes ver el estado de tus documentos. Contacta soporte si necesitas actualizar algo.
+                      <ThemedText
+                        type="h4"
+                        style={{ marginBottom: Spacing.md }}
+                      >
+                        Documentos
+                      </ThemedText>
+                      <View
+                        style={[
+                          styles.strikeInfoCard,
+                          {
+                            backgroundColor: theme.backgroundSecondary,
+                            marginBottom: Spacing.md,
+                          },
+                        ]}
+                      >
+                        <Feather
+                          name="info"
+                          size={16}
+                          color={theme.textSecondary}
+                        />
+                        <ThemedText
+                          type="caption"
+                          style={{
+                            color: theme.textSecondary,
+                            marginLeft: Spacing.sm,
+                            flex: 1,
+                          }}
+                        >
+                          Aquï¿½ puedes ver el estado de tus documentos. Contacta
+                          soporte si necesitas actualizar algo.
                         </ThemedText>
                       </View>
                     </>
                   )}
-                  
-{/* Document upload section - Drivers - SOLO documentos personales */}
+
+                  {/* Document upload section - Drivers - SOLO documentos personales */}
                   {user?.role === "delivery_driver" && (
                     <>
-                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos personales</ThemedText>
-                      
-                      <DocumentUploadButton 
-                        documentType="idDocument" 
-                        label="DNI / Identificación (frente)" 
+                      <ThemedText
+                        type="h4"
+                        style={{
+                          marginTop: Spacing.lg,
+                          marginBottom: Spacing.md,
+                        }}
+                      >
+                        Documentos personales
+                      </ThemedText>
+
+                      <DocumentUploadButton
+                        documentType="idDocument"
+                        label="DNI / Identificaciï¿½n (frente)"
                         currentUrl={professionalData?.idDocumentUrl}
                       />
-                      <DocumentUploadButton 
-                        documentType="idDocumentBack" 
-                        label="DNI / Identificación (reverso)" 
+                      <DocumentUploadButton
+                        documentType="idDocumentBack"
+                        label="DNI / Identificaciï¿½n (reverso)"
                         currentUrl={professionalData?.idDocumentBackUrl}
                       />
-                      <DocumentUploadButton 
-                        documentType="autonomo" 
-                        label="Documento de Autónomo" 
+                      <DocumentUploadButton
+                        documentType="autonomo"
+                        label="Documento de Autï¿½nomo"
                         currentUrl={professionalData?.autonomoDocumentUrl}
                       />
-                      <View style={[styles.strikeInfoCard, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.md }]}>
-                        <Feather name="truck" size={16} color={theme.textSecondary} />
-                        <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: Spacing.sm, flex: 1 }}>
-                          Los documentos del vehículo están en "Mi vehículo"
+                      <View
+                        style={[
+                          styles.strikeInfoCard,
+                          {
+                            backgroundColor: theme.backgroundSecondary,
+                            marginTop: Spacing.md,
+                          },
+                        ]}
+                      >
+                        <Feather
+                          name="truck"
+                          size={16}
+                          color={theme.textSecondary}
+                        />
+                        <ThemedText
+                          type="caption"
+                          style={{
+                            color: theme.textSecondary,
+                            marginLeft: Spacing.sm,
+                            flex: 1,
+                          }}
+                        >
+                          Los documentos del vehï¿½culo estï¿½n en "Mi vehï¿½culo"
                         </ThemedText>
                       </View>
                     </>
                   )}
-                  
+
                   {/* Document upload section - Business owners */}
                   {user?.role === "business_owner" && (
                     <>
-                      <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos</ThemedText>
-                      
-                      <DocumentUploadButton 
-                        documentType="idDocument" 
-                        label="DNI / Identificación" 
+                      <ThemedText
+                        type="h4"
+                        style={{
+                          marginTop: Spacing.lg,
+                          marginBottom: Spacing.md,
+                        }}
+                      >
+                        Documentos
+                      </ThemedText>
+
+                      <DocumentUploadButton
+                        documentType="idDocument"
+                        label="DNI / Identificaciï¿½n"
                         currentUrl={professionalData?.idDocumentUrl}
                       />
-                      <DocumentUploadButton 
-                        documentType="autonomo" 
-                        label="Documento de Autónomo" 
+                      <DocumentUploadButton
+                        documentType="autonomo"
+                        label="Documento de Autï¿½nomo"
                         currentUrl={professionalData?.autonomoDocumentUrl}
                       />
                     </>
                   )}
-                  
+
                   {/* Show save button only for drivers (they can edit vehicle) */}
                   {user?.role === "delivery_driver" && (
                     <Pressable
                       onPress={saveVehicle}
                       disabled={isSavingVehicle}
-                      style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingVehicle ? 0.7 : 1 }]}
+                      style={[
+                        styles.editSaveBtn,
+                        {
+                          backgroundColor: ComeYaColors.primary,
+                          opacity: isSavingVehicle ? 0.7 : 1,
+                        },
+                      ]}
                     >
-                      {isSavingVehicle
-                        ? <ActivityIndicator color="#fff" size="small" />
-                        : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar vehículo</ThemedText>
-                      }
+                      {isSavingVehicle ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <ThemedText
+                          type="body"
+                          style={{ color: "#fff", fontWeight: "700" }}
+                        >
+                          Guardar vehï¿½culo
+                        </ThemedText>
+                      )}
                     </Pressable>
                   )}
-                  
+
                   {/* Info for business owners */}
                   {user?.role === "business_owner" && (
                     <Pressable
@@ -1992,9 +2521,17 @@ useEffect(() => {
                         setShowEditProfileModal(false);
                         navigation.navigate("Support" as any);
                       }}
-                      style={[styles.editSaveBtn, { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.lg }]}
+                      style={[
+                        styles.editSaveBtn,
+                        {
+                          backgroundColor: theme.backgroundSecondary,
+                          marginTop: Spacing.lg,
+                        },
+                      ]}
                     >
-                      <ThemedText type="body" style={{ color: theme.text }}>Contactar soporte</ThemedText>
+                      <ThemedText type="body" style={{ color: theme.text }}>
+                        Contactar soporte
+                      </ThemedText>
                     </Pressable>
                   )}
                 </>
@@ -2004,7 +2541,7 @@ useEffect(() => {
         </View>
       </Modal>
 
-<Modal
+      <Modal
         visible={showAddressesModal}
         transparent
         animationType="fade"
@@ -2030,7 +2567,7 @@ useEffect(() => {
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              Esta función estará disponible próximamente. Podrás gestionar tus
+              Esta funciï¿½n estarï¿½ disponible prï¿½ximamente. Podrï¿½s gestionar tus
               direcciones de entrega favoritas.
             </ThemedText>
             <Pressable
@@ -2051,7 +2588,7 @@ useEffect(() => {
         </Pressable>
       </Modal>
 
-{/* Vehicle Modal */}
+      {/* Vehicle Modal */}
       <Modal
         visible={showVehicleModal}
         transparent
@@ -2059,122 +2596,259 @@ useEffect(() => {
         onRequestClose={() => setShowVehicleModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setShowVehicleModal(false)} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowVehicleModal(false)}
+          />
           <View style={[styles.editModalCard, { backgroundColor: theme.card }]}>
-            <View style={[styles.editModalHeader, { borderBottomColor: theme.border }]}>
-              <ThemedText type="h3">Mi vehículo</ThemedText>
-              <Pressable onPress={() => setShowVehicleModal(false)} style={styles.editModalClose}>
+            <View
+              style={[
+                styles.editModalHeader,
+                { borderBottomColor: theme.border },
+              ]}
+            >
+              <ThemedText type="h3">Mi vehï¿½culo</ThemedText>
+              <Pressable
+                onPress={() => setShowVehicleModal(false)}
+                style={styles.editModalClose}
+              >
                 <Feather name="x" size={22} color={theme.text} />
               </Pressable>
             </View>
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalBody} keyboardShouldPersistTaps="handled">
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Tipo de vehículo *</ThemedText>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.editModalBody}
+              keyboardShouldPersistTaps="handled"
+            >
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: 4 }}
+              >
+                Tipo de vehï¿½culo *
+              </ThemedText>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-                {["car", "motorcycle", "bicycle"].map(type => (
+                {["car", "motorcycle", "bicycle"].map((type) => (
                   <Pressable
                     key={type}
-                    onPress={() => setVehicleForm(f => ({ ...f, vehicleType: type }))}
+                    onPress={() =>
+                      setVehicleForm((f) => ({ ...f, vehicleType: type }))
+                    }
                     style={{
                       flex: 1,
                       padding: 12,
                       borderRadius: 12,
-                      backgroundColor: vehicleForm.vehicleType === type ? ComeYaColors.primaryLight : theme.backgroundSecondary,
+                      backgroundColor:
+                        vehicleForm.vehicleType === type
+                          ? ComeYaColors.primaryLight
+                          : theme.backgroundSecondary,
                       borderWidth: 2,
-                      borderColor: vehicleForm.vehicleType === type ? ComeYaColors.primary : "transparent",
+                      borderColor:
+                        vehicleForm.vehicleType === type
+                          ? ComeYaColors.primary
+                          : "transparent",
                       alignItems: "center",
                     }}
                   >
                     <Feather
-                      name={type === "car" ? "truck" : type === "motorcycle" ? "zap" : "wind"}
+                      name={
+                        type === "car"
+                          ? "truck"
+                          : type === "motorcycle"
+                            ? "zap"
+                            : "wind"
+                      }
                       size={24}
-                      color={vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.textSecondary}
+                      color={
+                        vehicleForm.vehicleType === type
+                          ? ComeYaColors.primary
+                          : theme.textSecondary
+                      }
                     />
-                    <ThemedText type="caption" style={{ color: vehicleForm.vehicleType === type ? ComeYaColors.primary : theme.text, marginTop: 4 }}>
-                      {type === "car" ? "Coche" : type === "motorcycle" ? "Moto" : "Bici"}
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color:
+                          vehicleForm.vehicleType === type
+                            ? ComeYaColors.primary
+                            : theme.text,
+                        marginTop: 4,
+                      }}
+                    >
+                      {type === "car"
+                        ? "Coche"
+                        : type === "motorcycle"
+                          ? "Moto"
+                          : "Bici"}
                     </ThemedText>
                   </Pressable>
                 ))}
               </View>
-              
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4 }}>Marca</ThemedText>
+
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: 4 }}
+              >
+                Marca
+              </ThemedText>
               <TextInput
                 value={vehicleForm.vehicleBrand}
-                onChangeText={text => setVehicleForm(f => ({ ...f, vehicleBrand: text }))}
+                onChangeText={(text) =>
+                  setVehicleForm((f) => ({ ...f, vehicleBrand: text }))
+                }
                 placeholder="Ej: Toyota, Yamaha, Bianchi"
                 placeholderTextColor={theme.textSecondary}
-                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                style={[
+                  styles.editInput,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
               />
-              
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Modelo</ThemedText>
+
+              <ThemedText
+                type="caption"
+                style={{
+                  color: theme.textSecondary,
+                  marginBottom: 4,
+                  marginTop: 12,
+                }}
+              >
+                Modelo
+              </ThemedText>
               <TextInput
                 value={vehicleForm.vehicleModel}
-                onChangeText={text => setVehicleForm(f => ({ ...f, vehicleModel: text }))}
+                onChangeText={(text) =>
+                  setVehicleForm((f) => ({ ...f, vehicleModel: text }))
+                }
                 placeholder="Ej: Corolla, MT-07, Tornado"
                 placeholderTextColor={theme.textSecondary}
-                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                style={[
+                  styles.editInput,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
               />
-              
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Matrícula</ThemedText>
+
+              <ThemedText
+                type="caption"
+                style={{
+                  color: theme.textSecondary,
+                  marginBottom: 4,
+                  marginTop: 12,
+                }}
+              >
+                Matrï¿½cula
+              </ThemedText>
               <TextInput
                 value={vehicleForm.vehiclePlate}
-                onChangeText={text => setVehicleForm(f => ({ ...f, vehiclePlate: text }))}
+                onChangeText={(text) =>
+                  setVehicleForm((f) => ({ ...f, vehiclePlate: text }))
+                }
                 placeholder="Ej: 1234ABC"
                 placeholderTextColor={theme.textSecondary}
                 autoCapitalize="characters"
-                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                style={[
+                  styles.editInput,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
               />
-              
-              <ThemedText type="caption" style={{ color: theme.textSecondary, marginBottom: 4, marginTop: 12 }}>Color</ThemedText>
+
+              <ThemedText
+                type="caption"
+                style={{
+                  color: theme.textSecondary,
+                  marginBottom: 4,
+                  marginTop: 12,
+                }}
+              >
+                Color
+              </ThemedText>
               <TextInput
                 value={vehicleForm.vehicleColor}
-                onChangeText={text => setVehicleForm(f => ({ ...f, vehicleColor: text }))}
+                onChangeText={(text) =>
+                  setVehicleForm((f) => ({ ...f, vehicleColor: text }))
+                }
                 placeholder="Ej: Blanco, Negro, Rojo"
                 placeholderTextColor={theme.textSecondary}
-                style={[styles.editInput, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                style={[
+                  styles.editInput,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    borderColor: theme.border,
+                  },
+                ]}
               />
-              
-              {/* Documentos del vehículo - solo para moto/coche */}
-              {(vehicleForm.vehicleType === "motorcycle" || vehicleForm.vehicleType === "car") && (
+
+              {/* Documentos del vehï¿½culo - solo para moto/coche */}
+              {(vehicleForm.vehicleType === "motorcycle" ||
+                vehicleForm.vehicleType === "car") && (
                 <>
-                  <ThemedText type="h4" style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}>Documentos del vehículo</ThemedText>
-                  
-                  <DocumentUploadButton 
-                    documentType="vehiclePhoto" 
-                    label="Foto del vehículo" 
+                  <ThemedText
+                    type="h4"
+                    style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}
+                  >
+                    Documentos del vehï¿½culo
+                  </ThemedText>
+
+                  <DocumentUploadButton
+                    documentType="vehiclePhoto"
+                    label="Foto del vehï¿½culo"
                     currentUrl={professionalData?.vehiclePhoto}
                   />
-                  <DocumentUploadButton 
-                    documentType="vehiclePlate" 
-                    label="Foto matrícula" 
+                  <DocumentUploadButton
+                    documentType="vehiclePlate"
+                    label="Foto matrï¿½cula"
                     currentUrl={professionalData?.vehiclePlatePhoto}
                   />
-                  <DocumentUploadButton 
-                    documentType="vehicleItv" 
-                    label="ITV" 
+                  <DocumentUploadButton
+                    documentType="vehicleItv"
+                    label="ITV"
                     currentUrl={professionalData?.vehicleItvPhoto}
                   />
-                  <DocumentUploadButton 
-                    documentType="vehicleInsurance" 
-                    label="Seguro del vehículo" 
+                  <DocumentUploadButton
+                    documentType="vehicleInsurance"
+                    label="Seguro del vehï¿½culo"
                     currentUrl={professionalData?.vehicleInsurancePhoto}
                   />
-                  <DocumentUploadButton 
-                    documentType="vehicleLicense" 
-                    label="Licencia de conducir" 
+                  <DocumentUploadButton
+                    documentType="vehicleLicense"
+                    label="Licencia de conducir"
                     currentUrl={professionalData?.vehicleLicensePhoto}
                   />
                 </>
               )}
-              
+
               <Pressable
                 onPress={saveVehicle}
                 disabled={isSavingVehicle}
-                style={[styles.editSaveBtn, { backgroundColor: ComeYaColors.primary, opacity: isSavingVehicle ? 0.7 : 1 }]}
+                style={[
+                  styles.editSaveBtn,
+                  {
+                    backgroundColor: ComeYaColors.primary,
+                    opacity: isSavingVehicle ? 0.7 : 1,
+                  },
+                ]}
               >
-                {isSavingVehicle
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>Guardar vehículo</ThemedText>
-                }
+                {isSavingVehicle ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#fff", fontWeight: "700" }}
+                  >
+                    Guardar vehï¿½culo
+                  </ThemedText>
+                )}
               </Pressable>
             </ScrollView>
           </View>
@@ -2188,25 +2862,33 @@ useEffect(() => {
         animationType="fade"
         onRequestClose={() => setShowPreviewModal(false)}
       >
-        <Pressable 
-          style={styles.previewModalOverlay} 
+        <Pressable
+          style={styles.previewModalOverlay}
           onPress={() => setShowPreviewModal(false)}
         >
-          <Pressable 
+          <Pressable
             style={styles.previewModalContent}
             onPress={(e) => e.stopPropagation()}
           >
-            <View style={[styles.previewModalHeader, { borderBottomColor: theme.border }]}>
+            <View
+              style={[
+                styles.previewModalHeader,
+                { borderBottomColor: theme.border },
+              ]}
+            >
               <ThemedText type="h4">Vista previa</ThemedText>
-              <Pressable 
+              <Pressable
                 onPress={() => setShowPreviewModal(false)}
-                style={[styles.previewModalClose, { backgroundColor: theme.backgroundSecondary }]}
+                style={[
+                  styles.previewModalClose,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
               >
                 <Feather name="x" size={20} color={theme.text} />
               </Pressable>
             </View>
             {previewImage && (
-              <Image 
+              <Image
                 source={{ uri: previewImage }}
                 style={styles.previewImage}
                 contentFit="contain"
@@ -2503,7 +3185,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 2,
   },
-strikeInfoCard: {
+  strikeInfoCard: {
     flexDirection: "row",
     alignItems: "flex-start",
     padding: Spacing.md,

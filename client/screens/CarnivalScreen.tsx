@@ -31,7 +31,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { ConfettiAnimation } from "@/components/ConfettiAnimation";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useToast } from "@/contexts/ToastContext";
 import {
@@ -546,7 +551,9 @@ export default function CarnivalScreen() {
                 styles.dayChip,
                 {
                   backgroundColor:
-                    selectedDay === day.date ? ComeYaColors.primary : theme.card,
+                    selectedDay === day.date
+                      ? ComeYaColors.primary
+                      : theme.card,
                   ...Shadows.sm,
                 },
               ]}

@@ -64,8 +64,8 @@ export const mockBusinesses: Business[] = [
     categories: ["Comida Casera", "Mexicana", "Desayunos"],
     acceptsCash: true,
     featured: true,
-    latitude: 7.7720,
-    longitude: -72.2250,
+    latitude: 7.772,
+    longitude: -72.225,
   },
   {
     id: "3",
@@ -98,7 +98,7 @@ export const mockBusinesses: Business[] = [
     acceptsCash: false,
     featured: false,
     latitude: 7.7695,
-    longitude: -72.2250,
+    longitude: -72.225,
   },
   {
     id: "4",
@@ -131,7 +131,7 @@ export const mockBusinesses: Business[] = [
     acceptsCash: true,
     featured: true,
     latitude: 7.7715,
-    longitude: -72.2240,
+    longitude: -72.224,
   },
   {
     id: "5",
@@ -163,7 +163,7 @@ export const mockBusinesses: Business[] = [
     categories: ["Carnes", "Embutidos", "Pollo"],
     acceptsCash: true,
     featured: false,
-    latitude: 7.7700,
+    latitude: 7.77,
     longitude: -72.2245,
   },
   {
@@ -196,7 +196,7 @@ export const mockBusinesses: Business[] = [
     categories: ["Pizza", "Italiana", "Pastas"],
     acceptsCash: true,
     featured: false,
-    latitude: 7.7710,
+    latitude: 7.771,
     longitude: -72.2238,
   },
 ];
@@ -583,8 +583,8 @@ export const mockAddresses: Address[] = [
     state: "Castilla y León",
     zipCode: "42002",
     isDefault: false,
-    latitude: 41.7650,
-    longitude: -2.4690,
+    latitude: 41.765,
+    longitude: -2.469,
   },
 ];
 

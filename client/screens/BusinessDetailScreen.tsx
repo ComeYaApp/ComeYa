@@ -23,7 +23,12 @@ import { CartButton } from "@/components/CartButton";
 import { ProductCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  ComeYaColors,
+  Shadows,
+} from "@/constants/theme";
 import { mockBusinesses, mockProducts } from "@/data/mockData";
 import { Business, Product } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -52,62 +57,83 @@ export default function BusinessDetailScreen() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const { apiRequest } = await import('@/lib/query-client');
-        const response = await apiRequest('GET', `/api/businesses/${businessId}`);
+        const { apiRequest } = await import("@/lib/query-client");
+        const response = await apiRequest(
+          "GET",
+          `/api/businesses/${businessId}`,
+        );
         const data = await response.json();
-        
+
         if (data.success && data.business) {
           // Adapt backend data to frontend format
           const adaptedBusiness: Business = {
             id: data.business.id,
             name: data.business.name,
-            description: data.business.description || '',
-            type: data.business.type || 'restaurant',
-            profileImage: data.business.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
-            bannerImage: data.business.coverImage || data.business.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
+            description: data.business.description || "",
+            type: data.business.type || "restaurant",
+            profileImage:
+              data.business.image ||
+              "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
+            bannerImage:
+              data.business.coverImage ||
+              data.business.image ||
+              "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
             rating: (data.business.rating || 0) / 100,
             reviewCount: data.business.totalRatings || 0,
-            deliveryTime: data.business.deliveryTime || '30-45 min',
+            deliveryTime: data.business.deliveryTime || "30-45 min",
             deliveryFee: (data.business.deliveryFee || 300) / 100,
             minimumOrder: (data.business.minOrder || 1000) / 100,
-            isOpen: data.business.isOpen === true || data.business.isOpen === 1 || data.business.is_open === true || data.business.is_open === 1,
+            isOpen:
+              data.business.isOpen === true ||
+              data.business.isOpen === 1 ||
+              data.business.is_open === true ||
+              data.business.is_open === 1,
             openingHours: [],
-            address: data.business.address || 'Soria, España',
-            phone: data.business.phone || '',
-            categories: data.business.categories ? data.business.categories.split(',') : [],
+            address: data.business.address || "Soria, España",
+            phone: data.business.phone || "",
+            categories: data.business.categories
+              ? data.business.categories.split(",")
+              : [],
             featured: data.business.isFeatured || false,
           };
-          
-          const adaptedProducts: Product[] = (data.business.products || []).map((p: any) => {
-            console.log('🔍 Product raw data:', { 
-              name: p.name, 
-              isAvailable: p.isAvailable, 
-              is_available: p.is_available,
-              available: p.available 
-            });
-            
-            // Soportar tanto camelCase como snake_case
-            const isAvailable = p.isAvailable === true || p.isAvailable === 1 || 
-                               p.is_available === true || p.is_available === 1;
-            
-            // Precio base en euros
-            const basePrice = (p.price || 0) / 100;
-            // Agregar comisión del 15%
-            const priceWithCommission = basePrice * 1.15;
-            
-            return {
-              id: p.id,
-              name: p.name,
-              description: p.description || '',
-              price: priceWithCommission, // 👈 Precio con comisión incluida
-              image: p.image || 'https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg',
-              category: p.category || 'General',
-              isAvailable: isAvailable,
-              available: isAvailable,
-              businessId: p.businessId || p.business_id,
-            };
-          });
-          
+
+          const adaptedProducts: Product[] = (data.business.products || []).map(
+            (p: any) => {
+              console.log("🔍 Product raw data:", {
+                name: p.name,
+                isAvailable: p.isAvailable,
+                is_available: p.is_available,
+                available: p.available,
+              });
+
+              // Soportar tanto camelCase como snake_case
+              const isAvailable =
+                p.isAvailable === true ||
+                p.isAvailable === 1 ||
+                p.is_available === true ||
+                p.is_available === 1;
+
+              // Precio base en euros
+              const basePrice = (p.price || 0) / 100;
+              // Agregar comisión del 15%
+              const priceWithCommission = basePrice * 1.15;
+
+              return {
+                id: p.id,
+                name: p.name,
+                description: p.description || "",
+                price: priceWithCommission, // 👈 Precio con comisión incluida
+                image:
+                  p.image ||
+                  "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
+                category: p.category || "General",
+                isAvailable: isAvailable,
+                available: isAvailable,
+                businessId: p.businessId || p.business_id,
+              };
+            },
+          );
+
           setBusiness(adaptedBusiness);
           setProducts(adaptedProducts);
         } else {
@@ -115,7 +141,7 @@ export default function BusinessDetailScreen() {
           setProducts([]);
         }
       } catch (error) {
-        console.error('Error loading business:', error);
+        console.error("Error loading business:", error);
         setBusiness(null);
         setProducts([]);
       } finally {
@@ -261,7 +287,11 @@ export default function BusinessDetailScreen() {
                     { backgroundColor: theme.backgroundSecondary },
                   ]}
                 >
-                  <Feather name="phone" size={18} color={ComeYaColors.primary} />
+                  <Feather
+                    name="phone"
+                    size={18}
+                    color={ComeYaColors.primary}
+                  />
                   <ThemedText
                     type="small"
                     style={{

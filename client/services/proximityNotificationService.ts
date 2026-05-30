@@ -1,9 +1,9 @@
-import * as Notifications from 'expo-notifications';
-import { apiRequest } from '@/lib/query-client';
+import * as Notifications from "expo-notifications";
+import { apiRequest } from "@/lib/query-client";
 
 export interface ProximityAlert {
   orderId: string;
-  type: 'approaching' | 'arrived' | 'nearby';
+  type: "approaching" | "arrived" | "nearby";
   distance: number; // meters
   estimatedTime?: number; // seconds
 }
@@ -28,7 +28,7 @@ class ProximityNotificationService {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number {
     const R = 6371e3;
     const φ1 = (lat1 * Math.PI) / 180;
@@ -56,13 +56,13 @@ class ProximityNotificationService {
     orderId: string,
     driverLocation: { latitude: number; longitude: number },
     destinationLocation: { latitude: number; longitude: number },
-    destinationType: 'business' | 'customer'
+    destinationType: "business" | "customer",
   ): Promise<void> {
     const distance = this.calculateDistance(
       driverLocation.latitude,
       driverLocation.longitude,
       destinationLocation.latitude,
-      destinationLocation.longitude
+      destinationLocation.longitude,
     );
 
     const estimatedTime = this.estimateTime(distance);
@@ -77,7 +77,7 @@ class ProximityNotificationService {
         orderId,
         destinationType,
         distance,
-        estimatedTime
+        estimatedTime,
       );
       this.sentNotifications.add(`${orderId}-approaching`);
     }
@@ -105,84 +105,84 @@ class ProximityNotificationService {
   // Send approaching notification
   private async sendApproachingNotification(
     orderId: string,
-    destinationType: 'business' | 'customer',
+    destinationType: "business" | "customer",
     distance: number,
-    estimatedTime: number
+    estimatedTime: number,
   ): Promise<void> {
     const minutes = Math.ceil(estimatedTime / 60);
-    
+
     const title =
-      destinationType === 'customer'
-        ? '🚚 Tu pedido está cerca'
-        : '🚚 Repartidor en camino';
-    
+      destinationType === "customer"
+        ? "🚚 Tu pedido está cerca"
+        : "🚚 Repartidor en camino";
+
     const body =
-      destinationType === 'customer'
+      destinationType === "customer"
         ? `Tu repartidor llegará en aproximadamente ${minutes} minutos`
         : `El repartidor llegará en ${minutes} minutos. Prepara el pedido.`;
 
     await this.sendLocalNotification(title, body, orderId);
-    await this.notifyBackend(orderId, 'approaching', distance, destinationType);
+    await this.notifyBackend(orderId, "approaching", distance, destinationType);
   }
 
   // Send nearby notification
   private async sendNearbyNotification(
     orderId: string,
-    destinationType: 'business' | 'customer',
-    distance: number
+    destinationType: "business" | "customer",
+    distance: number,
   ): Promise<void> {
     const title =
-      destinationType === 'customer'
-        ? '📍 Tu repartidor está muy cerca'
-        : '📍 Repartidor cerca del negocio';
-    
+      destinationType === "customer"
+        ? "📍 Tu repartidor está muy cerca"
+        : "📍 Repartidor cerca del negocio";
+
     const body =
-      destinationType === 'customer'
-        ? 'Prepárate para recibir tu pedido'
-        : 'El repartidor está a punto de llegar';
+      destinationType === "customer"
+        ? "Prepárate para recibir tu pedido"
+        : "El repartidor está a punto de llegar";
 
     await this.sendLocalNotification(title, body, orderId);
-    await this.notifyBackend(orderId, 'nearby', distance, destinationType);
+    await this.notifyBackend(orderId, "nearby", distance, destinationType);
   }
 
   // Send arrived notification
   private async sendArrivedNotification(
     orderId: string,
-    destinationType: 'business' | 'customer'
+    destinationType: "business" | "customer",
   ): Promise<void> {
     const title =
-      destinationType === 'customer'
-        ? '🎉 Tu repartidor ha llegado'
-        : '✅ Repartidor en el negocio';
-    
+      destinationType === "customer"
+        ? "🎉 Tu repartidor ha llegado"
+        : "✅ Repartidor en el negocio";
+
     const body =
-      destinationType === 'customer'
-        ? 'Tu pedido está siendo entregado'
-        : 'Entrega el pedido al repartidor';
+      destinationType === "customer"
+        ? "Tu pedido está siendo entregado"
+        : "Entrega el pedido al repartidor";
 
     await this.sendLocalNotification(title, body, orderId);
-    await this.notifyBackend(orderId, 'arrived', 0, destinationType);
+    await this.notifyBackend(orderId, "arrived", 0, destinationType);
   }
 
   // Send local notification
   private async sendLocalNotification(
     title: string,
     body: string,
-    orderId: string
+    orderId: string,
   ): Promise<void> {
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
-          data: { orderId, type: 'proximity' },
+          data: { orderId, type: "proximity" },
           sound: true,
         },
         trigger: null,
       });
       console.log(`🔔 Notification sent: ${title}`);
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error("Error sending notification:", error);
     }
   }
 
@@ -191,10 +191,10 @@ class ProximityNotificationService {
     orderId: string,
     type: string,
     distance: number,
-    destinationType: string
+    destinationType: string,
   ): Promise<void> {
     try {
-      await apiRequest('POST', '/api/delivery/proximity-alert', {
+      await apiRequest("POST", "/api/delivery/proximity-alert", {
         orderId,
         type,
         distance,
@@ -202,7 +202,7 @@ class ProximityNotificationService {
         timestamp: Date.now(),
       });
     } catch (error) {
-      console.error('Error notifying backend:', error);
+      console.error("Error notifying backend:", error);
     }
   }
 
@@ -217,20 +217,21 @@ class ProximityNotificationService {
   // Clear all notifications
   clearAll(): void {
     this.sentNotifications.clear();
-    console.log('🧹 All proximity notifications cleared');
+    console.log("🧹 All proximity notifications cleared");
   }
 
   // Request notification permissions
   async requestPermissions(): Promise<boolean> {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
+    if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
-    return finalStatus === 'granted';
+    return finalStatus === "granted";
   }
 }
 
