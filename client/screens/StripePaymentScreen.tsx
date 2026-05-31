@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import { useStripe } from "@stripe/stripe-react-native";
 import * as WebBrowser from "expo-web-browser";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -26,6 +27,7 @@ export default function StripePaymentScreen() {
   const { isDark } = useTheme();
   const { clearCart } = useCart();
   const { user } = useAuth();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
@@ -77,48 +79,113 @@ const openPayment = useCallback(async () => {
         deliveryFee: Math.round(deliveryFee || 0),
         isSubscription,
         subscriptionId,
-        returnUrl: "comeya://payment-return",
       },
     );
-      const data = await res.json();
+    const data = await res.json();
 
-      if (data.url) {
-        // Open in-app browser
-        const result = await WebBrowser.openAuthSessionAsync(
-          data.url,
-          "comeya://payment-return",
-        );
-
-        if (result.type === "success" && result.url) {
-          // Check if payment was successful
-          await clearCart();
-          navigation.reset({
-            index: 0,
-            routes: [
-              { name: "Main" },
-              { name: "OrderTracking", params: { orderId } },
-            ],
-          });
-        } else {
-          Alert.alert("Pago cancelado", "Puedes intentar novamente");
-        }
-      } else {
-        Alert.alert("Error", data.message || "No se pudo iniciar el pago");
+    if (data.clientSecret) {
+      // Usar PaymentSheet interno para pagos con Stripe
+      const { error } = await initPaymentSheet({
+        paymentIntentClientSecret: data.clientSecret,
+        merchantDisplayName: "ComeYa",
+        returnURL: "comeya://payment-return",
+      });
+      
+      if (error) {
+        Alert.alert("Error", "No se pudo inicializar el pago interno: " + error.message);
+        return;
       }
-    } catch (e: any) {
-      Alert.alert("Error", "No se pudo conectar con el servidor de pagos");
-    } finally {
-      setProcessing(false);
+      
+      const { error: presentError } = await presentPaymentSheet();
+      if (presentError) {
+        Alert.alert("Error", "Error en el pago: " + presentError.message);
+      } else {
+        // Pago exitoso
+        if (isSubscription && subscriptionId) {
+          try {
+            // Confirmar suscripción después del pago exitoso
+            const confirmRes = await apiRequest(
+              "POST",
+              `/api/stripe/confirm-subscription/${subscriptionId}`,
+            );
+            if (confirmRes.ok) {
+              Alert.alert("✅ Suscripción activada", "Tu plan está ahora activo.");
+            } else {
+              Alert.alert("✅ Pago completado", "Suscripción activada manualmente.");
+            }
+          } catch (e) {
+            // Silenciar error, la suscripción ya debería estar activa
+          }
+        } else {
+          // Para pedidos normales, limpiar carrito
+          await clearCart();
+        }
+        navigation.reset({
+          index: 0,
+          routes: [
+            { name: "Main" },
+            { name: "OrderTracking", params: { orderId } },
+          ],
+        });
+      }
+      return;
     }
-  }, [
-    orderId,
-    amount,
-    businessId,
-    subtotal,
-    deliveryFee,
-    clearCart,
-    navigation,
-  ]);
+
+    // Si no hay clientSecret (pagos regulares), usar endpoint create-session
+    const sessionEndpoint = "/api/payments/create-session";
+    const sessionRes = await apiRequest(
+      "POST",
+      sessionEndpoint,
+      {
+        orderId,
+        amount: Math.round(amount),
+        businessId: isSubscription ? "" : businessId,
+        provider: "stripe_card", // Por defecto tarjeta
+        isSubscription,
+        subscriptionId,
+      },
+    );
+    const sessionData = await sessionRes.json();
+
+    if (sessionData.url) {
+      // Open in-app browser
+      const result = await WebBrowser.openAuthSessionAsync(
+        sessionData.url,
+        "comeya://payment-return",
+      );
+
+      if (result.type === "success" && result.url) {
+        // Check if payment was successful
+        await clearCart();
+        navigation.reset({
+          index: 0,
+          routes: [
+            { name: "Main" },
+            { name: "OrderTracking", params: { orderId } },
+          ],
+        });
+      } else {
+        Alert.alert("Pago cancelado", "Puedes intentar novamente");
+      }
+    } else {
+      Alert.alert("Error", sessionData.message || "No se pudo iniciar el pago");
+    }
+  } catch (e: any) {
+    Alert.alert("Error", "No se pudo conectar con el servidor de pagos");
+  } finally {
+    setProcessing(false);
+  }
+}, [
+  orderId,
+  amount,
+  businessId,
+  subtotal,
+  deliveryFee,
+  clearCart,
+  navigation,
+  initPaymentSheet,
+  presentPaymentSheet,
+]);
 
   useEffect(() => {
     if (!orderId || !amount) {
@@ -133,17 +200,8 @@ const openPayment = useCallback(async () => {
     setLoading(false);
   }, [orderId, amount, businessId, isSubscription]);
 
-  // Redirect back to web payment screen for better payment form
-  const handleUseWebVersion = useCallback(() => {
-    // This would ideally use deep linking to open the web version
-    Alert.alert(
-      "Pago con Stripe",
-      "Serás redirigido a la pasarela de pago segura de Stripe.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Continuar", onPress: openPayment },
-      ],
-    );
+  const handlePayment = useCallback(async () => {
+    await openPayment();
   }, [openPayment]);
 
   if (loading) {
@@ -262,7 +320,7 @@ const openPayment = useCallback(async () => {
 
         {/* Pay button */}
         <Pressable
-          onPress={handleUseWebVersion}
+          onPress={handlePayment}
           disabled={processing}
           style={({ pressed }) => [
             styles.payBtn,

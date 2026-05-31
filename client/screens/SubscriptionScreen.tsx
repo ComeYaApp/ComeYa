@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import {
-  View,
-  Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   Alert,
   Modal,
-  Platform,
+  Pressable,
+  View,
+  Text,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -17,9 +17,13 @@ import { apiRequest } from "@/lib/query-client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+import { useTheme } from "@/hooks/useTheme";
+import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
-const PRIMARY = "#DC2626";
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
 
 const PAYMENT_METHODS = [
   {
@@ -58,8 +62,11 @@ const PAYMENT_METHODS = [
 
 export default function SubscriptionScreen() {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const navigation = useNavigation<Nav>();
 
   const isBusinessOwner = user?.role === "business_owner";
+
   const customerBenefits = [
     "Envio gratis",
     "10% descuento",
@@ -73,8 +80,8 @@ export default function SubscriptionScreen() {
     "Soporte VIP",
     "Promociones",
   ];
-  const navigation = useNavigation<Nav>();
   const queryClient = useQueryClient();
+
   const [selectedPlan, setSelectedPlan] = useState<"premium" | "business">(
     "premium",
   );
@@ -159,7 +166,7 @@ export default function SubscriptionScreen() {
     }
 
     if (methodId === "stripe_card" || methodId === "stripe_bizum") {
-      // Pago instantáneo con Stripe
+      // Pago instantáneo con Stripe usando PaymentSheet interno
       navigation.navigate("StripePayment", {
         orderId: subscriptionId,
         amount,
@@ -168,6 +175,7 @@ export default function SubscriptionScreen() {
         businessId: "",
         isSubscription: true,
         subscriptionId,
+        provider: methodId,
       } as any);
     } else {
       // Pago manual con comprobante
@@ -203,8 +211,14 @@ export default function SubscriptionScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>ComeYa Premium</Text>
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Feather name="arrow-left" size={24} color={theme.text} />
+        </Pressable>
+        <ThemedText type="h3" style={styles.headerTitle}>ComeYa Premium</ThemedText>
+        <View style={{ width: 24 }} />
+      </View>
 
       <ScrollView style={styles.content}>
         {/* Plan activo */}
@@ -436,19 +450,32 @@ export default function SubscriptionScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </ThemedView>
+
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f7f7f7" },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-    paddingVertical: 20,
+  container: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: ComeYaColors.border,
   },
+  backButton: {
+    padding: Spacing.sm,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+  },
+
   content: { flex: 1, padding: 20 },
+
   currentPlanCard: {
     backgroundColor: "white",
     borderRadius: 12,
@@ -458,7 +485,8 @@ const styles = StyleSheet.create({
   },
   currentPlanTitle: { fontSize: 14, color: "#888", marginBottom: 8 },
   currentPlanName: { fontSize: 24, fontWeight: "bold", marginBottom: 4 },
-  currentPlanPrice: { fontSize: 18, color: PRIMARY, marginBottom: 16 },
+  currentPlanPrice: { fontSize: 18, color: ComeYaColors.primary, marginBottom: 16 },
+
   cancelButton: {
     backgroundColor: "#FF5252",
     paddingHorizontal: 20,
@@ -474,8 +502,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "transparent",
   },
-  planCardSelected: { borderColor: PRIMARY },
+  planCardSelected: { borderColor: ComeYaColors.primary },
   planGradient: { padding: 24, alignItems: "center" },
+
   planName: {
     fontSize: 28,
     fontWeight: "bold",
@@ -488,13 +517,14 @@ const styles = StyleSheet.create({
   benefitIcon: { fontSize: 16, marginRight: 12 },
   benefitText: { fontSize: 14, color: "#333", flex: 1 },
   subscribeButton: {
-    backgroundColor: PRIMARY,
+    backgroundColor: ComeYaColors.primary,
     margin: 20,
     marginTop: 0,
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
   },
+
   subscribeButtonText: { color: "white", fontSize: 16, fontWeight: "600" },
   comparisonCard: {
     backgroundColor: "white",

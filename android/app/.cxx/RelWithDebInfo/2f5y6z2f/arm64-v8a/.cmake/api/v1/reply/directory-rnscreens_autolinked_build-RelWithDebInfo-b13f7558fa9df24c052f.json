@@ -1,14 +1,12 @@
 {
-	"backtraceGraph" : 
-	{
-		"commands" : [],
-		"files" : [],
-		"nodes" : []
-	},
-	"installers" : [],
-	"paths" : 
-	{
-		"build" : "rnscreens_autolinked_build",
-		"source" : "C:/CY/node_modules/react-native-screens/android/src/main/jni"
-	}
+  "backtraceGraph": {
+    "commands": [],
+    "files": [],
+    "nodes": []
+  },
+  "installers": [],
+  "paths": {
+    "build": "rnscreens_autolinked_build",
+    "source": "C:/CY/node_modules/react-native-screens/android/src/main/jni"
+  }
 }
