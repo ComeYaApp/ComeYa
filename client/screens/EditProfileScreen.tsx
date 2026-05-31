@@ -10,6 +10,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -217,7 +219,7 @@ function DocUpload({
 
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
@@ -789,13 +791,7 @@ export default function EditProfileScreen() {
               >
                 Tipo de vehículo
               </ThemedText>
-              <View
-                style={{
-                  flexDirection: "row",
-                  gap: Spacing.sm,
-                  marginBottom: Spacing.md,
-                }}
-              >
+              <View style={styles.vehicleChipContainer}>
                 {[
                   { id: "bike", label: "Bicicleta", icon: "wind" },
                   { id: "motorcycle", label: "Moto", icon: "zap" },
@@ -813,24 +809,25 @@ export default function EditProfileScreen() {
                         backgroundColor:
                           vehicleType === v.id
                             ? ComeYaColors.primary
-                            : theme.backgroundSecondary,
+                            : theme.card,
                         borderColor:
                           vehicleType === v.id
                             ? ComeYaColors.primary
                             : theme.border,
                       },
+                      Shadows.sm,
                     ]}
                   >
                     <Feather
                       name={v.icon as any}
-                      size={16}
-                      color={vehicleType === v.id ? "#FFF" : theme.text}
+                      size={20}
+                      color={vehicleType === v.id ? "#FFF" : ComeYaColors.primary}
                     />
                     <ThemedText
                       type="small"
                       style={{
                         color: vehicleType === v.id ? "#FFF" : theme.text,
-                        marginLeft: 4,
+                        marginLeft: 6,
                         fontWeight: "600",
                       }}
                     >
@@ -1027,6 +1024,7 @@ export default function EditProfileScreen() {
           )}
         </View>
 
+        {/* ── Seguridad ── */}
         <View
           style={[
             styles.formSection,
@@ -1034,7 +1032,55 @@ export default function EditProfileScreen() {
             Shadows.sm,
           ]}
         >
-          {/* ── Profesión ── */}
+          <SectionTitle icon="shield" title="Seguridad" />
+          
+          <Pressable
+            style={styles.securityItem}
+            onPress={() => navigation.navigate("ChangePassword")}
+          >
+            <View style={styles.securityItemIcon}>
+              <Feather name="key" size={20} color={ComeYaColors.primary} />
+            </View>
+            <View style={styles.securityItemContent}>
+              <ThemedText type="body" style={{ fontWeight: "600" }}>
+                Cambiar contraseña
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                Actualiza tu contraseña de acceso
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+          
+          <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+          
+          <Pressable
+            style={styles.securityItem}
+            onPress={() => navigation.navigate("ChangePhoneEmail")}
+          >
+            <View style={styles.securityItemIcon}>
+              <Feather name="phone" size={20} color={ComeYaColors.primary} />
+            </View>
+            <View style={styles.securityItemContent}>
+              <ThemedText type="body" style={{ fontWeight: "600" }}>
+                Cambiar teléfono o correo
+              </ThemedText>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                Actualiza tu información de contacto
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          </Pressable>
+        </View>
+
+        {/* ── Profesión ── */}
+        <View
+          style={[
+            styles.formSection,
+            { backgroundColor: theme.card },
+            Shadows.sm,
+          ]}
+        >
           <SectionTitle icon="briefcase" title="Profesión" />
 
           <Input
@@ -1146,12 +1192,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  vehicleChipContainer: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
   vehicleChip: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1.5,
   },
@@ -1225,5 +1277,28 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  securityItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+  },
+  securityItemIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    backgroundColor: ComeYaColors.primary + "20",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  securityItemContent: {
+    flex: 1,
+    marginLeft: Spacing.md,
+  },
+  divider: {
+    height: 1,
+    marginLeft: Spacing.md,
+    marginRight: Spacing.md,
   },
 });

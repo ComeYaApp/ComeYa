@@ -65,6 +65,8 @@ import StripePaymentScreen from "@/screens/StripePaymentScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 import LocationPickerScreen from "@/screens/LocationPickerScreen";
+import ChangePasswordScreen from "@/screens/ChangePasswordScreen";
+import ChangePhoneEmailScreen from "@/screens/ChangePhoneEmailScreen";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -119,6 +121,8 @@ export type RootStackParamList = {
   BusinessDashboard: undefined;
   EditProfile: undefined;
   Profile: undefined;
+  ChangePassword: undefined;
+  ChangePhoneEmail: undefined;
   Gamification: undefined;
   Subscriptions: undefined;
   GiftCards: undefined;
@@ -423,6 +427,16 @@ export default function RootStackNavigator() {
             name="EditProfile"
             component={EditProfileScreen}
             options={{ headerTitle: "Editar perfil" }}
+          />
+          <Stack.Screen
+            name="ChangePassword"
+            component={ChangePasswordScreen}
+            options={{ headerTitle: "Cambiar contraseña" }}
+          />
+          <Stack.Screen
+            name="ChangePhoneEmail"
+            component={ChangePhoneEmailScreen}
+            options={{ headerTitle: "Cambiar teléfono/correo" }}
           />
           <Stack.Screen
             name="Profile"
