@@ -242,12 +242,11 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
-  const deliveryFee =
-    confirmedOrderType === "pickup"
-      ? 0
-      : (route?.params?.calculatedDeliveryFee ?? dynamicDeliveryFee ?? (business?.deliveryFee ? business.deliveryFee / 100 : 2.5));
-  const effectiveDeliveryFee =
-    subDeliveryFee !== null ? subDeliveryFee / 100 : deliveryFee;
+const deliveryFee =
+  confirmedOrderType === "pickup"
+    ? 0
+    : (route?.params?.calculatedDeliveryFee ? route.params.calculatedDeliveryFee / 100 : dynamicDeliveryFee ?? (business?.deliveryFee ? business?.deliveryFee / 100 : 2.5));
+const effectiveDeliveryFee = deliveryFee;
 
   const [tip, setTip] = useState(0);
   const total =
@@ -822,7 +821,7 @@ export default function CheckoutScreen({ route }: any) {
                 navigation.navigate("DigitalPaymentMethod", {
                   orderTotal: total,
                   orderType: confirmedOrderType,
-                  calculatedDeliveryFee: Math.round(deliveryFee * 100),
+                  calculatedDeliveryFee: deliveryFee,
                 } as any);
               }}
               style={styles.inlineLink}

@@ -275,7 +275,7 @@ const openPayment = useCallback(async () => {
             type="h1"
             style={{ color: PRIMARY, fontWeight: "900", marginTop: 8 }}
           >
-            €{(amount / 100).toFixed(2)}
+            €{(amount).toFixed(2)}
           </ThemedText>
 
           {/* Order summary */}
@@ -287,7 +287,7 @@ const openPayment = useCallback(async () => {
                 Importe
               </ThemedText>
               <ThemedText type="body" style={{ color: text }}>
-                €{((subtotal || 0) / 100).toFixed(2)}
+                €{(subtotal || 0).toFixed(2)}
               </ThemedText>
             </View>
             <View style={styles.summaryRow}>
@@ -295,7 +295,7 @@ const openPayment = useCallback(async () => {
                 Envío
               </ThemedText>
               <ThemedText type="body" style={{ color: text }}>
-                €{((deliveryFee || 0) / 100).toFixed(2)}
+                €{(deliveryFee || 0).toFixed(2)}
               </ThemedText>
             </View>
           </View>
@@ -334,7 +334,7 @@ const openPayment = useCallback(async () => {
             <>
               <Feather name="lock" size={18} color="#fff" />
               <ThemedText type="h4" style={{ color: "#fff", marginLeft: 8 }}>
-                Pagar €{(amount / 100).toFixed(2)}
+                Pagar €{(amount).toFixed(2)}
               </ThemedText>
             </>
           )}
