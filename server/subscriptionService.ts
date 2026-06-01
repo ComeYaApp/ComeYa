@@ -58,9 +58,9 @@ export class SubscriptionService {
 
       const result: Record<string, any> = {};
       for (const plan of plans) {
-        const planBenefits = benefits.filter((b) => b.plan === plan.planKey);
+        const planBenefits = benefits.filter((b: typeof benefits[0]) => b.plan === plan.planKey);
         const discountBenefit = planBenefits.find(
-          (b) => b.benefitType === "discount",
+          (b: typeof planBenefits[0]) => b.benefitType === "discount",
         );
         const active = (b: (typeof planBenefits)[0]) =>
           (b.benefitValue ?? 0) > 0;
@@ -72,22 +72,22 @@ export class SubscriptionService {
           icon: plan.icon,
           benefits: {
             freeDelivery: planBenefits.some(
-              (b) => b.benefitType === "free_delivery" && active(b),
+              (b: typeof planBenefits[0]) => b.benefitType === "free_delivery" && active(b),
             ),
             discountPercentage: discountBenefit
               ? (discountBenefit.benefitValue ?? 0)
               : 0,
             prioritySupport: planBenefits.some(
-              (b) => b.benefitType === "priority_support" && active(b),
+              (b: typeof planBenefits[0]) => b.benefitType === "priority_support" && active(b),
             ),
             exclusiveDeals: planBenefits.some(
-              (b) => b.benefitType === "exclusive_deals" && active(b),
+              (b: typeof planBenefits[0]) => b.benefitType === "exclusive_deals" && active(b),
             ),
             noMinimumOrder: planBenefits.some(
-              (b) => b.benefitType === "no_minimum" && active(b),
+              (b: typeof planBenefits[0]) => b.benefitType === "no_minimum" && active(b),
             ),
           },
-          benefitsList: planBenefits.map((b) => ({
+          benefitsList: planBenefits.map((b: typeof planBenefits[0]) => ({
             id: b.id,
             type: b.benefitType,
             value: b.benefitValue,
@@ -114,11 +114,15 @@ export class SubscriptionService {
       .where(eq(subscriptions.userId, userId))
       .limit(1);
 
-    if (!subscription || subscription.status === "pending_payment") {
+    if (!subscription) {
+      throw new Error("No se encontró suscripción para el usuario");
+    }
+
+    // Si está pendiente pero existe, devolver datos reales
+    if (subscription.status === "pending_payment") {
       return {
-        plan: subscription?.plan || "free",
-        status: subscription?.status || "active",
-        benefits: this.PLANS_FALLBACK.free.benefits,
+        ...subscription,
+        benefits: this.PLANS_FALLBACK[subscription.plan as keyof typeof this.PLANS_FALLBACK]?.benefits || this.PLANS_FALLBACK.free.benefits,
       };
     }
 
@@ -140,7 +144,7 @@ export class SubscriptionService {
     }
 
     const plans = await this.getPlansFromDB();
-    const planData = plans[subscription.plan as string] || plans["free"];
+    const planData = (plans as any)[subscription.plan] || (plans as any)["free"] || this.PLANS_FALLBACK.free;
     const planBenefits =
       subscription.status === "active"
         ? planData.benefits
