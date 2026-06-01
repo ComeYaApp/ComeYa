@@ -38,6 +38,7 @@ import {
 } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useQuery } from "@tanstack/react-query";
 
 type ProfileScreenNavigationProp =
   NativeStackNavigationProp<RootStackParamList>;
@@ -456,21 +457,27 @@ export default function ProfileScreen() {
     );
   };
 
-  useEffect(() => {
-    const loadSubscription = async () => {
+  const { data: subscriptionData } = useQuery({
+    queryKey: ["subscription", user?.id],
+    queryFn: async () => {
       try {
         const res = await apiRequest(
           "GET",
           "/api/subscriptions/my-subscription",
         );
         const data = await res.json();
-        if (data.subscription) setSubscription(data.subscription);
+        return data.success ? data.subscription : null;
       } catch {
-        /* silencioso */
+        return null;
       }
-    };
-    loadSubscription();
-  }, []);
+    },
+    enabled: !!user?.id,
+  });
+
+  // Update local state when query data changes
+  useEffect(() => {
+    setSubscription(subscriptionData);
+  }, [subscriptionData]);
 
   const saveProfile = async () => {
     if (!editName.trim()) {
