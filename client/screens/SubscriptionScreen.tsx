@@ -68,15 +68,15 @@ export default function SubscriptionScreen() {
   const isBusinessOwner = user?.role === "business_owner";
 
   const customerBenefits = [
-    "Envio gratis",
+    "Envío gratis",
     "10% descuento",
-    "Soporte",
-    "Ofertas",
+    "Soporte prioritario",
+    "Ofertas exclusivas",
   ];
   const businessBenefits = [
-    "Comision reducida",
-    "Negocios destacados",
-    "Estadisticas",
+    "Comisión reducida",
+    "Negocio destacado",
+    "Estadísticas avanzadas",
     "Soporte VIP",
     "Promociones",
   ];
@@ -90,15 +90,28 @@ export default function SubscriptionScreen() {
     amount: number;
   } | null>(null);
 
-  const { data: subscriptionData } = useQuery({
+  const { data: subscriptionData, refetch: refetchSubscription } = useQuery({
     queryKey: ["subscription", user?.id],
     queryFn: async () => {
-      const response = await apiRequest(
-        "GET",
-        "/api/subscriptions/my-subscription",
-      );
-      const data = await response.json();
-      return data.success ? data.subscription : null;
+      try {
+        const response = await apiRequest(
+          "GET",
+          "/api/subscriptions/my-subscription",
+        );
+        
+        if (!response.ok) {
+          console.error("Error fetching subscription:", response.status);
+          return null;
+        }
+        
+        const data = await response.json();
+        console.log("Subscription API response:", data);
+        
+        return data.success ? data.subscription : null;
+      } catch (error) {
+        console.error("Error fetching subscription:", error);
+        return null;
+      }
     },
     enabled: !!user?.id,
   });
@@ -212,6 +225,7 @@ export default function SubscriptionScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color={theme.text} />
@@ -224,12 +238,17 @@ export default function SubscriptionScreen() {
         {/* Plan activo */}
         {isActive && currentPlan !== "free" && (
           <View style={styles.currentPlanCard}>
-            <Text style={styles.currentPlanTitle}>Plan Activo</Text>
+            <Text style={styles.currentPlanTitle}>✅ Plan Activo</Text>
             <Text style={styles.currentPlanName}>
               {currentPlan === "premium" ? "Premium" : "Business"}
             </Text>
             <Text style={styles.currentPlanPrice}>
-              €{plansData?.[currentPlan]?.price / 100}/mes
+              €{plansData?.[currentPlan]?.price
+                ? plansData[currentPlan].price / 100
+                : currentPlan === "premium" ? "15" : "30"}/mes
+            </Text>
+            <Text style={styles.currentPlanHint}>
+              Para cambiar de plan, cancela este primero y selecciona el nuevo.
             </Text>
             <TouchableOpacity
               style={styles.cancelButton}
@@ -241,13 +260,17 @@ export default function SubscriptionScreen() {
                     { text: "No", style: "cancel" },
                     {
                       text: "Sí, cancelar",
+                      style: "destructive",
                       onPress: () => cancelMutation.mutate(),
                     },
                   ],
                 )
               }
+              disabled={cancelMutation.isPending}
             >
-              <Text style={styles.cancelButtonText}>Cancelar Suscripción</Text>
+              <Text style={styles.cancelButtonText}>
+                {cancelMutation.isPending ? "Cancelando..." : "Cancelar Suscripción"}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -317,67 +340,78 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        {/* Plan Premium */}
-        <TouchableOpacity
-          style={[
-            styles.planCard,
-            selectedPlan === "premium" && styles.planCardSelected,
-          ]}
-          onPress={() => setSelectedPlan("premium")}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={["#FF6B6B", "#4ECDC4"]}
-            style={styles.planGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.planName}>Premium</Text>
-            <Text style={styles.planPrice}>€15/mes</Text>
-          </LinearGradient>
-          <View style={styles.planBenefits}>
-            {(isBusinessOwner ? businessBenefits : customerBenefits).map(
-              (b) => (
-                <View key={b} style={styles.benefit}>
-                  <Text style={styles.benefitIcon}>✅</Text>
-                  <Text style={styles.benefitText}>{b}</Text>
-                </View>
-              ),
-            )}
-          </View>
-          {renderSubscribeButton("premium", "€15")}
-        </TouchableOpacity>
+        {/* Título de sección según estado */}
+        {isActive && currentPlan !== "free" ? (
+          <Text style={styles.sectionTitle}>Cambiar de plan</Text>
+        ) : (
+          <Text style={styles.sectionTitle}>Elige tu plan</Text>
+        )}
 
-        {/* Plan Business */}
-        <TouchableOpacity
-          style={[
-            styles.planCard,
-            selectedPlan === "business" && styles.planCardSelected,
-          ]}
-          onPress={() => setSelectedPlan("business")}
-          activeOpacity={0.9}
-        >
-          <LinearGradient
-            colors={["#667eea", "#764ba2"]}
-            style={styles.planGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+        {/* Plan Premium — solo mostrar si NO es el plan activo actual */}
+        {!(currentPlan === "premium" && isActive) && (
+          <TouchableOpacity
+            style={[
+              styles.planCard,
+              selectedPlan === "premium" && styles.planCardSelected,
+            ]}
+            onPress={() => setSelectedPlan("premium")}
+            activeOpacity={0.9}
           >
-            <Text style={styles.planName}>Business</Text>
-            <Text style={styles.planPrice}>€30/mes</Text>
-          </LinearGradient>
-          <View style={styles.planBenefits}>
-            {(isBusinessOwner ? businessBenefits : customerBenefits).map(
-              (b) => (
-                <View key={b} style={styles.benefit}>
-                  <Text style={styles.benefitIcon}>✅</Text>
-                  <Text style={styles.benefitText}>{b}</Text>
-                </View>
-              ),
-            )}
-          </View>
-          {renderSubscribeButton("business", "€30")}
-        </TouchableOpacity>
+            <LinearGradient
+              colors={["#FF6B6B", "#4ECDC4"]}
+              style={styles.planGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.planName}>Premium</Text>
+              <Text style={styles.planPrice}>€15/mes</Text>
+            </LinearGradient>
+            <View style={styles.planBenefits}>
+              {(isBusinessOwner ? businessBenefits : customerBenefits).map(
+                (b) => (
+                  <View key={b} style={styles.benefit}>
+                    <Text style={styles.benefitIcon}>✅</Text>
+                    <Text style={styles.benefitText}>{b}</Text>
+                  </View>
+                ),
+              )}
+            </View>
+            {renderSubscribeButton("premium", "€15")}
+          </TouchableOpacity>
+        )}
+
+        {/* Plan Business — solo mostrar si NO es el plan activo actual */}
+        {!(currentPlan === "business" && isActive) && (
+          <TouchableOpacity
+            style={[
+              styles.planCard,
+              selectedPlan === "business" && styles.planCardSelected,
+            ]}
+            onPress={() => setSelectedPlan("business")}
+            activeOpacity={0.9}
+          >
+            <LinearGradient
+              colors={["#667eea", "#764ba2"]}
+              style={styles.planGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Text style={styles.planName}>Business</Text>
+              <Text style={styles.planPrice}>€30/mes</Text>
+            </LinearGradient>
+            <View style={styles.planBenefits}>
+              {(isBusinessOwner ? businessBenefits : customerBenefits).map(
+                (b) => (
+                  <View key={b} style={styles.benefit}>
+                    <Text style={styles.benefitIcon}>✅</Text>
+                    <Text style={styles.benefitText}>{b}</Text>
+                  </View>
+                ),
+              )}
+            </View>
+            {renderSubscribeButton("business", "€30")}
+          </TouchableOpacity>
+        )}
 
         <View style={styles.comparisonCard}>
           <Text style={styles.comparisonTitle}>¿Por qué suscribirse?</Text>
@@ -451,7 +485,6 @@ export default function SubscriptionScreen() {
         </TouchableOpacity>
       </Modal>
     </ThemedView>
-
   );
 }
 
@@ -476,24 +509,52 @@ const styles = StyleSheet.create({
 
   content: { flex: 1, padding: 20 },
 
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#444",
+    marginBottom: 12,
+    marginTop: 4,
+  },
+
   currentPlanCard: {
     backgroundColor: "white",
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   currentPlanTitle: { fontSize: 14, color: "#888", marginBottom: 8 },
   currentPlanName: { fontSize: 24, fontWeight: "bold", marginBottom: 4 },
-  currentPlanPrice: { fontSize: 18, color: ComeYaColors.primary, marginBottom: 16 },
+  currentPlanPrice: { fontSize: 18, color: ComeYaColors.primary, marginBottom: 8 },
+  currentPlanHint: {
+    fontSize: 12,
+    color: "#999",
+    textAlign: "center",
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
 
   cancelButton: {
     backgroundColor: "#FF5252",
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 8,
+    marginTop: 8,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cancelButtonText: { color: "white", fontWeight: "600" },
+  cancelButtonText: { 
+    color: "white", 
+    fontWeight: "700",
+    fontSize: 16,
+  },
   planCard: {
     backgroundColor: "white",
     borderRadius: 12,

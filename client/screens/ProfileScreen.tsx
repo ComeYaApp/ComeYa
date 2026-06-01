@@ -1056,16 +1056,16 @@ export default function ProfileScreen() {
                 }}
               >
                 <Feather name="star" size={13} color={ComeYaColors.primary} />
-                <ThemedText
-                  type="caption"
-                  style={{
-                    color: ComeYaColors.primary,
-                    fontWeight: "700",
-                    marginLeft: 4,
-                  }}
-                >
-                  {subscription.planName || "Premium"} activo
-                </ThemedText>
+                 <ThemedText
+                   type="caption"
+                   style={{
+                     color: ComeYaColors.primary,
+                     fontWeight: "700",
+                     marginLeft: 4,
+                   }}
+                 >
+                    {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} {subscription.status === "active" ? "activo" : subscription.status === "pending_payment" ? "pendiente" : subscription.status === "expired" ? "expirado" : subscription.status === "cancelled" ? "cancelado" : "no activo"}
+                 </ThemedText>
               </View>
             )}
         </View>

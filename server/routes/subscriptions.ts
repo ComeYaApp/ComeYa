@@ -2,17 +2,22 @@ import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
 import { SubscriptionService } from "../subscriptionService";
 import { eq } from "drizzle-orm";
+import { db } from "../db";
+import { subscriptions } from "../../shared/schema-mysql";
 
 const router = express.Router();
 
 // Obtener suscripción del usuario
 router.get("/my-subscription", authenticateToken, async (req, res) => {
   try {
-    const subscription = await SubscriptionService.getUserSubscription(
-      req.user!.id,
-    );
+    const subscription = await SubscriptionService.getUserSubscription(req.user!.id);
+    
+    // Solo devolver suscripción si existe (el método ya maneja el caso de no existencia)
     res.json({ success: true, subscription });
   } catch (error: any) {
+    if (error.message.includes("No se encontró")) {
+      return res.status(404).json({ error: "No subscription found" });
+    }
     res.status(500).json({ error: error.message });
   }
 });
