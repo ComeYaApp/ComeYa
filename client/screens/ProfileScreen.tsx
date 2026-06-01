@@ -457,7 +457,7 @@ export default function ProfileScreen() {
     );
   };
 
-  const { data: subscriptionData } = useQuery({
+  const { data: subscriptionData, refetch: refetchSubscription } = useQuery({
     queryKey: ["subscription", user?.id],
     queryFn: async () => {
       try {
@@ -466,18 +466,29 @@ export default function ProfileScreen() {
           "/api/subscriptions/my-subscription",
         );
         const data = await res.json();
+        console.log("ProfileScreen subscription data:", data); // Debug
         return data.success ? data.subscription : null;
-      } catch {
+      } catch (error) {
+        console.error("Error fetching subscription:", error);
         return null;
       }
     },
     enabled: !!user?.id,
+    refetchOnWindowFocus: true, // Refrescar cuando el usuario vuelve a la app
   });
 
   // Update local state when query data changes
   useEffect(() => {
+    console.log("ProfileScreen subscriptionData updated:", subscriptionData);
     setSubscription(subscriptionData);
   }, [subscriptionData]);
+
+  // Refrescar suscripción al abrir la pantalla
+  useEffect(() => {
+    if (user?.id) {
+      refetchSubscription();
+    }
+  }, [user?.id, refetchSubscription]);
 
   const saveProfile = async () => {
     if (!editName.trim()) {
@@ -1049,10 +1060,9 @@ export default function ProfileScreen() {
               style={{ marginTop: Spacing.xs }}
             />
           ) : null}
-          {subscription &&
+          {subscription && subscription.plan !== "free" &&
             subscription.status === "active" &&
-            subscription.plan !== "free" &&
-            (user?.role === "customer" || user?.role === "business_owner") && (
+            (user?.role === "customer" || user?.role === "business_owner") ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -1076,10 +1086,9 @@ export default function ProfileScreen() {
                     {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} activo
                  </ThemedText>
               </View>
-            )}
-          {subscription &&
+            ) : subscription && subscription.plan !== "free" &&
             subscription.status === "pending_payment" &&
-            (user?.role === "customer" || user?.role === "business_owner") && (
+            (user?.role === "customer" || user?.role === "business_owner") ? (
               <View
                 style={{
                   flexDirection: "row",
@@ -1103,7 +1112,7 @@ export default function ProfileScreen() {
                     {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} pendiente
                  </ThemedText>
               </View>
-            )}
+            ) : null}
         </View>
 
         <View

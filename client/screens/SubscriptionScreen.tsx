@@ -306,6 +306,29 @@ export default function SubscriptionScreen() {
             >
               Recibirás una notificación cuando se active (5-15 min).
             </Text>
+            
+            {/* Botón para continuar con el pago */}
+            {subscriptionData && (
+              <TouchableOpacity
+                style={[
+                  styles.continuePaymentButton,
+                  { marginTop: 12 },
+                ]}
+                onPress={() => {
+                  // Abrir modal para seleccionar método de pago nuevamente
+                  const amount = subscriptionData.price || (subscriptionData.plan === "premium" ? 1500 : 3000);
+                  setPaymentModal({ 
+                    plan: subscriptionData.plan === "premium" ? "premium" : "business", 
+                    amount 
+                  });
+                }}
+              >
+                <Text style={styles.continuePaymentButtonText}>
+                  Continuar con el pago
+                </Text>
+              </TouchableOpacity>
+            )}
+            
             <TouchableOpacity
               style={[
                 styles.cancelButton,
@@ -645,4 +668,18 @@ const styles = StyleSheet.create({
   instantText: { fontSize: 11, color: "#065F46", fontWeight: "600" },
   modalCancel: { marginTop: 16, alignItems: "center", paddingVertical: 12 },
   modalCancelText: { fontSize: 15, color: "#888" },
+  continuePaymentButton: {
+    backgroundColor: ComeYaColors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  continuePaymentButtonText: { 
+    color: "white", 
+    fontWeight: "700",
+    fontSize: 16,
+  },
 });
