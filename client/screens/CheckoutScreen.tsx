@@ -242,21 +242,41 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
-const deliveryFee =
-  confirmedOrderType === "pickup"
-    ? 0
-    : (route?.params?.calculatedDeliveryFee ? route.params.calculatedDeliveryFee / 100 : dynamicDeliveryFee ?? (business?.deliveryFee ? business?.deliveryFee / 100 : 2.5));
-const effectiveDeliveryFee = deliveryFee;
+// Calculate delivery fee once and store in state
+const [finalDeliveryFee, setFinalDeliveryFee] = useState<number | null>(null);
+
+useEffect(() => {
+  if (confirmedOrderType === "pickup") {
+    setFinalDeliveryFee(0);
+    return;
+  }
+
+  if (route?.params?.calculatedDeliveryFee) {
+    setFinalDeliveryFee(route.params.calculatedDeliveryFee / 100);
+  } else if (dynamicDeliveryFee !== null) {
+    setFinalDeliveryFee(dynamicDeliveryFee);
+  } else if (business?.deliveryFee) {
+    setFinalDeliveryFee(business.deliveryFee / 100);
+  } else {
+    setFinalDeliveryFee(2.5); // Default fallback
+  }
+}, [
+  confirmedOrderType,
+  route?.params?.calculatedDeliveryFee,
+  dynamicDeliveryFee,
+  business?.deliveryFee
+]);
+
+const effectiveDeliveryFee = finalDeliveryFee ?? 0;
 
   const [tip, setTip] = useState(0);
-  const total =
-    subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
+const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
 
   // Beneficios de suscripción
   useEffect(() => {
     if (!user?.id) return;
     const subtotalCents = Math.round(subtotal * 100);
-    const deliveryFeeCents = Math.round(deliveryFee * 100);
+    const deliveryFeeCents = Math.round(effectiveDeliveryFee * 100);
     apiRequest(
       "GET",
       `/api/subscriptions/benefits-preview?subtotal=${subtotalCents}&deliveryFee=${deliveryFeeCents}`,
@@ -272,7 +292,7 @@ const effectiveDeliveryFee = deliveryFee;
         }
       })
       .catch(() => {});
-  }, [subtotal, deliveryFee, user?.id]);
+  }, [subtotal, effectiveDeliveryFee, user?.id]);
 
   // Calcular delivery fee dinámico cuando cambia la dirección
   useEffect(() => {
@@ -323,7 +343,7 @@ const effectiveDeliveryFee = deliveryFee;
       // Calcular base sin comisión (revertir el markup del 15%)
       const baseSubtotalCents = Math.round(subtotalCents / 1.15);
       const commissionCents = subtotalCents - baseSubtotalCents;
-      const deliveryFeeCents = Math.round(deliveryFee * 100);
+      const deliveryFeeCents = Math.round(effectiveDeliveryFee * 100);
       const discountCents = appliedCoupon
         ? Math.round(couponDiscount * 100)
         : 0;
@@ -342,7 +362,7 @@ const effectiveDeliveryFee = deliveryFee;
         subtotal: subtotalCents,
         productosBase: baseSubtotalCents,
         nemyCommission: commissionCents,
-        deliveryFee: deliveryFeeCents,
+        deliveryFee: Math.round((finalDeliveryFee ?? 0) * 100),
         total: orderTotal,
         tip: tipCents,
         paymentMethod,
@@ -472,14 +492,14 @@ const effectiveDeliveryFee = deliveryFee;
       const response = await apiRequest("POST", "/api/coupons/validate", {
         code: couponCode.toUpperCase(),
         userId: user?.id,
-        orderTotal: Math.round((subtotal + deliveryFee) * 100),
+        orderTotal: Math.round((subtotal + (finalDeliveryFee ?? 0)) * 100),
       });
       const data = await response.json();
 
       if (data.valid) {
         const discount =
           data.discountType === "percentage"
-            ? ((subtotal + deliveryFee) * data.discount) / 100
+            ? ((subtotal + effectiveDeliveryFee) * data.discount) / 100
             : data.discount / 100;
 
         const maxDiscount = data.coupon.maxDiscountAmount
@@ -818,11 +838,11 @@ const effectiveDeliveryFee = deliveryFee;
             <Pressable
               onPress={() => {
                 Haptics.selectionAsync();
-                navigation.navigate("DigitalPaymentMethod", {
-                  orderTotal: total,
-                  orderType: confirmedOrderType,
-                  calculatedDeliveryFee: deliveryFee,
-                } as any);
+navigation.navigate("DigitalPaymentMethod", {
+  orderTotal: total,
+  orderType: confirmedOrderType,
+  calculatedDeliveryFee: finalDeliveryFee ? finalDeliveryFee * 100 : 0,
+} as any);
               }}
               style={styles.inlineLink}
             >
@@ -1224,7 +1244,7 @@ const effectiveDeliveryFee = deliveryFee;
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
             </ThemedText>
-            <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
+            <ThemedText type="body">€{(finalDeliveryFee ?? 0).toFixed(2)}</ThemedText>
           </View>
         )}
         {confirmedOrderType === "pickup" && (

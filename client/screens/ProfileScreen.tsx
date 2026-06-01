@@ -1050,6 +1050,8 @@ export default function ProfileScreen() {
             />
           ) : null}
           {subscription &&
+            subscription.status === "active" &&
+            subscription.plan !== "free" &&
             (user?.role === "customer" || user?.role === "business_owner") && (
               <View
                 style={{
@@ -1071,7 +1073,34 @@ export default function ProfileScreen() {
                      marginLeft: 4,
                    }}
                  >
-                    {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} {subscription.status === "active" ? "activo" : subscription.status === "pending_payment" ? "pendiente" : subscription.status === "expired" ? "expirado" : subscription.status === "cancelled" ? "cancelado" : "no activo"}
+                    {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} activo
+                 </ThemedText>
+              </View>
+            )}
+          {subscription &&
+            subscription.status === "pending_payment" &&
+            (user?.role === "customer" || user?.role === "business_owner") && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: Spacing.sm,
+                  backgroundColor: "#F59E0B18",
+                  borderRadius: 20,
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                }}
+              >
+                <Feather name="clock" size={13} color="#F59E0B" />
+                 <ThemedText
+                   type="caption"
+                   style={{
+                     color: "#F59E0B",
+                     fontWeight: "700",
+                     marginLeft: 4,
+                   }}
+                 >
+                    {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} pendiente
                  </ThemedText>
               </View>
             )}
