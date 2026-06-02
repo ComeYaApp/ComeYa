@@ -48,6 +48,9 @@ function SectionTitle({ icon, title }: { icon: string; title: string }) {
         alignItems: "center",
         marginBottom: Spacing.md,
         marginTop: Spacing.lg,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.border,
       }}
     >
       <View
@@ -56,11 +59,11 @@ function SectionTitle({ icon, title }: { icon: string; title: string }) {
           { backgroundColor: ComeYaColors.primary + "18" },
         ]}
       >
-        <Feather name={icon as any} size={16} color={ComeYaColors.primary} />
+        <Feather name={icon as any} size={18} color={ComeYaColors.primary} />
       </View>
       <ThemedText
         type="h4"
-        style={{ marginLeft: Spacing.sm, color: theme.text }}
+        style={{ marginLeft: Spacing.sm, color: theme.text, fontWeight: "700" }}
       >
         {title}
       </ThemedText>
