@@ -113,16 +113,20 @@ export default function GroupOrderScreen() {
  // Crear nuevo grupo
  const createGroupMutation = useMutation({
  mutationFn: async () => {
- const response = await apiRequest("POST", "/api/group-orders/create", {
- businessId: route.params?.businessId || "",
+ const response = await apiRequest("POST", "/api/group-orders", {
+ businessId: route.params?.businessId || "default-business",
+ businessName: "Negocio",
+ deliveryAddress: "Dirección por defecto",
+ expiresInMinutes: 60,
  });
  return response.json();
  },
  onSuccess: (data) => {
- if (data.success) {
+ if (data.success && data.groupOrderId) {
  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
  showToast("Grupo creado! Comparte el enlace.", "success");
- refetch();
+ setResolvedGroupOrderId(data.groupOrderId);
+ queryClient.invalidateQueries({ queryKey: ["/api/group-orders"] });
  } else {
  showToast(data.error || "Error al crear grupo", "error");
  }
@@ -132,77 +136,83 @@ export default function GroupOrderScreen() {
  // Si es un nuevo grupo sin ID, mostrar opciones
  if (isNewGroup) {
  return (
- <LinearGradient
- colors={isDark ? ["#1a1a2e", "#16213e"] : ["#f8f9fa", "#e9ecef"]}
- style={[styles.container, { paddingTop: insets.top + 20 }]}
- >
- <View style={{ padding: Spacing.lg }}>
- <ThemedText type="h1" style={styles.title}>
- Pedidos Grupales
- </ThemedText>
+  <View
+   style={[styles.container, { paddingTop: insets.top + 20, backgroundColor: theme.background }]}
+  >
+   <View style={styles.header}>
+    <Pressable
+     onPress={() => navigation.goBack()}
+     style={styles.backButton}
+    >
+     <Feather name="arrow-left" size={24} color={theme.text} />
+    </Pressable>
+    <ThemedText type="h2">Pedidos Grupales</ThemedText>
+    <View style={{ width: 44 }} />
+   </View>
+   <ScrollView contentContainerStyle={{ padding: Spacing.lg }}>
+    <ThemedText type="h1" style={styles.title}>
+     Pedidos Grupales
+    </ThemedText>
 
- <View
- style={[
- styles.card,
- { backgroundColor: theme.card, marginTop: Spacing.lg },
- ]}
- >
- <Feather name="users" size={48} color={ComeYaColors.primary} />
- <ThemedText
- type="h3"
- style={{ marginTop: Spacing.md, textAlign: "center" }}
- >
- ,%%Quieres pedir con amigos o familia?
- </ThemedText>
- <ThemedText
- style={{
- textAlign: "center",
- marginTop: Spacing.sm,
- color: theme.textSecondary,
- }}
- >
- Crea un pedido grupal, comparte el enlace y cada persona elige lo
- que quiere.
- </ThemedText>
+    <View
+     style={[
+      styles.card,
+      { backgroundColor: theme.card, marginTop: Spacing.lg },
+     ]}
+    >
+     <Feather name="users" size={48} color={ComeYaColors.primary} />
+     <ThemedText
+      type="h3"
+      style={{ marginTop: Spacing.md, textAlign: "center" }}
+     >
+      ¿Quieres pedir con amigos o familia?
+     </ThemedText>
+     <ThemedText
+      style={{
+       textAlign: "center",
+       marginTop: Spacing.sm,
+       color: theme.textSecondary,
+      }}
+     >
+      Crea un pedido grupal, comparte el enlace y cada persona elige lo
+      que quiere.
+     </ThemedText>
 
- <Pressable
- style={[
- styles.button,
- {
- backgroundColor: ComeYaColors.primary,
- marginTop: Spacing.lg,
- },
- ]}
- onPress={() => createGroupMutation.mutate()}
- disabled={createGroupMutation.isPending}
- >
- <ThemedText
- style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}
- >
- {createGroupMutation.isPending
- ? "Creando..."
- : "Crear Pedido Grupal"}
- </ThemedText>
- </Pressable>
- </View>
+     <Pressable
+       style={[
+        styles.button,
+        {
+         backgroundColor: ComeYaColors.primary,
+         marginTop: Spacing.lg,
+        },
+       ]}
+       onPress={() => navigation.navigate("BusinessList")}
+      >
+       <ThemedText
+        style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}
+       >
+        Seleccionar Negocio
+       </ThemedText>
+      </Pressable>
+    </View>
 
- <View
- style={[
- styles.card,
- { backgroundColor: theme.card, marginTop: Spacing.md },
- ]}
- >
- <Feather name="info" size={32} color={ComeYaColors.secondary} />
- <ThemedText
- style={{ marginTop: Spacing.sm, color: theme.textSecondary }}
- >
- Para crear un pedido grupal, primero agrega productos al carrito
- desde un negocio y luego selecciona "Pedido Grupal" en el
- checkout.
- </ThemedText>
- </View>
- </View>
- </LinearGradient>
+    <View
+     style={[
+      styles.card,
+      { backgroundColor: theme.card, marginTop: Spacing.md },
+     ]}
+    >
+     <Feather name="info" size={32} color={ComeYaColors.secondary} />
+     <ThemedText
+      style={{ marginTop: Spacing.sm, color: theme.textSecondary }}
+     >
+      Para crear un pedido grupal, primero agrega productos al carrito
+      desde un negocio y luego selecciona "Pedido Grupal" en el
+      checkout.
+     </ThemedText>
+    </View>
+   </ScrollView>
+  </View>
  );
  }
 

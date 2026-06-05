@@ -179,25 +179,40 @@ export default function ScheduledOrdersScreen() {
  Cargando pedidos...
  </Text>
  </View>
- ) : displayOrders.length === 0 ? (
- <View style={styles.emptyWrap}>
- <Feather
- name={activeTab === "upcoming" ? "calendar" : "archive"}
- size={48}
- color={theme.textSecondary}
- />
- <Text style={[styles.emptyTitle, { color: theme.text }]}>
- {activeTab === "upcoming"
- ? "Sin pedidos programados"
- : "Sin historial"}
- </Text>
- {activeTab === "upcoming" && (
- <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
- Programa tus pedidos favoritos para que lleguen cuando los
- necesites
- </Text>
- )}
- </View>
+  ) : displayOrders.length === 0 ? (
+  <View style={styles.emptyWrap}>
+  <Feather
+  name={activeTab === "upcoming" ? "calendar" : "archive"}
+  size={48}
+  color={theme.textSecondary}
+  />
+  <Text style={[styles.emptyTitle, { color: theme.text }]}>
+  {activeTab === "upcoming"
+  ? "Sin pedidos programados"
+  : "Sin historial"}
+  </Text>
+  {activeTab === "upcoming" && (
+  <>
+   <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+    Programa tus pedidos favoritos para que lleguen cuando los
+    necesites
+   </Text>
+    <Pressable
+     onPress={() => (navigation as any).navigate("BusinessList")}
+     style={[
+      styles.ctaButton,
+      { backgroundColor: ComeYaColors.primary },
+      Shadows.md,
+     ]}
+    >
+     <Feather name="plus-circle" size={20} color="#fff" />
+     <Text style={styles.ctaButtonText}>
+      Crear Pedido Programado
+     </Text>
+    </Pressable>
+  </>
+  )}
+  </View>
  ) : (
  <ScrollView
  contentContainerStyle={styles.content}
@@ -525,4 +540,19 @@ const styles = StyleSheet.create({
  },
  statusPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
  statusText: { fontSize: 12, fontWeight: "700" },
+ ctaButton: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  paddingVertical: Spacing.md,
+  paddingHorizontal: Spacing.lg,
+  borderRadius: BorderRadius.lg,
+  marginTop: Spacing.lg,
+ },
+ ctaButtonText: {
+  color: "#fff",
+  fontSize: 15,
+  fontWeight: "700",
+ },
 });
