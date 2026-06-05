@@ -145,12 +145,14 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-export default function AdminMenuScreen() {
+export default function AdminMenuScreen({ route }: { route?: any }) {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>(
+    route?.params?.initialTab ?? null,
+  );
   const [dashboardMetrics, setDashboardMetrics] =
     useState<DashboardMetrics | null>(null);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
@@ -185,6 +187,13 @@ export default function AdminMenuScreen() {
   const [products, setProducts] = useState<any[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
   const [adminLogs, setAdminLogs] = useState<any[]>([]);
+
+  // Reaccionar a cambios en los params de navegación (ej: desde AdminProfileScreen)
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
 
   console.log("RENDER - Modal states:", {
     userModalVisible,

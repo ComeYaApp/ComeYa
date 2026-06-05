@@ -10,6 +10,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,7 +45,7 @@ type AdminProfileNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function AdminProfileScreen() {
   const { theme, themeMode } = useTheme();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
   const { showToast } = useToast();
   const navigation = useNavigation<AdminProfileNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -56,12 +57,13 @@ export default function AdminProfileScreen() {
   );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Load profile image on mount
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) return;
+  const loadProfile = async () => {
       setIsLoading(false);
+      if (!user) return;
 
       if (user.profileImage) {
         const img = user.profileImage;
@@ -269,63 +271,37 @@ export default function AdminProfileScreen() {
           />
         </View>
 
-        {/* Admin Dashboard */}
+        {/* Cuenta — primera sección visible */}
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <ThemedText type="h4" style={styles.sectionTitle}>
-            Administración
+            Cuenta
           </ThemedText>
-
           <SettingsItem
-            icon="home"
-            label="Dashboard"
+            icon="user"
+            label="Editar perfil"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("DashboardTab" as any);
+              navigation.navigate("EditProfile" as any);
             }}
           />
           <SettingsItem
-            icon="users"
-            label="Usuarios"
+            icon="lock"
+            label="Cambiar contraseña"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTab" as any);
-            }}
-          />
-          <SettingsItem
-            icon="shopping-bag"
-            label="Negocios"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTab" as any);
-            }}
-          />
-          <SettingsItem
-            icon="truck"
-            label="Repartidores"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTab" as any);
-            }}
-          />
-          <SettingsItem
-            icon="file-text"
-            label="Pedidos"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTab" as any);
+              navigation.navigate("ChangePassword" as any);
             }}
           />
         </View>
 
-        {/* Finance */}
+        {/* Finanzas */}
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <ThemedText type="h4" style={styles.sectionTitle}>
             Finanzas
           </ThemedText>
-
           <SettingsItem
-            icon="dollar-sign"
-            label="Pagos"
+            icon="trending-up"
+            label="Finanzas"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               navigation.navigate("FinanceTab" as any);
@@ -339,97 +315,9 @@ export default function AdminProfileScreen() {
               navigation.navigate("AdminPaymentAccounts" as any);
             }}
           />
-          <SettingsItem
-            icon="briefcase"
-            label="Settlemente"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTab" as any);
-            }}
-          />
-          <SettingsItem
-            icon="activity"
-            label="Auditoría financiera"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTab" as any);
-            }}
-          />
         </View>
 
-        {/* Maps & Tracking */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Mapas y Tracking
-          </ThemedText>
-
-          <SettingsItem
-            icon="map"
-            label="Mapa en vivo"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("MapTab" as any);
-            }}
-          />
-          <SettingsItem
-            icon="navigation"
-            label="Seguimiento"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("MapTab" as any);
-            }}
-          />
-        </View>
-
-        {/* System */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Sistema
-          </ThemedText>
-
-          <SettingsItem
-            icon="settings"
-            label="Configuración"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("AdminTab" as any);
-            }}
-          />
-          <SettingsItem
-            icon="database"
-            label="Base de datos"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showToast("Base de datos coming soon", "info");
-            }}
-          />
-          <SettingsItem
-            icon="server"
-            label="Servicios"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showToast("Servicios coming soon", "info");
-            }}
-          />
-        </View>
-
-        {/* Account */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
-          <ThemedText type="h4" style={styles.sectionTitle}>
-            Cuenta
-          </ThemedText>
-
-          <SettingsItem
-            icon="user"
-            label="Editar perfil"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("EditProfile" as any);
-            }}
-          />
-        </View>
-
-        {/* Logout */}
+        {/* Cerrar sesión */}
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <SettingsItem
             icon="log-out"
@@ -437,14 +325,54 @@ export default function AdminProfileScreen() {
             danger
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              showToast(
-                "Funcionalidad de cierre de sesión coming soon",
-                "info",
-              );
+              setShowLogoutModal(true);
             }}
           />
         </View>
       </ScrollView>
+
+      {/* Logout Modal */}
+      <Modal visible={showLogoutModal} transparent animationType="fade">
+        <View style={baseStyles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowLogoutModal(false)}
+          />
+          <View style={[baseStyles.modalContent, { backgroundColor: theme.card }]}>
+            <ThemedText type="h3" style={baseStyles.modalTitle}>
+              Cerrar sesión
+            </ThemedText>
+            <ThemedText
+              type="body"
+              style={[baseStyles.modalMessage, { textAlign: "center", marginBottom: Spacing.lg }]}
+            >
+              ¿Estás seguro de que quieres cerrar sesión?
+            </ThemedText>
+            <View style={baseStyles.modalButtons}>
+              <Pressable
+                style={[
+                  baseStyles.modalButton,
+                  { backgroundColor: theme.background, borderWidth: 1, borderColor: theme.border },
+                ]}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <ThemedText type="body">Cancelar</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[baseStyles.modalButton, { backgroundColor: "#ef4444" }]}
+                onPress={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                }}
+              >
+                <ThemedText type="body" style={{ color: "#fff" }}>
+                  Cerrar sesión
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }

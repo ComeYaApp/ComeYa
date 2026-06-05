@@ -70,35 +70,10 @@ const SETTINGS: {
     placeholder: "1",
     hint: "Horas hasta liberar fondos al confirmar entrega",
   },
-  // Pagos - cuentas receptoras ComeYa (Espana)
-  {
-    key: "bizum_phone",
-    label: "Telefono Bizum ComeYa",
-    category: "Pagos",
-    placeholder: "600000000",
-  },
-  {
-    key: "comeya_iban",
-    label: "IBAN ComeYa",
-    category: "Pagos",
-    placeholder: "ES00 0000 0000 0000 0000 0000",
-  },
-  {
-    key: "paypal_email",
-    label: "Email PayPal ComeYa",
-    category: "Pagos",
-    placeholder: "pagos@comeya.es",
-  },
-  {
-    key: "stripe_enabled",
-    label: "Stripe habilitado",
-    category: "Pagos",
-    placeholder: "true",
-    hint: "true o false. La API key va en variables de entorno de Render",
-  },
 ];
 
-const CATEGORIES = ["Comisiones", "Operaciones", "Pagos"];
+// Cuentas de pago (Bizum, IBAN, PayPal) se gestionan en "Cuentas de pago" del perfil admin.
+const CATEGORIES = ["Comisiones", "Operaciones"];
 
 export const SettingsTab: React.FC<Props> = ({ theme, showToast }) => {
   const [values, setValues] = useState<Record<string, string>>({});

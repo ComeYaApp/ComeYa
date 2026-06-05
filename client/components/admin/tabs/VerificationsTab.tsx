@@ -477,23 +477,24 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       {selected.deliveryDriver &&
                         ["motorcycle", "car"].includes(
                           selected.deliveryDriver.vehicleType,
-                        ) && (
-                          <Section
-                            title="Documentos del vehículo"
-                            theme={theme}
-                          >
-                            <DocRow
-                              label="Permiso de circulación"
-                              url={selected.deliveryDriver.vehicleDocument}
-                              theme={theme}
-                            />
-                            <DocRow
-                              label="Seguro"
-                              url={selected.deliveryDriver.insuranceDocument}
-                              theme={theme}
-                            />
-                          </Section>
-                        )}
+                        ) && (() => {
+                          let vdocs: any = {};
+                          try { vdocs = JSON.parse(selected.deliveryDriver.verificationDocuments || "{}"); } catch {}
+                          return (
+                            <Section title="Documentos del vehículo" theme={theme}>
+                              <DocRow
+                                label="Permiso de circulación"
+                                url={vdocs.vehicleDocument || vdocs.vehicle_document || null}
+                                theme={theme}
+                              />
+                              <DocRow
+                                label="Seguro"
+                                url={vdocs.insuranceDocument || vdocs.insurance_document || null}
+                                theme={theme}
+                              />
+                            </Section>
+                          );
+                        })()}
                     </>
                   )}
 

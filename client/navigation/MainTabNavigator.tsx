@@ -34,7 +34,7 @@ export type MainTabParamList = {
   DashboardTab: undefined;
   FinanceTab: undefined;
   MapTab: undefined;
-  AdminTab: undefined;
+  AdminTab: { initialTab?: string } | undefined;
   ProfileTab: undefined;
   BusinessTab: undefined;
   DeliveryTab: undefined;
