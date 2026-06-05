@@ -3,8 +3,6 @@ import {
   View,
   StyleSheet,
   Pressable,
-  Linking,
-  Platform,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -13,6 +11,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -24,6 +24,9 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
+
+type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface ActiveOrder {
   id: string;
@@ -58,6 +61,7 @@ export default function DriverMapScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const { user } = useAuth();
+  const navigation = useNavigation<NavProp>();
   const mapRef = useRef<MapView>(null);
 
   const [driverLocation, setDriverLocation] = useState<{
@@ -177,23 +181,19 @@ export default function DriverMapScreen() {
 
   const openNavigation = (lat: string, lng: string, address: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const url = Platform.select({
-      ios: `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`,
-      android: `google.navigation:q=${lat},${lng}`,
-      default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-    });
-    Linking.canOpenURL(url!).then((ok) => {
-      Linking.openURL(
-        ok
-          ? url!
-          : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`,
-      );
+    navigation.navigate("DriverNavigation", {
+      destLat: parseFloat(lat),
+      destLng: parseFloat(lng),
+      destAddress: address,
     });
   };
 
   const callCustomer = () => {
-    if (activeOrder?.customerPhone)
+    // La llamada sigue siendo externa (comportamiento correcto para tel:)
+    if (activeOrder?.customerPhone) {
+      const { Linking } = require("react-native");
       Linking.openURL(`tel:${activeOrder.customerPhone}`);
+    }
   };
 
   const businessCoords =

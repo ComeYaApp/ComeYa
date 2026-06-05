@@ -67,6 +67,7 @@ import { useScreenOptions } from "@/hooks/useScreenOptions";
 import LocationPickerScreen from "@/screens/LocationPickerScreen";
 import ChangePasswordScreen from "@/screens/ChangePasswordScreen";
 import ChangePhoneEmailScreen from "@/screens/ChangePhoneEmailScreen";
+import DriverNavigationScreen from "@/screens/DriverNavigationScreen";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -179,6 +180,11 @@ export type RootStackParamList = {
   Terms: undefined;
   Privacy: undefined;
   QRScanner: undefined;
+  DriverNavigation: {
+    destLat: number;
+    destLng: number;
+    destAddress: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -563,6 +569,11 @@ export default function RootStackNavigator() {
               presentation: "modal",
               headerShown: false,
             }}
+          />
+          <Stack.Screen
+            name="DriverNavigation"
+            component={DriverNavigationScreen}
+            options={{ headerShown: false }}
           />
         </>
       ) : (

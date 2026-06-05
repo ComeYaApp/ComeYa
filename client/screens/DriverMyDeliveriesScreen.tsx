@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -6,8 +6,6 @@ import {
   Pressable,
   RefreshControl,
   Alert,
-  Linking,
-  Platform,
   Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -380,46 +378,7 @@ export default function DriverMyDeliveriesScreen() {
     return { lat, lng };
   };
 
-  const openGoogleMaps = (lat: number, lng: number, address: string) => {
-    const url = Platform.select({
-      ios: `comgooglemaps://?daddr=${lat},${lng}&directionsmode=driving`,
-      android: `google.navigation:q=${lat},${lng}`,
-      default: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-    });
-
-    Linking.canOpenURL(url).then((supported) => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Linking.openURL(
-          `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`,
-        );
-      }
-    });
-  };
-
-  const openWaze = (lat: number, lng: number) => {
-    const url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
-    Linking.openURL(url);
-  };
-
-  const openAppleMaps = (lat: number, lng: number, address: string) => {
-    const url =
-      Platform.OS === "ios"
-        ? `maps:?daddr=${lat},${lng}&dirflg=d`
-        : `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
-
-    Linking.canOpenURL(url).then((supported) => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Linking.openURL(
-          `https://maps.apple.com/?daddr=${encodeURIComponent(address)}&dirflg=d`,
-        );
-      }
-    });
-  };
-
+  /** Navega internamente al destino del pedido usando la pantalla GPS interna */
   const showNavigationOptions = (order: any) => {
     const { lat, lng } = getOrderCoordinates(order);
     const address = parseDeliveryAddress(order.deliveryAddress);
@@ -429,29 +388,11 @@ export default function DriverMyDeliveriesScreen() {
       return;
     }
 
-    Alert.alert(
-      "Iniciar Navegación",
-      "Selecciona la aplicación de navegación",
-      [
-        {
-          text: "Google Maps",
-          onPress: () => openGoogleMaps(lat, lng, address),
-        },
-        {
-          text: "Waze",
-          onPress: () => openWaze(lat, lng),
-        },
-        ...(Platform.OS === "ios"
-          ? [
-              {
-                text: "Apple Maps",
-                onPress: () => openAppleMaps(lat, lng, address),
-              },
-            ]
-          : []),
-        { text: "Cancelar", style: "cancel" as const },
-      ],
-    );
+    navigation.navigate("DriverNavigation", {
+      destLat: lat,
+      destLng: lng,
+      destAddress: address,
+    });
   };
 
   const renderOrder = ({ item }: { item: any }) => {
@@ -478,7 +419,7 @@ export default function DriverMyDeliveriesScreen() {
                 : item.status === "on_the_way"
                   ? "warning"
                   : item.status === "delivered"
-                    ? "info"
+                    ? "success"
                     : "secondary"
             }
           />
