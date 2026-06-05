@@ -237,7 +237,6 @@ export default function EditProfileScreen() {
   const [email, setEmail] = useState(user?.email || "");
   const [dni, setDni] = useState((user as any)?.dni || "");
   const [address, setAddress] = useState((user as any)?.address || "");
-  const [profession, setProfession] = useState("");
 
   // Solo repartidor
   const [vehicleType, setVehicleType] = useState("");
@@ -1076,25 +1075,6 @@ export default function EditProfileScreen() {
           </Pressable>
         </View>
 
-        {/* ── Profesión ── */}
-        <View
-          style={[
-            styles.formSection,
-            { backgroundColor: theme.card },
-            Shadows.sm,
-          ]}
-        >
-          <SectionTitle icon="briefcase" title="Profesión" />
-
-          <Input
-            label="Tu profesión"
-            leftIcon="award"
-            value={profession}
-            onChangeText={setProfession}
-            placeholder="Ej: Repartidor, Chef, Comerciante..."
-            autoCapitalize="words"
-          />
-        </View>
       </ScrollView>
 
       <View

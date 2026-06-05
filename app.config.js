@@ -1,7 +1,7 @@
 export default {
   expo: {
     name: "ComeYa",
-    slug: "comeya",
+    slug: "nemy-app",
     version: "1.0.1",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
@@ -11,6 +11,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
+      buildNumber: "1.0.1",
       config: {
         googleMapsApiKey:
           process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
@@ -19,7 +20,18 @@ export default {
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           "Necesitamos tu ubicacion para asignarte pedidos y mostrar tu posicion en tiempo real.",
+        NSCameraUsageDescription: "Permite tomar fotos para tu perfil y productos",
+        NSPhotoLibraryUsageDescription: "Permite seleccionar imágenes para tu perfil",
+        CFBundleAllowMixedLocalizations: true,
+        UIBackgroundModes: ["location", "fetch"]
       },
+      icon: "./client/assets/nuevologoapp-padded.jpeg",
+      splash: {
+        image: "./client/assets/splash.png",
+        resizeMode: "contain",
+        backgroundColor: "#ffffff"
+      },
+      associatedDomains: ["applinks:comeya.es"]
     },
     android: {
       adaptiveIcon: {

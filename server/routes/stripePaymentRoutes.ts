@@ -245,7 +245,7 @@ router.get("/payment-method/:userId", authenticateToken, async (req, res) => {
     const [user] = await db
       .select()
       .from(users)
-      .where(eq(users.id, req.params.userId))
+      .where(eq(users.id, req.params.userId as string))
       .limit(1);
 
     if (!user) {
@@ -369,7 +369,7 @@ router.delete(
           cardLast4: null,
           cardBrand: null,
         })
-        .where(eq(users.id, req.params.userId));
+        .where(eq(users.id, req.params.userId as string));
 
       res.json({ success: true });
     } catch (error: any) {
@@ -399,7 +399,7 @@ router.post(
       const [order] = await db
         .select()
         .from(orders)
-        .where(eq(orders.id, req.params.orderId))
+        .where(eq(orders.id, req.params.orderId as string))
         .limit(1);
       if (!order) return res.status(404).json({ error: "Order not found" });
       if (order.userId !== req.user!.id)
@@ -541,7 +541,7 @@ router.post(
       const [sub] = await db
         .select()
         .from(subscriptions)
-        .where(eq(subscriptions.id, subscriptionId))
+        .where(eq(subscriptions.id, subscriptionId as string))
         .limit(1);
       if (!sub || sub.userId !== req.user!.id) {
         return res.status(404).json({ error: "Suscripción no encontrada" });
@@ -576,7 +576,7 @@ router.post(
       let [sub] = await db
         .select()
         .from(subscriptions)
-        .where(eq(subscriptions.id, subscriptionId))
+        .where(eq(subscriptions.id, subscriptionId as string))
         .limit(1);
 
       // Si no encontramos por id exacto, buscar la suscripcion activa/pending del usuario
@@ -603,6 +603,8 @@ router.post(
           status: "active",
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,
+          autoRenew: true,
+          cancelledAt: null as any, // Limpiar cancelación previa si la hubiera
         })
         .where(eq(subscriptions.userId, req.user!.id));
 
@@ -666,8 +668,8 @@ router.get("/history", authenticateToken, async (req, res) => {
       .limit(20);
 
     const payments = userOrders
-      .filter((o) => o.stripePaymentIntentId || o.paymentMethod)
-      .map((o) => ({
+      .filter((o: any) => o.stripePaymentIntentId || o.paymentMethod)
+      .map((o: any) => ({
         payment: {
           id: o.stripePaymentIntentId || o.id,
           amount: o.total || 0,

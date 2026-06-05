@@ -11,17 +11,26 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
       }
     },
     "production": {
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "image": "latest",
+        "distribution": "store",
+        "autoIncrement": "version"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
         "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
         "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
-        "EXPO_PUBLIC_NODE_ENV": "production"
+        "EXPO_PUBLIC_NODE_ENV": "production",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
       }
     }
   },

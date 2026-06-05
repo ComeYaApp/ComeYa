@@ -1060,59 +1060,97 @@ export default function ProfileScreen() {
               style={{ marginTop: Spacing.xs }}
             />
           ) : null}
-          {subscription && subscription.plan !== "free" &&
-            subscription.status === "active" &&
-            (user?.role === "customer" || user?.role === "business_owner") ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: Spacing.sm,
-                  backgroundColor: ComeYaColors.primary + "18",
-                  borderRadius: 20,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                }}
-              >
-                <Feather name="star" size={13} color={ComeYaColors.primary} />
-                 <ThemedText
-                   type="caption"
-                   style={{
-                     color: ComeYaColors.primary,
-                     fontWeight: "700",
-                     marginLeft: 4,
-                   }}
-                 >
-                    {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} activo
-                 </ThemedText>
-              </View>
-            ) : subscription && subscription.plan !== "free" &&
-            subscription.status === "pending_payment" &&
-            (user?.role === "customer" || user?.role === "business_owner") ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: Spacing.sm,
-                  backgroundColor: "#F59E0B18",
-                  borderRadius: 20,
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                }}
-              >
-                <Feather name="clock" size={13} color="#F59E0B" />
-                 <ThemedText
-                   type="caption"
-                   style={{
-                     color: "#F59E0B",
-                     fontWeight: "700",
-                     marginLeft: 4,
-                   }}
-                 >
-                    {subscription.plan === "premium" ? "Premium" : subscription.plan === "business" ? "Business" : "Premium"} pendiente
-                 </ThemedText>
-              </View>
-            ) : null}
+          {(() => {
+            if (
+              !subscription ||
+              subscription.plan === "free" ||
+              !(user?.role === "customer" || user?.role === "business_owner")
+            ) return null;
+
+            const planLabel =
+              subscription.plan === "business" ? "Business" : "Premium";
+
+            // Cancelación programada (sigue activa hasta fin del periodo)
+            if (
+              subscription.status === "active" &&
+              subscription.cancelledAt &&
+              !subscription.autoRenew
+            ) {
+              return (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: Spacing.sm,
+                    backgroundColor: "#F59E0B18",
+                    borderRadius: 20,
+                    paddingHorizontal: 12,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Feather name="alert-circle" size={13} color="#F59E0B" />
+                  <ThemedText
+                    type="caption"
+                    style={{ color: "#F59E0B", fontWeight: "700", marginLeft: 4 }}
+                  >
+                    {planLabel} (expira pronto)
+                  </ThemedText>
+                </View>
+              );
+            }
+
+            // Plan activo
+            if (subscription.status === "active") {
+              return (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: Spacing.sm,
+                    backgroundColor: ComeYaColors.primary + "18",
+                    borderRadius: 20,
+                    paddingHorizontal: 12,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Feather name="star" size={13} color={ComeYaColors.primary} />
+                  <ThemedText
+                    type="caption"
+                    style={{ color: ComeYaColors.primary, fontWeight: "700", marginLeft: 4 }}
+                  >
+                    {planLabel} activo
+                  </ThemedText>
+                </View>
+              );
+            }
+
+            // Pago pendiente
+            if (subscription.status === "pending_payment") {
+              return (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: Spacing.sm,
+                    backgroundColor: "#F59E0B18",
+                    borderRadius: 20,
+                    paddingHorizontal: 12,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Feather name="clock" size={13} color="#F59E0B" />
+                  <ThemedText
+                    type="caption"
+                    style={{ color: "#F59E0B", fontWeight: "700", marginLeft: 4 }}
+                  >
+                    {planLabel} pendiente
+                  </ThemedText>
+                </View>
+              );
+            }
+
+            return null;
+          })()}
         </View>
 
         <View

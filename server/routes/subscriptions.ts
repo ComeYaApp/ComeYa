@@ -221,6 +221,8 @@ router.post(
             status: "active",
             currentPeriodStart: now,
             currentPeriodEnd: periodEnd,
+            autoRenew: true,
+            cancelledAt: null as any, // Limpiar cancelación previa si la hubiera
           })
           .where(eq(subscriptions.id, subscriptionId));
       }

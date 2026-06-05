@@ -105,6 +105,7 @@ desktop.ini
 # Android build artifacts
 # ============================================
 android/.cxx/
+android/app/comeya-release.keystore
 
 # ============================================
 # Uploads (mantener estructura)

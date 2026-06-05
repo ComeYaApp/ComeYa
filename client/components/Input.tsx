@@ -7,6 +7,7 @@ import {
   TextInputProps,
   ViewStyle,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { theme } from "@/constants/theme";
 
 interface InputProps extends TextInputProps {
@@ -30,7 +31,11 @@ export function Input({
       <View style={styles.inputWrapper}>
         {leftIcon && (
           <View style={styles.iconContainer}>
-            <Text style={styles.iconText}>{leftIcon}</Text>
+            <Feather
+              name={leftIcon as any}
+              size={18}
+              color={theme.colors.text.secondary}
+            />
           </View>
         )}
         <TextInput
@@ -61,29 +66,28 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surface,
+    overflow: "hidden",
   },
   iconContainer: {
-    width: 40,
+    width: 44,
+    height: 48,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  iconText: {
-    fontSize: 16,
+    borderRightWidth: 1,
+    borderRightColor: theme.colors.border,
   },
   input: {
     ...theme.typography.body,
     flex: 1,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
+    minHeight: 48,
   },
   inputWithIcon: {
     borderTopLeftRadius: 0,

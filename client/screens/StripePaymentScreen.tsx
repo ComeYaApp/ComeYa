@@ -18,6 +18,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { ComeYaColors } from "@/constants/theme";
+import { useQueryClient } from "@tanstack/react-query";
 
 const PRIMARY = "#DC2626";
 
@@ -28,6 +29,7 @@ export default function StripePaymentScreen() {
   const { clearCart } = useCart();
   const { user } = useAuth();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
@@ -47,6 +49,9 @@ export default function StripePaymentScreen() {
     isSubscription,
     subscriptionId,
   } = params || {};
+
+  // Las suscripciones pasan el importe en centavos (1500 = €15), los pedidos normales en euros
+  const displayAmount = isSubscription ? amount / 100 : amount;
 
   // Open Stripe payment in in-app browser
 const openPayment = useCallback(async () => {
@@ -104,29 +109,36 @@ const openPayment = useCallback(async () => {
         if (isSubscription && subscriptionId) {
           try {
             // Confirmar suscripción después del pago exitoso
-            const confirmRes = await apiRequest(
+            await apiRequest(
               "POST",
               `/api/stripe/confirm-subscription/${subscriptionId}`,
             );
-            if (confirmRes.ok) {
-              Alert.alert("✅ Suscripción activada", "Tu plan está ahora activo.");
-            } else {
-              Alert.alert("✅ Pago completado", "Suscripción activada manualmente.");
-            }
           } catch (e) {
             // Silenciar error, la suscripción ya debería estar activa
           }
+          // Invalidar el caché de la suscripción para que la pantalla se actualice inmediatamente
+          queryClient.invalidateQueries({ queryKey: ["subscription"] });
+          Alert.alert(
+            "✅ ¡Suscripción activada!",
+            "Tu plan ya está activo. Disfruta todos los beneficios.",
+            [{ text: "Ver mi suscripción", onPress: () => {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "Main" }, { name: "Subscriptions" }],
+              });
+            }}],
+          );
         } else {
-          // Para pedidos normales, limpiar carrito
+          // Para pedidos normales, limpiar carrito y navegar al tracking
           await clearCart();
+          navigation.reset({
+            index: 0,
+            routes: [
+              { name: "Main" },
+              { name: "OrderTracking", params: { orderId } },
+            ],
+          });
         }
-        navigation.reset({
-          index: 0,
-          routes: [
-            { name: "Main" },
-            { name: "OrderTracking", params: { orderId } },
-          ],
-        });
       }
       return;
     }
@@ -185,6 +197,7 @@ const openPayment = useCallback(async () => {
   navigation,
   initPaymentSheet,
   presentPaymentSheet,
+  queryClient,
 ]);
 
   useEffect(() => {
@@ -275,29 +288,42 @@ const openPayment = useCallback(async () => {
             type="h1"
             style={{ color: PRIMARY, fontWeight: "900", marginTop: 8 }}
           >
-            €{(amount).toFixed(2)}
+            €{(displayAmount).toFixed(2)}
           </ThemedText>
 
           {/* Order summary */}
           <View
             style={[styles.summary, { borderTopColor: border, marginTop: 24 }]}
           >
-            <View style={styles.summaryRow}>
-              <ThemedText type="body" style={{ color: sub }}>
-                Importe
-              </ThemedText>
-              <ThemedText type="body" style={{ color: text }}>
-                €{(subtotal || 0).toFixed(2)}
-              </ThemedText>
-            </View>
-            <View style={styles.summaryRow}>
-              <ThemedText type="body" style={{ color: sub }}>
-                Envío
-              </ThemedText>
-              <ThemedText type="body" style={{ color: text }}>
-                €{(deliveryFee || 0).toFixed(2)}
-              </ThemedText>
-            </View>
+            {isSubscription ? (
+              <View style={styles.summaryRow}>
+                <ThemedText type="body" style={{ color: sub }}>
+                  Suscripción mensual
+                </ThemedText>
+                <ThemedText type="body" style={{ color: text }}>
+                  €{(displayAmount).toFixed(2)}/mes
+                </ThemedText>
+              </View>
+            ) : (
+              <>
+                <View style={styles.summaryRow}>
+                  <ThemedText type="body" style={{ color: sub }}>
+                    Importe
+                  </ThemedText>
+                  <ThemedText type="body" style={{ color: text }}>
+                    €{(subtotal || 0).toFixed(2)}
+                  </ThemedText>
+                </View>
+                <View style={styles.summaryRow}>
+                  <ThemedText type="body" style={{ color: sub }}>
+                    Envío
+                  </ThemedText>
+                  <ThemedText type="body" style={{ color: text }}>
+                    €{(deliveryFee || 0).toFixed(2)}
+                  </ThemedText>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Stripe badge */}
@@ -334,7 +360,7 @@ const openPayment = useCallback(async () => {
             <>
               <Feather name="lock" size={18} color="#fff" />
               <ThemedText type="h4" style={{ color: "#fff", marginLeft: 8 }}>
-                Pagar €{(amount).toFixed(2)}
+                Pagar €{(displayAmount).toFixed(2)}
               </ThemedText>
             </>
           )}
