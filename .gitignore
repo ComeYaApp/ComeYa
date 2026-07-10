@@ -67,6 +67,8 @@ replit.md
 *.bat
 *.cmd
 !start-local.bat
+!build-apk-production.bat
+!build-ios-production.bat
 *.sh
 !start-production.sh
 
@@ -143,10 +145,6 @@ tsx
 rmdir
 *.txt
 backend-tunnel.log
-package-lock.json
-e2e.spec.ts
-playwright.config.ts
-jest.config.ts
 
 # ============================================
 # Server - archivos temporales/debug
