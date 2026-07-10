@@ -59,6 +59,7 @@ migrations/*.sql
 # ============================================
 *.md
 !README.md
+!APP_STORE_CONNECT_GUIDE.md
 replit.md
 
 # ============================================
