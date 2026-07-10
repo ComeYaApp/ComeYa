@@ -11,4 +11,25 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
-# Add any project specific keep options here:
+# Stripe
+-keep class com.stripe.android.pushProvisioning.** { *; }
+-dontwarn com.stripe.android.pushProvisioning.**
+
+# Expo Modules
+-keep class expo.modules.kotlin.runtime.Runtime { *; }
+-keep class expo.modules.kotlin.services.** { *; }
+-dontwarn expo.modules.kotlin.runtime.**
+-dontwarn expo.modules.kotlin.services.**
+
+# Keep all Expo modules
+-keep class expo.modules.** { *; }
+-dontwarn expo.modules.**
+
+# Keep Stripe React Native SDK
+-keep class com.reactnativestripesdk.** { *; }
+-dontwarn com.reactnativestripesdk.**
+
+# General keep rules
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod

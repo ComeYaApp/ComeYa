@@ -13,9 +13,7 @@ export default {
       bundleIdentifier: "com.comeya.app",
       buildNumber: "1.0.1",
       config: {
-        googleMapsApiKey:
-          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-          "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g",
+        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
@@ -41,12 +39,10 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.comeya.app",
-      versionCode: 2,
+      versionCode: 4,
       config: {
         googleMaps: {
-          apiKey:
-            process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-            "AIzaSyDLejpcrNJNHzQIduWuot5QAoepitVk2zY",
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
         },
       },
       permissions: [
@@ -84,7 +80,7 @@ export default {
     experiments: {
       reactCompiler: true,
     },
-    privacyPolicyUrl: "https://app.comeya.es/privacy-policy",
+    privacyPolicyUrl: "https://comeya-backend.onrender.com/privacy-policy",
     extra: {
       eas: {
         projectId: "8c58541f-bf02-4e36-bcf9-a2e64b126a5b",

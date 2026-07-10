@@ -106,6 +106,7 @@ desktop.ini
 # ============================================
 android/.cxx/
 android/app/comeya-release.keystore
+android/app/release.keystore
 
 # ============================================
 # Uploads (mantener estructura)

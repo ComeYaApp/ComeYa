@@ -92,8 +92,8 @@ android {
         applicationId 'com.comeya.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 5
+        versionName "1.0.4"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -105,17 +105,10 @@ android {
             keyPassword 'android'
         }
         release {
-            if (System.getenv("ANDROID_KEYSTORE_PASSWORD")) {
-                storeFile file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "release.keystore")
-                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("ANDROID_KEY_ALIAS")
-                keyPassword System.getenv("ANDROID_KEY_PASSWORD")
-            } else {
-                storeFile file('debug.keystore')
-                storePassword 'android'
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
-            }
+            storeFile file('release.keystore')
+            storePassword 'comeya2026'
+            keyAlias 'comeya-key'
+            keyPassword 'comeya2026'
         }
     }
     buildTypes {
