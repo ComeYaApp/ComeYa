@@ -136,12 +136,16 @@
     "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
+    "@babel/plugin-transform-class-properties": "^7.25.0",
+    "@babel/plugin-transform-private-methods": "^7.25.0",
+    "@babel/plugin-transform-private-property-in-object": "^7.25.0",
     "@playwright/test": "^1.58.2",
     "@types/express": "^5.0.0",
     "@types/node": "24.10.0",
     "@types/react": "~19.1.0",
     "@types/uuid": "^10.0.0",
     "babel-plugin-module-resolver": "^5.0.2",
+    "babel-preset-expo": "~54.0.0",
     "drizzle-kit": "^0.31.8",
     "prettier": "3.6.2",
     "sharp": "^0.34.5",
