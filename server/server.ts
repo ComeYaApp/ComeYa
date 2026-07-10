@@ -105,6 +105,9 @@ app.use(express.static(path.join(process.cwd(), "public"), { index: false }));
 app.get("/privacy-policy", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "privacy-policy.html"));
 });
+app.get("/delete-account", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "delete-account.html"));
+});
 
 // Serve client assets (logo, splash, etc.)
 app.use("/assets", express.static(path.join(process.cwd(), "client/assets")));
