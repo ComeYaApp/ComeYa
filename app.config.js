@@ -84,12 +84,12 @@ export default {
     privacyPolicyUrl: "https://comeya-backend.onrender.com/privacy-policy",
     extra: {
       eas: {
-        projectId: "8c58541f-bf02-4e36-bcf9-a2e64b126a5b",
+        projectId: "",
       },
       EXPO_PUBLIC_BACKEND_URL:
         process.env.EXPO_PUBLIC_BACKEND_URL ||
         "https://comeya-backend.onrender.com",
     },
-    owner: "caskiuzs-organization",
+    owner: "caskyuss-organization",
   },
 };
