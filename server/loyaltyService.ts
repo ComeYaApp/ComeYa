@@ -33,8 +33,21 @@ export class LoyaltyService {
         pointsToNextTier: 1000,
       };
 
-      await db.insert(loyaltyPoints).values(newPoints);
-      return newPoints;
+      try {
+        await db.insert(loyaltyPoints).values(newPoints);
+        return newPoints;
+      } catch (insertError: any) {
+        // Race condition: otro request concurrente ya creó el registro
+        if (insertError?.errno === 1062 || insertError?.code === 'ER_DUP_ENTRY') {
+          const [existing] = await db
+            .select()
+            .from(loyaltyPoints)
+            .where(eq(loyaltyPoints.userId, userId))
+            .limit(1);
+          if (existing) return existing;
+        }
+        throw insertError;
+      }
     } catch (error) {
       console.error("Error getting/creating loyalty points:", error);
       throw error;

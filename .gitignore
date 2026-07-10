@@ -65,6 +65,7 @@ replit.md
 # Scripts & Batch Files
 # ============================================
 *.bat
+*.cmd
 !start-local.bat
 *.sh
 !start-production.sh
@@ -107,6 +108,7 @@ desktop.ini
 android/.cxx/
 android/app/comeya-release.keystore
 android/app/release.keystore
+android/app/output.zip
 
 # ============================================
 # Uploads (mantener estructura)
@@ -171,6 +173,8 @@ server/tsx
 # ============================================
 scripts/*.sql
 scripts/*.ts
+scripts/*_temp.js
+scripts/check_db.js
 !scripts/build.js
 
 # ============================================
