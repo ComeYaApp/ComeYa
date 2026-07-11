@@ -65,6 +65,17 @@ export default {
     },
     plugins: [
       [
+        "expo-build-properties",
+        {
+          android: {
+            newArchEnabled: true,
+          },
+          ios: {
+            newArchEnabled: false,
+          },
+        },
+      ],
+      [
         "expo-splash-screen",
         {
           image: "./client/assets/splash.png",
