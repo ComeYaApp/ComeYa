@@ -80,8 +80,6 @@ export default {
       "expo-web-browser",
       "expo-secure-store",
       "expo-location",
-      "@react-native-community/datetimepicker",
-      "@stripe/stripe-react-native",
     ],
     experiments: {
       reactCompiler: true,
