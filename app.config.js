@@ -17,6 +17,7 @@ export default {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
       infoPlist: {
+        ITSAppUsesNonExemptEncryption: false,
         NSLocationWhenInUseUsageDescription:
           "Necesitamos tu ubicacion para asignarte pedidos y mostrar tu posicion en tiempo real.",
         NSCameraUsageDescription: "Permite tomar fotos para tu perfil y productos",
@@ -84,7 +85,7 @@ export default {
     privacyPolicyUrl: "https://comeya-backend.onrender.com/privacy-policy",
     extra: {
       eas: {
-        projectId: "",
+        projectId: "4bca445a-86fc-4b55-8ecb-71b0596f582a",
       },
       EXPO_PUBLIC_BACKEND_URL:
         process.env.EXPO_PUBLIC_BACKEND_URL ||
