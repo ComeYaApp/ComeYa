@@ -7,8 +7,9 @@ export default {
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
     userInterfaceStyle: "automatic",
-    // Android usa New Architecture (estable en prod), iOS lo desactiva por compatibilidad con expo-av
-    newArchEnabled: process.env.EAS_BUILD_PLATFORM === 'ios' ? false : true,
+    // iOS: New Architecture desactivado por compatibilidad con expo-av (EXEventEmitter.h)
+    // Android: usa gradle.properties (newArchEnabled=true) porque build es --local
+    newArchEnabled: false,
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
