@@ -21,7 +21,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "image": "stable",
+        "image": "latest",
         "distribution": "store"
       },
       "env": {
