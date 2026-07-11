@@ -65,6 +65,14 @@ export default {
     },
     plugins: [
       [
+        "expo-build-properties",
+        {
+          ios: {
+            excludedPods: ["stripe-react-native"],
+          },
+        },
+      ],
+      [
         "expo-splash-screen",
         {
           image: "./client/assets/splash.png",
