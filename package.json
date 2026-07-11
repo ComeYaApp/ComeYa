@@ -148,11 +148,13 @@
     "babel-preset-expo": "~54.0.0",
     "drizzle-kit": "^0.31.8",
     "prettier": "3.6.2",
-    "sharp": "^0.34.5",
     "supertest": "^7.0.0",
     "ts-jest": "^29.3.4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.34.5"
   },
   "private": true
 }
