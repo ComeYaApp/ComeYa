@@ -1,7 +1,7 @@
 export default {
   expo: {
     name: "ComeYa",
-    slug: "nemy-app",
+    slug: "comeya-app",
     version: "1.0.1",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
