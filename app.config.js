@@ -7,9 +7,10 @@ export default {
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
     userInterfaceStyle: "automatic",
-    // iOS: New Architecture desactivado por compatibilidad con expo-av (EXEventEmitter.h)
-    // Android: usa gradle.properties (newArchEnabled=true) porque build es --local
-    newArchEnabled: false,
+    // New Architecture requerido por react-native-reanimated@4.1.1
+    // expo-av@16.0.8 ya es compatible con New Architecture en SDK 54
+    // Android build es --local, usa gradle.properties independientemente
+    newArchEnabled: true,
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
