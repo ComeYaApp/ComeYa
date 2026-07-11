@@ -22,8 +22,7 @@
       },
       "ios": {
         "image": "latest",
-        "distribution": "store",
-        "autoIncrement": "version"
+        "distribution": "store"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
