@@ -18,16 +18,17 @@ import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 const PRIMARY = "#DC2626";
 const SORIA = { lat: 41.7636, lng: -2.4677 };
-function loadGoogleMaps(): Promise<void> {
+
+function loadGoogleMaps(): Promise<string> {
   return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps?.places) {
-      resolve();
+    if ((window as any).google?.maps?.Map) {
+      resolve("");
       return;
     }
     const existing = document.getElementById("gmap-script");
     if (existing) {
-      existing.addEventListener("load", () => resolve());
-      if ((window as any).google?.maps?.places) resolve();
+      existing.addEventListener("load", () => resolve(""));
+      if ((window as any).google?.maps?.Map) resolve("");
       return;
     }
     const key = await fetch(
@@ -38,9 +39,9 @@ function loadGoogleMaps(): Promise<void> {
       .catch(() => "");
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
     script.async = true;
-    script.onload = () => resolve();
+    script.onload = () => resolve(key);
     script.onerror = reject;
     document.head.appendChild(script);
   });
@@ -54,6 +55,100 @@ function resolveProfileImageUrl(img: string): string {
 }
 
 const LABEL_OPTIONS = ["Casa", "Trabajo", "Otro"];
+
+// Places API (New) - autocomplete via REST
+interface PlaceSuggestion {
+  placeId: string;
+  description: string;
+}
+
+async function fetchPlaceSuggestions(
+  input: string,
+  apiKey: string,
+): Promise<PlaceSuggestion[]> {
+  if (!input || input.length < 3) return [];
+  try {
+    const res = await fetch(
+      "https://places.googleapis.com/v1/places:autocomplete",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+        },
+        body: JSON.stringify({
+          input,
+          locationBias: {
+            circle: {
+              center: { latitude: 41.7636, longitude: -2.4677 },
+              radius: 50000.0,
+            },
+          },
+          includedRegionCodes: ["ES"],
+        }),
+      },
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.suggestions || []).map(
+      (s: any) =>
+        ({
+          placeId: s.placePrediction?.placeId || "",
+          description:
+            s.placePrediction?.text?.text ||
+            s.placePrediction?.structuredFormat?.mainText?.text ||
+            "",
+        }) as PlaceSuggestion,
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function fetchPlaceDetails(
+  placeId: string,
+  apiKey: string,
+): Promise<{
+  lat: number;
+  lng: number;
+  street: string;
+  city: string;
+  zipCode: string;
+} | null> {
+  if (!placeId) return null;
+  try {
+    const res = await fetch(
+      `https://places.googleapis.com/v1/places/${placeId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask":
+            "location,addressComponents",
+        },
+      },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const loc = data.location;
+    const comps = data.addressComponents || [];
+    const get = (t: string) =>
+      comps.find((c: any) => c.types.includes(t))?.longText || "";
+    const num = get("street_number"),
+      rt = get("route");
+    const city = get("locality") || get("administrative_area_level_2");
+    const zip = get("postal_code");
+    return {
+      lat: loc.latitude,
+      lng: loc.longitude,
+      street: `${rt}${num ? " " + num : ""}`,
+      city,
+      zipCode: zip,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function AddAddressScreen() {
   const navigation = useNavigation<any>();
@@ -76,10 +171,12 @@ export default function AddAddressScreen() {
   const mapRef = useRef<HTMLDivElement>(null);
   const gmap = useRef<any>(null);
   const markerRef = useRef<any>(null);
-  const autocompleteRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [mapsReady, setMapsReady] = useState(false);
+  const [apiKey, setApiKey] = useState("");
   const [label, setLabel] = useState(existingAddress?.label || "Casa");
   const [street, setStreet] = useState(existingAddress?.street || "");
   const [city, setCity] = useState(existingAddress?.city || "Soria");
@@ -98,12 +195,78 @@ export default function AddAddressScreen() {
   const [success, setSuccess] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
+  // Places New autocomplete state
+  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchingPlace, setSearchingPlace] = useState(false);
+
   useEffect(() => {
     if (user?.profileImage)
       setProfileImage(resolveProfileImageUrl(user.profileImage));
     loadGoogleMaps()
-      .then(() => setMapsReady(true))
+      .then((key) => {
+        setApiKey(key);
+        setMapsReady(true);
+      })
       .catch(console.error);
+  }, []);
+
+  // Places New autocomplete
+  const handleStreetChange = useCallback(
+    (value: string) => {
+      setStreet(value);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (value.length < 3) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+      debounceRef.current = setTimeout(async () => {
+        const results = await fetchPlaceSuggestions(value, apiKey);
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      }, 300);
+    },
+    [apiKey],
+  );
+
+  const selectSuggestion = useCallback(
+    async (suggestion: PlaceSuggestion) => {
+      setShowSuggestions(false);
+      setSuggestions([]);
+      setSearchingPlace(true);
+      const details = await fetchPlaceDetails(suggestion.placeId, apiKey);
+      setSearchingPlace(false);
+      if (details) {
+        setStreet(details.street);
+        setCity(details.city);
+        setZipCode(details.zipCode);
+        setCoordinates({ lat: details.lat, lng: details.lng });
+        gmap.current?.panTo({ lat: details.lat, lng: details.lng });
+        gmap.current?.setZoom(17);
+        markerRef.current?.setPosition({
+          lat: details.lat,
+          lng: details.lng,
+        });
+      }
+    },
+    [apiKey],
+  );
+
+  // Cerrar sugerencias al hacer clic fuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        suggestionRef.current &&
+        !suggestionRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const reverseGeocode = useCallback((lat: number, lng: number) => {
@@ -164,41 +327,6 @@ export default function AddAddressScreen() {
       setCoordinates({ lat, lng });
       reverseGeocode(lat, lng);
     });
-
-    if (inputRef.current && google.maps.places?.Autocomplete) {
-      autocompleteRef.current = new google.maps.places.Autocomplete(
-        inputRef.current,
-        {
-          componentRestrictions: { country: "es" },
-          fields: ["geometry", "address_components"],
-          bounds: new google.maps.LatLngBounds(
-            { lat: 41.72, lng: -2.52 },
-            { lat: 41.82, lng: -2.42 },
-          ),
-          strictBounds: false,
-        },
-      );
-      autocompleteRef.current.addListener("place_changed", () => {
-        const place = autocompleteRef.current.getPlace();
-        if (!place.geometry?.location) return;
-        const lat = place.geometry.location.lat(),
-          lng = place.geometry.location.lng();
-        setCoordinates({ lat, lng });
-        gmap.current.panTo({ lat, lng });
-        gmap.current.setZoom(17);
-        markerRef.current.setPosition({ lat, lng });
-        const comps = place.address_components || [];
-        const get = (t: string) =>
-          comps.find((c: any) => c.types.includes(t))?.long_name || "";
-        const num = get("street_number"),
-          rt = get("route");
-        const loc = get("locality") || get("administrative_area_level_2");
-        const zip = get("postal_code");
-        if (rt) setStreet(`${rt}${num ? " " + num : ""}`);
-        if (loc) setCity(loc);
-        if (zip) setZipCode(zip);
-      });
-    }
   }, [mapsReady]);
 
   const handleMyLocation = () => {
@@ -210,13 +338,11 @@ export default function AddAddressScreen() {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
 
-          // Actualizar mapa
           setCoordinates({ lat, lng });
           gmap.current?.panTo({ lat, lng });
           gmap.current?.setZoom(17);
           markerRef.current?.setPosition({ lat, lng });
 
-          // Geocodificación inversa detallada
           const google = (window as any).google;
           const geocoder = new google.maps.Geocoder();
 
@@ -468,7 +594,7 @@ export default function AddAddressScreen() {
           </Text>
         </Pressable>
 
-        {/* Calle */}
+        {/* Calle con Places New autocomplete */}
         <View style={s.fieldGroup}>
           <Text style={[s.label, { color: sub }]}>CALLE Y NÚMERO *</Text>
           <View
@@ -482,11 +608,69 @@ export default function AddAddressScreen() {
               ref={inputRef}
               type="text"
               value={street}
-              onChange={(e) => setStreet(e.target.value)}
+              onChange={(e) => handleStreetChange(e.target.value)}
+              onFocus={() => {
+                if (suggestions.length > 0) setShowSuggestions(true);
+              }}
               placeholder="Ej: Calle Mayor 12"
               style={inputStyle}
             />
+            {searchingPlace && (
+              <ActivityIndicator
+                size="small"
+                color={PRIMARY}
+                style={{ marginRight: 10 }}
+              />
+            )}
           </View>
+
+          {/* Dropdown de sugerencias Places New */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div ref={suggestionRef} style={s.dropdownStyle as any}>
+              {suggestions.map((sugg, idx) => (
+                <div
+                  key={sugg.placeId || idx}
+                  onClick={() => selectSuggestion(sugg)}
+                  style={{
+                    padding: "12px 16px",
+                    cursor: "pointer",
+                    borderBottom:
+                      idx < suggestions.length - 1
+                        ? "1px solid #e5e7eb"
+                        : "none",
+                    fontSize: 14,
+                    color: "#1f2937",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) =>
+                    ((e.target as HTMLElement).style.background = "#f3f4f6")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.target as HTMLElement).style.background = "transparent")
+                  }
+                >
+                  <Feather
+                    name="map-pin"
+                    size={14}
+                    color="#9ca3af"
+                    style={{ marginRight: 10 }}
+                  />
+                  {sugg.description}
+                </div>
+              ))}
+              <div
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  textAlign: "center",
+                  borderTop: "1px solid #e5e7eb",
+                }}
+              >
+                Powered by Google Places
+              </div>
+            </div>
+          )}
         </View>
 
         {/* Etiqueta */}
@@ -745,4 +929,18 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-});
+  dropdownStyle: {
+    position: "absolute",
+    top: 50,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    background: "#fff",
+    border: "1px solid #d1d5db",
+    borderRadius: 10,
+    boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+    maxHeight: 240,
+    overflowY: "auto" as any,
+    overflowX: "hidden",
+  },
+} as any);

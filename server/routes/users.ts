@@ -501,32 +501,6 @@ router.delete(
   },
 );
 
-// Add user address
-router.post("/addresses", authenticateToken, async (req, res) => {
-  try {
-    const { address, label, isDefault } = req.body;
-
-    if (!address) {
-      return res.status(400).json({ error: "Dirección requerida" });
-    }
-
-    // For now, just return success - implement address storage later
-    res.json({
-      success: true,
-      message: "Dirección guardada",
-      address: {
-        id: crypto.randomUUID(),
-        address,
-        label: label || "Casa",
-        isDefault: isDefault || false,
-      },
-    });
-  } catch (error: any) {
-    console.error("Add address error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Get user stats (for admin)
 router.get(
   "/stats",

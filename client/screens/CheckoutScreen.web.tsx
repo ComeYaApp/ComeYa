@@ -221,13 +221,13 @@ export default function CheckoutScreen({ route }: any) {
 
   useFocusEffect(
     React.useCallback(() => {
-      loadAddresses();
+      loadAddresses(route?.params?.selectedAddressId);
       if (route?.params?.selectedPaymentMethod) {
         setSelectedPaymentMethod(route.params.selectedPaymentMethod);
         setPaymentMethod(route.params.selectedPaymentMethod.provider);
         navigation.setParams({ selectedPaymentMethod: undefined } as any);
       }
-    }, [loadAddresses, route?.params?.selectedPaymentMethod]),
+    }, [loadAddresses, route?.params?.selectedPaymentMethod, route?.params?.selectedAddressId]),
   );
 
   useEffect(() => {
