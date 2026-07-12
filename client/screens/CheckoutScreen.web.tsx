@@ -414,14 +414,14 @@ export default function CheckoutScreen({ route }: any) {
       if (paymentMethod === "stripe_card" || paymentMethod === "stripe_bizum") {
         if (Platform.OS === "web") {
           navigation.navigate(
-            "StripePayment" as never,
+            "StripePayment" as any,
             {
               orderId,
               amount: totalAmount,
               subtotal: subtotalCents,
               deliveryFee: deliveryFeeCents,
               businessId: cart.businessId,
-            } as never,
+            } as any,
           );
           setIsLoading(false);
           return;
