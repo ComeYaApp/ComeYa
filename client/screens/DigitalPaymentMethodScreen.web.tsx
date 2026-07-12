@@ -312,7 +312,7 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
               color={isDark ? "#fff" : "#1a1a1a"}
             />
           </Pressable>
-          <ThemedText type="h3">Método de pago</ThemedText>
+          <ThemedText type="h3" lightColor="#1a1a1a" darkColor="#ffffff">Método de pago</ThemedText>
           <View style={{ width: 40 }} />
         </View>
 
@@ -323,7 +323,7 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
               { backgroundColor: isDark ? "#1e1e1e" : "#fff" },
             ]}
           >
-            <ThemedText type="h3" style={{ marginBottom: 24 }}>
+            <ThemedText type="h3" style={{ marginBottom: 24 }} lightColor="#1F2937" darkColor="#ffffff">
               {isProfileMode
                 ? "Tus métodos de pago"
                 : "Selecciona tu método de pago"}
@@ -358,7 +358,7 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
                     />
                   </View>
                   <View style={styles.methodInfo}>
-                    <ThemedText type="h4" style={{ marginBottom: 4 }}>
+                    <ThemedText type="h4" style={{ marginBottom: 4 }} lightColor="#1F2937" darkColor="#1F2937">
                       {method.displayName}
                     </ThemedText>
                     <ThemedText
