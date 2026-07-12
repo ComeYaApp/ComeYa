@@ -75,7 +75,11 @@ export default function CartScreen() {
       return;
     }
     if (!selectedAddress?.latitude || !businessData?.latitude) {
-      setCalculatedDeliveryFee(2.5);
+      setCalculatedDeliveryFee(
+        businessData?.deliveryFee
+          ? Math.max(businessData.deliveryFee, 250) / 100
+          : 2.5,
+      );
       return;
     }
     setLoadingFee(true);
