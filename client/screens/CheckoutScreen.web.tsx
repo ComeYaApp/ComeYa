@@ -62,11 +62,8 @@ export default function CheckoutScreen({ route }: any) {
   const { presentPaymentSheet } = useStripePaymentSheet();
 
   const subtotal = cartSubtotal;
-  const orderType: "delivery" | "pickup" =
-    route?.params?.orderType === "pickup" ? "pickup" : "delivery";
-  const confirmedOrderType = React.useMemo<"delivery" | "pickup">(
-    () => (route?.params?.orderType === "pickup" ? "pickup" : "delivery"),
-    [route?.params?.orderType],
+  const [orderTypeLocal, setOrderTypeLocal] = useState<"delivery" | "pickup">(
+    route?.params?.orderType === "pickup" ? "pickup" : "delivery",
   );
 
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -98,18 +95,16 @@ export default function CheckoutScreen({ route }: any) {
   const { isMobile } = useResponsive();
 
   const deliveryFee =
-    confirmedOrderType === "pickup"
+    orderTypeLocal === "pickup"
       ? 0
       : route?.params?.calculatedDeliveryFee != null
-        ? route.params.calculatedDeliveryFee / 100
+        ? route.params.calculatedDeliveryFee
         : (dynamicDeliveryFee ??
           (business?.deliveryFee
             ? Math.max(business.deliveryFee, 250) / 100
             : 2.5));
-  const effectiveDeliveryFee =
-    subDeliveryFee !== null ? subDeliveryFee / 100 : deliveryFee;
   const total =
-    subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
+    subtotal + deliveryFee - couponDiscount - subDiscount + tip;
 
   // Cargar beneficios de suscripcion cuando cambia el subtotal o deliveryFee
   useEffect(() => {
@@ -266,11 +261,12 @@ export default function CheckoutScreen({ route }: any) {
       business &&
       selectedAddress &&
       selectedAddress.latitude &&
-      selectedAddress.longitude
+      selectedAddress.longitude &&
+      orderTypeLocal === "delivery"
     ) {
       calculateFee();
     }
-  }, [business, selectedAddress]);
+  }, [business, selectedAddress, orderTypeLocal]);
 
   const calculateFee = async () => {
     if (!business || !selectedAddress) return;
@@ -361,7 +357,7 @@ export default function CheckoutScreen({ route }: any) {
       showToast("Error: Usuario no autenticado", "error");
       return;
     }
-    if (!selectedAddress) {
+    if (orderTypeLocal === "delivery" && !selectedAddress) {
       showToast("Selecciona una dirección de entrega", "error");
       return;
     }
@@ -396,11 +392,13 @@ export default function CheckoutScreen({ route }: any) {
         total: orderTotal,
         tip: tipCents,
         paymentMethod,
-        orderType: confirmedOrderType,
-        deliveryAddressId: selectedAddress.id,
-        deliveryAddress: `${selectedAddress.street}, ${selectedAddress.city}`,
-        deliveryLatitude: selectedAddress.latitude,
-        deliveryLongitude: selectedAddress.longitude,
+        orderType: orderTypeLocal,
+        deliveryAddressId: selectedAddress?.id,
+        deliveryAddress: selectedAddress
+          ? `${selectedAddress.street}, ${selectedAddress.city}`
+          : "Recoger en local",
+        deliveryLatitude: selectedAddress?.latitude,
+        deliveryLongitude: selectedAddress?.longitude,
         substitutionPreference: globalSubstitution,
         itemSubstitutionPreferences:
           Object.keys(finalItemSubstitutions).length > 0
@@ -414,15 +412,7 @@ export default function CheckoutScreen({ route }: any) {
       const orderId = order.orderId || order.id;
 
       if (paymentMethod === "stripe_card" || paymentMethod === "stripe_bizum") {
-        // En web, redirigir a pantalla de pago Stripe
         if (Platform.OS === "web") {
-          console.log("[Checkout→Stripe]", {
-            orderId,
-            totalAmount,
-            subtotalCents,
-            deliveryFeeCents,
-            businessId: cart.businessId,
-          });
           navigation.navigate(
             "StripePayment" as never,
             {
@@ -507,7 +497,6 @@ export default function CheckoutScreen({ route }: any) {
 
   const { isDark } = useTheme();
   const bg = isDark ? "#111" : "#f7f7f7";
-  const border = isDark ? "#333" : "#e8e8e8";
 
   return (
     <>
@@ -517,7 +506,7 @@ export default function CheckoutScreen({ route }: any) {
           contentContainerStyle={styles.pageContent}
         >
           {/* Header */}
-          <View style={[styles.pageHeader, { borderBottomColor: border }]}>
+          <View style={[styles.pageHeader, { borderBottomColor: isDark ? "#333" : "#e8e8e8" }]}>
             <Pressable
               onPress={() => navigation.goBack()}
               style={styles.backBtn}
@@ -534,127 +523,205 @@ export default function CheckoutScreen({ route }: any) {
 
           <View style={styles.centerWrap}>
             <View style={[styles.formCard, { backgroundColor: theme.card }]}>
-              {/* Address Section */}
+              {/* Order Type Selector */}
               <View style={styles.section}>
                 <View style={styles.formSectionHeader}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      flex: 1,
-                    }}
-                  >
-                    <Feather name="map-pin" size={20} color={PRIMARY} />
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Feather name="truck" size={20} color={PRIMARY} />
                     <ThemedText type="h4" style={{ marginLeft: 12 }}>
-                      Dirección de entrega
+                      Tipo de pedido
                     </ThemedText>
                   </View>
-                  <Pressable
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setAddressPickerVisible(true);
-                    }}
-                    style={styles.changeButton}
-                  >
-                    <ThemedText
-                      type="small"
-                      style={{ color: PRIMARY, fontWeight: "600" }}
-                    >
-                      Cambiar
-                    </ThemedText>
-                  </Pressable>
                 </View>
-
-                {selectedAddress ? (
-                  <View
-                    style={[
-                      styles.selectedCard,
-                      {
-                        backgroundColor: theme.backgroundSecondary,
-                        borderColor: PRIMARY,
-                      },
-                    ]}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <ThemedText
-                        type="body"
-                        style={{ fontWeight: "600", marginBottom: 4 }}
-                      >
-                        {selectedAddress.label}
-                      </ThemedText>
-                      <ThemedText type="small" style={{ color: "#6B7280" }}>
-                        {selectedAddress.street}, {selectedAddress.city}
-                      </ThemedText>
-                    </View>
-                    <Feather name="check-circle" size={20} color={PRIMARY} />
-                  </View>
-                ) : (
+                <View style={styles.orderTypeRow}>
                   <Pressable
-                    onPress={() =>
-                      navigation.navigate("AddAddress", {
-                        fromCheckout: true,
-                      } as never)
-                    }
+                    onPress={() => setOrderTypeLocal("delivery")}
                     style={[
-                      styles.addButton,
-                      {
-                        backgroundColor: theme.backgroundSecondary,
-                        borderColor: PRIMARY,
-                      },
+                      styles.orderTypeBtn,
+                      orderTypeLocal === "delivery" && styles.orderTypeBtnActive,
                     ]}
                   >
-                    <Feather name="plus" size={20} color={PRIMARY} />
+                    <Feather
+                      name="truck"
+                      size={16}
+                      color={orderTypeLocal === "delivery" ? "#fff" : "#6B7280"}
+                    />
                     <ThemedText
                       type="body"
                       style={{
-                        color: PRIMARY,
-                        marginLeft: 12,
+                        color: orderTypeLocal === "delivery" ? "#fff" : "#1F2937",
                         fontWeight: "600",
+                        marginLeft: 8,
                       }}
                     >
-                      Agregar dirección
+                      Envío a domicilio
                     </ThemedText>
                   </Pressable>
-                )}
-
-                {selectedAddress && (
-                  <View style={styles.actionButtons}>
-                    <Pressable
-                      onPress={() =>
-                        navigation.navigate("AddAddress", {
-                          address: selectedAddress,
-                          fromCheckout: true,
-                        } as never)
-                      }
-                      style={styles.secondaryButton}
+                  <Pressable
+                    onPress={() => setOrderTypeLocal("pickup")}
+                    style={[
+                      styles.orderTypeBtn,
+                      orderTypeLocal === "pickup" && styles.orderTypeBtnActive,
+                    ]}
+                  >
+                    <Feather
+                      name="shopping-bag"
+                      size={16}
+                      color={orderTypeLocal === "pickup" ? "#fff" : "#6B7280"}
+                    />
+                    <ThemedText
+                      type="body"
+                      style={{
+                        color: orderTypeLocal === "pickup" ? "#fff" : "#1F2937",
+                        fontWeight: "600",
+                        marginLeft: 8,
+                      }}
                     >
-                      <Feather name="edit-2" size={16} color={PRIMARY} />
-                      <ThemedText
-                        type="small"
-                        style={{ color: PRIMARY, marginLeft: 8 }}
-                      >
-                        Editar esta
-                      </ThemedText>
-                    </Pressable>
-                    <Pressable
-                      onPress={() =>
-                        navigation.navigate("SavedAddresses" as never)
-                      }
-                      style={styles.secondaryButton}
-                    >
-                      <Feather name="map" size={16} color={PRIMARY} />
-                      <ThemedText
-                        type="small"
-                        style={{ color: PRIMARY, marginLeft: 8 }}
-                      >
-                        Gestionar direcciones
-                      </ThemedText>
-                    </Pressable>
-                  </View>
-                )}
+                      Recoger en local
+                    </ThemedText>
+                  </Pressable>
+                </View>
               </View>
 
               <View style={styles.divider} />
+
+              {/* Address Section - only for delivery */}
+              {orderTypeLocal === "delivery" && (
+                <>
+                  <View style={styles.section}>
+                    <View style={styles.formSectionHeader}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          flex: 1,
+                        }}
+                      >
+                        <Feather name="map-pin" size={20} color={PRIMARY} />
+                        <ThemedText type="h4" style={{ marginLeft: 12 }}>
+                          Dirección de entrega
+                        </ThemedText>
+                      </View>
+                      <Pressable
+                        onPress={() => {
+                          Haptics.selectionAsync();
+                          setAddressPickerVisible(true);
+                        }}
+                        style={styles.changeButton}
+                      >
+                        <ThemedText
+                          type="small"
+                          style={{ color: PRIMARY, fontWeight: "600" }}
+                        >
+                          Cambiar
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+
+                    {selectedAddress ? (
+                      <View
+                        style={[
+                          styles.selectedCard,
+                          {
+                            backgroundColor: theme.backgroundSecondary,
+                            borderColor: PRIMARY,
+                          },
+                        ]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <ThemedText
+                            type="body"
+                            style={{ fontWeight: "600", marginBottom: 4 }}
+                          >
+                            {selectedAddress.label}
+                          </ThemedText>
+                          <ThemedText type="small" style={{ color: "#6B7280" }}>
+                            {selectedAddress.street}, {selectedAddress.city}
+                          </ThemedText>
+                        </View>
+                        <Feather name="check-circle" size={20} color={PRIMARY} />
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() =>
+                          navigation.navigate("AddAddress", {
+                            fromCheckout: true,
+                          } as never)
+                        }
+                        style={[
+                          styles.addButton,
+                          {
+                            backgroundColor: theme.backgroundSecondary,
+                            borderColor: PRIMARY,
+                          },
+                        ]}
+                      >
+                        <Feather name="plus" size={20} color={PRIMARY} />
+                        <ThemedText
+                          type="body"
+                          style={{
+                            color: PRIMARY,
+                            marginLeft: 12,
+                            fontWeight: "600",
+                          }}
+                        >
+                          Agregar dirección
+                        </ThemedText>
+                      </Pressable>
+                    )}
+
+                    {selectedAddress && (
+                      <View style={styles.actionButtons}>
+                        <Pressable
+                          onPress={() =>
+                            navigation.navigate("AddAddress", {
+                              address: selectedAddress,
+                              fromCheckout: true,
+                            } as never)
+                          }
+                          style={styles.secondaryButton}
+                        >
+                          <Feather name="edit-2" size={16} color={PRIMARY} />
+                          <ThemedText
+                            type="small"
+                            style={{ color: PRIMARY, marginLeft: 8 }}
+                          >
+                            Editar esta
+                          </ThemedText>
+                        </Pressable>
+                        <Pressable
+                          onPress={() =>
+                            navigation.navigate("SavedAddresses" as never)
+                          }
+                          style={styles.secondaryButton}
+                        >
+                          <Feather name="map" size={16} color={PRIMARY} />
+                          <ThemedText
+                            type="small"
+                            style={{ color: PRIMARY, marginLeft: 8 }}
+                          >
+                            Gestionar direcciones
+                          </ThemedText>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.divider} />
+                </>
+              )}
+
+              {/* Pickup badge */}
+              {orderTypeLocal === "pickup" && (
+                <>
+                  <View style={styles.pickupBadge}>
+                    <Feather name="shopping-bag" size={20} color="#059669" />
+                    <ThemedText type="body" style={{ color: "#059669", fontWeight: "600", marginLeft: 8 }}>
+                      Recogerás tu pedido en {cart?.businessName}
+                    </ThemedText>
+                  </View>
+                  <View style={styles.divider} />
+                </>
+              )}
 
               {/* Payment Method Section */}
               <View style={styles.section}>
@@ -676,7 +743,7 @@ export default function CheckoutScreen({ route }: any) {
                       Haptics.selectionAsync();
                       navigation.navigate("DigitalPaymentMethod", {
                         orderTotal: total,
-                        orderType: confirmedOrderType,
+                        orderType: orderTypeLocal,
                         calculatedDeliveryFee: Math.round(deliveryFee * 100),
                       } as any);
                     }}
@@ -981,7 +1048,7 @@ export default function CheckoutScreen({ route }: any) {
                   </ThemedText>
                   <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
                 </View>
-                {confirmedOrderType === "delivery" && (
+                {orderTypeLocal === "delivery" && (
                   <View style={styles.summaryRow}>
                     <ThemedText type="body" style={{ color: "#6B7280" }}>
                       Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
@@ -991,7 +1058,7 @@ export default function CheckoutScreen({ route }: any) {
                     </ThemedText>
                   </View>
                 )}
-                {confirmedOrderType === "pickup" && (
+                {orderTypeLocal === "pickup" && (
                   <View style={styles.pickupBadge}>
                     <ThemedText type="small" style={{ color: "#059669" }}>
                       🎉 Sin coste de envío al recoger en local
@@ -1026,7 +1093,7 @@ export default function CheckoutScreen({ route }: any) {
                     </ThemedText>
                   </View>
                 )}
-                {subDeliveryFee === 0 && confirmedOrderType === "delivery" && (
+                {subDeliveryFee === 0 && orderTypeLocal === "delivery" && (
                   <View style={styles.summaryRow}>
                     <ThemedText type="body" style={{ color: "#7C3AED" }}>
                       ⭐ Envío gratis Premium
@@ -1194,6 +1261,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
+  // Order type
+  orderTypeRow: {
+    flexDirection: "row",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 10,
+    padding: 4,
+  },
+  orderTypeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+  },
+  orderTypeBtnActive: {
+    backgroundColor: PRIMARY,
+  },
   selectedCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1226,7 +1312,8 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    marginVertical: 32,
+    backgroundColor: "#e5e7eb",
+    marginVertical: 24,
   },
   couponInputRow: {
     flexDirection: "row",
@@ -1312,12 +1399,6 @@ const styles = StyleSheet.create({
   tipGrid: {
     flexDirection: "row",
     gap: 12,
-    ...Platform.select({
-      web: {
-        display: "flex",
-        flexWrap: "nowrap",
-      },
-    }),
   },
   tipChip: {
     flex: 1,
@@ -1348,10 +1429,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   pickupBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#ECFDF5",
-    padding: 12,
+    padding: 16,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 0,
   },
   confirmButton: {
     height: 56,
