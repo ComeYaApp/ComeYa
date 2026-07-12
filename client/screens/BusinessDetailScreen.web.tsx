@@ -20,7 +20,6 @@ import { useResponsive } from "@/hooks/useResponsive";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, "BusinessDetail">;
-// Rojo para versión web
 const PRIMARY = "#DC2626";
 
 export default function BusinessDetailScreen() {
@@ -71,7 +70,6 @@ export default function BusinessDetailScreen() {
     ? products.filter((p) => p.category === activeCategory)
     : products;
 
-  // Obtener items del carrito
   const cartItems = cart?.items || [];
   const cartTotal = cartItems.reduce(
     (s: number, i: any) => s + i.product.price * i.quantity,
@@ -79,7 +77,11 @@ export default function BusinessDetailScreen() {
   );
   const cartCount = cartItems.reduce((s: number, i: any) => s + i.quantity, 0);
 
-  // Funciones adaptadas
+  // Delivery fee igual que checkout: Math.max(business.deliveryFee, 250) / 100
+  const deliveryFee = business?.deliveryFee
+    ? Math.max(business.deliveryFee, 250) / 100
+    : 2.5;
+
   const handleAddItem = (product: any) => {
     addToCart(product, route.params.businessId, business?.name || "", 1);
   };
@@ -87,6 +89,13 @@ export default function BusinessDetailScreen() {
   const handleRemoveItem = (productId: string) => {
     const item = cartItems.find((i: any) => i.product.id === productId);
     if (item) removeFromCart(item.id);
+  };
+
+  const goToCheckout = () => {
+    navigation.navigate("Checkout", {
+      calculatedDeliveryFee: deliveryFee,
+      orderType: "delivery",
+    } as any);
   };
 
   if (loading)
@@ -120,9 +129,7 @@ export default function BusinessDetailScreen() {
       </View>
 
       <View style={s.body}>
-        {/* CONTENIDO PRINCIPAL */}
         <ScrollView style={s.main} showsVerticalScrollIndicator={false}>
-          {/* Hero */}
           <View style={s.hero}>
             <Image
               source={{ uri: business?.image }}
@@ -153,7 +160,7 @@ export default function BusinessDetailScreen() {
                   <View style={s.metaChip}>
                     <Feather name="truck" size={14} color={sub} />
                     <Text style={[s.metaChipText, { color: sub }]}>
-                      €{((business?.deliveryFee || 300) / 100).toFixed(2)} envío
+                      €{deliveryFee.toFixed(2)} envío
                     </Text>
                   </View>
                   <View
@@ -181,7 +188,6 @@ export default function BusinessDetailScreen() {
             </View>
           </View>
 
-          {/* Categorías */}
           <View
             style={[
               s.catBar,
@@ -212,7 +218,6 @@ export default function BusinessDetailScreen() {
             </ScrollView>
           </View>
 
-          {/* Productos */}
           <View style={s.productsSection}>
             {activeCategory && (
               <Text style={[s.catTitle, { color: text }]}>
@@ -322,6 +327,12 @@ export default function BusinessDetailScreen() {
                       key={item.id}
                       style={[s.cartItem, { borderBottomColor: border }]}
                     >
+                      <Pressable
+                        onPress={() => removeFromCart(item.id)}
+                        style={s.removeItemBtn}
+                      >
+                        <Feather name="x" size={12} color="#EF4444" />
+                      </Pressable>
                       <View style={s.cartItemQty}>
                         <Text style={s.cartItemQtyText}>{item.quantity}x</Text>
                       </View>
@@ -349,7 +360,7 @@ export default function BusinessDetailScreen() {
                   <View style={s.cartRow}>
                     <Text style={[s.cartRowLabel, { color: sub }]}>Envío</Text>
                     <Text style={[s.cartRowValue, { color: text }]}>
-                      €{((business?.deliveryFee || 300) / 100).toFixed(2)}
+                      €{deliveryFee.toFixed(2)}
                     </Text>
                   </View>
                   <View style={[s.cartRow, s.cartTotal]}>
@@ -357,17 +368,10 @@ export default function BusinessDetailScreen() {
                       Total
                     </Text>
                     <Text style={[s.cartTotalValue, { color: PRIMARY }]}>
-                      €
-                      {(
-                        cartTotal +
-                        (business?.deliveryFee || 300) / 100
-                      ).toFixed(2)}
+                      €{(cartTotal + deliveryFee).toFixed(2)}
                     </Text>
                   </View>
-                  <Pressable
-                    style={s.checkoutBtn}
-                    onPress={() => navigation.navigate("Checkout")}
-                  >
+                  <Pressable style={s.checkoutBtn} onPress={goToCheckout}>
                     <Text style={s.checkoutBtnText}>
                       Ir al checkout ({cartCount})
                     </Text>
@@ -388,13 +392,10 @@ export default function BusinessDetailScreen() {
                 {cartCount} producto{cartCount !== 1 ? "s" : ""}
               </Text>
               <Text style={[s.cartBarTotal, { color: PRIMARY }]}>
-                €{(cartTotal + (business?.deliveryFee || 300) / 100).toFixed(2)}
+                €{(cartTotal + deliveryFee).toFixed(2)}
               </Text>
             </View>
-            <Pressable
-              style={s.cartBarBtn}
-              onPress={() => navigation.navigate("Checkout")}
-            >
+            <Pressable style={s.cartBarBtn} onPress={goToCheckout}>
               <Text style={s.cartBarBtnText}>Ir al checkout</Text>
               <Feather name="arrow-right" size={16} color="#fff" />
             </Pressable>
@@ -491,7 +492,7 @@ const s = StyleSheet.create({
     minWidth: 16,
     textAlign: "center",
   },
-  // Carrito
+  // Mini carrito lateral
   cartPanel: {
     width: 320,
     borderLeftWidth: 1,
@@ -514,6 +515,19 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     gap: 8,
+    position: "relative",
+  },
+  removeItemBtn: {
+    position: "absolute",
+    top: 8,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
   },
   cartItemQty: {
     width: 28,
