@@ -397,6 +397,10 @@ export default function AddAddressScreen() {
       setError("Completa la etiqueta y la calle");
       return;
     }
+    if (!user?.id || user.id === "undefined") {
+      setError("Sesión no válida. Por favor, cierra sesión y vuelve a iniciar.");
+      return;
+    }
     setLoading(true);
     try {
       const payload = {

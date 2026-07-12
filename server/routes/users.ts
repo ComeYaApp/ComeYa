@@ -400,6 +400,9 @@ const postAddress = async (req: any, res: any) => {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const userId = req.params.id || req.user!.id;
+    if (!userId || userId === "undefined" || userId === "null") {
+      return res.status(400).json({ error: "Usuario no autenticado" });
+    }
     const {
       label,
       street,
