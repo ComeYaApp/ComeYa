@@ -38,11 +38,9 @@ export default function CartScreen() {
   const [orderType, setOrderType] = React.useState<"delivery" | "pickup">(
     "delivery",
   );
-  const [calculatedDeliveryFee, setCalculatedDeliveryFee] =
-    React.useState<number>(2.99);
   const [selectedAddress, setSelectedAddress] = React.useState<any>(null);
   const [businessData, setBusinessData] = React.useState<any>(null);
-  const [loadingFee, setLoadingFee] = React.useState(false);
+  const [loadingFee, setLoadingFee] = React.useState(true);
 
   // Cargar negocio
   React.useEffect(() => {
@@ -68,21 +66,25 @@ export default function CartScreen() {
       .catch(() => {});
   }, [user?.id]);
 
-  // Calcular fee real usando la misma función que el checkout
+  // Calcular delivery fee en euros con misma lógica del checkout
+  const calculatedDeliveryFee = React.useMemo(() => {
+    if (orderType === "pickup") return 0;
+    if (businessData?.deliveryFee) {
+      return Math.max(businessData.deliveryFee, 250) / 100;
+    }
+    return 2.5;
+  }, [orderType, businessData]);
+
+  // Si hay coordenadas, calcular fee por distancia en segundo plano
   React.useEffect(() => {
-    if (orderType === "pickup") {
-      setCalculatedDeliveryFee(0);
+    if (
+      orderType !== "delivery" ||
+      !selectedAddress?.latitude ||
+      !businessData?.latitude
+    ) {
+      setLoadingFee(false);
       return;
     }
-    if (!selectedAddress?.latitude || !businessData?.latitude) {
-      setCalculatedDeliveryFee(
-        businessData?.deliveryFee
-          ? Math.max(businessData.deliveryFee, 250) / 100
-          : 2.5,
-      );
-      return;
-    }
-    setLoadingFee(true);
     const distance = calculateDistance(
       businessData.latitude,
       businessData.longitude,
@@ -90,8 +92,7 @@ export default function CartScreen() {
       selectedAddress.longitude,
     );
     calculateDeliveryFee(distance)
-      .then((fee) => setCalculatedDeliveryFee(fee))
-      .catch(() => setCalculatedDeliveryFee(2.5))
+      .catch(() => {})
       .finally(() => setLoadingFee(false));
   }, [selectedAddress, businessData, orderType]);
 

@@ -94,15 +94,15 @@ export default function CheckoutScreen({ route }: any) {
   const [tip, setTip] = useState(0);
   const { isMobile } = useResponsive();
 
+  // Siempre usar el precio que calculó el carrito, o el deliveryFee del negocio
   const deliveryFee =
     orderTypeLocal === "pickup"
       ? 0
       : route?.params?.calculatedDeliveryFee != null
         ? route.params.calculatedDeliveryFee
-        : (dynamicDeliveryFee ??
-          (business?.deliveryFee
+        : (business?.deliveryFee
             ? Math.max(business.deliveryFee, 250) / 100
-            : 2.5));
+            : 2.5);
   const total =
     subtotal + deliveryFee - couponDiscount - subDiscount + tip;
 
@@ -256,6 +256,7 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
+  // Solo calcular tiempo estimado, NO cambiar el delivery fee
   useEffect(() => {
     if (
       business &&
@@ -264,23 +265,16 @@ export default function CheckoutScreen({ route }: any) {
       selectedAddress.longitude &&
       orderTypeLocal === "delivery"
     ) {
-      calculateFee();
+      const distance = calculateDistance(
+        business.latitude || 41.7636,
+        business.longitude || -2.4677,
+        selectedAddress.latitude,
+        selectedAddress.longitude,
+      );
+      const time = estimateDeliveryTime(distance);
+      setEstimatedTime(time);
     }
   }, [business, selectedAddress, orderTypeLocal]);
-
-  const calculateFee = async () => {
-    if (!business || !selectedAddress) return;
-    const distance = calculateDistance(
-      business.latitude || 41.7636,
-      business.longitude || -2.4677,
-      selectedAddress.latitude,
-      selectedAddress.longitude,
-    );
-    const fee = await calculateDeliveryFee(distance);
-    const time = estimateDeliveryTime(distance);
-    setDynamicDeliveryFee(fee);
-    setEstimatedTime(time);
-  };
 
   const getSubstitutionInfo = (option: SubstitutionOption) => {
     switch (option) {
