@@ -15,6 +15,10 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
+import {
+  calculateDistance,
+  calculateDeliveryFee,
+} from "@/utils/distance";
 
 const PRIMARY = "#DC2626";
 
@@ -64,7 +68,7 @@ export default function CartScreen() {
       .catch(() => {});
   }, [user?.id]);
 
-  // Calcular fee real
+  // Calcular fee real usando la misma función que el checkout
   React.useEffect(() => {
     if (orderType === "pickup") {
       setCalculatedDeliveryFee(0);
@@ -72,22 +76,22 @@ export default function CartScreen() {
     }
     if (!selectedAddress?.latitude || !businessData?.latitude) {
       setCalculatedDeliveryFee(
-        businessData?.deliveryFee ? businessData.deliveryFee / 100 : 2.99,
+        businessData?.deliveryFee
+          ? Math.max(businessData.deliveryFee, 250) / 100
+          : 2.5,
       );
       return;
     }
     setLoadingFee(true);
-    apiRequest("POST", "/api/orders/calculate-delivery", {
-      businessLat: businessData.latitude,
-      businessLng: businessData.longitude,
-      deliveryLat: selectedAddress.latitude,
-      deliveryLng: selectedAddress.longitude,
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setCalculatedDeliveryFee(data.deliveryFee / 100);
-      })
-      .catch(() => {})
+    const distance = calculateDistance(
+      businessData.latitude,
+      businessData.longitude,
+      selectedAddress.latitude,
+      selectedAddress.longitude,
+    );
+    calculateDeliveryFee(distance)
+      .then((fee) => setCalculatedDeliveryFee(fee))
+      .catch(() => setCalculatedDeliveryFee(2.5))
       .finally(() => setLoadingFee(false));
   }, [selectedAddress, businessData, orderType]);
 
