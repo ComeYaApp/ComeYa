@@ -154,6 +154,12 @@ export default function CartScreen() {
                     { backgroundColor: card, borderColor: border },
                   ]}
                 >
+                  <Pressable
+                    onPress={() => removeFromCart(item.id)}
+                    style={s.removeItemBtn}
+                  >
+                    <Feather name="x" size={14} color="#EF4444" />
+                  </Pressable>
                   <Image
                     source={{ uri: item.product.image }}
                     style={s.itemImg}
@@ -432,6 +438,18 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginTop: 8,
+  },
+  removeItemBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
   },
   clearBtnText: { color: "#F44336", fontSize: 13, fontWeight: "600" },
   summary: { width: 340, padding: 24, borderLeftWidth: 1 },
