@@ -195,7 +195,7 @@ export default function CheckoutScreen({ route }: any) {
 
   useFocusEffect(
     React.useCallback(() => {
-      loadAddresses();
+      loadAddresses(route?.params?.selectedAddressId);
 
       // Manejar selección de método de pago
       if (route?.params?.selectedPaymentMethod) {
@@ -208,7 +208,7 @@ export default function CheckoutScreen({ route }: any) {
         // Limpiar el parámetro
         navigation.setParams({ selectedPaymentMethod: undefined } as any);
       }
-    }, [loadAddresses, route?.params?.selectedPaymentMethod]),
+    }, [loadAddresses, route?.params?.selectedPaymentMethod, route?.params?.selectedAddressId]),
   );
 
   useEffect(() => {
