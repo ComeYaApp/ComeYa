@@ -303,13 +303,13 @@ export default function CartScreen() {
                 <Text style={[s.summaryLabel, { color: sub }]}>
                   Envío {loadingFee ? "..." : ""}
                 </Text>
-                <Text style={[s.summaryValue, { color: text }]}>
-                  {loadingFee ? (
-                    <ActivityIndicator size="small" color={PRIMARY} />
-                  ) : (
-                    `€${deliveryFee.toFixed(2)}`
-                  )}
-                </Text>
+                {loadingFee ? (
+                  <ActivityIndicator size="small" color={PRIMARY} />
+                ) : (
+                  <Text style={[s.summaryValue, { color: text }]}>
+                    €{deliveryFee.toFixed(2)}
+                  </Text>
+                )}
               </View>
             )}
             {orderType === "pickup" && (
