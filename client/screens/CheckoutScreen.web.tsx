@@ -479,18 +479,18 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
+  const { isDark } = useTheme();
+  const bg = isDark ? "#111" : "#f7f7f7";
+
   if (!cart) {
     return (
       <View
-        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+        style={[styles.container, { backgroundColor: bg }]}
       >
         <ThemedText type="h2">No hay productos en el carrito</ThemedText>
       </View>
     );
   }
-
-  const { isDark } = useTheme();
-  const bg = isDark ? "#111" : "#f7f7f7";
 
   return (
     <>
