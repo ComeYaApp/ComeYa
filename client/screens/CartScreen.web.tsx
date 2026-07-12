@@ -412,6 +412,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     marginBottom: 12,
+    position: "relative",
   },
   itemImg: { width: 72, height: 72, borderRadius: 10 },
   itemInfo: { flex: 1 },
