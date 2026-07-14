@@ -324,7 +324,6 @@ export default function OrderTrackingScreen() {
     mapsReady,
     order?.deliveryLatitude,
     order?.deliveryLongitude,
-    gmap.current,
   ]);
 
   // ── Ruta roja negocio→cliente (pending / confirmed / preparing / ready) ──
@@ -356,33 +355,14 @@ export default function OrderTrackingScreen() {
       lng: parseFloat(order.deliveryLongitude),
     };
 
-    // Intentar ruta real con DirectionsService
-    const directionsService = new google.maps.DirectionsService();
-    directionsService.route(
-      {
-        origin: businessLocation,
-        destination: clientPos,
-        travelMode: google.maps.TravelMode.DRIVING,
-      },
-      (result: any, status: any) => {
-        if (routeLineRef.current) {
-          routeLineRef.current.setMap(null);
-          routeLineRef.current = null;
-        }
-        const path =
-          status === "OK"
-            ? result.routes[0].overview_path
-            : [businessLocation, clientPos];
-        routeLineRef.current = new google.maps.Polyline({
-          path,
-          geodesic: true,
-          strokeColor: "#DC2626",
-          strokeOpacity: 0.85,
-          strokeWeight: 5,
-          map: gmap.current,
-        });
-      },
-    );
+    routeLineRef.current = new google.maps.Polyline({
+      path: [businessLocation, clientPos],
+      geodesic: true,
+      strokeColor: "#DC2626",
+      strokeOpacity: 0.85,
+      strokeWeight: 5,
+      map: gmap.current,
+    });
 
     // Ajustar bounds
     const bounds = new google.maps.LatLngBounds();
@@ -400,7 +380,6 @@ export default function OrderTrackingScreen() {
     order?.deliveryLatitude,
     order?.deliveryLongitude,
     order?.status,
-    gmap.current,
   ]);
 
   // ── Marcador del negocio ── se actualiza cuando llega businessLocation
@@ -423,7 +402,7 @@ export default function OrderTrackingScreen() {
       });
     }
     if (!order?.deliveryLatitude) gmap.current.setCenter(businessLocation);
-  }, [businessLocation, gmap.current]);
+  }, [businessLocation]);
 
   // ── useEffect principal de rutas y repartidor ──
   useEffect(() => {
@@ -483,38 +462,23 @@ export default function OrderTrackingScreen() {
           });
         }
 
-        // Ruta verde repartidor→cliente con DirectionsService
         if (order.deliveryLatitude && order.deliveryLongitude) {
           const clientPos = {
             lat: parseFloat(order.deliveryLatitude),
             lng: parseFloat(order.deliveryLongitude),
           };
-          const directionsService = new google.maps.DirectionsService();
-          directionsService.route(
-            {
-              origin: driverPos,
-              destination: clientPos,
-              travelMode: google.maps.TravelMode.DRIVING,
-            },
-            (result: any, status: any) => {
-              if (driverRouteLineRef.current) {
-                driverRouteLineRef.current.setMap(null);
-                driverRouteLineRef.current = null;
-              }
-              const path =
-                status === "OK"
-                  ? result.routes[0].overview_path
-                  : [driverPos, clientPos];
-              driverRouteLineRef.current = new google.maps.Polyline({
-                path,
-                geodesic: true,
-                strokeColor: "#10B981",
-                strokeOpacity: 0.9,
-                strokeWeight: 5,
-                map: gmap.current,
-              });
-            },
-          );
+          if (driverRouteLineRef.current) {
+            driverRouteLineRef.current.setMap(null);
+            driverRouteLineRef.current = null;
+          }
+          driverRouteLineRef.current = new google.maps.Polyline({
+            path: [driverPos, clientPos],
+            geodesic: true,
+            strokeColor: "#10B981",
+            strokeOpacity: 0.9,
+            strokeWeight: 5,
+            map: gmap.current,
+          });
 
           // Ajustar bounds: repartidor + cliente
           const b = new google.maps.LatLngBounds();

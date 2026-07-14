@@ -7,6 +7,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 
+const SORIA = { lat: 41.7636, lng: -2.4677 };
+
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
     if ((window as any).google?.maps) {
@@ -26,7 +28,7 @@ function loadGoogleMaps(): Promise<void> {
       .catch(() => "");
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=directions`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
@@ -63,14 +65,6 @@ export default function RouteOptimizationScreen({ navigation }: any) {
       gestureHandling: "greedy",
     });
 
-    const directionsService = new google.maps.DirectionsService();
-    const directionsRenderer = new google.maps.DirectionsRenderer({
-      map: gmap.current,
-      polylineOptions: { strokeColor: ComeYaColors.primary, strokeWeight: 4 },
-      suppressMarkers: false,
-    });
-
-    // Obtener ubicación del repartidor y pedido activo
     const buildRoute = async (driverLat: number, driverLng: number) => {
       try {
         const res = await apiRequest("GET", "/api/delivery/active-order");
@@ -80,36 +74,19 @@ export default function RouteOptimizationScreen({ navigation }: any) {
 
         const dest =
           data.order.deliveryLatitude && data.order.deliveryLongitude
-            ? {
-                lat: parseFloat(data.order.deliveryLatitude),
-                lng: parseFloat(data.order.deliveryLongitude),
-              }
+            ? { lat: parseFloat(data.order.deliveryLatitude), lng: parseFloat(data.order.deliveryLongitude) }
             : SORIA;
 
-        directionsService.route(
-          {
-            origin: { lat: driverLat, lng: driverLng },
-            destination: dest,
-            travelMode: google.maps.TravelMode.DRIVING,
-          },
-          (result: any, status: any) => {
-            if (status === "OK") {
-              directionsRenderer.setDirections(result);
-              const leg = result.routes[0]?.legs[0];
-              if (leg) {
-                setDistance(leg.distance?.text || null);
-                setDuration(leg.duration?.text || null);
-              }
-            }
-          },
-        );
+        new google.maps.Polyline({ path: [{ lat: driverLat, lng: driverLng }, dest], geodesic: true, strokeColor: ComeYaColors.primary, strokeWeight: 4, map: gmap.current });
+        const R = 6371; const dLat = ((dest.lat-driverLat)*Math.PI)/180; const dLng = ((dest.lng-driverLng)*Math.PI)/180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(driverLat*Math.PI/180)*Math.cos(dest.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+        const km = R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); const mins = Math.round((km/30)*60);
+        setDistance(`${km.toFixed(1)} km`); setDuration(`~${mins} min`);
       } catch {}
     };
 
     navigator.geolocation?.getCurrentPosition(
-      (pos) => {
-        buildRoute(pos.coords.latitude, pos.coords.longitude);
-      },
+      (pos) => buildRoute(pos.coords.latitude, pos.coords.longitude),
       () => buildRoute(SORIA.lat, SORIA.lng),
     );
   }, [mapsReady]);
@@ -117,72 +94,19 @@ export default function RouteOptimizationScreen({ navigation }: any) {
   return (
     <View style={[s.container, { backgroundColor: theme.backgroundRoot }]}>
       <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
-
-      {!mapsReady && (
-        <View style={s.loading}>
-          <ActivityIndicator size="large" color={ComeYaColors.primary} />
-        </View>
-      )}
-
-      {/* Header */}
+      {!mapsReady && <View style={s.loading}><ActivityIndicator size="large" color={ComeYaColors.primary} /></View>}
       <View style={[s.header, { paddingTop: insets.top + Spacing.sm }]}>
-        <Pressable
-          onPress={() => navigation?.goBack()}
-          style={[s.floatBtn, { backgroundColor: theme.card }]}
-        >
-          <Feather name="arrow-left" size={22} color={theme.text} />
-        </Pressable>
+        <Pressable onPress={() => navigation?.goBack()} style={[s.floatBtn, { backgroundColor: theme.card }]}><Feather name="arrow-left" size={22} color={theme.text} /></Pressable>
         <View style={[s.headerTitle, { backgroundColor: theme.card }]}>
           <Feather name="navigation" size={16} color={ComeYaColors.primary} />
-          <ThemedText
-            type="body"
-            style={{ fontWeight: "700", marginLeft: Spacing.xs }}
-          >
-            Ruta Optimizada
-          </ThemedText>
-        </View>
-        <View style={{ width: 44 }} />
+          <ThemedText type="body" style={{ fontWeight: "700", marginLeft: Spacing.xs }}>Ruta Optimizada</ThemedText>
+        </View><View style={{ width: 44 }} />
       </View>
-
-      {/* Info de ruta */}
       {(distance || duration) && (
-        <View
-          style={[
-            s.routeInfo,
-            { backgroundColor: theme.card, bottom: insets.bottom + Spacing.lg },
-          ]}
-        >
-          {duration && (
-            <View style={s.routeStat}>
-              <Feather name="clock" size={16} color={ComeYaColors.primary} />
-              <ThemedText
-                type="body"
-                style={{ fontWeight: "700", marginLeft: Spacing.xs }}
-              >
-                {duration}
-              </ThemedText>
-            </View>
-          )}
-          {distance && (
-            <View style={s.routeStat}>
-              <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
-              <ThemedText
-                type="body"
-                style={{ fontWeight: "700", marginLeft: Spacing.xs }}
-              >
-                {distance}
-              </ThemedText>
-            </View>
-          )}
-          {activeOrder && (
-            <ThemedText
-              type="caption"
-              style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
-              numberOfLines={1}
-            >
-              → {activeOrder.deliveryAddress}
-            </ThemedText>
-          )}
+        <View style={[s.routeInfo, { backgroundColor: theme.card, bottom: insets.bottom + Spacing.lg }]}>
+          {duration && <View style={s.routeStat}><Feather name="clock" size={16} color={ComeYaColors.primary} /><ThemedText type="body" style={{ fontWeight: "700", marginLeft: Spacing.xs }}>{duration}</ThemedText></View>}
+          {distance && <View style={s.routeStat}><Feather name="map-pin" size={16} color={ComeYaColors.primary} /><ThemedText type="body" style={{ fontWeight: "700", marginLeft: Spacing.xs }}>{distance}</ThemedText></View>}
+          {activeOrder && <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: Spacing.xs }} numberOfLines={1}>→ {activeOrder.deliveryAddress}</ThemedText>}
         </View>
       )}
     </View>
@@ -192,76 +116,17 @@ export default function RouteOptimizationScreen({ navigation }: any) {
 const DARK_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#212121" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#373737" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#000000" }],
-  },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#373737" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
 ];
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  loading: {
-    position: "absolute",
-    inset: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 20,
-  } as any,
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.sm,
-    zIndex: 10,
-  },
-  floatBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  headerTitle: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  routeInfo: {
-    position: "absolute",
-    left: Spacing.lg,
-    right: Spacing.lg,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 10,
-  },
+  loading: { position: "absolute", inset: 0, justifyContent: "center", alignItems: "center", zIndex: 20 } as any,
+  header: { position: "absolute", top: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm, zIndex: 10 },
+  floatBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4 },
+  headerTitle: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.full, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4 },
+  routeInfo: { position: "absolute", left: Spacing.lg, right: Spacing.lg, padding: Spacing.md, borderRadius: BorderRadius.lg, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 8, zIndex: 10 },
   routeStat: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
 });

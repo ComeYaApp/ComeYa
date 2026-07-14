@@ -237,69 +237,21 @@ export default function DriverNavigationScreen() {
     }
   }, [driverLocation]);
 
-  const fetchRoute = async (originLat: number, originLng: number) => {
+  const fetchRoute = (originLat: number, originLng: number) => {
     setRouteLoading(true);
-    try {
-      const key = await fetch(
-        (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-      )
-        .then((r) => r.json())
-        .then((d) => d.key)
-        .catch(() => "");
-
-      const url =
-        `https://maps.googleapis.com/maps/api/directions/json` +
-        `?origin=${originLat},${originLng}` +
-        `&destination=${destLat},${destLng}` +
-        `&mode=driving` +
-        `&language=es` +
-        `&key=${key}`;
-
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (data.status === "OK" && data.routes?.length > 0) {
-        const leg = data.routes[0].legs[0];
-        const encoded: string = data.routes[0].overview_polyline.points;
-        const decoded = decodePolyline(encoded);
-
-        setRouteCoords(decoded);
-        setTotalDistance(leg.distance?.text || "");
-        setTotalDuration(leg.duration?.text || "");
-        setSteps(
-          (leg.steps || []).map((s: any) => ({
-            instruction: stripHtml(s.html_instructions || ""),
-            distance: s.distance?.text || "",
-            duration: s.duration?.text || "",
-          })),
-        );
-
-        // Dibujar polyline en el mapa
-        const google = (window as any).google;
-        if (gmap.current && google) {
-          if (polylineRef.current) {
-            polylineRef.current.setMap(null);
-          }
-          const path = decoded.map((c) => ({ lat: c.latitude, lng: c.longitude }));
-          polylineRef.current = new google.maps.Polyline({
-            path,
-            geodesic: true,
-            strokeColor: ComeYaColors.primary,
-            strokeOpacity: 0.8,
-            strokeWeight: 5,
-            map: gmap.current,
-          });
-
-          // Ajustar mapa
-          const bounds = new google.maps.LatLngBounds();
-          bounds.extend(new google.maps.LatLng(originLat, originLng));
-          bounds.extend(new google.maps.LatLng(destLat, destLng));
-          path.forEach((p: any) => bounds.extend(p));
-          gmap.current.fitBounds(bounds, 50);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching directions:", err);
+    const google = (window as any).google;
+    if (gmap.current && google) {
+      if (polylineRef.current) polylineRef.current.setMap(null);
+      const path = [{ lat: originLat, lng: originLng }, { lat: destLat, lng: destLng }];
+      polylineRef.current = new google.maps.Polyline({ path, geodesic: true, strokeColor: ComeYaColors.primary, strokeOpacity: 0.8, strokeWeight: 5, map: gmap.current });
+      const R = 6371; const dLat = ((destLat-originLat)*Math.PI)/180; const dLng = ((destLng-originLng)*Math.PI)/180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(originLat*Math.PI/180)*Math.cos(destLat*Math.PI/180)*Math.sin(dLng/2)**2;
+      const km = R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); const mins = Math.round((km/30)*60);
+      setTotalDistance(`${km.toFixed(1)} km`); setTotalDuration(`~${mins} min`);
+      setSteps([{ instruction: `Dirigete hacia ${destAddress||"el destino"}`, distance: `${km.toFixed(1)} km`, duration: `~${mins} min` }]);
+      setRouteCoords([{ latitude:originLat, longitude:originLng }, { latitude:destLat, longitude:destLng }]);
+      const bounds = new google.maps.LatLngBounds(); bounds.extend(new google.maps.LatLng(originLat,originLng)); bounds.extend(new google.maps.LatLng(destLat,destLng));
+      gmap.current.fitBounds(bounds, 50);
     }
     setRouteLoading(false);
   };
