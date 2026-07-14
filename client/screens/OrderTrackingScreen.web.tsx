@@ -329,6 +329,7 @@ export default function OrderTrackingScreen() {
   // ── Ruta roja negocio→cliente (pending / confirmed / preparing / ready) ──
   // Se dibuja siempre que tengamos negocio + cliente y NO haya repartidor en camino
   useEffect(() => {
+    let cancelled = false;
     if (!mapsReady || !gmap.current) return;
     if (
       !businessLocation ||
@@ -355,25 +356,69 @@ export default function OrderTrackingScreen() {
       lng: parseFloat(order.deliveryLongitude),
     };
 
-    routeLineRef.current = new google.maps.Polyline({
-      path: [businessLocation, clientPos],
-      geodesic: true,
-      strokeColor: "#DC2626",
-      strokeOpacity: 0.85,
-      strokeWeight: 5,
-      map: gmap.current,
-    });
+    // Ruta real por calles (Directions API - 1 sola llamada)
+    (async () => {
+      try {
+        const directionsService = new google.maps.DirectionsService();
+        const result = await new Promise<any>(
+          (resolve: any, reject: any) => {
+            directionsService.route(
+              {
+                origin: businessLocation as any,
+                destination: clientPos as any,
+                travelMode: google.maps.TravelMode.DRIVING,
+              },
+              (response: any, status: any) => {
+                if (status === google.maps.DirectionsStatus.OK && response) {
+                  resolve(response);
+                } else {
+                  reject(new Error(`Directions failed: ${status}`));
+                }
+              },
+            );
+          },
+        );
+        if (!cancelled) {
+          routeLineRef.current = new google.maps.DirectionsRenderer({
+            map: gmap.current,
+            directions: result,
+            suppressMarkers: true,
+            polylineOptions: {
+              strokeColor: "#DC2626",
+              strokeOpacity: 0.85,
+              strokeWeight: 5,
+            },
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          // Fallback: línea recta si Directions API falla
+          routeLineRef.current = new google.maps.Polyline({
+            path: [businessLocation, clientPos],
+            geodesic: true,
+            strokeColor: "#DC2626",
+            strokeOpacity: 0.85,
+            strokeWeight: 5,
+            map: gmap.current,
+          });
+        }
+      }
 
-    // Ajustar bounds
-    const bounds = new google.maps.LatLngBounds();
-    bounds.extend(businessLocation);
-    bounds.extend(clientPos);
-    gmap.current.fitBounds(bounds, {
-      top: 80,
-      right: 80,
-      bottom: 80,
-      left: 80,
-    });
+      // Ajustar bounds
+      if (!cancelled && gmap.current) {
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(businessLocation as any);
+        bounds.extend(clientPos as any);
+        gmap.current.fitBounds(bounds, {
+          top: 80,
+          right: 80,
+          bottom: 80,
+          left: 80,
+        });
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [
     mapsReady,
     businessLocation,

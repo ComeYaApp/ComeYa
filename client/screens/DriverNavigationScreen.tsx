@@ -3,7 +3,9 @@ import {
   View,
   StyleSheet,
   Pressable,
+  Platform,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,27 +30,44 @@ type DriverNavigationRouteProp = RouteProp<
 >;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
-/** Haversine: calcula distancia en km entre dos coordenadas */
-function haversineDistance(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+// API Key desde variables de entorno (NUNCA hardcodeada)
+// En producción, se configura en app.config.js → EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+const MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+/** Decodifica el polyline codificado de Google Directions */
+function decodePolyline(
+  encoded: string,
+): { latitude: number; longitude: number }[] {
+  const poly: { latitude: number; longitude: number }[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index < encoded.length) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    poly.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+  }
+  return poly;
 }
 
-/** Estima tiempo de viaje en minutos (~30 km/h velocidad media ciudad) */
-function estimateTravelTime(distanceKm: number): number {
-  return Math.ceil(distanceKm / 0.5);
+/** Elimina etiquetas HTML de las instrucciones de Google Directions */
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
 }
 
 export default function DriverNavigationScreen() {
@@ -67,14 +86,18 @@ export default function DriverNavigationScreen() {
   const [routeCoords, setRouteCoords] = useState<
     { latitude: number; longitude: number }[]
   >([]);
+  const [steps, setSteps] = useState<
+    { instruction: string; distance: string; duration: string }[]
+  >([]);
   const [totalDistance, setTotalDistance] = useState("");
   const [totalDuration, setTotalDuration] = useState("");
   const [loading, setLoading] = useState(true);
+  const [routeLoading, setRouteLoading] = useState(false);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
 
   const destinationCoord = { latitude: destLat, longitude: destLng };
 
-  // Inicializar GPS y calcular ruta local (gratis, sin Directions API)
+  // Inicializar GPS y obtener ruta (1 sola llamada a Directions API)
   useEffect(() => {
     const start = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -93,10 +116,10 @@ export default function DriverNavigationScreen() {
       setDriverLocation(coords);
       setLoading(false);
 
-      // Calcular ruta local (Haversine + geodésica, GRATIS)
-      calcLocalRoute(coords.latitude, coords.longitude);
+      // Obtener ruta real por calles
+      fetchRoute(coords.latitude, coords.longitude);
 
-      // Seguimiento continuo leve para actualizar marcador
+      // Seguimiento continuo (solo actualiza marcador, no recalcula ruta)
       locationSubRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
@@ -119,36 +142,51 @@ export default function DriverNavigationScreen() {
     };
   }, []);
 
-  const calcLocalRoute = (originLat: number, originLng: number) => {
-    const distKm = haversineDistance(originLat, originLng, destLat, destLng);
-    const timeMin = estimateTravelTime(distKm);
+  const fetchRoute = async (originLat: number, originLng: number) => {
+    setRouteLoading(true);
+    try {
+      const url =
+        `https://maps.googleapis.com/maps/api/directions/json` +
+        `?origin=${originLat},${originLng}` +
+        `&destination=${destLat},${destLng}` +
+        `&mode=driving` +
+        `&language=es` +
+        `&key=${MAPS_API_KEY}`;
 
-    setTotalDistance(
-      distKm < 1
-        ? `${Math.round(distKm * 1000)} m`
-        : `${distKm.toFixed(1)} km`,
-    );
-    setTotalDuration(`${timeMin} min`);
+      const res = await fetch(url);
+      const data = await res.json();
 
-    // Polyline geodésica directa (línea recta en el mapa, gratis)
-    setRouteCoords([
-      { latitude: originLat, longitude: originLng },
-      { latitude: destLat, longitude: destLng },
-    ]);
+      if (data.status === "OK" && data.routes?.length > 0) {
+        const leg = data.routes[0].legs[0];
+        const encoded: string = data.routes[0].overview_polyline.points;
+        const decoded = decodePolyline(encoded);
 
-    // Ajustar mapa para mostrar ambos puntos
-    if (mapRef.current) {
-      mapRef.current.fitToCoordinates(
-        [
-          { latitude: originLat, longitude: originLng },
-          { latitude: destLat, longitude: destLng },
-        ],
-        {
-          edgePadding: { top: 100, right: 50, bottom: 60, left: 50 },
-          animated: true,
-        },
-      );
+        setRouteCoords(decoded);
+        setTotalDistance(leg.distance?.text || "");
+        setTotalDuration(leg.duration?.text || "");
+        setSteps(
+          (leg.steps || []).map((s: any) => ({
+            instruction: stripHtml(s.html_instructions || ""),
+            distance: s.distance?.text || "",
+            duration: s.duration?.text || "",
+          })),
+        );
+
+        // Ajustar mapa para mostrar la ruta completa
+        if (mapRef.current && decoded.length > 0) {
+          mapRef.current.fitToCoordinates(
+            [{ latitude: originLat, longitude: originLng }, ...decoded],
+            {
+              edgePadding: { top: 100, right: 50, bottom: 310, left: 50 },
+              animated: true,
+            },
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching directions:", err);
     }
+    setRouteLoading(false);
   };
 
   const handleRecenter = () => {
@@ -166,7 +204,7 @@ export default function DriverNavigationScreen() {
 
   const handleRefreshRoute = () => {
     if (driverLocation) {
-      calcLocalRoute(driverLocation.latitude, driverLocation.longitude);
+      fetchRoute(driverLocation.latitude, driverLocation.longitude);
     }
   };
 
@@ -186,6 +224,8 @@ export default function DriverNavigationScreen() {
   const initialRegion = driverLocation
     ? { ...driverLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }
     : { latitude: destLat, longitude: destLng, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+
+  const stepsVisible = steps.length > 0;
 
   return (
     <View style={styles.container}>
@@ -215,7 +255,7 @@ export default function DriverNavigationScreen() {
           </View>
         </Marker>
 
-        {/* Polilínea de la ruta (línea geodésica directa, gratis) */}
+        {/* Polilínea de la ruta real de Google Directions */}
         {routeCoords.length > 0 && (
           <Polyline
             coordinates={routeCoords}
@@ -296,8 +336,13 @@ export default function DriverNavigationScreen() {
         <Pressable
           onPress={handleRefreshRoute}
           style={styles.iconButton}
+          disabled={routeLoading}
         >
-          <Feather name="refresh-cw" size={18} color={ComeYaColors.primary} />
+          {routeLoading ? (
+            <ActivityIndicator size="small" color={ComeYaColors.primary} />
+          ) : (
+            <Feather name="refresh-cw" size={18} color={ComeYaColors.primary} />
+          )}
         </Pressable>
       </View>
 
@@ -308,13 +353,87 @@ export default function DriverNavigationScreen() {
           styles.recenterBtn,
           {
             backgroundColor: theme.card,
-            bottom: 40,
+            bottom: stepsVisible ? 290 : 40,
           },
           Shadows.md,
         ]}
       >
         <Feather name="crosshair" size={20} color={ComeYaColors.primary} />
       </Pressable>
+
+      {/* Panel inferior: instrucciones giro a giro */}
+      {stepsVisible && (
+        <View
+          style={[styles.stepsPanel, { backgroundColor: theme.card }, Shadows.lg]}
+        >
+          {/* Instrucción actual (primera) */}
+          <View style={styles.currentStepRow}>
+            <View
+              style={[
+                styles.stepIconCircle,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+            >
+              <Feather name="navigation" size={18} color="#FFF" />
+            </View>
+            <ThemedText
+              type="body"
+              style={{
+                flex: 1,
+                marginLeft: Spacing.md,
+                fontWeight: "700",
+              }}
+              numberOfLines={2}
+            >
+              {steps[0].instruction}
+            </ThemedText>
+            <ThemedText
+              type="small"
+              style={{
+                color: theme.textSecondary,
+                marginLeft: Spacing.sm,
+                minWidth: 42,
+                textAlign: "right",
+              }}
+            >
+              {steps[0].distance}
+            </ThemedText>
+          </View>
+
+          {/* Resto de instrucciones */}
+          {steps.length > 1 && (
+            <ScrollView
+              style={styles.nextStepsList}
+              showsVerticalScrollIndicator={false}
+            >
+              {steps.slice(1).map((step, i) => (
+                <View key={i} style={[styles.nextStepRow, { borderTopColor: theme.border }]}>
+                  <View
+                    style={[styles.nextStepDot, { borderColor: theme.border }]}
+                  />
+                  <ThemedText
+                    type="small"
+                    style={{
+                      flex: 1,
+                      color: theme.textSecondary,
+                      marginLeft: Spacing.sm,
+                    }}
+                    numberOfLines={2}
+                  >
+                    {step.instruction}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginLeft: 4 }}
+                  >
+                    {step.distance}
+                  </ThemedText>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -404,5 +523,48 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+  },
+
+  // Steps panel
+  stepsPanel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    maxHeight: 290,
+  },
+  currentStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  stepIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  nextStepsList: {
+    maxHeight: 170,
+  },
+  nextStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  nextStepDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    flexShrink: 0,
   },
 });

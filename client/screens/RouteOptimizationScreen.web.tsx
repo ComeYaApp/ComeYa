@@ -36,11 +36,42 @@ function loadGoogleMaps(): Promise<void> {
   });
 }
 
+function decodePolyline(
+  encoded: string,
+): { latitude: number; longitude: number }[] {
+  const poly: { latitude: number; longitude: number }[] = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index < encoded.length) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    poly.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+  }
+  return poly;
+}
+
 export default function RouteOptimizationScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const mapRef = useRef<HTMLDivElement>(null);
   const gmap = useRef<any>(null);
+  const polylineRef = useRef<any>(null);
   const [mapsReady, setMapsReady] = useState(false);
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const [distance, setDistance] = useState<string | null>(null);
@@ -77,11 +108,67 @@ export default function RouteOptimizationScreen({ navigation }: any) {
             ? { lat: parseFloat(data.order.deliveryLatitude), lng: parseFloat(data.order.deliveryLongitude) }
             : SORIA;
 
-        new google.maps.Polyline({ path: [{ lat: driverLat, lng: driverLng }, dest], geodesic: true, strokeColor: ComeYaColors.primary, strokeWeight: 4, map: gmap.current });
-        const R = 6371; const dLat = ((dest.lat-driverLat)*Math.PI)/180; const dLng = ((dest.lng-driverLng)*Math.PI)/180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(driverLat*Math.PI/180)*Math.cos(dest.lat*Math.PI/180)*Math.sin(dLng/2)**2;
-        const km = R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); const mins = Math.round((km/30)*60);
-        setDistance(`${km.toFixed(1)} km`); setDuration(`~${mins} min`);
+        // Limpiar ruta anterior
+        if (polylineRef.current) {
+          polylineRef.current.setMap(null);
+          polylineRef.current = null;
+        }
+
+        // Ruta real por calles (Directions API - 1 sola llamada)
+        const directionsService = new google.maps.DirectionsService();
+        directionsService.route(
+          {
+            origin: new google.maps.LatLng(driverLat, driverLng),
+            destination: new google.maps.LatLng(dest.lat, dest.lng),
+            travelMode: google.maps.TravelMode.DRIVING,
+            language: "es",
+          },
+          (response: any, status: any) => {
+            if (status === google.maps.DirectionsStatus.OK && response) {
+              const leg = response.routes[0].legs[0];
+              setDistance(leg.distance?.text || "");
+              setDuration(leg.duration?.text || "");
+
+              // Dibujar ruta en el mapa
+              polylineRef.current = new google.maps.DirectionsRenderer({
+                map: gmap.current,
+                directions: response,
+                suppressMarkers: true,
+                polylineOptions: {
+                  strokeColor: ComeYaColors.primary,
+                  strokeWeight: 4,
+                },
+              });
+
+              // Ajustar bounds
+              const bounds = new google.maps.LatLngBounds();
+              bounds.extend(new google.maps.LatLng(driverLat, driverLng));
+              bounds.extend(new google.maps.LatLng(dest.lat, dest.lng));
+              gmap.current.fitBounds(bounds, 50);
+            } else {
+              // Fallback a línea recta
+              polylineRef.current = new google.maps.Polyline({
+                path: [{ lat: driverLat, lng: driverLng }, dest],
+                geodesic: true,
+                strokeColor: ComeYaColors.primary,
+                strokeWeight: 4,
+                map: gmap.current,
+              });
+              const R = 6371;
+              const dLat = ((dest.lat - driverLat) * Math.PI) / 180;
+              const dLng = ((dest.lng - driverLng) * Math.PI) / 180;
+              const a =
+                Math.sin(dLat / 2) ** 2 +
+                Math.cos((driverLat * Math.PI) / 180) *
+                  Math.cos((dest.lat * Math.PI) / 180) *
+                  Math.sin(dLng / 2) ** 2;
+              const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+              const mins = Math.round((km / 30) * 60);
+              setDistance(`${km.toFixed(1)} km`);
+              setDuration(`~${mins} min`);
+            }
+          },
+        );
       } catch {}
     };
 

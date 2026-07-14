@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -120,6 +120,112 @@ export default function DriverNavigationScreen() {
 
   const destinationCoord = { lat: destLat, lng: destLng };
 
+  const fetchRoute = useCallback(
+    (originLat: number, originLng: number) => {
+      setRouteLoading(true);
+      const google = (window as any).google;
+      if (!google || !gmap.current) {
+        setRouteLoading(false);
+        return;
+      }
+
+      // Limpiar polyline anterior
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+        polylineRef.current = null;
+      }
+
+      // Ruta real por calles (Directions API - 1 sola llamada)
+      const directionsService = new google.maps.DirectionsService();
+      directionsService.route(
+        {
+          origin: new google.maps.LatLng(originLat, originLng),
+          destination: new google.maps.LatLng(destLat, destLng),
+          travelMode: google.maps.TravelMode.DRIVING,
+          language: "es",
+        },
+        (response: any, status: any) => {
+          if (status === google.maps.DirectionsStatus.OK && response) {
+            const leg = response.routes[0].legs[0];
+            const encoded = response.routes[0].overview_polyline.points;
+            const decoded = decodePolyline(encoded);
+            setRouteCoords(decoded);
+            setTotalDistance(leg.distance?.text || "");
+            setTotalDuration(leg.duration?.text || "");
+            setSteps(
+              (leg.steps || []).map((s: any) => ({
+                instruction: stripHtml(s.html_instructions || ""),
+                distance: s.distance?.text || "",
+                duration: s.duration?.text || "",
+              })),
+            );
+
+            // Dibujar ruta en el mapa con DirectionsRenderer
+            polylineRef.current = new google.maps.DirectionsRenderer({
+              map: gmap.current,
+              directions: response,
+              suppressMarkers: true,
+              polylineOptions: {
+                strokeColor: ComeYaColors.primary,
+                strokeOpacity: 0.8,
+                strokeWeight: 5,
+              },
+            });
+
+            // Ajustar bounds
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(new google.maps.LatLng(originLat, originLng));
+            bounds.extend(new google.maps.LatLng(destLat, destLng));
+            gmap.current.fitBounds(bounds, 50);
+          } else {
+            // Fallback a línea recta si Directions API falla
+            const path = [
+              { lat: originLat, lng: originLng },
+              { lat: destLat, lng: destLng },
+            ];
+            polylineRef.current = new google.maps.Polyline({
+              path,
+              geodesic: true,
+              strokeColor: ComeYaColors.primary,
+              strokeOpacity: 0.8,
+              strokeWeight: 5,
+              map: gmap.current,
+            });
+            const R = 6371;
+            const dLat = ((destLat - originLat) * Math.PI) / 180;
+            const dLng = ((destLng - originLng) * Math.PI) / 180;
+            const a =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos((originLat * Math.PI) / 180) *
+                Math.cos((destLat * Math.PI) / 180) *
+                Math.sin(dLng / 2) ** 2;
+            const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const mins = Math.round((km / 30) * 60);
+            setTotalDistance(`${km.toFixed(1)} km`);
+            setTotalDuration(`~${mins} min`);
+            setSteps([
+              {
+                instruction: `Dirígete hacia ${destAddress || "el destino"}`,
+                distance: `${km.toFixed(1)} km`,
+                duration: `~${mins} min`,
+              },
+            ]);
+            setRouteCoords([
+              { latitude: originLat, longitude: originLng },
+              { latitude: destLat, longitude: destLng },
+            ]);
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(new google.maps.LatLng(originLat, originLng));
+            bounds.extend(new google.maps.LatLng(destLat, destLng));
+            gmap.current.fitBounds(bounds, 50);
+          }
+          setRouteLoading(false);
+        },
+      );
+    },
+    [destLat, destLng, destAddress],
+  );
+
   // Inicializar GPS y mapa
   useEffect(() => {
     const setup = async () => {
@@ -146,7 +252,7 @@ export default function DriverNavigationScreen() {
           { enableHighAccuracy: true, timeout: 10000 },
         );
 
-        // Seguimiento continuo
+        // Seguimiento continuo (solo actualiza marcador, no recalcula ruta)
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
             setDriverLocation({
@@ -169,7 +275,7 @@ export default function DriverNavigationScreen() {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, []);
+  }, [fetchRoute]);
 
   // Inicializar mapa Google
   useEffect(() => {
@@ -236,25 +342,6 @@ export default function DriverNavigationScreen() {
       });
     }
   }, [driverLocation]);
-
-  const fetchRoute = (originLat: number, originLng: number) => {
-    setRouteLoading(true);
-    const google = (window as any).google;
-    if (gmap.current && google) {
-      if (polylineRef.current) polylineRef.current.setMap(null);
-      const path = [{ lat: originLat, lng: originLng }, { lat: destLat, lng: destLng }];
-      polylineRef.current = new google.maps.Polyline({ path, geodesic: true, strokeColor: ComeYaColors.primary, strokeOpacity: 0.8, strokeWeight: 5, map: gmap.current });
-      const R = 6371; const dLat = ((destLat-originLat)*Math.PI)/180; const dLng = ((destLng-originLng)*Math.PI)/180;
-      const a = Math.sin(dLat/2)**2 + Math.cos(originLat*Math.PI/180)*Math.cos(destLat*Math.PI/180)*Math.sin(dLng/2)**2;
-      const km = R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); const mins = Math.round((km/30)*60);
-      setTotalDistance(`${km.toFixed(1)} km`); setTotalDuration(`~${mins} min`);
-      setSteps([{ instruction: `Dirigete hacia ${destAddress||"el destino"}`, distance: `${km.toFixed(1)} km`, duration: `~${mins} min` }]);
-      setRouteCoords([{ latitude:originLat, longitude:originLng }, { latitude:destLat, longitude:destLng }]);
-      const bounds = new google.maps.LatLngBounds(); bounds.extend(new google.maps.LatLng(originLat,originLng)); bounds.extend(new google.maps.LatLng(destLat,destLng));
-      gmap.current.fitBounds(bounds, 50);
-    }
-    setRouteLoading(false);
-  };
 
   const handleRecenter = () => {
     if (gmap.current && driverLocation) {
