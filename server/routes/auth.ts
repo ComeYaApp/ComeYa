@@ -369,6 +369,95 @@ router.post("/logout", authenticateToken, async (req, res) => {
   res.json({ success: true, message: "Sesión cerrada" });
 });
 
+// DELETE /api/auth/account — eliminar cuenta permanentemente
+router.delete("/account", authenticateToken, async (req, res) => {
+  try {
+    const { users, orders, addresses, favorites, businesses, deliveryDrivers } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const userId = req.user!.id;
+
+    // Obtener datos del usuario antes de eliminar
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId as string))
+      .limit(1);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    // Si es business_owner, desactivar sus negocios (no eliminar por integridad referencial)
+    if (user.role === "business_owner") {
+      const ownerBusinesses = await db
+        .select()
+        .from(businesses)
+        .where(eq(businesses.ownerId, userId as string));
+      for (const biz of ownerBusinesses) {
+        await db
+          .update(businesses)
+          .set({ isActive: false, isOpen: false })
+          .where(eq(businesses.id, biz.id as string));
+      }
+    }
+
+    // Si es delivery_driver, eliminar registro de deliveryDrivers
+    if (user.role === "delivery_driver") {
+      await db
+        .delete(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, userId as string))
+        .catch(() => {});
+    }
+
+    // Anonimizar pedidos (conservar por obligación legal pero sin datos personales)
+    await db
+      .update(orders)
+      .set({
+        deliveryAddress: null,
+        notes: "[Usuario eliminado]",
+      } as any)
+      .where(eq(orders.userId, userId as string))
+      .catch(() => {});
+
+    // Eliminar direcciones
+    await db
+      .delete(addresses)
+      .where(eq(addresses.userId, userId as string))
+      .catch(() => {});
+
+    // Eliminar favoritos
+    await db
+      .delete(favorites)
+      .where(eq(favorites.userId, userId as string))
+      .catch(() => {});
+
+    // Marcar usuario como eliminado (soft-delete) preservando registros financieros
+    await db
+      .update(users)
+      .set({
+        isActive: false,
+        name: "[Cuenta eliminada]",
+        email: null,
+        phone: `deleted_${userId}`,
+        profileImage: null,
+        address: null,
+        dni: null,
+        password: null,
+        pushToken: null,
+        biometricEnabled: false,
+        updatedAt: new Date(),
+      } as any)
+      .where(eq(users.id, userId as string));
+
+    res.json({
+      success: true,
+      message: "Cuenta eliminada correctamente. Todos tus datos personales han sido eliminados.",
+    });
+  } catch (error: any) {
+    console.error("Delete account error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/auth/me
 router.get("/me", authenticateToken, async (req, res) => {
   try {

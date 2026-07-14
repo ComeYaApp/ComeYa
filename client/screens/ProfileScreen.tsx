@@ -1565,8 +1565,17 @@ export default function ProfileScreen() {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <SettingsItem
+            icon="trash-2"
+            label="Eliminar cuenta"
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              navigation.navigate("DeleteAccount");
+            }}
+            danger
+          />
+          <SettingsItem
             icon="log-out"
-            label="Cerrar sesi�n"
+            label="Cerrar sesin"
             onPress={handleLogout}
             danger
           />

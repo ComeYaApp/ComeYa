@@ -202,7 +202,7 @@ export default function BusinessDetailScreen() {
             />
           ) : (
             <View
-              style={[styles.banner, { backgroundColor: theme.skeleton }]}
+              style={[styles.banner, { backgroundColor: "#E0E0E0" }]}
             />
           )}
           <Pressable
@@ -400,7 +400,6 @@ export default function BusinessDetailScreen() {
                         productId: product.id,
                         businessId: business.id,
                         businessName: business.name,
-                        product: product,
                       })
                     }
                   />
@@ -411,7 +410,16 @@ export default function BusinessDetailScreen() {
         ) : null}
       </ScrollView>
 
-      <CartButton onPress={() => navigation.navigate("Cart")} />
+      <CartButton
+        onPress={() => {
+          if (!user) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            navigation.navigate("Login" as never);
+          } else {
+            navigation.navigate("Cart");
+          }
+        }}
+      />
     </View>
   );
 }

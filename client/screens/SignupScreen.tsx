@@ -204,15 +204,23 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     if (s === 1) {
       if (!firstName.trim()) e.firstName = "Nombre requerido";
       if (!lastName.trim()) e.lastName = "Apellidos requeridos";
-      if (!dni.trim()) {
-        e.dni = "DNI/NIE requerido";
-      } else {
+      // DNI solo obligatorio para drivers y negocios (verificación de identidad)
+      if (role !== "customer") {
+        if (!dni.trim()) {
+          e.dni = "DNI/NIE requerido";
+        } else {
+          const dniClean = dni.trim().toUpperCase();
+          const dniPattern = /^[0-9]{8}[A-Z]$/;
+          const niePattern = /^[XYZ][0-9]{7}[A-Z]$/;
+          if (!dniPattern.test(dniClean) && !niePattern.test(dniClean)) {
+            e.dni = "Formato inválido. DNI: 12345678A o NIE: X1234567L";
+          }
+        }
+      } else if (dni.trim()) {
+        // Si el cliente introduce DNI voluntariamente, validar formato igualmente
         const dniClean = dni.trim().toUpperCase();
-        // DNI: 8 dígitos + letra (ej: 12345678Z)
         const dniPattern = /^[0-9]{8}[A-Z]$/;
-        // NIE: X/Y/Z + 7 dígitos + letra (ej: X1234567L)
         const niePattern = /^[XYZ][0-9]{7}[A-Z]$/;
-
         if (!dniPattern.test(dniClean) && !niePattern.test(dniClean)) {
           e.dni = "Formato inválido. DNI: 12345678A o NIE: X1234567L";
         }
@@ -636,7 +644,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                 />
 
                 <ThemedText type="small" style={styles.inputLabel}>
-                  DNI / NIE *
+                  DNI / NIE {role !== "customer" ? "*" : "(opcional)"}
                 </ThemedText>
                 <View
                   style={[
@@ -669,7 +677,9 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                   type="caption"
                   style={{ color: "#888", marginBottom: Spacing.md }}
                 >
-                  8 dígitos + letra (DNI) o letra + 7 dígitos + letra (NIE)
+                  {role !== "customer" 
+                    ? "8 dígitos + letra (DNI) o letra + 7 dígitos + letra (NIE)" 
+                    : "Opcional para clientes. 8 dígitos + letra (DNI) o letra + 7 dígitos + letra (NIE)"}
                 </ThemedText>
 
                 <ThemedText type="small" style={styles.inputLabel}>

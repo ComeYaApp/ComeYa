@@ -10,6 +10,7 @@ import LoginScreen from "@/screens/LoginScreen";
 import SignupScreen from "@/screens/SignupScreen";
 import VerifyPhoneScreen from "@/screens/VerifyPhoneScreen";
 import BusinessDetailScreen from "@/screens/BusinessDetailScreen";
+import DeleteAccountScreen from "@/screens/DeleteAccountScreen";
 import ProductDetailScreen from "@/screens/ProductDetailScreen";
 import CartScreen from "@/screens/CartScreen";
 import CheckoutScreen from "@/screens/CheckoutScreen";
@@ -185,6 +186,7 @@ export type RootStackParamList = {
     destLng: number;
     destAddress: string;
   };
+  DeleteAccount: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -276,25 +278,41 @@ export default function RootStackNavigator() {
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
+      {/* Pantallas públicas accesibles sin login */}
+      <Stack.Screen
+        name="BusinessDetail"
+        component={BusinessDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ProductDetail"
+        component={ProductDetailScreen}
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Carnival"
+        component={CarnivalScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Markets"
+        component={MarketsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="BusinessList"
+        component={BusinessListScreen}
+        options={{ headerShown: false }}
+      />
       {isAuthenticated ? (
         <>
           <Stack.Screen
             name="Main"
             component={getMainNavigator()}
             options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="BusinessDetail"
-            component={BusinessDetailScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ProductDetail"
-            component={ProductDetailScreen}
-            options={{
-              presentation: "modal",
-              headerShown: false,
-            }}
           />
           <Stack.Screen
             name="Cart"
@@ -309,21 +327,6 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="OrderTracking"
             component={OrderTrackingScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Carnival"
-            component={CarnivalScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Markets"
-            component={MarketsScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="BusinessList"
-            component={BusinessListScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen
@@ -575,6 +578,11 @@ export default function RootStackNavigator() {
             component={DriverNavigationScreen}
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="DeleteAccount"
+            component={DeleteAccountScreen}
+            options={{ headerShown: false }}
+          />
         </>
       ) : (
         <>
@@ -591,11 +599,6 @@ export default function RootStackNavigator() {
           <Stack.Screen
             name="VerifyPhone"
             component={VerifyPhoneScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Carnival"
-            component={CarnivalScreen}
             options={{ headerShown: false }}
           />
         </>
