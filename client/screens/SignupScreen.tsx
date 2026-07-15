@@ -643,44 +643,46 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                   autoCapitalize="words"
                 />
 
-                <ThemedText type="small" style={styles.inputLabel}>
-                  DNI / NIE {role !== "customer" ? "*" : "(opcional)"}
-                </ThemedText>
-                <View
-                  style={[
-                    styles.inputBox,
-                    errors.dni ? styles.inputBoxError : null,
-                  ]}
-                >
-                  <Feather
-                    name="credit-card"
-                    size={18}
-                    color="#666"
-                    style={{ marginRight: 8 }}
-                  />
-                  <TextInput
-                    placeholder="12345678A"
-                    value={dni}
-                    onChangeText={(t) => setDni(t.toUpperCase().slice(0, 12))}
-                    autoCapitalize="characters"
-                    placeholderTextColor="#999"
-                    style={styles.textInput}
-                    maxLength={9}
-                  />
-                </View>
-                {errors.dni ? (
-                  <ThemedText type="caption" style={styles.inputError}>
-                    {errors.dni}
-                  </ThemedText>
-                ) : null}
-                <ThemedText
-                  type="caption"
-                  style={{ color: "#888", marginBottom: Spacing.md }}
-                >
-                  {role !== "customer" 
-                    ? "8 dígitos + letra (DNI) o letra + 7 dígitos + letra (NIE)" 
-                    : "Opcional para clientes. 8 dígitos + letra (DNI) o letra + 7 dígitos + letra (NIE)"}
-                </ThemedText>
+                {role !== "customer" && (
+                  <>
+                    <ThemedText type="small" style={styles.inputLabel}>
+                      DNI / NIE *
+                    </ThemedText>
+                    <View
+                      style={[
+                        styles.inputBox,
+                        errors.dni ? styles.inputBoxError : null,
+                      ]}
+                    >
+                      <Feather
+                        name="credit-card"
+                        size={18}
+                        color="#666"
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        placeholder="12345678A"
+                        value={dni}
+                        onChangeText={(t) => setDni(t.toUpperCase().slice(0, 12))}
+                        autoCapitalize="characters"
+                        placeholderTextColor="#999"
+                        style={styles.textInput}
+                        maxLength={9}
+                      />
+                    </View>
+                    {errors.dni ? (
+                      <ThemedText type="caption" style={styles.inputError}>
+                        {errors.dni}
+                      </ThemedText>
+                    ) : null}
+                    <ThemedText
+                      type="caption"
+                      style={{ color: "#888", marginBottom: Spacing.md }}
+                    >
+                      Por normativa española, necesitamos tu DNI/NIE para verificar tu identidad como profesional (Ley 20/2007 del Estatuto del Trabajo Autónomo).
+                    </ThemedText>
+                  </>
+                )}
 
                 <ThemedText type="small" style={styles.inputLabel}>
                   Teléfono *
