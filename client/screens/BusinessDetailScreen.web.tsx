@@ -103,6 +103,50 @@ export default function BusinessDetailScreen() {
     } as any);
   };
 
+  // Redirigir al Home si no hay businessId o la carga falló
+  const noBusinessId = !route.params?.businessId;
+  const loadFailed = !loading && !business;
+
+  if (noBusinessId || loadFailed) {
+    const message = noBusinessId
+      ? "No se especificó un negocio. Redirigiendo al inicio..."
+      : "Negocio no encontrado. Redirigiendo al inicio...";
+    React.useEffect(() => {
+      const timer = setTimeout(() => {
+        navigation.reset({ index: 0, routes: [{ name: "Main" }] });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }, [noBusinessId, loadFailed]);
+
+    return (
+      <View
+        style={[
+          s.root,
+          {
+            backgroundColor: bg,
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 40,
+          },
+        ]}
+      >
+        <Text style={{ fontSize: 48, marginBottom: 16 }}>🏪</Text>
+        <Text style={[s.cartTitle, { color: text, textAlign: "center" }]}>
+          {noBusinessId ? "Negocio no especificado" : "Negocio no encontrado"}
+        </Text>
+        <Text style={[s.cartEmptyText, { color: sub, textAlign: "center", marginTop: 8 }]}>
+          {message}
+        </Text>
+        <Pressable
+          style={[s.checkoutBtn, { marginTop: 24 }]}
+          onPress={() => navigation.reset({ index: 0, routes: [{ name: "Main" }] })}
+        >
+          <Text style={s.checkoutBtnText}>Ir al inicio</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (loading)
     return (
       <View
