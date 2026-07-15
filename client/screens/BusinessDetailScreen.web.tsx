@@ -13,6 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -27,6 +28,7 @@ export default function BusinessDetailScreen() {
   const route = useRoute<Route>();
   const { theme, isDark } = useTheme();
   const { cart, addToCart, removeFromCart, getCartItem, clearCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const [business, setBusiness] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,8 +41,9 @@ export default function BusinessDetailScreen() {
   const sub = isDark ? "#aaa" : "#666";
   const border = isDark ? "#333" : "#e8e8e8";
 
+  const businessId = route.params?.businessId;
+
   useEffect(() => {
-    const businessId = route.params?.businessId;
     if (!businessId) {
       setLoading(false);
       return;
@@ -68,7 +71,21 @@ export default function BusinessDetailScreen() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [route.params?.businessId]);
+  }, [businessId]);
+
+  // Redirigir automáticamente si no hay businessId o la carga falló
+  const noBusinessId = !businessId;
+  const loadFailed = !loading && !business;
+  const targetScreen = isAuthenticated ? "Main" : "Login";
+
+  useEffect(() => {
+    if (!noBusinessId && !loadFailed) return;
+    const timer = setTimeout(() => {
+      // Solo redirigir si la pantalla destino está disponible
+      navigation.reset({ index: 0, routes: [{ name: targetScreen as any }] });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [noBusinessId, loadFailed, targetScreen, navigation]);
 
   const categories = [...new Set(products.map((p) => p.category))];
   const filteredProducts = activeCategory
@@ -82,13 +99,12 @@ export default function BusinessDetailScreen() {
   );
   const cartCount = cartItems.reduce((s: number, i: any) => s + i.quantity, 0);
 
-  // Delivery fee igual que checkout: Math.max(business.deliveryFee, 250) / 100
   const deliveryFee = business?.deliveryFee
     ? Math.max(business.deliveryFee, 250) / 100
     : 2.5;
 
   const handleAddItem = (product: any) => {
-    addToCart(product, route.params?.businessId || "", business?.name || "", 1);
+    addToCart(product, businessId || "", business?.name || "", 1);
   };
 
   const handleRemoveItem = (productId: string) => {
@@ -103,21 +119,8 @@ export default function BusinessDetailScreen() {
     } as any);
   };
 
-  // Redirigir al Home si no hay businessId o la carga falló
-  const noBusinessId = !route.params?.businessId;
-  const loadFailed = !loading && !business;
-
+  // Fallback: negocio no especificado o no encontrado
   if (noBusinessId || loadFailed) {
-    const message = noBusinessId
-      ? "No se especificó un negocio. Redirigiendo al inicio..."
-      : "Negocio no encontrado. Redirigiendo al inicio...";
-    React.useEffect(() => {
-      const timer = setTimeout(() => {
-        navigation.reset({ index: 0, routes: [{ name: "Main" }] });
-      }, 2000);
-      return () => clearTimeout(timer);
-    }, [noBusinessId, loadFailed]);
-
     return (
       <View
         style={[
@@ -135,13 +138,19 @@ export default function BusinessDetailScreen() {
           {noBusinessId ? "Negocio no especificado" : "Negocio no encontrado"}
         </Text>
         <Text style={[s.cartEmptyText, { color: sub, textAlign: "center", marginTop: 8 }]}>
-          {message}
+          {noBusinessId
+            ? "No se especificó un negocio. Redirigiendo..."
+            : "Negocio no encontrado. Redirigiendo..."}
         </Text>
         <Pressable
           style={[s.checkoutBtn, { marginTop: 24 }]}
-          onPress={() => navigation.reset({ index: 0, routes: [{ name: "Main" }] })}
+          onPress={() =>
+            navigation.reset({ index: 0, routes: [{ name: targetScreen as any }] })
+          }
         >
-          <Text style={s.checkoutBtnText}>Ir al inicio</Text>
+          <Text style={s.checkoutBtnText}>
+            {isAuthenticated ? "Ir al inicio" : "Ir al login"}
+          </Text>
         </Pressable>
       </View>
     );
@@ -541,7 +550,6 @@ const s = StyleSheet.create({
     minWidth: 16,
     textAlign: "center",
   },
-  // Mini carrito lateral
   cartPanel: {
     width: 320,
     borderLeftWidth: 1,
@@ -604,7 +612,6 @@ const s = StyleSheet.create({
     marginTop: 14,
   },
   checkoutBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  // Barra checkout móvil
   cartBarMobile: {
     flexDirection: "row",
     alignItems: "center",
