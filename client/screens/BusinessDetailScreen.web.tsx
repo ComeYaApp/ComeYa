@@ -43,11 +43,15 @@ export default function BusinessDetailScreen() {
 
   const businessId = route.params?.businessId;
 
+  // Redirigir silenciosamente si no hay businessId
   useEffect(() => {
-    if (!businessId) {
-      setLoading(false);
-      return;
-    }
+    if (businessId) return;
+    const target = isAuthenticated ? "Main" : "Login";
+    navigation.reset({ index: 0, routes: [{ name: target as any }] });
+  }, [businessId, isAuthenticated, navigation]);
+
+  useEffect(() => {
+    if (!businessId) return;
     apiRequest("GET", `/api/business/${businessId}`)
       .then((r) => r.json())
       .then((data) => {
@@ -73,19 +77,14 @@ export default function BusinessDetailScreen() {
       .finally(() => setLoading(false));
   }, [businessId]);
 
-  // Redirigir automáticamente si no hay businessId o la carga falló
-  const noBusinessId = !businessId;
-  const loadFailed = !loading && !business;
-  const targetScreen = isAuthenticated ? "Main" : "Login";
-
-  useEffect(() => {
-    if (!noBusinessId && !loadFailed) return;
-    const timer = setTimeout(() => {
-      // Solo redirigir si la pantalla destino está disponible
-      navigation.reset({ index: 0, routes: [{ name: targetScreen as any }] });
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [noBusinessId, loadFailed, targetScreen, navigation]);
+  // Fallback: solo mostrar spinner durante la redirección
+  if (!businessId) {
+    return (
+      <View style={[s.root, { backgroundColor: bg, justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+      </View>
+    );
+  }
 
   const categories = [...new Set(products.map((p) => p.category))];
   const filteredProducts = activeCategory
@@ -104,7 +103,7 @@ export default function BusinessDetailScreen() {
     : 2.5;
 
   const handleAddItem = (product: any) => {
-    addToCart(product, businessId || "", business?.name || "", 1);
+    addToCart(product, businessId, business?.name || "", 1);
   };
 
   const handleRemoveItem = (productId: string) => {
@@ -119,58 +118,27 @@ export default function BusinessDetailScreen() {
     } as any);
   };
 
-  // Fallback: negocio no especificado o no encontrado
-  if (noBusinessId || loadFailed) {
+  if (loading)
     return (
-      <View
-        style={[
-          s.root,
-          {
-            backgroundColor: bg,
-            justifyContent: "center",
-            alignItems: "center",
-            padding: 40,
-          },
-        ]}
-      >
+      <View style={[s.root, { backgroundColor: bg, justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={PRIMARY} />
+      </View>
+    );
+
+  if (!business) {
+    return (
+      <View style={[s.root, { backgroundColor: bg, justifyContent: "center", alignItems: "center", padding: 40 }]}>
         <Text style={{ fontSize: 48, marginBottom: 16 }}>🏪</Text>
-        <Text style={[s.cartTitle, { color: text, textAlign: "center" }]}>
-          {noBusinessId ? "Negocio no especificado" : "Negocio no encontrado"}
-        </Text>
-        <Text style={[s.cartEmptyText, { color: sub, textAlign: "center", marginTop: 8 }]}>
-          {noBusinessId
-            ? "No se especificó un negocio. Redirigiendo..."
-            : "Negocio no encontrado. Redirigiendo..."}
-        </Text>
+        <Text style={[s.cartTitle, { color: text }]}>Negocio no encontrado</Text>
         <Pressable
           style={[s.checkoutBtn, { marginTop: 24 }]}
-          onPress={() =>
-            navigation.reset({ index: 0, routes: [{ name: targetScreen as any }] })
-          }
+          onPress={() => navigation.goBack()}
         >
-          <Text style={s.checkoutBtnText}>
-            {isAuthenticated ? "Ir al inicio" : "Ir al login"}
-          </Text>
+          <Text style={s.checkoutBtnText}>Volver</Text>
         </Pressable>
       </View>
     );
   }
-
-  if (loading)
-    return (
-      <View
-        style={[
-          s.root,
-          {
-            backgroundColor: bg,
-            justifyContent: "center",
-            alignItems: "center",
-          },
-        ]}
-      >
-        <ActivityIndicator size="large" color={PRIMARY} />
-      </View>
-    );
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
