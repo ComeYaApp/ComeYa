@@ -4,45 +4,839 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Eliminar Cuenta - ComeYa</title>
+  <meta name="description" content="Elimina tu cuenta de ComeYa de forma permanente. Proceso seguro con verificación por SMS.">
+  <meta name="theme-color" content="#DC2626">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; max-width: 700px; margin: 50px auto; padding: 20px; color: #333; }
-    h1 { color: #DC2626; }
-    .steps { background: #f9f9f9; padding: 20px; border-radius: 8px; }
-    .steps ol { padding-left: 20px; }
-    .steps li { margin-bottom: 10px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #DC2626;
+      --primary-dark: #B91C1C;
+      --primary-light: #FEE2E2;
+      --bg: #F7F7F7;
+      --surface: #FFFFFF;
+      --text: #1A1A1A;
+      --text2: #666666;
+      --border: #E0E0E0;
+      --r-md: 12px;
+      --r-lg: 16px;
+      --r-full: 9999px;
+      --sh-sm: 0 2px 8px rgba(0,0,0,.08);
+      --sh-md: 0 4px 20px rgba(0,0,0,.10);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-logo img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+    .nav-logo span { color: var(--text); }
+
+    /* Main */
+    .main {
+      flex: 1;
+      max-width: 640px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 40px 20px 60px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: var(--sh-sm);
+      border: 1px solid var(--border);
+    }
+    .card-danger {
+      border: 2px solid #FECACA;
+      background: #FFF5F5;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-title .icon { font-size: 1.3rem; }
+
+    /* Typography */
+    h1 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: var(--text2);
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+    .warning-text {
+      color: var(--primary-dark);
+      font-weight: 600;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* Lists */
+    .data-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .data-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: var(--text2);
+    }
+    .data-list .bullet {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .bullet-danger { background: #FEE2E2; color: var(--primary); }
+    .bullet-neutral { background: #F0F0F0; color: #666; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--r-full);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: inherit;
+      text-decoration: none;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-danger {
+      background: var(--primary);
+      color: #fff;
+      width: 100%;
+      padding: 14px 24px;
+      font-size: 1rem;
+    }
+    .btn-danger:hover { background: #991B1B; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(220,38,38,.4); }
+    .btn-outline {
+      background: var(--surface);
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      width: 100%;
+    }
+    .btn-outline:hover { background: var(--primary-light); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      padding: 8px 16px;
+    }
+    .btn-ghost:hover { background: #f0f0f0; }
+
+    /* Input */
+    .input-group {
+      margin-bottom: 14px;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      height: 48px;
+      overflow: hidden;
+    }
+    .input-row:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+    }
+    .input-prefix {
+      padding: 0 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      background: #f8f8f8;
+      border-right: 1.5px solid var(--border);
+      height: 100%;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .input {
+      width: 100%;
+      height: 48px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 0 14px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      outline: none;
+      color: var(--text);
+    }
+    .input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+    }
+    .input-row .input {
+      border: none;
+      height: 100%;
+      margin: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    /* Alert */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .alert.show { display: block; }
+    .alert-error { background: #FEF2F2; color: var(--primary); border: 1px solid #FECACA; }
+    .alert-success { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+    .alert-info { background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE; }
+
+    /* Steps indicator */
+    .steps-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 28px;
+    }
+    .step-dot {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .step-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.3s;
+    }
+    .step-circle.active { background: var(--primary); color: #fff; }
+    .step-circle.inactive { background: #e5e5e5; color: #999; }
+    .step-circle.done { background: #16A34A; color: #fff; }
+    .step-label { font-size: 0.75rem; color: var(--text2); font-weight: 500; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      animation: fadeIn 0.2s ease;
+    }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      padding: 32px 28px;
+      max-width: 440px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 12px; }
+    .modal p { color: var(--text2); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.6; }
+    .modal-actions { display: flex; gap: 12px; }
+    .modal-actions .btn { flex: 1; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2.5px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* User info */
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: #F9FAFB;
+      border-radius: var(--r-md);
+      margin-bottom: 20px;
+    }
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .user-details { display: flex; flex-direction: column; }
+    .user-name { font-weight: 700; font-size: 1rem; }
+    .user-phone { font-size: 0.85rem; color: var(--text2); }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text2);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--primary); font-weight: 600; }
+
+    /* Hidden */
+    .hidden { display: none !important; }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .main { padding: 20px 16px 40px; }
+      .card { padding: 20px; }
+      .steps-indicator { gap: 24px; }
+    }
+
+    /* Delete confirmation input */
+    .delete-confirm-input {
+      border: 2px solid var(--primary);
+      background: #FFF5F5;
+    }
+    .delete-confirm-input:focus {
+      box-shadow: 0 0 0 3px rgba(220,38,38,.2);
+    }
   </style>
 </head>
 <body>
-  <h1>ComeYa - Eliminación de Cuenta</h1>
-  <p>Puedes eliminar tu cuenta directamente desde la aplicación:</p>
 
-  <div class="steps">
-    <ol>
-      <li>Abre la app de <strong>ComeYa</strong> en tu dispositivo</li>
-      <li>Ve a tu <strong>Perfil</strong> (icono de persona)</li>
-      <li>Desplázate hasta la sección <strong>"Eliminar cuenta"</strong></li>
-      <li>Sigue el proceso de confirmación para eliminar permanentemente tus datos</li>
-    </ol>
+  <!-- Navbar -->
+  <nav class="nav">
+    <a href="https://comeya.es" class="nav-logo">
+      <img src="/logo.jpeg" alt="ComeYa" onerror="this.style.display='none'">
+      Come<span>Ya</span>
+    </a>
+    <a href="https://comeya.es" class="btn btn-ghost">← Volver al inicio</a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- Steps indicator -->
+    <div class="steps-indicator" id="stepsIndicator">
+      <div class="step-dot">
+        <div class="step-circle active" id="stepCircle1">1</div>
+        <span class="step-label">Verificar</span>
+      </div>
+      <div class="step-dot">
+        <div class="step-circle inactive" id="stepCircle2">2</div>
+        <span class="step-label">Confirmar</span>
+      </div>
+      <div class="step-dot">
+        <div class="step-circle inactive" id="stepCircle3">3</div>
+        <span class="step-label">Eliminar</span>
+      </div>
+    </div>
+
+    <!-- Alert messages -->
+    <div id="alertError" class="alert alert-error"></div>
+    <div id="alertSuccess" class="alert alert-success"></div>
+    <div id="alertInfo" class="alert alert-info"></div>
+
+    <!-- STEP 1: Info + Authentication -->
+    <div id="sectionAuth">
+      <!-- Info card -->
+      <div class="card">
+        <h1>Eliminar cuenta</h1>
+        <p class="subtitle">Esta acción es permanente e irreversible. Todos tus datos personales serán eliminados.</p>
+
+        <div class="card card-danger" style="margin-bottom:0; padding:20px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <span style="font-size:2rem;">⚠️</span>
+            <span class="warning-text">Al eliminar tu cuenta, se borrarán permanentemente todos tus datos personales. Esta acción no se puede deshacer.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- What gets deleted -->
+      <div class="card">
+        <div class="card-title"><span class="icon">🗑️</span> Datos que se eliminarán</div>
+        <ul class="data-list">
+          <li><span class="bullet bullet-danger">✕</span> Perfil personal (nombre, email, teléfono, DNI, foto)</li>
+          <li><span class="bullet bullet-danger">✕</span> Historial de pedidos y direcciones</li>
+          <li><span class="bullet bullet-danger">✕</span> Favoritos y preferencias</li>
+          <li><span class="bullet bullet-danger">✕</span> Mensajes y chats</li>
+          <li><span class="bullet bullet-danger">✕</span> Tokens de notificaciones</li>
+        </ul>
+      </div>
+
+      <!-- What stays -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> Datos que se conservan (obligación legal)</div>
+        <ul class="data-list">
+          <li><span class="bullet bullet-neutral">•</span> Registros financieros anonimizados (5 años)</li>
+          <li><span class="bullet bullet-neutral">•</span> Comprobantes de pago anonimizados (5 años)</li>
+        </ul>
+      </div>
+
+      <!-- Login form -->
+      <div class="card" id="loginCard">
+        <div class="card-title"><span class="icon">📱</span> Verifica tu identidad</div>
+        <p style="font-size:0.9rem;color:var(--text2);margin-bottom:16px;">
+          Para eliminar tu cuenta, primero debes verificar que eres el titular. Ingresa tu número de teléfono y recibirás un código SMS.
+        </p>
+
+        <!-- Phone input -->
+        <div class="input-group" id="phoneGroup">
+          <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:6px;">Número de teléfono</label>
+          <div class="input-row">
+            <span class="input-prefix">🇪🇸 +34</span>
+            <input id="inputPhone" type="tel" class="input" placeholder="612 345 678" maxlength="9" inputmode="numeric" autocomplete="tel">
+          </div>
+        </div>
+
+        <!-- OTP input (hidden initially) -->
+        <div class="input-group hidden" id="otpGroup">
+          <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:6px;">Código de verificación</label>
+          <input id="inputOtp" type="text" class="input" placeholder="Código de 6 dígitos" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
+          <p style="font-size:0.8rem;color:var(--text2);margin-top:6px;">
+            📩 Te hemos enviado un código SMS al <strong id="phoneDisplay"></strong>
+          </p>
+        </div>
+
+        <button id="btnSendCode" class="btn btn-primary" onclick="handleSendCode()">
+          Enviar código SMS
+        </button>
+
+        <button id="btnVerifyCode" class="btn btn-primary hidden" onclick="handleVerifyCode()">
+          Verificar código
+        </button>
+
+        <button id="btnResendCode" class="btn btn-outline hidden" onclick="handleSendCode()" style="margin-top:10px;">
+          Reenviar código
+        </button>
+
+        <p style="font-size:0.75rem;color:var(--text2);text-align:center;margin-top:12px;">
+          Al continuar, aceptas que verifiquemos tu identidad mediante SMS.
+        </p>
+      </div>
+    </div>
+
+    <!-- STEP 2: User info + confirm -->
+    <div id="sectionConfirm" class="hidden">
+      <div class="card">
+        <h1>Eliminar cuenta</h1>
+        <p class="subtitle">Has verificado tu identidad. Esta es la cuenta que se eliminará:</p>
+
+        <!-- User info display -->
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatarLetter">U</div>
+          <div class="user-details">
+            <span class="user-name" id="displayName">Usuario</span>
+            <span class="user-phone" id="displayPhone">+34 000 000 000</span>
+          </div>
+        </div>
+
+        <div class="card card-danger" style="padding:20px;margin-bottom:20px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+            <span style="font-size:2rem;">⚠️</span>
+            <span class="warning-text">Esta acción es IRREVERSIBLE. Perderás acceso a tu historial de pedidos, direcciones guardadas, favoritos y todos los datos asociados a tu cuenta.</span>
+          </div>
+        </div>
+
+        <button id="btnGoToDelete" class="btn btn-danger" onclick="goToDeleteStep()">
+          🗑️ Quiero eliminar mi cuenta
+        </button>
+
+        <button class="btn btn-outline" onclick="resetToLogin()" style="margin-top:12px;">
+          ← Cancelar y volver
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Final delete -->
+    <div id="sectionDelete" class="hidden">
+      <div class="card">
+        <h1>Confirmación final</h1>
+        <p class="subtitle">Para confirmar que deseas eliminar tu cuenta permanentemente, escribe <strong>ELIMINAR</strong> en el campo de abajo.</p>
+
+        <div class="input-group">
+          <input id="inputDeleteConfirm" type="text" class="input delete-confirm-input" placeholder="Escribe ELIMINAR para confirmar" autocomplete="off" oninput="checkDeleteConfirm()">
+        </div>
+
+        <button id="btnDeleteAccount" class="btn btn-danger" onclick="handleDeleteAccount()" disabled>
+          🗑️ Eliminar mi cuenta permanentemente
+        </button>
+
+        <button class="btn btn-outline" onclick="goBackToConfirm()" style="margin-top:12px;">
+          ← Volver
+        </button>
+      </div>
+    </div>
+
+    <!-- RESULT: Deleted successfully -->
+    <div id="sectionDone" class="hidden">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:4rem;margin-bottom:16px;">✅</div>
+        <h1>Cuenta eliminada</h1>
+        <p style="color:var(--text2);font-size:0.95rem;margin-bottom:20px;">
+          Tu cuenta ha sido eliminada correctamente. Todos tus datos personales han sido borrados de nuestros sistemas.
+        </p>
+        <p style="color:var(--text2);font-size:0.85rem;margin-bottom:24px;">
+          Los registros financieros se conservarán anonimizados durante 5 años por obligación legal.
+        </p>
+        <a href="https://comeya.es" class="btn btn-primary">Volver al inicio</a>
+        <p style="font-size:0.8rem;color:var(--text2);margin-top:16px;">
+          Si tienes alguna duda, contáctanos en <a href="mailto:support@comeya.es">support@comeya.es</a>
+        </p>
+      </div>
+    </div>
+
+    <p style="text-align:center;color:var(--text2);font-size:0.8rem;margin-top:16px;">
+      Si tienes dudas, contáctanos en <strong><a href="mailto:support@comeya.es" style="color:var(--primary);">support@comeya.es</a></strong> antes de eliminar tu cuenta.
+    </p>
+  </main>
+
+  <!-- Footer -->
+  <div class="footer">
+    © 2026 ComeYa · Hecho con ❤️ en Soria, España · 
+    <a href="https://comeya.es/privacy-policy">Política de privacidad</a>
   </div>
 
-  <p>Alternativamente, puedes solicitar la eliminación enviando un correo a <strong>support@comeya.es</strong> desde el email registrado en tu cuenta.</p>
+  <script>
+    // ─── CONFIG ─────────────────────────────────────────────────────────────────
+    const API_BASE = window.location.origin; // Same origin, works for all environments
+    let authToken = null;
+    let currentUser = null;
+    let phoneNumber = '';
 
-  <h2>Datos que se eliminan</h2>
-  <ul>
-    <li>Perfil personal (nombre, email, teléfono, foto)</li>
-    <li>Historial de pedidos y transacciones</li>
-    <li>Mensajes de chat</li>
-    <li>Datos de ubicación asociados a tu cuenta</li>
-    <li>Tokens de autenticación y notificaciones</li>
-  </ul>
+    // ─── DOM ELEMENTS ──────────────────────────────────────────────────────────
+    const $ = (id) => document.getElementById(id);
+    const alertError = $('alertError');
+    const alertSuccess = $('alertSuccess');
+    const alertInfo = $('alertInfo');
 
-  <h2>Datos que se conservan</h2>
-  <ul>
-    <li>Registros financieros anonimizados por obligación legal (5 años)</li>
-    <li>Comprobantes de pago anonimizados (5 años)</li>
-  </ul>
+    function hideAllAlerts() {
+      [alertError, alertSuccess, alertInfo].forEach(a => a.classList.remove('show'));
+    }
 
-  <p>Si tienes dudas, contáctanos: <strong>support@comeya.es</strong></p>
-  <p><small>ComeYa App · Última actualización: 2026</small></p>
+    function showAlert(el, msg) {
+      hideAllAlerts();
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+
+    // ─── STEP MANAGEMENT ───────────────────────────────────────────────────────
+    const stepCircle1 = $('stepCircle1');
+    const stepCircle2 = $('stepCircle2');
+    const stepCircle3 = $('stepCircle3');
+    const sectionAuth = $('sectionAuth');
+    const sectionConfirm = $('sectionConfirm');
+    const sectionDelete = $('sectionDelete');
+    const sectionDone = $('sectionDone');
+    const loginCard = $('loginCard');
+
+    function hideAllSections() {
+      [sectionAuth, sectionConfirm, sectionDelete, sectionDone].forEach(s => s.classList.add('hidden'));
+    }
+
+    function setStep(step) {
+      [stepCircle1, stepCircle2, stepCircle3].forEach(c => {
+        c.className = 'step-circle inactive';
+      });
+      if (step === 1) stepCircle1.className = 'step-circle active';
+      else if (step === 2) {
+        stepCircle1.className = 'step-circle done';
+        stepCircle2.className = 'step-circle active';
+      } else if (step === 3) {
+        stepCircle1.className = 'step-circle done';
+        stepCircle2.className = 'step-circle done';
+        stepCircle3.className = 'step-circle active';
+      }
+    }
+
+    // ─── API CALLS ─────────────────────────────────────────────────────────────
+    async function apiCall(method, path, body = null) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(`${API_BASE}${path}`, opts);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `Error ${res.status}`);
+      }
+      return data;
+    }
+
+    // ─── SEND CODE ─────────────────────────────────────────────────────────────
+    async function handleSendCode() {
+      hideAllAlerts();
+      const phone = $('inputPhone').value.replace(/\s+/g, '').trim();
+
+      if (!phone || phone.length < 9) {
+        showAlert(alertError, 'Ingresa un número de teléfono válido (9 dígitos).');
+        return;
+      }
+
+      // Format: add +34 prefix
+      const formattedPhone = phone.startsWith('+34') ? phone : 
+                             phone.startsWith('34') ? `+${phone}` : 
+                             `+34${phone}`;
+      phoneNumber = formattedPhone;
+
+      const btnSend = $('btnSendCode');
+      btnSend.disabled = true;
+      btnSend.innerHTML = '<span class="spinner"></span> Enviando código...';
+
+      try {
+        // First try send-code (for existing users)
+        let data = await apiCall('POST', '/api/auth/send-code', { phone: formattedPhone });
+
+        if (data.userNotFound) {
+          showAlert(alertError, 'No existe ninguna cuenta asociada a este número de teléfono.');
+          return;
+        }
+
+        if (data.success || data.requiresVerification) {
+          // Show OTP fields
+          $('phoneGroup').classList.add('hidden');
+          $('otpGroup').classList.remove('hidden');
+          $('btnSendCode').classList.add('hidden');
+          $('btnVerifyCode').classList.remove('hidden');
+          $('btnResendCode').classList.remove('hidden');
+          $('phoneDisplay').textContent = formattedPhone;
+          $('inputOtp').focus();
+          showAlert(alertInfo, 'Código enviado. En entorno de desarrollo usa: 123456');
+
+          // Auto-fill for dev
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            $('inputOtp').value = '123456';
+          }
+        } else {
+          throw new Error(data.error || 'No se pudo enviar el código.');
+        }
+      } catch (err) {
+        showAlert(alertError, err.message || 'Error al enviar el código. Intenta de nuevo.');
+      } finally {
+        btnSend.disabled = false;
+        btnSend.textContent = 'Enviar código SMS';
+      }
+    }
+
+    // ─── VERIFY CODE ───────────────────────────────────────────────────────────
+    async function handleVerifyCode() {
+      hideAllAlerts();
+      const code = $('inputOtp').value.trim();
+
+      if (!code || code.length < 4) {
+        showAlert(alertError, 'Ingresa el código de verificación.');
+        return;
+      }
+
+      const btnVerify = $('btnVerifyCode');
+      btnVerify.disabled = true;
+      btnVerify.innerHTML = '<span class="spinner"></span> Verificando...';
+
+      try {
+        const data = await apiCall('POST', '/api/auth/phone-login', {
+          phone: phoneNumber,
+          code: code
+        });
+
+        if (data.success && data.token) {
+          authToken = data.token;
+          currentUser = data.user;
+
+          // Show confirm step
+          hideAllSections();
+          sectionConfirm.classList.remove('hidden');
+          setStep(2);
+
+          // Fill user info
+          $('displayName').textContent = currentUser.name || 'Usuario';
+          $('displayPhone').textContent = currentUser.phone || phoneNumber;
+          $('userAvatarLetter').textContent = (currentUser.name || 'U').charAt(0).toUpperCase();
+
+          showAlert(alertSuccess, 'Identidad verificada correctamente.');
+          // Move success alert into the confirm section for visibility
+          sectionConfirm.querySelector('.card').insertBefore(alertSuccess, sectionConfirm.querySelector('.card').firstChild);
+        } else {
+          throw new Error(data.error || 'Código inválido.');
+        }
+      } catch (err) {
+        showAlert(alertError, err.message || 'Código incorrecto. Intenta de nuevo.');
+      } finally {
+        btnVerify.disabled = false;
+        btnVerify.textContent = 'Verificar código';
+      }
+    }
+
+    // ─── GO TO DELETE STEP ─────────────────────────────────────────────────────
+    function goToDeleteStep() {
+      hideAllAlerts();
+      hideAllSections();
+      sectionDelete.classList.remove('hidden');
+      setStep(3);
+      $('inputDeleteConfirm').value = '';
+      $('btnDeleteAccount').disabled = true;
+      $('inputDeleteConfirm').focus();
+    }
+
+    function goBackToConfirm() {
+      hideAllAlerts();
+      hideAllSections();
+      sectionConfirm.classList.remove('hidden');
+      setStep(2);
+    }
+
+    function resetToLogin() {
+      hideAllAlerts();
+      authToken = null;
+      currentUser = null;
+      hideAllSections();
+      sectionAuth.classList.remove('hidden');
+      setStep(1);
+      $('phoneGroup').classList.remove('hidden');
+      $('otpGroup').classList.add('hidden');
+      $('btnSendCode').classList.remove('hidden');
+      $('btnVerifyCode').classList.add('hidden');
+      $('btnResendCode').classList.add('hidden');
+      $('inputPhone').value = '';
+      $('inputOtp').value = '';
+    }
+
+    // ─── DELETE CONFIRMATION ───────────────────────────────────────────────────
+    function checkDeleteConfirm() {
+      const input = $('inputDeleteConfirm').value.trim();
+      $('btnDeleteAccount').disabled = (input !== 'ELIMINAR');
+    }
+
+    // ─── DELETE ACCOUNT ────────────────────────────────────────────────────────
+    async function handleDeleteAccount() {
+      const input = $('inputDeleteConfirm').value.trim();
+      if (input !== 'ELIMINAR') {
+        showAlert(alertError, 'Debes escribir ELIMINAR para confirmar.');
+        return;
+      }
+
+      const btnDelete = $('btnDeleteAccount');
+      btnDelete.disabled = true;
+      btnDelete.innerHTML = '<span class="spinner"></span> Eliminando cuenta...';
+
+      try {
+        const data = await apiCall('DELETE', '/api/auth/account');
+
+        if (data.success) {
+          // Show success
+          hideAllSections();
+          sectionDone.classList.remove('hidden');
+          $('stepsIndicator').classList.add('hidden');
+          showAlert(alertSuccess, data.message || 'Cuenta eliminada correctamente.');
+        } else {
+          throw new Error(data.error || 'Error al eliminar la cuenta.');
+        }
+      } catch (err) {
+        showAlert(alertError, err.message || 'No se pudo eliminar la cuenta. Contacta a soporte: support@comeya.es');
+        btnDelete.disabled = false;
+        btnDelete.innerHTML = '🗑️ Eliminar mi cuenta permanentemente';
+      }
+    }
+
+    // ─── INIT ───────────────────────────────────────────────────────────────────
+    // Allow Enter key on phone input
+    $('inputPhone').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSendCode();
+    });
+
+    // Allow Enter key on OTP input
+    $('inputOtp').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleVerifyCode();
+    });
+
+    // Focus phone input on load
+    window.addEventListener('DOMContentLoaded', () => {
+      $('inputPhone').focus();
+    });
+
+    console.log('ComeYa - Delete Account Page Ready');
+    console.log('API Base:', API_BASE);
+  </script>
 </body>
 </html>
