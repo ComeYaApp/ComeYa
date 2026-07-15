@@ -34,6 +34,35 @@ var RuntimeKind = { JS: "js", UI: "ui" };
 var WorkletsError = Error;
 var JSWorklets = { createSerializableObject: function (obj) { return obj; }, defaultShareableValue: {} };
 
+function _getAnimationTimestamp() {
+  return typeof performance !== "undefined" && performance.now
+    ? performance.now()
+    : Date.now();
+}
+
+function _setGlobalConsole() {}
+function _scheduleOnJS() {}
+function _scheduleOnJSFromUI() {}
+function _scheduleOnRemoteRuntime() {}
+
+var updateProps = function () {};
+var createAnimatedProp = function () {};
+var processColor = function (c) { return c; };
+var ReanimatedEventEmitter = { addListener: function () {}, removeAllListeners: function () {} };
+var ReanimatedModule = {
+  createNode: function () { return 0; },
+  dropNode: function () {},
+  configureProps: function () {},
+  connectNodes: function () {},
+  disconnectNodes: function () {},
+  addListener: function () {},
+  removeListeners: function () {},
+  animateNextTransition: function () {},
+  getValue: function () { return 0; },
+  setValue: function () {},
+  triggerRender: function () {},
+};
+
 module.exports = {
   init, makeShareable, makeShareableCloneOnUIRecursive, makeShareableCloneRecursive,
   isShareableRef, createSerializable, isSerializableRef, isSynchronizable,
@@ -42,4 +71,8 @@ module.exports = {
   runOnJS, runOnUI, runOnUIAsync, runOnUISync, scheduleOnRN, scheduleOnUI,
   unstable_eventLoopTask, shareableMappingCache, serializableMappingCache,
   WorkletsModule, WorkletsError, JSWorklets, getStaticFeatureFlag, setDynamicFeatureFlag,
+  _getAnimationTimestamp, _setGlobalConsole, _scheduleOnJS,
+  _scheduleOnJSFromUI, _scheduleOnRemoteRuntime,
+  updateProps, createAnimatedProp, processColor,
+  ReanimatedEventEmitter, ReanimatedModule,
 };
