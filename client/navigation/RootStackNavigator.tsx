@@ -277,36 +277,7 @@ export default function RootStackNavigator() {
   };
 
   return (
-    <Stack.Navigator screenOptions={screenOptions}>
-      {/* Pantallas públicas accesibles sin login */}
-      <Stack.Screen
-        name="BusinessDetail"
-        component={BusinessDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="ProductDetail"
-        component={ProductDetailScreen}
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="Carnival"
-        component={CarnivalScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Markets"
-        component={MarketsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="BusinessList"
-        component={BusinessListScreen}
-        options={{ headerShown: false }}
-      />
+    <Stack.Navigator screenOptions={screenOptions} initialRouteName={isAuthenticated ? "Main" : "Login"}>
       {isAuthenticated ? (
         <>
           <Stack.Screen
@@ -603,6 +574,35 @@ export default function RootStackNavigator() {
           />
         </>
       )}
+      {/* Pantallas públicas accesibles con o sin login */}
+      <Stack.Screen
+        name="BusinessDetail"
+        component={BusinessDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ProductDetail"
+        component={ProductDetailScreen}
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Carnival"
+        component={CarnivalScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Markets"
+        component={MarketsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="BusinessList"
+        component={BusinessListScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
