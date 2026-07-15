@@ -44,8 +44,9 @@ export default function CartScreen() {
 
   React.useEffect(() => {
     if (!cart?.businessId) return;
+    const bid = cart.businessId;
     import("@/lib/query-client").then(({ apiRequest }) => {
-      apiRequest("GET", `/api/businesses/${cart.businessId}`)
+      apiRequest("GET", `/api/businesses/${bid}`)
         .then((r) => r.json())
         .then((data) => {
           if (data.success) setBusinessData(data.business);

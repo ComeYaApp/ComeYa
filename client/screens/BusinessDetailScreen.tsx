@@ -48,7 +48,7 @@ export default function BusinessDetailScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { businessId } = route.params;
+  const businessId = route.params?.businessId;
   const [isLoading, setIsLoading] = useState(true);
   const [business, setBusiness] = useState<Business | null>(null);
   const [products, setProducts] = useState<Product[]>([]);

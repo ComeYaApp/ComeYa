@@ -40,7 +40,12 @@ export default function BusinessDetailScreen() {
   const border = isDark ? "#333" : "#e8e8e8";
 
   useEffect(() => {
-    apiRequest("GET", `/api/business/${route.params.businessId}`)
+    const businessId = route.params?.businessId;
+    if (!businessId) {
+      setLoading(false);
+      return;
+    }
+    apiRequest("GET", `/api/business/${businessId}`)
       .then((r) => r.json())
       .then((data) => {
         setBusiness(data.business);
@@ -56,14 +61,14 @@ export default function BusinessDetailScreen() {
             p.isAvailable === 1 ||
             p.is_available === true ||
             p.is_available === 1,
-          businessId: route.params.businessId,
+          businessId: businessId,
         }));
         setProducts(prods);
         if (prods.length > 0) setActiveCategory(prods[0].category);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [route.params.businessId]);
+  }, [route.params?.businessId]);
 
   const categories = [...new Set(products.map((p) => p.category))];
   const filteredProducts = activeCategory
@@ -83,7 +88,7 @@ export default function BusinessDetailScreen() {
     : 2.5;
 
   const handleAddItem = (product: any) => {
-    addToCart(product, route.params.businessId, business?.name || "", 1);
+    addToCart(product, route.params?.businessId || "", business?.name || "", 1);
   };
 
   const handleRemoveItem = (productId: string) => {

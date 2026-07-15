@@ -49,7 +49,9 @@ export default function ProductDetailScreen() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  const { productId, businessId, businessName } = route.params;
+  const productId = route.params?.productId;
+  const businessId = route.params?.businessId;
+  const businessName = route.params?.businessName;
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitAmount, setUnitAmount] = useState("1");
