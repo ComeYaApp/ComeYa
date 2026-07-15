@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
 const SORIA = { lat: 41.7636, lng: -2.4677 };
+const GREEN = "#22C55E";
 import { apiRequest } from "@/lib/query-client";
 
 function loadGoogleMaps(): Promise<void> {
@@ -368,8 +369,8 @@ export default function DriverMapScreen({
                   { backgroundColor: GREEN + "15", borderColor: GREEN + "30" },
                 ]}
               >
-                <Feather name="navigation" size={14} color={GREEN} />
-                <Text style={[s.actionBtnTxt, { color: GREEN }]}>
+                <Feather name="navigation" size={14} color="#22C55E" />
+                <Text style={[s.actionBtnTxt, { color: "#22C55E" }]}>
                   Centrar en mí
                 </Text>
               </Pressable>
