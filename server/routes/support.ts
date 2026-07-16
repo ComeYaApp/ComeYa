@@ -51,10 +51,13 @@ router.post("/chat-public", async (req, res) => {
     res.json({ success: true, response });
   } catch (error: any) {
     console.error("Support public chat error:", error);
+    const errorMsg = error?.message || error?.toString() || "Error desconocido";
     res.json({
       success: true,
       response:
-        "Lo siento, el asistente no está disponible en este momento. Puedes contactarnos en support@comeya.es.",
+        "Lo siento, el asistente no está disponible en este momento. Puedes contactarnos en support@comeya.es. (Error: " +
+        errorMsg +
+        ")",
     });
   }
 });
