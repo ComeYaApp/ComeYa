@@ -3,6 +3,8 @@
   "buildCommand": "npx expo export --platform web",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/soporte", "destination": "/support.html" },
+    { "source": "/support", "destination": "/support.html" },
     { "source": "/_expo/(.*)", "destination": "/_expo/$1" },
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
