@@ -1,4 +1,8 @@
 {
   "version": 2,
+  "rewrites": [
+    { "source": "/soporte", "destination": "/support.html" },
+    { "source": "/support", "destination": "/support.html" }
+  ],
   "routes": [{ "src": "/(.*)", "dest": "/$1" }]
 }
