@@ -29,7 +29,7 @@ router.post("/chat-public", async (req, res) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const chat = model.startChat({
       history: [
@@ -77,7 +77,7 @@ router.post("/chat", authenticateToken, async (req, res) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     // Construir historial para contexto
     const chatHistory = (history || []).slice(-8).map((m: any) => ({
