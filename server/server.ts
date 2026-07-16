@@ -108,6 +108,12 @@ app.get("/privacy-policy", (_req, res) => {
 app.get("/delete-account", (_req, res) => {
   res.sendFile(path.join(process.cwd(), "public", "delete-account.html"));
 });
+app.get("/soporte", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "support.html"));
+});
+app.get("/support", (_req, res) => {
+  res.sendFile(path.join(process.cwd(), "public", "support.html"));
+});
 
 // Serve client assets (logo, splash, etc.)
 app.use("/assets", express.static(path.join(process.cwd(), "client/assets")));

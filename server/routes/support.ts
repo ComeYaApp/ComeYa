@@ -14,7 +14,52 @@ Política de cancelación: gratis en los primeros 60 segundos, luego pueden apli
 Tiempos de entrega estimados: 30-45 minutos según distancia y disponibilidad.
 Si el usuario tiene un problema urgente con un pedido activo, sugíere crear un ticket de soporte.`;
 
-// Chat con IA (Gemini)
+// Chat público con IA (Gemini) — sin autenticación, para página de soporte
+router.post("/chat-public", async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "Mensaje requerido" });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "IA no configurada" });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const chat = model.startChat({
+      history: [
+        { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
+        {
+          role: "model",
+          parts: [
+            {
+              text: "Entendido. Soy el asistente de ComeYa, listo para ayudar.",
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = await chat.sendMessage(message);
+    const response = result.response.text();
+
+    res.json({ success: true, response });
+  } catch (error: any) {
+    console.error("Support public chat error:", error);
+    res.json({
+      success: true,
+      response:
+        "Lo siento, el asistente no está disponible en este momento. Puedes contactarnos en support@comeya.es.",
+    });
+  }
+});
+
+// Chat con IA (Gemini) — requiere autenticación
 router.post("/chat", authenticateToken, async (req, res) => {
   try {
     const { message, history } = req.body;

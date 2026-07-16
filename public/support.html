@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soporte - ComeYa</title>
+  <meta name="description" content="Centro de ayuda de ComeYa. Resuelve tus dudas con nuestro asistente IA, consulta el FAQ o contáctanos.">
+  <meta name="theme-color" content="#DC2626">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #DC2626;
+      --primary-dark: #B91C1C;
+      --primary-light: #FEE2E2;
+      --bg: #F7F7F7;
+      --surface: #FFFFFF;
+      --text: #1A1A1A;
+      --text2: #666666;
+      --border: #E0E0E0;
+      --r-md: 12px;
+      --r-lg: 16px;
+      --r-full: 9999px;
+      --sh-sm: 0 2px 8px rgba(0,0,0,.08);
+      --sh-md: 0 4px 20px rgba(0,0,0,.10);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Navbar */
+    .nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-logo img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+    .nav-logo span { color: var(--text); }
+
+    /* Main */
+    .main { flex: 1; max-width: 860px; width: 100%; margin: 0 auto; padding: 40px 20px 60px; }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: var(--sh-sm);
+      border: 1px solid var(--border);
+    }
+
+    /* Typography */
+    h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+    h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .subtitle { color: var(--text2); margin-bottom: 24px; font-size: 0.95rem; }
+
+    /* Hero banner */
+    .hero-banner {
+      background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+      border-radius: var(--r-lg);
+      padding: 40px 32px;
+      margin-bottom: 28px;
+      color: #fff;
+      text-align: center;
+    }
+    .hero-banner h1 { color: #fff; font-size: 2rem; }
+    .hero-banner p { color: rgba(255,255,255,.85); font-size: 1rem; margin-top: 8px; max-width: 500px; margin-left: auto; margin-right: auto; }
+    .hero-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--r-full);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: inherit;
+      text-decoration: none;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+    .btn-primary { background: #fff; color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-ghost { background: transparent; color: var(--text2); padding: 8px 16px; }
+    .btn-ghost:hover { background: #f0f0f0; }
+
+    /* FAQ accordion */
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-question {
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 18px 4px;
+      text-align: left;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text);
+      gap: 12px;
+    }
+    .faq-question:hover { color: var(--primary); }
+    .faq-arrow { font-size: 0.8rem; transition: transform 0.2s; flex-shrink: 0; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      color: var(--text2);
+      font-size: 0.9rem;
+      line-height: 1.7;
+      padding: 0 4px;
+    }
+    .faq-item.open .faq-answer { max-height: 400px; padding-bottom: 18px; }
+
+    /* Contact grid */
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .contact-card { background: var(--bg); border-radius: var(--r-md); padding: 20px; text-align: center; }
+    .contact-card .icon { font-size: 2rem; margin-bottom: 8px; }
+    .contact-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .contact-card p { font-size: 0.85rem; color: var(--text2); }
+    .contact-card a { color: var(--primary); font-weight: 600; }
+
+    /* Chat widget */
+    .chat-container {
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      height: 480px;
+    }
+    .chat-header {
+      background: var(--primary);
+      color: #fff;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chat-header-icon {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    .chat-header-info { flex: 1; }
+    .chat-header-title { font-weight: 700; font-size: 0.95rem; }
+    .chat-header-status { font-size: 0.75rem; opacity: .8; }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #FAFAFA;
+    }
+    .chat-bubble {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      animation: fadeUp 0.3s ease;
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--primary);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-bubble.assistant {
+      align-self: flex-start;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      white-space: pre-wrap;
+    }
+    .chat-input-area {
+      display: flex;
+      gap: 8px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .chat-input {
+      flex: 1;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-full);
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      color: var(--text);
+    }
+    .chat-input:focus { border-color: var(--primary); }
+    .chat-send {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background .2s;
+    }
+    .chat-send:hover { background: var(--primary-dark); }
+    .chat-send:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Typing dots */
+    .typing-dots { display: flex; gap: 4px; padding: 12px 16px; }
+    .typing-dots span {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #999;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+    /* Footer */
+    .footer { text-align: center; padding: 24px; color: var(--text2); font-size: 0.8rem; border-top: 1px solid var(--border); }
+    .footer a { color: var(--primary); font-weight: 600; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .main { padding: 20px 12px 40px; }
+      .card { padding: 20px; }
+      .contact-grid { grid-template-columns: 1fr; }
+      .hero-banner { padding: 28px 20px; }
+      .hero-banner h1 { font-size: 1.5rem; }
+      .chat-container { height: 400px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="nav">
+    <a href="https://comeya.es" class="nav-logo">
+      <img src="/logo.jpeg" alt="ComeYa" onerror="this.style.display='none'">
+      Come<span>Ya</span>
+    </a>
+    <a href="https://comeya.es" class="btn btn-ghost">← Volver al inicio</a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- Hero -->
+    <div class="hero-banner">
+      <h1>¿Necesitas ayuda?</h1>
+      <p>Estamos aquí para ti. Chatea con nuestro asistente IA, consulta las preguntas frecuentes o contáctanos directamente.</p>
+      <div class="hero-buttons">
+        <a href="#chat" class="btn btn-primary">💬 Chatear con IA</a>
+        <a href="#faq" class="btn btn-ghost" style="color:rgba(255,255,255,.9);background:rgba(255,255,255,.15);">📋 Ver FAQ</a>
+      </div>
+    </div>
+
+    <!-- Chat IA -->
+    <div class="card" id="chat">
+      <h2>🤖 Asistente Virtual ComeYa</h2>
+      <p style="color:var(--text2);font-size:0.9rem;margin-bottom:16px;">
+        Pregúntame sobre pedidos, entregas, pagos, horarios, y más. Estoy aquí 24/7 para ayudarte.
+      </p>
+      <div class="chat-container">
+        <div class="chat-header">
+          <div class="chat-header-icon">🍕</div>
+          <div class="chat-header-info">
+            <div class="chat-header-title">ComeYa Assistant</div>
+            <div class="chat-header-status" id="chatStatus">En línea</div>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-bubble assistant">
+            ¡Hola! Soy el asistente virtual de <strong>ComeYa</strong>. Estoy aquí para ayudarte con:<br><br>
+            • Información sobre tus pedidos<br>
+            • Consultas sobre productos y negocios<br>
+            • Tiempos de entrega<br>
+            • Métodos de pago<br>
+            • Cualquier otra duda<br><br>
+            ¿En qué puedo ayudarte hoy?
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" class="chat-input" id="chatInput" placeholder="Escribe tu pregunta..." maxlength="500" onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="chat-send" id="chatSend" onclick="sendMessage()">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="card" id="faq">
+      <h2>📋 Preguntas Frecuentes</h2>
+      <div class="faq-item open">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo hago un pedido?
+          <span class="faq-arrow">▾</span>
+        </button>
+        <div class="faq-answer">
+          Abre la app de ComeYa, elige un restaurante o negocio local, selecciona los productos que quieras, revisa tu carrito y confirma el pedido. Puedes pagar con Bizum, tarjeta, transferencia o efectivo. Recibirás notificaciones del estado de tu pedido en tiempo real.
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cuánto tarda en llegar mi pedido?
+          <span class="faq-arrow">▾</span>
+        </button>
+        <div class="faq-answer">
+          El tiempo estimado de entrega es de 30 a 45 minutos, dependiendo de la distancia y la disponibilidad de repartidores. Puedes seguir tu pedido en el mapa en tiempo real desde la app.
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Qué métodos de pago aceptan?
+          <span class="faq-arrow">▾</span>
+        </button>
+        <div class="faq-answer">
+          Aceptamos Bizum, transferencia IBAN, tarjeta de crédito/débito y pago en efectivo al recibir el pedido. Los negocios afiliados también pueden ofrecer TPV en persona.
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Puedo cancelar un pedido?
+          <span class="faq-arrow">▾</span>
+        </button>
+        <div class="faq-answer">
+          Sí. La cancelación es gratuita dentro de los primeros 60 segundos tras realizar el pedido. Pasado ese tiempo, pueden aplicar cargos según el estado de preparación. Si tienes un problema, contáctanos de inmediato.
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo me convierto en repartidor?
+          <span class="faq-arrow">▾</span>
+        </button>
+        <div class="faq-answer">
+          Descarga la app de ComeYa, regístrate y selecciona la opción "Quiero ser repartidor". Completa tu perfil con los documentos requeridos (DNI, licencia, foto) y nuestro equipo revisará tu solicitud en 24-48h.
+        </div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          ¿Cómo registro mi negocio en ComeYa?
+          <span class="faq-arrow">▾</span>
+        </button>
+        <div class="faq-answer">
+          Escríbenos a <a href="mailto:negocios@comeya.es" style="color:var(--primary);">negocios@comeya.es</a> con el nombre de tu negocio, dirección y tipo de comida o productos. Nuestro equipo te guiará en el proceso de alta y te ayudará a configurar tu menú.
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="card">
+      <h2>📞 Contacto Directo</h2>
+      <p style="color:var(--text2);font-size:0.9rem;margin-bottom:20px;">
+        Si el asistente IA no resolvió tu duda, puedes contactarnos por estos canales:
+      </p>
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="icon">📧</div>
+          <h3>Email</h3>
+          <p><a href="mailto:support@comeya.es">support@comeya.es</a></p>
+          <p style="font-size:0.8rem;">Respuesta en 24-48h</p>
+        </div>
+        <div class="contact-card">
+          <div class="icon">🏪</div>
+          <h3>¿Eres un negocio?</h3>
+          <p><a href="mailto:negocios@comeya.es">negocios@comeya.es</a></p>
+          <p style="font-size:0.8rem;">Altas y consultas comerciales</p>
+        </div>
+        <div class="contact-card">
+          <div class="icon">🛵</div>
+          <h3>Repartidores</h3>
+          <p><a href="mailto:repartidores@comeya.es">repartidores@comeya.es</a></p>
+          <p style="font-size:0.8rem;">Consultas sobre entregas y pagos</p>
+        </div>
+        <div class="contact-card">
+          <div class="icon">🗑️</div>
+          <h3>Eliminar cuenta</h3>
+          <p><a href="https://comeya-backend.onrender.com/delete-account">Eliminar mi cuenta</a></p>
+          <p style="font-size:0.8rem;">Proceso seguro y verificado</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <div class="footer">
+    © 2026 ComeYa · Hecho con ❤️ en Soria, España ·
+    <a href="https://comeya.es">Inicio</a> ·
+    <a href="https://comeya-backend.onrender.com/privacy-policy">Privacidad</a> ·
+    <a href="https://comeya-backend.onrender.com/delete-account">Eliminar cuenta</a>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let chatHistory = [];
+
+    function toggleFaq(btn) {
+      const item = btn.parentElement;
+      item.classList.toggle('open');
+    }
+
+    function addMessage(role, content) {
+      const container = document.getElementById('chatMessages');
+      const div = document.createElement('div');
+      div.className = 'chat-bubble ' + (role === 'user' ? 'user' : 'assistant');
+      div.innerHTML = content;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function showTyping() {
+      const container = document.getElementById('chatMessages');
+      const dots = document.createElement('div');
+      dots.className = 'typing-dots';
+      dots.id = 'typingIndicator';
+      dots.innerHTML = '<span></span><span></span><span></span>';
+      container.appendChild(dots);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function removeTyping() {
+      const dots = document.getElementById('typingIndicator');
+      if (dots) dots.remove();
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const sendBtn = document.getElementById('chatSend');
+      const status = document.getElementById('chatStatus');
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      // Show user message
+      addMessage('user', message);
+      chatHistory.push({ role: 'user', content: message });
+      input.value = '';
+      sendBtn.disabled = true;
+      showTyping();
+      status.textContent = 'Escribiendo...';
+
+      try {
+        const res = await fetch(API_BASE + '/api/support/chat-public', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, history: chatHistory.slice(-6) }),
+        });
+
+        const data = await res.json();
+        removeTyping();
+        status.textContent = 'En línea';
+
+        if (data.response) {
+          addMessage('assistant', data.response);
+          chatHistory.push({ role: 'assistant', content: data.response });
+        } else {
+          addMessage('assistant', 'Lo siento, no pude procesar tu mensaje. Inténtalo de nuevo o escríbenos a <a href="mailto:support@comeya.es" style="color:#DC2626;">support@comeya.es</a>.');
+        }
+      } catch (err) {
+        removeTyping();
+        status.textContent = 'En línea';
+        addMessage('assistant', 'El asistente no está disponible en este momento. Puedes contactarnos en <a href="mailto:support@comeya.es" style="color:#DC2626;">support@comeya.es</a>.');
+        console.error('Chat error:', err);
+      } finally {
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    document.getElementById('chatInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Focus input on load
+    window.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('chatInput').focus();
+    });
+  </script>
+</body>
+</html>

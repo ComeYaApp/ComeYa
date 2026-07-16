@@ -12,7 +12,7 @@ export default {
     // Android build es --local, usa gradle.properties independientemente
     newArchEnabled: true,
     ios: {
-      supportsTablet: false,
+      supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
       buildNumber: "4",
       config: {
