@@ -291,40 +291,8 @@
       <h1>¿Necesitas ayuda?</h1>
       <p>Estamos aquí para ti. Chatea con nuestro asistente IA, consulta las preguntas frecuentes o contáctanos directamente.</p>
       <div class="hero-buttons">
-        <a href="#chat" class="btn btn-primary">💬 Chatear con IA</a>
-        <a href="#faq" class="btn btn-ghost" style="color:rgba(255,255,255,.9);background:rgba(255,255,255,.15);">📋 Ver FAQ</a>
-      </div>
-    </div>
-
-    <!-- Chat IA -->
-    <div class="card" id="chat">
-      <h2>🤖 Asistente Virtual ComeYa</h2>
-      <p style="color:var(--text2);font-size:0.9rem;margin-bottom:16px;">
-        Pregúntame sobre pedidos, entregas, pagos, horarios, y más. Estoy aquí 24/7 para ayudarte.
-      </p>
-      <div class="chat-container">
-        <div class="chat-header">
-          <div class="chat-header-icon">🍕</div>
-          <div class="chat-header-info">
-            <div class="chat-header-title">ComeYa Assistant</div>
-            <div class="chat-header-status" id="chatStatus">En línea</div>
-          </div>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-          <div class="chat-bubble assistant">
-            ¡Hola! Soy el asistente virtual de <strong>ComeYa</strong>. Estoy aquí para ayudarte con:<br><br>
-            • Información sobre tus pedidos<br>
-            • Consultas sobre productos y negocios<br>
-            • Tiempos de entrega<br>
-            • Métodos de pago<br>
-            • Cualquier otra duda<br><br>
-            ¿En qué puedo ayudarte hoy?
-          </div>
-        </div>
-        <div class="chat-input-area">
-          <input type="text" class="chat-input" id="chatInput" placeholder="Escribe tu pregunta..." maxlength="500" onkeydown="if(event.key==='Enter')sendMessage()">
-          <button class="chat-send" id="chatSend" onclick="sendMessage()">➤</button>
-        </div>
+        <a href="#faq" class="btn btn-primary">📋 Ver FAQ</a>
+        <a href="#contacto" class="btn btn-ghost" style="color:rgba(255,255,255,.9);background:rgba(255,255,255,.15);">📞 Contactar</a>
       </div>
     </div>
 
@@ -388,7 +356,7 @@
     </div>
 
     <!-- Contact -->
-    <div class="card">
+    <div class="card" id="contacto">
       <h2>📞 Contacto Directo</h2>
       <p style="color:var(--text2);font-size:0.9rem;margin-bottom:20px;">
         Si el asistente IA no resolvió tu duda, puedes contactarnos por estos canales:
@@ -432,93 +400,10 @@
   </div>
 
   <script>
-    const API_BASE = "https://comeya-backend.onrender.com";
-    let chatHistory = [];
-
     function toggleFaq(btn) {
       const item = btn.parentElement;
       item.classList.toggle('open');
     }
-
-    function addMessage(role, content) {
-      const container = document.getElementById('chatMessages');
-      const div = document.createElement('div');
-      div.className = 'chat-bubble ' + (role === 'user' ? 'user' : 'assistant');
-      div.innerHTML = content;
-      container.appendChild(div);
-      container.scrollTop = container.scrollHeight;
-    }
-
-    function showTyping() {
-      const container = document.getElementById('chatMessages');
-      const dots = document.createElement('div');
-      dots.className = 'typing-dots';
-      dots.id = 'typingIndicator';
-      dots.innerHTML = '<span></span><span></span><span></span>';
-      container.appendChild(dots);
-      container.scrollTop = container.scrollHeight;
-    }
-
-    function removeTyping() {
-      const dots = document.getElementById('typingIndicator');
-      if (dots) dots.remove();
-    }
-
-    async function sendMessage() {
-      const input = document.getElementById('chatInput');
-      const sendBtn = document.getElementById('chatSend');
-      const status = document.getElementById('chatStatus');
-      const message = input.value.trim();
-
-      if (!message) return;
-
-      // Show user message
-      addMessage('user', message);
-      chatHistory.push({ role: 'user', content: message });
-      input.value = '';
-      sendBtn.disabled = true;
-      showTyping();
-      status.textContent = 'Escribiendo...';
-
-      try {
-        const res = await fetch(API_BASE + '/api/support/chat-public', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message, history: chatHistory.slice(-6) }),
-        });
-
-        const data = await res.json();
-        removeTyping();
-        status.textContent = 'En línea';
-
-        if (data.response) {
-          addMessage('assistant', data.response);
-          chatHistory.push({ role: 'assistant', content: data.response });
-        } else {
-          addMessage('assistant', 'Lo siento, no pude procesar tu mensaje. Inténtalo de nuevo o escríbenos a <a href="mailto:support@comeya.es" style="color:#DC2626;">support@comeya.es</a>.');
-        }
-      } catch (err) {
-        removeTyping();
-        status.textContent = 'En línea';
-        addMessage('assistant', 'El asistente no está disponible en este momento. Puedes contactarnos en <a href="mailto:support@comeya.es" style="color:#DC2626;">support@comeya.es</a>.');
-        console.error('Chat error:', err);
-      } finally {
-        sendBtn.disabled = false;
-        input.focus();
-      }
-    }
-
-    document.getElementById('chatInput').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    // Focus input on load
-    window.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('chatInput').focus();
-    });
   </script>
 </body>
 </html>
