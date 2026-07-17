@@ -79,6 +79,7 @@ export default function VerifyPhoneScreen() {
       const verifiedUser = await verifyPhone(phone, fullCode);
       if (verifiedUser.role === "delivery_driver") {
         await AsyncStorage.setItem(PENDING_DRIVER_ONBOARDING_KEY, "1");
+        navigation.reset({ index: 0, routes: [{ name: "Main" }] });
         return;
       }
       if (verifiedUser.role === "business_owner") {
@@ -95,7 +96,11 @@ export default function VerifyPhoneScreen() {
             );
           }
         }
+        navigation.reset({ index: 0, routes: [{ name: "Main" }] });
+        return;
       }
+      // Para cualquier otro rol (customer, admin, etc.), navegar a la pantalla principal
+      navigation.reset({ index: 0, routes: [{ name: "Main" }] });
     } catch (err: any) {
       setError(err.message || "Código incorrecto");
       setCode(["", "", "", "", "", ""]);

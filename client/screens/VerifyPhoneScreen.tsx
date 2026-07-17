@@ -107,6 +107,7 @@ export default function VerifyPhoneScreen({
 
       if (verifiedUser.role === "delivery_driver") {
         await AsyncStorage.setItem(PENDING_DRIVER_ONBOARDING_KEY, "1");
+        navigation.reset({ index: 0, routes: [{ name: "Main" }] });
         return;
       }
 
@@ -129,13 +130,18 @@ export default function VerifyPhoneScreen({
               PENDING_BUSINESS_ONBOARDING_KEY,
               JSON.stringify({ openAddModal: true, draft }),
             );
-            setError(
-              "No se pudo crear el negocio. Completa los datos manualmente.",
-            );
+            // El usuario ya está autenticado, navegar a Main para que complete
+            // el registro del negocio manualmente desde su dashboard
+            navigation.reset({ index: 0, routes: [{ name: "Main" }] });
             return;
           }
         }
+        navigation.reset({ index: 0, routes: [{ name: "Main" }] });
+        return;
       }
+
+      // Para cualquier otro rol (customer, admin, etc.), navegar a la pantalla principal
+      navigation.reset({ index: 0, routes: [{ name: "Main" }] });
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setError(error.message || "Código incorrecto");
