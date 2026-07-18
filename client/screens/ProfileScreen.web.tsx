@@ -197,6 +197,10 @@ export default function ProfileScreen() {
     if (ok) logout();
   };
 
+  const handleDeleteAccount = () => {
+    navigation.navigate("DeleteAccount");
+  };
+
   const getRoleLabel = () => {
     switch (user?.role) {
       case "customer":
@@ -347,6 +351,12 @@ export default function ProfileScreen() {
             ))}
           </View>
           <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable onPress={handleDeleteAccount} style={s.logoutBtn}>
+              <Feather name="trash-2" size={18} color="#EF4444" />
+              <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>
+                Eliminar cuenta
+              </Text>
+            </Pressable>
             <Pressable onPress={handleLogout} style={s.logoutBtn}>
               <Feather name="log-out" size={18} color="#EF4444" />
               <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>
@@ -469,6 +479,12 @@ export default function ProfileScreen() {
             ))}
           </View>
           <View style={[s.sideFooter, { borderTopColor: border }]}>
+            <Pressable onPress={handleDeleteAccount} style={s.logoutBtn}>
+              <Feather name="trash-2" size={18} color="#EF4444" />
+              <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>
+                Eliminar cuenta
+              </Text>
+            </Pressable>
             <Pressable onPress={handleLogout} style={s.logoutBtn}>
               <Feather name="log-out" size={18} color="#EF4444" />
               <Text style={[s.logoutBtnText, { color: "#EF4444" }]}>

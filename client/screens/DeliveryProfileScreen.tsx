@@ -880,6 +880,19 @@ export default function DeliveryProfileScreen() {
           />
         </View>
 
+        {/* Delete Account */}
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <SettingsItem
+            icon="trash-2"
+            label="Eliminar cuenta"
+            danger
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              navigation.navigate("DeleteAccount" as any);
+            }}
+          />
+        </View>
+
         {/* Logout */}
         <View style={[styles.section, { backgroundColor: theme.card }]}>
           <SettingsItem

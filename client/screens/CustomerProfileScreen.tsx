@@ -305,6 +305,12 @@ export default function CustomerProfileScreen() {
             onPress={() => navigation.navigate("Privacy" as any)}
           />
           <SettingsItem
+            icon="trash-2"
+            label="Eliminar cuenta"
+            onPress={() => navigation.navigate("DeleteAccount" as any)}
+            danger
+          />
+          <SettingsItem
             icon="log-out"
             label="Cerrar sesión"
             onPress={() => setShowLogoutModal(true)}

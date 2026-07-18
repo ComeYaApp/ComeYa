@@ -277,14 +277,64 @@ export default function RootStackNavigator() {
   };
 
   return (
-    <Stack.Navigator screenOptions={screenOptions} initialRouteName={isAuthenticated ? "Main" : "Login"}>
+    <Stack.Navigator screenOptions={screenOptions} initialRouteName={isAuthenticated ? "Main" : "Main"}>
+      {/* Main always accessible - allows guest browsing */}
+      <Stack.Screen
+        name="Main"
+        component={getMainNavigator()}
+        options={{ headerShown: false }}
+      />
+
+      {/* Auth screens always accessible */}
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Signup"
+        component={SignupScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="VerifyPhone"
+        component={VerifyPhoneScreen}
+        options={{ headerShown: false }}
+      />
+
+      {/* Pantallas públicas accesibles con o sin login */}
+      <Stack.Screen
+        name="BusinessDetail"
+        component={BusinessDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ProductDetail"
+        component={ProductDetailScreen}
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Carnival"
+        component={CarnivalScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Markets"
+        component={MarketsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="BusinessList"
+        component={BusinessListScreen}
+        options={{ headerShown: false }}
+      />
+
+      {/* Account-based screens - only accessible when authenticated */}
       {isAuthenticated ? (
         <>
-          <Stack.Screen
-            name="Main"
-            component={getMainNavigator()}
-            options={{ headerShown: false }}
-          />
           <Stack.Screen
             name="Cart"
             component={CartScreen}
@@ -555,54 +605,7 @@ export default function RootStackNavigator() {
             options={{ headerShown: false }}
           />
         </>
-      ) : (
-        <>
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Signup"
-            component={SignupScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="VerifyPhone"
-            component={VerifyPhoneScreen}
-            options={{ headerShown: false }}
-          />
-        </>
-      )}
-      {/* Pantallas públicas accesibles con o sin login */}
-      <Stack.Screen
-        name="BusinessDetail"
-        component={BusinessDetailScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="ProductDetail"
-        component={ProductDetailScreen}
-        options={{
-          presentation: "modal",
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="Carnival"
-        component={CarnivalScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Markets"
-        component={MarketsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="BusinessList"
-        component={BusinessListScreen}
-        options={{ headerShown: false }}
-      />
+      ) : null}
     </Stack.Navigator>
   );
 }

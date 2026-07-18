@@ -3,6 +3,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import OrdersStackNavigator from "@/navigation/OrdersStackNavigator";
@@ -14,9 +16,24 @@ import AdminMapScreen from "@/screens/AdminMapScreen.web";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import DriverDashboardScreen from "@/screens/DriverDashboardScreen.web";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
+
+// Guest profile tab component - redirects to Login
+function GuestProfileTab() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isAuthenticated } = useAuth();
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      navigation.navigate("Login");
+    }
+  }, [isAuthenticated, navigation]);
+
+  return null;
+}
 
 // Navigators móviles nativos (sin circular dependency — NO importar MainTabNavigator aquí)
 import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
@@ -121,8 +138,10 @@ function MobileTabNavigator() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
+  const isAuthenticated = !!user;
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
-  const isCustomer = !isAdmin;
+  const isCustomer = !isAdmin && isAuthenticated;
+  const isGuest = !isAuthenticated;
 
   const tabBarStyle = {
     backgroundColor: theme.background,
@@ -144,6 +163,42 @@ function MobileTabNavigator() {
         headerShown: false,
       }}
     >
+      {/* Guest mode - browse without login */}
+      {isGuest && (
+        <>
+          <Tab.Screen
+            name="HomeTab"
+            component={HomeStackNavigator}
+            options={{
+              title: "Inicio",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="home" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={MapStackNavigator}
+            options={{
+              title: "Mapa",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map-pin" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="ProfileTab"
+            component={GuestProfileTab}
+            options={{
+              title: "Iniciar sesión",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="log-in" size={size} color={color} />
+              ),
+            }}
+          />
+        </>
+      )}
+
       {isAdmin && (
         <>
           <Tab.Screen
@@ -243,10 +298,12 @@ export default function MainTabNavigator() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
+  const isAuthenticated = !!user;
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isBusiness = user?.role === "business_owner";
   const isDelivery = user?.role === "delivery_driver";
-  const isCustomer = !isAdmin && !isBusiness && !isDelivery;
+  const isCustomer = !isAdmin && !isBusiness && !isDelivery && isAuthenticated;
+  const isGuest = !isAuthenticated;
 
   // ── Móvil web (< 768px): usar navigators nativos con bottom tabs ──
   if (width < MOBILE_BREAKPOINT) {
@@ -290,6 +347,42 @@ export default function MainTabNavigator() {
         headerShown: false,
       }}
     >
+      {/* Guest mode - browse without login */}
+      {isGuest && (
+        <>
+          <Tab.Screen
+            name="HomeTab"
+            component={HomeStackNavigator}
+            options={{
+              title: "Inicio",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="home" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="MapTab"
+            component={MapStackNavigator}
+            options={{
+              title: "Mapa",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="map-pin" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="ProfileTab"
+            component={GuestProfileTab}
+            options={{
+              title: "Iniciar sesión",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="log-in" size={size} color={color} />
+              ),
+            }}
+          />
+        </>
+      )}
+
       {isAdmin && (
         <>
           <Tab.Screen
@@ -398,7 +491,7 @@ export default function MainTabNavigator() {
         </>
       )}
 
-      {!isAdmin && !isDelivery && (
+      {!isAdmin && !isDelivery && !isGuest && (
         <Tab.Screen
           name="ProfileTab"
           component={

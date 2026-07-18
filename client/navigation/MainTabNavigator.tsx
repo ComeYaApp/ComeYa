@@ -3,6 +3,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import OrdersStackNavigator from "@/navigation/OrdersStackNavigator";
@@ -14,6 +16,10 @@ import AdminFinanceScreen from "@/screens/AdminFinanceScreen";
 import AdminMapScreen from "@/screens/AdminMapScreen";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
+import { ComeYaColors, Spacing } from "@/constants/theme";
 
 // Stack wrapper para el tab Mapa (necesita poder navegar a BusinessDetail)
 const MapStack = createNativeStackNavigator();
@@ -24,9 +30,41 @@ function MapStackNavigator() {
     </MapStack.Navigator>
   );
 }
-import { useTheme } from "@/hooks/useTheme";
-import { useAuth } from "@/contexts/AuthContext";
-import { ComeYaColors, Spacing } from "@/constants/theme";
+
+// Guest profile tab component - redirects to Login
+function GuestProfileTab() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isAuthenticated } = useAuth();
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      navigation.navigate("Login");
+    }
+  }, [isAuthenticated, navigation]);
+
+  return null;
+}
+
+// Guest redirect wrapper - redirects to Login if not authenticated
+function GuestRedirectWrapper({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!isAuthenticated) {
+        // Redirect to Login when tab is focused
+        navigation.navigate("Login");
+      }
+    }, [isAuthenticated, navigation])
+  );
+
+  if (!isAuthenticated) {
+    return null; // Will redirect via focus effect
+  }
+
+  return <>{children}</>;
+}
 
 export type MainTabParamList = {
   HomeTab: undefined;
@@ -49,7 +87,9 @@ export default function MainTabNavigator() {
   const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isBusiness = user?.role === "business_owner";
   const isDelivery = user?.role === "delivery_driver";
+  const isAuthenticated = !!user;
   const isCustomer = !isAdmin && !isBusiness && !isDelivery;
+  const isGuest = !isAuthenticated;
 
   const tabBarHeight = Platform.select({
     ios: 56 + insets.bottom,
@@ -92,31 +132,36 @@ export default function MainTabNavigator() {
         headerShown: false,
       }}
     >
-      {isCustomer ? (
-        <>
-          <Tab.Screen
-            name="HomeTab"
-            component={HomeStackNavigator}
-            options={{
-              title: "Inicio",
-              tabBarIcon: ({ color, size }) => (
-                <Feather name="home" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="OrdersTab"
-            component={OrdersStackNavigator}
-            options={{
-              title: "Pedidos",
-              tabBarIcon: ({ color, size }) => (
-                <Feather name="shopping-bag" size={size} color={color} />
-              ),
-            }}
-          />
-        </>
+      {/* Home tab - always visible for customers and guests */}
+      {isCustomer || isGuest ? (
+        <Tab.Screen
+          name="HomeTab"
+          component={HomeStackNavigator}
+          options={{
+            title: "Inicio",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="home" size={size} color={color} />
+            ),
+          }}
+        />
       ) : null}
+
+      {/* Orders tab - only for authenticated customers */}
       {isCustomer ? (
+        <Tab.Screen
+          name="OrdersTab"
+          component={OrdersStackNavigator}
+          options={{
+            title: "Pedidos",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="shopping-bag" size={size} color={color} />
+            ),
+          }}
+        />
+      ) : null}
+
+      {/* Map tab - always visible for customers and guests */}
+      {isCustomer || isGuest ? (
         <Tab.Screen
           name="MapTab"
           component={MapStackNavigator}
@@ -185,16 +230,30 @@ export default function MainTabNavigator() {
         />
       ) : null}
 
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackNavigator}
-        options={{
-          title: "Perfil",
-          tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size} color={color} />
-          ),
-        }}
-      />
+      {/* Profile tab - for guests, redirects to Login */}
+      {isGuest ? (
+        <Tab.Screen
+          name="ProfileTab"
+          component={GuestProfileTab}
+          options={{
+            title: "Iniciar sesión",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="log-in" size={size} color={color} />
+            ),
+          }}
+        />
+      ) : (
+        <Tab.Screen
+          name="ProfileTab"
+          component={ProfileStackNavigator}
+          options={{
+            title: "Perfil",
+            tabBarIcon: ({ color, size }) => (
+              <Feather name="user" size={size} color={color} />
+            ),
+          }}
+        />
+      )}
     </Tab.Navigator>
   );
 }
