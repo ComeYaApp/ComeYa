@@ -1,8 +1,8 @@
 export default {
   expo: {
     name: "ComeYa",
-    slug: "comeya-app",
-    version: "1.0.1",
+    slug: "cy-soria",
+    version: "1.0.6",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
@@ -14,7 +14,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
-      buildNumber: "5",
+      buildNumber: "7",
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
@@ -43,7 +43,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.comeya.app",
-      versionCode: 5,
+      versionCode: 6,
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
@@ -95,12 +95,12 @@ export default {
     privacyPolicyUrl: "https://comeya-backend.onrender.com/privacy-policy",
     extra: {
       eas: {
-        projectId: "4bca445a-86fc-4b55-8ecb-71b0596f582a",
+        projectId: "9c6cb8bb-967c-4f24-807f-6e8c81b5e61b",
       },
       EXPO_PUBLIC_BACKEND_URL:
         process.env.EXPO_PUBLIC_BACKEND_URL ||
         "https://comeya-backend.onrender.com",
     },
-    owner: "caskyuss-organization",
+    owner: "cazkiuzs-team",
   },
 };
