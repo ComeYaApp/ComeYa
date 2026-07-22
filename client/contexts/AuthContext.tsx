@@ -20,7 +20,7 @@ interface AuthContextType {
   loginWithPassword: (
     identifier: string,
     password: string,
-  ) => Promise<{ success: boolean; requiresVerification?: boolean }>;
+  ) => Promise<{ success?: boolean; requiresVerification?: boolean }>;
   signup: (
     name: string,
     role: UserRole,
@@ -182,6 +182,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isActive: data.user.isActive,
         stripeCustomerId: data.user.stripeCustomerId,
         token: data.token,
+        createdAt: new Date().toISOString(),
+        preferences: {
+          theme: "system",
+          accentColor: "#00C853",
+        },
       };
 
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));

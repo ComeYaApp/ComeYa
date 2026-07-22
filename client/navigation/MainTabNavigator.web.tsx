@@ -10,6 +10,7 @@ import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import OrdersStackNavigator from "@/navigation/OrdersStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import ProfileStackNavigatorWeb from "@/navigation/ProfileStackNavigator.web";
+import GuestProfileScreen from "@/screens/GuestProfileScreen";
 import BusinessMapScreen from "@/screens/BusinessMapScreen";
 import AdminDashboardScreen from "@/screens/AdminDashboardScreen.web";
 import AdminMapScreen from "@/screens/AdminMapScreen.web";
@@ -20,20 +21,6 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
-
-// Guest profile tab component - redirects to Login
-function GuestProfileTab() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isAuthenticated } = useAuth();
-
-  React.useEffect(() => {
-    if (!isAuthenticated) {
-      navigation.navigate("Login");
-    }
-  }, [isAuthenticated, navigation]);
-
-  return null;
-}
 
 // Navigators móviles nativos (sin circular dependency — NO importar MainTabNavigator aquí)
 import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
@@ -188,9 +175,9 @@ function MobileTabNavigator() {
           />
           <Tab.Screen
             name="ProfileTab"
-            component={GuestProfileTab}
+            component={GuestProfileScreen}
             options={{
-              title: "Iniciar sesión",
+              title: "Cuenta",
               tabBarIcon: ({ color, size }) => (
                 <Feather name="log-in" size={size} color={color} />
               ),
@@ -372,9 +359,9 @@ export default function MainTabNavigator() {
           />
           <Tab.Screen
             name="ProfileTab"
-            component={GuestProfileTab}
+            component={GuestProfileScreen}
             options={{
-              title: "Iniciar sesión",
+              title: "Cuenta",
               tabBarIcon: ({ color, size }) => (
                 <Feather name="log-in" size={size} color={color} />
               ),

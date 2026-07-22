@@ -9,6 +9,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import OrdersStackNavigator from "@/navigation/OrdersStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
+import GuestProfileScreen from "@/screens/GuestProfileScreen";
 import BusinessMapScreen from "@/screens/BusinessMapScreen";
 import AdminScreenNew from "@/screens/AdminScreenNew";
 import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
@@ -29,41 +30,6 @@ function MapStackNavigator() {
       <MapStack.Screen name="BusinessMapMain" component={BusinessMapScreen} />
     </MapStack.Navigator>
   );
-}
-
-// Guest profile tab component - redirects to Login
-function GuestProfileTab() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { isAuthenticated } = useAuth();
-
-  React.useEffect(() => {
-    if (!isAuthenticated) {
-      navigation.navigate("Login");
-    }
-  }, [isAuthenticated, navigation]);
-
-  return null;
-}
-
-// Guest redirect wrapper - redirects to Login if not authenticated
-function GuestRedirectWrapper({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
-  useFocusEffect(
-    React.useCallback(() => {
-      if (!isAuthenticated) {
-        // Redirect to Login when tab is focused
-        navigation.navigate("Login");
-      }
-    }, [isAuthenticated, navigation])
-  );
-
-  if (!isAuthenticated) {
-    return null; // Will redirect via focus effect
-  }
-
-  return <>{children}</>;
 }
 
 export type MainTabParamList = {
@@ -230,30 +196,17 @@ export default function MainTabNavigator() {
         />
       ) : null}
 
-      {/* Profile tab - for guests, redirects to Login */}
-      {isGuest ? (
-        <Tab.Screen
-          name="ProfileTab"
-          component={GuestProfileTab}
-          options={{
-            title: "Iniciar sesión",
-            tabBarIcon: ({ color, size }) => (
-              <Feather name="log-in" size={size} color={color} />
-            ),
-          }}
-        />
-      ) : (
-        <Tab.Screen
-          name="ProfileTab"
-          component={ProfileStackNavigator}
-          options={{
-            title: "Perfil",
-            tabBarIcon: ({ color, size }) => (
-              <Feather name="user" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+      {/* Profile tab - guest screen con botones Login/Registro, o perfil autenticado */}
+      <Tab.Screen
+        name="ProfileTab"
+        component={isGuest ? GuestProfileScreen : ProfileStackNavigator}
+        options={{
+          title: isGuest ? "Cuenta" : "Perfil",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name={isGuest ? "log-in" : "user"} size={size} color={color} />
+          ),
+        }}
+      />
     </Tab.Navigator>
   );
 }

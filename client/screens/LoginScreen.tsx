@@ -16,6 +16,7 @@ import {
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { CommonActions } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { BlurView } from "expo-blur";
@@ -64,6 +65,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     loginWithBiometric,
     biometricAvailable,
     biometricType,
+    isAuthenticated,
   } = useAuth();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
@@ -163,11 +165,25 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const digits = identifier.replace(/\D/g, "");
-      const normalizedPhone =
-        digits.length === 9 ? `+34${digits}` : identifier.replace(/\s+/g, "");
+      const isEmail = identifier.includes("@");
+
+      // Calcular phone normalizado solo si es necesario (ruta de teléfono)
+      let normalizedPhone = "";
+      if (!isEmail) {
+        const digits = identifier.replace(/\D/g, "");
+        normalizedPhone =
+          digits.length === 9 ? `+34${digits}` : `+${digits}`;
+      }
+
       const result = await loginWithPassword(identifier, password);
 
+      // Login con email exitoso → el useEffect en RootStackNavigator
+      // detecta isAuthenticated y ejecuta resetToMain()
+      if (result?.success && isEmail) {
+        return;
+      }
+
+      // Login con teléfono → requiere verificación SMS
       if (result?.requiresVerification) {
         setAlertConfig({
           visible: true,
@@ -176,12 +192,15 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           message: "Verifica tu teléfono para continuar",
         });
         setTimeout(() => {
-          navigation.navigate("VerifyPhone", { phone: normalizedPhone });
+          navigation.navigate("VerifyPhone", {
+            phone: normalizedPhone || identifier,
+          });
         }, 1500);
       }
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const errorMessage = error.message || "Error al iniciar sesión";
+      console.error("Login error:", errorMessage);
       setAlertConfig({
         visible: true,
         type: "error",
@@ -292,12 +311,22 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       style={styles.container}
       resizeMode="cover"
     >
-      <View
-        style={[styles.themeToggleContainer, { top: insets.top + Spacing.md }]}
-      >
+      {/* Botón volver + ThemeToggle */}
+      <View style={[styles.topBar, { top: insets.top + Spacing.md }]}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          hitSlop={8}
+        >
+          <Feather name="arrow-left" size={24} color="#FFFFFF" />
+        </Pressable>
         <ThemeToggleButton />
       </View>
-      <KeyboardAvoidingView style={styles.overlay} behavior="padding">
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? -insets.top : 0}
+      >
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -308,6 +337,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={styles.logoContainer}>
             <ComeYaLogo size={120} />
@@ -661,12 +691,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  themeToggleContainer: {
+  topBar: {
     position: "absolute",
+    left: Spacing.lg,
     right: Spacing.lg,
     zIndex: 10,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  backButton: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   overlay: {
     flex: 1,
