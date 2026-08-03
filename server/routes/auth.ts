@@ -55,7 +55,7 @@ router.post("/phone-login", async (req, res) => {
       const { verifyCode } = await import("../smsService");
       isValid = await verifyCode(phone, code);
     } else {
-      isValid = code === "123456" || code === "1234";
+      isValid = code === "123456";
     }
 
     if (!isValid) return res.status(400).json({ error: "Código inválido" });
@@ -148,19 +148,80 @@ router.post("/phone-signup", async (req, res) => {
       .from(users)
       .where(eq(users.phone, phone))
       .limit(1);
-    if (existing)
-      return res.status(400).json({ error: "El teléfono ya está registrado" });
+    if (existing) {
+      // Si la cuenta existe pero NO está verificada ni activa, permitir re-registro
+      if (!existing.phoneVerified && !existing.isActive) {
+        console.log(`🔄 Re-registro permitido para teléfono no verificado: ${phone} (userId: ${existing.id})`);
+        // Limpiar la cuenta vieja para que pueda ser reutilizada
+        await db
+          .update(users)
+          .set({ 
+            name: null as any, 
+            email: null as any, 
+            password: null as any,
+            role: "customer" as any,
+            dni: null as any,
+            updatedAt: new Date(),
+          } as any)
+          .where(eq(users.id, existing.id));
+        // No bloqueamos — continuamos con el flujo de envío de código
+      } else {
+        return res.status(400).json({ error: "El teléfono ya está registrado" });
+      }
+    }
 
-    // NO crear usuario todavía, solo enviar código
+    // Crear usuario temporal (no verificado) para poder subir documentos
+    let userId = existing?.id;
+    if (!userId) {
+      let hashedPassword = null;
+      if (password) {
+        const bcrypt = await import("bcrypt");
+        hashedPassword = await bcrypt.hash(password, 10);
+      }
+      const tempUser: any = {
+        id: crypto.randomUUID(),
+        phone,
+        name,
+        email: email || null,
+        password: hashedPassword,
+        role: role || "customer",
+        isActive: false,
+        phoneVerified: false,
+        createdAt: new Date(),
+      };
+      await db.insert(users).values(tempUser);
+      userId = tempUser.id;
+    } else {
+      // Actualizar datos del usuario existente no verificado
+      let hashedPassword = null;
+      if (password) {
+        const bcrypt = await import("bcrypt");
+        hashedPassword = await bcrypt.hash(password, 10);
+      }
+      await db
+        .update(users)
+        .set({
+          name,
+          email: email || null,
+          password: hashedPassword,
+          role: role || "customer",
+          isActive: false,
+          phoneVerified: false,
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(users.id, userId));
+    }
+
+    // Enviar código de verificación
     if (process.env.TWILIO_ACCOUNT_SID) {
       const { sendVerificationCode } = await import("../smsService");
       const code = "123456";
       await sendVerificationCode(phone, code);
     } else {
-      console.log(`[DEV] Código SMS para ${phone}: 123456 o 1234`);
+      console.log(`[DEV] Código SMS para ${phone}: 123456`);
     }
 
-    res.json({ success: true, requiresVerification: true });
+    res.json({ success: true, requiresVerification: true, userId });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -350,7 +411,7 @@ router.put("/change-phone", authenticateToken, async (req, res) => {
       const { verifyCode } = await import("../smsService");
       isValid = await verifyCode(newPhone, code);
     } else {
-      isValid = code === "123456" || code === "1234";
+      isValid = code === "123456";
     }
     if (!isValid) return res.status(400).json({ error: "Código inválido" });
 

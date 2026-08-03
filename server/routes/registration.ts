@@ -12,6 +12,7 @@ router.post("/upload-documents", async (req, res) => {
     const {
       userId,
       idDocument,
+      idDocumentBack,
       autonomoDocument,
       profilePhoto,
       vehiclePhoto,
@@ -32,18 +33,27 @@ router.post("/upload-documents", async (req, res) => {
 
     // Subir DNI/NIE (obligatorio para todos)
     if (idDocument) {
-      uploadedUrls.idDocument = await CloudinaryService.uploadImage(
+      uploadedUrls.idDocument = await CloudinaryService.uploadDocument(
         idDocument,
-        "profiles",
-        `id-${userId}`,
+        "verification-docs",
+        `id-front-${userId}`,
+      );
+    }
+
+    // Subir reverso del DNI/NIE (opcional)
+    if (idDocumentBack) {
+      uploadedUrls.idDocumentBack = await CloudinaryService.uploadDocument(
+        idDocumentBack,
+        "verification-docs",
+        `id-back-${userId}`,
       );
     }
 
     // Subir documento de autónomo (obligatorio para business_owner y delivery_driver)
     if (autonomoDocument) {
-      uploadedUrls.autonomoDocument = await CloudinaryService.uploadImage(
+      uploadedUrls.autonomoDocument = await CloudinaryService.uploadDocument(
         autonomoDocument,
-        "profiles",
+        "verification-docs",
         `autonomo-${userId}`,
       );
     }
@@ -74,18 +84,18 @@ router.post("/upload-documents", async (req, res) => {
 
     // Subir permiso de circulación (obligatorio para motos/coches)
     if (vehicleDocument) {
-      uploadedUrls.vehicleDocument = await CloudinaryService.uploadImage(
+      uploadedUrls.vehicleDocument = await CloudinaryService.uploadDocument(
         vehicleDocument,
-        "profiles",
+        "verification-docs",
         `vehicle-doc-${userId}`,
       );
     }
 
     // Subir seguro (obligatorio para motos/coches)
     if (insuranceDocument) {
-      uploadedUrls.insuranceDocument = await CloudinaryService.uploadImage(
+      uploadedUrls.insuranceDocument = await CloudinaryService.uploadDocument(
         insuranceDocument,
-        "profiles",
+        "verification-docs",
         `insurance-${userId}`,
       );
     }

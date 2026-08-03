@@ -17,6 +17,32 @@ export type UploadFolder =
 
 export class CloudinaryService {
   /**
+   * Sube un archivo (imagen o PDF) a Cloudinary usando resource_type: auto
+   * @param base64File - Archivo en formato data:...;base64,xxx
+   * @param folder - Carpeta destino en Cloudinary
+   * @param publicId - ID público opcional
+   * @returns URL segura del archivo subido
+   */
+  static async uploadDocument(
+    base64File: string,
+    folder: UploadFolder,
+    publicId?: string,
+  ): Promise<string> {
+    try {
+      const result = await cloudinary.uploader.upload(base64File, {
+        folder: `comeya/${folder}`,
+        public_id: publicId,
+        resource_type: "auto",
+      });
+
+      return result.secure_url;
+    } catch (error: any) {
+      console.error("Cloudinary document upload error:", error);
+      throw new Error(`Error al subir documento: ${error.message}`);
+    }
+  }
+
+  /**
    * Sube una imagen base64 a Cloudinary
    * @param base64Image - Imagen en formato data:image/...;base64,xxx
    * @param folder - Carpeta destino en Cloudinary

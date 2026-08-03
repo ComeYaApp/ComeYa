@@ -27,7 +27,7 @@ interface AuthContextType {
     phone: string,
     email?: string,
     password?: string,
-  ) => Promise<{ requiresVerification: boolean }>;
+  ) => Promise<{ requiresVerification: boolean; userId?: string }>;
   verifyPhone: (phone: string, code: string) => Promise<User>;
   resendVerification: (phone: string) => Promise<void>;
   loginWithBiometric: () => Promise<boolean>;
@@ -45,9 +45,16 @@ const BIOMETRIC_PHONE_KEY = "@ComeYa_biometric_phone";
 
 const normalizePhone = (phone: string) => {
   const digits = phone.replace(/\D/g, "");
-  if (digits.length === 10) return `+58${digits}`;
-  if (phone.startsWith("+")) return phone.replace(/\s+/g, "");
-  return `+${digits}`;
+  // Ya tiene prefijo +
+  if (phone.startsWith("+")) return phone.replace(/[\s-()]/g, "");
+  // Código de España sin +
+  if (digits.startsWith("34")) return `+${digits}`;
+  // Número español de 9 dígitos (móvil: 6xx/7xx, fijo: 9xx)
+  if (digits.length === 9 && (digits.startsWith("6") || digits.startsWith("7") || digits.startsWith("9"))) {
+    return `+34${digits}`;
+  }
+  // Fallback: añadir +34
+  return `+34${digits}`;
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -208,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     phone: string,
     email?: string,
     password?: string,
-  ): Promise<{ requiresVerification: boolean }> => {
+  ): Promise<{ requiresVerification: boolean; userId?: string }> => {
     // Guardar datos temporalmente para crear usuario después de verificar
     await AsyncStorage.setItem(
       "@ComeYa_pending_signup",
@@ -237,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.requiresVerification) {
       await AsyncStorage.setItem(PENDING_PHONE_KEY, phone);
       setPendingVerificationPhone(phone);
-      return { requiresVerification: true };
+      return { requiresVerification: true, userId: data.userId };
     }
 
     return { requiresVerification: false };
@@ -256,6 +263,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signupData,
     });
     const data = await response.json();
+
+    // Validar respuesta del servidor
+    if (!data.user || !data.token) {
+      throw new Error(data.error || "Error del servidor al verificar código");
+    }
 
     const newUser: User = {
       id: data.user.id,

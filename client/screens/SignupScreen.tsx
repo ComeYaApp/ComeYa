@@ -16,6 +16,7 @@ import { RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -171,6 +172,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
 
   // Paso 4 — Documentos
   const [idDocumentUri, setIdDocumentUri] = useState<string | null>(null);
+  const [idDocumentBackUri, setIdDocumentBackUri] = useState<string | null>(null);
   const [autonomoDocumentUri, setAutonomoDocumentUri] = useState<string | null>(
     null,
   );
@@ -300,7 +302,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     Haptics.selectionAsync();
   };
 
-  const pickDocument = async (setter: (uri: string) => void) => {
+  const pickImage = async (setter: (uri: string) => void) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       setAlertConfig({
@@ -321,17 +323,27 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     }
   };
 
+  const pickDocument = async (setter: (uri: string) => void) => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "image/*"],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setter(result.assets[0].uri);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (e) {
+      console.error("Error picking document:", e);
+    }
+  };
+
   const handleSignup = async () => {
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const digits = phone.replace(/\D/g, "");
-      const formattedPhone = digits.startsWith("58")
-        ? `+${digits}`
-        : digits.startsWith("04") ||
-            (digits.length >= 10 && digits.startsWith("4"))
-          ? `+58${digits.startsWith("0") ? digits.substring(1) : digits}`
-          : `+34${digits}`;
+      const formattedPhone = `+34${digits}`;
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
       const fullAddress = `${street.trim()}, ${city.trim()}${zipCode ? ` ${zipCode}` : ""}`;
 
@@ -382,6 +394,17 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                   reader.readAsDataURL(blob);
                 });
                 documentData.idDocument = base64;
+              }
+
+              if (idDocumentBackUri) {
+                const response = await fetch(idDocumentBackUri);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                const base64 = await new Promise((resolve) => {
+                  reader.onloadend = () => resolve(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                documentData.idDocumentBack = base64;
               }
 
               if (autonomoDocumentUri) {
@@ -920,11 +943,19 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                 </View>
 
                 <DocUpload
-                  label="Foto del DNI / NIE *"
-                  description="Anverso y reverso en una sola imagen"
+                  label="Foto del DNI / NIE (Anverso) *"
+                  description="Parte frontal del documento de identidad"
                   uri={idDocumentUri}
                   error={errors.idDocument}
                   onPress={() => pickDocument(setIdDocumentUri)}
+                />
+
+                <DocUpload
+                  label="Foto del DNI / NIE (Reverso)"
+                  description="Parte trasera del documento de identidad"
+                  uri={idDocumentBackUri}
+                  error={errors.idDocumentBack}
+                  onPress={() => pickDocument(setIdDocumentBackUri)}
                 />
 
                 <DocUpload

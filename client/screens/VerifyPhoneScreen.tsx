@@ -144,7 +144,19 @@ export default function VerifyPhoneScreen({
       navigation.reset({ index: 0, routes: [{ name: "Main" }] });
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      setError(error.message || "Código incorrecto");
+      const rawMessage = error.message || "";
+      // Traducir mensajes técnicos a mensajes amigables
+      if (rawMessage.toLowerCase().includes("expired") || rawMessage.toLowerCase().includes("expirado")) {
+        setError("El código ha expirado. Solicita uno nuevo.");
+      } else if (rawMessage.toLowerCase().includes("invalid") || rawMessage.toLowerCase().includes("incorrecto") || rawMessage.toLowerCase().includes("inválido")) {
+        setError("Código incorrecto. Verifica e intenta de nuevo.");
+      } else if (rawMessage.toLowerCase().includes("not found") || rawMessage.toLowerCase().includes("no encontrado")) {
+        setError("Número no registrado. Crea una cuenta primero.");
+      } else if (rawMessage.toLowerCase().includes("network") || rawMessage.toLowerCase().includes("fetch") || rawMessage.toLowerCase().includes("connection")) {
+        setError("Error de conexión. Verifica tu internet e intenta de nuevo.");
+      } else {
+        setError(rawMessage || "Error al verificar. Intenta de nuevo.");
+      }
       setCode(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     } finally {

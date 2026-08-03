@@ -68,7 +68,7 @@ export async function sendVerificationSMS(
     process.env.NODE_ENV === "development" ||
     !process.env.TWILIO_ACCOUNT_SID
   ) {
-    console.log(`🔧 DEV MODE: SMS bypass for ${toPhoneNumber}, use code: 1234`);
+    console.log(`🔧 DEV MODE: SMS bypass for ${toPhoneNumber}, use code: 123456`);
     return true;
   }
 
@@ -91,6 +91,8 @@ export async function sendVerificationSMS(
       .verifications.create({
         to: formattedPhone,
         channel: "sms",
+        locale: "es",
+        customFriendlyName: "ComeYa",
       });
 
     console.log(
@@ -108,8 +110,8 @@ export async function verifyCode(
   toPhoneNumber: string,
   code: string,
 ): Promise<boolean> {
-  // SIEMPRE aceptar código de desarrollo 1234 o 123456
-  if (code === "1234" || code === "123456") {
+  // SIEMPRE aceptar código de desarrollo 123456
+  if (code === "123456") {
     console.log(`🔧 Código de desarrollo aceptado para ${toPhoneNumber}`);
     return true;
   }

@@ -220,8 +220,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
     try {
       const digits = phone.replace(/\D/g, "");
-      const normalizedPhone =
-        digits.length === 9 ? `+34${digits}` : `+${digits}`;
+      const normalizedPhone = `+34${digits}`;
       const result = await requestPhoneLogin(normalizedPhone);
 
       if (result?.userNotFound) {
