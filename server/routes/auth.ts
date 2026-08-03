@@ -74,7 +74,7 @@ router.post("/phone-login", async (req, res) => {
       if (signupData) {
         let hashedPassword = null;
         if (signupData.password) {
-          const bcrypt = await import("bcrypt");
+          const bcrypt = await import("bcryptjs");
           hashedPassword = await bcrypt.hash(signupData.password, 10);
         }
 
@@ -175,7 +175,7 @@ router.post("/phone-signup", async (req, res) => {
     if (!userId) {
       let hashedPassword = null;
       if (password) {
-        const bcrypt = await import("bcrypt");
+        const bcrypt = await import("bcryptjs");
         hashedPassword = await bcrypt.hash(password, 10);
       }
       const tempUser: any = {
@@ -195,7 +195,7 @@ router.post("/phone-signup", async (req, res) => {
       // Actualizar datos del usuario existente no verificado
       let hashedPassword = null;
       if (password) {
-        const bcrypt = await import("bcrypt");
+        const bcrypt = await import("bcryptjs");
         hashedPassword = await bcrypt.hash(password, 10);
       }
       await db
@@ -246,7 +246,7 @@ router.post("/dev-email-login", async (req, res) => {
 
     // Verificar contraseña
     if (user.password) {
-      const bcrypt = await import("bcrypt");
+        const bcrypt = await import("bcryptjs");
       const isValid = await bcrypt.compare(password, user.password);
       if (!isValid)
         return res
@@ -360,7 +360,7 @@ router.put("/change-password", authenticateToken, async (req, res) => {
 
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const bcrypt = await import("bcrypt");
+    const bcrypt = await import("bcryptjs");
 
     const [user] = await db
       .select()
