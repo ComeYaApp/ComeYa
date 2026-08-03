@@ -28,12 +28,10 @@ router.post("/send-code", async (req, res) => {
 
     if (!user) return res.json({ userNotFound: true });
 
-    if (process.env.TWILIO_ACCOUNT_SID) {
-      const { sendVerificationCode } = await import("../smsService");
-      const code = "123456";
-      await sendVerificationCode(phone, code);
-    } else {
-      console.log(`[DEV] Código SMS para ${phone}: 123456`);
+    const { sendVerificationCode } = await import("../smsService");
+    const sent = await sendVerificationCode(phone, "123456");
+    if (!sent) {
+      return res.status(500).json({ error: "No se pudo enviar el código SMS" });
     }
 
     res.json({ success: true, requiresVerification: true });
@@ -49,14 +47,9 @@ router.post("/phone-login", async (req, res) => {
     if (!phone || !code)
       return res.status(400).json({ error: "Teléfono y código requeridos" });
 
-    // Verificar código
-    let isValid = false;
-    if (process.env.TWILIO_ACCOUNT_SID) {
-      const { verifyCode } = await import("../smsService");
-      isValid = await verifyCode(phone, code);
-    } else {
-      isValid = code === "123456";
-    }
+    // Verificar código con Twilio
+    const { verifyCode } = await import("../smsService");
+    const isValid = await verifyCode(phone, code);
 
     if (!isValid) return res.status(400).json({ error: "Código inválido" });
 
@@ -212,13 +205,11 @@ router.post("/phone-signup", async (req, res) => {
         .where(eq(users.id, userId));
     }
 
-    // Enviar código de verificación
-    if (process.env.TWILIO_ACCOUNT_SID) {
-      const { sendVerificationCode } = await import("../smsService");
-      const code = "123456";
-      await sendVerificationCode(phone, code);
-    } else {
-      console.log(`[DEV] Código SMS para ${phone}: 123456`);
+    // Enviar código de verificación con Twilio
+    const { sendVerificationCode } = await import("../smsService");
+    const sent = await sendVerificationCode(phone, "123456");
+    if (!sent) {
+      return res.status(500).json({ error: "No se pudo enviar el código SMS" });
     }
 
     res.json({ success: true, requiresVerification: true, userId });
@@ -406,13 +397,8 @@ router.put("/change-phone", authenticateToken, async (req, res) => {
     if (existing && existing.id !== req.user!.id)
       return res.status(400).json({ error: "Ese teléfono ya está en uso" });
 
-    let isValid = false;
-    if (process.env.TWILIO_ACCOUNT_SID) {
-      const { verifyCode } = await import("../smsService");
-      isValid = await verifyCode(newPhone, code);
-    } else {
-      isValid = code === "123456";
-    }
+    const { verifyCode } = await import("../smsService");
+    const isValid = await verifyCode(newPhone, code);
     if (!isValid) return res.status(400).json({ error: "Código inválido" });
 
     await db

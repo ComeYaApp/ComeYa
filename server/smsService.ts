@@ -63,24 +63,13 @@ export async function sendVerificationSMS(
   toPhoneNumber: string,
   code: string,
 ): Promise<boolean> {
-  // Development bypass - always return true
-  if (
-    process.env.NODE_ENV === "development" ||
-    !process.env.TWILIO_ACCOUNT_SID
-  ) {
-    console.log(`🔧 DEV MODE: SMS bypass for ${toPhoneNumber}, use code: 123456`);
-    return true;
-  }
-
   try {
     const client = getTwilioClient();
     const serviceSid = getVerifyServiceSid();
 
     if (!client || !serviceSid) {
-      console.log(
-        `🔧 Twilio not configured, bypassing SMS for ${toPhoneNumber}`,
-      );
-      return true;
+      console.error("Twilio no configurado. No se puede enviar SMS.");
+      return false;
     }
 
     const formattedPhone = formatPhoneNumber(toPhoneNumber);
@@ -110,23 +99,6 @@ export async function verifyCode(
   toPhoneNumber: string,
   code: string,
 ): Promise<boolean> {
-  // SIEMPRE aceptar código de desarrollo 123456
-  if (code === "123456") {
-    console.log(`🔧 Código de desarrollo aceptado para ${toPhoneNumber}`);
-    return true;
-  }
-
-  // Development bypass
-  if (
-    process.env.NODE_ENV === "development" ||
-    !process.env.TWILIO_ACCOUNT_SID
-  ) {
-    console.log(
-      `🔧 DEV MODE: Code verification for ${toPhoneNumber}, code: ${code}`,
-    );
-    return false;
-  }
-
   try {
     const client = getTwilioClient();
     const serviceSid = getVerifyServiceSid();
