@@ -1,0 +1,56 @@
+# Node modules (EAS Build los reconstruye con npm install)
+node_modules/
+
+# Build outputs de Android (no necesarios para iOS, ocupan 2.5 GB)
+android/
+
+# Cache de Gradle
+.gradle-comeya/
+.gradle/
+
+# Node modules cache
+node_modules/.cache/
+
+# Expo
+.expo/
+dist/
+
+# Build outputs del servidor
+server_dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# macOS
+.DS_Store
+
+# Archivos de entorno (se inyectan via EAS Build env)
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# Tests y QA
+test_body.json
+test_auth.js
+QA_REPORT_FINAL.md
+QA_TEST_PLAN.md
+coverage/
+tests/
+
+# Scripts de build locales
+*.bat
+*.cmd
+*.ps1
+!start-local.bat
+
+# Logs
+*.log
+ultimos_200_git_logs.md
+
+# Documentación
+*.md
+!README.md
