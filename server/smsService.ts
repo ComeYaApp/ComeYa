@@ -81,7 +81,6 @@ export async function sendVerificationSMS(
         to: formattedPhone,
         channel: "sms",
         locale: "es",
-        customFriendlyName: "ComeYa",
       });
 
     console.log(

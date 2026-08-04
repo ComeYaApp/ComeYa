@@ -145,15 +145,13 @@ router.post("/phone-signup", async (req, res) => {
       // Si la cuenta existe pero NO está verificada ni activa, permitir re-registro
       if (!existing.phoneVerified && !existing.isActive) {
         console.log(`🔄 Re-registro permitido para teléfono no verificado: ${phone} (userId: ${existing.id})`);
-        // Limpiar la cuenta vieja para que pueda ser reutilizada
+        // Mantener datos existentes, no borrar name (no permite NULL en MySQL)
         await db
           .update(users)
           .set({ 
-            name: null as any, 
             email: null as any, 
             password: null as any,
             role: "customer" as any,
-            dni: null as any,
             updatedAt: new Date(),
           } as any)
           .where(eq(users.id, existing.id));
