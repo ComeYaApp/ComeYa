@@ -130,8 +130,6 @@ export default function VerifyPhoneScreen({
               PENDING_BUSINESS_ONBOARDING_KEY,
               JSON.stringify({ openAddModal: true, draft }),
             );
-            // El usuario ya está autenticado, navegar a Main para que complete
-            // el registro del negocio manualmente desde su dashboard
             navigation.reset({ index: 0, routes: [{ name: "Main" }] });
             return;
           }
@@ -140,12 +138,10 @@ export default function VerifyPhoneScreen({
         return;
       }
 
-      // Para cualquier otro rol (customer, admin, etc.), navegar a la pantalla principal
       navigation.reset({ index: 0, routes: [{ name: "Main" }] });
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const rawMessage = error.message || "";
-      // Traducir mensajes técnicos a mensajes amigables
       if (rawMessage.toLowerCase().includes("expired") || rawMessage.toLowerCase().includes("expirado")) {
         setError("El código ha expirado. Solicita uno nuevo.");
       } else if (rawMessage.toLowerCase().includes("invalid") || rawMessage.toLowerCase().includes("incorrecto") || rawMessage.toLowerCase().includes("inválido")) {
@@ -183,6 +179,16 @@ export default function VerifyPhoneScreen({
       setIsResending(false);
     }
   };
+
+  // Auto-submit cuando los 6 dígitos están completos
+  // Soluciona el problema en iOS donde el teclado number-pad no tiene botón Done y tapa el botón Verificar
+  useEffect(() => {
+    const fullCode = code.join("");
+    if (fullCode.length === 6 && !isLoading) {
+      Keyboard.dismiss();
+      handleVerify();
+    }
+  }, [code]);
 
   const formatPhone = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
