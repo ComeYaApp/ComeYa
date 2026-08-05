@@ -511,20 +511,6 @@ export default function BusinessProductsScreen() {
                   contentFit="cover"
                 />
               ) : null}
-              <TextInput
-                value={form.image}
-                onChangeText={(text) => setForm({ ...form, image: text })}
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.background,
-                    color: theme.text,
-                    marginTop: Spacing.sm,
-                  },
-                ]}
-                placeholder="O pega una URL de imagen"
-                placeholderTextColor={theme.textSecondary}
-              />
             </ScrollView>
 
             <View style={styles.modalFooter}>
