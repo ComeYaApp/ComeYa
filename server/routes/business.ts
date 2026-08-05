@@ -1128,6 +1128,103 @@ router.put(
   },
 );
 
+// ─── ALIAS: POST /api/business/create → compatibilidad con app móvil ────────────
+router.post(
+  "/create",
+  authenticateToken,
+  requireRole("business_owner"),
+  async (req, res) => {
+    try {
+      const { businesses } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { CloudinaryService } = await import("../cloudinaryService");
+      const {
+        name,
+        description,
+        type,
+        image,
+        address,
+        phone,
+        categories,
+        latitude,
+        longitude,
+      } = req.body;
+
+      if (!name)
+        return res
+          .status(400)
+          .json({ error: "El nombre del negocio es requerido" });
+
+      let imageUrl = null;
+      if (image && image.startsWith("data:image/")) {
+        const businessId = crypto.randomUUID();
+        imageUrl = await CloudinaryService.uploadImage(
+          image,
+          "businesses",
+          `business-${businessId}`,
+        );
+      }
+
+      const newBusiness = {
+        id: crypto.randomUUID(),
+        ownerId: req.user!.id,
+        name,
+        description: description || null,
+        type: type || "restaurant",
+        image: imageUrl,
+        address: address || null,
+        phone: phone || null,
+        categories: categories || null,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        isActive: true,
+        isOpen: false,
+        rating: 0,
+        totalRatings: 0,
+        deliveryTime: CONFIG.DEFAULT_DELIVERY_TIME,
+        deliveryFee: CONFIG.DEFAULT_DELIVERY_FEE,
+        minOrder: 1000,
+        createdAt: new Date(),
+      };
+
+      await db.insert(businesses).values(newBusiness);
+
+      // Geocodificar automáticamente si tiene dirección
+      if (address) {
+        try {
+          const GMAPS_KEY =
+            process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+            process.env.GOOGLE_MAPS_API_KEY ||
+            "";
+          if (GMAPS_KEY) {
+            const query = encodeURIComponent(`${address}, Soria, España`);
+            const geoRes = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
+            );
+            const geoData = await geoRes.json();
+            if (geoData.status === "OK" && geoData.results[0]) {
+              const { lat, lng } = geoData.results[0].geometry.location;
+              await db
+                .update(businesses)
+                .set({ latitude: String(lat), longitude: String(lng) })
+                .where(eq(businesses.id, newBusiness.id));
+              newBusiness.latitude = String(lat);
+              newBusiness.longitude = String(lng);
+            }
+          }
+        } catch {
+          /* geocoding falla silenciosamente */
+        }
+      }
+
+      res.status(201).json({ success: true, business: newBusiness });
+    } catch (error: any) {
+      console.error("Create business error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
 // ─── RUTAS GENERALES ──────────────────────────────────────────────────────────
 
 // GET /api/business
@@ -1254,6 +1351,92 @@ router.post(
 );
 
 // ─── RUTAS CON PARÁMETRO (deben ir AL FINAL) ──────────────────────────────────
+
+// DELETE /api/business/:id
+router.delete(
+  "/:id",
+  authenticateToken,
+  requireRole("business_owner", "admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { businesses } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+
+      const [business] = await db
+        .select()
+        .from(businesses)
+        .where(
+          and(
+            eq(businesses.id, req.params.id),
+            eq(businesses.ownerId, req.user!.id),
+          ),
+        )
+        .limit(1);
+
+      if (!business)
+        return res.status(404).json({ error: "Negocio no encontrado" });
+
+      await db.delete(businesses).where(eq(businesses.id, req.params.id));
+      res.json({ success: true, message: "Negocio eliminado" });
+    } catch (error: any) {
+      console.error("Delete business error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// GET /api/business/:id/stats — stats de un negocio específico
+router.get(
+  "/:id/stats",
+  authenticateToken,
+  requireRole("business_owner", "admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { businesses, orders } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+
+      const [business] = await db
+        .select()
+        .from(businesses)
+        .where(
+          and(
+            eq(businesses.id, req.params.id),
+            eq(businesses.ownerId, req.user!.id),
+          ),
+        )
+        .limit(1);
+
+      if (!business)
+        return res.status(404).json({ error: "Negocio no encontrado" });
+
+      const businessOrders = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.businessId, business.id));
+
+      const today = new Date();
+      const todayOrders = businessOrders.filter(
+        (o) => new Date(o.createdAt).toDateString() === today.toDateString(),
+      );
+      const pendingOrders = businessOrders.filter((o) =>
+        ["pending", "accepted", "preparing"].includes(o.status),
+      );
+      const todayRevenue = todayOrders
+        .filter((o) => o.status === "delivered")
+        .reduce((sum, o) => sum + (o.subtotal || 0), 0);
+
+      res.json({
+        success: true,
+        pendingOrders: pendingOrders.length,
+        todayOrders: todayOrders.length,
+        todayRevenue: Math.round(todayRevenue / 100),
+      });
+    } catch (error: any) {
+      console.error("Business stats error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // GET /api/business/:id  (usa SQL raw para evitar mismatch camelCase/snake_case)
 router.get("/:id", async (req, res) => {
