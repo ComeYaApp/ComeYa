@@ -905,8 +905,6 @@ router.post(
           "products",
           `product-${productId}`,
         );
-      } else if (image) {
-        imageUrl = image; // Ya es una URL de Cloudinary
       }
 
       const newProduct = {
@@ -915,7 +913,7 @@ router.post(
         name,
         description: description || null,
         price,
-        image: imageUrl,
+        image: imageUrl || image,
         isAvailable: true,
         createdAt: new Date(),
       };
