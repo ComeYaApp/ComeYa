@@ -905,6 +905,8 @@ router.post(
           "products",
           `product-${productId}`,
         );
+      } else if (image) {
+        imageUrl = image; // Ya es una URL de Cloudinary
       }
 
       const newProduct = {
@@ -1163,6 +1165,8 @@ router.post(
           "businesses",
           `business-${businessId}`,
         );
+      } else if (image) {
+        imageUrl = image; // Ya es una URL de Cloudinary
       }
 
       const newBusiness = {
@@ -1289,6 +1293,8 @@ router.post(
           "businesses",
           `business-${businessId}`,
         );
+      } else if (image) {
+        imageUrl = image; // Ya es una URL de Cloudinary
       }
 
       const newBusiness = {
