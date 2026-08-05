@@ -28,6 +28,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { BackButton } from "@/components/BackButton";
+import { BusinessAddressMapPicker } from "@/components/BusinessAddressMapPicker";
 import { useTheme } from "@/hooks/useTheme";
 import { useBusiness, Business } from "@/contexts/BusinessContext";
 import {
@@ -78,13 +79,24 @@ export default function MyBusinessesScreen() {
   const [businessToEdit, setBusinessToEdit] = useState<Business | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [newBusiness, setNewBusiness] = useState({
+  const [newBusiness, setNewBusiness] = useState<{
+    name: string;
+    description: string;
+    type: string;
+    address: string;
+    phone: string;
+    image: string;
+    latitude: number | null;
+    longitude: number | null;
+  }>({
     name: "",
     description: "",
     type: "restaurant",
     address: "",
     phone: "",
     image: "",
+    latitude: null,
+    longitude: null,
   });
 
   useEffect(() => {
@@ -164,7 +176,16 @@ export default function MyBusinessesScreen() {
 
     setSubmitting(true);
     try {
-      await createBusiness(newBusiness);
+      await createBusiness({
+        name: newBusiness.name,
+        description: newBusiness.description,
+        type: newBusiness.type,
+        address: newBusiness.address,
+        phone: newBusiness.phone,
+        image: newBusiness.image,
+        latitude: newBusiness.latitude,
+        longitude: newBusiness.longitude,
+      });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowAddModal(false);
       setNewBusiness({
@@ -174,6 +195,8 @@ export default function MyBusinessesScreen() {
         address: "",
         phone: "",
         image: "",
+        latitude: null,
+        longitude: null,
       });
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo crear el negocio");
@@ -217,6 +240,8 @@ export default function MyBusinessesScreen() {
         address: newBusiness.address,
         phone: newBusiness.phone,
         image: newBusiness.image,
+        latitude: newBusiness.latitude,
+        longitude: newBusiness.longitude,
       });
       await loadBusinesses();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -229,6 +254,8 @@ export default function MyBusinessesScreen() {
         address: "",
         phone: "",
         image: "",
+        latitude: null,
+        longitude: null,
       });
       Alert.alert("Éxito", "Negocio actualizado correctamente");
     } catch (error: any) {
@@ -247,6 +274,8 @@ export default function MyBusinessesScreen() {
       address: business.address || "",
       phone: business.phone || "",
       image: business.image || "",
+      latitude: null,
+      longitude: null,
     });
     setShowEditModal(true);
   };
@@ -870,13 +899,10 @@ export default function MyBusinessesScreen() {
             </View>
 
             <ThemedText style={styles.inputLabel}>Dirección</ThemedText>
-            <TextInput
-              style={styles.input}
-              placeholder="Dirección del negocio"
-              placeholderTextColor={theme.theme.textSecondary}
-              value={newBusiness.address}
-              onChangeText={(text) =>
-                setNewBusiness((prev) => ({ ...prev, address: text }))
+            <BusinessAddressMapPicker
+              initialAddress={newBusiness.address}
+              onAddressChange={({ address, latitude, longitude }) =>
+                setNewBusiness((prev) => ({ ...prev, address, latitude, longitude }))
               }
             />
 
@@ -1061,13 +1087,12 @@ export default function MyBusinessesScreen() {
             </View>
 
             <ThemedText style={styles.inputLabel}>Dirección</ThemedText>
-            <TextInput
-              style={styles.input}
-              placeholder="Dirección del negocio"
-              placeholderTextColor={theme.theme.textSecondary}
-              value={newBusiness.address}
-              onChangeText={(text) =>
-                setNewBusiness((prev) => ({ ...prev, address: text }))
+            <BusinessAddressMapPicker
+              initialAddress={newBusiness.address}
+              initialLatitude={businessToEdit?.latitude}
+              initialLongitude={businessToEdit?.longitude}
+              onAddressChange={({ address, latitude, longitude }) =>
+                setNewBusiness((prev) => ({ ...prev, address, latitude, longitude }))
               }
             />
 

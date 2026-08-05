@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +27,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 interface Product {
   id: string;
@@ -102,7 +104,8 @@ function ProductRow({
 
 export default function BusinessManageScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme } = useTheme();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -327,7 +330,13 @@ export default function BusinessManageScreen() {
               Configuración del negocio
             </ThemedText>
 
-            <View style={styles.settingRow}>
+            <Pressable
+              style={styles.settingRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate("BusinessHours");
+              }}
+            >
               <View style={styles.settingInfo}>
                 <Feather name="clock" size={20} color={theme.textSecondary} />
                 <View style={{ marginLeft: Spacing.md }}>
@@ -336,7 +345,7 @@ export default function BusinessManageScreen() {
                     type="caption"
                     style={{ color: theme.textSecondary }}
                   >
-                    Lun - Dom: 8:00 AM - 10:00 PM
+                    Configura tus días y horarios de apertura
                   </ThemedText>
                 </View>
               </View>
@@ -345,20 +354,26 @@ export default function BusinessManageScreen() {
                 size={20}
                 color={theme.textSecondary}
               />
-            </View>
+            </Pressable>
 
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <View style={styles.settingRow}>
+            <Pressable
+              style={styles.settingRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate("MyBusinesses");
+              }}
+            >
               <View style={styles.settingInfo}>
                 <Feather name="map-pin" size={20} color={theme.textSecondary} />
                 <View style={{ marginLeft: Spacing.md }}>
-                  <ThemedText type="body">Zona de entrega</ThemedText>
+                  <ThemedText type="body">Dirección del negocio</ThemedText>
                   <ThemedText
                     type="caption"
                     style={{ color: theme.textSecondary }}
                   >
-                    Radio de 5 km
+                    Edita la dirección y ubicación en el mapa
                   </ThemedText>
                 </View>
               </View>
@@ -367,55 +382,10 @@ export default function BusinessManageScreen() {
                 size={20}
                 color={theme.textSecondary}
               />
-            </View>
+            </Pressable>
 
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Feather name="truck" size={20} color={theme.textSecondary} />
-                <View style={{ marginLeft: Spacing.md }}>
-                  <ThemedText type="body">Costo de envío</ThemedText>
-                  <ThemedText
-                    type="caption"
-                    style={{ color: theme.textSecondary }}
-                  >
-                    $25.00 MXN
-                  </ThemedText>
-                </View>
-              </View>
-              <Feather
-                name="chevron-right"
-                size={20}
-                color={theme.textSecondary}
-              />
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Feather
-                  name="shopping-cart"
-                  size={20}
-                  color={theme.textSecondary}
-                />
-                <View style={{ marginLeft: Spacing.md }}>
-                  <ThemedText type="body">Pedido mínimo</ThemedText>
-                  <ThemedText
-                    type="caption"
-                    style={{ color: theme.textSecondary }}
-                  >
-                    $50.00 MXN
-                  </ThemedText>
-                </View>
-              </View>
-              <Feather
-                name="chevron-right"
-                size={20}
-                color={theme.textSecondary}
-              />
-            </View>
           </View>
         )}
       </ScrollView>

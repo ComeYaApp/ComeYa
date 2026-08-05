@@ -25,6 +25,8 @@ export interface Business {
   deliveryFee?: number;
   minOrder?: number;
   deliveryTime?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
 }
 
 interface BusinessStats {
