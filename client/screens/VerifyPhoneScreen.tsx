@@ -259,7 +259,7 @@ export default function VerifyPhoneScreen({
                 handleKeyPress(nativeEvent.key, index)
               }
               keyboardType="number-pad"
-              maxLength={4}
+              maxLength={1}
               selectTextOnFocus
               testID={`code-input-${index}`}
             />
