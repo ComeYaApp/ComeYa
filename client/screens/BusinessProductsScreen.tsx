@@ -31,7 +31,7 @@ import {
   ComeYaColors,
   Shadows,
 } from "@/constants/theme";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 export default function BusinessProductsScreen() {
@@ -150,6 +150,22 @@ export default function BusinessProductsScreen() {
   };
 
   const pickImage = async (useCamera: boolean) => {
+    // Solicitar permisos antes de abrir cámara o galería
+    if (useCamera) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        alert("Se necesita permiso para usar la cámara");
+        return;
+      }
+    } else {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        alert("Se necesita permiso para acceder a la galería");
+        return;
+      }
+    }
+
     const result = useCamera
       ? await ImagePicker.launchCameraAsync({
           allowsEditing: true,
@@ -194,9 +210,10 @@ export default function BusinessProductsScreen() {
         imageData = `data:${mimeType};base64,${base64}`;
       }
 
+      // Usar el endpoint correcto de upload de imágenes
       const apiResponse = await apiRequest(
         "POST",
-        "/api/business/product-image",
+        "/api/upload/product-image",
         {
           image: imageData,
         },
@@ -205,14 +222,14 @@ export default function BusinessProductsScreen() {
       const data = await apiResponse.json();
 
       if (data.success && data.imageUrl) {
-        const fullUrl = `${getApiUrl()}${data.imageUrl}`;
-        setForm({ ...form, image: fullUrl });
+        // data.imageUrl ya es una URL absoluta de Cloudinary
+        setForm({ ...form, image: data.imageUrl });
       } else {
         throw new Error(data.error || "Error al subir imagen");
       }
     } catch (error: any) {
       console.error("Error uploading product image:", error);
-      alert("No se pudo subir la imagen");
+      alert("No se pudo subir la imagen. Intenta con otra imagen o una URL.");
     } finally {
       setIsUploadingImage(false);
     }
@@ -220,7 +237,7 @@ export default function BusinessProductsScreen() {
 
   const handleDelete = async (productId: string) => {
     if (typeof window !== "undefined" && window.confirm) {
-      if (!window.confirm("�Eliminar este producto?")) return;
+      if (!window.confirm("¿Eliminar este producto?")) return;
     }
 
     try {
@@ -259,7 +276,7 @@ export default function BusinessProductsScreen() {
           type="h4"
           style={{ color: ComeYaColors.primary, marginTop: Spacing.xs }}
         >
-          �{(item.price / 100).toFixed(2)}
+          €{(item.price / 100).toFixed(2)}
         </ThemedText>
       </Pressable>
       <View style={styles.productActions}>
@@ -402,7 +419,7 @@ export default function BusinessProductsScreen() {
                 type="small"
                 style={{ marginBottom: Spacing.xs, marginTop: Spacing.md }}
               >
-                Descripci�n
+                Descripción
               </ThemedText>
               <TextInput
                 value={form.description}
@@ -452,7 +469,7 @@ export default function BusinessProductsScreen() {
                 >
                   <Feather name="camera" size={20} color={theme.text} />
                   <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
-                    C�mara
+                    Cámara
                   </ThemedText>
                 </Pressable>
                 <Pressable
@@ -464,7 +481,7 @@ export default function BusinessProductsScreen() {
                 >
                   <Feather name="image" size={20} color={theme.text} />
                   <ThemedText type="small" style={{ marginLeft: Spacing.xs }}>
-                    Galer�a
+                    Galería
                   </ThemedText>
                 </Pressable>
               </View>
