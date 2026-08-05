@@ -508,7 +508,7 @@ export default function ProfileScreen() {
       });
       const data = await res.json();
       if (data.success || data.user) {
-        // Si es driver o negocio,resetear verificaci�n si cambi� informaci�n cr�tica (DNI)
+        // Si es driver o negocio,resetear verificación si cambi� información cr�tica (DNI)
         if (isDriverOrBusiness && editDni.trim()) {
           try {
             await apiRequest(
@@ -516,7 +516,7 @@ export default function ProfileScreen() {
               `/api/users/${user?.id}/reset-verification`,
             );
             showToast(
-              "Perfil actualizado. Tu verificaci�n est� en revisi�n.",
+              "Perfil actualizado. Tu verificación está en revisión.",
               "success",
             );
           } catch {
@@ -534,7 +534,7 @@ export default function ProfileScreen() {
         showToast(data.message || "Error al actualizar perfil", "error");
       }
     } catch {
-      showToast("Error de conexi�n", "error");
+      showToast("Error de conexión", "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -568,7 +568,7 @@ export default function ProfileScreen() {
         showToast(data.message || "Error al cambiar contrase�a", "error");
       }
     } catch {
-      showToast("Error de conexi�n", "error");
+      showToast("Error de conexión", "error");
     } finally {
       setIsSavingProfile(false);
     }
@@ -576,7 +576,7 @@ export default function ProfileScreen() {
 
   const saveVehicle = async () => {
     if (!vehicleForm.vehicleType) {
-      showToast("Selecciona un tipo de veh�culo", "error");
+      showToast("Selecciona un tipo de vehículo", "error");
       return;
     }
     setIsSavingVehicle(true);
@@ -603,10 +603,10 @@ export default function ProfileScreen() {
             : null,
         );
       } else {
-        showToast(data.message || "Error al guardar veh�culo", "error");
+        showToast(data.message || "Error al guardar vehículo", "error");
       }
     } catch {
-      showToast("Error de conexi�n", "error");
+      showToast("Error de conexión", "error");
     } finally {
       setIsSavingVehicle(false);
     }
@@ -852,7 +852,7 @@ export default function ProfileScreen() {
     }
 
     Linking.openURL(shareUrl).catch(() => {
-      console.log("No se pudo abrir la aplicaci�n");
+      console.log("No se pudo abrir la aplicación");
     });
   };
 
@@ -949,7 +949,7 @@ export default function ProfileScreen() {
 
       if (finalStatus !== "granted") {
         showToast(
-          "Activa permisos de notificaci�n en ajustes del sistema",
+          "Activa permisos de notificación en ajustes del sistema",
           "error",
         );
         return;
@@ -967,7 +967,7 @@ export default function ProfileScreen() {
       case "customer":
         return "Cliente";
       case "business_owner":
-        return "Due�o de Negocio";
+        return "Dueño de Negocio";
       case "delivery_driver":
         return "Repartidor";
       case "admin":
@@ -1046,7 +1046,7 @@ export default function ProfileScreen() {
             {user?.name || "Usuario"}
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            {user?.phone || "Sin tel�fono"}
+            {user?.phone || "Sin teléfono"}
           </ThemedText>
           <Badge
             text={getRoleLabel()}
@@ -1180,7 +1180,7 @@ export default function ProfileScreen() {
               />
               <SettingsItem
                 icon="clock"
-                label="Horarios de atenci�n"
+                label="Horarios de atención"
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   navigation.navigate("BusinessHours" as any);
@@ -1361,7 +1361,7 @@ export default function ProfileScreen() {
             {/* Veh�culo */}
             <SettingsItem
               icon="truck"
-              label="Mi veh�culo"
+              label="Mi vehículo"
               value={
                 driverStats?.vehicleType
                   ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` � ${driverStats.vehiclePlate}` : ""}`
@@ -1404,8 +1404,8 @@ export default function ProfileScreen() {
                     {driverStrikes === 0
                       ? "Sin strikes - Excelente trabajo"
                       : driverStrikes >= maxStrikes
-                        ? "Cuenta en riesgo de suspensi�n"
-                        : `${maxStrikes - driverStrikes} strikes restantes antes de suspensi�n`}
+                        ? "Cuenta en riesgo de suspensión"
+                        : `${maxStrikes - driverStrikes} strikes restantes antes de suspensión`}
                   </ThemedText>
                 </View>
               </View>
@@ -1502,7 +1502,7 @@ export default function ProfileScreen() {
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
           <ThemedText type="h4" style={styles.sectionTitle}>
-            M�s
+            Más
           </ThemedText>
           <SettingsItem
             icon="share-2"
@@ -1575,7 +1575,7 @@ export default function ProfileScreen() {
           />
           <SettingsItem
             icon="log-out"
-            label="Cerrar sesin"
+            label="Cerrar sesión"
             onPress={handleLogout}
             danger
           />
@@ -1604,13 +1604,13 @@ export default function ProfileScreen() {
               <Feather name="log-out" size={28} color={ComeYaColors.error} />
             </View>
             <ThemedText type="h3" style={styles.modalTitle}>
-              Cerrar sesi�n
+              Cerrar sesión
             </ThemedText>
             <ThemedText
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              �Est�s seguro que deseas cerrar sesi�n?
+              ¿Estás seguro que deseas cerrar sesión?
             </ThemedText>
             <View style={styles.modalButtons}>
               <Pressable
@@ -1633,7 +1633,7 @@ export default function ProfileScreen() {
                   type="body"
                   style={{ color: "#FFFFFF", fontWeight: "600" }}
                 >
-                  Cerrar sesi�n
+                  Cerrar sesión
                 </ThemedText>
               </Pressable>
             </View>
@@ -1763,7 +1763,7 @@ export default function ProfileScreen() {
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
               Recibe alertas sobre tus pedidos y promociones especiales. Si el
-              permiso est� bloqueado, debes activarlo en la configuraci�n del
+              permiso está bloqueado, debes activarlo en la configuración del
               sistema.
             </ThemedText>
             <View
@@ -1896,7 +1896,7 @@ export default function ProfileScreen() {
               type="small"
               style={[styles.comingSoon, { color: theme.textSecondary }]}
             >
-              M�s idiomas pr�ximamente...
+              Más idiomas próximamente...
             </ThemedText>
             <Pressable
               style={[
@@ -2447,7 +2447,7 @@ export default function ProfileScreen() {
                 </>
               ) : (
                 // Profesi�n tab - solo documentos personales para drivers/business owners
-                // Los datos del veh�culo est�n en "Mi veh�culo"
+                // Los datos del vehículo están en "Mi vehículo"
                 <>
                   <ThemedText
                     type="body"
@@ -2457,8 +2457,8 @@ export default function ProfileScreen() {
                     }}
                   >
                     {user?.role === "delivery_driver"
-                      ? "Para gestionar tu veh�culo y sus documentos, ve a 'Mi veh�culo' en la pantalla de perfil."
-                      : "Gestiona tus documentos de verificaci�n abajo."}
+                      ? "Para gestionar tu vehículo y sus documentos, ve a 'Mi vehículo' en la pantalla de perfil."
+                      : "Gestiona tus documentos de verificación abajo."}
                   </ThemedText>
 
                   {user?.role === "business_owner" && (
@@ -2548,7 +2548,7 @@ export default function ProfileScreen() {
                             flex: 1,
                           }}
                         >
-                          Los documentos del veh�culo est�n en "Mi veh�culo"
+                          Los documentos del vehículo están en "Mi vehículo"
                         </ThemedText>
                       </View>
                     </>
@@ -2600,7 +2600,7 @@ export default function ProfileScreen() {
                           type="body"
                           style={{ color: "#fff", fontWeight: "700" }}
                         >
-                          Guardar veh�culo
+                          Guardar vehículo
                         </ThemedText>
                       )}
                     </Pressable>
@@ -2659,7 +2659,7 @@ export default function ProfileScreen() {
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              Esta funci�n estar� disponible pr�ximamente. Podr�s gestionar tus
+              Esta función estar� disponible próximamente. Podr�s gestionar tus
               direcciones de entrega favoritas.
             </ThemedText>
             <Pressable
@@ -2699,7 +2699,7 @@ export default function ProfileScreen() {
                 { borderBottomColor: theme.border },
               ]}
             >
-              <ThemedText type="h3">Mi veh�culo</ThemedText>
+              <ThemedText type="h3">Mi vehículo</ThemedText>
               <Pressable
                 onPress={() => setShowVehicleModal(false)}
                 style={styles.editModalClose}
@@ -2716,7 +2716,7 @@ export default function ProfileScreen() {
                 type="caption"
                 style={{ color: theme.textSecondary, marginBottom: 4 }}
               >
-                Tipo de veh�culo *
+                Tipo de vehículo *
               </ThemedText>
               <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
                 {["car", "motorcycle", "bicycle"].map((type) => (
@@ -2881,7 +2881,7 @@ export default function ProfileScreen() {
                 ]}
               />
 
-              {/* Documentos del veh�culo - solo para moto/coche */}
+              {/* Documentos del vehículo - solo para moto/coche */}
               {(vehicleForm.vehicleType === "motorcycle" ||
                 vehicleForm.vehicleType === "car") && (
                 <>
@@ -2889,17 +2889,17 @@ export default function ProfileScreen() {
                     type="h4"
                     style={{ marginTop: Spacing.lg, marginBottom: Spacing.md }}
                   >
-                    Documentos del veh�culo
+                    Documentos del vehículo
                   </ThemedText>
 
                   <DocumentUploadButton
                     documentType="vehiclePhoto"
-                    label="Foto del veh�culo"
+                    label="Foto del vehículo"
                     currentUrl={professionalData?.vehiclePhoto}
                   />
                   <DocumentUploadButton
                     documentType="vehiclePlate"
-                    label="Foto matr�cula"
+                    label="Foto matrícula"
                     currentUrl={professionalData?.vehiclePlatePhoto}
                   />
                   <DocumentUploadButton
@@ -2909,7 +2909,7 @@ export default function ProfileScreen() {
                   />
                   <DocumentUploadButton
                     documentType="vehicleInsurance"
-                    label="Seguro del veh�culo"
+                    label="Seguro del vehículo"
                     currentUrl={professionalData?.vehicleInsurancePhoto}
                   />
                   <DocumentUploadButton
@@ -2938,7 +2938,7 @@ export default function ProfileScreen() {
                     type="body"
                     style={{ color: "#fff", fontWeight: "700" }}
                   >
-                    Guardar veh�culo
+                    Guardar vehículo
                   </ThemedText>
                 )}
               </Pressable>
