@@ -3,6 +3,7 @@ import { authenticateToken, requireRole } from "../authMiddleware";
 import { eq, and, desc } from "drizzle-orm";
 import { getPartnerStatus, updatePartnerLevel } from "../partnerLevelService";
 import { CONFIG } from "../config";
+import { geocodingLimiter } from "../rateLimiters";
 
 const router = express.Router();
 
@@ -1191,8 +1192,8 @@ router.post(
 
       await db.insert(businesses).values(newBusiness);
 
-      // Geocodificar automáticamente si tiene dirección
-      if (address) {
+      // Geocodificar automáticamente SOLO si no hay coordenadas del frontend
+      if (address && (!latitude || !longitude)) {
         try {
           const GMAPS_KEY =
             process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
@@ -1319,8 +1320,8 @@ router.post(
 
       await db.insert(businesses).values(newBusiness);
 
-      // Geocodificar automáticamente si tiene dirección
-      if (address) {
+      // Geocodificar automáticamente SOLO si no hay coordenadas del frontend
+      if (address && (!latitude || !longitude)) {
         try {
           const GMAPS_KEY =
             process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
@@ -1548,8 +1549,8 @@ router.put(
         .set(updates)
         .where(eq(businesses.id, req.params.id));
 
-      // Si cambió la dirección, geocodificar automáticamente
-      if (req.body.address && req.body.address !== business.address) {
+      // Si cambió la dirección y NO se enviaron coordenadas, geocodificar
+      if (req.body.address && req.body.address !== business.address && !req.body.latitude && !req.body.longitude) {
         try {
           const GMAPS_KEY =
             process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||

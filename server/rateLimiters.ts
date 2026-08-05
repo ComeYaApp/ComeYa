@@ -52,11 +52,19 @@ export const webhookLimiter = rateLimit({
   skipFailedRequests: true,
 });
 
-export const adminLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 200,
-  skip: (req) => {
-    const user = (req as any).user;
-    return user?.role === "admin";
+export const geocodingLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 5, // máximo 5 geocodificaciones por minuto por IP
+  message: "Demasiadas solicitudes de geocodificación. Espera un momento.",
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    logger.security("Geocoding rate limit exceeded", {
+      ip: req.ip,
+      userId: (req as any).user?.id,
+    });
+    throw new RateLimitError(
+      "Demasiadas solicitudes de geocodificación. Espera un momento.",
+    );
   },
 });
