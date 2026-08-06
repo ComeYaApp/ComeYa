@@ -15,8 +15,34 @@ type DaySchedule = {
 };
 
 function getZonedNow(): Date {
-  const timezone = process.env.BUSINESS_TIMEZONE || "America/Venezuela_City";
-  return new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
+  // get timezone string from env, default to Caracas
+  const timezone = process.env.BUSINESS_TIMEZONE || "America/Caracas";
+  try {
+    // Get the time components as numbers in the target timezone
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date());
+
+    const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || "0", 10);
+    const year = get("year");
+    const month = get("month") - 1; // JS months are 0-based
+    const day = get("day");
+    const hour = get("hour");
+    const minute = get("minute");
+    const second = get("second");
+
+    return new Date(year, month, day, hour, minute, second);
+  } catch {
+    // Fallback: usar hora local del servidor
+    return new Date();
+  }
 }
 
 function normalizeDayName(value?: string): string {

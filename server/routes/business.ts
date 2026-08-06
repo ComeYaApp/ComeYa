@@ -78,7 +78,7 @@ router.get("/featured", async (req, res) => {
     const { db } = await import("../db");
     const { sql } = await import("drizzle-orm");
     const [rows] = (await db.execute(
-      sql`SELECT * FROM businesses WHERE is_featured = 1 AND is_active = 1 LIMIT 10`,
+      sql`SELECT * FROM businesses WHERE is_featured = 1 AND is_active = 1 AND verification_status = 'verified' LIMIT 10`,
     )) as any;
     res.json({ success: true, businesses: rows });
   } catch (error: any) {
@@ -94,7 +94,12 @@ router.get("/nearby", async (req, res) => {
     const allBusinesses = await db
       .select()
       .from(businesses)
-      .where(eq(businesses.isActive, true));
+      .where(
+        and(
+          eq(businesses.isActive, true),
+          eq(businesses.verificationStatus, "verified"),
+        ),
+      );
     res.json({ success: true, businesses: allBusinesses });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -803,6 +808,52 @@ router.get(
   },
 );
 
+// PUT /api/business/verification-status — actualizar estado de verificación del negocio
+router.put(
+  "/verification-status",
+  authenticateToken,
+  requireRole("business_owner", "admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { businesses } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+      const { verificationStatus } = req.body; // "pending" | "verified" | "rejected"
+
+      if (!verificationStatus || !["pending", "verified", "rejected"].includes(verificationStatus)) {
+        return res.status(400).json({ error: "verificationStatus debe ser pending, verified o rejected" });
+      }
+
+      // Si es admin/super_admin, puede actualizar cualquier negocio por userId
+      if (req.user!.role === "admin" || req.user!.role === "super_admin") {
+        const { userId } = req.body;
+        if (!userId) return res.status(400).json({ error: "userId requerido" });
+        await db
+          .update(businesses)
+          .set({
+            verificationStatus,
+            isActive: verificationStatus === "verified" ? true : false,
+          })
+          .where(eq(businesses.ownerId, userId));
+      } else {
+        // Business owner solo puede actualizar su propio negocio
+        await db
+          .update(businesses)
+          .set({
+            verificationStatus,
+            isActive: verificationStatus === "verified" ? true : false,
+          })
+          .where(eq(businesses.ownerId, req.user!.id));
+      }
+
+      res.json({ success: true, message: "Estado de verificación actualizado" });
+    } catch (error: any) {
+      console.error("Update verification status error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
 // GET /api/business/hours
 router.get(
   "/hours",
@@ -890,8 +941,21 @@ router.put(
 
       await db
         .update(businesses)
-        .set({ openingHours: JSON.stringify(hours) })
+        .set({ openingHours: JSON.stringify(hours), isOpen: true as any })
         .where(eq(businesses.id, business.id));
+
+      // Recalcular isOpen inmediatamente
+      try {
+        const { BusinessHoursService } = await import("../businessHoursService");
+        const shouldBeOpen = await BusinessHoursService.isBusinessOpen(business.id);
+        await db
+          .update(businesses)
+          .set({ isOpen: shouldBeOpen })
+          .where(eq(businesses.id, business.id));
+        console.log(`✅ ${business.name}: isOpen=${shouldBeOpen} actualizado tras guardar horarios`);
+      } catch (recalcErr) {
+        console.error("Error recalculating isOpen:", recalcErr);
+      }
 
       res.json({ success: true, message: "Horarios actualizados" });
     } catch (error: any) {
@@ -1272,11 +1336,12 @@ router.get("/", async (req, res) => {
 
     console.log("📍 GET /api/businesses called");
 
+    // Solo mostrar negocios activos Y verificados a clientes públicos
     const rows = await queryWithRetry(
-      "SELECT * FROM businesses WHERE is_active = 1",
+      "SELECT * FROM businesses WHERE is_active = 1 AND verification_status = 'verified'",
     );
 
-    console.log(`✅ Found ${rows.length} active businesses`);
+    console.log(`✅ Found ${rows.length} active & verified businesses`);
 
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
@@ -1495,6 +1560,7 @@ router.get("/:id", async (req, res) => {
   try {
     const { db } = await import("../db");
     const { sql } = await import("drizzle-orm");
+    const { isBusinessOpen, parseOpeningHours } = await import("../../shared/businessHours");
 
     const [bizRows] = (await db.execute(sql`
       SELECT * FROM businesses WHERE id = ${req.params.id} LIMIT 1
@@ -1512,9 +1578,23 @@ router.get("/:id", async (req, res) => {
         AND (is_available = 1 OR is_available = true)
     `)) as any;
 
+    // Calcular isOpen basado en openingHours + hora actual
+    const calculatedIsOpen = isBusinessOpen(
+      business.opening_hours,
+      business.is_open,
+    );
+
+    // Parsear openingHours para el frontend
+    const parsedOpeningHours = parseOpeningHours(business.opening_hours);
+
     res.json({
       success: true,
-      business: { ...business, products: productRows },
+      business: {
+        ...business,
+        products: productRows,
+        isOpen: calculatedIsOpen,
+        openingHours: parsedOpeningHours,
+      },
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
