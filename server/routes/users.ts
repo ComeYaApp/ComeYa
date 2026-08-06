@@ -92,6 +92,40 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/user/profile-image — subir foto de perfil a Cloudinary
+// El cliente llama a POST /api/user/profile-image con { image: "data:image/..." }
+router.post("/profile-image", authenticateToken, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image || !image.startsWith("data:image/")) {
+      return res.status(400).json({ error: "Imagen en base64 requerida (data:image/...)" });
+    }
+
+    const { CloudinaryService } = await import("../cloudinaryService");
+    const profileImageUrl = await CloudinaryService.uploadImage(
+      image,
+      "profiles",
+      `user-${req.user!.id}`,
+    );
+
+    // Actualizar el campo profileImage en la base de datos
+    const { users } = await import("@shared/schema-mysql");
+    await db
+      .update(users)
+      .set({ profileImage: profileImageUrl, updatedAt: new Date() })
+      .where(eq(users.id, req.user!.id as string));
+
+    res.json({
+      success: true,
+      profileImage: profileImageUrl,
+      message: "Foto de perfil actualizada correctamente",
+    });
+  } catch (error: any) {
+    console.error("Profile image upload error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // PUT /api/users/vehicle — actualizar datos del vehículo del repartidor
 router.put("/vehicle", authenticateToken, async (req, res) => {
   try {

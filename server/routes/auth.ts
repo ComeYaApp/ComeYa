@@ -119,6 +119,7 @@ router.post("/phone-login", async (req, res) => {
         role: user.role,
         isActive: user.isActive,
         phoneVerified: user.phoneVerified,
+        profileImage: (user as any).profileImage || null,
       },
     });
   } catch (error: any) {
@@ -264,6 +265,7 @@ router.post("/dev-email-login", async (req, res) => {
         role: user.role,
         isActive: user.isActive,
         phoneVerified: user.phoneVerified,
+        profileImage: (user as any).profileImage || null,
       },
     });
   } catch (error: any) {
@@ -299,6 +301,7 @@ router.post("/biometric-login", async (req, res) => {
         isActive: user.isActive,
         phoneVerified: user.phoneVerified,
         biometricEnabled: user.biometricEnabled,
+        profileImage: (user as any).profileImage || null,
       },
     });
   } catch (error: any) {

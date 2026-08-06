@@ -4,9 +4,14 @@ import { eq } from "drizzle-orm";
 
 type DaySchedule = {
   isOpen?: boolean;
+  closed?: boolean;
   openTime?: string;
+  open?: string;
   closeTime?: string;
+  close?: string;
   day?: string;
+  eveningOpen?: string;
+  eveningClose?: string;
 };
 
 function getZonedNow(): Date {
@@ -22,56 +27,68 @@ function normalizeDayName(value?: string): string {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+// Mapa de nombres de días en español e inglés al índice (0=domingo, 1=lunes...)
+const DAY_NAME_TO_INDEX: Record<string, number> = {
+  domingo: 0, sunday: 0,
+  lunes: 1, monday: 1,
+  martes: 2, tuesday: 2,
+  miercoles: 3, miércoles: 3, wednesday: 3,
+  jueves: 4, thursday: 4,
+  viernes: 5, friday: 5,
+  sabado: 6, sábado: 6, saturday: 6,
+};
+
 function resolveTodaySchedule(
   hours: any,
   dayOfWeek: number,
 ): DaySchedule | null {
   if (!hours) return null;
 
+  // ─── CASO 1: Array ────────────────────────────────────────────────────
   if (Array.isArray(hours)) {
     const byIndex = hours[dayOfWeek];
-    if (byIndex?.openTime && byIndex?.closeTime) {
+    if (byIndex && !isDayClosed(byIndex) && (byIndex.openTime || byIndex.open) && (byIndex.closeTime || byIndex.close)) {
       return byIndex;
     }
+    // Buscar por nombre de día (español o inglés)
+    const todayNames = [
+      ["domingo", "sunday"], ["lunes", "monday"], ["martes", "tuesday"],
+      ["miercoles", "wednesday"], ["jueves", "thursday"], ["viernes", "friday"],
+      ["sabado", "saturday"],
+    ][dayOfWeek];
 
-    const todayName = normalizeDayName(
-      [
-        "domingo",
-        "lunes",
-        "martes",
-        "miercoles",
-        "jueves",
-        "viernes",
-        "sabado",
-      ][dayOfWeek],
-    );
-
-    const byName = hours.find(
-      (entry: DaySchedule) => normalizeDayName(entry?.day) === todayName,
-    );
+    const byName = hours.find((entry: DaySchedule) => {
+      const normalized = normalizeDayName(entry?.day);
+      return todayNames.some((n) => normalizeDayName(n) === normalized);
+    });
     return byName || null;
   }
 
+  // ─── CASO 2: Objeto indexado numéricamente ─────────────────────────────
   const byKey = hours[dayOfWeek] || hours[String(dayOfWeek)];
-  if (byKey?.openTime && byKey?.closeTime) {
+  if (byKey && !isDayClosed(byKey) && (byKey.openTime || byKey.open) && (byKey.closeTime || byKey.close)) {
     return byKey;
   }
 
-  const todayName = [
-    "domingo",
-    "lunes",
-    "martes",
-    "miercoles",
-    "jueves",
-    "viernes",
-    "sabado",
+  // ─── CASO 3: Objeto con claves en español o inglés ─────────────────────
+  const todayNames = [
+    ["domingo", "sunday"], ["lunes", "monday"], ["martes", "tuesday"],
+    ["miercoles", "wednesday"], ["jueves", "thursday"], ["viernes", "friday"],
+    ["sabado", "saturday"],
   ][dayOfWeek];
+
   const dayNameKeys = Object.keys(hours);
-  const namedKey = dayNameKeys.find(
-    (key) => normalizeDayName(key) === todayName,
+  const namedKey = dayNameKeys.find((key) =>
+    todayNames.some((n) => normalizeDayName(key) === normalizeDayName(n)),
   );
 
   return namedKey ? hours[namedKey] : null;
+}
+
+function isDayClosed(schedule: DaySchedule): boolean {
+  if (schedule.closed === true) return true;
+  if (schedule.isOpen === false) return true;
+  return false;
 }
 
 function parseTimeToMinutes(timeValue?: string): number | null {
@@ -104,15 +121,21 @@ export class BusinessHoursService {
       const currentTimeInMinutes = currentHour * 60 + currentMinute;
 
       const todayHours = resolveTodaySchedule(hours, dayOfWeek);
-      if (!todayHours || !todayHours.isOpen) return false;
+      if (!todayHours || isDayClosed(todayHours)) return false;
 
-      const openTimeInMinutes = parseTimeToMinutes(todayHours.openTime);
-      const closeTimeInMinutes = parseTimeToMinutes(todayHours.closeTime);
+      // Soporta tanto open/openTime como close/closeTime
+      const openValue = todayHours.openTime || todayHours.open;
+      const closeValue = todayHours.closeTime || todayHours.close;
+
+      const openTimeInMinutes = parseTimeToMinutes(openValue);
+      const closeTimeInMinutes = parseTimeToMinutes(closeValue);
 
       if (openTimeInMinutes === null || closeTimeInMinutes === null) {
+        // Si no hay horarios válidos, asumimos abierto
         return true;
       }
 
+      // Caso: horario nocturno (ej. 22:00 - 02:00)
       if (closeTimeInMinutes < openTimeInMinutes) {
         return (
           currentTimeInMinutes >= openTimeInMinutes ||
