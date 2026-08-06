@@ -392,7 +392,7 @@ export default function BusinessProfileScreen() {
           />
           <SettingsItem
             icon="shield"
-            label="Privacidad"
+            label="Política de privacidad"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               navigation.navigate("Privacy" as any);
