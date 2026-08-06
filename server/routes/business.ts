@@ -1573,7 +1573,7 @@ router.get("/:id", async (req, res) => {
   try {
     const { db } = await import("../db");
     const { sql } = await import("drizzle-orm");
-    const { isBusinessOpen, parseOpeningHours } = await import("../../shared/businessHours");
+    const { BusinessHoursService } = await import("../businessHoursService");
 
     const [bizRows] = (await db.execute(sql`
       SELECT * FROM businesses WHERE id = ${req.params.id} LIMIT 1
@@ -1591,14 +1591,17 @@ router.get("/:id", async (req, res) => {
         AND (is_available = 1 OR is_available = true)
     `)) as any;
 
-    // Calcular isOpen basado en openingHours + hora actual
-    const calculatedIsOpen = isBusinessOpen(
-      business.opening_hours,
-      business.is_open,
-    );
-
-    // Parsear openingHours para el frontend
-    const parsedOpeningHours = parseOpeningHours(business.opening_hours);
+    // Calcular isOpen con BusinessHoursService
+    let calculatedIsOpen = business.is_open === 1 || business.is_open === true;
+    let parsedOpeningHours: any = null;
+    try {
+      calculatedIsOpen = await BusinessHoursService.isBusinessOpen(business.id);
+      if (business.opening_hours) {
+        parsedOpeningHours = JSON.parse(business.opening_hours);
+      }
+    } catch {
+      // fallback al valor de BD
+    }
 
     res.json({
       success: true,
