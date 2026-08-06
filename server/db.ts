@@ -203,6 +203,17 @@ if (isTest && useDbStubs) {
             console.log("Migration note:", err.message);
         }
 
+        // Chat messages: columna para almacenar historial de chat cliente↔repartidor
+        try {
+          await conn.query(
+            `ALTER TABLE orders ADD COLUMN chat_messages TEXT DEFAULT NULL`,
+          );
+          console.log("✅ Added chat_messages to orders");
+        } catch (err: any) {
+          if (err.code !== "ER_DUP_FIELDNAME")
+            console.log("Migration note:", err.message);
+        }
+
         conn.release();
       })
       .catch((err) => {

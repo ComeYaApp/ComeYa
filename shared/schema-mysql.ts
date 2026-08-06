@@ -158,6 +158,8 @@ export const orders = mysqlTable("orders", {
   // Compartir tracking
   trackingToken: varchar("tracking_token", { length: 255 }), // Token para compartir tracking
   trackingTokenExpires: timestamp("tracking_token_expires"),
+  // Chat messages — JSON array de mensajes entre cliente y repartidor
+  chatMessages: text("chat_messages"),
   updatedAt: timestamp("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
   ),
