@@ -9,8 +9,75 @@ import {
 } from "../shared/schema-mysql";
 import { eq, and, sql } from "drizzle-orm";
 import { authenticateToken } from "./authMiddleware";
+import { googleMapsService } from "./services/googleMapsService";
 
 const router = Router();
+
+// ─── Google Maps Directions Proxy (API key stays server-side) ───────────
+router.get(
+  "/directions",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { originLat, originLng, destLat, destLng } = req.query;
+      
+      if (!originLat || !originLng || !destLat || !destLng) {
+        return res.status(400).json({ error: "Missing coordinates" });
+      }
+
+      const result = await googleMapsService.getDirections(
+        parseFloat(originLat as string),
+        parseFloat(originLng as string),
+        parseFloat(destLat as string),
+        parseFloat(destLng as string),
+      );
+
+      if (!result) {
+        // Fallback: calcular distancia recta y estimar
+        const distanceKm = googleMapsService.calculateHaversineDistance(
+          parseFloat(originLat as string),
+          parseFloat(originLng as string),
+          parseFloat(destLat as string),
+          parseFloat(destLng as string),
+        );
+        const estimatedMinutes = googleMapsService.estimateDeliveryTimeMinutes(distanceKm);
+        
+        return res.json({
+          success: true,
+          fallback: true,
+          polyline: "",
+          distance: { text: `${distanceKm.toFixed(1)} km`, value: Math.round(distanceKm * 1000) },
+          duration: { text: `${estimatedMinutes} min`, value: estimatedMinutes * 60 },
+          steps: [],
+        });
+      }
+
+      res.json({
+        success: true,
+        polyline: result.polyline,
+        distance: result.distance,
+        duration: result.duration,
+        steps: result.steps,
+      });
+    } catch (error: any) {
+      console.error("Directions proxy error:", error);
+      res.status(500).json({ error: "Failed to get directions" });
+    }
+  },
+);
+
+// Get Maps API usage stats (admin only)
+router.get(
+  "/maps-stats",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    const userRole = (req as any).user?.role;
+    if (userRole !== "admin" && userRole !== "super_admin") {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    res.json({ success: true, ...googleMapsService.getUsageStats() });
+  },
+);
 
 // Geofence event (driver entered/exited geofence)
 router.post(

@@ -152,7 +152,7 @@ export default function OrderChatScreen() {
     queryFn: async () => {
       const response = await apiRequest("GET", `/api/orders/${orderId}/chat`);
       const data = await response.json();
-      return data || [];
+      return data?.messages || [];
     },
     refetchInterval: 3000,
     enabled: !!orderId,

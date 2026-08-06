@@ -11,7 +11,9 @@ import { ThemedText } from "./ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
-// Función local para evitar problemas de importación
+// Flujo unificado del delivery (estilo Rappi/UberEats):
+// pending → accepted (negocio acepta) → preparing → ready (listo) 
+// → accepted (driver acepta) → on_the_way (driver recoge) → delivered → completed
 const getButtonInfo = (status: string) => {
   switch (status) {
     case "pending":
@@ -21,6 +23,26 @@ const getButtonInfo = (status: string) => {
         nextAction: "El negocio debe aceptar el pedido",
         icon: "clock",
         color: "#6B7280",
+        disabled: true,
+        requiresBusinessAction: true,
+      };
+    case "accepted":
+      return {
+        canProceed: false,
+        message: "Negocio está preparando el pedido",
+        nextAction: "Espera a que esté listo para recoger",
+        icon: "coffee",
+        color: "#F59E0B",
+        disabled: true,
+        requiresBusinessAction: true,
+      };
+    case "preparing":
+      return {
+        canProceed: false,
+        message: "Negocio preparando pedido",
+        nextAction: "El negocio está preparando tu pedido",
+        icon: "loader",
+        color: "#8B5CF6",
         disabled: true,
         requiresBusinessAction: true,
       };
@@ -59,6 +81,15 @@ const getButtonInfo = (status: string) => {
         nextAction: "Esperando confirmación del cliente",
         icon: "clock",
         color: "#10B981",
+        disabled: true,
+      };
+    case "completed":
+      return {
+        canProceed: false,
+        message: "Pedido completado",
+        nextAction: "El cliente confirmó la recepción. ¡Pago liberado!",
+        icon: "check-circle",
+        color: "#4CAF50",
         disabled: true,
       };
     default:

@@ -181,13 +181,15 @@ router.get(
       .where(eq(wallets.userId, userId))
       .limit(1);
 
+    // Incluir tanto "delivered" como "completed" (confirmados por el cliente)
+    const { or: orOp } = await import("drizzle-orm");
     const completedOrders = await db
       .select()
       .from(orders)
       .where(
         and(
           eq(orders.deliveryPersonId, userId),
-          eq(orders.status, "delivered"),
+          orOp(eq(orders.status, "delivered"), eq(orders.status, "completed")),
         ),
       );
 
@@ -467,10 +469,20 @@ router.post(
       .update(orders)
       .set({
         deliveryPersonId: userId,
-        status: "picked_up",
+        status: "accepted",
         assignedAt: new Date(),
       })
       .where(eq(orders.id, orderId));
+
+    // Notificar al negocio que un driver aceptó el pedido
+    const { sendPushToUser } = await import("./enhancedPushService");
+    if (order.userId) {
+      await sendPushToUser(order.userId, {
+        title: "🛵 Repartidor asignado",
+        body: `Un repartidor está en camino a recoger tu pedido #${orderId.slice(-6)}`,
+        data: { orderId, screen: "OrderTracking" },
+      });
+    }
 
     logger.delivery("Order accepted", { orderId, driverId: userId });
 

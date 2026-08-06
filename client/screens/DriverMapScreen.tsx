@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   StyleSheet,
   Pressable,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Callout } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -45,14 +46,28 @@ interface ActiveOrder {
   paymentMethod: string;
 }
 
+interface NearbyBusiness {
+  id: string;
+  name: string;
+  image: string | null;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  categories: string | null;
+  distanceKm: number;
+  isOpen: boolean;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   ready: "#00BCD4",
+  accepted: "#2196F3",
   picked_up: "#FF9800",
   on_the_way: "#4CAF50",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   ready: "Ir a recoger",
+  accepted: "Ir a recoger",
   picked_up: "En camino al cliente",
   on_the_way: "En camino al cliente",
 };
@@ -72,6 +87,14 @@ export default function DriverMapScreen() {
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
 
+  // Ruta real desde el servidor (con cache + rate limiting)
+  const [routeCoords, setRouteCoords] = useState<Array<{ latitude: number; longitude: number }>>([]);
+  const [routeLoading, setRouteLoading] = useState(false);
+
+  // Negocios cercanos en el mapa
+  const [nearbyBusinesses, setNearbyBusinesses] = useState<NearbyBusiness[]>([]);
+  const [showNearbyBusinesses, setShowNearbyBusinesses] = useState(false);
+
   // Cargar pedido activo del driver
   const loadActiveOrder = async () => {
     try {
@@ -79,7 +102,7 @@ export default function DriverMapScreen() {
       const data = await res.json();
       if (data.success && data.orders?.length > 0) {
         const active = data.orders.find((o: any) =>
-          ["ready", "picked_up", "on_the_way"].includes(o.status),
+          ["ready", "accepted", "picked_up", "on_the_way"].includes(o.status),
         );
         setActiveOrder(active || null);
       } else {
@@ -96,6 +119,61 @@ export default function DriverMapScreen() {
     } catch {}
   };
 
+  // Cargar negocios cercanos
+  const loadNearbyBusinesses = useCallback(async () => {
+    if (!driverLocation) return;
+    try {
+      const res = await apiRequest(
+        "GET",
+        `/api/map/nearby-businesses?lat=${driverLocation.latitude}&lng=${driverLocation.longitude}&radiusKm=5`,
+      );
+      const data = await res.json();
+      if (data.success) {
+        setNearbyBusinesses(data.businesses || []);
+      }
+    } catch (err) {
+      console.error("Error loading nearby businesses:", err);
+    }
+  }, [driverLocation]);
+
+  // Cargar ruta real desde el servidor
+  const loadRouteFromServer = useCallback(async () => {
+    if (!driverLocation || !activeOrder) return;
+
+    const isPickingUp = activeOrder.status === "ready" || activeOrder.status === "accepted";
+    const destLat = isPickingUp ? activeOrder.businessLatitude : activeOrder.deliveryLatitude;
+    const destLng = isPickingUp ? activeOrder.businessLongitude : activeOrder.deliveryLongitude;
+
+    if (!destLat || !destLng) return;
+
+    setRouteLoading(true);
+    try {
+      // Usar el endpoint GPS compartido (ya desplegado en Render)
+      const res = await apiRequest(
+        "GET",
+        `/api/gps/directions?originLat=${driverLocation.latitude}&originLng=${driverLocation.longitude}&destLat=${destLat}&destLng=${destLng}`,
+      );
+      const data = await res.json();
+
+      if (data.success && data.polyline) {
+        // Decodificar polyline manualmente
+        const decoded = decodePolyline(data.polyline);
+        if (decoded.length > 0) {
+          setRouteCoords(decoded);
+        }
+      } else if (data.success && data.fallback) {
+        // Fallback: línea recta
+        setRouteCoords([
+          { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
+          { latitude: parseFloat(destLat), longitude: parseFloat(destLng) },
+        ]);
+      }
+    } catch {
+      // Silencioso — el polyline por defecto usa línea recta entre marcadores
+    }
+    setRouteLoading(false);
+  }, [driverLocation, activeOrder]);
+
   // GPS en tiempo real
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
@@ -103,10 +181,7 @@ export default function DriverMapScreen() {
     const start = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          "GPS requerido",
-          "Activa el GPS para usar el mapa de entregas.",
-        );
+        Alert.alert("GPS requerido", "Activa el GPS para usar el mapa de entregas.");
         setLoading(false);
         return;
       }
@@ -154,6 +229,18 @@ export default function DriverMapScreen() {
     };
   }, []);
 
+  // Cargar negocios cuando tengamos ubicación
+  useEffect(() => {
+    if (driverLocation) {
+      loadNearbyBusinesses();
+    }
+  }, [driverLocation, showNearbyBusinesses, loadNearbyBusinesses]);
+
+  // Cargar ruta del servidor cuando cambie pedido activo o ubicación
+  useEffect(() => {
+    loadRouteFromServer();
+  }, [activeOrder, loadRouteFromServer]);
+
   // Centrar mapa en la ruta activa
   const fitToRoute = () => {
     if (!mapRef.current) return;
@@ -189,7 +276,6 @@ export default function DriverMapScreen() {
   };
 
   const callCustomer = () => {
-    // La llamada sigue siendo externa (comportamiento correcto para tel:)
     if (activeOrder?.customerPhone) {
       const { Linking } = require("react-native");
       Linking.openURL(`tel:${activeOrder.customerPhone}`);
@@ -212,7 +298,7 @@ export default function DriverMapScreen() {
         }
       : null;
 
-  const isPickingUp = activeOrder?.status === "ready";
+  const isPickingUp = activeOrder?.status === "ready" || activeOrder?.status === "accepted";
   const destination = isPickingUp ? businessCoords : customerCoords;
   const destinationAddress = isPickingUp
     ? activeOrder?.businessAddress
@@ -231,9 +317,7 @@ export default function DriverMapScreen() {
     return (
       <View style={[styles.center, { backgroundColor: theme.backgroundRoot }]}>
         <ActivityIndicator size="large" color={ComeYaColors.primary} />
-        <ThemedText
-          style={{ marginTop: Spacing.md, color: theme.textSecondary }}
-        >
+        <ThemedText style={{ marginTop: Spacing.md, color: theme.textSecondary }}>
           Obteniendo ubicación GPS...
         </ThemedText>
       </View>
@@ -278,24 +362,52 @@ export default function DriverMapScreen() {
           </Marker>
         )}
 
-        {/* Línea driver → destino actual */}
-        {driverLocation && destination && (
+        {/* Ruta real desde el servidor (con cache + rate limiting) */}
+        {routeCoords.length > 1 && (
           <Polyline
-            coordinates={[driverLocation, destination]}
+            coordinates={routeCoords}
             strokeColor={isPickingUp ? "#FF9800" : "#4CAF50"}
             strokeWidth={4}
-            lineDashPattern={[8, 4]}
           />
         )}
 
-        {/* Línea negocio → cliente (ruta completa) */}
-        {businessCoords && customerCoords && (
-          <Polyline
-            coordinates={[businessCoords, customerCoords]}
-            strokeColor="rgba(0,0,0,0.15)"
-            strokeWidth={2}
-          />
-        )}
+        {/* Negocios cercanos en el mapa */}
+        {showNearbyBusinesses && nearbyBusinesses.map((biz) => (
+          <Marker
+            key={biz.id}
+            coordinate={{ latitude: biz.latitude, longitude: biz.longitude }}
+            anchor={{ x: 0.5, y: 1 }}
+          >
+            <View
+              style={[
+                styles.bizMarker,
+                {
+                  backgroundColor: biz.isOpen ? "#4CAF50" : "#9E9E9E",
+                  borderColor: biz.isOpen ? "#2E7D32" : "#757575",
+                },
+              ]}
+            >
+              <Feather
+                name={biz.isOpen ? "coffee" : "moon"}
+                size={10}
+                color="#FFF"
+              />
+            </View>
+            <Callout>
+              <View style={styles.calloutView}>
+                <ThemedText type="small" style={{ fontWeight: "700" }}>
+                  {biz.name}
+                </ThemedText>
+                <ThemedText type="caption" style={{ color: biz.isOpen ? "#4CAF50" : "#F44336" }}>
+                  {biz.isOpen ? "🟢 Abierto" : "🔴 Cerrado"}
+                </ThemedText>
+                <ThemedText type="caption" style={{ color: "#666" }}>
+                  {biz.distanceKm} km
+                </ThemedText>
+              </View>
+            </Callout>
+          </Marker>
+        ))}
       </MapView>
 
       {/* Header */}
@@ -317,19 +429,35 @@ export default function DriverMapScreen() {
           </ThemedText>
         </View>
         <ThemedText type="h3">Mi Mapa</ThemedText>
-        <Pressable onPress={fitToRoute} style={styles.fitButton}>
-          <Feather name="maximize-2" size={20} color={ComeYaColors.primary} />
-        </Pressable>
+        <View style={styles.headerRight}>
+          {/* Toggle negocios cercanos */}
+          <Pressable
+            onPress={() => setShowNearbyBusinesses(!showNearbyBusinesses)}
+            style={[
+              styles.headerBtn,
+              {
+                backgroundColor: showNearbyBusinesses
+                  ? ComeYaColors.primary + "20"
+                  : "transparent",
+              },
+            ]}
+          >
+            <Feather
+              name="coffee"
+              size={18}
+              color={showNearbyBusinesses ? ComeYaColors.primary : theme.textSecondary}
+            />
+          </Pressable>
+          <Pressable onPress={fitToRoute} style={styles.headerBtn}>
+            <Feather name="maximize-2" size={18} color={ComeYaColors.primary} />
+          </Pressable>
+        </View>
       </View>
 
       {/* Panel inferior — pedido activo */}
       {activeOrder ? (
         <View
-          style={[
-            styles.orderPanel,
-            { backgroundColor: theme.card },
-            Shadows.lg,
-          ]}
+          style={[styles.orderPanel, { backgroundColor: theme.card }, Shadows.lg]}
         >
           {/* Estado */}
           <View
@@ -337,8 +465,7 @@ export default function DriverMapScreen() {
               styles.statusBadge,
               {
                 backgroundColor:
-                  (STATUS_COLORS[activeOrder.status] || ComeYaColors.primary) +
-                  "20",
+                  (STATUS_COLORS[activeOrder.status] || ComeYaColors.primary) + "20",
               },
             ]}
           >
@@ -354,13 +481,19 @@ export default function DriverMapScreen() {
             <ThemedText
               type="small"
               style={{
-                color:
-                  STATUS_COLORS[activeOrder.status] || ComeYaColors.primary,
+                color: STATUS_COLORS[activeOrder.status] || ComeYaColors.primary,
                 fontWeight: "700",
               }}
             >
               {STATUS_LABELS[activeOrder.status] || activeOrder.status}
             </ThemedText>
+            {routeLoading && (
+              <ActivityIndicator
+                size="small"
+                color={STATUS_COLORS[activeOrder.status]}
+                style={{ marginLeft: 8 }}
+              />
+            )}
           </View>
 
           {/* Destino actual */}
@@ -381,20 +514,10 @@ export default function DriverMapScreen() {
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
                 {isPickingUp ? "Recoger en" : "Entregar en"}
               </ThemedText>
-              <ThemedText
-                type="body"
-                style={{ fontWeight: "600" }}
-                numberOfLines={1}
-              >
-                {isPickingUp
-                  ? activeOrder.businessName
-                  : activeOrder.customerName}
+              <ThemedText type="body" style={{ fontWeight: "600" }} numberOfLines={1}>
+                {isPickingUp ? activeOrder.businessName : activeOrder.customerName}
               </ThemedText>
-              <ThemedText
-                type="small"
-                style={{ color: theme.textSecondary }}
-                numberOfLines={1}
-              >
+              <ThemedText type="small" style={{ color: theme.textSecondary }} numberOfLines={1}>
                 {destinationAddress}
               </ThemedText>
             </View>
@@ -414,16 +537,10 @@ export default function DriverMapScreen() {
                     destinationAddress || "",
                   )
                 }
-                style={[
-                  styles.navButton,
-                  { backgroundColor: ComeYaColors.primary },
-                ]}
+                style={[styles.navButton, { backgroundColor: ComeYaColors.primary }]}
               >
                 <Feather name="navigation" size={16} color="#FFF" />
-                <ThemedText
-                  type="small"
-                  style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}
-                >
+                <ThemedText type="small" style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}>
                   Navegar
                 </ThemedText>
               </Pressable>
@@ -434,10 +551,7 @@ export default function DriverMapScreen() {
                 style={[styles.callButton, { backgroundColor: "#4CAF50" }]}
               >
                 <Feather name="phone" size={16} color="#FFF" />
-                <ThemedText
-                  type="small"
-                  style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}
-                >
+                <ThemedText type="small" style={{ color: "#FFF", marginLeft: 6, fontWeight: "700" }}>
                   Llamar
                 </ThemedText>
               </Pressable>
@@ -446,26 +560,14 @@ export default function DriverMapScreen() {
 
           {/* Pago */}
           <View
-            style={[
-              styles.paymentRow,
-              { backgroundColor: theme.backgroundSecondary },
-            ]}
+            style={[styles.paymentRow, { backgroundColor: theme.backgroundSecondary }]}
           >
             <Feather
-              name={
-                activeOrder.paymentMethod === "cash"
-                  ? "dollar-sign"
-                  : "credit-card"
-              }
+              name={activeOrder.paymentMethod === "cash" ? "dollar-sign" : "credit-card"}
               size={14}
-              color={
-                activeOrder.paymentMethod === "cash" ? "#FF9800" : "#4CAF50"
-              }
+              color={activeOrder.paymentMethod === "cash" ? "#FF9800" : "#4CAF50"}
             />
-            <ThemedText
-              type="small"
-              style={{ marginLeft: 6, color: theme.textSecondary }}
-            >
+            <ThemedText type="small" style={{ marginLeft: 6, color: theme.textSecondary }}>
               {activeOrder.paymentMethod === "cash"
                 ? `Cobrar €${(activeOrder.total / 100).toFixed(2)} en efectivo`
                 : "Pagado digitalmente"}
@@ -473,24 +575,14 @@ export default function DriverMapScreen() {
           </View>
         </View>
       ) : (
-        <View
-          style={[
-            styles.noOrderPanel,
-            { backgroundColor: theme.card },
-            Shadows.md,
-          ]}
-        >
+        <View style={[styles.noOrderPanel, { backgroundColor: theme.card }, Shadows.md]}>
           <Feather name="map-pin" size={32} color={theme.textSecondary} />
           <ThemedText
             type="body"
-            style={{
-              color: theme.textSecondary,
-              marginTop: Spacing.sm,
-              textAlign: "center",
-            }}
+            style={{ color: theme.textSecondary, marginTop: Spacing.sm, textAlign: "center" }}
           >
             {isOnline
-              ? "Esperando pedidos..."
+              ? "Esperando pedidos... Activa los negocios cercanos para ver dónde hay demanda"
               : "Actívate para recibir pedidos"}
           </ThemedText>
         </View>
@@ -499,28 +591,29 @@ export default function DriverMapScreen() {
       {/* Leyenda */}
       <View style={[styles.legend, { backgroundColor: theme.card + "EE" }]}>
         <View style={styles.legendItem}>
-          <View
-            style={[
-              styles.legendDot,
-              { backgroundColor: ComeYaColors.primary },
-            ]}
-          />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            Tú
-          </ThemedText>
+          <View style={[styles.legendDot, { backgroundColor: ComeYaColors.primary }]} />
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Tú</ThemedText>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#FF9800" }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            Negocio
-          </ThemedText>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Negocio</ThemedText>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: "#9C27B0" }]} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            Cliente
-          </ThemedText>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>Cliente</ThemedText>
         </View>
+        {showNearbyBusinesses && (
+          <>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: "#4CAF50" }]} />
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>Abierto</ThemedText>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: "#9E9E9E" }]} />
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>Cerrado</ThemedText>
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -547,8 +640,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   headerLeft: { flexDirection: "row", alignItems: "center" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerBtn: {
+    padding: 8,
+    borderRadius: 20,
+  },
   onlineDot: { width: 10, height: 10, borderRadius: 5 },
-  fitButton: { padding: 8 },
   driverMarker: {
     width: 40,
     height: 40,
@@ -577,6 +674,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 5,
+  },
+  bizMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  calloutView: {
+    padding: 8,
+    minWidth: 120,
   },
   orderPanel: {
     position: "absolute",

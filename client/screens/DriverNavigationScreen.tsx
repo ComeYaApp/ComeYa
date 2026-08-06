@@ -30,9 +30,9 @@ type DriverNavigationRouteProp = RouteProp<
 >;
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
-// API Key desde variables de entorno (NUNCA hardcodeada)
-// En producción, se configura en app.config.js → EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
-const MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+// La API key NUNCA se expone al cliente — se usa proxy del servidor
+// El servidor tiene cache + rate limiting para ahorrar costos
+import { apiRequest } from "@/lib/query-client";
 
 /** Decodifica el polyline codificado de Google Directions */
 function decodePolyline(
@@ -145,28 +145,23 @@ export default function DriverNavigationScreen() {
   const fetchRoute = async (originLat: number, originLng: number) => {
     setRouteLoading(true);
     try {
-      const url =
-        `https://maps.googleapis.com/maps/api/directions/json` +
-        `?origin=${originLat},${originLng}` +
-        `&destination=${destLat},${destLng}` +
-        `&mode=driving` +
-        `&language=es` +
-        `&key=${MAPS_API_KEY}`;
+      // Usar proxy del servidor (API key nunca se expone al cliente)
+      // El servidor tiene cache + rate limiting para ahorrar costos
+      const response = await apiRequest(
+        "GET",
+        `/api/gps/directions?originLat=${originLat}&originLng=${originLng}&destLat=${destLat}&destLng=${destLng}`,
+      );
+      const data = await response.json();
 
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (data.status === "OK" && data.routes?.length > 0) {
-        const leg = data.routes[0].legs[0];
-        const encoded: string = data.routes[0].overview_polyline.points;
-        const decoded = decodePolyline(encoded);
+      if (data.success && data.polyline) {
+        const decoded = decodePolyline(data.polyline);
 
         setRouteCoords(decoded);
-        setTotalDistance(leg.distance?.text || "");
-        setTotalDuration(leg.duration?.text || "");
+        setTotalDistance(data.distance?.text || "");
+        setTotalDuration(data.duration?.text || "");
         setSteps(
-          (leg.steps || []).map((s: any) => ({
-            instruction: stripHtml(s.html_instructions || ""),
+          (data.steps || []).map((s: any) => ({
+            instruction: stripHtml(s.instruction || ""),
             distance: s.distance?.text || "",
             duration: s.duration?.text || "",
           })),
@@ -181,6 +176,22 @@ export default function DriverNavigationScreen() {
               animated: true,
             },
           );
+        }
+      } else if (data.success && data.fallback) {
+        // Fallback: ruta en línea recta con distancia estimada
+        const coords = [
+          { latitude: originLat, longitude: originLng },
+          { latitude: destLat, longitude: destLng },
+        ];
+        setRouteCoords(coords);
+        setTotalDistance(data.distance?.text || "");
+        setTotalDuration(data.duration?.text || "");
+        setSteps([]);
+        if (mapRef.current) {
+          mapRef.current.fitToCoordinates(coords, {
+            edgePadding: { top: 100, right: 50, bottom: 310, left: 50 },
+            animated: true,
+          });
         }
       }
     } catch (err) {

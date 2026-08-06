@@ -48,6 +48,7 @@ import stripePaymentRoutes from "./routes/stripePaymentRoutes";
 import stripeConnectRoutes from "./routes/stripeConnect";
 import pickupRoutes from "./routes/pickup";
 import registrationRoutes from "./routes/registration";
+import mapDataRoutes from "./routes/mapData";
 import adminSubscriptionPlansRoutes from "./routes/adminSubscriptionPlans";
 import adminTrackingRoutes from "./routes/adminTracking";
 import businessCategoriesRoutes from "./routes/businessCategories";
@@ -336,5 +337,6 @@ router.use("/admin/business-categories", businessCategoriesRoutes);
 router.use("/admin", adminSubscriptionPlansRoutes);
 router.use("/admin", adminTrackingRoutes);
 router.use("/business-categories", businessCategoriesRoutes);
+router.use("/map", mapDataRoutes);
 
 export default router;

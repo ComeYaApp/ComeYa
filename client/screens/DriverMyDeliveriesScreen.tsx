@@ -124,43 +124,42 @@ export default function DriverMyDeliveriesScreen() {
     setRefreshing(false);
   };
 
-  const updateStatus = async (orderId: string, status: string) => {
-    console.log("updateStatus called:", orderId, status);
+  // Flujo unificado: ready/accepted → on_the_way (pickup) → delivered (complete-delivery)
+  const updateStatus = async (orderId: string, targetStatus: string) => {
+    console.log("updateStatus called:", orderId, targetStatus);
     const previousOrders = orders;
     setActionOrderId(orderId);
+    
+    // Optimistic update: mostrar el estado intermedio correcto
+    const optimisticStatus = targetStatus === "on_the_way" ? "on_the_way" : "delivered";
     setOrders((prev: any[]) =>
       prev.map((order) =>
-        order.id === orderId ? { ...order, status } : order,
+        order.id === orderId ? { ...order, status: optimisticStatus } : order,
       ),
     );
+    
     try {
       let endpoint;
-      let method = "POST";
+      const method = "POST";
 
-      // Usar los endpoints correctos según el estado
-      switch (status) {
-        case "picked_up":
-        case "on_the_way":
-          // Nuevo endpoint para recoger pedido
-          endpoint = `/api/orders/${orderId}/pickup`;
-          break;
-        case "delivered":
-          endpoint = `/api/orders/${orderId}/complete-delivery`;
-          break;
-        default:
-          endpoint = `/api/delivery/orders/${orderId}/status`;
-          method = "PUT";
+      // Flujo unificado: solo dos transiciones para el driver
+      if (targetStatus === "on_the_way") {
+        // Recoger pedido: ready/accepted/preparing → on_the_way
+        endpoint = `/api/orders/${orderId}/pickup`;
+      } else if (targetStatus === "delivered") {
+        // Entregar pedido: on_the_way → delivered
+        endpoint = `/api/orders/${orderId}/complete-delivery`;
+      } else {
+        throw new Error("Estado no permitido: " + targetStatus);
       }
 
       console.log("Using endpoint:", method, endpoint);
-      const body = method === "PUT" ? { status } : {};
-      await apiRequest(method as any, endpoint, body);
+      await apiRequest(method as any, endpoint, {});
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       loadOrders();
     } catch (error) {
       console.error("Error updating status:", error);
-      Alert.alert("Error", "No se pudo actualizar el estado");
       setOrders(previousOrders);
     }
     setActionOrderId(null);
@@ -457,12 +456,34 @@ export default function DriverMyDeliveriesScreen() {
                 { backgroundColor: theme.backgroundSecondary },
               ]}
             >
-              <Feather name="map" size={16} color={ComeYaColors.primary} />
+              <Feather name="map" size={14} color={ComeYaColors.primary} />
               <ThemedText
                 type="small"
-                style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+                style={{ color: ComeYaColors.primary, marginLeft: 4 }}
               >
                 Ver
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                // Chat con el cliente: driver → customer
+                navigation.navigate("OrderChat", {
+                  orderId: item.id,
+                  receiverId: item.userId || item.customerId,
+                  receiverName: item.customerName || "Cliente",
+                });
+              }}
+              style={[
+                styles.trackButton,
+                { backgroundColor: "#8B5CF6", marginLeft: Spacing.xs },
+              ]}
+            >
+              <Feather name="message-circle" size={14} color="#FFF" />
+              <ThemedText
+                type="small"
+                style={{ color: "#FFF", marginLeft: 4 }}
+              >
+                Chat
               </ThemedText>
             </Pressable>
             <Pressable
@@ -471,14 +492,14 @@ export default function DriverMyDeliveriesScreen() {
                 styles.trackButton,
                 {
                   backgroundColor: ComeYaColors.primary,
-                  marginLeft: Spacing.sm,
+                  marginLeft: Spacing.xs,
                 },
               ]}
             >
-              <Feather name="navigation" size={16} color="#FFF" />
+              <Feather name="navigation" size={14} color="#FFF" />
               <ThemedText
                 type="small"
-                style={{ color: "#FFF", marginLeft: Spacing.xs }}
+                style={{ color: "#FFF", marginLeft: 4 }}
               >
                 Navegar
               </ThemedText>

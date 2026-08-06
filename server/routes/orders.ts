@@ -478,6 +478,22 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
           body: `${o.businessName} — Pedido #${o.id.slice(-6)} listo`,
           data: { orderId: o.id, screen: "DriverActiveOrder" },
         });
+      } else {
+        // Si no hay repartidor asignado, notificar a TODOS los drivers online
+        // para que sepan que hay un nuevo pedido disponible (estilo Rappi/UberEats)
+        try {
+          const { DeliveryNotificationService } = await import(
+            "../deliveryNotificationService"
+          );
+          const notified = await DeliveryNotificationService.broadcastToDrivers(
+            "🛵 ¡Nuevo pedido disponible!",
+            `${o.businessName} — Recoge en ${o.businessName || "negocio"} y gana €${((o.deliveryFee || 0) / 100).toFixed(2)}`,
+            { orderId: o.id, screen: "DriverAvailable" },
+          );
+          console.log(`📢 Broadcast: nuevo pedido #${o.id.slice(-6)} notificado a ${notified} drivers`);
+        } catch (err) {
+          console.error("Error broadcasting new order to drivers:", err);
+        }
       }
     } else if (status === "cancelled") {
       await sendOrderStatusNotification(statusId, o.userId, "cancelled");
