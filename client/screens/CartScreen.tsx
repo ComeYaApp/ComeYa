@@ -150,14 +150,6 @@ export default function CartScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
-    // Validar que el negocio esté abierto
-    if (business && !business.isOpen) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      alert(
-        `${business.name || "El negocio"} está cerrado en este momento. Puedes programar tu pedido o esperar a que abra.`,
-      );
-      return;
-    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("Checkout", {
       calculatedDeliveryFee: deliveryFee,

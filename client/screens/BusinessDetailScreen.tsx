@@ -13,7 +13,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -24,7 +23,6 @@ import { CartButton } from "@/components/CartButton";
 import { ProductCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { useApp } from "@/contexts/AppContext";
 import {
   Spacing,
   BorderRadius,
@@ -32,35 +30,9 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { mockBusinesses, mockProducts } from "@/data/mockData";
-import { Business, Product, BusinessOpeningHours, BusinessOpeningHoursDay } from "@/types";
+import { Business, Product } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
-import { calculateDistance } from "@/utils/distance";
-
-// ─── Utilidades de horarios (compartidas con shared/businessHours.ts) ──────────
-
-const DAY_KEYS: (keyof BusinessOpeningHours)[] = [
-  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-];
-
-const DAY_LABELS_ES: Record<keyof BusinessOpeningHours, string> = {
-  monday: "Lunes",
-  tuesday: "Martes",
-  wednesday: "Miércoles",
-  thursday: "Jueves",
-  friday: "Viernes",
-  saturday: "Sábado",
-  sunday: "Domingo",
-};
-
-function formatScheduleForDay(day: BusinessOpeningHoursDay): string {
-  if (day.closed) return "Cerrado";
-  let text = `${day.open} - ${day.close}`;
-  if (day.eveningOpen && day.eveningClose) {
-    text += ` y ${day.eveningOpen} - ${day.eveningClose}`;
-  }
-  return text;
-}
 
 type BusinessDetailRouteProp = RouteProp<RootStackParamList, "BusinessDetail">;
 type BusinessDetailNavigationProp = NativeStackNavigationProp<
@@ -74,8 +46,6 @@ export default function BusinessDetailScreen() {
   const navigation = useNavigation<BusinessDetailNavigationProp>();
   const { theme } = useTheme();
   const { user } = useAuth();
-  const { settings } = useApp();
-  const commissionMultiplier = 1 + settings.commission / 100;
   const queryClient = useQueryClient();
 
   const businessId = route.params?.businessId;
@@ -94,23 +64,8 @@ export default function BusinessDetailScreen() {
         );
         const data = await response.json();
 
-          if (data.success && data.business) {
+        if (data.success && data.business) {
           // Adapt backend data to frontend format
-          // Parsear openingHours desde el backend (ya viene como objeto parseado)
-          let parsedHours: BusinessOpeningHours = data.business.openingHours;
-          if (!parsedHours || typeof parsedHours !== "object") {
-            // Fallback: si no viene del backend, usar defaults
-            parsedHours = {
-              monday: { open: "09:00", close: "22:00", closed: false },
-              tuesday: { open: "09:00", close: "22:00", closed: false },
-              wednesday: { open: "09:00", close: "22:00", closed: false },
-              thursday: { open: "09:00", close: "22:00", closed: false },
-              friday: { open: "09:00", close: "22:00", closed: false },
-              saturday: { open: "09:00", close: "22:00", closed: false },
-              sunday: { open: "09:00", close: "22:00", closed: false },
-            };
-          }
-
           const adaptedBusiness: Business = {
             id: data.business.id,
             name: data.business.name,
@@ -130,8 +85,10 @@ export default function BusinessDetailScreen() {
             minimumOrder: (data.business.minOrder || 1000) / 100,
             isOpen:
               data.business.isOpen === true ||
-              data.business.isOpen === 1,
-            openingHours: parsedHours,
+              data.business.isOpen === 1 ||
+              data.business.is_open === true ||
+              data.business.is_open === 1,
+            openingHours: [],
             address: data.business.address || "Soria, España",
             phone: data.business.phone || "",
             categories: data.business.categories
@@ -158,8 +115,8 @@ export default function BusinessDetailScreen() {
 
               // Precio base en euros
               const basePrice = (p.price || 0) / 100;
-              // Agregar comisión configurable desde admin panel
-              const priceWithCommission = basePrice * commissionMultiplier;
+              // Agregar comisión del 15%
+              const priceWithCommission = basePrice * 1.15;
 
               return {
                 id: p.id,
@@ -358,69 +315,6 @@ export default function BusinessDetailScreen() {
                   </ThemedText>
                 </Pressable>
               </View>
-            </View>
-
-            {/* ─── Horarios del negocio ─── */}
-            <View
-              style={[
-                styles.infoCard,
-                { backgroundColor: theme.card },
-                Shadows.sm,
-              ]}
-            >
-              <View style={styles.hoursHeader}>
-                <Feather name="clock" size={18} color={ComeYaColors.primary} />
-                <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
-                  Horarios
-                </ThemedText>
-              </View>
-              <View style={styles.hoursDivider} />
-              {DAY_KEYS.map((key) => {
-                const day = business.openingHours[key];
-                if (!day) return null;
-                const today = new Date();
-                const todayIndex = today.getDay(); // 0 = Sunday
-                const todayKey = DAY_KEYS[todayIndex === 0 ? 6 : todayIndex - 1];
-                const isToday = key === todayKey;
-                return (
-                  <View
-                    key={key}
-                    style={[
-                      styles.hoursRow,
-                      isToday && {
-                        backgroundColor: ComeYaColors.primary + "10",
-                        borderRadius: BorderRadius.sm,
-                        paddingHorizontal: Spacing.sm,
-                        paddingVertical: 2,
-                        marginHorizontal: -Spacing.sm,
-                      },
-                    ]}
-                  >
-                    <ThemedText
-                      type="small"
-                      style={{
-                        fontWeight: isToday ? "700" : "500",
-                        color: isToday ? ComeYaColors.primary : theme.text,
-                        width: 90,
-                      }}
-                    >
-                      {DAY_LABELS_ES[key]}
-                      {isToday ? " (Hoy)" : ""}
-                    </ThemedText>
-                    <ThemedText
-                      type="small"
-                      style={{
-                        color: day.closed ? ComeYaColors.error : theme.textSecondary,
-                        fontWeight: day.closed ? "600" : "400",
-                        flex: 1,
-                        textAlign: "right",
-                      }}
-                    >
-                      {formatScheduleForDay(day)}
-                    </ThemedText>
-                  </View>
-                );
-              })}
             </View>
 
             {categories.length > 0 ? (
@@ -649,21 +543,5 @@ const styles = StyleSheet.create({
   },
   productsSectionTitle: {
     marginBottom: Spacing.md,
-  },
-  hoursHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-  },
-  hoursDivider: {
-    height: 1,
-    backgroundColor: "#E0E0E0",
-    marginBottom: Spacing.md,
-  },
-  hoursRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
   },
 });

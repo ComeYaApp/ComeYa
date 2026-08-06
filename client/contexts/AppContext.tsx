@@ -3,28 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type ThemeMode = "system" | "light" | "dark";
 
-interface DeliveryFeesConfig {
-  tier1: number; // 0-2 km
-  tier2: number; // 2-3 km
-  tier3: number; // 3-4 km
-  extraPerKm: number; // > 4 km
-}
-
 interface AppSettings {
   carnivalEnabled: boolean;
   notificationsEnabled: boolean;
   themeMode: ThemeMode;
-  // Configuraciones desde admin panel
-  commission: number; // Porcentaje de comisión (ej: 15)
-  deliveryFees: DeliveryFeesConfig;
-  minimumOrder: number; // Pedido mínimo en euros
-  serviceFee: number; // Tarifa de servicio en euros
-  deliveryZone: {
-    name: string;
-    radius: number;
-    baseFee: number;
-    active: boolean;
-  } | null;
 }
 
 interface AppContextType {
@@ -42,21 +24,6 @@ const defaultSettings: AppSettings = {
   carnivalEnabled: true,
   notificationsEnabled: false,
   themeMode: "system",
-  commission: 15,
-  deliveryFees: {
-    tier1: 2.5,
-    tier2: 4.0,
-    tier3: 5.0,
-    extraPerKm: 1.0,
-  },
-  minimumOrder: 5,
-  serviceFee: 1,
-  deliveryZone: {
-    name: "Soria",
-    radius: 8,
-    baseFee: 2.5,
-    active: true,
-  },
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {

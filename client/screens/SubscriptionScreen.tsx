@@ -87,18 +87,17 @@ export default function SubscriptionScreen() {
   const isBusinessOwner = user?.role === "business_owner";
 
   const customerBenefits = [
-    "Envío gratis en pedidos +€15 (ahorra €2.50-€5 por pedido)",
-    "5% de descuento en cada compra",
+    "Envío gratis en todos tus pedidos",
+    "10% de descuento en cada compra",
     "Soporte prioritario 24/7",
-    "Ofertas exclusivas y acceso anticipado",
-    "Recuperas tu inversión con 3 pedidos al mes",
+    "Ofertas exclusivas para miembros",
   ];
   const businessBenefits = [
-    "Comisión reducida del 15% al 10%",
-    "Negocio destacado en búsquedas y mapa",
-    "Estadísticas avanzadas de ventas y clientes",
+    "Comisión reducida (menos costes)",
+    "Negocio destacado en búsquedas",
+    "Estadísticas avanzadas del negocio",
     "Soporte VIP con gestor personal",
-    "Herramientas de promoción y fidelización",
+    "Herramientas de promoción",
   ];
   const queryClient = useQueryClient();
 
@@ -279,7 +278,6 @@ export default function SubscriptionScreen() {
         {isActive && currentPlan !== "free" && (
           <View style={[
             styles.currentPlanCard,
-            { backgroundColor: theme.card },
             isCancelledAtPeriodEnd && { borderColor: "#F59E0B", borderWidth: 2 },
           ]}>
             <Text style={styles.currentPlanTitle}>
@@ -359,7 +357,7 @@ export default function SubscriptionScreen() {
 
         {/* ── PAGO PENDIENTE ────────────────────────────────────────────── */}
         {isPendingPayment && (
-          <View style={[styles.currentPlanCard, { backgroundColor: theme.card, borderWidth: 2, borderColor: "#F59E0B" }]}>
+          <View style={[styles.currentPlanCard, { borderWidth: 2, borderColor: "#F59E0B" }]}>
             <Text style={{ fontSize: 28, textAlign: "center" }}>⏳</Text>
             <Text style={[styles.currentPlanName, { color: "#F59E0B", marginTop: 8 }]}>
               Verificando pago
@@ -426,7 +424,6 @@ export default function SubscriptionScreen() {
           <TouchableOpacity
             style={[
               styles.planCard,
-              { backgroundColor: theme.card },
               selectedPlan === "premium" && styles.planCardSelected,
             ]}
             onPress={() => setSelectedPlan("premium")}
@@ -447,7 +444,7 @@ export default function SubscriptionScreen() {
               {(isBusinessOwner ? businessBenefits : customerBenefits).map((b) => (
                 <View key={b} style={styles.benefit}>
                   <Text style={styles.benefitIcon}>✅</Text>
-                  <ThemedText type="body" style={{ flex: 1, lineHeight: 20 }}>{b}</ThemedText>
+                  <Text style={styles.benefitText}>{b}</Text>
                 </View>
               ))}
             </View>
@@ -460,7 +457,6 @@ export default function SubscriptionScreen() {
           <TouchableOpacity
             style={[
               styles.planCard,
-              { backgroundColor: theme.card },
               selectedPlan === "business" && styles.planCardSelected,
             ]}
             onPress={() => setSelectedPlan("business")}
@@ -481,7 +477,7 @@ export default function SubscriptionScreen() {
               {(isBusinessOwner ? businessBenefits : customerBenefits).map((b) => (
                 <View key={b} style={styles.benefit}>
                   <Text style={styles.benefitIcon}>✅</Text>
-                  <ThemedText type="body" style={{ flex: 1, lineHeight: 20 }}>{b}</ThemedText>
+                  <Text style={styles.benefitText}>{b}</Text>
                 </View>
               ))}
             </View>
@@ -490,68 +486,17 @@ export default function SubscriptionScreen() {
         )}
 
         {/* ── SECCIÓN BENEFICIOS ───────────────────────────────────────── */}
-        <View style={[styles.comparisonCard, { backgroundColor: theme.card }]}>
-          <View style={styles.comparisonHeader}>
-            <Feather name="info" size={22} color={ComeYaColors.primary} />
-            <ThemedText type="h3" style={{ marginLeft: Spacing.sm }}>
-              ¿Por qué suscribirse?
-            </ThemedText>
-          </View>
-          
-          <View style={styles.benefitsGrid}>
-            <View style={[styles.benefitCard, { backgroundColor: theme.backgroundSecondary }]}>
-              <View style={[styles.benefitIconCircle, { backgroundColor: ComeYaColors.primary + "20" }]}>
-                <Feather name="truck" size={24} color={ComeYaColors.primary} />
-              </View>
-              <ThemedText type="h4" style={styles.benefitTitle}>Envío gratis</ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center" }}>
-                En pedidos superiores a €15. Ahorra €2.50-€5 por pedido.
-              </ThemedText>
-            </View>
-            
-            <View style={[styles.benefitCard, { backgroundColor: theme.backgroundSecondary }]}>
-              <View style={[styles.benefitIconCircle, { backgroundColor: "#10B981" + "20" }]}>
-                <Feather name="percent" size={24} color="#10B981" />
-              </View>
-              <ThemedText type="h4" style={styles.benefitTitle}>5% descuento</ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center" }}>
-                En cada compra. Con 3 pedidos al mes recuperas tu inversión.
-              </ThemedText>
-            </View>
-            
-            <View style={[styles.benefitCard, { backgroundColor: theme.backgroundSecondary }]}>
-              <View style={[styles.benefitIconCircle, { backgroundColor: "#F59E0B" + "20" }]}>
-                <Feather name="headphones" size={24} color="#F59E0B" />
-              </View>
-              <ThemedText type="h4" style={styles.benefitTitle}>Soporte VIP</ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center" }}>
-                Atención prioritaria 24/7. Respuesta en menos de 1 hora.
-              </ThemedText>
-            </View>
-            
-            <View style={[styles.benefitCard, { backgroundColor: theme.backgroundSecondary }]}>
-              <View style={[styles.benefitIconCircle, { backgroundColor: "#8B5CF6" + "20" }]}>
-                <Feather name="gift" size={24} color="#8B5CF6" />
-              </View>
-              <ThemedText type="h4" style={styles.benefitTitle}>Ofertas exclusivas</ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center" }}>
-                Acceso anticipado a promociones y descuentos solo para miembros.
-              </ThemedText>
-            </View>
-          </View>
-
-          <View style={[styles.savingsBox, { backgroundColor: ComeYaColors.primary + "10", borderColor: ComeYaColors.primary + "30" }]}>
-            <Feather name="dollar-sign" size={18} color={ComeYaColors.primary} />
-            <View style={{ marginLeft: Spacing.sm, flex: 1 }}>
-              <ThemedText type="small" style={{ fontWeight: "700", color: ComeYaColors.primary }}>
-                Ejemplo de ahorro mensual
-              </ThemedText>
-              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                Con 3 pedidos de €20: ahorras €7.50 en envíos + €3 en descuentos = €10.50/mes.{"\n"}
-                Recuperas tu inversión con solo 2 pedidos. Cancela cuando quieras.
-              </ThemedText>
-            </View>
-          </View>
+        <View style={styles.comparisonCard}>
+          <Text style={styles.comparisonTitle}>¿Por qué suscribirse?</Text>
+          {[
+            "🚚  Ahorra hasta €150 al mes en envíos y descuentos",
+            "💰  Con solo 2 pedidos al mes recuperas tu inversión",
+            "🎯  Descuento del 10% en cada pedido",
+            "⚡  Soporte prioritario y respuesta más rápida",
+            "🔓  Cancela cuando quieras, sin permanencia",
+          ].map((item) => (
+            <Text key={item} style={styles.comparisonText}>{item}</Text>
+          ))}
         </View>
       </ScrollView>
 
@@ -567,7 +512,7 @@ export default function SubscriptionScreen() {
           activeOpacity={1}
           onPress={() => setPaymentModal(null)}
         >
-          <View style={[styles.modalSheet, { backgroundColor: theme.card }]}>
+          <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>¿Cómo quieres pagar?</Text>
             <Text style={styles.modalSub}>
@@ -739,7 +684,7 @@ const styles = StyleSheet.create({
   planBenefits: { padding: 20 },
   benefit: { flexDirection: "row", alignItems: "center", marginBottom: 10 },
   benefitIcon: { fontSize: 16, marginRight: 10 },
-  benefitText: { fontSize: 14, flex: 1, lineHeight: 20 },
+  benefitText: { fontSize: 14, color: "#333", flex: 1, lineHeight: 20 },
 
   subscribeButton: {
     backgroundColor: ComeYaColors.primary,
@@ -760,44 +705,6 @@ const styles = StyleSheet.create({
   },
   comparisonTitle: { fontSize: 18, fontWeight: "700", marginBottom: 14 },
   comparisonText: { fontSize: 14, color: "#555", marginBottom: 10, lineHeight: 20 },
-  comparisonHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.lg,
-  },
-  benefitsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.sm,
-  },
-  benefitCard: {
-    width: "48%",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    alignItems: "center",
-    marginBottom: Spacing.xs,
-  },
-  benefitIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-  },
-  benefitTitle: {
-    fontWeight: "700",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  savingsBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: Spacing.lg,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-  },
 
   // Modal
   modalOverlay: {

@@ -517,18 +517,6 @@ export default function EditProfileScreen() {
           );
         }
         setVerificationStatus("pending");
-
-        // Si es dueño de negocio, actualizar también el negocio a "pending" y ocultarlo
-        if (isBusiness) {
-          try {
-            await apiRequest("PUT", "/api/business/verification-status", {
-              userId: user.id,
-              verificationStatus: "pending",
-            });
-          } catch {
-            // silencioso — el endpoint lo maneja
-          }
-        }
       }
 
       // Subir documentos del vehículo si hay cambios locales
@@ -559,24 +547,14 @@ export default function EditProfileScreen() {
           vehicleFormData.append("vehicleLicensePhoto", vehicleLicensePhotoUri);
 
         // Check if FormData has entries (Array.from not available, use forEach)
-        let hasVehDocs = false;
+        let hasVehicleDocs = false;
         vehicleFormData.forEach(() => {
-          hasVehDocs = true;
+          hasVehicleDocs = true;
         });
-        if (hasVehDocs) {
+        if (hasVehicleDocs) {
           await apiRequest("PUT", "/api/users/vehicle", vehicleFormData);
         }
         setVerificationStatus("pending");
-
-        // Bloquear al repartidor hasta que admin re-verifique
-        try {
-          await apiRequest("PUT", "/api/business/verification-status", {
-            userId: user.id,
-            verificationStatus: "pending",
-          });
-        } catch {
-          // silencioso
-        }
       }
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

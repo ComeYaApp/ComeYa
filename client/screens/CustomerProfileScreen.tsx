@@ -168,19 +168,10 @@ export default function CustomerProfileScreen() {
         <ThemedText type="body" style={{ color: theme.textSecondary }}>
           {user?.email}
         </ThemedText>
-        {subscription && subscription.status === "active" && (
+        {subscription && (
           <View style={styles.subscriptionBadge}>
-            <Feather name="award" size={14} color={ComeYaColors.primary} />
             <ThemedText type="caption" style={styles.subscriptionBadgeText}>
               {subscription.planName || "Premium"} activo
-            </ThemedText>
-          </View>
-        )}
-        {subscription && subscription.status === "pending_payment" && (
-          <View style={[styles.subscriptionBadge, { backgroundColor: "#F59E0B" + "20" }]}>
-            <Feather name="clock" size={14} color="#F59E0B" />
-            <ThemedText type="caption" style={[styles.subscriptionBadgeText, { color: "#F59E0B" }]}>
-              Pago pendiente
             </ThemedText>
           </View>
         )}

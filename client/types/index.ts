@@ -28,24 +28,6 @@ export interface User {
   };
 }
 
-export interface BusinessOpeningHoursDay {
-  open: string;
-  close: string;
-  closed: boolean;
-  eveningOpen?: string;
-  eveningClose?: string;
-}
-
-export interface BusinessOpeningHours {
-  monday: BusinessOpeningHoursDay;
-  tuesday: BusinessOpeningHoursDay;
-  wednesday: BusinessOpeningHoursDay;
-  thursday: BusinessOpeningHoursDay;
-  friday: BusinessOpeningHoursDay;
-  saturday: BusinessOpeningHoursDay;
-  sunday: BusinessOpeningHoursDay;
-}
-
 export interface Business {
   id: string;
   name: string;
@@ -59,14 +41,15 @@ export interface Business {
   deliveryFee: number;
   minimumOrder: number;
   isOpen: boolean;
-  openingHours: BusinessOpeningHours;
+  openingHours: {
+    day: string;
+    open: string;
+    close: string;
+  }[];
   address: string;
   phone: string;
   categories: string[];
   featured: boolean;
-  distance?: number; // Distance in km from user
-  latitude?: number;
-  longitude?: number;
 }
 
 export interface Product {

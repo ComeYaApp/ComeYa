@@ -170,12 +170,12 @@ export default function BusinessProductsScreen() {
       ? await ImagePicker.launchCameraAsync({
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.4,
+          quality: 0.8,
         })
       : await ImagePicker.launchImageLibraryAsync({
           allowsEditing: true,
           aspect: [1, 1],
-          quality: 0.4,
+          quality: 0.8,
         });
 
     const asset = result?.assets?.[0];
@@ -201,57 +201,35 @@ export default function BusinessProductsScreen() {
           reader.readAsDataURL(blob);
         });
       } else {
-        // Leer archivo como base64 usando expo-file-system
+        const encoding = (FileSystem as any)?.EncodingType?.Base64 || "base64";
         const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding,
         });
         const extension = uri.split(".").pop()?.toLowerCase() || "jpg";
         const mimeType = extension === "png" ? "image/png" : "image/jpeg";
         imageData = `data:${mimeType};base64,${base64}`;
-
-        // Verificar tamaño de la imagen en bytes (base64 ~33% más grande que el binario)
-        const estimatedSizeMB = (imageData.length * 0.75) / (1024 * 1024);
-        if (estimatedSizeMB > 10) {
-          console.warn(
-            `Imagen grande (${estimatedSizeMB.toFixed(1)}MB). Puede fallar en conexiones lentas.`,
-          );
-        }
       }
 
-      // Timeout de 60 segundos para uploads grandes en conexiones lentas
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
+      // Usar el endpoint correcto de upload de imágenes
+      const apiResponse = await apiRequest(
+        "POST",
+        "/api/upload/product-image",
+        {
+          image: imageData,
+        },
+      );
 
-      try {
-        const apiResponse = await apiRequest(
-          "POST",
-          "/api/upload/product-image",
-          {
-            image: imageData,
-          },
-          controller.signal,
-        );
+      const data = await apiResponse.json();
 
-        clearTimeout(timeout);
-        const data = await apiResponse.json();
-
-        if (data.success && data.imageUrl) {
-          setForm({ ...form, image: data.imageUrl });
-        } else {
-          throw new Error(data.error || "Error al subir imagen");
-        }
-      } catch (fetchError: any) {
-        clearTimeout(timeout);
-        if (fetchError.name === "AbortError") {
-          throw new Error("La imagen es demasiado grande. Usa una imagen más pequeña o con menor calidad.");
-        }
-        throw fetchError;
+      if (data.success && data.imageUrl) {
+        // data.imageUrl ya es una URL absoluta de Cloudinary
+        setForm({ ...form, image: data.imageUrl });
+      } else {
+        throw new Error(data.error || "Error al subir imagen");
       }
     } catch (error: any) {
       console.error("Error uploading product image:", error);
-      const errorMsg =
-        error.message || "No se pudo subir la imagen. Intenta con otra imagen o una URL.";
-      alert(errorMsg);
+      alert("No se pudo subir la imagen. Intenta con otra imagen o una URL.");
     } finally {
       setIsUploadingImage(false);
     }

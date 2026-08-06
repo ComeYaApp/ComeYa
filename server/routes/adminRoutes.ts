@@ -1048,24 +1048,6 @@ router.put(
         })
         .where(eq(users.id, userId));
 
-      // Si es business_owner, actualizar también el negocio
-      const [targetUser] = await db
-        .select({ role: users.role })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-      if (targetUser?.role === "business_owner") {
-        const { businesses: businessesTable } = await import("@shared/schema-mysql");
-        const businessVerificationStatus = action === "approve" ? "verified" : "rejected";
-        await db
-          .update(businessesTable)
-          .set({
-            verificationStatus: businessVerificationStatus,
-            isActive: action === "approve",
-          })
-          .where(eq(businessesTable.ownerId, userId));
-      }
-
       // Audit log
       await db.insert(auditLogs).values({
         userId: req.user!.id,
@@ -1411,17 +1393,6 @@ router.post(
         })
         .where(eq(users.id, userId));
 
-      // Actualizar deliveryDrivers — desbloquear y activar
-      const { deliveryDrivers: dd } = await import("@shared/schema-mysql");
-      await db
-        .update(dd)
-        .set({
-          isBlocked: false,
-          blockedReason: null,
-          isAvailable: true,
-        })
-        .where(eq(dd.userId, userId));
-
       // Log de auditoría
       await db.insert(auditLogs).values({
         id: crypto.randomUUID(),
@@ -1497,17 +1468,6 @@ router.post(
         })
         .where(eq(users.id, userId));
 
-      // Actualizar deliveryDrivers — bloquear
-      const { deliveryDrivers: ddRej } = await import("@shared/schema-mysql");
-      await db
-        .update(ddRej)
-        .set({
-          isBlocked: true,
-          blockedReason: reason.trim(),
-          isAvailable: false,
-        })
-        .where(eq(ddRej.userId, userId));
-
       // Log de auditoría
       await db.insert(auditLogs).values({
         id: crypto.randomUUID(),
@@ -1566,7 +1526,7 @@ router.post(
         return res.status(404).json({ error: "Usuario no encontrado" });
       }
 
-      // Reiniciar estado del usuario
+      // Reiniciar estado
       await db
         .update(users)
         .set({
@@ -1576,17 +1536,6 @@ router.post(
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId));
-
-      // Reiniciar estado del deliveryDriver
-      const { deliveryDrivers: ddReset } = await import("@shared/schema-mysql");
-      await db
-        .update(ddReset)
-        .set({
-          isBlocked: true,
-          blockedReason: "Verificación reiniciada — pendiente de nuevos documentos",
-          isAvailable: false,
-        })
-        .where(eq(ddReset.userId, userId));
 
       res.json({
         success: true,

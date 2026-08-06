@@ -53,7 +53,6 @@ import adminSubscriptionPlansRoutes from "./routes/adminSubscriptionPlans";
 import adminTrackingRoutes from "./routes/adminTracking";
 import businessCategoriesRoutes from "./routes/businessCategories";
 import deliveryVerificationRoutes from "./routes/deliveryVerification";
-import appConfigRoutes from "./routes/appConfig";
 
 const router = express.Router();
 
@@ -339,6 +338,5 @@ router.use("/admin", adminSubscriptionPlansRoutes);
 router.use("/admin", adminTrackingRoutes);
 router.use("/business-categories", businessCategoriesRoutes);
 router.use("/map", mapDataRoutes);
-router.use("/app-config", appConfigRoutes);
 
 export default router;

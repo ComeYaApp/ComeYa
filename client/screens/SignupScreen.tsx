@@ -250,8 +250,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
       }
     }
     if (s === 4 && needsDocs) {
-      if (!idDocumentUri) e.idDocument = "Foto del DNI/NIE (anverso) requerida";
-      if (!idDocumentBackUri) e.idDocumentBack = "Foto del DNI/NIE (reverso) requerida";
+      if (!idDocumentUri) e.idDocument = "Foto del DNI/NIE requerida";
       if (role === "business_owner") {
         if (!autonomoDocumentUri)
           e.autonomoDocument = "Documento de autónomo/empresa requerido";

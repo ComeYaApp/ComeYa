@@ -312,7 +312,7 @@ export default function ProfileScreen() {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showToast("Permisos de galería denegados", "error");
+      showToast("Permisos de galer�a denegados", "error");
       return;
     }
 
@@ -508,7 +508,7 @@ export default function ProfileScreen() {
       });
       const data = await res.json();
       if (data.success || data.user) {
-        // Si es driver o negocio,resetear verificación si cambió información crítica (DNI)
+        // Si es driver o negocio,resetear verificación si cambi� información cr�tica (DNI)
         if (isDriverOrBusiness && editDni.trim()) {
           try {
             await apiRequest(
@@ -547,7 +547,7 @@ export default function ProfileScreen() {
     }
     if (editNewPassword.length < 6) {
       showToast(
-        "La nueva contraseña debe tener al menos 6 caracteres",
+        "La nueva contrase�a debe tener al menos 6 caracteres",
         "error",
       );
       return;
@@ -560,12 +560,12 @@ export default function ProfileScreen() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Contraseña cambiada correctamente", "success");
+        showToast("Contrase�a cambiada correctamente", "success");
         setEditCurrentPassword("");
         setEditNewPassword("");
         setShowEditProfileModal(false);
       } else {
-        showToast(data.message || "Error al cambiar contraseña", "error");
+        showToast(data.message || "Error al cambiar contrase�a", "error");
       }
     } catch {
       showToast("Error de conexión", "error");
@@ -590,7 +590,7 @@ export default function ProfileScreen() {
       });
       const data = await res.json();
       if (data.success) {
-        showToast("Vehículo guardado", "success");
+        showToast("Veh�culo guardado", "success");
         setShowVehicleModal(false);
         // Actualizar driverStats local
         setDriverStats((prev) =>
@@ -648,7 +648,7 @@ export default function ProfileScreen() {
         if (data.success && data.user) {
           if (data.user.profileImage) {
             const img = data.user.profileImage;
-            // Si es base64, usarla directamente sin añadir ?v=
+            // Si es base64, usarla directamente sin a�adir ?v=
             if (img.startsWith("data:image/")) {
               setProfileImage(img);
             } else {
@@ -717,7 +717,7 @@ export default function ProfileScreen() {
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showToast("Permisos de galería denegados", "error");
+      showToast("Permisos de galer�a denegados", "error");
       return;
     }
 
@@ -806,7 +806,7 @@ export default function ProfileScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const friendly = error?.message || "No se pudo subir la imagen";
       showToast(friendly, "error");
-      // Si el backend devolvió texto de error completo (ej. 400: ...), muéstralo para diagnóstico en dispositivo.
+      // Si el backend devolvi� texto de error completo (ej. 400: ...), mu�stralo para diagn�stico en dispositivo.
       if (error?.message && error.message.includes(":")) {
         showToast(error.message, "error");
       }
@@ -1196,12 +1196,12 @@ export default function ProfileScreen() {
               />
               <SettingsItem
                 icon="credit-card"
-                label="Métodos de pago"
+                label="M�todos de pago"
                 onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
               />
             </>
           )}
-          {/* Sección cliente: features avanzadas */}
+          {/* Secci�n cliente: features avanzadas */}
           {user?.role === "customer" && (
             <>
               <SettingsItem
@@ -1214,8 +1214,8 @@ export default function ProfileScreen() {
               />
               <SettingsItem
                 icon="credit-card"
-                label="Métodos de pago"
-                value="Bizum • Tarjeta • PayPal"
+                label="M�todos de pago"
+                value="Bizum � Tarjeta � PayPal"
                 onPress={() => navigation.navigate("PaymentWalletSetup" as any)}
               />
               <SettingsItem
@@ -1274,7 +1274,7 @@ export default function ProfileScreen() {
               Estado del Repartidor
             </ThemedText>
 
-            {/* Stats rápidas */}
+            {/* Stats r�pidas */}
             {driverStats && (
               <View
                 style={{
@@ -1296,7 +1296,7 @@ export default function ProfileScreen() {
                   <ThemedText type="h3" style={{ color: "#FF9800" }}>
                     {driverStats.rating > 0
                       ? (driverStats.rating / 10).toFixed(1)
-                      : "•"}
+                      : "�"}
                   </ThemedText>
                   <ThemedText
                     type="caption"
@@ -1358,13 +1358,13 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            {/* Vehículo */}
+            {/* Veh�culo */}
             <SettingsItem
               icon="truck"
               label="Mi vehículo"
               value={
                 driverStats?.vehicleType
-                  ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` • ${driverStats.vehiclePlate}` : ""}`
+                  ? `${driverStats.vehicleType === "car" ? "Coche" : driverStats.vehicleType === "motorcycle" ? "Moto" : "Bicicleta"}${driverStats?.vehiclePlate ? ` � ${driverStats.vehiclePlate}` : ""}`
                   : "No registrado"
               }
               onPress={() => {
@@ -1490,7 +1490,7 @@ export default function ProfileScreen() {
           <SettingsItem
             icon="globe"
             label="Idioma"
-            value="Español"
+            value="Espa�ol"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowLanguageModal(true);
@@ -1545,7 +1545,7 @@ export default function ProfileScreen() {
           />
           <SettingsItem
             icon="file-text"
-            label="Términos y condiciones"
+            label="T�rminos y condiciones"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowTermsModal(true);
@@ -1553,7 +1553,7 @@ export default function ProfileScreen() {
           />
           <SettingsItem
             icon="shield"
-            label="Política de privacidad"
+            label="Pol�tica de privacidad"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowPrivacyModal(true);
@@ -1882,7 +1882,7 @@ export default function ProfileScreen() {
                   type="body"
                   style={{ color: ComeYaColors.primary, fontWeight: "600" }}
                 >
-                  Español
+                  Espa�ol
                 </ThemedText>
                 <Feather
                   name="check"
@@ -1930,7 +1930,7 @@ export default function ProfileScreen() {
               { borderBottomColor: theme.border },
             ]}
           >
-            <ThemedText type="h3">Términos y condiciones</ThemedText>
+            <ThemedText type="h3">T�rminos y condiciones</ThemedText>
             <Pressable
               style={[
                 styles.closeButton,
@@ -2198,7 +2198,7 @@ export default function ProfileScreen() {
             </ThemedText>
 
             <ThemedText type="h4" style={styles.legalTitle}>
-              10. Contacto & Privacidad
+              10. Contacto � Privacidad
             </ThemedText>
             <ThemedText type="body" style={styles.legalText}>
               Para ejercer tus derechos o resolver dudas sobre privacidad,
@@ -2269,7 +2269,7 @@ export default function ProfileScreen() {
                       ? "Datos"
                       : tab === "seguridad"
                         ? "Seguridad"
-                        : "Profesión"}
+                        : "Profesi�n"}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -2335,12 +2335,12 @@ export default function ProfileScreen() {
                       marginTop: 12,
                     }}
                   >
-                    DNI / Cédula
+                    DNI / C�dula
                   </ThemedText>
                   <TextInput
                     value={editDni}
                     onChangeText={setEditDni}
-                    placeholder="Número de documento"
+                    placeholder="N�mero de documento"
                     placeholderTextColor={theme.textSecondary}
                     style={[
                       styles.editInput,
@@ -2380,12 +2380,12 @@ export default function ProfileScreen() {
                     type="caption"
                     style={{ color: theme.textSecondary, marginBottom: 4 }}
                   >
-                    Contraseña actual
+                    Contrase�a actual
                   </ThemedText>
                   <TextInput
                     value={editCurrentPassword}
                     onChangeText={setEditCurrentPassword}
-                    placeholder="••••••••"
+                    placeholder="��������"
                     placeholderTextColor={theme.textSecondary}
                     secureTextEntry
                     style={[
@@ -2405,12 +2405,12 @@ export default function ProfileScreen() {
                       marginTop: 12,
                     }}
                   >
-                    Nueva contraseña
+                    Nueva contrase�a
                   </ThemedText>
                   <TextInput
                     value={editNewPassword}
                     onChangeText={setEditNewPassword}
-                    placeholder="Mínimo 6 caracteres"
+                    placeholder="M�nimo 6 caracteres"
                     placeholderTextColor={theme.textSecondary}
                     secureTextEntry
                     style={[
@@ -2440,13 +2440,13 @@ export default function ProfileScreen() {
                         type="body"
                         style={{ color: "#fff", fontWeight: "700" }}
                       >
-                        Cambiar contraseña
+                        Cambiar contrase�a
                       </ThemedText>
                     )}
                   </Pressable>
                 </>
               ) : (
-                // Profesión tab - solo documentos personales para drivers/business owners
+                // Profesi�n tab - solo documentos personales para drivers/business owners
                 // Los datos del vehículo están en "Mi vehículo"
                 <>
                   <ThemedText
@@ -2491,7 +2491,7 @@ export default function ProfileScreen() {
                             flex: 1,
                           }}
                         >
-                          Aquí puedes ver el estado de tus documentos. Contacta
+                          Aqu� puedes ver el estado de tus documentos. Contacta
                           soporte si necesitas actualizar algo.
                         </ThemedText>
                       </View>
@@ -2513,17 +2513,17 @@ export default function ProfileScreen() {
 
                       <DocumentUploadButton
                         documentType="idDocument"
-                        label="DNI / Identificación (frente)"
+                        label="DNI / Identificaci�n (frente)"
                         currentUrl={professionalData?.idDocumentUrl}
                       />
                       <DocumentUploadButton
                         documentType="idDocumentBack"
-                        label="DNI / Identificación (reverso)"
+                        label="DNI / Identificaci�n (reverso)"
                         currentUrl={professionalData?.idDocumentBackUrl}
                       />
                       <DocumentUploadButton
                         documentType="autonomo"
-                        label="Documento de Autónomo"
+                        label="Documento de Aut�nomo"
                         currentUrl={professionalData?.autonomoDocumentUrl}
                       />
                       <View
@@ -2569,12 +2569,12 @@ export default function ProfileScreen() {
 
                       <DocumentUploadButton
                         documentType="idDocument"
-                        label="DNI / Identificación"
+                        label="DNI / Identificaci�n"
                         currentUrl={professionalData?.idDocumentUrl}
                       />
                       <DocumentUploadButton
                         documentType="autonomo"
-                        label="Documento de Autónomo"
+                        label="Documento de Aut�nomo"
                         currentUrl={professionalData?.autonomoDocumentUrl}
                       />
                     </>
@@ -2659,7 +2659,7 @@ export default function ProfileScreen() {
               type="body"
               style={[styles.modalMessage, { color: theme.textSecondary }]}
             >
-              Esta función estará disponible próximamente. Podrás gestionar tus
+              Esta función estar� disponible próximamente. Podr�s gestionar tus
               direcciones de entrega favoritas.
             </ThemedText>
             <Pressable
@@ -2834,7 +2834,7 @@ export default function ProfileScreen() {
                   marginTop: 12,
                 }}
               >
-                Matrícula
+                Matr�cula
               </ThemedText>
               <TextInput
                 value={vehicleForm.vehiclePlate}
