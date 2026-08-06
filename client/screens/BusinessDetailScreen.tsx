@@ -400,6 +400,7 @@ export default function BusinessDetailScreen() {
                         productId: product.id,
                         businessId: business.id,
                         businessName: business.name,
+                        product: product,
                       })
                     }
                   />

@@ -79,6 +79,7 @@ export type RootStackParamList = {
     productId: string;
     businessId: string;
     businessName: string;
+    product?: import("@/types").Product;
   };
   Cart: undefined;
   Checkout:
