@@ -8,7 +8,51 @@ import { businesses } from "@shared/schema-mysql";
 import { eq, and, sql } from "drizzle-orm";
 import { authenticateToken } from "../authMiddleware";
 import { googleMapsService } from "../services/googleMapsService";
-import { isBusinessOpen } from "../../shared/businessHours";
+
+// Inline isBusinessOpen para evitar problemas de resolución de módulos en esbuild/Render
+function isBusinessOpenLocal(
+  openingHoursRaw: string | null | undefined,
+  isOpenManual: boolean | number | string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  const manualFlag = isOpenManual === true || isOpenManual === 1 || isOpenManual === "1";
+  if (!manualFlag) return false;
+
+  if (!openingHoursRaw) return true;
+
+  try {
+    const hours = typeof openingHoursRaw === "string" ? JSON.parse(openingHoursRaw) : openingHoursRaw;
+    const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const dayIndex = now.getDay();
+    const dayKey = days[dayIndex];
+    const todaySchedule = hours?.[dayKey];
+
+    if (!todaySchedule || todaySchedule.closed) return false;
+
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const timeToMinutes = (t: string): number => {
+      const [h, m] = t.split(":").map(Number);
+      return h * 60 + (m || 0);
+    };
+
+    const isWithin = (open: string, close: string): boolean => {
+      const o = timeToMinutes(open);
+      const c = timeToMinutes(close);
+      if (c <= o) return nowMinutes >= o || nowMinutes < c;
+      return nowMinutes >= o && nowMinutes < c;
+    };
+
+    if (isWithin(todaySchedule.open, todaySchedule.close)) return true;
+    if (todaySchedule.eveningOpen && todaySchedule.eveningClose) {
+      if (isWithin(todaySchedule.eveningOpen, todaySchedule.eveningClose)) return true;
+    }
+  } catch {
+    return true;
+  }
+
+  return false;
+}
 
 const router = express.Router();
 
@@ -68,7 +112,7 @@ router.get("/nearby-businesses", authenticateToken, async (req, res) => {
         // Determinar si está abierto ahora
         let isOpen = false;
         try {
-          isOpen = isBusinessOpen(biz.openingHours, biz.isActive);
+          isOpen = isBusinessOpenLocal(biz.openingHours, biz.isActive);
         } catch {
           isOpen = true; // Si no hay datos de horario, asumir abierto
         }
