@@ -8,7 +8,7 @@ import { businesses } from "@shared/schema-mysql";
 import { eq, and, sql } from "drizzle-orm";
 import { authenticateToken } from "../authMiddleware";
 import { googleMapsService } from "../services/googleMapsService";
-import { isBusinessOpen } from "@shared/businessHours";
+import { isBusinessOpen } from "../../shared/businessHours";
 
 const router = express.Router();
 
