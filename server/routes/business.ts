@@ -1568,39 +1568,56 @@ router.get(
   },
 );
 
-// GET /api/business/:id  (usa SQL raw para evitar mismatch camelCase/snake_case)
+// GET /api/business/:id
 router.get("/:id", async (req, res) => {
   try {
     const { db } = await import("../db");
     const { sql } = await import("drizzle-orm");
-    const { BusinessHoursService } = await import("../businessHoursService");
+
+    console.log(`📍 GET /api/business/${req.params.id} called`);
 
     const [bizRows] = (await db.execute(sql`
       SELECT * FROM businesses WHERE id = ${req.params.id} LIMIT 1
     `)) as any;
     const business = bizRows[0] as any;
 
-    if (!business)
+    if (!business) {
+      console.log(`❌ Business ${req.params.id} not found`);
       return res.status(404).json({ error: "Negocio no encontrado" });
-    if (!business.is_active)
+    }
+    if (!business.is_active) {
+      console.log(`❌ Business ${req.params.id} is not active`);
       return res.status(404).json({ error: "Negocio no encontrado" });
+    }
 
-    const [productRows] = (await db.execute(sql`
-      SELECT * FROM products
-      WHERE business_id = ${req.params.id}
-        AND (is_available = 1 OR is_available = true)
-    `)) as any;
+    console.log(`✅ Found business: ${business.name}`);
 
-    // Calcular isOpen con BusinessHoursService
+    // Obtener productos
+    let productRows: any[] = [];
+    try {
+      const [rows] = (await db.execute(sql`
+        SELECT * FROM products
+        WHERE business_id = ${req.params.id}
+          AND is_available = 1
+      `)) as any;
+      productRows = rows || [];
+      console.log(`📦 Found ${productRows.length} products for ${business.name}`);
+    } catch (prodErr: any) {
+      console.error(`❌ Error fetching products for ${business.name}:`, prodErr.message);
+      productRows = [];
+    }
+
+    // Calcular isOpen
     let calculatedIsOpen = business.is_open === 1 || business.is_open === true;
     let parsedOpeningHours: any = null;
     try {
+      const { BusinessHoursService } = await import("../businessHoursService");
       calculatedIsOpen = await BusinessHoursService.isBusinessOpen(business.id);
       if (business.opening_hours) {
         parsedOpeningHours = JSON.parse(business.opening_hours);
       }
-    } catch {
-      // fallback al valor de BD
+    } catch (hoursErr: any) {
+      console.error(`❌ Error calculating hours for ${business.name}:`, hoursErr.message);
     }
 
     res.json({
@@ -1613,6 +1630,7 @@ router.get("/:id", async (req, res) => {
       },
     });
   } catch (error: any) {
+    console.error(`❌ Error in GET /api/business/:id:`, error.message);
     res.status(500).json({ error: error.message });
   }
 });
