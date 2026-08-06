@@ -166,7 +166,7 @@ export default function OrderTrackingScreen() {
     };
 
     fetchDeliveryLocation();
-    const interval = setInterval(fetchDeliveryLocation, 10000);
+    const interval = setInterval(fetchDeliveryLocation, 3000); // 3s para animación fluida
     return () => clearInterval(interval);
   }, [orderId]);
 
@@ -991,7 +991,7 @@ export default function OrderTrackingScreen() {
                       fontWeight: "600",
                     }}
                   >
-                    �${tip}
+                    €${tip}
                   </ThemedText>
                 </Pressable>
               ))}

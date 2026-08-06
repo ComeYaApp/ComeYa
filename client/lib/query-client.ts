@@ -105,6 +105,7 @@ export async function apiRequest(
   method: string,
   route: string,
   data?: unknown | undefined,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
@@ -131,6 +132,7 @@ export async function apiRequest(
       headers,
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
+      signal,
     });
 
     console.log(`✅ Response status: ${res.status}`);
@@ -145,6 +147,7 @@ export async function apiRequest(
           headers,
           body: data ? JSON.stringify(data) : undefined,
           credentials: "include",
+          signal,
         });
         await throwIfResNotOk(retryRes);
         return retryRes;

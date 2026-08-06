@@ -8,15 +8,6 @@
       "developmentClient": true,
       "distribution": "internal"
     },
-    "preview": {
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      },
-      "ios": {
-        "simulator": true
-      }
-    },
     "adhoc": {
       "distribution": "internal",
       "ios": {
@@ -30,10 +21,13 @@
         "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
       }
     },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
     "production": {
-      "android": {
-        "buildType": "app-bundle"
-      },
       "ios": {
         "image": "latest",
         "distribution": "store"

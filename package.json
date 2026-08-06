@@ -36,8 +36,6 @@
     "update:location": "node scripts/update-location.js",
     "update:venezuela": "node scripts/update-to-venezuela.js",
     "security-audit": "npm audit && npm run lint",
-    "build:apk:production": "eas build --platform android --profile production --local",
-    "build:apk:preview": "eas build --platform android --profile preview --local",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "build": "npx expo export --platform web"

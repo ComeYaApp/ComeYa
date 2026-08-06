@@ -98,21 +98,33 @@ export function BusinessCard({
       <View style={styles.imageContainer}>
         <Image
           source={{ uri: business.bannerImage }}
-          style={styles.image}
+          style={[
+            styles.image,
+            !business.isOpen && styles.imageClosed,
+          ]}
           contentFit="cover"
         />
         {!business.isOpen ? (
           <View style={styles.closedOverlay}>
-            <ThemedText type="small" style={styles.closedText}>
-              Cerrado
+            <View style={styles.closedBadge}>
+              <Feather name="lock" size={18} color="#FFFFFF" />
+              <ThemedText type="small" style={styles.closedBadgeText}>
+                CERRADO
+              </ThemedText>
+            </View>
+            <ThemedText type="caption" style={styles.closedSubtitle}>
+              Abre mañana a las 09:00
             </ThemedText>
           </View>
         ) : null}
         {business.type === "market" ? (
           <Badge text="Mercado" variant="primary" style={styles.typeBadge} />
         ) : null}
+        {business.featured ? (
+          <Badge text="Destacado" variant="warning" style={styles.featuredBadge} />
+        ) : null}
       </View>
-      <View style={styles.content}>
+      <View style={[styles.content, !business.isOpen && styles.contentClosed]}>
         <View style={styles.header}>
           <ThemedText type="h4" numberOfLines={1} style={styles.name}>
             {business.name}
@@ -120,11 +132,13 @@ export function BusinessCard({
           <View style={styles.ratingContainer}>
             <Feather name="star" size={14} color={ComeYaColors.warning} />
             <ThemedText type="small" style={styles.rating}>
-              {business.rating}
+              {business.rating > 0 ? business.rating.toFixed(1) : "Nuevo"}
             </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              ({business.reviewCount})
-            </ThemedText>
+            {business.reviewCount > 0 && (
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                ({business.reviewCount})
+              </ThemedText>
+            )}
           </View>
         </View>
         <ThemedText
@@ -144,9 +158,22 @@ export function BusinessCard({
               {business.deliveryTime}
             </ThemedText>
           </View>
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            Envío ${business.deliveryFee}
-          </ThemedText>
+          <View style={styles.deliveryInfo}>
+            {business.distance != null && (
+              <>
+                <Feather name="map-pin" size={12} color={ComeYaColors.primary} />
+                <ThemedText
+                  type="caption"
+                  style={{ color: ComeYaColors.primary, fontWeight: "600" }}
+                >
+                  {business.distance} km
+                </ThemedText>
+              </>
+            )}
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: business.distance != null ? Spacing.md : 0 }}>
+              Envío €{business.deliveryFee.toFixed(2)}
+            </ThemedText>
+          </View>
         </View>
       </View>
     </AnimatedPressable>
@@ -166,20 +193,51 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 110,
   },
+  imageClosed: {
+    opacity: 0.5,
+  },
   closedOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0, 0, 0, 0.6)",
     justifyContent: "center",
     alignItems: "center",
   },
+  closedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E53935",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    marginBottom: Spacing.xs,
+    gap: Spacing.xs,
+  },
+  closedBadgeText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 13,
+    letterSpacing: 1,
+  },
+  closedSubtitle: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 11,
+  },
   closedText: {
     color: "#FFFFFF",
     fontWeight: "700",
+  },
+  contentClosed: {
+    opacity: 0.6,
   },
   typeBadge: {
     position: "absolute",
     top: Spacing.sm,
     left: Spacing.sm,
+  },
+  featuredBadge: {
+    position: "absolute",
+    top: Spacing.sm,
+    right: Spacing.sm,
   },
   content: {
     padding: Spacing.md,

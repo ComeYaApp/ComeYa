@@ -21,7 +21,21 @@ interface CacheEntry<T> {
   ttl: number;
 }
 
+const MAX_CACHE_SIZE = 500; // Máximo 500 entradas en cache
 const cache = new Map<string, CacheEntry<any>>();
+
+// LRU eviction: si el cache excede MAX_CACHE_SIZE, eliminar las entradas más antiguas
+function evictOldest() {
+  if (cache.size <= MAX_CACHE_SIZE) return;
+  const entriesToDelete = cache.size - MAX_CACHE_SIZE;
+  const sortedEntries = [...cache.entries()]
+    .sort((a, b) => a[1].timestamp - b[1].timestamp)
+    .slice(0, entriesToDelete);
+  for (const [key] of sortedEntries) {
+    cache.delete(key);
+  }
+  console.log(`🧹 [GoogleMaps Cache] Evicted ${entriesToDelete} old entries`);
+}
 
 const TTL = {
   // Directions: cache largo (las calles no cambian frecuentemente)
