@@ -1333,6 +1333,7 @@ router.post(
 router.get("/", async (req, res) => {
   try {
     const { queryWithRetry } = await import("../dbHelper");
+    const { BusinessHoursService } = await import("../businessHoursService");
 
     console.log("📍 GET /api/businesses called");
 
@@ -1341,12 +1342,24 @@ router.get("/", async (req, res) => {
       "SELECT * FROM businesses WHERE is_active = 1 AND verification_status = 'verified'",
     );
 
-    console.log(`✅ Found ${rows.length} active & verified businesses`);
+    // Recalcular isOpen en tiempo real para cada negocio
+    const businessesWithRealOpenStatus = await Promise.all(
+      rows.map(async (biz: any) => {
+        try {
+          const realIsOpen = await BusinessHoursService.isBusinessOpen(biz.id);
+          return { ...biz, isOpen: realIsOpen, is_open: realIsOpen ? 1 : 0 };
+        } catch {
+          return biz; // Si falla, devolver el valor original
+        }
+      }),
+    );
+
+    console.log(`✅ Found ${businessesWithRealOpenStatus.length} active & verified businesses`);
 
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
-    res.json({ success: true, businesses: rows });
+    res.json({ success: true, businesses: businessesWithRealOpenStatus });
   } catch (error: any) {
     console.error("❌ Error in /api/businesses:", error);
     res.status(500).json({
