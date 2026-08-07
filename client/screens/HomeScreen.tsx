@@ -1,6 +1,7 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -34,6 +35,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 
 import { ThemedText } from "@/components/ThemedText";
 import { BusinessCard } from "@/components/BusinessCard";
@@ -52,6 +54,7 @@ import { Business } from "@/types";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { MainTabParamList } from "@/navigation/MainTabNavigator";
+import { calculateDistance } from "@/utils/distance";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "HomeTab">,
@@ -67,7 +70,9 @@ const filters = [
   { id: "rapido", name: "Rapido", icon: "zap" },
   { id: "economico", name: "Economico", icon: "dollar-sign" },
   { id: "popular", name: "Popular", icon: "star" },
+  { id: "open", name: "Abierto ahora", icon: "clock" },
 ];
+const favoriteFilter = { id: "favorites", name: "Favoritos", icon: "heart" };
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -91,6 +96,49 @@ export default function HomeScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [sortMode, setSortMode] = useState<"distance" | "rating" | "time">(
+    "distance",
+  );
+
+  // Funcionalidades reales de la app (sin mock data)
+  const realFeatures: Array<{
+    id: string;
+    title: string;
+    subtitle: string;
+    gradient: [string, string, string];
+    icon: string;
+    screen: keyof RootStackParamList;
+  }> = [
+    { id: "vip", title: "Hazte VIP", subtitle: "Envío gratis + 10% dto.", gradient: ["#FFD700", "#FFA000", "#FF8F00"], icon: "award", screen: "Subscriptions" },
+    { id: "gift", title: "Tarjeta Regalo", subtitle: "El mejor detalle", gradient: ["#E91E63", "#C2185B", "#AD1457"], icon: "gift", screen: "GiftCards" },
+    { id: "points", title: "Tus Puntos", subtitle: "Gana recompensas", gradient: ["#9C27B0", "#7B1FA2", "#6A1B9A"], icon: "zap", screen: "Gamification" },
+    { id: "referral", title: "Invita y Gana", subtitle: "Crédito para ambos", gradient: ["#00BCD4", "#0097A7", "#00838F"], icon: "share-2", screen: "Gamification" },
+  ];
+
+  // Obtener ubicación del usuario
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted" || !isMounted) return;
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        if (isMounted && location?.coords) {
+          setUserLocation({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+        }
+      } catch { /* ubicación opcional */ }
+    })();
+    return () => { isMounted = false; };
+  }, []);
 
   // Mapa de iconos y colores - clave = primera categoria del negocio
   const CATEGORY_STYLE: Record<
@@ -265,16 +313,31 @@ export default function HomeScreen() {
     [searchQuery, activeCategory, activeFilter],
   );
 
-  const filteredBusinesses = filterBusinesses(businesses);
+  // Calcular distancias
+  const businessesWithDistance = useMemo(() => {
+    if (!userLocation) return businesses;
+    return businesses.map(b => {
+      if (b.latitude && b.longitude) {
+        return { ...b, distance: parseFloat(calculateDistance(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude).toFixed(1)) };
+      }
+      return b;
+    });
+  }, [businesses, userLocation]);
 
-  // Ordenar por rating (destacados primero, luego por rating)
-  const sortedBusinesses = [...filteredBusinesses].sort((a, b) => {
-    // Destacados primero
-    if (a.featured && !b.featured) return -1;
-    if (!a.featured && b.featured) return 1;
-    // Luego por rating
-    return b.rating - a.rating;
-  });
+  const filteredBusinesses = filterBusinesses(businessesWithDistance);
+
+  // Ordenar por modo (distancia > rating > tiempo)
+  const sortedBusinesses = useMemo(() => {
+    const s = [...filteredBusinesses];
+    s.sort((a, b) => {
+      if (a.featured && !b.featured) return -1;
+      if (!a.featured && b.featured) return 1;
+      if (sortMode === "distance" && a.distance != null && b.distance != null) return a.distance - b.distance;
+      if (sortMode === "time") { const ta = parseInt(a.deliveryTime) || 0; const tb = parseInt(b.deliveryTime) || 0; return ta - tb; }
+      return b.rating - a.rating;
+    });
+    return s;
+  }, [filteredBusinesses, sortMode]);
 
   const restaurants = sortedBusinesses.filter((b) => b.type === "restaurant");
   const markets = sortedBusinesses.filter((b) => b.type === "market");
@@ -552,7 +615,76 @@ export default function HomeScreen() {
               </ThemedText>
             </Pressable>
           ))}
+          {user && (
+            <Pressable
+              key={favoriteFilter.id}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setActiveFilter(
+                  activeFilter === favoriteFilter.id ? null : favoriteFilter.id,
+                );
+              }}
+              style={({ pressed }) => [
+                styles.filterChip,
+                activeFilter === favoriteFilter.id
+                  ? { backgroundColor: "#E91E63" }
+                  : { backgroundColor: theme.backgroundSecondary },
+                { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] },
+              ]}
+            >
+              <Feather name={favoriteFilter.icon as any} size={14} color={activeFilter === favoriteFilter.id ? "#FFFFFF" : "#E91E63"} />
+              <ThemedText type="small" style={[styles.filterText, activeFilter === favoriteFilter.id ? { color: "#FFFFFF" } : { color: "#E91E63" }]}>
+                {favoriteFilter.name}
+              </ThemedText>
+            </Pressable>
+          )}
         </ScrollView>
+
+        {/* Promotions Carousel */}
+        {!hasActiveFilters && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="h3" style={{ marginBottom: 0 }}>Promociones</ThemedText>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.md }}>
+              {realFeatures.map((feature) => (
+                <Pressable
+                  key={feature.id}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); navigation.navigate(feature.screen as any); }}
+                  style={({ pressed }) => [styles.promoCard, Shadows.md, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+                >
+                  <LinearGradient colors={feature.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.promoGradient}>
+                    <View style={styles.promoIconContainer}>
+                      <Feather name={feature.icon as any} size={28} color="#FFFFFF" />
+                    </View>
+                    <View style={styles.promoTextContainer}>
+                      <Text style={styles.promoTitle}>{feature.title}</Text>
+                      <Text style={styles.promoSubtitle}>{feature.subtitle}</Text>
+                    </View>
+                  </LinearGradient>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Sort Mode Selector */}
+        {!hasActiveFilters && userLocation && (
+          <View style={styles.sortRow}>
+            <Pressable onPress={() => { Haptics.selectionAsync(); setSortMode("distance"); }} style={[styles.sortChip, sortMode === "distance" && styles.sortChipActive]}>
+              <Feather name="map-pin" size={12} color={sortMode === "distance" ? "#FFFFFF" : theme.textSecondary} />
+              <ThemedText type="caption" style={sortMode === "distance" ? styles.sortChipTextActive : styles.sortChipText}>Más cerca</ThemedText>
+            </Pressable>
+            <Pressable onPress={() => { Haptics.selectionAsync(); setSortMode("rating"); }} style={[styles.sortChip, sortMode === "rating" && styles.sortChipActive]}>
+              <Feather name="star" size={12} color={sortMode === "rating" ? "#FFFFFF" : theme.textSecondary} />
+              <ThemedText type="caption" style={sortMode === "rating" ? styles.sortChipTextActive : styles.sortChipText}>Mejor rating</ThemedText>
+            </Pressable>
+            <Pressable onPress={() => { Haptics.selectionAsync(); setSortMode("time"); }} style={[styles.sortChip, sortMode === "time" && styles.sortChipActive]}>
+              <Feather name="clock" size={12} color={sortMode === "time" ? "#FFFFFF" : theme.textSecondary} />
+              <ThemedText type="caption" style={sortMode === "time" ? styles.sortChipTextActive : styles.sortChipText}>Más rápido</ThemedText>
+            </Pressable>
+          </View>
+        )}
 
         {/* Carnival Banner (disabled) */}
         {showCarnivalBanner && settings.carnivalEnabled ? (
@@ -1287,4 +1419,23 @@ const styles = StyleSheet.create({
     width: 140,
     height: 100,
   },
+  // Promotions
+  promoCard: { width: 180, height: 110, borderRadius: BorderRadius.lg, overflow: "hidden" },
+  promoGradient: { flex: 1, padding: Spacing.md, justifyContent: "space-between" },
+  promoIconContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
+  promoTextContainer: { marginTop: Spacing.xs },
+  promoTitle: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
+  promoSubtitle: { color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 2 },
+  // Sort Mode
+  sortRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.md },
+  sortChip: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.full, backgroundColor: "rgba(128,128,128,0.1)", gap: Spacing.xs },
+  sortChipActive: { backgroundColor: ComeYaColors.primary },
+  sortChipText: { color: "#666", fontWeight: "600" },
+  sortChipTextActive: { color: "#FFFFFF", fontWeight: "600" },
+  // Recent Orders
+  recentOrderCard: { width: 120, borderRadius: BorderRadius.lg, overflow: "hidden" },
+  recentOrderImage: { width: 120, height: 80, borderTopLeftRadius: BorderRadius.lg, borderTopRightRadius: BorderRadius.lg },
+  recentOrderPlaceholder: { justifyContent: "center", alignItems: "center" },
+  recentOrderInfo: { padding: Spacing.sm },
+  recentOrderBusiness: { fontWeight: "600", fontSize: 12 },
 });

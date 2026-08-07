@@ -7,6 +7,11 @@ interface AppSettings {
   carnivalEnabled: boolean;
   notificationsEnabled: boolean;
   themeMode: ThemeMode;
+  commission: number;
+  deliveryFees: { tier1: number; tier2: number; tier3: number; extraPerKm: number };
+  minimumOrder: number;
+  serviceFee: number;
+  deliveryZone: { name: string; radius: number; baseFee: number; active: boolean } | null;
 }
 
 interface AppContextType {
@@ -24,6 +29,11 @@ const defaultSettings: AppSettings = {
   carnivalEnabled: true,
   notificationsEnabled: false,
   themeMode: "system",
+  commission: 15,
+  deliveryFees: { tier1: 2.5, tier2: 4.0, tier3: 5.0, extraPerKm: 1.0 },
+  minimumOrder: 5,
+  serviceFee: 1,
+  deliveryZone: { name: "Soria", radius: 8, baseFee: 2.5, active: true },
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {

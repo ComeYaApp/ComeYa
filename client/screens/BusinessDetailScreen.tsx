@@ -66,6 +66,22 @@ export default function BusinessDetailScreen() {
 
         if (data.success && data.business) {
           // Adapt backend data to frontend format
+          // Parse openingHours del backend
+          let parsedOpeningHours: Business["openingHours"] = [];
+          if (data.business.openingHours) {
+            if (Array.isArray(data.business.openingHours)) {
+              parsedOpeningHours = data.business.openingHours;
+            } else if (typeof data.business.openingHours === "object") {
+              // Formato { monday: {open, close}, tuesday: ... }
+              const dayKeys = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+              parsedOpeningHours = dayKeys.map(day => ({
+                day,
+                open: data.business.openingHours[day]?.open || "09:00",
+                close: data.business.openingHours[day]?.close || "22:00",
+              }));
+            }
+          }
+
           const adaptedBusiness: Business = {
             id: data.business.id,
             name: data.business.name,
@@ -88,7 +104,7 @@ export default function BusinessDetailScreen() {
               data.business.isOpen === 1 ||
               data.business.is_open === true ||
               data.business.is_open === 1,
-            openingHours: [],
+            openingHours: parsedOpeningHours,
             address: data.business.address || "Soria, España",
             phone: data.business.phone || "",
             categories: data.business.categories

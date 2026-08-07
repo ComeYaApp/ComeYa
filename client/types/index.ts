@@ -50,6 +50,9 @@ export interface Business {
   phone: string;
   categories: string[];
   featured: boolean;
+  distance?: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Product {

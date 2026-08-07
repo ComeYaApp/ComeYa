@@ -103,6 +103,16 @@ export default function ProductDetailScreen() {
   const handleAddToCart = async () => {
     if (!product) return;
 
+    if (!user) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showToast(
+        "Inicia sesión o regístrate para añadir productos al carrito.",
+        "warning",
+      );
+      navigation.navigate("Login" as never);
+      return;
+    }
+
     if (product.requiresNote && !note.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       showToast(
@@ -131,6 +141,17 @@ export default function ProductDetailScreen() {
 
   const handleConfirmBusinessChange = async () => {
     if (!product) return;
+
+    if (!user) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      showToast(
+        "Inicia sesión o regístrate para añadir productos al carrito.",
+        "warning",
+      );
+      navigation.navigate("Login" as never);
+      return;
+    }
+
     await addToCart(
       product,
       businessId,

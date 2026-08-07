@@ -317,6 +317,105 @@ export default function BusinessOrdersScreen() {
             ))}
         </View>
 
+        {/* Mostrar preferencias de sustitución si existen */}
+        {(item.substitutionPreference ||
+          item.itemSubstitutionPreferences ||
+          item.substituteProductIds) && (
+          <View
+            style={{
+              marginTop: Spacing.md,
+              padding: Spacing.md,
+              backgroundColor: ComeYaColors.warning + "15",
+              borderRadius: BorderRadius.md,
+              borderLeftWidth: 3,
+              borderLeftColor: ComeYaColors.warning,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.xs }}>
+              <Feather name="alert-triangle" size={14} color={ComeYaColors.warning} />
+              <ThemedText
+                type="small"
+                style={{
+                  color: ComeYaColors.warning,
+                  fontWeight: "600",
+                  marginLeft: Spacing.xs,
+                }}
+              >
+                Si algo no está disponible:
+              </ThemedText>
+            </View>
+            {item.substitutionPreference && (
+              <ThemedText type="small" style={{ color: theme.text, marginTop: 2 }}>
+                • Preferencia general:{" "}
+                <ThemedText type="small" style={{ fontWeight: "600" }}>
+                  {item.substitutionPreference === "refund"
+                    ? "💵 Reembolsar"
+                    : item.substitutionPreference === "call"
+                      ? "📞 Llamar al cliente"
+                      : "🔄 Sustituir por producto similar"}
+                </ThemedText>
+              </ThemedText>
+            )}
+            {item.substituteProductIds && (() => {
+              try {
+                const substituteIds =
+                  typeof item.substituteProductIds === "string"
+                    ? JSON.parse(item.substituteProductIds)
+                    : item.substituteProductIds;
+                const entries = Object.entries(substituteIds);
+                if (entries.length > 0) {
+                  return (
+                    <View style={{ marginTop: Spacing.xs }}>
+                      <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
+                        Productos sustitutos elegidos:
+                      </ThemedText>
+                      {entries.map(([originalId, substituteId]: [string, unknown]) => (
+                        <ThemedText key={originalId} type="caption" style={{ color: theme.textSecondary }}>
+                          • Producto ID: {originalId.slice(-6)} → Sustituto ID: {String(substituteId).slice(-6)}
+                        </ThemedText>
+                      ))}
+                    </View>
+                  );
+                }
+              } catch {
+                return null;
+              }
+              return null;
+            })()}
+            {item.itemSubstitutionPreferences && (() => {
+              try {
+                const itemPrefs =
+                  typeof item.itemSubstitutionPreferences === "string"
+                    ? JSON.parse(item.itemSubstitutionPreferences)
+                    : item.itemSubstitutionPreferences;
+                const prefs = Object.entries(itemPrefs);
+                if (prefs.length > 0) {
+                  return (
+                    <View style={{ marginTop: Spacing.xs }}>
+                      <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
+                        Preferencias por producto:
+                      </ThemedText>
+                      {prefs.map(([itemId, pref]: [string, unknown]) => (
+                        <ThemedText key={itemId} type="caption" style={{ color: theme.textSecondary }}>
+                          • {String(itemId).slice(-6)}:{" "}
+                          {String(pref) === "refund"
+                            ? "Reembolsar"
+                            : String(pref) === "call"
+                              ? "Llamar"
+                              : "Sustituir"}
+                        </ThemedText>
+                      ))}
+                    </View>
+                  );
+                }
+              } catch {
+                return null;
+              }
+              return null;
+            })()}
+          </View>
+        )}
+
         <View style={styles.orderFooter}>
           <View>
             <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>

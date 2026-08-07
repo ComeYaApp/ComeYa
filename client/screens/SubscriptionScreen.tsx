@@ -87,17 +87,18 @@ export default function SubscriptionScreen() {
   const isBusinessOwner = user?.role === "business_owner";
 
   const customerBenefits = [
-    "Envío gratis en todos tus pedidos",
-    "10% de descuento en cada compra",
+    "Envío gratis en pedidos +€15 (ahorra €2.50-€5 por pedido)",
+    "5% de descuento en cada compra",
     "Soporte prioritario 24/7",
-    "Ofertas exclusivas para miembros",
+    "Ofertas exclusivas y acceso anticipado",
+    "Recuperas tu inversión con 3 pedidos al mes",
   ];
   const businessBenefits = [
-    "Comisión reducida (menos costes)",
-    "Negocio destacado en búsquedas",
-    "Estadísticas avanzadas del negocio",
+    "Comisión reducida del 15% al 10%",
+    "Negocio destacado en búsquedas y mapa",
+    "Estadísticas avanzadas de ventas y clientes",
     "Soporte VIP con gestor personal",
-    "Herramientas de promoción",
+    "Herramientas de promoción y fidelización",
   ];
   const queryClient = useQueryClient();
 

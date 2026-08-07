@@ -113,6 +113,8 @@ export default function ReviewScreenEnhanced() {
   const [comment, setComment] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [wantTip, setWantTip] = useState<boolean | null>(null);
+  const [tipAmount, setTipAmount] = useState(0);
 
   const { data: tagsData } = useQuery({
     queryKey: ["/api/reviews/tags"],
@@ -181,6 +183,7 @@ export default function ReviewScreenEnhanced() {
         comment: comment.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         photos: photos.length > 0 ? photos : undefined,
+        tipAmount: wantTip ? tipAmount : 0,
       });
       return response.json();
     },
@@ -417,6 +420,172 @@ export default function ReviewScreenEnhanced() {
             textAlignVertical="top"
           />
         </Animated.View>
+
+        {deliveryPersonId ? (
+          <Animated.View
+            entering={FadeInDown.delay(350)}
+            style={[
+              styles.section,
+              { backgroundColor: theme.card },
+              Shadows.sm,
+            ]}
+          >
+            <View style={styles.sectionHeader}>
+              <Feather name="heart" size={20} color={ComeYaColors.primary} />
+              <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
+                Propina al repartidor
+              </ThemedText>
+            </View>
+            <ThemedText
+              type="small"
+              style={{
+                color: theme.textSecondary,
+                marginBottom: Spacing.md,
+              }}
+            >
+              ¿Deseas dar una propina al repartidor?
+            </ThemedText>
+
+            <View
+              style={{
+                flexDirection: "row",
+                gap: Spacing.sm,
+                marginBottom: Spacing.md,
+              }}
+            >
+              <Pressable
+                onPress={() => {
+                  setWantTip(true);
+                  Haptics.selectionAsync();
+                }}
+                style={[
+                  {
+                    flex: 1,
+                    paddingVertical: Spacing.md,
+                    borderRadius: BorderRadius.md,
+                    alignItems: "center",
+                    borderWidth: 2,
+                  },
+                  wantTip === true
+                    ? {
+                        backgroundColor: ComeYaColors.primary,
+                        borderColor: ComeYaColors.primary,
+                      }
+                    : {
+                        backgroundColor: theme.backgroundSecondary,
+                        borderColor: theme.border,
+                      },
+                ]}
+              >
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: wantTip === true ? "#FFF" : theme.text,
+                    fontWeight: "600",
+                  }}
+                >
+                  Sí
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setWantTip(false);
+                  setTipAmount(0);
+                  Haptics.selectionAsync();
+                }}
+                style={[
+                  {
+                    flex: 1,
+                    paddingVertical: Spacing.md,
+                    borderRadius: BorderRadius.md,
+                    alignItems: "center",
+                    borderWidth: 2,
+                  },
+                  wantTip === false
+                    ? {
+                        backgroundColor: ComeYaColors.primary,
+                        borderColor: ComeYaColors.primary,
+                      }
+                    : {
+                        backgroundColor: theme.backgroundSecondary,
+                        borderColor: theme.border,
+                      },
+                ]}
+              >
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: wantTip === false ? "#FFF" : theme.text,
+                    fontWeight: "600",
+                  }}
+                >
+                  No
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            {wantTip === true && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: Spacing.sm,
+                  flexWrap: "wrap",
+                }}
+              >
+                {[1, 2, 3, 5].map((amount) => (
+                  <Pressable
+                    key={amount}
+                    onPress={() => {
+                      setTipAmount(amount);
+                      Haptics.selectionAsync();
+                    }}
+                    style={[
+                      {
+                        paddingHorizontal: Spacing.lg,
+                        paddingVertical: Spacing.sm,
+                        borderRadius: BorderRadius.full,
+                        borderWidth: 2,
+                      },
+                      tipAmount === amount
+                        ? {
+                            backgroundColor: ComeYaColors.primary,
+                            borderColor: ComeYaColors.primary,
+                          }
+                        : {
+                            backgroundColor: theme.backgroundSecondary,
+                            borderColor: theme.border,
+                          },
+                    ]}
+                  >
+                    <ThemedText
+                      type="body"
+                      style={{
+                        color:
+                          tipAmount === amount ? "#FFF" : theme.text,
+                        fontWeight: "600",
+                      }}
+                    >
+                      €{amount}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
+            {wantTip === false && (
+              <ThemedText
+                type="small"
+                style={{
+                  color: theme.textSecondary,
+                  fontStyle: "italic",
+                }}
+              >
+                Puedes añadir una propina más tarde desde el historial de
+                pedidos.
+              </ThemedText>
+            )}
+          </Animated.View>
+        ) : null}
 
         <Pressable
           onPress={handleSubmit}

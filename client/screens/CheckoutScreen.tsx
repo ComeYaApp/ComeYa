@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -137,6 +138,13 @@ export default function CheckoutScreen({ route }: any) {
     Record<string, SubstitutionOption>
   >({});
   const [showItemSubstitutions, setShowItemSubstitutions] = useState(false);
+  const [substituteProductIds, setSubstituteProductIds] = useState<
+    Record<string, string>
+  >({});
+  const [showSubstitutePicker, setShowSubstitutePicker] = useState<
+    string | null
+  >(null);
+  const [businessProducts, setBusinessProducts] = useState<any[]>([]);
 
   // Cupón
   const [couponCode, setCouponCode] = useState("");
@@ -242,6 +250,47 @@ export default function CheckoutScreen({ route }: any) {
     }
   };
 
+  const loadBusinessProducts = async () => {
+    if (!cart?.businessId) return;
+    try {
+      const response = await apiRequest(
+        "GET",
+        `/api/businesses/${cart.businessId}`,
+      );
+      const data = await response.json();
+      if (data.success && data.business?.products) {
+        // Adaptar productos igual que en BusinessDetailScreen
+        const products = data.business.products.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || "",
+          price: (p.price || 0) / 100,
+          image: p.image || "",
+          category: p.category || "General",
+          isAvailable:
+            p.isAvailable === true ||
+            p.isAvailable === 1 ||
+            p.is_available === true ||
+            p.is_available === 1,
+          available:
+            p.isAvailable === true ||
+            p.isAvailable === 1 ||
+            p.is_available === true ||
+            p.is_available === 1,
+          businessId: p.businessId || p.business_id,
+          isWeightBased: p.isWeightBased || p.is_weight_based || false,
+          unit: p.unit || "ud",
+        }));
+        setBusinessProducts(products);
+      } else {
+        setBusinessProducts([]);
+      }
+    } catch (error) {
+      console.error("Error loading business products:", error);
+      setBusinessProducts([]);
+    }
+  };
+
 // Calculate delivery fee once and store in state
 const [finalDeliveryFee, setFinalDeliveryFee] = useState<number | null>(null);
 
@@ -252,11 +301,15 @@ useEffect(() => {
   }
 
   if (route?.params?.calculatedDeliveryFee) {
-    setFinalDeliveryFee(route.params.calculatedDeliveryFee / 100);
+    // CartScreen ya pasa el delivery fee en euros, NO dividir por 100
+    const fromCart = Number(route.params.calculatedDeliveryFee);
+    setFinalDeliveryFee(fromCart > 100 ? fromCart / 100 : fromCart);
   } else if (dynamicDeliveryFee !== null) {
     setFinalDeliveryFee(dynamicDeliveryFee);
   } else if (business?.deliveryFee) {
-    setFinalDeliveryFee(business.deliveryFee / 100);
+    // deliveryFee puede venir en centavos (ej: 300) o en euros (ej: 3.00)
+    const rawFee = Number(business.deliveryFee);
+    setFinalDeliveryFee(rawFee > 100 ? rawFee / 100 : rawFee);
   } else {
     setFinalDeliveryFee(2.5); // Default fallback
   }
@@ -269,8 +322,7 @@ useEffect(() => {
 
 const effectiveDeliveryFee = finalDeliveryFee ?? 0;
 
-  const [tip, setTip] = useState(0);
-const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
+const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
 
   // Beneficios de suscripción
   useEffect(() => {
@@ -347,11 +399,10 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + t
       const discountCents = appliedCoupon
         ? Math.round(couponDiscount * 100)
         : 0;
-      const tipCents = Math.round(tip * 100);
       // El total que valida el servidor
       const orderTotal =
         baseSubtotalCents + commissionCents + deliveryFeeCents - discountCents;
-      const totalAmount = orderTotal + tipCents;
+      const totalAmount = orderTotal;
 
       const orderResponse = await apiRequest("POST", "/api/orders", {
         businessId: cart.businessId,
@@ -364,7 +415,7 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + t
         nemyCommission: commissionCents,
         deliveryFee: Math.round((finalDeliveryFee ?? 0) * 100),
         total: orderTotal,
-        tip: tipCents,
+        tip: 0,
         paymentMethod,
         orderType: confirmedOrderType,
         deliveryAddressId: selectedAddress.id,
@@ -378,6 +429,10 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + t
             : null,
         couponCode: appliedCoupon ? couponCode.toUpperCase() : null,
         couponDiscount: discountCents || null,
+        substituteProductIds:
+          Object.keys(substituteProductIds).length > 0
+            ? JSON.stringify(substituteProductIds)
+            : null,
       });
 
       const order = await orderResponse.json();
@@ -648,6 +703,135 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + t
                 </ThemedText>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal para seleccionar producto sustituto */}
+      <Modal
+        visible={showSubstitutePicker !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSubstitutePicker(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowSubstitutePicker(null)}
+          />
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.card,
+                paddingBottom: insets.bottom + Spacing.lg,
+              },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <ThemedText type="h4">Elige producto sustituto</ThemedText>
+              <Pressable onPress={() => setShowSubstitutePicker(null)}>
+                <Feather name="x" size={24} color={theme.text} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 400 }}>
+              {businessProducts.length === 0 ? (
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: theme.textSecondary,
+                    textAlign: "center",
+                    padding: Spacing.xl,
+                  }}
+                >
+                  Cargando productos del negocio...
+                </ThemedText>
+              ) : (
+                businessProducts
+                  .filter(
+                    (p: any) =>
+                      p.id !== showSubstitutePicker?.replace("__global__", "") &&
+                      p.available !== false
+                  )
+                  .map((product: any) => {
+                    const selectedProductId =
+                      showSubstitutePicker === "__global__"
+                        ? ""
+                        : showSubstitutePicker || "";
+                    const isSelected =
+                      substituteProductIds[selectedProductId] === product.id ||
+                      substituteProductIds[showSubstitutePicker || ""] ===
+                        product.id;
+                    return (
+                      <Pressable
+                        key={product.id}
+                        onPress={() => {
+                          const key =
+                            showSubstitutePicker === "__global__"
+                              ? showSubstitutePicker
+                              : showSubstitutePicker || "";
+                          setSubstituteProductIds({
+                            ...substituteProductIds,
+                            [key]: product.id,
+                          });
+                          setShowSubstitutePicker(null);
+                        }}
+                        style={[
+                          styles.modalAddress,
+                          {
+                            borderColor: isSelected
+                              ? ComeYaColors.primary
+                              : theme.border,
+                            backgroundColor: theme.backgroundSecondary,
+                          },
+                        ]}
+                      >
+                        <Image
+                          source={{
+                            uri:
+                              product.image ||
+                              "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
+                          }}
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: BorderRadius.sm,
+                            marginRight: Spacing.md,
+                          }}
+                          resizeMode="cover"
+                        />
+                        <View style={{ flex: 1 }}>
+                          <ThemedText
+                            type="body"
+                            style={{ fontWeight: "600" }}
+                          >
+                            {product.name}
+                          </ThemedText>
+                          <ThemedText
+                            type="small"
+                            style={{ color: theme.textSecondary }}
+                          >
+                            €
+                            {typeof product.price === "number"
+                              ? product.price.toFixed(2)
+                              : product.price}
+                            {product.isWeightBased
+                              ? ` /${product.unit || "ud"}`
+                              : ""}
+                          </ThemedText>
+                        </View>
+                        {isSelected ? (
+                          <Feather
+                            name="check-circle"
+                            size={20}
+                            color={ComeYaColors.primary}
+                          />
+                        ) : null}
+                      </Pressable>
+                    );
+                  })
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1023,6 +1207,10 @@ navigation.navigate("DigitalPaymentMethod", {
                     key={option}
                     onPress={() => {
                       Haptics.selectionAsync();
+                      if (option === "substitute") {
+                        loadBusinessProducts();
+                        setShowSubstitutePicker("__global__");
+                      }
                       setGlobalSubstitution(option);
                     }}
                     style={[
@@ -1112,6 +1300,10 @@ navigation.navigate("DigitalPaymentMethod", {
                           key={option}
                           onPress={() => {
                             Haptics.selectionAsync();
+                            if (option === "substitute") {
+                              loadBusinessProducts();
+                              setShowSubstitutePicker(item.product.id);
+                            }
                             setItemSubstitutions({
                               ...itemSubstitutions,
                               [item.id]: option,
@@ -1139,56 +1331,6 @@ navigation.navigate("DigitalPaymentMethod", {
               ))}
             </View>
           ) : null}
-        </View>
-
-        {/* Propina al repartidor */}
-        <View
-          style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
-        >
-          <View style={styles.sectionHeader}>
-            <Feather name="heart" size={20} color={ComeYaColors.primary} />
-            <ThemedText type="h4" style={styles.sectionTitle}>
-              Propina al repartidor
-            </ThemedText>
-          </View>
-          <ThemedText
-            type="small"
-            style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
-          >
-            Opcional — 100% va al repartidor
-          </ThemedText>
-          <View style={{ flexDirection: "row", gap: Spacing.sm }}>
-            {[0, 1, 2, 5].map((t) => (
-              <Pressable
-                key={t}
-                onPress={() => {
-                  setTip(t);
-                  Haptics.selectionAsync();
-                }}
-                style={[
-                  styles.tipChip,
-                  {
-                    backgroundColor:
-                      tip === t
-                        ? ComeYaColors.primary
-                        : theme.backgroundSecondary,
-                    borderColor:
-                      tip === t ? ComeYaColors.primary : theme.border,
-                  },
-                ]}
-              >
-                <ThemedText
-                  type="small"
-                  style={{
-                    color: tip === t ? "#FFF" : theme.text,
-                    fontWeight: "600",
-                  }}
-                >
-                  {t === 0 ? "Sin propina" : `€${t}`}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
         </View>
 
         <View
@@ -1271,14 +1413,6 @@ navigation.navigate("DigitalPaymentMethod", {
             <ThemedText type="body" style={{ color: ComeYaColors.success }}>
               -€{couponDiscount.toFixed(2)}
             </ThemedText>
-          </View>
-        )}
-        {tip > 0 && (
-          <View style={styles.totalRow}>
-            <ThemedText type="body" style={{ color: theme.textSecondary }}>
-              Propina
-            </ThemedText>
-            <ThemedText type="body">€{tip.toFixed(2)}</ThemedText>
           </View>
         )}
         {subDiscount > 0 && (
