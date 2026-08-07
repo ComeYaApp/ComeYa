@@ -150,6 +150,7 @@ router.post(
         notes: req.body.notes,
         substitutionPreference: req.body.substitutionPreference,
         itemSubstitutionPreferences: req.body.itemSubstitutionPreferences,
+        substituteProductIds: req.body.substituteProductIds || null,
         cashPaymentAmount: req.body.cashPaymentAmount,
         cashChangeAmount: req.body.cashChangeAmount,
         estimatedDeliveryTime,

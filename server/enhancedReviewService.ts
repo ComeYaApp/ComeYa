@@ -23,6 +23,7 @@ export class EnhancedReviewService {
     comment?: string;
     tags?: string[];
     photos?: string[];
+    tipAmount?: number;
   }) {
     const {
       userId,
@@ -36,6 +37,7 @@ export class EnhancedReviewService {
       comment,
       tags,
       photos,
+      tipAmount,
     } = data;
 
     // Subir fotos a Cloudinary
@@ -82,6 +84,7 @@ export class EnhancedReviewService {
       tags: tags && tags.length > 0 ? JSON.stringify(tags) : null,
       approved: true,
       flagged: false,
+      tipAmount: tipAmount || 0,
     });
 
     // Actualizar rating del negocio

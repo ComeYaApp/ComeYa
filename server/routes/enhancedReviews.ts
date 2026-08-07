@@ -18,6 +18,7 @@ router.post("/", authenticateToken, async (req, res) => {
       comment,
       tags,
       photos,
+      tipAmount,
     } = req.body;
 
     const result = await EnhancedReviewService.createReview({
@@ -32,6 +33,7 @@ router.post("/", authenticateToken, async (req, res) => {
       comment,
       tags,
       photos,
+      tipAmount: tipAmount || 0,
     });
 
     res.json(result);
