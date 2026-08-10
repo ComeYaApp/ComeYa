@@ -40,6 +40,15 @@ function _getAnimationTimestamp() {
     : Date.now();
 }
 
+// Set required globals for Reanimated web runtime.
+// These are normally set by react-native-reanimated's web initializer,
+// but setting them here guarantees availability regardless of initialization order.
+if (typeof globalThis !== "undefined") {
+  globalThis._getAnimationTimestamp = _getAnimationTimestamp;
+  globalThis._WORKLET = false;
+  globalThis._log = (typeof console !== "undefined" && console.log) ? console.log.bind(console) : function () {};
+}
+
 function _setGlobalConsole() {}
 function _scheduleOnJS() {}
 function _scheduleOnJSFromUI() {}
