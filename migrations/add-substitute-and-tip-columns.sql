@@ -2,11 +2,11 @@
 -- Fecha: 2026-07-08
 
 -- Columna para guardar los IDs de productos sustitutos en órdenes
+-- MySQL no soporta IF NOT EXISTS en ADD COLUMN, usar sintaxis simple
 ALTER TABLE orders 
-ADD COLUMN IF NOT EXISTS substitute_product_ids TEXT NULL 
+ADD COLUMN substitute_product_ids TEXT NULL 
 COMMENT 'JSON: { originalProductId: substituteProductId }';
 
--- Columna para guardar el monto de propina en reseñas
 ALTER TABLE reviews 
-ADD COLUMN IF NOT EXISTS tip_amount INT DEFAULT 0 
+ADD COLUMN tip_amount INT DEFAULT 0 
 COMMENT 'Propina en centavos (ej: 100 = €1.00)';
