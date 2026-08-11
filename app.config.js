@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "ComeYa",
     slug: "cy-soria",
-    version: "1.0.7",
+    version: "1.0.8",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
@@ -14,7 +14,7 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
-      buildNumber: "9",
+      buildNumber: "1",
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
@@ -43,7 +43,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.comeya.app",
-      versionCode: 9,
+      versionCode: 10,
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,

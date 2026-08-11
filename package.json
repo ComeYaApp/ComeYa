@@ -1,7 +1,7 @@
 {
   "name": "my-app",
   "main": "client/index.ts",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "scripts": {
     "expo:dev": "npx expo start --localhost",
     "server:dev": "tsx -r dotenv/config server/server.ts dotenv_config_path=.env.local",
