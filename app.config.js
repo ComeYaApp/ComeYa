@@ -94,6 +94,6 @@ export default {
         process.env.EXPO_PUBLIC_BACKEND_URL ||
         "https://comeya-backend.onrender.com",
     },
-    owner: "cazkiuzs-team",
+    owner: "cazkiuz",
   },
 };
