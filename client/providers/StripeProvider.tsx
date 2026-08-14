@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { Platform, Alert } from "react-native";
 import Constants from "expo-constants";
 import { apiRequestRaw } from "@/lib/query-client";
@@ -50,11 +50,6 @@ const loadStripeKey = async (attempt = 0): Promise<string | null> => {
 };
 
 export function StripeProvider({ children }: StripeProviderProps) {
-  const [publishableKey, setPublishableKey] = useState<string | null>(null);
-  const [StripeNativeProvider, setStripeNativeProvider] =
-    useState<React.ComponentType<any> | null>(null);
-  const [stripeAvailable, setStripeAvailable] = useState(false);
-
   useEffect(() => {
     if (isWeb || isExpoGo) {
       console.log("[StripeProvider] skipping init", {
@@ -67,45 +62,30 @@ export function StripeProvider({ children }: StripeProviderProps) {
 
     (async () => {
       try {
-        const { StripeProvider: NativeStripeProvider } = await import(
-          "@stripe/stripe-react-native"
-        );
-        setStripeNativeProvider(() => NativeStripeProvider);
+        const { initStripe } = await import("@stripe/stripe-react-native");
 
         const key = await loadStripeKey();
         if (!key) {
           console.error("[StripeProvider] no publishable key after retries");
-          setStripeAvailable(false);
           Alert.alert(
             "Pago no disponible",
-            "No se pudo obtener la clave de Stripe. Revisa tu conexión y la configuración del backend.",
+            "No se pudo obtener la clave de Stripe. Revisa la conexión y el backend.",
           );
           return;
         }
 
-        console.log("[StripeProvider] key loaded OK");
-        setPublishableKey(key);
-        setStripeAvailable(true);
+        console.log("[StripeProvider] key loaded OK, calling initStripe...");
+        await initStripe({ publishableKey: key });
+        console.log("[StripeProvider] initStripe OK - Stripe ready");
       } catch (error) {
-        console.error("[StripeProvider] init error", error);
-        setStripeAvailable(false);
+        console.error("[StripeProvider] init failed", error);
+        Alert.alert(
+          "Pago no disponible",
+          "Error iniciando Stripe: " + String(error),
+        );
       }
     })();
   }, []);
 
-  if (
-    isWeb ||
-    isExpoGo ||
-    !stripeAvailable ||
-    !publishableKey ||
-    !StripeNativeProvider
-  ) {
-    return <>{children}</>;
-  }
-
-  return (
-    <StripeNativeProvider publishableKey={publishableKey}>
-      {children}
-    </StripeNativeProvider>
-  );
+  return <>{children}</>;
 }
