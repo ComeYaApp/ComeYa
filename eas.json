@@ -15,13 +15,13 @@
       },
       "ios": {
         "simulator": true,
-        "image": "macos-sequoia-15.6-xcode-16.4"
+        "image": "macos-sequoia-15.6-xcode-26.0"
       }
     },
     "adhoc": {
       "distribution": "internal",
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-16.4"
+        "image": "macos-sequoia-15.6-xcode-26.0"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
@@ -36,7 +36,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-16.4",
+        "image": "macos-sequoia-15.6-xcode-26.0",
         "distribution": "store"
       },
       "env": {
