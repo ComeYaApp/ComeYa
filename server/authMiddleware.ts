@@ -17,6 +17,8 @@ declare global {
         phone: string;
         role: string;
         phoneVerified: boolean;
+        verificationStatus?: string;
+        isActive?: boolean;
       };
     }
   }
@@ -70,6 +72,8 @@ export async function authenticateToken(
       phone: user.phone,
       role: user.role,
       phoneVerified: user.phoneVerified,
+      verificationStatus: user.verificationStatus ?? undefined,
+      isActive: user.isActive,
     };
 
     next();
@@ -96,6 +100,42 @@ export function requireRole(...allowedRoles: string[]) {
 
     next();
   };
+}
+
+// Require an approved delivery driver (verified by admin before working)
+export function requireApprovedDriver(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (!req.user) {
+    return res.status(401).json({ error: "No autenticado" });
+  }
+
+  if (req.user.role !== "delivery_driver") {
+    return res.status(403).json({
+      error: "Debes tener un perfil de repartidor",
+      code: "driver_role_required",
+    });
+  }
+
+  if (req.user.verificationStatus !== "verified") {
+    return res.status(403).json({
+      error:
+        "Tu perfil de repartidor está pendiente de aprobación por el administrador",
+      code: "driver_not_verified",
+      verificationStatus: req.user.verificationStatus || "pending",
+    });
+  }
+
+  if (req.user.isActive === false) {
+    return res.status(403).json({
+      error: "Tu cuenta de repartidor está desactivada",
+      code: "driver_inactive",
+    });
+  }
+
+  next();
 }
 
 // Require admin role (shorthand)

@@ -172,7 +172,7 @@ export default function DriverMyDeliveriesScreen() {
 
   const confirmPickup = () => {
     if (pickupOrderId) {
-      updateStatus(pickupOrderId, "picked_up");
+      updateStatus(pickupOrderId, "on_the_way");
     }
     setShowPickupModal(false);
     setPickupOrderId(null);

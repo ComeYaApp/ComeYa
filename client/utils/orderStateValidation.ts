@@ -20,7 +20,7 @@ export interface SmartButtonInfo {
 // Estados válidos del sistema
 export const ORDER_STATES = {
   PENDING: "pending",
-  CONFIRMED: "confirmed",
+  ACCEPTED: "accepted",
   PREPARING: "preparing",
   READY: "ready",
   PICKED_UP: "picked_up",
@@ -44,7 +44,7 @@ export const VALID_TRANSITIONS: StateTransition[] = [
   // Negocio puede aceptar o rechazar pedidos
   {
     from: "pending",
-    to: "confirmed",
+    to: "accepted",
     allowedRoles: ["business_owner", "admin"],
     requiresConfirmation: false,
     message: "Aceptar pedido",
@@ -59,14 +59,14 @@ export const VALID_TRANSITIONS: StateTransition[] = [
 
   // Negocio prepara el pedido
   {
-    from: "confirmed",
+    from: "accepted",
     to: "preparing",
     allowedRoles: ["business_owner", "admin"],
     requiresConfirmation: false,
     message: "Iniciar preparación",
   },
   {
-    from: "confirmed",
+    from: "accepted",
     to: "cancelled",
     allowedRoles: ["business_owner", "admin"],
     requiresConfirmation: true,
@@ -164,10 +164,10 @@ export const getSmartButtonInfo = (
         requiresBusinessAction: true,
       };
 
-    case ORDER_STATES.CONFIRMED:
+    case ORDER_STATES.ACCEPTED:
       return {
         canProceed: false,
-        message: "Pedido confirmado",
+        message: "Pedido aceptado",
         nextAction: "El negocio iniciará la preparación",
         icon: "check-circle",
         color: "#10B981",
@@ -299,7 +299,7 @@ export const getTransitionErrorMessage = (
 // Etiquetas amigables para los estados
 export const STATUS_LABELS: Record<string, string> = {
   [ORDER_STATES.PENDING]: "Pendiente",
-  [ORDER_STATES.CONFIRMED]: "Confirmado",
+  [ORDER_STATES.ACCEPTED]: "Aceptado",
   [ORDER_STATES.PREPARING]: "Preparando",
   [ORDER_STATES.READY]: "Listo para recoger",
   [ORDER_STATES.PICKED_UP]: "Recogido",

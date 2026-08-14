@@ -25,6 +25,7 @@ export default function DriverDashboardScreen() {
   const [isOnline, setIsOnline] = useState(false);
   const [togglingOnline, setToggling] = useState(false);
   const [loadingStatus, setLoading] = useState(true);
+  const [isApproved, setIsApproved] = useState(true);
   const [mapOrderId, setMapOrderId] = useState<string | undefined>();
   const [mapDestLat, setMapDestLat] = useState<string | undefined>();
   const [mapDestLng, setMapDestLng] = useState<string | undefined>();
@@ -35,8 +36,14 @@ export default function DriverDashboardScreen() {
     try {
       const res = await apiRequest("GET", "/api/delivery/status");
       const data = await res.json();
-      if (data.success && typeof data.isOnline !== "undefined")
+      if (data.success && typeof data.isOnline !== "undefined") {
         setIsOnline(data.isOnline);
+        setIsApproved(
+          data.verificationStatus
+            ? data.verificationStatus === "verified"
+            : true,
+        );
+      }
     } catch {
     } finally {
       setLoading(false);
@@ -48,6 +55,13 @@ export default function DriverDashboardScreen() {
   }, [loadStatus]);
 
   const handleToggleOnline = async () => {
+    if (!isApproved) {
+      showToast(
+        "Tu perfil está pendiente de aprobación por el administrador",
+        "error",
+      );
+      return;
+    }
     setToggling(true);
     try {
       const res = await apiRequest("POST", "/api/delivery/toggle-status", {});
@@ -85,6 +99,7 @@ export default function DriverDashboardScreen() {
             isOnline={isOnline}
             onToggleOnline={handleToggleOnline}
             togglingOnline={togglingOnline}
+            isApproved={isApproved}
             showToast={showToast}
           />
         );
@@ -128,6 +143,7 @@ export default function DriverDashboardScreen() {
             isOnline={isOnline}
             onToggleOnline={handleToggleOnline}
             togglingOnline={togglingOnline}
+            isApproved={isApproved}
             showToast={showToast}
           />
         );

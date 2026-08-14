@@ -54,7 +54,9 @@ router.get(
       const totalBusinesses = allBusinesses.length;
 
       const activeOrdersCount = allOrders.filter((o: any) =>
-        ["pending", "confirmed", "preparing", "on_the_way"].includes(o.status),
+        ["pending", "accepted", "preparing", "ready", "on_the_way"].includes(
+          o.status,
+        ),
       ).length;
 
       const todayRevenue = ordersToShow
@@ -105,8 +107,9 @@ router.get(
         .where(
           inArray(orders.status, [
             "pending",
-            "confirmed",
+            "accepted",
             "preparing",
+            "ready",
             "on_the_way",
           ] as any),
         );

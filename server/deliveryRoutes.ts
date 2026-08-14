@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "./db";
 import { deliveryDrivers, users, orders, wallets } from "@shared/schema-mysql";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
-import { authenticateToken } from "./authMiddleware";
+import { authenticateToken, requireApprovedDriver } from "./authMiddleware";
 import {
   asyncHandler,
   ValidationError,
@@ -87,6 +87,7 @@ router.post(
 router.post(
   "/location",
   authenticateToken,
+  requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
     const { latitude, longitude } = req.body;
@@ -138,7 +139,11 @@ router.get(
       .where(eq(deliveryDrivers.userId, userId))
       .limit(1);
 
-    res.json({ success: true, isOnline: driver?.isAvailable ?? false });
+    res.json({
+      success: true,
+      isOnline: driver?.isAvailable ?? false,
+      verificationStatus: (req as any).user?.verificationStatus ?? "pending",
+    });
   }),
 );
 
@@ -300,6 +305,7 @@ router.get(
 router.post(
   "/toggle-status",
   authenticateToken,
+  requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
 
@@ -347,6 +353,7 @@ router.post(
 router.get(
   "/orders",
   authenticateToken,
+  requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
 
@@ -375,6 +382,7 @@ router.get(
 router.get(
   "/my-orders",
   authenticateToken,
+  requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
 
@@ -392,6 +400,7 @@ router.get(
 router.get(
   "/available-orders",
   authenticateToken,
+  requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
 
@@ -435,6 +444,7 @@ router.get(
 router.post(
   "/accept/:orderId",
   authenticateToken,
+  requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const { orderId } = req.params;
     const userId = (req as any).user.id;
@@ -469,7 +479,7 @@ router.post(
       .update(orders)
       .set({
         deliveryPersonId: userId,
-        status: "accepted",
+        status: "ready",
         assignedAt: new Date(),
       })
       .where(eq(orders.id, orderId));
@@ -494,6 +504,7 @@ router.post(
 router.post(
   "/pickup/:orderId",
   authenticateToken,
+  requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const { orderId } = req.params;
     const userId = (req as any).user.id;

@@ -37,6 +37,7 @@ interface Props {
   isOnline: boolean;
   onToggleOnline: () => void;
   togglingOnline: boolean;
+  isApproved?: boolean;
   showToast?: (msg: string, type?: string) => void;
 }
 
@@ -44,6 +45,7 @@ export function AvailableOrdersTab({
   isOnline,
   onToggleOnline,
   togglingOnline,
+  isApproved = true,
   showToast,
 }: Props) {
   const { isDark } = useTheme();
@@ -85,6 +87,13 @@ export function AvailableOrdersTab({
   }, [load]);
 
   const handleAccept = async (orderId: string) => {
+    if (!isApproved) {
+      flash(
+        false,
+        "Tu perfil está pendiente de aprobación por el administrador",
+      );
+      return;
+    }
     if (!isOnline) {
       flash(false, "Debes estar en línea para aceptar pedidos");
       return;
@@ -250,6 +259,22 @@ export function AvailableOrdersTab({
           <Feather name="alert-triangle" size={16} color={AMBER} />
           <Text style={[s.offlineTxt, { color: AMBER }]}>
             Estás desconectado. Activa el toggle para recibir y aceptar pedidos.
+          </Text>
+        </View>
+      )}
+
+      {/* ── Pending approval banner ── */}
+      {!isApproved && (
+        <View
+          style={[
+            s.offlineBanner,
+            { backgroundColor: AMBER + "15", borderColor: AMBER + "40" },
+          ]}
+        >
+          <Feather name="clock" size={16} color={AMBER} />
+          <Text style={[s.offlineTxt, { color: AMBER }]}>
+            Tu perfil está pendiente de aprobación por el administrador. No
+            puedes ponerte en línea todavía.
           </Text>
         </View>
       )}

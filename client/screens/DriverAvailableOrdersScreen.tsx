@@ -35,6 +35,7 @@ export default function DriverAvailableOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [isApproved, setIsApproved] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
@@ -52,6 +53,11 @@ export default function DriverAvailableOrdersScreen() {
       if (data.success && typeof data.isOnline !== "undefined") {
         console.log("✅ Current status:", data.isOnline);
         setIsOnline(data.isOnline);
+        setIsApproved(
+          data.verificationStatus
+            ? data.verificationStatus === "verified"
+            : true,
+        );
       } else {
         console.error("❌ Failed to load status:", data);
         // Set default to false if we can't get status
@@ -86,6 +92,13 @@ export default function DriverAvailableOrdersScreen() {
   };
 
   const handleToggleStatus = async () => {
+    if (!isApproved) {
+      Alert.alert(
+        "Pendiente de aprobación",
+        "Tu perfil de repartidor aún no ha sido aprobado por el administrador. Espera a que revisen tu documentación.",
+      );
+      return;
+    }
     setIsTogglingStatus(true);
     try {
       console.log("🔄 Toggling driver status from:", isOnline);
@@ -155,6 +168,14 @@ export default function DriverAvailableOrdersScreen() {
   };
 
   const handleAcceptOrder = async (orderId: string) => {
+    if (!isApproved) {
+      Alert.alert(
+        "Pendiente de aprobación",
+        "Tu perfil de repartidor aún no ha sido aprobado por el administrador.",
+      );
+      return;
+    }
+
     if (!isOnline) {
       setShowOfflineModal(true);
       return;
@@ -398,7 +419,7 @@ export default function DriverAvailableOrdersScreen() {
             <Switch
               value={isOnline}
               onValueChange={handleToggleStatus}
-              disabled={isTogglingStatus}
+              disabled={isTogglingStatus || !isApproved}
               trackColor={{
                 false: theme.border,
                 true: ComeYaColors.success + "60",
@@ -407,6 +428,26 @@ export default function DriverAvailableOrdersScreen() {
             />
           </View>
         </View>
+        {!isApproved && (
+          <View
+            style={[
+              styles.offlineWarning,
+              { backgroundColor: ComeYaColors.warning + "20" },
+            ]}
+          >
+            <Feather name="clock" size={16} color={ComeYaColors.warning} />
+            <ThemedText
+              type="small"
+              style={{
+                color: ComeYaColors.warning,
+                marginLeft: Spacing.xs,
+                flex: 1,
+              }}
+            >
+              Tu perfil está pendiente de aprobación por el administrador
+            </ThemedText>
+          </View>
+        )}
         {!isOnline && (
           <View
             style={[

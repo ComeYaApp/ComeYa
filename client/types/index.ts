@@ -21,6 +21,7 @@ export interface User {
   stripeCustomerId?: string;
   createdAt: string;
   isActive?: boolean;
+  verificationStatus?: string;
   token?: string; // JWT token for authentication
   preferences?: {
     theme: "light" | "dark" | "system";

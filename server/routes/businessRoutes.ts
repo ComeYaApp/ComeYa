@@ -335,7 +335,7 @@ router.get(
             return sum + productBase;
           }, 0);
         const pendingOrders = businessOrders.filter((o) =>
-          ["pending", "confirmed", "preparing"].includes(o.status),
+          ["pending", "accepted", "preparing"].includes(o.status),
         );
 
         return {

@@ -115,7 +115,6 @@ router.post("/upload-documents", async (req, res) => {
         vehicleModel: vehicleModel || null,
         vehicleColor: vehicleColor || null,
         vehiclePhoto: uploadedUrls.vehiclePhoto || null,
-        status: "pending_verification" as const,
       };
 
       if (existingDriver) {
@@ -129,8 +128,6 @@ router.post("/upload-documents", async (req, res) => {
           userId,
           ...driverData,
           isAvailable: false,
-          currentLat: null,
-          currentLng: null,
         } as any);
       }
     }

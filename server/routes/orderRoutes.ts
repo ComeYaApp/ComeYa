@@ -1,5 +1,10 @@
 import express from "express";
-import { authenticateToken, requireRole, auditAction } from "../authMiddleware";
+import {
+  authenticateToken,
+  requireRole,
+  requireApprovedDriver,
+  auditAction,
+} from "../authMiddleware";
 import {
   validateOrderFinancials,
   validateOrderCompletion,
@@ -166,6 +171,27 @@ router.post(
         .limit(1);
 
       const orderId = createdOrder[0].id;
+
+      // Notify business owner about the new order (push + websocket)
+      try {
+        const [biz] = await db
+          .select({ ownerId: businesses.ownerId })
+          .from(businesses)
+          .where(eq(businesses.id, req.body.businessId))
+          .limit(1);
+        if (biz?.ownerId) {
+          await sendPushToUser(biz.ownerId, {
+            title: "🔔 Nuevo pedido",
+            body: `Tienes un nuevo pedido de ${req.user!.name}. Revísalo y confírmalo.`,
+            data: { orderId, screen: "BusinessOrders" },
+          });
+        }
+        const { notifyNewOrder } = await import("../websocket");
+        notifyNewOrder(req.body.businessId, { id: orderId, ...orderData });
+      } catch (notifyError) {
+        console.error("Error notifying business:", notifyError);
+      }
+
       res.json({
         success: true,
         id: orderId,
@@ -198,7 +224,7 @@ router.get("/", authenticateToken, async (req, res) => {
         .where(eq(orders.userId, req.user!.id));
       // Filtrar en memoria para incluir solo estados activos
       userOrders = userOrders.filter((o: { status: string }) =>
-        ["pending", "confirmed", "preparing", "ready", "on_the_way"].includes(
+        ["pending", "accepted", "preparing", "ready", "on_the_way"].includes(
           o.status,
         ),
       );
@@ -423,7 +449,26 @@ router.post(
         })
         .where(eq(orders.id, orderId));
 
-      // TODO: Send notification to business
+      // Notify business that the order is confirmed
+      try {
+        const { businesses } = await import("@shared/schema-mysql");
+        const [biz] = await db
+          .select({ ownerId: businesses.ownerId })
+          .from(businesses)
+          .where(eq(businesses.id, order.businessId))
+          .limit(1);
+        if (biz?.ownerId) {
+          await sendPushToUser(biz.ownerId, {
+            title: "🔔 Pedido confirmado",
+            body: `El pedido #${orderId.slice(-6)} fue confirmado por el cliente.`,
+            data: { orderId, screen: "BusinessOrders" },
+          });
+        }
+        const { notifyNewOrder } = await import("../websocket");
+        notifyNewOrder(order.businessId, order);
+      } catch (notifyError) {
+        console.error("Error notifying business:", notifyError);
+      }
 
       res.json({ success: true, message: "Pedido confirmado" });
     } catch (error: any) {
@@ -437,6 +482,7 @@ router.post(
   "/:id/complete-delivery",
   authenticateToken,
   requireRole("delivery_driver"),
+  requireApprovedDriver,
   validateDriverOrderOwnership,
   async (req, res) => {
     try {
@@ -692,6 +738,7 @@ router.post(
   "/:id/pickup",
   authenticateToken,
   requireRole("delivery_driver"),
+  requireApprovedDriver,
   validateDriverOrderOwnership,
   async (req, res) => {
     try {

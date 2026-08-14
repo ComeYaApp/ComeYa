@@ -194,6 +194,27 @@ async function handlePaymentIntentSucceeded(
       updatedAt: new Date(),
     });
 
+    // Notify business owner about the paid order
+    try {
+      const [biz] = await db
+        .select({ ownerId: businesses.ownerId })
+        .from(businesses)
+        .where(eq(businesses.id, existingOrder.businessId))
+        .limit(1);
+      if (biz?.ownerId) {
+        const { sendPushToUser } = await import("./enhancedPushService");
+        await sendPushToUser(biz.ownerId, {
+          title: "💳 Pago recibido — nuevo pedido",
+          body: `${existingOrder.businessName} recibió un pedido pagado. Revísalo y ponlo en preparación.`,
+          data: { orderId, screen: "BusinessOrders" },
+        });
+      }
+      const { notifyNewOrder } = await import("./websocket");
+      notifyNewOrder(existingOrder.businessId, existingOrder);
+    } catch (notifyError) {
+      logWebhookError(context, "Failed to notify business", notifyError);
+    }
+
     logWebhookEvent(
       context,
       `Order ${orderId} marked as accepted and transaction recorded`,
