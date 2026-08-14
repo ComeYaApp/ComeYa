@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "ComeYa",
     slug: "cy-soria",
-    version: "1.0.8",
+    version: "1.0.9",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
@@ -11,10 +11,10 @@ export default {
     // expo-av@16.0.8 ya es compatible con New Architecture en SDK 54
     // Android build es --local, usa gradle.properties independientemente
     newArchEnabled: true,
-    ios: {
+        ios: {
       supportsTablet: true,
-            bundleIdentifier: "com.comeya.app",
-      buildNumber: "2",
+      bundleIdentifier: "com.comeya.app",
+      buildNumber: "1",
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },

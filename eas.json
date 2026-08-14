@@ -2,7 +2,7 @@
   "cli": {
     "version": ">= 5.9.0",
     "promptToConfigurePushNotifications": false,
-    "appVersionSource": "local"
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -40,6 +40,7 @@
         "image": "macos-sequoia-15.6-xcode-26.0",
         "distribution": "store"
       },
+      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
         "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
