@@ -14,13 +14,14 @@
         "buildType": "apk"
       },
       "ios": {
-        "simulator": true
+        "simulator": true,
+        "image": "macos-sequoia-15.6-xcode-16.4"
       }
     },
     "adhoc": {
       "distribution": "internal",
       "ios": {
-        "image": "latest"
+        "image": "macos-sequoia-15.6-xcode-16.4"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
@@ -35,7 +36,7 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "image": "latest",
+        "image": "macos-sequoia-15.6-xcode-16.4",
         "distribution": "store"
       },
       "env": {

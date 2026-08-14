@@ -5,21 +5,10 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
-  Platform,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
-import * as WebBrowser from "expo-web-browser";
-
-// Import seguro: iOS no tiene el pod compilado (bug Xcode 26.5)
-// Android usa el SDK nativo normalmente
-const useStripe = (() => {
-  try {
-    return require("@stripe/stripe-react-native").useStripe;
-  } catch {
-    return () => ({ initPaymentSheet: undefined, presentPaymentSheet: undefined });
-  }
-})();
+import { useStripe } from "@stripe/stripe-react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useCart } from "@/contexts/CartContext";
@@ -28,10 +17,6 @@ import { apiRequest } from "@/lib/query-client";
 import { useQueryClient } from "@tanstack/react-query";
 
 const PRIMARY = "#DC2626";
-
-// iOS usa Stripe WebView (bug Xcode 26.5 impide compilar SDK nativo)
-// Android mantiene el SDK nativo de Stripe intacto
-const IS_IOS = Platform.OS === "ios";
 
 export default function StripePaymentScreen() {
   const navigation = useNavigation<any>();
@@ -64,7 +49,6 @@ export default function StripePaymentScreen() {
   // Las suscripciones pasan el importe en centavos (1500 = €15), los pedidos normales en euros
   const displayAmount = isSubscription ? amount / 100 : amount;
 
-  // iOS: siempre usa Stripe Checkout web. Android: usa PaymentSheet nativo.
   const openPayment = useCallback(async () => {
     if (!orderId || !amount) {
       Alert.alert("Error", "Datos de pago incompletos");
@@ -94,8 +78,8 @@ export default function StripePaymentScreen() {
       });
       const data = await res.json();
 
-      // Android: PaymentSheet nativo
-      if (!IS_IOS && data.clientSecret && initPaymentSheet && presentPaymentSheet) {
+      // PaymentSheet nativo de Stripe (iOS y Android)
+      if (data.clientSecret && initPaymentSheet && presentPaymentSheet) {
         const { error: initError } = await initPaymentSheet({
           paymentIntentClientSecret: data.clientSecret,
           merchantDisplayName: "ComeYa",
@@ -111,7 +95,11 @@ export default function StripePaymentScreen() {
         const { error: presentError } = await presentPaymentSheet();
 
         if (presentError) {
-          Alert.alert("Error", "Error en el pago: " + presentError.message);
+          if (presentError.code === "Canceled") {
+            Alert.alert("Pago cancelado", "Puedes intentar nuevamente");
+          } else {
+            Alert.alert("Error", "Error en el pago: " + presentError.message);
+          }
           setProcessing(false);
           return;
         }
@@ -121,32 +109,12 @@ export default function StripePaymentScreen() {
         return;
       }
 
-      // iOS + fallback Android: Stripe Checkout via WebBrowser
-      const sessionEndpoint = "/api/payments/create-session";
-      const sessionRes = await apiRequest("POST", sessionEndpoint, {
-        orderId,
-        amount: Math.round(amount),
-        businessId: isSubscription ? "" : businessId,
-        provider: "stripe_card",
-        isSubscription,
-        subscriptionId,
-      });
-      const sessionData = await sessionRes.json();
-
-      if (sessionData.url) {
-        const result = await WebBrowser.openAuthSessionAsync(
-          sessionData.url,
-          "comeya://payment-return",
-        );
-
-        if (result.type === "success") {
-          await handlePaymentSuccess();
-        } else {
-          Alert.alert("Pago cancelado", "Puedes intentar nuevamente");
-        }
-      } else {
-        Alert.alert("Error", sessionData.message || "No se pudo iniciar el pago");
-      }
+      // El SDK nativo de Stripe no está disponible en este entorno
+      Alert.alert(
+        "Pago no disponible",
+        "No se pudo iniciar el pago con tarjeta. Inténtalo de nuevo.",
+      );
+      setProcessing(false);
     } catch (e: any) {
       Alert.alert("Error", "No se pudo conectar con el servidor de pagos");
     } finally {

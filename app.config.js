@@ -43,7 +43,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: "com.comeya.app",
-      versionCode: 9,
+      versionCode: 11,
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
@@ -64,14 +64,7 @@ export default {
       bundler: "metro",
     },
     plugins: [
-      [
-        "expo-build-properties",
-        {
-          ios: {
-            excludedPods: ["stripe-react-native"],
-          },
-        },
-      ],
+      "expo-build-properties",
       [
         "expo-splash-screen",
         {
