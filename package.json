@@ -36,8 +36,8 @@
     "update:location": "node scripts/update-location.js",
     "update:venezuela": "node scripts/update-to-venezuela.js",
     "security-audit": "npm audit && npm run lint",
-    "build:apk:production": "eas build --platform android --profile production --local",
-    "build:apk:preview": "eas build --platform android --profile preview --local",
+    "android:bundle": "cmd /c \"set JAVA_HOME=C:\\Program Files\\Microsoft\\jdk-21.0.10.7-hotspot && set GRADLE_USER_HOME=c:\\CY\\.gradle-comeya && cd /d c:\\CY\\android && gradlew.bat bundleRelease --no-daemon\"",
+    "android:apk": "cmd /c \"set JAVA_HOME=C:\\Program Files\\Microsoft\\jdk-21.0.10.7-hotspot && set GRADLE_USER_HOME=c:\\CY\\.gradle-comeya && cd /d c:\\CY\\android && gradlew.bat assembleRelease --no-daemon\"",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "build": "npx expo export --platform web"

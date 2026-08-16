@@ -43,7 +43,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
             package: "com.comeya.app",
-      versionCode: 12,
+      versionCode: 13,
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,

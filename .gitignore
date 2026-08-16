@@ -69,6 +69,7 @@ replit.md
 *.cmd
 !start-local.bat
 !build-apk-production.bat
+!build-android-bundle.bat
 !build-ios-production.bat
 *.sh
 !start-production.sh
