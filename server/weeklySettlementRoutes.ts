@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticateToken } from "./authMiddleware";
+import { authenticateToken, requireRole } from "./authMiddleware";
 import { WeeklySettlementService } from "./weeklySettlementService";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -48,7 +48,10 @@ router.post("/driver/submit-proof", authenticateToken, async (req, res) => {
 });
 
 // Admin: Ver todas las liquidaciones pendientes
-router.get("/admin/pending", authenticateToken, async (req, res) => {
+router.get(
+  "/admin/pending",
+  authenticateToken,
+  requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const settlements =
       await WeeklySettlementService.getAllPendingSettlements();
@@ -60,7 +63,10 @@ router.get("/admin/pending", authenticateToken, async (req, res) => {
 });
 
 // Admin: Aprobar liquidación
-router.post("/admin/approve/:id", authenticateToken, async (req, res) => {
+router.post(
+  "/admin/approve/:id",
+  authenticateToken,
+  requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
@@ -74,7 +80,10 @@ router.post("/admin/approve/:id", authenticateToken, async (req, res) => {
 });
 
 // Admin: Rechazar liquidación
-router.post("/admin/reject/:id", authenticateToken, async (req, res) => {
+router.post(
+  "/admin/reject/:id",
+  authenticateToken,
+  requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
@@ -89,7 +98,10 @@ router.post("/admin/reject/:id", authenticateToken, async (req, res) => {
 });
 
 // Admin: Configurar cuenta bancaria
-router.post("/admin/bank-account", authenticateToken, async (req, res) => {
+router.post(
+  "/admin/bank-account",
+  authenticateToken,
+  requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const { bankName, accountHolder, clabe, accountNumber, notes } = req.body;
 
@@ -110,7 +122,10 @@ router.post("/admin/bank-account", authenticateToken, async (req, res) => {
 });
 
 // Admin: Obtener cuenta bancaria activa
-router.get("/admin/bank-account", authenticateToken, async (req, res) => {
+router.get(
+  "/admin/bank-account",
+  authenticateToken,
+  requireRole("admin", "super_admin"), async (req, res) => {
   try {
     const result = await db.execute(sql`
       SELECT * FROM platform_bank_account WHERE is_active = 1 LIMIT 1
@@ -128,24 +143,44 @@ router.get("/admin/bank-account", authenticateToken, async (req, res) => {
   }
 });
 
+// Los cron jobs corren en el mismo proceso (jobsRunner); estos endpoints
+// HTTP quedan protegidos: solo admin o un secreto compartido en header.
+function requireCronAccess(req: any, res: any, next: any) {
+  const role = req.user?.role;
+  if (role === "admin" || role === "super_admin") return next();
+  const secret = process.env.CRON_SECRET;
+  if (secret && req.headers["x-cron-secret"] === secret) return next();
+  return res.status(403).json({ error: "No autorizado" });
+}
+
 // Cron: Cerrar semana (llamar cada viernes 11:59 PM)
-router.post("/cron/close-week", async (req, res) => {
-  try {
-    const result = await WeeklySettlementService.closeWeek();
-    res.json(result);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.post(
+  "/cron/close-week",
+  authenticateToken,
+  requireCronAccess,
+  async (req, res) => {
+    try {
+      const result = await WeeklySettlementService.closeWeek();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // Cron: Bloquear drivers (llamar cada lunes 12:00 AM)
-router.post("/cron/block-unpaid", async (req, res) => {
-  try {
-    const result = await WeeklySettlementService.blockUnpaidDrivers();
-    res.json(result);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+router.post(
+  "/cron/block-unpaid",
+  authenticateToken,
+  requireCronAccess,
+  async (req, res) => {
+    try {
+      const result = await WeeklySettlementService.blockUnpaidDrivers();
+      res.json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 export default router;

@@ -80,8 +80,8 @@ class DeliveryProofService {
       // Get route breadcrumbs for this order
       const route = this.routeBreadcrumbs.get(proof.orderId) || [];
 
-      // Submit to backend
-      await apiRequest("POST", `/api/delivery/proof/${proof.orderId}`, {
+      // Submit to backend (el handler vive en el router /api/gps)
+      await apiRequest("POST", `/api/gps/proof/${proof.orderId}`, {
         photoBase64,
         latitude: proof.latitude,
         longitude: proof.longitude,

@@ -19,11 +19,13 @@ import { apiRequest } from "@/lib/query-client";
 interface BusinessesTabProps {
   businesses: Business[];
   onBusinessPress: (business: Business) => void;
+  onRefresh?: () => void;
 }
 
 export const BusinessesTab: React.FC<BusinessesTabProps> = ({
   businesses,
   onBusinessPress,
+  onRefresh,
 }) => {
   const { theme } = useTheme();
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
@@ -32,12 +34,51 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
   const [modalVisible, setModalVisible] = useState(false);
   const [customCommission, setCustomCommission] = useState("");
   const [saving, setSaving] = useState(false);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+
+  const pendingBusinesses = businesses.filter(
+    (b) => b.verificationStatus === "pending",
+  );
 
   const handleBusinessPress = (business: Business) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedBusiness(business);
     setCustomCommission(business.customCommission?.toString() || "");
     setModalVisible(true);
+  };
+
+  const handleVerification = async (
+    business: Business,
+    action: "verified" | "rejected",
+  ) => {
+    if (!business.ownerId) {
+      Alert.alert(
+        "Error",
+        "Este negocio no tiene dueño asociado; no se puede verificar.",
+      );
+      return;
+    }
+    setVerifyingId(business.id);
+    try {
+      await apiRequest("PUT", "/api/business/verification-status", {
+        userId: business.ownerId,
+        verificationStatus: action,
+      });
+      Alert.alert(
+        "Éxito",
+        action === "verified"
+          ? `Negocio "${business.name}" verificado. El dueño fue notificado.`
+          : `Negocio "${business.name}" rechazado. El dueño fue notificado.`,
+      );
+      onRefresh?.();
+    } catch (error: any) {
+      Alert.alert(
+        "Error",
+        error.message || "No se pudo actualizar la verificación",
+      );
+    } finally {
+      setVerifyingId(null);
+    }
   };
 
   const handleSaveCommission = async () => {
@@ -90,6 +131,71 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
   return (
     <>
       <ScrollView style={styles.container}>
+        {pendingBusinesses.length > 0 && (
+          <View style={styles.pendingSection}>
+            <View style={styles.pendingHeader}>
+              <Feather
+                name="clock"
+                size={16}
+                color={ComeYaColors.warning || "#F59E0B"}
+              />
+              <Text style={[styles.pendingTitle, { color: theme.text }]}>
+                Pendientes de aprobación ({pendingBusinesses.length})
+              </Text>
+            </View>
+            {pendingBusinesses.map((business) => (
+              <View
+                key={business.id}
+                style={[styles.pendingCard, { backgroundColor: theme.card }]}
+              >
+                <Text style={[styles.businessName, { color: theme.text }]}>
+                  {business.name}
+                </Text>
+                <Text
+                  style={[styles.businessAddress, { color: theme.textSecondary }]}
+                >
+                  {business.address || "Sin dirección"} ·{" "}
+                  {business.phone || "Sin teléfono"}
+                </Text>
+                <View style={styles.verifyButtonRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      styles.saveButton,
+                      styles.verifyButton,
+                      { backgroundColor: ComeYaColors.success },
+                    ]}
+                    onPress={() => handleVerification(business, "verified")}
+                    disabled={verifyingId === business.id}
+                  >
+                    <Feather name="check" size={16} color="#fff" />
+                    <Text style={[styles.buttonText, { color: "#fff" }]}>
+                      {verifyingId === business.id ? "..." : "Aprobar"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      styles.cancelButton,
+                      styles.verifyButton,
+                      { borderColor: ComeYaColors.error },
+                    ]}
+                    onPress={() => handleVerification(business, "rejected")}
+                    disabled={verifyingId === business.id}
+                  >
+                    <Feather name="x" size={16} color={ComeYaColors.error} />
+                    <Text
+                      style={[styles.buttonText, { color: ComeYaColors.error }]}
+                    >
+                      {verifyingId === business.id ? "..." : "Rechazar"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {businesses.map((business) => (
           <TouchableOpacity
             key={business.id}
@@ -100,19 +206,42 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
               <Text style={[styles.businessName, { color: theme.text }]}>
                 {business.name}
               </Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  {
-                    backgroundColor: business.isActive
-                      ? ComeYaColors.success
-                      : ComeYaColors.error,
-                  },
-                ]}
-              >
-                <Text style={styles.statusText}>
-                  {business.isActive ? "Activo" : "Inactivo"}
-                </Text>
+              <View style={styles.badgeRow}>
+                {business.verificationStatus &&
+                  business.verificationStatus !== "verified" && (
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            business.verificationStatus === "pending"
+                              ? "#F59E0B"
+                              : ComeYaColors.error,
+                          marginRight: 6,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.statusText}>
+                        {business.verificationStatus === "pending"
+                          ? "Pendiente"
+                          : "Rechazado"}
+                      </Text>
+                    </View>
+                  )}
+                <View
+                  style={[
+                    styles.statusBadge,
+                    {
+                      backgroundColor: business.isActive
+                        ? ComeYaColors.success
+                        : ComeYaColors.error,
+                    },
+                  ]}
+                >
+                  <Text style={styles.statusText}>
+                    {business.isActive ? "Activo" : "Inactivo"}
+                  </Text>
+                </View>
               </View>
             </View>
             <Text style={[styles.businessType, { color: theme.textSecondary }]}>
@@ -242,6 +371,38 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  pendingSection: {
+    marginBottom: 16,
+  },
+  pendingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  pendingTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  pendingCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+  },
+  verifyButtonRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 10,
+  },
+  verifyButton: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   card: {
     borderRadius: 12,

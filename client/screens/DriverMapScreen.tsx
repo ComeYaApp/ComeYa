@@ -26,6 +26,7 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { decodePolyline } from "@/utils/directions";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -208,7 +209,7 @@ export default function DriverMapScreen() {
           };
           setDriverLocation(coords);
           // Enviar ubicación al servidor
-          apiRequest("PUT", "/api/delivery/location", {
+          apiRequest("POST", "/api/delivery/location", {
             deliveryPersonId: user?.id,
             latitude: l.coords.latitude.toString(),
             longitude: l.coords.longitude.toString(),

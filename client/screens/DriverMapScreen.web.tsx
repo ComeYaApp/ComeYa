@@ -158,7 +158,7 @@ export default function DriverMapScreen({
         }
 
         // Actualizar ubicación en servidor
-        apiRequest("PUT", "/api/delivery/location", {
+        apiRequest("POST", "/api/delivery/location", {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
         }).catch(() => {});

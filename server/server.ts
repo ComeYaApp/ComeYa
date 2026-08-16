@@ -139,6 +139,11 @@ if (isProduction) {
 
 // ─── ERROR HANDLING ───────────────────────────────────────────────────────────
 app.use((err: any, req: any, res: any, next: any) => {
+  // AppError (ValidationError, NotFoundError, AuthorizationError...) conserva
+  // su statusCode y mensaje; el resto son errores internos reales (500).
+  if (err?.statusCode && err?.isOperational) {
+    return res.status(err.statusCode).json({ error: err.message });
+  }
   console.error("Server error:", err);
   res.status(500).json({ error: "Internal server error" });
 });

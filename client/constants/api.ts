@@ -2,8 +2,9 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-// DEVELOPMENT: Set to true to disable GPS tracking and use fixed location from DB
-const DISABLE_GPS_IN_DEV = true;
+// Solo en desarrollo (Metro/__DEV__) se puede desactivar el GPS real.
+// En builds de producción el tracking GPS siempre está activo.
+const DISABLE_GPS_IN_DEV = false;
 
 // Get API base URL dynamically at runtime
 export const getApiBaseUrl = (): string => {

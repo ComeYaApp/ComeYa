@@ -34,6 +34,7 @@ router.get(
       const pendingOrders = businessOrders.filter(
         (o) => o.status === "pending",
       );
+      const commissionDivisor = await CONFIG.commissionDivisor();
       const todayOrders = businessOrders.filter((o) => {
         const today = new Date();
         const orderDate = new Date(o.createdAt);
@@ -45,7 +46,7 @@ router.get(
         .reduce((sum, o) => {
           const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
           const productBase = Math.round(
-            subtotalWithMarkup / (await CONFIG.commissionDivisor()),
+            subtotalWithMarkup / commissionDivisor,
           );
           return sum + productBase;
         }, 0);
@@ -138,31 +139,32 @@ router.get(
 
       // Negocio gana solo el valor base de productos (sin markup ni delivery)
       // Fórmula: (total - deliveryFee) / 1.15
+      const commissionDivisor = await CONFIG.commissionDivisor();
       const todayRevenue = todayOrders.reduce((sum, o) => {
         const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
         const productBase = Math.round(
-          subtotalWithMarkup / (await CONFIG.commissionDivisor()),
+          subtotalWithMarkup / commissionDivisor,
         );
         return sum + productBase;
       }, 0);
       const weekRevenue = weekOrders.reduce((sum, o) => {
         const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
         const productBase = Math.round(
-          subtotalWithMarkup / (await CONFIG.commissionDivisor()),
+          subtotalWithMarkup / commissionDivisor,
         );
         return sum + productBase;
       }, 0);
       const monthRevenue = monthOrders.reduce((sum, o) => {
         const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
         const productBase = Math.round(
-          subtotalWithMarkup / (await CONFIG.commissionDivisor()),
+          subtotalWithMarkup / commissionDivisor,
         );
         return sum + productBase;
       }, 0);
       const totalRevenue = deliveredOrders.reduce((sum, o) => {
         const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
         const productBase = Math.round(
-          subtotalWithMarkup / (await CONFIG.commissionDivisor()),
+          subtotalWithMarkup / commissionDivisor,
         );
         return sum + productBase;
       }, 0);
@@ -316,6 +318,7 @@ router.get(
           .where(inArray(orders.businessId, businessIds));
       }
 
+      const commissionDivisor = await CONFIG.commissionDivisor();
       const businessesWithStats = ownerBusinesses.map((business) => {
         const businessOrders = allOrders.filter(
           (o) => o.businessId === business.id,
@@ -330,7 +333,7 @@ router.get(
           .reduce((sum, o) => {
             const subtotalWithMarkup = (o.total || 0) - (o.deliveryFee || 0);
             const productBase = Math.round(
-              subtotalWithMarkup / (await CONFIG.commissionDivisor()),
+              subtotalWithMarkup / commissionDivisor,
             );
             return sum + productBase;
           }, 0);
@@ -421,6 +424,19 @@ router.put(
 
       const { status } = req.body;
 
+      const validStatuses = [
+        "pending",
+        "accepted",
+        "preparing",
+        "ready",
+        "on_the_way",
+        "delivered",
+        "cancelled",
+      ];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Estado inválido" });
+      }
+
       const [order] = await db
         .select()
         .from(orders)
@@ -448,6 +464,30 @@ router.put(
         .update(orders)
         .set({ status, updatedAt: new Date() })
         .where(eq(orders.id, req.params.id));
+
+      // Notificar al cliente del cambio de estado (push en tiempo real)
+      try {
+        const { sendOrderStatusNotification, sendPushToUser } = await import(
+          "../enhancedPushService"
+        );
+        await sendOrderStatusNotification(order.id, order.userId, status);
+        if (status === "ready" && order.deliveryPersonId) {
+          await sendPushToUser(order.deliveryPersonId, {
+            title: "📦 Pedido listo para recoger",
+            body: `${order.businessName} — Pedido #${order.id.slice(-6)} listo`,
+            data: { orderId: order.id, screen: "DriverActiveOrder" },
+          });
+        }
+        if (status === "cancelled" && order.deliveryPersonId) {
+          await sendPushToUser(order.deliveryPersonId, {
+            title: "❌ Pedido cancelado",
+            body: `El pedido #${order.id.slice(-6)} fue cancelado por el negocio`,
+            data: { orderId: order.id, screen: "DriverAvailable" },
+          });
+        }
+      } catch (err) {
+        console.error("Error sending order status push:", err);
+      }
 
       res.json({ success: true, message: "Order status updated" });
     } catch (error: any) {

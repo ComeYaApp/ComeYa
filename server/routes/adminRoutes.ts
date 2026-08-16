@@ -280,48 +280,62 @@ router.get(
         "@shared/schema-mysql"
       );
       const { db } = await import("../db");
-      const { eq, desc } = await import("drizzle-orm");
+      const { eq, desc, inArray } = await import("drizzle-orm");
 
+      // Últimos 500 pedidos (antes traía TODOS y hacía 2 queries por pedido)
       const allOrders = await db
         .select()
         .from(orders)
-        .orderBy(desc(orders.createdAt));
+        .orderBy(desc(orders.createdAt))
+        .limit(500);
 
-      const enrichedOrders = [];
-      for (const order of allOrders) {
-        const business = await db
-          .select({ name: businesses.name })
-          .from(businesses)
-          .where(eq(businesses.id, order.businessId as string))
-          .limit(1);
+      // Enriquecido en lote: 1 query para negocios y 1 para clientes
+      const businessIds = [
+        ...new Set(allOrders.map((o) => o.businessId).filter(Boolean)),
+      ] as string[];
+      const userIds = [
+        ...new Set(allOrders.map((o) => o.userId).filter(Boolean)),
+      ] as string[];
 
-        const customer = await db
-          .select({ name: users.name, phone: users.phone })
-          .from(users)
-          .where(eq(users.id, order.userId as string))
-          .limit(1);
+      const businessRows = businessIds.length
+        ? await db
+            .select({ id: businesses.id, name: businesses.name })
+            .from(businesses)
+            .where(inArray(businesses.id, businessIds))
+        : [];
+      const userRows = userIds.length
+        ? await db
+            .select({ id: users.id, name: users.name, phone: users.phone })
+            .from(users)
+            .where(inArray(users.id, userIds))
+        : [];
 
-        enrichedOrders.push({
-          id: order.id,
-          userId: order.userId,
-          businessId: order.businessId,
-          businessName: business[0]?.name || order.businessName || "Negocio",
-          businessImage: order.businessImage,
-          customerName: customer[0]?.name || "Cliente",
-          customerPhone: customer[0]?.phone || "",
-          status: order.status,
-          subtotal: order.subtotal,
-          deliveryFee: order.deliveryFee,
-          total: order.total,
-          paymentMethod: order.paymentMethod,
-          deliveryAddress: order.deliveryAddress,
-          items: order.items,
-          notes: order.notes,
-          createdAt: order.createdAt,
-          deliveredAt: order.deliveredAt,
-          deliveryPersonId: order.deliveryPersonId,
-        });
-      }
+      const businessMap = new Map(businessRows.map((b) => [b.id, b.name]));
+      const userMap = new Map(userRows.map((u) => [u.id, u]));
+
+      const enrichedOrders = allOrders.map((order) => ({
+        id: order.id,
+        userId: order.userId,
+        businessId: order.businessId,
+        businessName:
+          businessMap.get(order.businessId as string) ||
+          order.businessName ||
+          "Negocio",
+        businessImage: order.businessImage,
+        customerName: userMap.get(order.userId as string)?.name || "Cliente",
+        customerPhone: userMap.get(order.userId as string)?.phone || "",
+        status: order.status,
+        subtotal: order.subtotal,
+        deliveryFee: order.deliveryFee,
+        total: order.total,
+        paymentMethod: order.paymentMethod,
+        deliveryAddress: order.deliveryAddress,
+        items: order.items,
+        notes: order.notes,
+        createdAt: order.createdAt,
+        deliveredAt: order.deliveredAt,
+        deliveryPersonId: order.deliveryPersonId,
+      }));
 
       res.json({ success: true, orders: enrichedOrders });
     } catch (error: any) {

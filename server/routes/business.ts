@@ -835,14 +835,39 @@ router.put(
             isActive: verificationStatus === "verified" ? true : false,
           })
           .where(eq(businesses.ownerId, userId));
+
+        // Notificar al dueño del negocio el resultado de la verificación
+        try {
+          const { sendPushToUser } = await import("../enhancedPushService");
+          const body =
+            verificationStatus === "verified"
+              ? "¡Tu negocio fue verificado! Ya puedes recibir pedidos 🎉"
+              : verificationStatus === "rejected"
+                ? "Tu solicitud de negocio fue rechazada. Revisa tus datos."
+                : "Tu negocio volvió a estado de revisión.";
+          await sendPushToUser(userId, {
+            title:
+              verificationStatus === "verified"
+                ? "✅ Negocio verificado"
+                : verificationStatus === "rejected"
+                  ? "❌ Negocio rechazado"
+                  : "🕐 Negocio en revisión",
+            body,
+            data: { screen: "MyBusinesses" },
+          });
+        } catch (err) {
+          console.error("Error sending verification push:", err);
+        }
       } else {
-        // Business owner solo puede actualizar su propio negocio
+        // Un business_owner NO puede auto-verificarse: solo solicitar revisión
+        if (verificationStatus !== "pending") {
+          return res
+            .status(403)
+            .json({ error: "Solo un administrador puede verificar negocios" });
+        }
         await db
           .update(businesses)
-          .set({
-            verificationStatus,
-            isActive: verificationStatus === "verified" ? true : false,
-          })
+          .set({ verificationStatus, isActive: false })
           .where(eq(businesses.ownerId, req.user!.id));
       }
 
@@ -1177,6 +1202,19 @@ router.put(
       const { businesses, orders } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
 
+      const validStatuses = [
+        "pending",
+        "accepted",
+        "preparing",
+        "ready",
+        "on_the_way",
+        "delivered",
+        "cancelled",
+      ];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Estado inválido" });
+      }
+
       const [order] = await db
         .select()
         .from(orders)
@@ -1208,6 +1246,31 @@ router.put(
       if (status === "preparing") updates.assignedAt = new Date();
 
       await db.update(orders).set(updates).where(eq(orders.id, req.params.id));
+
+      // Notificar al cliente del cambio de estado (push en tiempo real)
+      try {
+        const { sendOrderStatusNotification, sendPushToUser } = await import(
+          "../enhancedPushService"
+        );
+        await sendOrderStatusNotification(order.id, order.userId, status);
+        if (status === "ready" && order.deliveryPersonId) {
+          await sendPushToUser(order.deliveryPersonId, {
+            title: "📦 Pedido listo para recoger",
+            body: `${order.businessName} — Pedido #${order.id.slice(-6)} listo`,
+            data: { orderId: order.id, screen: "DriverActiveOrder" },
+          });
+        }
+        if (status === "cancelled" && order.deliveryPersonId) {
+          await sendPushToUser(order.deliveryPersonId, {
+            title: "❌ Pedido cancelado",
+            body: `El pedido #${order.id.slice(-6)} fue cancelado por el negocio`,
+            data: { orderId: order.id, screen: "DriverAvailable" },
+          });
+        }
+      } catch (err) {
+        console.error("Error sending order status push:", err);
+      }
+
       res.json({ success: true, message: "Estado actualizado" });
     } catch (error: any) {
       console.error("Update order status error:", error);
@@ -1317,6 +1380,26 @@ router.post(
             /* geocoding falla silenciosamente */
           }
         }
+      }
+
+      // Notificar a los administradores que hay un negocio pendiente de aprobación
+      try {
+        const { users } = await import("@shared/schema-mysql");
+        const { inArray } = await import("drizzle-orm");
+        const { sendPushToUser } = await import("../enhancedPushService");
+        const admins = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.role, ["admin", "super_admin"]));
+        for (const admin of admins) {
+          await sendPushToUser(admin.id, {
+            title: "🏪 Negocio pendiente de aprobación",
+            body: `El negocio "${name}" se registró y requiere verificación`,
+            data: { screen: "AdminBusinesses" },
+          });
+        }
+      } catch (err) {
+        console.error("Error notifying admins of new business:", err);
       }
 
       res.status(201).json({ success: true, business: newBusiness });

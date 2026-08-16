@@ -25,6 +25,11 @@ import {
   ComeYaColors,
   Shadows,
 } from "@/constants/theme";
+import {
+  fetchRouteDirections,
+  distanceMeters,
+  RouteCoordinate,
+} from "@/utils/directions";
 
 interface Location {
   latitude: number;
@@ -174,6 +179,62 @@ export function CollapsibleMap({
 }: CollapsibleMapProps) {
   const { theme, isDark } = useTheme();
   const [mapAvailable, setMapAvailable] = useState(false);
+  // Ruta real por calles (Google Directions vía /api/gps/directions)
+  const [routePath, setRoutePath] = useState<RouteCoordinate[]>([]);
+  const lastRouteRef = useRef<{
+    origin: RouteCoordinate;
+    destination: RouteCoordinate;
+  } | null>(null);
+  const routeLoadingRef = useRef(false);
+
+  // Recalcular ruta real cuando el repartidor avanza (>150 m) o cambia el destino
+  useEffect(() => {
+    if (isPickup) return;
+    const driver = isValidLocation(deliveryPersonLocation)
+      ? deliveryPersonLocation
+      : null;
+    const destination = isValidLocation(customerLocation)
+      ? customerLocation
+      : null;
+    const origin =
+      driver ??
+      (isValidLocation(businessLocation) ? businessLocation : null);
+    if (!origin || !destination) {
+      setRoutePath([]);
+      lastRouteRef.current = null;
+      return;
+    }
+
+    const last = lastRouteRef.current;
+    if (
+      last &&
+      distanceMeters(last.origin, origin) < 150 &&
+      distanceMeters(last.destination, destination) < 20
+    ) {
+      return; // aún válida
+    }
+
+    if (routeLoadingRef.current) return;
+    routeLoadingRef.current = true;
+    fetchRouteDirections(origin, destination)
+      .then((result) => {
+        lastRouteRef.current = { origin, destination };
+        if (result && result.coordinates.length >= 2) {
+          setRoutePath(result.coordinates);
+        }
+      })
+      .finally(() => {
+        routeLoadingRef.current = false;
+      });
+  }, [
+    isPickup,
+    deliveryPersonLocation?.latitude,
+    deliveryPersonLocation?.longitude,
+    businessLocation?.latitude,
+    businessLocation?.longitude,
+    customerLocation?.latitude,
+    customerLocation?.longitude,
+  ]);
 
   const statusInfo = isPickup
     ? (STATUS_LABELS_PICKUP[status] ?? STATUS_LABELS_PICKUP.preparing)
@@ -233,10 +294,16 @@ export function CollapsibleMap({
 
   const routeCoords = isPickup
     ? [customerLocation, businessLocation].filter(isValidLocation)
-    : [businessLocation, deliveryPersonLocation, customerLocation].filter(
-        isValidLocation,
-      );
-  const hasAnyLocation = routeCoords.length > 0;
+    : routePath.length >= 2
+      ? routePath
+      : [businessLocation, deliveryPersonLocation, customerLocation].filter(
+          isValidLocation,
+        );
+  const hasAnyLocation =
+    routeCoords.length > 0 ||
+    [businessLocation, deliveryPersonLocation, customerLocation].some(
+      isValidLocation,
+    );
 
   return (
     <View style={styles.wrapper}>

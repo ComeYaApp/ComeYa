@@ -81,6 +81,8 @@ export const BusinessesTab: React.FC<Props> = () => {
     if (typeFilter !== "all") list = list.filter((b) => b.type === typeFilter);
     if (statusFilter === "active") list = list.filter((b) => b.isActive);
     if (statusFilter === "inactive") list = list.filter((b) => !b.isActive);
+    if (statusFilter === "pending")
+      list = list.filter((b) => b.verificationStatus === "pending");
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -155,6 +157,47 @@ export const BusinessesTab: React.FC<Props> = () => {
       if (selected?.id === biz.id)
         setSelected((p: any) => ({ ...p, isFeatured: !p.isFeatured }));
     } catch {}
+  };
+
+  const handleVerification = async (biz: any, action: "verified" | "rejected") => {
+    if (!biz.ownerId) {
+      setSaveMsg({
+        ok: false,
+        text: "Este negocio no tiene dueño asociado",
+      });
+      return;
+    }
+    try {
+      const res = await apiRequest("PUT", "/api/business/verification-status", {
+        userId: biz.ownerId,
+        verificationStatus: action,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBusinesses((prev) =>
+          prev.map((b) =>
+            b.id === biz.id
+              ? {
+                  ...b,
+                  verificationStatus: action,
+                  isActive: action === "verified",
+                }
+              : b,
+          ),
+        );
+        setSelected((p: any) =>
+          p?.id === biz.id
+            ? {
+                ...p,
+                verificationStatus: action,
+                isActive: action === "verified",
+              }
+            : p,
+        );
+      }
+    } catch {
+      setSaveMsg({ ok: false, text: "Error al actualizar verificación" });
+    }
   };
 
   // ── Detail panel ──────────────────────────────────────────────────────────
@@ -346,6 +389,93 @@ export const BusinessesTab: React.FC<Props> = () => {
             </View>
           )}
 
+          {/* Verification (aprobar / rechazar negocio) */}
+          {selected.verificationStatus !== "verified" && (
+            <View
+              style={[
+                det.section,
+                { backgroundColor: card, borderColor: border },
+              ]}
+            >
+              <View style={det.sectionHeader}>
+                <View
+                  style={[det.sectionIcon, { backgroundColor: "#F59E0B15" }]}
+                >
+                  <Feather name="shield" size={14} color="#F59E0B" />
+                </View>
+                <Text style={[det.sectionTitle, { color: text }]}>
+                  Verificación del negocio
+                </Text>
+                <View
+                  style={[
+                    det.levelBadge,
+                    {
+                      backgroundColor:
+                        selected.verificationStatus === "pending"
+                          ? "#F59E0B15"
+                          : "#EF444415",
+                      borderWidth: 0,
+                      marginBottom: 0,
+                      marginLeft: 6,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      det.levelTxt,
+                      {
+                        color:
+                          selected.verificationStatus === "pending"
+                            ? "#F59E0B"
+                            : "#EF4444",
+                      },
+                    ]}
+                  >
+                    {selected.verificationStatus === "pending"
+                      ? "Pendiente"
+                      : "Rechazado"}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[det.sectionSub, { color: sub }]}>
+                Al aprobar, el negocio queda activo y su dueño recibe una
+                notificación push.
+              </Text>
+              <View style={det.commRow}>
+                <TouchableOpacity
+                  onPress={() => handleVerification(selected, "verified")}
+                  style={[
+                    det.saveBtn,
+                    {
+                      backgroundColor: "#10B981",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    },
+                  ]}
+                >
+                  <Feather name="check" size={14} color="#fff" />
+                  <Text style={det.saveTxt}>Aprobar negocio</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleVerification(selected, "rejected")}
+                  style={[
+                    det.saveBtn,
+                    {
+                      backgroundColor: "#EF4444",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    },
+                  ]}
+                >
+                  <Feather name="x" size={14} color="#fff" />
+                  <Text style={det.saveTxt}>Rechazar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {/* Commission editor */}
           <View
             style={[
@@ -522,6 +652,7 @@ export const BusinessesTab: React.FC<Props> = () => {
       >
         {[
           { id: "all", label: "Todos", color: PRIMARY },
+          { id: "pending", label: "Pendientes", color: "#F59E0B" },
           { id: "active", label: "Activos", color: "#10B981" },
           { id: "inactive", label: "Inactivos", color: "#EF4444" },
         ].map((f) => (
@@ -646,6 +777,20 @@ export const BusinessesTab: React.FC<Props> = () => {
                     >
                       <Text style={[li.levelTxt, { color: level.color }]}>
                         {level.label}
+                      </Text>
+                    </View>
+                  )}
+                  {biz.verificationStatus === "pending" && (
+                    <View style={[li.typePill, { backgroundColor: "#F59E0B15" }]}>
+                      <Text style={[li.typeTxt, { color: "#F59E0B" }]}>
+                        Pendiente
+                      </Text>
+                    </View>
+                  )}
+                  {biz.verificationStatus === "rejected" && (
+                    <View style={[li.typePill, { backgroundColor: "#EF444415" }]}>
+                      <Text style={[li.typeTxt, { color: "#EF4444" }]}>
+                        Rechazado
                       </Text>
                     </View>
                   )}

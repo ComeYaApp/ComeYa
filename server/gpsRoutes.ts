@@ -79,6 +79,22 @@ router.get(
   },
 );
 
+// Valida que el solicitante sea el repartidor asignado del pedido o un admin
+async function requireAssignedDriver(
+  req: Request,
+  orderId: string,
+): Promise<boolean> {
+  const user = (req as any).user;
+  if (!user?.id) return false;
+  if (user.role === "admin" || user.role === "super_admin") return true;
+  const [order] = await db
+    .select({ deliveryPersonId: orders.deliveryPersonId })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  return !!order && order.deliveryPersonId === user.id;
+}
+
 // Geofence event (driver entered/exited geofence)
 router.post(
   "/geofence-event",
@@ -86,7 +102,13 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { orderId, type, location, distance } = req.body;
-      const userId = (req as any).user?.userId;
+      const userId = (req as any).user?.id;
+
+      if (!(await requireAssignedDriver(req, orderId))) {
+        return res
+          .status(403)
+          .json({ error: "No autorizado para este pedido" });
+      }
 
       console.log(
         `📍 Geofence event: ${type} for order ${orderId} at ${location} (${distance}m)`,
@@ -120,7 +142,13 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { orderId, type, distance, destinationType, timestamp } = req.body;
-      const userId = (req as any).user?.userId;
+      const userId = (req as any).user?.id;
+
+      if (!(await requireAssignedDriver(req, orderId))) {
+        return res
+          .status(403)
+          .json({ error: "No autorizado para este pedido" });
+      }
 
       console.log(
         `🔔 Proximity alert: ${type} for order ${orderId} (${distance}m from ${destinationType})`,
@@ -136,8 +164,24 @@ router.post(
         notificationSent: true,
       });
 
-      // TODO: Send push notification to customer/business
-      // This would integrate with your notification service
+      // Notificar al cliente cuando el repartidor está llegando
+      try {
+        const { sendPushToUser } = await import("./enhancedPushService");
+        const [order] = await db
+          .select({ userId: orders.userId })
+          .from(orders)
+          .where(eq(orders.id, orderId))
+          .limit(1);
+        if (order?.userId && distance <= 300) {
+          await sendPushToUser(order.userId, {
+            title: "🛵 Tu repartidor está cerca",
+            body: `Llega en aproximadamente ${Math.max(1, Math.round(distance / 200))} minuto(s)`,
+            data: { orderId, screen: "OrderTracking" },
+          });
+        }
+      } catch (err) {
+        console.error("Error sending proximity push:", err);
+      }
 
       res.json({ success: true });
     } catch (error) {
@@ -156,13 +200,28 @@ router.post(
       const { orderId } = req.params;
       const { photoBase64, latitude, longitude, timestamp, accuracy, route } =
         req.body;
-      const userId = (req as any).user?.userId;
+      const userId = (req as any).user?.id;
+
+      if (!(await requireAssignedDriver(req, orderId))) {
+        return res
+          .status(403)
+          .json({ error: "No autorizado para este pedido" });
+      }
 
       console.log(`📸 Delivery proof submitted for order ${orderId}`);
 
-      // In production, upload photo to S3/CloudStorage
-      // For now, we'll store base64 (not recommended for production)
-      const photoUrl = `data:image/jpeg;base64,${photoBase64.substring(0, 100)}...`; // Truncated for demo
+      // Subir foto a Cloudinary (sin truncar base64)
+      let photoUrl = "";
+      try {
+        const { CloudinaryService } = await import("./cloudinaryService");
+        photoUrl = await CloudinaryService.uploadImage(
+          photoBase64,
+          "delivery-proofs",
+          `proof-${orderId}-${Date.now()}`,
+        );
+      } catch (err) {
+        console.error("Cloudinary upload failed for delivery proof:", err);
+      }
 
       // Calculate route distance
       let routeDistance = 0;
@@ -184,7 +243,6 @@ router.post(
         orderId,
         driverId: userId,
         photoUrl,
-        photoBase64: photoBase64.substring(0, 1000), // Store truncated version
         latitude: latitude.toString(),
         longitude: longitude.toString(),
         accuracy,

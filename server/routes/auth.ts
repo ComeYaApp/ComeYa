@@ -218,6 +218,48 @@ router.post("/phone-signup", async (req, res) => {
   }
 });
 
+// POST /api/auth/dev-login — helper SOLO para desarrollo y tests.
+// En producción responde 404. Minta un JWT para el userId indicado.
+router.post("/dev-login", async (req, res) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(404).json({ error: "Not found" });
+  }
+  try {
+    const { userId } = req.body;
+    if (!userId)
+      return res.status(400).json({ error: "userId requerido" });
+
+    const { users } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    const token = signToken(user.id);
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+        verificationStatus: (user as any).verificationStatus ?? "pending",
+        phoneVerified: user.phoneVerified,
+        profileImage: (user as any).profileImage || null,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/auth/dev-email-login  (login con email y contraseña)
 router.post("/dev-email-login", async (req, res) => {
   try {

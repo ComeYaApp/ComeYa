@@ -143,7 +143,7 @@ async function sendPushNotification(
       data: payload.data || {},
     };
 
-    await fetch("https://exp.host/--/api/v2/push/send", {
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
       headers: {
         Accept: "application/json",
@@ -151,6 +151,27 @@ async function sendPushNotification(
       },
       body: JSON.stringify(message),
     });
+
+    // Limpiar tokens muertos (app desinstalada / reinstalada)
+    if (response.ok) {
+      try {
+        const result = (await response.json()) as { data?: { status?: string; details?: any } };
+        const status = result?.data?.status;
+        if (status && status !== "ok") {
+          const reason = result?.data?.details?.error;
+          if (status === "error" && (reason === "DeviceNotRegistered" || reason === "InvalidCredentials")) {
+            await db.update(users).set({ pushToken: null }).where(eq(users.pushToken, pushToken));
+            console.log(`🗑️ Push token inválido eliminado (${reason})`);
+          } else {
+            console.error(`Push error status=${status}:`, JSON.stringify(result?.data?.details ?? {}));
+          }
+        }
+      } catch {
+        // respuesta no-JSON de Expo, ignorar
+      }
+    } else {
+      console.error(`Expo push HTTP ${response.status}`);
+    }
 
     console.log(`📱 Push notification sent: ${payload.title}`);
   } catch (error) {

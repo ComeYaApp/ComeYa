@@ -784,4 +784,66 @@ router.patch("/:id/cancel", authenticateToken, async (req, res) => {
   }
 });
 
+// Reportar problema en un pedido — crea ticket de soporte y notifica a admins
+router.post("/:id/report-issue", authenticateToken, async (req, res) => {
+  try {
+    const { orders, supportTickets } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+
+    const { issueType, description, priority } = req.body;
+    if (!issueType || !description) {
+      return res
+        .status(400)
+        .json({ error: "Tipo de problema y descripción son obligatorios" });
+    }
+
+    const issueOrderId = req.params.id as string;
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, issueOrderId))
+      .limit(1);
+
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+    if (order.userId !== req.user!.id && req.user!.role === "customer") {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
+    const subject = `[Pedido #${issueOrderId.slice(-6)}] ${issueType}: ${description}`.slice(
+      0,
+      255,
+    );
+    const [ticket] = await db
+      .insert(supportTickets)
+      .values({
+        userId: req.user!.id,
+        orderId: issueOrderId,
+        subject,
+        category: "order_issue",
+        priority: priority || "medium",
+        status: "open",
+      })
+      .returning();
+
+    // Notificar a los administradores
+    const { users } = await import("@shared/schema-mysql");
+    const admins = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.role, ["admin", "super_admin"]));
+    for (const admin of admins) {
+      await sendPushToUser(admin.id, {
+        title: "⚠️ Problema reportado",
+        body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
+        data: { orderId: issueOrderId, screen: "AdminSupport" },
+      });
+    }
+
+    res.json({ success: true, ticketId: ticket?.id, message: "Problema reportado" });
+  } catch (error: any) {
+    console.error("Report issue error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

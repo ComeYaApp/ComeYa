@@ -32,7 +32,6 @@ import {
 } from "@/constants/theme";
 import { Order } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { mockOrders } from "@/data/mockData";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -110,8 +109,13 @@ export default function OrderTrackingScreen() {
       });
       setTipSent(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      console.log("Error sending tip");
+    } catch (error: any) {
+      console.error("Error sending tip:", error);
+      Alert.alert(
+        "No se pudo enviar la propina",
+        error?.message || "Inténtalo de nuevo más tarde",
+        [{ text: "OK" }],
+      );
     } finally {
       setSendingTip(false);
     }
@@ -148,8 +152,9 @@ export default function OrderTrackingScreen() {
     const fetchDeliveryLocation = async () => {
       if (!orderId) return;
       try {
-        const response = await fetch(
-          new URL(`/api/delivery/location/${orderId}`, getApiUrl()).toString(),
+        const response = await apiRequest(
+          "GET",
+          `/api/delivery/location/${orderId}`,
         );
         if (response.ok) {
           const data = await response.json();
@@ -312,60 +317,23 @@ export default function OrderTrackingScreen() {
         }
       } catch (error: any) {
         console.error("Error loading order from API:", error);
-        // If API fails, try to load from local storage or use mock data
+        // Si la API falla, intentar recuperar el pedido del storage local
       }
 
       try {
         const stored = await AsyncStorage.getItem(ORDERS_KEY);
         const savedOrders: Order[] = stored ? JSON.parse(stored) : [];
-        const allOrders = [...savedOrders, ...mockOrders];
-        const foundOrder = allOrders.find((o) => o.id === orderId);
+        const foundOrder = savedOrders.find((o) => o.id === orderId);
 
         if (foundOrder) {
           setOrder(foundOrder);
         } else {
-          // Create a mock order for demonstration
-          const mockOrder: Order = {
-            id: orderId,
-            userId: "user_demo",
-            businessId: "business_demo",
-            businessName: "Restaurante Demo",
-            businessImage:
-              "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
-            items: [
-              {
-                id: "item_1",
-                quantity: 2,
-                product: {
-                  id: "prod_1",
-                  name: "Tacos al Pastor",
-                  price: 15.0,
-                  image:
-                    "https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400",
-                },
-              },
-            ],
-            status: "preparing",
-            subtotal: 30.0,
-            deliveryFee: 25.0,
-            total: 55.0,
-            paymentMethod: "card",
-            deliveryAddress: "Calle Ejemplo 123, Soria, España",
-            createdAt: new Date().toISOString(),
-            estimatedDelivery: new Date(
-              Date.now() + 30 * 60 * 1000,
-            ).toISOString(),
-            deliveryPersonId: "delivery_demo",
-            deliveryPersonName: "Carlos Repartidor",
-            deliveryPersonPhone: "+34600000000",
-          };
-          setOrder(mockOrder);
+          // Pedido no disponible — no mostrar datos ficticios en producción
+          setOrder(null);
         }
       } catch (error) {
         console.error("Error loading order from storage:", error);
-        // Fallback to mock orders
-        const foundOrder = mockOrders.find((o) => o.id === orderId);
-        setOrder(foundOrder || null);
+        setOrder(null);
       }
     };
 
@@ -442,8 +410,9 @@ export default function OrderTrackingScreen() {
       })
     : null;
 
+  // nemyCommission ya viene transformado a unidades (dividido entre 100)
   const nemyCommission = order.nemyCommission
-    ? order.nemyCommission / 100
+    ? order.nemyCommission
     : order.subtotal * 0.15;
 
   return (
@@ -1125,7 +1094,7 @@ export default function OrderTrackingScreen() {
               </ThemedText>
             </View>
             <ThemedText type="body" style={{ color: "#4CAF50" }}>
-              Tu repartidor recibirá ${selectedTip} EUR
+              Tu repartidor recibirá €{selectedTip}
             </ThemedText>
           </View>
         ) : null}

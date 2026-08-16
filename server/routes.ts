@@ -44,6 +44,11 @@ import groupOrdersRoutes from "./routes/groupOrders";
 import gamificationRoutes from "./routes/gamification";
 import giftCardsRoutes from "./routes/giftCards";
 import orderChatRoutes from "./routes/orderChat";
+// Router con rutas complementarias de pedidos (tip, mark-picked-up, PATCH status,
+// complete, cancel, report-issue). Se monta DESPUÉS de orderRoutes para no pisar
+// sus handlers duplicados (POST /, GET /:id, /confirm...).
+import orderExtraRoutes from "./routes/orders";
+import addressRoutes from "./routes/addressRoutes";
 import stripePaymentRoutes from "./routes/stripePaymentRoutes";
 import stripeConnectRoutes from "./routes/stripeConnect";
 import pickupRoutes from "./routes/pickup";
@@ -266,17 +271,9 @@ router.get("/delivery-zones", async (_req, res) => {
   });
 });
 
-// ─── Favorites stubs ──────────────────────────────────────────────────────────
-router.get("/favorites/check/:userId/:businessId", (_req, res) =>
-  res.json({ success: true, isFavorite: false }),
-);
-router.get("/favorites/:userId", (_req, res) =>
-  res.json({ success: true, favorites: [] }),
-);
-router.post("/favorites", (_req, res) => res.json({ success: true }));
-router.delete("/favorites/:userId/:businessId", (_req, res) =>
-  res.json({ success: true }),
-);
+// ─── Favorites: manejado por los routers reales más abajo ────────────────────
+// (los stubs que había aquí devolvían favoritos vacíos y "success" falso,
+// impidiendo que el router real de favoritos funcionara)
 
 // ─── Levels stub ──────────────────────────────────────────────────────────────
 router.get("/levels/my-level", (_req, res) =>
@@ -290,6 +287,7 @@ router.use("/business", businessRoutes);
 router.use("/orders", orderRoutes);
 router.use("/users", userRoutes);
 router.use("/user", userRoutes);
+router.use("/addresses", addressRoutes);
 router.use("/delivery", deliveryConfigRoutes);
 router.use("/delivery", deliveryRoutes);
 router.use("/delivery", deliveryRoutesLegacy);
@@ -329,6 +327,7 @@ router.use("/group-orders", groupOrdersRoutes);
 router.use("/gamification", gamificationRoutes);
 router.use("/gift-cards", giftCardsRoutes);
 router.use("/orders", orderChatRoutes);
+router.use("/orders", orderExtraRoutes);
 router.use("/stripe", stripePaymentRoutes);
 router.use("/connect", stripeConnectRoutes);
 router.use("/business/stripe", stripeConnectRoutes);

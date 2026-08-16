@@ -64,10 +64,12 @@ export class WeeklySettlementService {
       );
     }
 
-    // Registrar cierre de semana en audit log
+    // Registrar cierre de semana en audit log (esquema real de audit_logs)
     await db.execute(sql`
-      INSERT INTO audit_logs (action, details, created_at)
-      VALUES ('weekly_close', JSON_OBJECT('settlements_created', ${settlementsCreated}, 'drivers_blocked', ${settlementsCreated}), NOW())
+      INSERT INTO audit_logs (user_id, action, entity_type, changes, created_at)
+      VALUES ('system', 'weekly_close', 'settlement',
+        ${JSON.stringify({ settlements_created: settlementsCreated, drivers_blocked: settlementsCreated })},
+        NOW())
     `);
 
     console.log(
@@ -133,10 +135,12 @@ export class WeeklySettlementService {
       );
     }
 
-    // Registrar bloqueos en audit log
+    // Registrar bloqueos en audit log (esquema real de audit_logs)
     await db.execute(sql`
-      INSERT INTO audit_logs (action, details, created_at)
-      VALUES ('monday_block', JSON_OBJECT('drivers_blocked', ${driversBlocked}), NOW())
+      INSERT INTO audit_logs (user_id, action, entity_type, changes, created_at)
+      VALUES ('system', 'monday_block', 'settlement',
+        ${JSON.stringify({ drivers_blocked: driversBlocked })},
+        NOW())
     `);
 
     console.log(

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "./db";
-import { deliveryDrivers, users, orders, wallets } from "@shared/schema-mysql";
+import { deliveryDrivers, users, orders, wallets, businesses } from "@shared/schema-mysql";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
 import { authenticateToken, requireApprovedDriver } from "./authMiddleware";
 import {
@@ -79,6 +79,24 @@ router.post(
     }
 
     logger.delivery("Driver registered", { userId, driverId: driver.id });
+
+    // Notificar a los administradores que hay un repartidor pendiente de aprobación
+    try {
+      const { sendPushToUser } = await import("./enhancedPushService");
+      const pendingAdmins = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.role, ["admin", "super_admin"]));
+      for (const admin of pendingAdmins) {
+        await sendPushToUser(admin.id, {
+          title: "🛵 Repartidor pendiente de aprobación",
+          body: "Un nuevo repartidor se registró y requiere verificación",
+          data: { screen: "AdminVerifications" },
+        });
+      }
+    } catch (err) {
+      console.error("Error notifying admins of new driver:", err);
+    }
 
     res.json({ driver, message: "Driver registered" });
   }),
@@ -484,7 +502,7 @@ router.post(
       })
       .where(eq(orders.id, orderId));
 
-    // Notificar al negocio que un driver aceptó el pedido
+    // Notificar al cliente y al negocio que un driver aceptó el pedido
     const { sendPushToUser } = await import("./enhancedPushService");
     if (order.userId) {
       await sendPushToUser(order.userId, {
@@ -492,6 +510,20 @@ router.post(
         body: `Un repartidor está en camino a recoger tu pedido #${orderId.slice(-6)}`,
         data: { orderId, screen: "OrderTracking" },
       });
+    }
+    if (order.businessId) {
+      const [business] = await db
+        .select()
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      if (business?.ownerId) {
+        await sendPushToUser(business.ownerId, {
+          title: "🛵 Repartidor asignado",
+          body: `Un repartidor aceptó el pedido #${orderId.slice(-6)} y va en camino a recogerlo`,
+          data: { orderId, screen: "BusinessOrders" },
+        });
+      }
     }
 
     logger.delivery("Order accepted", { orderId, driverId: userId });
@@ -704,13 +736,12 @@ router.post(
         driverId: userId,
         total: order.total,
       });
-    } else {
-      // Si es tarjeta, distribuir comisiones normalmente
-      const { calculateAndDistributeCommissions } = await import(
-        "./commissionService"
-      );
-      await calculateAndDistributeCommissions(orderId);
     }
+    // NOTA: la distribución de comisiones/fondos NO se hace aquí.
+    // El flujo oficial es: delivered → el cliente confirma la recepción
+    // (POST /api/orders/:id/confirm-receipt) → se generan los payouts.
+    // Antes se llamaba a calculateAndDistributeCommissions aquí, lo que
+    // provocaba doble pago cuando el cliente también confirmaba.
 
     // Increment driver's delivery count
     await db
@@ -741,8 +772,10 @@ router.post(
 
 router.get(
   "/location/:orderId",
+  authenticateToken,
   asyncHandler(async (req, res) => {
     const { orderId } = req.params;
+    const requesterId = (req as any).user.id;
 
     const [order] = await db
       .select()
@@ -751,6 +784,22 @@ router.get(
       .limit(1);
     if (!order || !order.deliveryPersonId) {
       return res.json({ location: null });
+    }
+
+    // Solo el cliente del pedido, el repartidor asignado, el dueño del
+    // negocio o un admin pueden ver la ubicación en vivo del repartidor
+    const role = (req as any).user.role;
+    let allowed = order.userId === requesterId || order.deliveryPersonId === requesterId;
+    if (!allowed && order.businessId) {
+      const [biz] = await db
+        .select()
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      allowed = biz?.ownerId === requesterId;
+    }
+    if (!allowed && role !== "admin" && role !== "super_admin") {
+      return res.status(403).json({ error: "No autorizado" });
     }
 
     const [driver] = await db
@@ -775,8 +824,20 @@ router.get(
 // Get delivery person location by deliveryPersonId
 router.get(
   "/location/driver/:deliveryPersonId",
+  authenticateToken,
   asyncHandler(async (req, res) => {
     const { deliveryPersonId } = req.params;
+    const requesterId = (req as any).user.id;
+    const role = (req as any).user.role;
+
+    // Solo el propio repartidor o un admin pueden consultar por driverId
+    if (
+      deliveryPersonId !== requesterId &&
+      role !== "admin" &&
+      role !== "super_admin"
+    ) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
 
     const [driver] = await db
       .select()

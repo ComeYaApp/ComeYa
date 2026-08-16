@@ -104,7 +104,14 @@ export default function DriverMyDeliveriesScreen() {
 
   useEffect(() => {
     const hasActiveOrders = orders.some((o: any) =>
-      ["preparing", "on_the_way"].includes(o.status),
+      [
+        "preparing",
+        "ready",
+        "picked_up",
+        "on_the_way",
+        "in_transit",
+        "arriving",
+      ].includes(o.status),
     );
 
     if (hasActiveOrders && !isTracking) {

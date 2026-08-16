@@ -415,6 +415,16 @@ const getAddresses = async (req: any, res: any) => {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const userId = req.params.id || req.user!.id;
+    const role = req.user!.role;
+    if (
+      userId !== req.user!.id &&
+      role !== "admin" &&
+      role !== "super_admin"
+    ) {
+      return res
+        .status(403)
+        .json({ error: "No autorizado para ver estas direcciones" });
+    }
     const list = await db
       .select()
       .from(addresses)
@@ -436,6 +446,16 @@ const postAddress = async (req: any, res: any) => {
     const userId = req.params.id || req.user!.id;
     if (!userId || userId === "undefined" || userId === "null") {
       return res.status(400).json({ error: "Usuario no autenticado" });
+    }
+    const role = req.user!.role;
+    if (
+      userId !== req.user!.id &&
+      role !== "admin" &&
+      role !== "super_admin"
+    ) {
+      return res
+        .status(403)
+        .json({ error: "No autorizado para crear direcciones de otro usuario" });
     }
     const {
       label,
@@ -491,6 +511,24 @@ router.put("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
   try {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const role = req.user!.role;
+    const [existing] = await db
+      .select()
+      .from(addresses)
+      .where(eq(addresses.id, req.params.addressId as string))
+      .limit(1);
+    if (!existing) {
+      return res.status(404).json({ error: "Dirección no encontrada" });
+    }
+    if (
+      existing.userId !== req.user!.id &&
+      role !== "admin" &&
+      role !== "super_admin"
+    ) {
+      return res
+        .status(403)
+        .json({ error: "No autorizado para editar esta dirección" });
+    }
     const {
       label,
       street,
@@ -514,7 +552,12 @@ router.put("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
       .update(addresses)
       .set(updates)
       .where(eq(addresses.id, req.params.addressId as string));
-    res.json({ success: true });
+    const [updated] = await db
+      .select()
+      .from(addresses)
+      .where(eq(addresses.id, req.params.addressId as string))
+      .limit(1);
+    res.json({ success: true, address: updated });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -528,6 +571,24 @@ router.delete(
     try {
       const { addresses } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
+      const role = req.user!.role;
+      const [existing] = await db
+        .select()
+        .from(addresses)
+        .where(eq(addresses.id, req.params.addressId as string))
+        .limit(1);
+      if (!existing) {
+        return res.status(404).json({ error: "Dirección no encontrada" });
+      }
+      if (
+        existing.userId !== req.user!.id &&
+        role !== "admin" &&
+        role !== "super_admin"
+      ) {
+        return res
+          .status(403)
+          .json({ error: "No autorizado para eliminar esta dirección" });
+      }
       await db
         .delete(addresses)
         .where(eq(addresses.id, req.params.addressId as string));

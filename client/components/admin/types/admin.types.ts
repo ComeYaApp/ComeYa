@@ -115,6 +115,8 @@ export interface Business {
   deliveryFee: number;
   minOrderAmount: number;
   customCommission: number | null;
+  ownerId?: string;
+  verificationStatus?: "pending" | "verified" | "rejected" | null;
 }
 
 export interface Product {

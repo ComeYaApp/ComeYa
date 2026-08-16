@@ -5,12 +5,14 @@ const router = express.Router();
 
 console.log("🔧 Favorites routes loaded");
 
-// Get user favorites
+// Get user favorites (propietario o admin)
 router.get("/:userId", authenticateToken, async (req, res) => {
   try {
     const userId = req.params.userId;
-    console.log("🔍 GETTING FAVORITES FOR:", userId);
-
+    const role = (req as any).user?.role;
+    if (userId !== (req as any).user?.id && role !== "admin" && role !== "super_admin") {
+      return res.status(403).json({ error: "No autorizado" });
+    }
     const { favorites, businesses } = await import("@shared/schema-mysql");
     const { db } = await import("./db");
     const { eq } = await import("drizzle-orm");
@@ -63,6 +65,12 @@ router.post("/", authenticateToken, async (req, res) => {
 
     const { userId, businessId, productId } = req.body;
 
+    // Un usuario solo puede añadir favoritos a su propia cuenta
+    const role = (req as any).user?.role;
+    if (userId !== (req as any).user?.id && role !== "admin" && role !== "super_admin") {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
     const existing = await db
       .select()
       .from(favorites)
@@ -96,12 +104,27 @@ router.post("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Remove favorite
+// Remove favorite (solo el dueño del favorito o admin)
 router.delete("/:id", authenticateToken, async (req, res) => {
   try {
     const { favorites } = await import("@shared/schema-mysql");
     const { db } = await import("./db");
     const { eq } = await import("drizzle-orm");
+
+    const [existing] = await db
+      .select()
+      .from(favorites)
+      .where(eq(favorites.id, req.params.id))
+      .limit(1);
+    const role = (req as any).user?.role;
+    if (
+      !existing ||
+      (existing.userId !== (req as any).user?.id &&
+        role !== "admin" &&
+        role !== "super_admin")
+    ) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
 
     await db.delete(favorites).where(eq(favorites.id, req.params.id));
 

@@ -150,7 +150,7 @@ export async function getDirections(
   destLng: number,
 ): Promise<DirectionsResult | null> {
   const cacheKey = getCacheKey("directions", { originLat, originLng, destLat, destLng });
-  
+
   // Check cache
   const cached = getFromCache<DirectionsResult>(cacheKey, TTL.directions);
   if (cached) {
@@ -158,53 +158,178 @@ export async function getDirections(
     return cached;
   }
 
-  // Check rate limit
+  // Check rate limit (compartido Google+OSRM para proteger costos)
   if (!checkRateLimit("directions")) {
     console.warn(`⚠️ [GoogleMaps Rate Limit] Directions — usando fallback`);
     return null;
   }
 
-  if (!API_KEY) {
-    console.warn("⚠️ [GoogleMaps] No API key configured");
-    return null;
-  }
+  if (API_KEY) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&language=es&key=${API_KEY}`;
 
-  try {
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&language=es&key=${API_KEY}`;
-    
-    const response = await fetch(url, { 
-      signal: AbortSignal.timeout(8000) // 8s timeout
-    });
-    const data = await response.json();
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(8000), // 8s timeout
+      });
+      const data = await response.json();
 
-    if (data.status !== "OK" || !data.routes?.length) {
-      console.warn(`⚠️ [GoogleMaps] Directions error: ${data.status} — ${data.error_message || ""}`);
-      return null;
+      if (data.status === "OK" && data.routes?.length) {
+        const route = data.routes[0];
+        const leg = route.legs[0];
+
+        const result: DirectionsResult = {
+          polyline: route.overview_polyline?.points || "",
+          distance: leg.distance,
+          duration: leg.duration,
+          steps: (leg.steps || []).map((s: any) => ({
+            instruction: s.html_instructions?.replace(/<[^>]*>/g, "").trim() || "",
+            distance: s.distance,
+            duration: s.duration,
+          })),
+          startLocation: leg.start_location,
+          endLocation: leg.end_location,
+        };
+
+        setCache(cacheKey, result);
+        console.log(`🗺️ [GoogleMaps API] Directions fetched & cached`);
+        return result;
+      }
+
+      console.warn(`⚠️ [GoogleMaps] Directions error: ${data.status} — ${data.error_message || ""} (probando OSRM)`);
+    } catch (error: any) {
+      console.error(`❌ [GoogleMaps] Directions fetch error:`, error.message, "(probando OSRM)");
     }
-
-    const route = data.routes[0];
-    const leg = route.legs[0];
-
-    const result: DirectionsResult = {
-      polyline: route.overview_polyline?.points || "",
-      distance: leg.distance,
-      duration: leg.duration,
-      steps: (leg.steps || []).map((s: any) => ({
-        instruction: s.html_instructions?.replace(/<[^>]*>/g, "").trim() || "",
-        distance: s.distance,
-        duration: s.duration,
-      })),
-      startLocation: leg.start_location,
-      endLocation: leg.end_location,
-    };
-
-    setCache(cacheKey, result);
-    console.log(`🗺️ [GoogleMaps API] Directions fetched & cached`);
-    return result;
-  } catch (error: any) {
-    console.error(`❌ [GoogleMaps] Directions fetch error:`, error.message);
-    return null;
+  } else {
+    console.warn("⚠️ [GoogleMaps] No API key configured — usando OSRM");
   }
+
+  // Fallback: OSRM (OpenStreetMap) — rutas reales por calles sin API key
+  const osrmResult = await fetchOsrmRoute(originLat, originLng, destLat, destLng);
+  if (osrmResult) {
+    setCache(cacheKey, osrmResult);
+    return osrmResult;
+  }
+
+  return null;
+}
+
+// Servidores OSRM públicos (se prueban en orden)
+const OSRM_MIRRORS = [
+  "https://router.project-osrm.org",
+  "https://routing.openstreetmap.de/routed-car",
+];
+
+/**
+ * Ruta real por calles usando OSRM público (gratuito, sin API key).
+ * Devuelve el mismo formato que Google Directions o null si falla.
+ */
+async function fetchOsrmRoute(
+  originLat: number,
+  originLng: number,
+  destLat: number,
+  destLng: number,
+): Promise<DirectionsResult | null> {
+  const path = `/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline&steps=true`;
+
+  for (const base of OSRM_MIRRORS) {
+    try {
+      const response = await fetch(`${base}${path}`, {
+        signal: AbortSignal.timeout(8000),
+        headers: { "User-Agent": "ComeYa-Delivery-App/1.0" },
+      });
+      if (!response.ok) continue;
+      const data = await response.json();
+      const route = data?.routes?.[0];
+      if (!route?.geometry) continue;
+
+      const leg = route.legs?.[0];
+      const distanceMeters = Math.round(route.distance || leg?.distance || 0);
+      const durationSeconds = Math.round(route.duration || leg?.duration || 0);
+
+      // Generar instrucciones básicas a partir de los nombres de las calles
+      const steps = (leg?.steps || [])
+        .filter((s: any) => s.name || s.maneuver?.type === "arrive")
+        .slice(0, 25)
+        .map((s: any) => ({
+          instruction:
+            s.maneuver?.type === "arrive"
+              ? "Llega a tu destino"
+              : `${maneuverEs(s.maneuver?.type, s.maneuver?.modifier)} ${s.name || ""}`.trim(),
+          distance: {
+            text: formatMeters(s.distance),
+            value: Math.round(s.distance || 0),
+          },
+          duration: {
+            text: formatSeconds(s.duration),
+            value: Math.round(s.duration || 0),
+          },
+        }));
+
+      const result: DirectionsResult = {
+        polyline: route.geometry,
+        distance: {
+          text: distanceMeters >= 1000
+            ? `${(distanceMeters / 1000).toFixed(1)} km`
+            : `${distanceMeters} m`,
+          value: distanceMeters,
+        },
+        duration: {
+          text: `${Math.max(1, Math.round(durationSeconds / 60))} min`,
+          value: durationSeconds,
+        },
+        steps,
+        startLocation: { lat: originLat, lng: originLng },
+        endLocation: { lat: destLat, lng: destLng },
+      };
+
+      console.log(`🗺️ [OSRM] Directions fetched (${base})`);
+      return result;
+    } catch {
+      // probar el siguiente mirror
+    }
+  }
+
+  console.warn("⚠️ [OSRM] Todos los mirrors fallaron");
+  return null;
+}
+
+function maneuverEs(type?: string, modifier?: string): string {
+  switch (type) {
+    case "depart":
+      return "Sal en";
+    case "turn":
+      if (modifier === "left") return "Gira a la izquierda en";
+      if (modifier === "right") return "Gira a la derecha en";
+      if (modifier === "straight") return "Continúa por";
+      return "Gira en";
+    case "new name":
+      return "Continúa por";
+    case "merge":
+      return "Incorpórate en";
+    case "on ramp":
+      return "Toma la rampa hacia";
+    case "off ramp":
+      return "Sal hacia";
+    case "fork":
+      return "Mantente en";
+    case "end of road":
+      return "Al final de la vía gira en";
+    case "roundabout":
+    case "rotary":
+      return "En la rotonda toma la salida por";
+    default:
+      return "Continúa por";
+  }
+}
+
+function formatMeters(m?: number): string {
+  if (!m) return "";
+  return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`;
+}
+
+function formatSeconds(s?: number): string {
+  if (!s) return "";
+  return `${Math.max(1, Math.round(s / 60))} min`;
 }
 
 /**

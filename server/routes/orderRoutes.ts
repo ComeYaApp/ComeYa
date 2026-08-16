@@ -327,51 +327,90 @@ router.get("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// Assign driver automatically
-router.post("/:id/assign-driver", authenticateToken, async (req, res) => {
-  try {
-    const { orders, users } = await import("@shared/schema-mysql");
-    const { db } = await import("../db");
-    const { eq, and } = await import("drizzle-orm");
-    const orderId = Array.isArray(req.params.id)
-      ? req.params.id[0]
-      : req.params.id;
+// Assign driver automatically — solo administradores
+router.post(
+  "/:id/assign-driver",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (
+        req.user!.role !== "admin" &&
+        req.user!.role !== "super_admin"
+      ) {
+        return res.status(403).json({
+          error: "Solo un administrador puede asignar repartidores",
+        });
+      }
 
-    const availableDrivers = await db
-      .select()
-      .from(users)
-      .where(and(eq(users.role, "delivery_driver"), eq(users.isActive, true)))
-      .limit(10);
+      const { orders, users } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq, and } = await import("drizzle-orm");
+      const orderId = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
 
-    if (availableDrivers.length === 0) {
-      return res.json({
-        success: false,
-        message: "No hay repartidores disponibles",
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+      if (!order) {
+        return res.status(404).json({ error: "Pedido no encontrado" });
+      }
+      if (order.deliveryPersonId) {
+        return res
+          .status(400)
+          .json({ error: "El pedido ya tiene repartidor asignado" });
+      }
+
+      const availableDrivers = await db
+        .select()
+        .from(users)
+        .where(
+          and(eq(users.role, "delivery_driver"), eq(users.isActive, true)),
+        )
+        .limit(10);
+
+      if (availableDrivers.length === 0) {
+        return res.json({
+          success: false,
+          message: "No hay repartidores disponibles",
+        });
+      }
+
+      const driver = availableDrivers[0];
+
+      // Se asigna el repartidor, pero el pedido sigue en su estado actual:
+      // la transición a on_the_way ocurre cuando el repartidor lo recoge.
+      await db
+        .update(orders)
+        .set({
+          deliveryPersonId: driver.id,
+          assignedAt: new Date(),
+        })
+        .where(eq(orders.id, orderId));
+
+      // Notificar al repartidor asignado
+      const { sendPushToUser } = await import("../enhancedPushService");
+      await sendPushToUser(driver.id, {
+        title: "📦 Pedido asignado",
+        body: `Se te asignó el pedido #${orderId.slice(-6)}`,
+        data: { orderId, screen: "DriverActiveOrder" },
       });
+
+      res.json({
+        success: true,
+        driver: {
+          id: driver.id,
+          name: driver.name,
+          phone: driver.phone,
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
-
-    const driver = availableDrivers[0];
-
-    await db
-      .update(orders)
-      .set({
-        deliveryPersonId: driver.id,
-        status: "picked_up",
-      })
-      .where(eq(orders.id, orderId));
-
-    res.json({
-      success: true,
-      driver: {
-        id: driver.id,
-        name: driver.name,
-        phone: driver.phone,
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  },
+);
 
 // Cancel order during regret period
 router.post(
@@ -504,7 +543,18 @@ router.post(
         return res.status(404).json({ error: "Order not found" });
       }
 
-      // Enforce proximity check (100m) before allowing delivery completion
+      // El pedido debe estar en camino antes de poder entregarse
+      if (
+        !["ready", "picked_up", "on_the_way", "in_transit", "arriving"].includes(
+          order.status,
+        )
+      ) {
+        return res.status(400).json({
+          error:
+            "El pedido debe estar recogido y en camino para marcarlo como entregado",
+        });
+      }
+
       const driverLat = req.body.latitude ?? req.body.lat;
       const driverLng = req.body.longitude ?? req.body.lng;
       const hasDriverCoords =

@@ -515,6 +515,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
             <BusinessesTab
               businesses={businesses}
               onBusinessPress={handleBusinessPress}
+              onRefresh={fetchData}
             />
             {businessModalVisible && selectedBusiness && (
               <Pressable
