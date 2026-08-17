@@ -217,7 +217,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 color={ComeYaColors.success}
               />
               <Text style={[styles.statValue, { color: theme.text }]}>
-                €{(stats.totalRevenue / 100).toFixed(0)}
+                {(stats.totalRevenue / 100).toFixed(0)} €
               </Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
                 Ingresos
@@ -337,7 +337,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   </View>
                 </View>
                 <Text style={styles.orderTotal}>
-                  €{((order.total || 0) / 100).toFixed(2)}
+                  {((order.total || 0) / 100).toFixed(2)} €
                 </Text>
               </View>
               <Text

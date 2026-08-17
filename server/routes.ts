@@ -49,6 +49,7 @@ import orderChatRoutes from "./routes/orderChat";
 // sus handlers duplicados (POST /, GET /:id, /confirm...).
 import orderExtraRoutes from "./routes/orders";
 import addressRoutes from "./routes/addressRoutes";
+import deliveryRequestRoutes from "./routes/deliveryRequestRoutes";
 import stripePaymentRoutes from "./routes/stripePaymentRoutes";
 import stripeConnectRoutes from "./routes/stripeConnect";
 import pickupRoutes from "./routes/pickup";
@@ -288,6 +289,7 @@ router.use("/orders", orderRoutes);
 router.use("/users", userRoutes);
 router.use("/user", userRoutes);
 router.use("/addresses", addressRoutes);
+router.use("/delivery-requests", deliveryRequestRoutes);
 router.use("/delivery", deliveryConfigRoutes);
 router.use("/delivery", deliveryRoutes);
 router.use("/delivery", deliveryRoutesLegacy);

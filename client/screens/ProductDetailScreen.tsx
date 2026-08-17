@@ -371,7 +371,7 @@ export default function ProductDetailScreen() {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Total
           </ThemedText>
-          <ThemedText type="h2">€{calculateTotal().toFixed(2)}</ThemedText>
+          <ThemedText type="h2">{calculateTotal().toFixed(2)} €</ThemedText>
         </View>
         <Button
           onPress={handleAddToCart}

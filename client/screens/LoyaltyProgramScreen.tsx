@@ -229,7 +229,7 @@ export default function LoyaltyProgramScreen() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-VE", {
       style: "currency",
-      currency: "MXN",
+      currency: "EUR",
     }).format(amount / 100);
   };
 
@@ -323,7 +323,7 @@ export default function LoyaltyProgramScreen() {
             <View style={styles.earnInfo}>
               <Text style={styles.earnTitle}>Realizar Pedidos</Text>
               <Text style={styles.earnDescription}>
-                1 punto por cada $10 pesos
+                1 punto por cada 10 €
               </Text>
             </View>
             <Text style={styles.earnPoints}>+10pts</Text>

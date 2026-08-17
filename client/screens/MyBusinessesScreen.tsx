@@ -281,7 +281,7 @@ export default function MyBusinessesScreen() {
   };
 
   const formatCurrency = (amount: number) => {
-    return `€${(amount / 100).toFixed(2)}`;
+    return `${(amount / 100).toFixed(2)} €`;
   };
 
   const getImageUrl = (imagePath: string | undefined): string | undefined => {

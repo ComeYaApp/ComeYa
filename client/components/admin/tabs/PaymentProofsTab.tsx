@@ -29,7 +29,7 @@ const METHOD_LABELS: Record<string, string> = {
   stripe_bizum: "Bizum (Stripe)",
 };
 
-const fmt = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 
 export const PaymentProofsTab: React.FC<Props> = ({ theme, showToast }) => {
   const [proofs, setProofs] = useState<any[]>([]);

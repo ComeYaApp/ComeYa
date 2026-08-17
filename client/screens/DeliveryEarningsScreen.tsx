@@ -404,7 +404,7 @@ export default function DeliveryEarningsScreen() {
                   type="caption"
                   style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
                 >
-                  €{wallet.balance.toFixed(2)}
+                  {wallet.balance.toFixed(2)} €
                 </ThemedText>
               </View>
               <View
@@ -447,7 +447,7 @@ export default function DeliveryEarningsScreen() {
                   type="caption"
                   style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
                 >
-                  -€{wallet.cashOwed.toFixed(2)}
+                  -{wallet.cashOwed.toFixed(2)} €
                 </ThemedText>
               </View>
               {wallet.canWithdraw > 0 ? (
@@ -475,7 +475,7 @@ export default function DeliveryEarningsScreen() {
                       fontWeight: "600",
                     }}
                   >
-                    €{wallet.canWithdraw.toFixed(2)}
+                    {wallet.canWithdraw.toFixed(2)} €
                   </ThemedText>
                 </View>
               ) : null}
@@ -560,7 +560,7 @@ export default function DeliveryEarningsScreen() {
                   Total ganado histórico
                 </ThemedText>
                 <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-                  €{wallet.totalEarned.toFixed(2)}
+                  {wallet.totalEarned.toFixed(2)} €
                 </ThemedText>
               </View>
               <View
@@ -699,7 +699,7 @@ export default function DeliveryEarningsScreen() {
                 marginVertical: Spacing.sm,
               }}
             >
-              €{getEarningsForPeriod().toFixed(2)}
+              {getEarningsForPeriod().toFixed(2)} €
             </ThemedText>
             <View style={styles.tipsRow}>
               <Feather name="gift" size={16} color="rgba(255,255,255,0.8)" />
@@ -707,7 +707,7 @@ export default function DeliveryEarningsScreen() {
                 type="caption"
                 style={{ color: "rgba(255,255,255,0.8)", marginLeft: 4 }}
               >
-                +€{earnings.tips.toFixed(2)} en propinas
+                +{earnings.tips.toFixed(2)} € en propinas
               </ThemedText>
             </View>
 
@@ -805,7 +805,7 @@ export default function DeliveryEarningsScreen() {
               type="body"
               style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
             >
-              Disponible para retirar: €{wallet.canWithdraw.toFixed(2)}
+              Disponible para retirar: {wallet.canWithdraw.toFixed(2)} €
             </ThemedText>
 
             <View
@@ -880,7 +880,7 @@ export default function DeliveryEarningsScreen() {
               type="body"
               style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}
             >
-              Deposita €{wallet.cashOwed.toFixed(2)} a la siguiente cuenta:
+              Deposita {wallet.cashOwed.toFixed(2)} € a la siguiente cuenta:
             </ThemedText>
 
             {/* Datos bancarios removidos - usar sección wallet */}

@@ -32,6 +32,7 @@ export default function DriverAvailableOrdersScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const [orders, setOrders] = useState<any[]>([]);
+  const [logisticsRequests, setLogisticsRequests] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
@@ -88,7 +89,69 @@ export default function DriverAvailableOrdersScreen() {
     } catch (error) {
       console.error("❌ Error loading orders:", error);
     }
+
+    // Recogidas de comercios (Logística Local)
+    try {
+      const res = await apiRequest("GET", "/api/delivery-requests/available");
+      const data = await res.json();
+      setLogisticsRequests(data.requests || []);
+    } catch {
+      // sin recogidas disponibles
+    }
     setLoadingOrders(false);
+  };
+
+  const handleAcceptLogistics = async (id: string) => {
+    try {
+      const res = await apiRequest("POST", `/api/delivery-requests/${id}/accept`);
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert("Recogida aceptada", "Completa la entrega desde tus entregas.");
+        loadOrders();
+      } else {
+        Alert.alert("Error", data.error || "No se pudo aceptar");
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo aceptar la recogida");
+    }
+  };
+
+  const renderLogisticsSection = () => {
+    if (!logisticsRequests.length) return null;
+    return (
+      <View style={{ marginBottom: Spacing.md }}>
+        <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>
+          📦 Recogidas de comercios (3,50 €)
+        </ThemedText>
+        {logisticsRequests.map((r: any) => (
+          <View
+            key={r.id}
+            style={[
+              styles.logisticsCard,
+              { backgroundColor: theme.card },
+            ]}
+          >
+            <ThemedText type="body" style={{ fontWeight: "600" }}>
+              {r.businessName}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {r.pickupAddress} → {r.dropoffAddress}
+            </ThemedText>
+            <Pressable
+              onPress={() => handleAcceptLogistics(r.id)}
+              style={[
+                styles.logisticsBtn,
+                { backgroundColor: ComeYaColors.primary },
+              ]}
+            >
+              <ThemedText type="caption" style={{ color: "#fff", fontWeight: "700" }}>
+                Aceptar — 3,50 €
+              </ThemedText>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+    );
   };
 
   const handleToggleStatus = async () => {
@@ -345,7 +408,7 @@ export default function DriverAvailableOrdersScreen() {
               Tu ganancia
             </ThemedText>
             <ThemedText type="h3" style={{ color: ComeYaColors.success }}>
-              €{((item.deliveryFee || 0) / 100).toFixed(2)}
+              {((item.deliveryFee || 0) / 100).toFixed(2)} €
             </ThemedText>
           </View>
           <Pressable
@@ -478,6 +541,7 @@ export default function DriverAvailableOrdersScreen() {
         data={orders}
         keyExtractor={(item: any) => item.id}
         renderItem={renderOrder}
+        ListHeaderComponent={renderLogisticsSection}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -533,6 +597,18 @@ export default function DriverAvailableOrdersScreen() {
 }
 
 const styles = StyleSheet.create({
+  logisticsCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  logisticsBtn: {
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.sm,
+  },
   container: {
     flex: 1,
   },

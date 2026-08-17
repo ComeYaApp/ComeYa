@@ -141,16 +141,13 @@ export default function OrderTrackingScreen() {
     lng: number;
   } | null>(null);
   const { user } = useAuth();
-  const [selectedTip, setSelectedTip] = useState<number | null>(null);
-  const [tipSent, setTipSent] = useState(false);
-  const [sendingTip, setSendingTip] = useState(false);
+  // La propina ya NO se ofrece durante el seguimiento: solo tras la entrega,
+  // desde la pantalla de valoración del pedido.
 
   const businessMarkerRef = useRef<any>(null);
   const customerMarkerRef = useRef<any>(null);
   const routeLineRef = useRef<any>(null);
   const driverRouteLineRef = useRef<any>(null);
-
-  const tipOptions = [10, 20, 30, 50];
 
   useEffect(() => {
     loadGoogleMaps()
@@ -750,7 +747,7 @@ export default function OrderTrackingScreen() {
                             {itemQty}x {itemName}
                           </ThemedText>
                           <ThemedText type="body" style={{ fontWeight: "600" }}>
-                            €{(itemPrice * itemQty).toFixed(2)}
+                            {(itemPrice * itemQty).toFixed(2)} €
                           </ThemedText>
                         </View>
                       );
@@ -776,7 +773,7 @@ export default function OrderTrackingScreen() {
                       Subtotal
                     </ThemedText>
                     <ThemedText type="small">
-                      €{((order.subtotal || 0) / 100).toFixed(2)}
+                      {((order.subtotal || 0) / 100).toFixed(2)} €
                     </ThemedText>
                   </View>
                   <View style={s.detailRow}>
@@ -787,7 +784,7 @@ export default function OrderTrackingScreen() {
                       Envío
                     </ThemedText>
                     <ThemedText type="small">
-                      €{((order.deliveryFee || 0) / 100).toFixed(2)}
+                      {((order.deliveryFee || 0) / 100).toFixed(2)} €
                     </ThemedText>
                   </View>
                   <View style={[s.detailRow, { marginTop: Spacing.sm }]}>
@@ -796,7 +793,7 @@ export default function OrderTrackingScreen() {
                       type="h4"
                       style={{ color: PRIMARY, fontWeight: "800" }}
                     >
-                      €{((order.total || 0) / 100).toFixed(2)}
+                      {((order.total || 0) / 100).toFixed(2)} €
                     </ThemedText>
                   </View>
                 </View>
@@ -931,126 +928,7 @@ export default function OrderTrackingScreen() {
               </View>
             )}
 
-            {/* Sistema de propinas - Solo si está entregado y hay repartidor */}
-            {order?.status === "delivered" &&
-              order?.deliveryPersonId &&
-              !tipSent &&
-              user?.role === "customer" && (
-                <View style={[s.tipCard, { backgroundColor: theme.card }]}>
-                  <View style={s.tipHeader}>
-                    <Feather name="heart" size={20} color={PRIMARY} />
-                    <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
-                      Agregar propina
-                    </ThemedText>
-                  </View>
-                  <ThemedText
-                    type="body"
-                    style={{
-                      color: theme.textSecondary,
-                      marginBottom: Spacing.md,
-                    }}
-                  >
-                    Agradece a tu repartidor por su excelente servicio
-                  </ThemedText>
-
-                  {/* Opciones de propina */}
-                  <View style={s.tipOptions}>
-                    {tipOptions.map((tip) => (
-                      <Pressable
-                        key={tip}
-                        onPress={() => setSelectedTip(tip)}
-                        style={[
-                          s.tipOption,
-                          {
-                            backgroundColor:
-                              selectedTip === tip
-                                ? PRIMARY
-                                : theme.backgroundSecondary,
-                            borderColor:
-                              selectedTip === tip ? PRIMARY : theme.border,
-                          },
-                        ]}
-                      >
-                        <ThemedText
-                          type="body"
-                          style={{
-                            color: selectedTip === tip ? "#FFF" : theme.text,
-                            fontWeight: "600",
-                          }}
-                        >
-                          €{(tip / 100).toFixed(2)}
-                        </ThemedText>
-                      </Pressable>
-                    ))}
-                  </View>
-
-                  {/* Botón enviar propina */}
-                  <Pressable
-                    onPress={async () => {
-                      if (!selectedTip || sendingTip) return;
-                      setSendingTip(true);
-                      try {
-                        await apiRequest("POST", `/api/orders/${orderId}/tip`, {
-                          amount: selectedTip,
-                          deliveryPersonId: order.deliveryPersonId,
-                        });
-                        setTipSent(true);
-                      } catch (error) {
-                        console.error("Error sending tip:", error);
-                      } finally {
-                        setSendingTip(false);
-                      }
-                    }}
-                    disabled={!selectedTip || sendingTip}
-                    style={[
-                      s.tipButton,
-                      {
-                        backgroundColor: selectedTip
-                          ? PRIMARY
-                          : theme.backgroundSecondary,
-                        opacity: selectedTip && !sendingTip ? 1 : 0.5,
-                      },
-                    ]}
-                  >
-                    {sendingTip ? (
-                      <ActivityIndicator color="#FFF" size="small" />
-                    ) : (
-                      <>
-                        <Feather name="gift" size={18} color="#FFF" />
-                        <ThemedText
-                          type="body"
-                          style={{
-                            color: "#FFF",
-                            marginLeft: Spacing.sm,
-                            fontWeight: "600",
-                          }}
-                        >
-                          Enviar propina
-                        </ThemedText>
-                      </>
-                    )}
-                  </Pressable>
-                </View>
-              )}
-
-            {/* Confirmación de propina enviada */}
-            {tipSent && (
-              <View style={[s.tipCard, { backgroundColor: "#E8F5E9" }]}>
-                <View style={s.tipHeader}>
-                  <Feather name="check-circle" size={20} color="#4CAF50" />
-                  <ThemedText
-                    type="h4"
-                    style={{ marginLeft: Spacing.sm, color: "#2E7D32" }}
-                  >
-                    ¡Propina enviada!
-                  </ThemedText>
-                </View>
-                <ThemedText type="body" style={{ color: "#4CAF50" }}>
-                  Tu repartidor recibirá €
-                  {((selectedTip || 0) / 100).toFixed(2)}
-                </ThemedText>
-              </View>
-            )}
+            {/* La propina se ofrece solo tras la entrega, en la valoración del pedido */}
 
             {/* Botón confirmar entrega */}
             {order?.status === "delivered" &&
@@ -1129,7 +1007,7 @@ export default function OrderTrackingScreen() {
                 </View>
               )}
 
-            {/* Botón reportar problema */}
+            {/* Botón reportar incidencia */}
             {order?.status !== "cancelled" && (
               <Pressable
                 onPress={() => {
@@ -1152,7 +1030,7 @@ export default function OrderTrackingScreen() {
                   type="body"
                   style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}
                 >
-                  Reportar un problema
+                  Reportar incidencia
                 </ThemedText>
               </Pressable>
             )}
@@ -1305,44 +1183,6 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.md,
-  },
-
-  tipCard: {
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.xl,
-    marginBottom: Spacing.lg,
-    ...Platform.select({ web: { boxShadow: "0 4px 12px rgba(0,0,0,0.08)" } }),
-  },
-  tipHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.md,
-  },
-  tipOptions: {
-    flexDirection: "row",
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
-  },
-  tipOption: {
-    flex: 1,
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer" as any,
-    transition: "all 0.2s ease" as any,
-  },
-  tipButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    cursor: "pointer" as any,
-    ...Platform.select({
-      web: { boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)" },
-    }),
   },
 
   confirmButton: {

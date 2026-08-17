@@ -182,4 +182,7 @@ const server = httpServer.listen(PORT, () => {
   import("./pickupNotificationCron")
     .then(({ startPickupNotificationCron }) => startPickupNotificationCron())
     .catch(console.error);
+  import("./staleOrdersCron")
+    .then(({ startStaleOrdersCron }) => startStaleOrdersCron())
+    .catch(console.error);
 });

@@ -303,7 +303,7 @@ export default function UniversalWallet({
             <Ionicons name="cash-outline" size={24} color={getBalanceColor()} />
           </View>
           <Text style={[styles.balanceAmount, { color: getBalanceColor() }]}>
-            ${(wallet.availableForWithdrawal / 100).toFixed(2)} MXN
+            ${(wallet.availableForWithdrawal / 100).toFixed(2)} €
           </Text>
           <View style={styles.retainRow}>
             <Text style={styles.retainLabel}>

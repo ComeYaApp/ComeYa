@@ -297,7 +297,7 @@ export default function SubscriptionScreen() {
                 </Text>
                 {plansData?.[currentPlan] && (
                   <Text style={[s.currentBannerSub, { color: sub }]}>
-                    €{(plansData[currentPlan].price / 100).toFixed(2)}/mes
+                    {(plansData[currentPlan].price / 100).toFixed(2)} €/mes
                   </Text>
                 )}
               </View>
@@ -515,7 +515,7 @@ export default function SubscriptionScreen() {
               </Text>
               <Text style={[ms.subtitle, { color: sub }]}>
                 Plan {paymentModal?.plan === "premium" ? "Premium" : "Business"}{" "}
-                — €{((paymentModal?.amount || 0) / 100).toFixed(2)}/mes
+                — {((paymentModal?.amount || 0) / 100).toFixed(2)} €/mes
               </Text>
               {PAYMENT_METHODS.map((m) => (
                 <TouchableOpacity

@@ -328,7 +328,7 @@ export default function SuperAppScreen() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("es-VE", {
       style: "currency",
-      currency: "MXN",
+      currency: "EUR",
     }).format(amount / 100);
   };
 

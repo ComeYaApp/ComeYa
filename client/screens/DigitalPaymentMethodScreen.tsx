@@ -334,7 +334,7 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
             Total a pagar
           </Text>
           <Text style={[styles.totalAmount, { color: ComeYaColors.primary }]}>
-            €{orderTotal.toFixed(2)}
+            {orderTotal.toFixed(2)} €
           </Text>
         </View>
       )}

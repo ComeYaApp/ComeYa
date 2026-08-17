@@ -42,9 +42,9 @@ const ISSUE_TYPES = [
 ];
 
 const PRIORITY_OPTIONS = [
-  { id: "low", label: "Bajo", color: ComeYaColors.success },
-  { id: "medium", label: "Medio", color: ComeYaColors.warning },
-  { id: "high", label: "Alto", color: ComeYaColors.error },
+  { id: "low", label: "BAJA", color: ComeYaColors.success },
+  { id: "medium", label: "MEDIA", color: ComeYaColors.warning },
+  { id: "high", label: "ALTA", color: ComeYaColors.error },
 ];
 
 export default function ReportIssueScreen() {
@@ -88,7 +88,7 @@ export default function ReportIssueScreen() {
       navigation.goBack();
     },
     onError: (error: any) => {
-      showToast(error.message || "Error al reportar problema", "error");
+      showToast(error.message || "Error al reportar incidencia", "error");
     },
   });
 
@@ -144,7 +144,7 @@ export default function ReportIssueScreen() {
         >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
-        <ThemedText type="h2">Reportar Problema</ThemedText>
+        <ThemedText type="h2">Reportar Incidencia</ThemedText>
         <View style={{ width: 40 }} />
       </View>
 

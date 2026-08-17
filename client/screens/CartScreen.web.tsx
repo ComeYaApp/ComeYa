@@ -175,7 +175,7 @@ export default function CartScreen() {
                       {item.product.name}
                     </Text>
                     <Text style={[s.itemPrice, { color: PRIMARY }]}>
-                      €{item.product.price.toFixed(2)} / ud.
+                      {item.product.price.toFixed(2)} € / ud.
                     </Text>
                   </View>
                   <View style={s.qtyRow}>
@@ -200,7 +200,7 @@ export default function CartScreen() {
                     </Pressable>
                   </View>
                   <Text style={[s.itemTotal, { color: text }]}>
-                    €{(item.product.price * item.quantity).toFixed(2)}
+                    {(item.product.price * item.quantity).toFixed(2)} €
                   </Text>
                 </View>
               ))}
@@ -285,7 +285,7 @@ export default function CartScreen() {
               <View style={[s.minOrderBadge, { backgroundColor: "#FFF3E0" }]}>
                 <Feather name="alert-circle" size={14} color="#FF9800" />
                 <Text style={{ color: "#E65100", fontSize: 12, marginLeft: 6 }}>
-                  Mín. €{minimumOrder} (faltan €
+                  Mín. {minimumOrder} € (faltan €
                   {(minimumOrder - subtotal).toFixed(2)})
                 </Text>
               </View>
@@ -298,7 +298,7 @@ export default function CartScreen() {
                     {item.quantity}x {item.product.name}
                   </Text>
                   <Text style={[s.summaryValue, { color: text }]}>
-                    €{(item.product.price * item.quantity).toFixed(2)}
+                    {(item.product.price * item.quantity).toFixed(2)} €
                   </Text>
                 </View>
               ))}
@@ -306,7 +306,7 @@ export default function CartScreen() {
             <View style={s.summaryRow}>
               <Text style={[s.summaryLabel, { color: sub }]}>Subtotal</Text>
               <Text style={[s.summaryValue, { color: text }]}>
-                €{subtotal.toFixed(2)}
+                {subtotal.toFixed(2)} €
               </Text>
             </View>
             {orderType === "delivery" && (
@@ -318,7 +318,7 @@ export default function CartScreen() {
                   <ActivityIndicator size="small" color={PRIMARY} />
                 ) : (
                   <Text style={[s.summaryValue, { color: text }]}>
-                    €{deliveryFee.toFixed(2)}
+                    {deliveryFee.toFixed(2)} €
                   </Text>
                 )}
               </View>
@@ -340,7 +340,7 @@ export default function CartScreen() {
             >
               <Text style={[s.totalLabel, { color: text }]}>Total</Text>
               <Text style={[s.totalValue, { color: PRIMARY }]}>
-                €{total.toFixed(2)}
+                {total.toFixed(2)} €
               </Text>
             </View>
             <Pressable
@@ -355,7 +355,7 @@ export default function CartScreen() {
               disabled={!canProceed}
             >
               <Text style={s.checkoutBtnText}>
-                {canProceed ? "Ir al checkout" : `Mínimo €${minimumOrder}`}
+                {canProceed ? "Ir al checkout" : `Mínimo ${minimumOrder} €`}
               </Text>
               <Feather name="arrow-right" size={18} color="#fff" />
             </Pressable>

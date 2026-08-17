@@ -47,8 +47,8 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
     const amt = finance?.pendingPayoutAmount ?? 0;
     const fmtAmt =
       amt >= 100_000
-        ? `€${(amt / 100 / 1_000).toFixed(1)}K`
-        : `€${(amt / 100).toFixed(0)}`;
+        ? `${(amt / 100 / 1_000).toFixed(1)} €K`
+        : `${(amt / 100).toFixed(0)} €`;
     alerts.push({
       id: "payouts",
       icon: "send",

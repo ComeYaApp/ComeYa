@@ -25,7 +25,7 @@ const METHOD_META: Record<string, { label: string; color: string }> = {
   stripe_bizum: { label: "Bizum Stripe", color: "#00ADEF" },
 };
 
-const fmt = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 
 interface Props {
   theme?: any;

@@ -135,7 +135,7 @@ export default function WeeklySettlementScreen() {
                 marginVertical: Spacing.sm,
               }}
             >
-              €{currentDebt.toFixed(2)}
+              {currentDebt.toFixed(2)} €
             </ThemedText>
             <ThemedText type="caption" style={{ color: "#FFF", opacity: 0.7 }}>
               Pedidos en efectivo pendientes de liquidar
@@ -358,7 +358,7 @@ export default function WeeklySettlementScreen() {
             type="h1"
             style={{ color: "#FFF", fontSize: 48, marginVertical: Spacing.sm }}
           >
-            €{(settlement.amount_owed / 100).toFixed(2)}
+            {(settlement.amount_owed / 100).toFixed(2)} €
           </ThemedText>
           <ThemedText type="caption" style={{ color: "#FFF", opacity: 0.7 }}>
             Comisiones de plataforma de la semana

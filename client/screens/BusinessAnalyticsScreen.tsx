@@ -209,7 +209,7 @@ export default function BusinessAnalyticsScreen() {
               color={ComeYaColors.success}
             />
             <ThemedText type="h3" style={{ marginTop: Spacing.sm }}>
-              €{dashboard?.totalRevenue?.toFixed(2) || "0.00"}
+              {dashboard?.totalRevenue?.toFixed(2) || "0.00"} €
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Ingresos
@@ -244,7 +244,7 @@ export default function BusinessAnalyticsScreen() {
               color={ComeYaColors.warning}
             />
             <ThemedText type="h3" style={{ marginTop: Spacing.sm }}>
-              €{dashboard?.avgOrderValue?.toFixed(2) || "0.00"}
+              {dashboard?.avgOrderValue?.toFixed(2) || "0.00"} €
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               Ticket Promedio
@@ -292,7 +292,7 @@ export default function BusinessAnalyticsScreen() {
                   {comparison.thisWeek.orders} pedidos
                 </ThemedText>
                 <ThemedText type="body">
-                  €{comparison.thisWeek.revenue.toFixed(2)}
+                  {comparison.thisWeek.revenue.toFixed(2)} €
                 </ThemedText>
               </View>
               <View style={styles.comparisonCol}>
@@ -306,7 +306,7 @@ export default function BusinessAnalyticsScreen() {
                   {comparison.lastWeek.orders} pedidos
                 </ThemedText>
                 <ThemedText type="body">
-                  €{comparison.lastWeek.revenue.toFixed(2)}
+                  {comparison.lastWeek.revenue.toFixed(2)} €
                 </ThemedText>
               </View>
             </View>
@@ -387,7 +387,7 @@ export default function BusinessAnalyticsScreen() {
                     type="caption"
                     style={{ color: theme.textSecondary }}
                   >
-                    {product.unitsSold} unidades • €{product.revenue.toFixed(2)}
+                    {product.unitsSold} unidades • {product.revenue.toFixed(2)} €
                   </ThemedText>
                 </View>
               </View>

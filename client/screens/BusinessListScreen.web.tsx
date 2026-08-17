@@ -304,7 +304,7 @@ export default function BusinessListScreen() {
                       <View style={s.metaItem}>
                         <Feather name="truck" size={12} color={sub} />
                         <Text style={[s.metaText, { color: sub }]}>
-                          €{b.deliveryFee.toFixed(2)}
+                          {b.deliveryFee.toFixed(2)} €
                         </Text>
                       </View>
                     </View>

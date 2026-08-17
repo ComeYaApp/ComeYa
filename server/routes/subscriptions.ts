@@ -59,9 +59,7 @@ router.get("/benefits-preview", authenticateToken, async (req, res) => {
 router.post("/subscribe", authenticateToken, async (req, res) => {
   try {
     const { plan, billingCycle } = req.body;
-    if (!["premium", "business"].includes(plan)) {
-      return res.status(400).json({ error: "Plan inválido" });
-    }
+    // Cualquier plan definido en BD (7 planes ComeYa Soria)
     const result = await SubscriptionService.initSubscription(
       req.user!.id,
       plan,
@@ -226,6 +224,13 @@ router.post(
           })
           .where(eq(subscriptions.id, subscriptionId));
       }
+
+      // Efectos del plan (negocio destacado para Top/Premium/Express)
+      const { SubscriptionService } = await import("../subscriptionService");
+      await SubscriptionService.applyPlanActivationSideEffects(
+        proof.userId,
+        sub?.plan || "",
+      ).catch(() => {});
 
       // Notificar al usuario
       try {

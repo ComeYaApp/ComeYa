@@ -144,7 +144,7 @@ export default function AdminScreenMobile() {
                 color={ComeYaColors.success}
               />
               <ThemedText type="h2" style={{ marginTop: Spacing.sm }}>
-                €{stats.totalRevenue.toFixed(0)}
+                {stats.totalRevenue.toFixed(0)} €
               </ThemedText>
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
                 Ingresos

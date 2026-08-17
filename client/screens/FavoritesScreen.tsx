@@ -102,7 +102,7 @@ function FavoriteCard({
               type="body"
               style={{ color: ComeYaColors.primary, fontWeight: "600" }}
             >
-              €{(favorite.product.price / 100).toFixed(2)}
+              {(favorite.product.price / 100).toFixed(2)} €
             </ThemedText>
           ) : null}
         </View>

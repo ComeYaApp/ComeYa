@@ -192,11 +192,11 @@ export default function ReviewScreenEnhanced() {
       queryClient.invalidateQueries({
         queryKey: ["/api/users", user?.id, "orders"],
       });
-      showToast("Gracias! Tu opinion nos ayuda a mejorar.", "success");
+      showToast("¡Gracias! Tu opinión nos ayuda a mejorar.", "success");
       navigation.goBack();
     },
     onError: () => {
-      showToast("No se pudo enviar la resena", "error");
+      showToast("No se pudo enviar la reseña", "error");
     },
   });
 
@@ -565,7 +565,7 @@ export default function ReviewScreenEnhanced() {
                         fontWeight: "600",
                       }}
                     >
-                      €{amount}
+                      {amount} €
                     </ThemedText>
                   </Pressable>
                 ))}

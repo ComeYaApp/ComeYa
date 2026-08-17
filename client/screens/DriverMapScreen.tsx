@@ -523,7 +523,7 @@ export default function DriverMapScreen() {
               </ThemedText>
             </View>
             <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-              €{(activeOrder.deliveryFee / 100).toFixed(2)}
+              {(activeOrder.deliveryFee / 100).toFixed(2)} €
             </ThemedText>
           </View>
 
@@ -570,7 +570,7 @@ export default function DriverMapScreen() {
             />
             <ThemedText type="small" style={{ marginLeft: 6, color: theme.textSecondary }}>
               {activeOrder.paymentMethod === "cash"
-                ? `Cobrar €${(activeOrder.total / 100).toFixed(2)} en efectivo`
+                ? `Cobrar ${(activeOrder.total / 100).toFixed(2)} € en efectivo`
                 : "Pagado digitalmente"}
             </ThemedText>
           </View>

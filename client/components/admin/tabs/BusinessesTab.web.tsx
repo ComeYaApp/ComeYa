@@ -582,7 +582,7 @@ export const BusinessesTab: React.FC<Props> = () => {
                   },
                   {
                     label: "Ingresos",
-                    value: `€${((selected.totalRevenue ?? 0) / 100).toFixed(0)}`,
+                    value: `${((selected.totalRevenue ?? 0) / 100).toFixed(0)} €`,
                     color: "#10B981",
                   },
                   {

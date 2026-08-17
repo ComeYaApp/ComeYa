@@ -227,7 +227,7 @@ export default function ProductDetailScreen() {
 
             <View style={s.priceRow}>
               <Text style={[s.price, { color: PRIMARY }]}>
-                €{product.price}
+                {product.price} €
                 {product.isWeightBased ? `/${product.unit}` : ""}
               </Text>
               {!product.available && (
@@ -361,7 +361,7 @@ export default function ProductDetailScreen() {
               <View>
                 <Text style={[s.totalLabel, { color: sub }]}>Total</Text>
                 <Text style={[s.totalAmount, { color: text }]}>
-                  €{calculateTotal().toFixed(2)}
+                  {calculateTotal().toFixed(2)} €
                 </Text>
               </View>
               <Pressable

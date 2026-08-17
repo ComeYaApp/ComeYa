@@ -310,7 +310,7 @@ export default function PaymentProofScreen() {
             {/* Importe */}
             <View style={[s.amountCard, { backgroundColor: cfg.color }]}>
               <Text style={s.amountLabel}>Importe a transferir</Text>
-              <Text style={s.amountValue}>€{amountEur}</Text>
+              <Text style={s.amountValue}>{amountEur} €</Text>
               <View style={s.orderBadge}>
                 <Text style={[s.orderBadgeText, { color: cfg.color }]}>
                   Pedido #{shortId}

@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
+import { formatCurrency } from "@/utils/currency";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
@@ -29,32 +30,24 @@ const PAYMENT_METHODS = [
     id: "stripe_card",
     icon: "credit-card",
     color: "#635BFF",
-    label: "Tarjeta",
+    label: "Tarjeta (Stripe)",
     sub: "Visa, Mastercard — pago instantáneo",
-    instant: true,
-  },
-  {
-    id: "stripe_bizum",
-    icon: "smartphone",
-    color: "#00ADEF",
-    label: "Bizum (Stripe)",
-    sub: "Pago instantáneo desde tu app bancaria",
     instant: true,
   },
   {
     id: "bizum_manual",
     icon: "smartphone",
     color: "#00ADEF",
-    label: "Bizum (manual)",
-    sub: "Transferencia + subir comprobante",
+    label: "Bizum",
+    sub: "Transferencia Bizum + subir comprobante",
     instant: false,
   },
   {
-    id: "sepa",
-    icon: "credit-card",
+    id: "paypal_manual",
+    icon: "dollar-sign",
     color: "#1A56DB",
-    label: "Transferencia SEPA",
-    sub: "IBAN — transferencia + subir comprobante",
+    label: "PayPal",
+    sub: "Pago por PayPal + subir comprobante",
     instant: false,
   },
 ];
@@ -102,9 +95,9 @@ export default function SubscriptionScreen() {
   ];
   const queryClient = useQueryClient();
 
-  const [selectedPlan, setSelectedPlan] = useState<"premium" | "business">("premium");
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [paymentModal, setPaymentModal] = useState<{
-    plan: "premium" | "business";
+    plan: string;
     amount: number; // en centavos
   } | null>(null);
 
@@ -192,7 +185,7 @@ export default function SubscriptionScreen() {
   };
 
   // ── Seleccionar método de pago ───────────────────────────────────────────
-  const handleSubscribePress = (plan: "premium" | "business") => {
+  const handleSubscribePress = (plan: string) => {
     const amount = getPlanPrice(plan); // centavos
     setPaymentModal({ plan, amount });
   };
@@ -216,7 +209,7 @@ export default function SubscriptionScreen() {
       return;
     }
 
-    if (methodId === "stripe_card" || methodId === "stripe_bizum") {
+    if (methodId === "stripe_card") {
       // Pago instantáneo con Stripe — amount en centavos, StripePaymentScreen lo divide para mostrar
       navigation.navigate("StripePayment", {
         orderId: subscriptionId,
@@ -229,8 +222,8 @@ export default function SubscriptionScreen() {
         provider: methodId,
       } as any);
     } else {
-      // Pago manual con comprobante — PaymentProofScreen divide por 100 para mostrar
-      const paymentMethod = methodId === "sepa" ? "sepa" : "bizum";
+      // Pago manual con comprobante (Bizum / PayPal)
+      const paymentMethod = methodId === "paypal_manual" ? "paypal" : "bizum";
       navigation.navigate("PaymentProof", {
         orderId: subscriptionId,
         amount,           // centavos (1500 → €15)
@@ -241,10 +234,10 @@ export default function SubscriptionScreen() {
   };
 
   // ── Botón suscribirse ────────────────────────────────────────────────────
-  const renderSubscribeButton = (plan: "premium" | "business") => {
+  const renderSubscribeButton = (plan: string) => {
     if (currentPlan === plan && isActive) return null;
     if (isPendingPayment && currentPlan === plan) return null;
-    const priceEur = (getPlanPrice(plan) / 100).toFixed(0);
+    const priceEur = (getPlanPrice(plan) / 100).toFixed(2).replace(".", ",");
     return (
       <TouchableOpacity
         style={styles.subscribeButton}
@@ -254,7 +247,7 @@ export default function SubscriptionScreen() {
         <Text style={styles.subscribeButtonText}>
           {initMutation.isPending
             ? "Procesando..."
-            : `Suscribirme — €${priceEur}/mes`}
+            : `Suscribirme — ${priceEur} €/mes`}
         </Text>
       </TouchableOpacity>
     );
@@ -291,9 +284,9 @@ export default function SubscriptionScreen() {
               {currentPlan === "premium" ? "Premium" : "Business"}
             </Text>
             <Text style={styles.currentPlanPrice}>
-              €{centsToDisplay(
+              {centsToDisplay(
                 plansData?.[currentPlan]?.price ?? (currentPlan === "premium" ? 1500 : 3000),
-              )}/mes
+              )} €/mes
             </Text>
 
             {/* Fechas inicio / fin del período */}
@@ -420,80 +413,71 @@ export default function SubscriptionScreen() {
           <Text style={styles.sectionTitle}>Elige tu plan</Text>
         )}
 
-        {/* ── PLAN PREMIUM ─────────────────────────────────────────────── */}
-        {!(currentPlan === "premium" && isActive) && (
-          <TouchableOpacity
-            style={[
-              styles.planCard,
-              selectedPlan === "premium" && styles.planCardSelected,
-            ]}
-            onPress={() => setSelectedPlan("premium")}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={["#FF6B6B", "#4ECDC4"]}
-              style={styles.planGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.planName}>Premium</Text>
-              <Text style={styles.planPrice}>
-                €{(getPlanPrice("premium") / 100).toFixed(0)}/mes
-              </Text>
-            </LinearGradient>
-            <View style={styles.planBenefits}>
-              {(isBusinessOwner ? businessBenefits : customerBenefits).map((b) => (
-                <View key={b} style={styles.benefit}>
-                  <Text style={styles.benefitIcon}>✅</Text>
-                  <Text style={styles.benefitText}>{b}</Text>
-                </View>
-              ))}
-            </View>
-            {renderSubscribeButton("premium")}
-          </TouchableOpacity>
-        )}
+        {/* ── PLANES DINÁMICOS (7 planes ComeYa Soria desde BD) ────────── */}
+        {(() => {
+          const allPlans = plansData ? Object.keys(plansData) : [];
+          const visiblePlans = allPlans.filter((planKey) => {
+            const p = plansData[planKey];
+            if (!p?.price) return false;
+            // Cliente → soria_local; negocio → el resto
+            return isBusinessOwner
+              ? planKey !== "soria_local"
+              : planKey === "soria_local";
+          });
 
-        {/* ── PLAN BUSINESS ────────────────────────────────────────────── */}
-        {!(currentPlan === "business" && isActive) && (
-          <TouchableOpacity
-            style={[
-              styles.planCard,
-              selectedPlan === "business" && styles.planCardSelected,
-            ]}
-            onPress={() => setSelectedPlan("business")}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={["#667eea", "#764ba2"]}
-              style={styles.planGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Text style={styles.planName}>Business</Text>
-              <Text style={styles.planPrice}>
-                €{(getPlanPrice("business") / 100).toFixed(0)}/mes
-              </Text>
-            </LinearGradient>
-            <View style={styles.planBenefits}>
-              {(isBusinessOwner ? businessBenefits : customerBenefits).map((b) => (
-                <View key={b} style={styles.benefit}>
-                  <Text style={styles.benefitIcon}>✅</Text>
-                  <Text style={styles.benefitText}>{b}</Text>
+          return visiblePlans.map((planKey) => {
+            const p = plansData[planKey];
+            if (currentPlan === planKey && isActive) return null;
+            const cycle = p.billingCycle === "weekly" ? "semana" : "mes";
+            const color = (p.color || "#DC2626").replace("#", "");
+            const benefitsText = (p.description || "")
+              .split(".")
+              .map((t: string) => t.trim())
+              .filter((t: string) => t.length > 0)
+              .slice(0, 4);
+            return (
+              <TouchableOpacity
+                key={planKey}
+                style={[
+                  styles.planCard,
+                  selectedPlan === planKey && styles.planCardSelected,
+                ]}
+                onPress={() => setSelectedPlan(planKey)}
+                activeOpacity={0.9}
+              >
+                <LinearGradient
+                  colors={[`#${color}`, `#${color}CC`]}
+                  style={styles.planGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.planName}>{p.name}</Text>
+                  <Text style={styles.planPrice}>
+                    {formatCurrency(p.price)}/{cycle}
+                  </Text>
+                </LinearGradient>
+                <View style={styles.planBenefits}>
+                  {benefitsText.map((b: string) => (
+                    <View key={b} style={styles.benefit}>
+                      <Text style={styles.benefitIcon}>✅</Text>
+                      <Text style={styles.benefitText}>{b}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-            {renderSubscribeButton("business")}
-          </TouchableOpacity>
-        )}
+                {renderSubscribeButton(planKey)}
+              </TouchableOpacity>
+            );
+          });
+        })()}
 
         {/* ── SECCIÓN BENEFICIOS ───────────────────────────────────────── */}
         <View style={styles.comparisonCard}>
           <Text style={styles.comparisonTitle}>¿Por qué suscribirse?</Text>
           {[
-            "🚚  Ahorra hasta €150 al mes en envíos y descuentos",
-            "💰  Con solo 2 pedidos al mes recuperas tu inversión",
-            "🎯  Descuento del 10% en cada pedido",
-            "⚡  Soporte prioritario y respuesta más rápida",
+            "🚚  Ahorra en envíos y comisiones cada mes",
+            "💰  Con pocos pedidos recuperas tu inversión",
+            "🏪  Más visibilidad para tu negocio en Soria",
+            "⚡  Prioridad de repartidores en horas punta",
             "🔓  Cancela cuando quieras, sin permanencia",
           ].map((item) => (
             <Text key={item} style={styles.comparisonText}>{item}</Text>
@@ -518,7 +502,7 @@ export default function SubscriptionScreen() {
             <Text style={styles.modalTitle}>¿Cómo quieres pagar?</Text>
             <Text style={styles.modalSub}>
               Plan {paymentModal?.plan === "premium" ? "Premium" : "Business"} —{" "}
-              €{paymentModal ? (paymentModal.amount / 100).toFixed(0) : "0"}/mes
+              {paymentModal ? (paymentModal.amount / 100).toFixed(0) : "0"} €/mes
             </Text>
 
             {PAYMENT_METHODS.map((m) => (

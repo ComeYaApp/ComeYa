@@ -25,8 +25,8 @@ export const METHOD_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const fmt = (cents: number) => {
-  if (cents >= 100_000) return `€${(cents / 100 / 1_000).toFixed(1)}K`;
-  return `€${(cents / 100).toFixed(2)}`;
+  if (cents >= 100_000) return `${(cents / 100 / 1_000).toFixed(1)} €K`;
+  return `${(cents / 100).toFixed(2)} €`;
 };
 
 interface Payout {

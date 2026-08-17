@@ -83,7 +83,7 @@ export function EarningsTab({ mode }: Props) {
     load();
   }, [load]);
 
-  const fmtEur = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+  const fmtEur = (cents: number) => `${(cents / 100).toFixed(2)} €`;
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("es-ES", {
       day: "numeric",
@@ -177,7 +177,7 @@ export function EarningsTab({ mode }: Props) {
           {/* ── Hero earnings card ── */}
           <View style={[s.heroCard, { backgroundColor: GREEN }]}>
             <Text style={s.heroLabel}>{PERIOD_LABELS[period]}</Text>
-            <Text style={s.heroAmount}>€{currentEarning.toFixed(2)}</Text>
+            <Text style={s.heroAmount}>{currentEarning.toFixed(2)} €</Text>
             {currentEarning === 0 && earnings.total > 0 && (
               <View style={s.heroHint}>
                 <Feather name="info" size={12} color="rgba(255,255,255,0.7)" />
@@ -286,7 +286,7 @@ export function EarningsTab({ mode }: Props) {
                   {row.label}
                 </Text>
                 <Text style={[s.breakdownVal, { color: row.color }]}>
-                  €{row.value.toFixed(2)}
+                  {row.value.toFixed(2)} €
                 </Text>
               </View>
             ))}
@@ -308,7 +308,7 @@ export function EarningsTab({ mode }: Props) {
                 return (
                   <View key={i} style={s.barCol}>
                     <Text style={[s.barVal, { color: sub }]}>
-                      {d.value > 0 ? `€${d.value.toFixed(0)}` : ""}
+                      {d.value > 0 ? `${d.value.toFixed(0)} €` : ""}
                     </Text>
                     <View style={[s.barTrack, { backgroundColor: chipBg }]}>
                       <View
@@ -455,7 +455,7 @@ export function EarningsTab({ mode }: Props) {
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
                   <Text style={[s.historyEarning, { color: GREEN }]}>
-                    +€{earning.toFixed(2)}
+                    +{earning.toFixed(2)} €
                   </Text>
                   <Text style={[s.historyMethod, { color: sub }]}>
                     {dl.paymentMethod === "cash" ? "Efectivo" : "Digital"}

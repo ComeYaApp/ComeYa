@@ -663,7 +663,7 @@ export default function BusinessMapScreen() {
                     type="caption"
                     style={{ marginLeft: 3, color: theme.textSecondary }}
                   >
-                    €{selected.deliveryFee.toFixed(0)}
+                    {selected.deliveryFee.toFixed(0)} €
                   </ThemedText>
                 </View>
               </View>

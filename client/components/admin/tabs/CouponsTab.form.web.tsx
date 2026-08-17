@@ -329,11 +329,11 @@ export function CouponForm({ coupon, isDark, onClose, onSaved }: Props) {
               <Text style={[fp.previewDiscount, { color: text }]}>
                 {form.discountType === "percentage"
                   ? `${form.discountValue}% de descuento`
-                  : `€${parseFloat(form.discountValue || "0").toFixed(2)} de descuento`}
+                  : `${parseFloat(form.discountValue || "0").toFixed(2)} € de descuento`}
               </Text>
               {form.minOrderAmount && (
                 <Text style={[fp.previewSub, { color: sub }]}>
-                  Mín. €{form.minOrderAmount}
+                  Mín. {form.minOrderAmount} €
                 </Text>
               )}
             </View>

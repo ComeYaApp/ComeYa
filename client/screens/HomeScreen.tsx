@@ -536,7 +536,7 @@ export default function HomeScreen() {
                       type="small"
                       style={{ color: ComeYaColors.primary, marginTop: 2 }}
                     >
-                      €{(product.price / 100).toFixed(2)}
+                      {(product.price / 100).toFixed(2)} €
                     </ThemedText>
                   </View>
                 </Pressable>

@@ -95,6 +95,48 @@ export class EnhancedReviewService {
       await this.updateDriverRating(deliveryPersonId);
     }
 
+    // Abonar propina al repartidor (la propina va con la valoración tras la entrega)
+    if (tipAmount && tipAmount > 0 && deliveryPersonId && orderId) {
+      try {
+        const { wallets, transactions } = await import(
+          "@shared/schema-mysql"
+        );
+        const [driverWallet] = await db
+          .select()
+          .from(wallets)
+          .where(eq(wallets.userId, deliveryPersonId))
+          .limit(1);
+        if (driverWallet) {
+          await db
+            .update(wallets)
+            .set({
+              balance: driverWallet.balance + tipAmount,
+              totalEarned: driverWallet.totalEarned + tipAmount,
+            })
+            .where(eq(wallets.userId, deliveryPersonId));
+        }
+        const txId = crypto.randomUUID();
+        await db.insert(transactions).values({
+          id: txId,
+          userId: deliveryPersonId,
+          orderId,
+          type: "tip",
+          amount: tipAmount,
+          description: `Propina del cliente por pedido #${String(orderId).slice(-6)}`,
+          status: "completed",
+        } as any);
+        // Notificar al repartidor
+        const { sendPushToUser } = await import("./enhancedPushService");
+        await sendPushToUser(deliveryPersonId, {
+          title: "💝 ¡Recibiste una propina!",
+          body: `El cliente te dejó una propina de ${(tipAmount / 100).toFixed(2)} €`,
+          data: { screen: "DriverEarnings" },
+        });
+      } catch (err) {
+        console.error("Error processing review tip:", err);
+      }
+    }
+
     // Verificar achievements de resenas
     try {
       const { GamificationService } = await import("./gamificationService");

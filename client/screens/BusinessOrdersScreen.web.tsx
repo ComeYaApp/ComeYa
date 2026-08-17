@@ -101,17 +101,47 @@ export default function BusinessOrdersScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  const updateStatus = async (orderId: string, status: string) => {
+  const updateStatus = async (
+    orderId: string,
+    status: string,
+    extra?: { estimatedPrepMinutes?: number; estimatedPrepRange?: string },
+  ) => {
     setActionLoading(orderId + status);
     try {
       await apiRequest("PUT", `/api/business/orders/${orderId}/status`, {
         status,
+        ...(extra || {}),
       });
       await loadOrders();
     } catch {
       showToast("No se pudo actualizar el pedido", "error");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleStartPreparing = (orderId: string) => {
+    // Selector simple de tiempo estimado (aviso anticipado a repartidores)
+    if (typeof window !== "undefined" && (window as any).confirm) {
+      const choice = (window as any).prompt(
+        "Tiempo estimado de preparación:\n1) 5-10 min\n2) 10-20 min\n3) PEDIDO LISTO",
+        "1",
+      );
+      if (choice === "1") {
+        updateStatus(orderId, "preparing", {
+          estimatedPrepMinutes: 8,
+          estimatedPrepRange: "5-10 min",
+        });
+      } else if (choice === "2") {
+        updateStatus(orderId, "preparing", {
+          estimatedPrepMinutes: 15,
+          estimatedPrepRange: "10-20 min",
+        });
+      } else if (choice === "3") {
+        updateStatus(orderId, "ready");
+      }
+    } else {
+      updateStatus(orderId, "preparing");
     }
   };
 
@@ -357,7 +387,7 @@ export default function BusinessOrdersScreen() {
                       <Text
                         style={[s.orderTotal, { color: ComeYaColors.primary }]}
                       >
-                        €{((order.subtotal || 0) / 100).toFixed(2)}
+                        {((order.subtotal || 0) / 100).toFixed(2)} €
                       </Text>
                       <Text style={[s.paymentMethod, { color: sub }]}>
                         {PAYMENT_LABEL[order.paymentMethod] ||
@@ -371,7 +401,7 @@ export default function BusinessOrdersScreen() {
                           { color: ComeYaColors.success },
                         ]}
                       >
-                        Recibes: €{((order.subtotal || 0) / 100).toFixed(2)}
+                        Recibes: {((order.subtotal || 0) / 100).toFixed(2)} €
                       </Text>
                       <Text style={[s.earningsStatus, { color: sub }]}>
                         {order.status === "delivered"
@@ -445,7 +475,7 @@ export default function BusinessOrdersScreen() {
                     )}
                     {order.status === "accepted" && (
                       <Pressable
-                        onPress={() => updateStatus(order.id, "preparing")}
+                        onPress={() => handleStartPreparing(order.id)}
                         disabled={!!actionLoading}
                         style={[
                           s.actionBtn,

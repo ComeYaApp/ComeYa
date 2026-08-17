@@ -165,7 +165,7 @@ export function BusinessCard({
               </>
             )}
             <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: business.distance != null ? Spacing.md : 0 }}>
-              Envío €{business.deliveryFee.toFixed(2)}
+              Envío {business.deliveryFee.toFixed(2)} €
             </ThemedText>
           </View>
         </View>

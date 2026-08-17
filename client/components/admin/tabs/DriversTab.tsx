@@ -344,7 +344,7 @@ export const DriversTab: React.FC<Props> = ({ theme, showToast }) => {
             <InfoRow
               icon="dollar-sign"
               label="Monto pendiente"
-              value={`€${(selected.pendingAmount / 100).toFixed(2)}`}
+              value={`${(selected.pendingAmount / 100).toFixed(2)} €`}
               theme={theme}
               color={ComeYaColors.warning}
             />

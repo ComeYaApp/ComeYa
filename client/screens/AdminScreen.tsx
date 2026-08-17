@@ -559,7 +559,7 @@ export default function AdminMenuScreen() {
               </ThemedText>
               <ThemedText>Cliente: {selectedOrder.customerName}</ThemedText>
               <ThemedText>
-                Total: €{(selectedOrder.total / 100).toFixed(2)}
+                Total: {(selectedOrder.total / 100).toFixed(2)} €
               </ThemedText>
               <ThemedText>Estado: {selectedOrder.status}</ThemedText>
               <View style={{ flexDirection: "row", gap: 10, marginTop: 20 }}>

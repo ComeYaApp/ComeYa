@@ -439,7 +439,7 @@ export default function PaymentMethodsScreen() {
                         />
                         <View style={{ marginLeft: Spacing.md, flex: 1 }}>
                           <ThemedText type="body" style={{ fontWeight: "600" }}>
-                            €{((item.payment.amount || 0) / 100).toFixed(2)}
+                            {((item.payment.amount || 0) / 100).toFixed(2)} €
                           </ThemedText>
                           <ThemedText
                             type="small"

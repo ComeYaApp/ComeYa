@@ -315,7 +315,7 @@ export default function PaymentMethodsScreen() {
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={[s.histAmount, { color: text }]}>
-                        €{((item.payment.amount || 0) / 100).toFixed(2)}
+                        {((item.payment.amount || 0) / 100).toFixed(2)} €
                       </Text>
                       <Text style={[s.histDate, { color: sub }]}>
                         {new Date(item.payment.createdAt).toLocaleDateString(

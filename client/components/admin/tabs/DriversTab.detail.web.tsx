@@ -371,7 +371,7 @@ export function DriverDetail({
               <Text
                 style={[det.infoVal, { color: "#F59E0B", fontWeight: "700" }]}
               >
-                €{(driver.pendingAmount / 100).toFixed(2)}
+                {(driver.pendingAmount / 100).toFixed(2)} €
               </Text>
             </View>
           )}

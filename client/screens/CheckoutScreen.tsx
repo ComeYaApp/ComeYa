@@ -565,7 +565,7 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
         setAppliedCoupon(data.coupon);
         setCouponDiscount(finalDiscount);
         showToast(
-          `¡Cupón aplicado! Ahorras €${finalDiscount.toFixed(2)}`,
+          `¡Cupón aplicado! Ahorras ${finalDiscount.toFixed(2)} €`,
           "success",
         );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1123,7 +1123,7 @@ navigation.navigate("DigitalPaymentMethod", {
                   type="small"
                   style={{ color: theme.textSecondary, marginTop: 4 }}
                 >
-                  Ahorras €{couponDiscount.toFixed(2)}
+                  Ahorras {couponDiscount.toFixed(2)} €
                 </ThemedText>
               </View>
               <Pressable
@@ -1358,7 +1358,7 @@ navigation.navigate("DigitalPaymentMethod", {
                 {item.quantity}x {item.product.name}
               </ThemedText>
               <ThemedText type="small">
-                €{(item.product.price * item.quantity).toFixed(2)}
+                {(item.product.price * item.quantity).toFixed(2)} €
               </ThemedText>
             </View>
           ))}
@@ -1379,14 +1379,14 @@ navigation.navigate("DigitalPaymentMethod", {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Subtotal
           </ThemedText>
-          <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
+          <ThemedText type="body">{subtotal.toFixed(2)} €</ThemedText>
         </View>
         {confirmedOrderType === "delivery" && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
             </ThemedText>
-            <ThemedText type="body">€{(finalDeliveryFee ?? 0).toFixed(2)}</ThemedText>
+            <ThemedText type="body">{(finalDeliveryFee ?? 0).toFixed(2)} €</ThemedText>
           </View>
         )}
         {confirmedOrderType === "pickup" && (
@@ -1411,7 +1411,7 @@ navigation.navigate("DigitalPaymentMethod", {
               Cupón ({couponCode})
             </ThemedText>
             <ThemedText type="body" style={{ color: ComeYaColors.success }}>
-              -€{couponDiscount.toFixed(2)}
+              -{couponDiscount.toFixed(2)} €
             </ThemedText>
           </View>
         )}
@@ -1421,7 +1421,7 @@ navigation.navigate("DigitalPaymentMethod", {
               ⭐ Descuento Premium
             </ThemedText>
             <ThemedText type="body" style={{ color: "#7C3AED" }}>
-              -€{subDiscount.toFixed(2)}
+              -{subDiscount.toFixed(2)} €
             </ThemedText>
           </View>
         )}
@@ -1438,7 +1438,7 @@ navigation.navigate("DigitalPaymentMethod", {
         <View style={[styles.totalRow, styles.grandTotal]}>
           <ThemedText type="h3">Total</ThemedText>
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            €{total.toFixed(2)}
+            {total.toFixed(2)} €
           </ThemedText>
         </View>
         <Button onPress={handlePlaceOrder} disabled={isLoading}>

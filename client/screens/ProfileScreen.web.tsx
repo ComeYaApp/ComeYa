@@ -2000,19 +2000,19 @@ function BusinessPaymentsSection({ navigation, theme }: any) {
           {[
             {
               label: "Balance disponible",
-              value: `€${((finances?.availableBalance || 0) / 100).toFixed(2)}`,
+              value: `${((finances?.availableBalance || 0) / 100).toFixed(2)} €`,
               icon: "check-circle",
               color: "#10B981",
             },
             {
               label: "Pendiente de cobro",
-              value: `€${((finances?.pendingBalance || 0) / 100).toFixed(2)}`,
+              value: `${((finances?.pendingBalance || 0) / 100).toFixed(2)} €`,
               icon: "clock",
               color: "#F59E0B",
             },
             {
               label: "Total generado",
-              value: `€${((finances?.totalEarnings || 0) / 100).toFixed(2)}`,
+              value: `${((finances?.totalEarnings || 0) / 100).toFixed(2)} €`,
               icon: "trending-up",
               color: "#3B82F6",
             },
@@ -2213,7 +2213,7 @@ function BusinessPaymentsSection({ navigation, theme }: any) {
                 <Text
                   style={{ fontSize: 14, fontWeight: "700", color: theme.text }}
                 >
-                  €{((p.amount || 0) / 100).toFixed(2)}
+                  {((p.amount || 0) / 100).toFixed(2)} €
                 </Text>
                 <Text style={{ fontSize: 12, color: theme.sub }}>
                   {p.createdAt

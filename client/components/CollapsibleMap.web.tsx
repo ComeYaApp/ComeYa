@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Pressable,
-  Linking,
   Dimensions,
   Animated,
 } from "react-native";
@@ -40,6 +39,7 @@ interface CollapsibleMapProps {
   status?: string;
   onCallDriver?: () => void;
   onChatDriver?: () => void;
+  onNavigateInApp?: () => void; // navegación interna (pickup), sin apps externas
   isPickup?: boolean;
 }
 
@@ -145,6 +145,7 @@ export function CollapsibleMap({
   status = "preparing",
   onCallDriver,
   onChatDriver,
+  onNavigateInApp,
   isPickup = false,
 }: CollapsibleMapProps) {
   const { theme, isDark } = useTheme();
@@ -498,29 +499,14 @@ export function CollapsibleMap({
                 <Feather name="phone" size={18} color={ComeYaColors.primary} />
               </Pressable>
             )}
-            {onChatDriver && (
-              <Pressable
-                onPress={() => onChatDriver()}
-                style={[
-                  styles.actionBtn,
-                  { backgroundColor: ComeYaColors.primary },
-                ]}
-              >
-                <Feather name="message-circle" size={18} color="#FFFFFF" />
-              </Pressable>
-            )}
           </View>
         </View>
       )}
 
-      {/* Abrir en Google Maps */}
-      {isPickup && isValidLocation(businessLocation) && (
+      {/* Cómo llegar — navegación DENTRO de la app */}
+      {isPickup && isValidLocation(businessLocation) && onNavigateInApp && (
         <Pressable
-          onPress={() => {
-            Linking.openURL(
-              `https://www.google.com/maps/dir/?api=1&destination=${businessLocation!.latitude},${businessLocation!.longitude}`
-            );
-          }}
+          onPress={() => onNavigateInApp()}
           style={[
             styles.navigateButton,
             { backgroundColor: ComeYaColors.primary },
@@ -536,7 +522,7 @@ export function CollapsibleMap({
               fontWeight: "600",
             }}
           >
-            Abrir en Google Maps
+            Cómo llegar
           </ThemedText>
         </Pressable>
       )}

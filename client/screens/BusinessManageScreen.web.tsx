@@ -261,7 +261,7 @@ function ProductRow({ product, onToggle, card, border, text, sub }: any) {
           {product.name}
         </Text>
         <Text style={[s.productPrice, { color: sub }]}>
-          €{(product.price / 100).toFixed(2)}
+          {(product.price / 100).toFixed(2)} €
         </Text>
       </View>
       <Text

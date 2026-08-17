@@ -160,14 +160,10 @@ router.get(
           isOpen: business.isOpen || false,
           pendingOrders: pendingOrders.length,
           todayOrders: todayOrders.length,
-          todayRevenue: Math.round(todayRevenue / 100),
+          // Céntimos exactos: el cliente formatea ("59,80 €"), sin redondeos
+          todayRevenue,
           totalOrders: businessOrders.length,
-          recentOrders: businessOrders.slice(0, 10).map((o) => ({
-            ...o,
-            subtotal: Math.round((o.subtotal || 0) / 100),
-            deliveryFee: Math.round((o.deliveryFee || 0) / 100),
-            total: Math.round((o.total || 0) / 100),
-          })),
+          recentOrders: businessOrders.slice(0, 10),
         },
       });
     } catch (error: any) {
@@ -276,17 +272,18 @@ router.get(
 
       res.json({
         success: true,
+        // Céntimos exactos: el cliente formatea ("59,80 €"), sin redondeos
         revenue: {
-          today: Math.round(revenue(todayOrders) / 100),
-          week: Math.round(revenue(weekOrders) / 100),
-          month: Math.round(revenue(monthOrders) / 100),
-          total: Math.round(totalRevenue / 100),
+          today: revenue(todayOrders),
+          week: revenue(weekOrders),
+          month: revenue(monthOrders),
+          total: totalRevenue,
         },
         orders: {
           total: businessOrders.length,
           completed: completedOrders.length,
           cancelled: cancelledOrders.length,
-          avgValue: Math.round(avgValue / 100),
+          avgValue,
         },
         topProducts,
       });
@@ -1245,6 +1242,18 @@ router.put(
       if (status === "accepted") updates.businessResponseAt = new Date();
       if (status === "preparing") updates.assignedAt = new Date();
 
+      // Aviso anticipado: tiempo estimado de preparación (5-10 / 10-20 min)
+      const { estimatedPrepMinutes, estimatedPrepRange } = req.body;
+      if (
+        status === "preparing" &&
+        (estimatedPrepMinutes || estimatedPrepRange)
+      ) {
+        if (estimatedPrepMinutes)
+          updates.estimatedPrepMinutes = parseInt(String(estimatedPrepMinutes));
+        if (estimatedPrepRange)
+          updates.estimatedPrepRange = String(estimatedPrepRange);
+      }
+
       await db.update(orders).set(updates).where(eq(orders.id, req.params.id));
 
       // Notificar al cliente del cambio de estado (push en tiempo real)
@@ -1253,12 +1262,46 @@ router.put(
           "../enhancedPushService"
         );
         await sendOrderStatusNotification(order.id, order.userId, status);
-        if (status === "ready" && order.deliveryPersonId) {
-          await sendPushToUser(order.deliveryPersonId, {
-            title: "📦 Pedido listo para recoger",
-            body: `${order.businessName} — Pedido #${order.id.slice(-6)} listo`,
-            data: { orderId: order.id, screen: "DriverActiveOrder" },
-          });
+
+        // PREPARANDO: avisar al repartidor asignado o broadcast a disponibles
+        if (status === "preparing") {
+          const rangeText = estimatedPrepRange || "unos minutos";
+          if (order.deliveryPersonId) {
+            await sendPushToUser(order.deliveryPersonId, {
+              title: "👨‍🍳 Pedido en preparación",
+              body: `${order.businessName} — Pedido #${order.id.slice(-6)} listo en ${rangeText}`,
+              data: { orderId: order.id, screen: "DriverActiveOrder" },
+            });
+          } else {
+            const { DeliveryNotificationService } = await import(
+              "../deliveryNotificationService"
+            );
+            await DeliveryNotificationService.broadcastToDrivers(
+              "👨‍🍳 Pedido en preparación",
+              `${order.businessName} — listo en ${rangeText}. Acércate al local.`,
+              { orderId: order.id, screen: "DriverAvailable" },
+            );
+          }
+        }
+
+        if (status === "ready") {
+          if (order.deliveryPersonId) {
+            await sendPushToUser(order.deliveryPersonId, {
+              title: "📦 Pedido listo para recoger",
+              body: `${order.businessName} — Pedido #${order.id.slice(-6)} listo`,
+              data: { orderId: order.id, screen: "DriverActiveOrder" },
+            });
+          } else {
+            // Broadcast a todos los drivers online: hay pedido disponible
+            const { DeliveryNotificationService } = await import(
+              "../deliveryNotificationService"
+            );
+            await DeliveryNotificationService.broadcastToDrivers(
+              "🛵 ¡Nuevo pedido disponible!",
+              `${order.businessName} — recoge el pedido #${order.id.slice(-6)}`,
+              { orderId: order.id, screen: "DriverAvailable" },
+            );
+          }
         }
         if (status === "cancelled" && order.deliveryPersonId) {
           await sendPushToUser(order.deliveryPersonId, {

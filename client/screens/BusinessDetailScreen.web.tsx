@@ -33,6 +33,7 @@ export default function BusinessDetailScreen() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [showContactOptions, setShowContactOptions] = useState(false);
 
   const { isMobile } = useResponsive();
   const bg = isDark ? "#111" : "#f7f7f7";
@@ -186,7 +187,7 @@ export default function BusinessDetailScreen() {
                   <View style={s.metaChip}>
                     <Feather name="truck" size={14} color={sub} />
                     <Text style={[s.metaChipText, { color: sub }]}>
-                      €{deliveryFee.toFixed(2)} envío
+                      {deliveryFee.toFixed(2)} € envío
                     </Text>
                   </View>
                   <View
@@ -214,13 +215,56 @@ export default function BusinessDetailScreen() {
             </View>
           </View>
 
+          {/* Botón único RESERVAR / CONSULTAR */}
+          <View style={[s.reserveWrap, { backgroundColor: card, borderBottomColor: border }]}>
+            <Pressable
+              onPress={() => setShowContactOptions(!showContactOptions)}
+              style={[s.reserveBtn, { backgroundColor: PRIMARY }]}
+            >
+              <Feather
+                name={showContactOptions ? "chevron-up" : "calendar"}
+                size={16}
+                color="#fff"
+              />
+              <Text style={s.reserveBtnTxt}>RESERVAR / CONSULTAR</Text>
+            </Pressable>
+            {showContactOptions && (
+              <View style={s.contactOptions}>
+                <Pressable
+                  onPress={() =>
+                    business?.phone &&
+                    (window as any).open(`tel:${business.phone}`)
+                  }
+                  style={[s.contactOpt, { backgroundColor: "#F1F5F9" }]}
+                >
+                  <Feather name="phone" size={16} color={PRIMARY} />
+                  <Text style={[s.contactOptTxt, { color: PRIMARY }]}>
+                    LLAMAR
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    const phone = (business?.phone || "").replace(/\D/g, "");
+                    if (phone)
+                      (window as any).open(`https://wa.me/${phone}`, "_blank");
+                  }}
+                  style={[s.contactOpt, { backgroundColor: "#25D366" }]}
+                >
+                  <Feather name="message-circle" size={16} color="#fff" />
+                  <Text style={[s.contactOptTxt, { color: "#fff" }]}>
+                    WHATSAPP
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+
           <View
             style={[
               s.catBar,
               { backgroundColor: card, borderBottomColor: border },
             ]}
-          >
-            <ScrollView
+          >            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.catScroll}
@@ -281,7 +325,7 @@ export default function BusinessDetailScreen() {
                         </Text>
                         <View style={s.productFooter}>
                           <Text style={[s.productPrice, { color: PRIMARY }]}>
-                            €{p.price.toFixed(2)}
+                            {p.price.toFixed(2)} €
                           </Text>
                           {qty === 0 ? (
                             <Pressable
@@ -369,7 +413,7 @@ export default function BusinessDetailScreen() {
                         {item.product.name}
                       </Text>
                       <Text style={[s.cartItemPrice, { color: text }]}>
-                        €{(item.product.price * item.quantity).toFixed(2)}
+                        {(item.product.price * item.quantity).toFixed(2)} €
                       </Text>
                     </View>
                   ))}
@@ -380,13 +424,13 @@ export default function BusinessDetailScreen() {
                       Subtotal
                     </Text>
                     <Text style={[s.cartRowValue, { color: text }]}>
-                      €{cartTotal.toFixed(2)}
+                      {cartTotal.toFixed(2)} €
                     </Text>
                   </View>
                   <View style={s.cartRow}>
                     <Text style={[s.cartRowLabel, { color: sub }]}>Envío</Text>
                     <Text style={[s.cartRowValue, { color: text }]}>
-                      €{deliveryFee.toFixed(2)}
+                      {deliveryFee.toFixed(2)} €
                     </Text>
                   </View>
                   <View style={[s.cartRow, s.cartTotal]}>
@@ -394,7 +438,7 @@ export default function BusinessDetailScreen() {
                       Total
                     </Text>
                     <Text style={[s.cartTotalValue, { color: PRIMARY }]}>
-                      €{(cartTotal + deliveryFee).toFixed(2)}
+                      {(cartTotal + deliveryFee).toFixed(2)} €
                     </Text>
                   </View>
                   <Pressable style={s.checkoutBtn} onPress={goToCheckout}>
@@ -418,7 +462,7 @@ export default function BusinessDetailScreen() {
                 {cartCount} producto{cartCount !== 1 ? "s" : ""}
               </Text>
               <Text style={[s.cartBarTotal, { color: PRIMARY }]}>
-                €{(cartTotal + deliveryFee).toFixed(2)}
+                {(cartTotal + deliveryFee).toFixed(2)} €
               </Text>
             </View>
             <Pressable style={s.cartBarBtn} onPress={goToCheckout}>
@@ -465,6 +509,39 @@ const s = StyleSheet.create({
   },
   metaChipText: { fontSize: 13, fontWeight: "500" },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+  reserveWrap: {
+    borderBottomWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  reserveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    paddingHorizontal: 20,
+    cursor: "pointer" as any,
+  },
+  reserveBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "800" },
+  contactOptions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+  },
+  contactOpt: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    borderRadius: 12,
+    cursor: "pointer" as any,
+  },
+  contactOptTxt: { fontSize: 13, fontWeight: "800" },
   catBar: { borderBottomWidth: 1, paddingVertical: 4 },
   catScroll: { paddingHorizontal: 24, gap: 4 },
   catBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },

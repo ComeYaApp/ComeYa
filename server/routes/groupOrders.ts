@@ -69,22 +69,11 @@ router.get("/:groupOrderId", authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/group-orders/by-token/:shareToken - Obtener detalles del grupo por shareToken
+// GET /api/group-orders/by-token/:shareToken — token = id del grupo
 router.get("/by-token/:shareToken", authenticateToken, async (req, res) => {
   try {
     const { shareToken } = req.params;
-
-    const [group] = await db
-      .select()
-      .from(groupOrders)
-      .where(eq(groupOrders.shareToken, shareToken))
-      .limit(1);
-
-    if (!group) {
-      return res.json({ success: false, error: "Grupo no encontrado" });
-    }
-
-    const result = await GroupOrderService.getGroupOrder(group.id);
+    const result = await GroupOrderService.getGroupOrder(shareToken);
     res.json(result);
   } catch (error: any) {
     console.error("Get group order by token error:", error);
@@ -97,7 +86,7 @@ router.post("/:groupOrderId/lock", authenticateToken, async (req, res) => {
   try {
     const { groupOrderId } = req.params;
 
-    const result = await GroupOrderService.lockAndOrder(
+    const result = await GroupOrderService.lockGroupOrder(
       groupOrderId,
       req.user!.id,
     );
@@ -132,7 +121,7 @@ router.post(
 // GET /api/group-orders/user/my-groups - Obtener grupos del usuario
 router.get("/user/my-groups", authenticateToken, async (req, res) => {
   try {
-    const result = await GroupOrderService.getUserGroupOrders(req.user!.id);
+    const result = await GroupOrderService.getMyGroups(req.user!.id);
     res.json(result);
   } catch (error: any) {
     console.error("Get user group orders error:", error);

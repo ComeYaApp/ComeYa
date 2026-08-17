@@ -7,8 +7,8 @@ import { apiRequest } from "@/lib/query-client";
 const PRIMARY = "#DC2626";
 
 function fmt(cents: number) {
-  if (cents >= 100_000) return `€${(cents / 100 / 1_000).toFixed(1)}K`;
-  return `€${(cents / 100).toFixed(0)}`;
+  if (cents >= 100_000) return `${(cents / 100 / 1_000).toFixed(1)} €K`;
+  return `${(cents / 100).toFixed(0)} €`;
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];

@@ -141,7 +141,7 @@ export const CouponsTab: React.FC<Props> = () => {
   const fmtDiscount = (c: Coupon) =>
     c.discountType === "percentage"
       ? `${c.discountValue}% dto.`
-      : `€${(c.discountValue / 100).toFixed(2)} dto.`;
+      : `${(c.discountValue / 100).toFixed(2)} € dto.`;
 
   const isExpired = (c: Coupon) =>
     !!c.expiresAt && new Date(c.expiresAt) <= new Date();
@@ -375,7 +375,7 @@ export const CouponsTab: React.FC<Props> = () => {
                       </Text>
                       {coupon.minOrderAmount && (
                         <Text style={[li.min, { color: sub }]}>
-                          Mín. €{(coupon.minOrderAmount / 100).toFixed(2)}
+                          Mín. {(coupon.minOrderAmount / 100).toFixed(2)} €
                         </Text>
                       )}
                     </View>

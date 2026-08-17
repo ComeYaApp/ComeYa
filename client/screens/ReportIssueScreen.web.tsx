@@ -109,7 +109,7 @@ export default function ReportIssueScreen() {
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       <MobileSidebarWrapper
-        title="Reportar Problema"
+        title="Reportar Incidencia"
         sidebarStyle={[
           s.sidebar,
           { backgroundColor: card, borderRightColor: border },

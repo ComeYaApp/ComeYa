@@ -195,6 +195,20 @@ export class GiftCardService {
       balanceAfter: gc.amount,
     });
 
+    // Notificar al comprador que su gift card quedó activa
+    try {
+      const { sendPushToUser } = await import("./enhancedPushService");
+      if (gc.purchasedBy) {
+        await sendPushToUser(gc.purchasedBy, {
+          title: "🎁 Gift Card activada",
+          body: `Tu tarjeta de ${(gc.amount / 100).toFixed(2)} € ya está lista para usar o regalar.`,
+          data: { screen: "GiftCards" },
+        });
+      }
+    } catch (err) {
+      console.error("Error notifying gift card activation:", err);
+    }
+
     return { success: true, message: "Gift card activada", expiresAt };
   }
 

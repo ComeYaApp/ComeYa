@@ -287,7 +287,7 @@ export default function GiftCardsScreen() {
                           { color: amount === p.toString() ? "#fff" : text },
                         ]}
                       >
-                        €{p}
+                        {p} €
                       </Text>
                     </Pressable>
                   ))}
@@ -490,8 +490,8 @@ export default function GiftCardsScreen() {
                     <Feather name="gift" size={18} color="#fff" />
                     <Text style={s.ctaBtnText}>
                       {paymentMethod === "stripe"
-                        ? `Pagar con Stripe €${amount}`
-                        : `Crear Gift Card €${amount}`}
+                        ? `Pagar con Stripe ${amount} €`
+                        : `Crear Gift Card ${amount} €`}
                     </Text>
                   </>
                 )}
@@ -571,14 +571,14 @@ export default function GiftCardsScreen() {
                           </View>
                           {c.status === "active" && (
                             <Text style={[s.giftCardBalance, { color: sub }]}>
-                              Saldo: €{c.balance?.toFixed(2)}
+                              Saldo: {c.balance?.toFixed(2)} €
                               {days !== null ? `  ·  Caduca en ${days}d` : ""}
                             </Text>
                           )}
                         </View>
                         <View style={{ alignItems: "flex-end", gap: 6 }}>
                           <Text style={[s.giftCardAmount, { color: PRIMARY }]}>
-                            €{c.amount?.toFixed(2)}
+                            {c.amount?.toFixed(2)} €
                           </Text>
                           {c.status === "active" && (
                             <Pressable

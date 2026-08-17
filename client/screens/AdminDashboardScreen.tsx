@@ -19,9 +19,9 @@ import { Platform } from "react-native";
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function fmt(cents: number) {
-  if (cents >= 100_000_00) return `€${(cents / 100 / 1_000_000).toFixed(1)}M`;
-  if (cents >= 1_000_00) return `€${(cents / 100 / 1_000).toFixed(1)}K`;
-  return `€${(cents / 100).toFixed(0)}`;
+  if (cents >= 100_000_00) return `${(cents / 100 / 1_000_000).toFixed(1)} €M`;
+  if (cents >= 1_000_00) return `${(cents / 100 / 1_000).toFixed(1)} €K`;
+  return `${(cents / 100).toFixed(0)} €`;
 }
 
 function pct(val: number, prev: number) {
@@ -370,7 +370,7 @@ export default function AdminDashboardScreen() {
                       fontSize: 13,
                     }}
                   >
-                    €{(d.amount / 100).toFixed(0)}
+                    {(d.amount / 100).toFixed(0)} €
                   </Text>
                 </View>
               ))}

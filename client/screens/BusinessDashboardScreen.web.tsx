@@ -14,6 +14,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { formatCurrency } from "@/utils/currency";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
 
@@ -108,11 +109,11 @@ export default function BusinessDashboardScreen() {
 
   const revenue = stats
     ? {
-        today: (stats.todayRevenue || 0) / 100,
-        week: (stats.weekRevenue || 0) / 100,
-        month: (stats.monthRevenue || 0) / 100,
-        all: (stats.totalRevenue || 0) / 100,
-        total: (stats.totalRevenue || 0) / 100,
+        today: stats.todayRevenue || 0,
+        week: stats.weekRevenue || 0,
+        month: stats.monthRevenue || 0,
+        all: stats.totalRevenue || 0,
+        total: stats.totalRevenue || 0,
       }
     : { today: 0, week: 0, month: 0, all: 0, total: 0 };
 
@@ -140,7 +141,7 @@ export default function BusinessDashboardScreen() {
         },
         {
           label: "Ticket medio",
-          value: `€${((stats.averageTicket || 0) / 100).toFixed(2)}`,
+          value: `${((stats.averageTicket || 0) / 100).toFixed(2)} €`,
           icon: "dollar-sign",
           color: "#8B5CF6",
         },
@@ -240,9 +241,9 @@ export default function BusinessDashboardScreen() {
               <Text style={s.revenueLabel}>
                 Ingresos — {periodLabels[selectedPeriod]}
               </Text>
-              <Text style={s.revenueAmount}>€{periodRevenue.toFixed(2)}</Text>
+              <Text style={s.revenueAmount}>{formatCurrency(periodRevenue)}</Text>
               <Text style={s.revenueTotal}>
-                Total histórico: €{revenue.total.toFixed(2)}
+                Total histórico: {revenue.total.toFixed(2)} €
               </Text>
             </View>
 
@@ -301,7 +302,7 @@ export default function BusinessDashboardScreen() {
                       {p.quantity} uds.
                     </Text>
                     <Text style={[s.productRevenue, { color: "#4CAF50" }]}>
-                      €{p.revenue.toFixed(2)}
+                      {p.revenue.toFixed(2)} €
                     </Text>
                   </View>
                 ))}
@@ -356,7 +357,7 @@ export default function BusinessDashboardScreen() {
                       </Text>
                     </View>
                     <Text style={[s.orderTotal, { color: text }]}>
-                      €{((order.total || 0) / 100).toFixed(2)}
+                      {((order.total || 0) / 100).toFixed(2)} €
                     </Text>
                     <View
                       style={[

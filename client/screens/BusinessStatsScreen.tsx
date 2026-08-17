@@ -23,6 +23,7 @@ import {
   ComeYaColors,
   Shadows,
 } from "@/constants/theme";
+import { formatCurrency, formatEuros } from "@/utils/currency";
 
 interface StatsData {
   revenue: {
@@ -118,7 +119,7 @@ function TopProductRow({
       </View>
       <View style={styles.revenueCol}>
         <ThemedText type="body" style={{ fontWeight: "600", color: "#4CAF50" }}>
-          €{product.revenue.toFixed(2)}
+          {formatEuros(product.revenue)}
         </ThemedText>
       </View>
     </Animated.View>
@@ -213,7 +214,7 @@ export default function BusinessStatsScreen() {
               marginVertical: Spacing.sm,
             }}
           >
-            €{(getRevenueForPeriod() / 100).toFixed(2)}
+            {formatCurrency(getRevenueForPeriod())}
           </ThemedText>
 
           <View style={styles.periodSelector}>
@@ -281,7 +282,7 @@ export default function BusinessStatsScreen() {
           <StatCard
             icon="dollar-sign"
             label="Ticket promedio"
-            value={`€${(orders.avgValue / 100).toFixed(0)}`}
+            value={formatCurrency(orders.avgValue)}
             color={ComeYaColors.primary}
             delay={250}
           />
@@ -318,7 +319,7 @@ export default function BusinessStatsScreen() {
                 Ingresos totales
               </ThemedText>
               <ThemedText type="h2" style={{ color: "#4CAF50" }}>
-                €{(revenue.total / 100).toFixed(2)}
+                {formatCurrency(revenue.total)}
               </ThemedText>
             </View>
             <View

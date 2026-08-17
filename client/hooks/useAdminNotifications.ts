@@ -117,7 +117,7 @@ export function useAdminNotifications() {
 
         // ⚠️ ALTO — Nuevo comprobante pendiente
         socket.on("admin_new_proof", (data: any) => {
-          const fmt = (c: number) => `€${(c / 100).toFixed(2)}`;
+          const fmt = (c: number) => `${(c / 100).toFixed(2)} €`;
           add({
             level: "high",
             icon: "file-text",
@@ -129,7 +129,7 @@ export function useAdminNotifications() {
 
         // ⚠️ ALTO — Nuevo payout generado
         socket.on("admin_new_payout", (data: any) => {
-          const fmt = (c: number) => `€${(c / 100).toFixed(2)}`;
+          const fmt = (c: number) => `${(c / 100).toFixed(2)} €`;
           add({
             level: "high",
             icon: "send",
@@ -145,7 +145,7 @@ export function useAdminNotifications() {
             level: "medium",
             icon: "shopping-bag",
             title: "📦 Nuevo pedido",
-            body: `${data.businessName ?? "Negocio"} · €${((data.total ?? 0) / 100).toFixed(2)}`,
+            body: `${data.businessName ?? "Negocio"} · ${((data.total ?? 0) / 100).toFixed(2)} €`,
             action: { label: "Ver pedidos", section: "orders_active" },
           });
         });

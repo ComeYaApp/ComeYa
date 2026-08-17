@@ -4,8 +4,9 @@ import {
   subscriptionBenefits,
   subscriptionPlans,
   users,
+  orders,
 } from "@shared/schema-mysql";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 
 export class SubscriptionService {
   // Planes hardcoded como fallback si la BD no tiene datos
@@ -71,6 +72,7 @@ export class SubscriptionService {
           description: plan.description,
           color: plan.color,
           icon: plan.icon,
+          billingCycle: plan.billingCycle || "monthly",
           benefits: {
             freeDelivery: planBenefits.some(
               (b: typeof planBenefits[0]) => b.benefitType === "free_delivery" && active(b),
@@ -105,6 +107,75 @@ export class SubscriptionService {
   // Compatibilidad: PLANS como getter que devuelve fallback
   static get PLANS() {
     return this.PLANS_FALLBACK;
+  }
+
+  // Suscripción ACTIVA del usuario (status active y período vigente), o null
+  static async getActiveSubscription(userId: string) {
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .limit(1);
+
+    if (
+      !subscription ||
+      subscription.status !== "active" ||
+      (subscription.currentPeriodEnd &&
+        subscription.currentPeriodEnd < new Date())
+    ) {
+      return null;
+    }
+    return subscription;
+  }
+
+  // Tasa de comisión de la plataforma para un negocio (0-1).
+  // Prioridad: suscripción activa (impulso_local 10%, escaparate_soria 8%),
+  // luego comisión personalizada del admin, luego 15% por defecto.
+  static async getBusinessCommissionRate(businessId: string): Promise<number> {
+    try {
+      const { businesses } = await import("@shared/schema-mysql");
+      const [business] = await db
+        .select()
+        .from(businesses)
+        .where(eq(businesses.id, businessId))
+        .limit(1);
+      if (!business) return 0.15;
+
+      if (business.ownerId) {
+        const sub = await this.getActiveSubscription(business.ownerId);
+        if (sub?.plan === "impulso_local") return 0.1;
+        if (sub?.plan === "escaparate_soria") return 0.08;
+      }
+
+      if (
+        (business as any).customCommission != null &&
+        (business as any).customCommission > 0
+      ) {
+        return (business as any).customCommission / 100;
+      }
+      return 0.15;
+    } catch {
+      return 0.15;
+    }
+  }
+
+  // Efectos al activar un plan (Top/Premium → negocio destacado)
+  static async applyPlanActivationSideEffects(
+    userId: string,
+    plan: string,
+  ): Promise<void> {
+    try {
+      if (!["top_soria", "premium_soria", "express_semana"].includes(plan)) {
+        return;
+      }
+      const { businesses } = await import("@shared/schema-mysql");
+      await db
+        .update(businesses)
+        .set({ isFeatured: true })
+        .where(eq(businesses.ownerId, userId));
+    } catch (err) {
+      console.error("Error applying plan activation side effects:", err);
+    }
   }
 
   // Obtener suscripción del usuario
@@ -161,7 +232,7 @@ export class SubscriptionService {
     billingCycle: "monthly" | "yearly" = "monthly",
   ) {
     const plans = await this.getPlansFromDB();
-    const planData = plans[plan];
+    const planData = (plans as any)[plan];
     if (!planData) throw new Error("Plan inválido");
 
     const [existing] = await db
@@ -169,6 +240,16 @@ export class SubscriptionService {
       .from(subscriptions)
       .where(eq(subscriptions.userId, userId))
       .limit(1);
+
+    const now = new Date();
+    const periodEnd = new Date(now);
+    if (billingCycle === "weekly") {
+      periodEnd.setDate(periodEnd.getDate() + 7);
+    } else if (billingCycle === "yearly") {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    }
 
     if (existing) {
       // Si ya está activa con ese plan, no hacer nada
@@ -190,6 +271,8 @@ export class SubscriptionService {
           price: planData.price,
           billingCycle,
           autoRenew: true,
+          currentPeriodStart: now,
+          currentPeriodEnd: periodEnd,
           cancelledAt: null as any,
         })
         .where(eq(subscriptions.id, existing.id));
@@ -210,6 +293,8 @@ export class SubscriptionService {
         price: planData.price,
         billingCycle,
         autoRenew: true,
+        currentPeriodStart: now,
+        currentPeriodEnd: periodEnd,
       });
       return {
         success: true,
@@ -304,18 +389,54 @@ export class SubscriptionService {
       let discountPercentage = 0;
       let freeDelivery = false;
 
+      // Reglas específicas por plan
+      if (subscription.plan === "soria_local") {
+        // 4 envíos gratis al mes en pedidos > 15 €; del 5º en adelante 50% del envío
+        const minOrderBenefit = benefits.find(
+          (b) => b.benefitType === "min_order",
+        );
+        const minOrder = minOrderBenefit?.benefitValue ?? 1500;
+        if (orderTotal >= minOrder) {
+          const periodStart = subscription.currentPeriodStart || new Date(0);
+          const ordersThisPeriod = await db
+            .select()
+            .from(orders)
+            .where(
+              and(
+                eq(orders.userId, userId),
+                gte(orders.createdAt, periodStart),
+              ),
+            );
+          const freeLimit =
+            benefits.find((b) => b.benefitType === "free_delivery")
+              ?.benefitValue ?? 4;
+          if (ordersThisPeriod.length < freeLimit) {
+            finalDeliveryFee = 0;
+            freeDelivery = true;
+            appliedBenefits.push("Envío gratis (Plan Soria Local)");
+          } else {
+            finalDeliveryFee = Math.round(deliveryFee * 0.5);
+            appliedBenefits.push("50% de descuento en el envío (Plan Soria Local)");
+          }
+        }
+      }
+
       for (const b of benefits) {
         const val = b.benefitValue ?? 0;
         if (val <= 0) continue;
 
         switch (b.benefitType) {
           case "free_delivery":
+            if (subscription.plan === "soria_local") break; // gestionado arriba
             finalDeliveryFee = 0;
             freeDelivery = true;
             appliedBenefits.push(b.description || "Envío gratis");
             break;
+          case "min_order":
+            break; // solo informativo
           case "discount":
           case "discount_percentage":
+            if (subscription.plan === "soria_local") break; // descuento de envío gestionado arriba
             discountPercentage = val;
             discount = Math.round(orderTotal * (val / 100));
             appliedBenefits.push(b.description || `${val}% descuento`);
@@ -324,6 +445,12 @@ export class SubscriptionService {
           case "exclusive_deals":
           case "no_minimum":
           case "analytics":
+          case "featured":
+          case "priority":
+          case "commission_rate":
+          case "flat_delivery_fee":
+          case "delivery_window":
+          case "image_design":
           default:
             if (b.description) appliedBenefits.push(b.description);
             break;

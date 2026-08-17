@@ -168,7 +168,7 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({
                   >
                     {coupon.discountType === "percentage"
                       ? `${coupon.discountValue}% descuento`
-                      : `€${(coupon.discountValue / 100).toFixed(2)} descuento`}
+                      : `${(coupon.discountValue / 100).toFixed(2)} € descuento`}
                   </Text>
                 </View>
                 <View
@@ -215,7 +215,7 @@ export const CouponsTab: React.FC<CouponsTabProps> = ({
                       Mínimo
                     </Text>
                     <Text style={[styles.statValue, { color: theme.text }]}>
-                      €{(coupon.minOrderAmount / 100).toFixed(2)}
+                      {(coupon.minOrderAmount / 100).toFixed(2)} €
                     </Text>
                   </View>
                 ) : null}

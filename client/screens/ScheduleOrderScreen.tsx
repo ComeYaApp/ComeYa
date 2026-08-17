@@ -77,8 +77,8 @@ export default function ScheduleOrderScreen() {
       const response = await apiRequest("POST", "/api/scheduled-orders", {
         userId: user?.id,
         businessId,
-        items: JSON.stringify(items),
-        scheduledDate: scheduledDate.toISOString(),
+        items: items || [],
+        scheduledFor: scheduledDate.toISOString(),
         notes,
       });
       return response.json();

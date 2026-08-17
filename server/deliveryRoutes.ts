@@ -447,12 +447,30 @@ router.get(
         .limit(1);
     }
 
-    // SIN RESTRICCIÓN DE DISTANCIA - Muestra TODOS los pedidos disponibles
-    const { isNull } = await import("drizzle-orm");
+    // SIN RESTRICCIÓN DE DISTANCIA - Muestra TODOS los pedidos disponibles.
+    // Los pedidos de negocios destacados (Top/Premium Soria) salen primero.
+    const { isNull, desc } = await import("drizzle-orm");
     const availableOrders = await db
-      .select()
+      .select({
+        id: orders.id,
+        businessId: orders.businessId,
+        businessName: orders.businessName,
+        businessImage: orders.businessImage,
+        status: orders.status,
+        subtotal: orders.subtotal,
+        deliveryFee: orders.deliveryFee,
+        total: orders.total,
+        paymentMethod: orders.paymentMethod,
+        deliveryAddress: orders.deliveryAddress,
+        createdAt: orders.createdAt,
+        estimatedPrepMinutes: orders.estimatedPrepMinutes,
+        estimatedPrepRange: orders.estimatedPrepRange,
+        featured: businesses.isFeatured,
+      })
       .from(orders)
+      .leftJoin(businesses, eq(businesses.id, orders.businessId))
       .where(and(eq(orders.status, "ready"), isNull(orders.deliveryPersonId)))
+      .orderBy(desc(businesses.isFeatured), desc(orders.createdAt))
       .limit(100);
 
     res.json({ success: true, orders: availableOrders });

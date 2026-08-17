@@ -599,7 +599,7 @@ export default function HomeScreen() {
                       </Text>
                       <Text style={[s.metaDot, { color: sub }]}>·</Text>
                       <Text style={[s.metaText, { color: sub }]}>
-                        €{b.deliveryFee.toFixed(2)} envío
+                        {b.deliveryFee.toFixed(2)} € envío
                       </Text>
                     </View>
                   </View>

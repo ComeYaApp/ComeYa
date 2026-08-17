@@ -344,7 +344,7 @@ export default function BusinessDeliveryMapScreen() {
                 type="body"
                 style={{ color: "#10B981", fontWeight: "700", marginLeft: 8 }}
               >
-                €{(stats.pendingRevenue / 100).toFixed(2)} pendiente de cobro
+                {(stats.pendingRevenue / 100).toFixed(2)} € pendiente de cobro
               </ThemedText>
             </View>
           )}
@@ -486,7 +486,7 @@ export default function BusinessDeliveryMapScreen() {
                           type="caption"
                           style={{ color: text, fontWeight: "700" }}
                         >
-                          €{(d.total / 100).toFixed(2)}
+                          {(d.total / 100).toFixed(2)} €
                         </ThemedText>
                       </View>
                     </View>
@@ -736,15 +736,15 @@ export default function BusinessDeliveryMapScreen() {
               {[
                 {
                   label: "Subtotal",
-                  value: `€${(selected.subtotal / 100).toFixed(2)}`,
+                  value: `${(selected.subtotal / 100).toFixed(2)} €`,
                 },
                 {
                   label: "Envío",
-                  value: `€${(selected.deliveryFee / 100).toFixed(2)}`,
+                  value: `${(selected.deliveryFee / 100).toFixed(2)} €`,
                 },
                 {
                   label: "Total",
-                  value: `€${(selected.total / 100).toFixed(2)}`,
+                  value: `${(selected.total / 100).toFixed(2)} €`,
                   bold: true,
                 },
                 { label: "Pago", value: selected.paymentMethod },

@@ -23,8 +23,8 @@ import SupportScreen from "@/screens/SupportScreen";
 import ReviewScreen from "@/screens/ReviewScreenEnhanced";
 import LegalScreen from "@/screens/LegalScreen";
 import ScheduleOrderScreen from "@/screens/ScheduleOrderScreen";
-import OrderChatScreen from "@/screens/OrderChatScreen";
 import DeliveryEarningsScreen from "@/screens/DeliveryEarningsScreen";
+import LogisticsRequestScreen from "@/screens/LogisticsRequestScreen";
 import BusinessManageScreen from "@/screens/BusinessManageScreen";
 import BusinessStatsScreen from "@/screens/BusinessStatsScreen";
 import BusinessOrdersScreen from "@/screens/BusinessOrdersScreen";
@@ -114,7 +114,6 @@ export type RootStackParamList = {
     items: any[];
     subtotal: number;
   };
-  OrderChat: { orderId: string; receiverId: string; receiverName: string };
   DeliveryEarnings: undefined;
   BusinessManage: undefined;
   BusinessStats: undefined;
@@ -275,7 +274,6 @@ export default function RootStackNavigator() {
           <Stack.Screen name="Review" component={ReviewScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="Legal" component={LegalScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ScheduleOrder" component={ScheduleOrderScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="OrderChat" component={OrderChatScreen} options={{ headerTitle: "Chat" }} />
           <Stack.Screen name="AddBankAccount" component={PaymentWalletSetupScreen} options={{ headerTitle: "Métodos de pago" }} />
           <Stack.Screen name="DeliveryEarnings" component={DeliveryEarningsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BusinessManage" component={BusinessManageScreen} options={{ headerShown: false }} />
@@ -316,6 +314,7 @@ export default function RootStackNavigator() {
           <Stack.Screen name="DeliveryConfirmation" component={DeliveryConfirmationScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="LogisticsRequest" component={LogisticsRequestScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ headerShown: false }} />
         </>
       )}

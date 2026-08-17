@@ -275,7 +275,7 @@ export default function GroupOrderScreen() {
             </View>
             <View style={[s.statBox, { backgroundColor: cardBg }]}>
               <Text style={[s.statNum, { color: text }]}>
-                €{totalAmount.toFixed(2)}
+                {totalAmount.toFixed(2)} €
               </Text>
               <Text style={[s.statLabel, { color: sub }]}>Total</Text>
             </View>
@@ -326,7 +326,7 @@ export default function GroupOrderScreen() {
             <View style={s.infoRow}>
               <Text style={[s.infoLabel, { color: sub }]}>Total acumulado</Text>
               <Text style={[s.infoValue, { color: PRIMARY }]}>
-                €{totalAmount.toFixed(2)}
+                {totalAmount.toFixed(2)} €
               </Text>
             </View>
           </View>
@@ -388,7 +388,7 @@ export default function GroupOrderScreen() {
                 Participantes ({totalParticipants})
               </Text>
               <Text style={[s.totalBadge, { color: PRIMARY }]}>
-                €{totalAmount.toFixed(2)}
+                {totalAmount.toFixed(2)} €
               </Text>
             </View>
             {group.participants?.map((p: any) => (
@@ -415,7 +415,7 @@ export default function GroupOrderScreen() {
                 </View>
                 <View style={s.participantRight}>
                   <Text style={[s.participantAmount, { color: text }]}>
-                    €{(p.subtotal / 100).toFixed(2)}
+                    {(p.subtotal / 100).toFixed(2)} €
                   </Text>
                   {p.paymentStatus === "paid" && (
                     <Feather name="check-circle" size={16} color="#10B981" />

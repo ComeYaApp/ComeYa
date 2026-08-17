@@ -128,7 +128,7 @@ export function AvailableOrdersTab({
     }
   };
 
-  const fmtEur = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+  const fmtEur = (cents: number) => `${(cents / 100).toFixed(2)} €`;
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString("es-ES", {
       hour: "2-digit",

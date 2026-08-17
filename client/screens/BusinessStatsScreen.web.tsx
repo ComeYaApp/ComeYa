@@ -79,7 +79,7 @@ export default function BusinessStatsScreen() {
     {
       icon: "dollar-sign",
       label: "Ticket promedio",
-      value: `€${(orders.avgValue / 100).toFixed(0)}`,
+      value: `${(orders.avgValue / 100).toFixed(0)} €`,
       color: PRIMARY,
     },
   ];
@@ -105,7 +105,7 @@ export default function BusinessStatsScreen() {
                 Ingresos — {PERIOD_LABELS[period]}
               </Text>
               <Text style={s.heroAmount}>
-                €{(periodRevenue / 100).toFixed(2)}
+                {(periodRevenue / 100).toFixed(2)} €
               </Text>
               <View style={s.periodRow}>
                 {(["today", "week", "month"] as Period[]).map((p) => (
@@ -201,7 +201,7 @@ export default function BusinessStatsScreen() {
                       {p.quantity} vendidos
                     </Text>
                     <Text style={[s.productRevenue, { color: "#4CAF50" }]}>
-                      €{p.revenue.toFixed(2)}
+                      {p.revenue.toFixed(2)} €
                     </Text>
                   </View>
                 ))}
@@ -221,7 +221,7 @@ export default function BusinessStatsScreen() {
                     Ingresos totales históricos
                   </Text>
                   <Text style={[s.totalAmount, { color: "#4CAF50" }]}>
-                    €{(revenue.total / 100).toFixed(2)}
+                    {(revenue.total / 100).toFixed(2)} €
                   </Text>
                 </View>
                 <View style={[s.totalIcon, { backgroundColor: "#4CAF5020" }]}>

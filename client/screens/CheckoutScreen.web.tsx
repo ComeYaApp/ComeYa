@@ -324,7 +324,7 @@ export default function CheckoutScreen({ route }: any) {
         setAppliedCoupon(data.coupon);
         setCouponDiscount(finalDiscount);
         showToast(
-          `¡Cupón aplicado! Ahorras €${finalDiscount.toFixed(2)}`,
+          `¡Cupón aplicado! Ahorras ${finalDiscount.toFixed(2)} €`,
           "success",
         );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -815,7 +815,7 @@ export default function CheckoutScreen({ route }: any) {
                         {couponCode.toUpperCase()}
                       </ThemedText>
                       <ThemedText type="small" style={{ color: "#6B7280" }}>
-                        Ahorras €{couponDiscount.toFixed(2)}
+                        Ahorras {couponDiscount.toFixed(2)} €
                       </ThemedText>
                     </View>
                     <Pressable onPress={handleRemoveCoupon}>
@@ -1026,7 +1026,7 @@ export default function CheckoutScreen({ route }: any) {
                           fontWeight: "600",
                         }}
                       >
-                        {t === 0 ? "Sin propina" : `€${t}`}
+                        {t === 0 ? "Sin propina" : `${t} €`}
                       </ThemedText>
                     </Pressable>
                   ))}
@@ -1040,7 +1040,7 @@ export default function CheckoutScreen({ route }: any) {
                   <ThemedText type="body" style={{ color: "#6B7280" }}>
                     Subtotal
                   </ThemedText>
-                  <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
+                  <ThemedText type="body">{subtotal.toFixed(2)} €</ThemedText>
                 </View>
                 {orderTypeLocal === "delivery" && (
                   <View style={styles.summaryRow}>
@@ -1048,7 +1048,7 @@ export default function CheckoutScreen({ route }: any) {
                       Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
                     </ThemedText>
                     <ThemedText type="body">
-                      €{deliveryFee.toFixed(2)}
+                      {deliveryFee.toFixed(2)} €
                     </ThemedText>
                   </View>
                 )}
@@ -1065,7 +1065,7 @@ export default function CheckoutScreen({ route }: any) {
                       Cupón ({couponCode})
                     </ThemedText>
                     <ThemedText type="body" style={{ color: "#059669" }}>
-                      -€{couponDiscount.toFixed(2)}
+                      -{couponDiscount.toFixed(2)} €
                     </ThemedText>
                   </View>
                 )}
@@ -1074,7 +1074,7 @@ export default function CheckoutScreen({ route }: any) {
                     <ThemedText type="body" style={{ color: "#6B7280" }}>
                       Propina
                     </ThemedText>
-                    <ThemedText type="body">€{tip.toFixed(2)}</ThemedText>
+                    <ThemedText type="body">{tip.toFixed(2)} €</ThemedText>
                   </View>
                 )}
                 {subDiscount > 0 && (
@@ -1083,7 +1083,7 @@ export default function CheckoutScreen({ route }: any) {
                       ⭐ Descuento Premium
                     </ThemedText>
                     <ThemedText type="body" style={{ color: "#7C3AED" }}>
-                      -€{subDiscount.toFixed(2)}
+                      -{subDiscount.toFixed(2)} €
                     </ThemedText>
                   </View>
                 )}
@@ -1100,7 +1100,7 @@ export default function CheckoutScreen({ route }: any) {
                 <View style={[styles.summaryRow, styles.totalRow]}>
                   <ThemedText type="h3">Total</ThemedText>
                   <ThemedText type="h2" style={{ color: PRIMARY }}>
-                    €{total.toFixed(2)}
+                    {total.toFixed(2)} €
                   </ThemedText>
                 </View>
               </View>

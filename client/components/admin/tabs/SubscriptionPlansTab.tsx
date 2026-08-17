@@ -249,7 +249,7 @@ export const SubscriptionPlansTab: React.FC<Props> = ({ theme, showToast }) => {
                   {plan.name}
                 </Text>
                 <Text style={[s.planPrice, { color: plan.color }]}>
-                  €{(plan.price / 100).toFixed(2)}/mes
+                  {(plan.price / 100).toFixed(2)} €/mes
                 </Text>
               </View>
               <TouchableOpacity

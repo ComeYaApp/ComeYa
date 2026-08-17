@@ -22,7 +22,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   rejected: { label: "Rechazada", color: "#EF4444" },
 };
 
-const fmt = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 
 export const GiftCardsAdminTab: React.FC = () => {
   const { isDark } = useTheme();

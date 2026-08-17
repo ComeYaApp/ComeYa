@@ -209,7 +209,7 @@ function PaymentForm({
           <>
             <Feather name="lock" size={18} color="#fff" />
             <span style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
-              Pagar €{(amount / 100).toFixed(2)}
+              Pagar {(amount / 100).toFixed(2)} €
             </span>
           </>
         )}
@@ -302,8 +302,8 @@ export default function StripePaymentScreen() {
       ? "Comprar Gift Card"
       : "Pago seguro";
   const subtitle = isSubscription
-    ? `Plan ${subscriptionId ? "Premium/Business" : ""} — €${(amount / 100).toFixed(2)}/mes`
-    : `Total a pagar: €${(amount / 100).toFixed(2)}`;
+    ? `Plan ${subscriptionId ? "Premium/Business" : ""} — ${(amount / 100).toFixed(2)} €/mes`
+    : `Total a pagar: ${(amount / 100).toFixed(2)} €`;
 
   if (!stripeReady) {
     return (
@@ -421,7 +421,7 @@ export default function StripePaymentScreen() {
                   <span
                     style={{ fontSize: 20, fontWeight: "800", color: PRIMARY }}
                   >
-                    €{(amount / 100).toFixed(2)}
+                    {(amount / 100).toFixed(2)} €
                   </span>
                 </View>
                 {!isSubscription && !isGiftCard && (
@@ -434,13 +434,13 @@ export default function StripePaymentScreen() {
                         Productos
                       </span>
                       <span style={{ fontSize: 13, color: text }}>
-                        €{((subtotal || 0) / 100).toFixed(2)}
+                        {((subtotal || 0) / 100).toFixed(2)} €
                       </span>
                     </View>
                     <View style={s.summaryRow}>
                       <span style={{ fontSize: 13, color: sub }}>Envío</span>
                       <span style={{ fontSize: 13, color: text }}>
-                        €{((deliveryFee || 0) / 100).toFixed(2)}
+                        {((deliveryFee || 0) / 100).toFixed(2)} €
                       </span>
                     </View>
                   </>

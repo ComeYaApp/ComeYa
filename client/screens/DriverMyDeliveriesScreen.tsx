@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -91,6 +92,36 @@ export default function DriverMyDeliveriesScreen() {
     const interval = setInterval(loadOrders, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Entregas logísticas (Plan Logística Local B2B)
+  const [logistics, setLogistics] = useState<any[]>([]);
+
+  const loadLogistics = async () => {
+    try {
+      const res = await apiRequest("GET", "/api/delivery-requests/driver-mine");
+      const data = await res.json();
+      setLogistics(data.requests || []);
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadLogistics();
+  }, []);
+
+  const completeLogistics = async (id: string) => {
+    try {
+      const res = await apiRequest("POST", `/api/delivery-requests/${id}/complete`);
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert("Entregado", "Entrega logística completada.");
+        loadLogistics();
+      } else {
+        Alert.alert("Error", data.error || "No se pudo completar");
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo completar la entrega");
+    }
+  };
 
   const startLocationTracking = async () => {
     const success = await gpsService.startTracking();
@@ -473,16 +504,22 @@ export default function DriverMyDeliveriesScreen() {
             </Pressable>
             <Pressable
               onPress={() => {
-                // Chat con el cliente: driver → customer
-                navigation.navigate("OrderChat", {
-                  orderId: item.id,
-                  receiverId: item.userId || item.customerId,
-                  receiverName: item.customerName || "Cliente",
-                });
+                // Contacto con el cliente vía WhatsApp
+                const phone = String(
+                  (item as any).customerPhone || (item as any).deliveryAddressPhone || "",
+                ).replace(/\D/g, "");
+                if (phone) {
+                  Linking.openURL(`https://wa.me/${phone}`).catch(() => {});
+                } else {
+                  Alert.alert(
+                    "Sin teléfono",
+                    "Este pedido no tiene teléfono de contacto del cliente.",
+                  );
+                }
               }}
               style={[
                 styles.trackButton,
-                { backgroundColor: "#8B5CF6", marginLeft: Spacing.xs },
+                { backgroundColor: "#25D366", marginLeft: Spacing.xs },
               ]}
             >
               <Feather name="message-circle" size={14} color="#FFF" />
@@ -490,7 +527,7 @@ export default function DriverMyDeliveriesScreen() {
                 type="small"
                 style={{ color: "#FFF", marginLeft: 4 }}
               >
-                Chat
+                WhatsApp
               </ThemedText>
             </Pressable>
             <Pressable
@@ -561,6 +598,50 @@ export default function DriverMyDeliveriesScreen() {
     ),
   );
   const completedOrders = orders.filter((o: any) => o.status === "completed");
+
+  const renderLogisticsSection = () => {
+    const activeLogistics = logistics.filter(
+      (l) => l.status === "accepted" || l.status === "picked_up",
+    );
+    if (!activeLogistics.length) return null;
+    return (
+      <View style={{ marginBottom: Spacing.lg }}>
+        <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>
+          📦 Entregas de comercios
+        </ThemedText>
+        {activeLogistics.map((l: any) => (
+          <View
+            key={l.id}
+            style={[
+              styles.orderCard,
+              { backgroundColor: theme.card },
+              Shadows.sm,
+            ]}
+          >
+            <ThemedText type="h4">{l.businessName}</ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {l.pickupAddress} → {l.dropoffAddress}
+            </ThemedText>
+            <Pressable
+              onPress={() => completeLogistics(l.id)}
+              style={[
+                styles.trackButton,
+                { backgroundColor: ComeYaColors.success, marginTop: Spacing.sm },
+              ]}
+            >
+              <Feather name="check" size={14} color="#FFF" />
+              <ThemedText
+                type="small"
+                style={{ color: "#FFF", marginLeft: 4 }}
+              >
+                Marcar entregado (3,50 €)
+              </ThemedText>
+            </Pressable>
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   const renderCompletedOrder = ({ item }: { item: any }) => {
     const displayAddress = parseDeliveryAddress(item.deliveryAddress);
@@ -651,7 +732,7 @@ export default function DriverMyDeliveriesScreen() {
                   type="h1"
                   style={{ color: "#4CAF50", fontSize: 40 }}
                 >
-                  +€{completedOrder.earnings.toFixed(2)}
+                  +{completedOrder.earnings.toFixed(2)} €
                 </ThemedText>
                 <ThemedText type="small" style={{ color: "#388E3C" }}>
                   ganados
@@ -818,6 +899,7 @@ export default function DriverMyDeliveriesScreen() {
             </ThemedText>
           </View>
         )}
+        {renderLogisticsSection()}
 
         {completedOrders.length > 0 && (
           <>

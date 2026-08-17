@@ -484,7 +484,7 @@ export default function PaymentProofScreen() {
           <ThemedText
             style={{ color: "#fff", fontSize: 48, fontWeight: "800" }}
           >
-            €{amountEur}
+            {amountEur} €
           </ThemedText>
           <View style={styles.orderIdBadge}>
             <ThemedText

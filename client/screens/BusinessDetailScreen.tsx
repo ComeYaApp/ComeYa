@@ -53,6 +53,7 @@ export default function BusinessDetailScreen() {
   const [business, setBusiness] = useState<Business | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showContactOptions, setShowContactOptions] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -297,40 +298,80 @@ export default function BusinessDetailScreen() {
               </View>
               <View style={styles.contactRow}>
                 <Pressable
-                  onPress={handleCall}
+                  onPress={() =>
+                    setShowContactOptions(!showContactOptions)
+                  }
                   style={[
                     styles.contactButton,
-                    { backgroundColor: theme.backgroundSecondary },
+                    styles.reserveButton,
+                    { backgroundColor: ComeYaColors.primary },
                   ]}
                 >
                   <Feather
-                    name="phone"
+                    name={showContactOptions ? "chevron-up" : "calendar"}
                     size={18}
-                    color={ComeYaColors.primary}
+                    color="#FFFFFF"
                   />
                   <ThemedText
                     type="small"
                     style={{
-                      color: ComeYaColors.primary,
+                      color: "#FFFFFF",
                       marginLeft: Spacing.xs,
+                      fontWeight: "600",
                     }}
                   >
-                    Llamar
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  onPress={handleWhatsApp}
-                  style={[styles.contactButton, { backgroundColor: "#25D366" }]}
-                >
-                  <Feather name="message-circle" size={18} color="#FFFFFF" />
-                  <ThemedText
-                    type="small"
-                    style={{ color: "#FFFFFF", marginLeft: Spacing.xs }}
-                  >
-                    WhatsApp
+                    RESERVAR / CONSULTAR
                   </ThemedText>
                 </Pressable>
               </View>
+              {showContactOptions && (
+                <View style={[styles.contactOptions, { borderColor: theme.border }]}>
+                  <Pressable
+                    onPress={handleCall}
+                    style={[
+                      styles.contactButton,
+                      styles.contactOptionItem,
+                      { backgroundColor: theme.backgroundSecondary },
+                    ]}
+                  >
+                    <Feather
+                      name="phone"
+                      size={18}
+                      color={ComeYaColors.primary}
+                    />
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color: ComeYaColors.primary,
+                        marginLeft: Spacing.xs,
+                        fontWeight: "600",
+                      }}
+                    >
+                      LLAMAR
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleWhatsApp}
+                    style={[
+                      styles.contactButton,
+                      styles.contactOptionItem,
+                      { backgroundColor: "#25D366" },
+                    ]}
+                  >
+                    <Feather name="message-circle" size={18} color="#FFFFFF" />
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color: "#FFFFFF",
+                        marginLeft: Spacing.xs,
+                        fontWeight: "600",
+                      }}
+                    >
+                      WHATSAPP
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              )}
             </View>
 
             {categories.length > 0 ? (
@@ -534,6 +575,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: Spacing.md,
     marginTop: Spacing.lg,
+  },
+  reserveButton: {
+    flex: 1,
+  },
+  contactOptions: {
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  contactOptionItem: {
+    flex: 1,
   },
   contactButton: {
     flex: 1,

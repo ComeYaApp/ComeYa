@@ -201,7 +201,7 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
                     {item.name ?? item.productName}
                   </Text>
                   <Text style={[det.itemPrice, { color: text }]}>
-                    €{((item.price ?? 0) / 100).toFixed(2)}
+                    {((item.price ?? 0) / 100).toFixed(2)} €
                   </Text>
                 </View>
               ))}
@@ -221,7 +221,7 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
               <View style={det.totalRow}>
                 <Text style={[det.totalLabel, { color: sub }]}>Subtotal</Text>
                 <Text style={[det.totalVal, { color: text }]}>
-                  €{(selected.subtotal / 100).toFixed(2)}
+                  {(selected.subtotal / 100).toFixed(2)} €
                 </Text>
               </View>
             )}
@@ -229,7 +229,7 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
               <View style={det.totalRow}>
                 <Text style={[det.totalLabel, { color: sub }]}>Envío</Text>
                 <Text style={[det.totalVal, { color: text }]}>
-                  €{(selected.deliveryFee / 100).toFixed(2)}
+                  {(selected.deliveryFee / 100).toFixed(2)} €
                 </Text>
               </View>
             )}
@@ -249,7 +249,7 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
                   },
                 ]}
               >
-                €{((selected.total ?? 0) / 100).toFixed(2)}
+                {((selected.total ?? 0) / 100).toFixed(2)} €
               </Text>
             </View>
           </View>
@@ -411,7 +411,7 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
                     </Text>
                   </View>
                   <Text style={[li.amount, { color: ComeYaColors.primary }]}>
-                    €{((order.total ?? 0) / 100).toFixed(2)}
+                    {((order.total ?? 0) / 100).toFixed(2)} €
                   </Text>
                 </View>
                 <View style={li.mid}>

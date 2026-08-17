@@ -476,7 +476,7 @@ export default function BusinessDeliveryMapScreen() {
                         type="caption"
                         style={{ color: text, fontWeight: "700" }}
                       >
-                        €{(d.total / 100).toFixed(2)}
+                        {(d.total / 100).toFixed(2)} €
                       </ThemedText>
                     </View>
                   </View>

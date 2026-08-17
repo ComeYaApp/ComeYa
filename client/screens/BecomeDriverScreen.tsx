@@ -186,7 +186,7 @@ export default function BecomeDriverScreen() {
             type="body"
             style={{ marginTop: Spacing.sm, textAlign: "center" }}
           >
-            Trabaja cuando quieras y gana hasta $300 MXN al día
+            Trabaja cuando quieras y gana hasta $300 € al día
           </ThemedText>
         </View>
 

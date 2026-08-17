@@ -98,6 +98,11 @@ export const orders = mysqlTable("orders", {
   notes: text("notes"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   estimatedDelivery: timestamp("estimated_delivery"),
+  // Aviso anticipado a repartidores (5-10 min / 10-20 min)
+  estimatedPrepMinutes: int("estimated_prep_minutes"),
+  estimatedPrepRange: varchar("estimated_prep_range", { length: 20 }),
+  // Ventana de entrega agrupada para pedidos de mercado (escaparate)
+  deliveryWindow: varchar("delivery_window", { length: 20 }),
   // Campos para cancelación y comisiones
   cancelledAt: timestamp("cancelled_at"),
   cancelledBy: varchar("cancelled_by", { length: 255 }),
@@ -1056,25 +1061,20 @@ export type UserPreference = typeof userPreferences.$inferSelect;
 export type AIRecommendation = typeof aiRecommendations.$inferSelect;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 
-// Group Orders - Pedidos grupales
+// Group Orders - Pedidos grupales (esquema real de la BD)
 export const groupOrders = mysqlTable("group_orders", {
   id: varchar("id", { length: 255 })
     .primaryKey()
     .default(sql`(UUID())`),
-  creatorId: varchar("creator_id", { length: 255 }).notNull(),
+  hostUserId: varchar("host_user_id", { length: 255 }).notNull(),
   businessId: varchar("business_id", { length: 255 }).notNull(),
-  businessName: varchar("business_name", { length: 255 }).notNull(),
-  deliveryAddress: text("delivery_address").notNull(),
-  deliveryLatitude: text("delivery_latitude"),
-  deliveryLongitude: text("delivery_longitude"),
+  deliveryAddressId: varchar("delivery_address_id", { length: 255 }),
+  splitMethod: varchar("split_method", { length: 20 }).default("equal"),
   status: varchar("status", { length: 50 }).notNull().default("open"),
-  shareToken: varchar("share_token", { length: 255 }).notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
-  orderId: varchar("order_id", { length: 255 }),
-  totalAmount: int("total_amount").default(0),
+  finalOrderId: varchar("final_order_id", { length: 255 }),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  lockedAt: timestamp("locked_at"),
-  orderedAt: timestamp("ordered_at"),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const groupOrderParticipants = mysqlTable("group_order_participants", {
@@ -1083,14 +1083,13 @@ export const groupOrderParticipants = mysqlTable("group_order_participants", {
     .default(sql`(UUID())`),
   groupOrderId: varchar("group_order_id", { length: 255 }).notNull(),
   userId: varchar("user_id", { length: 255 }).notNull(),
-  userName: varchar("user_name", { length: 255 }).notNull(),
   items: text("items").notNull(),
   subtotal: int("subtotal").notNull(),
-  paymentStatus: varchar("payment_status", { length: 50 }).default("pending"),
+  paid: boolean("paid").default(false),
   paymentMethod: varchar("payment_method", { length: 50 }),
-  paymentProofUrl: text("payment_proof_url"),
   joinedAt: timestamp("joined_at").default(sql`CURRENT_TIMESTAMP`),
-  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const groupOrderInvitations = mysqlTable("group_order_invitations", {
@@ -1210,6 +1209,31 @@ export const giftCardDesigns = mysqlTable("gift_card_designs", {
 export type GiftCard = typeof giftCards.$inferSelect;
 export type GiftCardTransaction = typeof giftCardTransactions.$inferSelect;
 export type GiftCardDesign = typeof giftCardDesigns.$inferSelect;
+
+// Delivery Requests - Plan Logística Local (B2B): solicitar repartidor
+export const deliveryRequests = mysqlTable("delivery_requests", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  businessId: varchar("business_id", { length: 255 }).notNull(),
+  businessName: varchar("business_name", { length: 255 }).notNull(),
+  pickupAddress: text("pickup_address").notNull(),
+  pickupLatitude: text("pickup_latitude"),
+  pickupLongitude: text("pickup_longitude"),
+  dropoffAddress: text("dropoff_address").notNull(),
+  dropoffLatitude: text("dropoff_latitude"),
+  dropoffLongitude: text("dropoff_longitude"),
+  contactPhone: varchar("contact_phone", { length: 30 }),
+  fee: int("fee").notNull().default(350), // tarifa plana 3,50 €
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, accepted, picked_up, delivered, cancelled
+  driverId: varchar("driver_id", { length: 255 }),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  acceptedAt: timestamp("accepted_at"),
+  deliveredAt: timestamp("delivered_at"),
+});
+
+export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
 
 // Ticket Messages - Mensajes de conversación en tickets de soporte
 export const ticketMessages = mysqlTable("ticket_messages", {

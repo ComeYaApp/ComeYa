@@ -234,7 +234,7 @@ export default function BusinessFinancesScreen() {
               marginVertical: Spacing.sm,
             }}
           >
-            €{summary.totalEarnings.toFixed(2)}
+            {summary.totalEarnings.toFixed(2)} €
           </ThemedText>
 
           <View style={styles.periodSelector}>
@@ -274,7 +274,7 @@ export default function BusinessFinancesScreen() {
                 Completados
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                €{summary.completedAmount.toFixed(2)}
+                {summary.completedAmount.toFixed(2)} €
               </ThemedText>
             </View>
             <View style={styles.summaryItem}>
@@ -285,7 +285,7 @@ export default function BusinessFinancesScreen() {
                 Pendientes
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                €{summary.pendingAmount.toFixed(2)}
+                {summary.pendingAmount.toFixed(2)} €
               </ThemedText>
             </View>
           </View>
@@ -371,7 +371,7 @@ export default function BusinessFinancesScreen() {
                             : ComeYaColors.warning,
                       }}
                     >
-                      €{payout.amount.toFixed(2)}
+                      {payout.amount.toFixed(2)} €
                     </ThemedText>
                     <Badge
                       text={payout.status === "paid" ? "Pagado" : "Pendiente"}
@@ -444,7 +444,7 @@ export default function BusinessFinancesScreen() {
                     type="h4"
                     style={{ color: getStatusColor(transaction.status) }}
                   >
-                    €{transaction.subtotal.toFixed(2)}
+                    {transaction.subtotal.toFixed(2)} €
                   </ThemedText>
                   <Badge
                     text={getStatusLabel(transaction.status)}
@@ -526,9 +526,9 @@ export default function BusinessFinancesScreen() {
                       type="caption"
                       style={{ color: theme.textSecondary, marginLeft: 4 }}
                     >
-                      Envío: €{transaction.deliveryFee.toFixed(2)}
+                      Envío: {transaction.deliveryFee.toFixed(2)} €
                       {" · "}
-                      Total: €{transaction.total.toFixed(2)}
+                      Total: {transaction.total.toFixed(2)} €
                     </ThemedText>
                   </View>
                 ) : null}

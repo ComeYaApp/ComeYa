@@ -7,28 +7,33 @@ export class ScheduledOrdersService {
   static async createScheduledOrder(data: {
     userId: string;
     businessId: string;
-    items: any[];
-    scheduledFor: Date;
-    recurringPattern?: "daily" | "weekly" | "monthly";
-    recurringDays?: number[];
-    recurringEndDate?: Date;
-    deliveryAddressId: string;
-    paymentMethod: string;
+    items: any[] | string;
+    scheduledFor?: Date | string;
+    scheduledDate?: Date | string;
+    deliveryAddress?: string;
+    deliveryLatitude?: string;
+    deliveryLongitude?: string;
+    paymentMethod?: string;
     notes?: string;
   }) {
+    // Normalizar payload del cliente (scheduledDate/items-string/dirección opcional)
+    const itemsRaw = Array.isArray(data.items)
+      ? JSON.stringify(data.items)
+      : typeof data.items === "string"
+        ? data.items
+        : "[]";
+    const scheduledFor = data.scheduledFor || data.scheduledDate;
+
     const [scheduled] = await db.insert(scheduledOrders).values({
       userId: data.userId,
       businessId: data.businessId,
-      items: JSON.stringify(data.items),
-      scheduledFor: data.scheduledFor,
-      recurringPattern: data.recurringPattern,
-      recurringDays: data.recurringDays
-        ? JSON.stringify(data.recurringDays)
-        : null,
-      recurringEndDate: data.recurringEndDate,
-      deliveryAddressId: data.deliveryAddressId,
-      paymentMethod: data.paymentMethod,
-      notes: data.notes,
+      items: itemsRaw,
+      scheduledFor: new Date(scheduledFor as any),
+      deliveryAddress: data.deliveryAddress || "Pendiente de confirmar",
+      deliveryLatitude: data.deliveryLatitude || null,
+      deliveryLongitude: data.deliveryLongitude || null,
+      paymentMethod: data.paymentMethod || "card",
+      notes: data.notes || null,
       status: "pending",
     });
 

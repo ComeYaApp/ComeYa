@@ -167,7 +167,7 @@ export default function DeliveryConfigScreen() {
               {km} km
             </Text>
             <Text style={[s.previewFee, { color: ComeYaColors.success }]}>
-              €{feeFor(km).toFixed(2)}
+              {feeFor(km).toFixed(2)} €
             </Text>
           </View>
         ))}

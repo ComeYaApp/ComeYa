@@ -813,24 +813,47 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       0,
       255,
     );
-    const [ticket] = await db
-      .insert(supportTickets)
-      .values({
-        userId: req.user!.id,
-        orderId: issueOrderId,
-        subject,
-        category: "order_issue",
-        priority: priority || "medium",
-        status: "open",
-      })
-      .returning();
+    // MySQL no soporta RETURNING: insert directo
+    await db.insert(supportTickets).values({
+      userId: req.user!.id,
+      orderId: issueOrderId,
+      subject,
+      category: "order_issue",
+      priority: priority || "medium",
+      status: "open",
+    });
 
     // Notificar a los administradores
-    const { users } = await import("@shared/schema-mysql");
+    const { users, businesses } = await import("@shared/schema-mysql");
     const admins = await db
       .select({ id: users.id })
       .from(users)
       .where(inArray(users.role, ["admin", "super_admin"]));
+    for (const admin of admins) {
+      await sendPushToUser(admin.id, {
+        title: "⚠️ Incidencia reportada",
+        body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
+        data: { orderId: issueOrderId, screen: "AdminSupport" },
+      });
+    }
+
+    // Notificar también al negocio del pedido
+    try {
+      const [biz] = await db
+        .select({ ownerId: businesses.ownerId })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      if (biz?.ownerId) {
+        await sendPushToUser(biz.ownerId, {
+          title: "⚠️ Incidencia en tu pedido",
+          body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
+          data: { orderId: issueOrderId, screen: "BusinessOrders" },
+        });
+      }
+    } catch (err) {
+      console.error("Error notifying business of issue:", err);
+    }
     for (const admin of admins) {
       await sendPushToUser(admin.id, {
         title: "⚠️ Problema reportado",
@@ -839,7 +862,7 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       });
     }
 
-    res.json({ success: true, ticketId: ticket?.id, message: "Problema reportado" });
+    res.json({ success: true, message: "Problema reportado" });
   } catch (error: any) {
     console.error("Report issue error:", error);
     res.status(500).json({ error: error.message });

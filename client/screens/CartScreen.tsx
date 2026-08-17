@@ -224,7 +224,7 @@ export default function CartScreen() {
           <ThemedText type="h4">{cart.businessName}</ThemedText>
           {!canProceed ? (
             <Badge
-              text={`Mín. €${minimumOrder} (faltan €${(minimumOrder - subtotal).toFixed(0)})`}
+              text={`Mín. ${minimumOrder} € (faltan ${(minimumOrder - subtotal).toFixed(0)} €)`}
               variant="warning"
             />
           ) : null}
@@ -280,7 +280,7 @@ export default function CartScreen() {
                       marginTop: Spacing.sm,
                     }}
                   >
-                    €{itemTotal.toFixed(2)}
+                    {itemTotal.toFixed(2)} €
                   </ThemedText>
                 </View>
                 <View style={styles.itemActions}>
@@ -417,14 +417,14 @@ export default function CartScreen() {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Subtotal
           </ThemedText>
-          <ThemedText type="body">€{subtotal.toFixed(2)}</ThemedText>
+          <ThemedText type="body">{subtotal.toFixed(2)} €</ThemedText>
         </View>
         {orderType === "delivery" && (
           <View style={styles.summaryRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío
             </ThemedText>
-            <ThemedText type="body">€{deliveryFee.toFixed(2)}</ThemedText>
+            <ThemedText type="body">{deliveryFee.toFixed(2)} €</ThemedText>
           </View>
         )}
         {orderType === "pickup" && (
@@ -446,7 +446,7 @@ export default function CartScreen() {
         <View style={[styles.summaryRow, styles.totalRow]}>
           <ThemedText type="h3">Total</ThemedText>
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            €{total.toFixed(2)}
+            {total.toFixed(2)} €
           </ThemedText>
         </View>
         <Button
@@ -454,7 +454,7 @@ export default function CartScreen() {
           disabled={!canProceed}
           style={styles.checkoutButton}
         >
-          {canProceed ? "Continuar al pago" : `Mínimo €${minimumOrder}`}
+          {canProceed ? "Continuar al pago" : `Mínimo ${minimumOrder} €`}
         </Button>
       </View>
     </View>

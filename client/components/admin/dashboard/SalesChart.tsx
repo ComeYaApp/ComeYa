@@ -14,8 +14,8 @@ const PAD_B = 28;
 const BAR_W = 36;
 
 function fmt(cents: number) {
-  if (cents >= 100_000) return `€${(cents / 100 / 1_000).toFixed(1)}K`;
-  return `€${(cents / 100).toFixed(0)}`;
+  if (cents >= 100_000) return `${(cents / 100 / 1_000).toFixed(1)} €K`;
+  return `${(cents / 100).toFixed(0)} €`;
 }
 
 const DAYS_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];

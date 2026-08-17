@@ -843,28 +843,72 @@ router.get(
   },
 );
 
-// Support tickets
+// Support tickets — tickets reales (incidencias y soporte)
 router.get(
   "/support/tickets",
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      res.json({ success: true, tickets: [] });
+      const { supportTickets, users } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { desc, eq } = await import("drizzle-orm");
+
+      const tickets = await db
+        .select({
+          id: supportTickets.id,
+          userId: supportTickets.userId,
+          orderId: supportTickets.orderId,
+          subject: supportTickets.subject,
+          category: supportTickets.category,
+          priority: supportTickets.priority,
+          status: supportTickets.status,
+          createdAt: supportTickets.createdAt,
+          userName: users.name,
+          userPhone: users.phone,
+        })
+        .from(supportTickets)
+        .leftJoin(users, eq(users.id, supportTickets.userId))
+        .orderBy(desc(supportTickets.createdAt))
+        .limit(200);
+
+      res.json({ success: true, tickets });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   },
 );
 
-// Support tickets
+// Support tickets (alias)
 router.get(
   "/support",
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      res.json({ success: true, tickets: [] });
+      const { supportTickets, users } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { desc, eq } = await import("drizzle-orm");
+
+      const tickets = await db
+        .select({
+          id: supportTickets.id,
+          userId: supportTickets.userId,
+          orderId: supportTickets.orderId,
+          subject: supportTickets.subject,
+          category: supportTickets.category,
+          priority: supportTickets.priority,
+          status: supportTickets.status,
+          createdAt: supportTickets.createdAt,
+          userName: users.name,
+          userPhone: users.phone,
+        })
+        .from(supportTickets)
+        .leftJoin(users, eq(users.id, supportTickets.userId))
+        .orderBy(desc(supportTickets.createdAt))
+        .limit(200);
+
+      res.json({ success: true, tickets });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

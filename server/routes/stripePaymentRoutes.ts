@@ -608,6 +608,13 @@ router.post(
         })
         .where(eq(subscriptions.userId, req.user!.id));
 
+      // Efectos del plan (negocio destacado para Top/Premium/Express)
+      const { SubscriptionService } = await import("../subscriptionService");
+      await SubscriptionService.applyPlanActivationSideEffects(
+        sub.userId,
+        sub.plan,
+      ).catch(() => {});
+
       try {
         const { sendPushToUser } = await import("../enhancedPushService");
         await sendPushToUser(sub.userId, {

@@ -51,6 +51,10 @@ export default function BusinessOrdersScreen() {
     orderId: string;
   }>({ visible: false, orderId: "" });
   const [selectedTime, setSelectedTime] = useState(20);
+  const [prepModal, setPrepModal] = useState<{
+    visible: boolean;
+    orderId: string | null;
+  }>({ visible: false, orderId: null });
 
   // WebSocket connection
   useEffect(() => {
@@ -139,10 +143,15 @@ export default function BusinessOrdersScreen() {
     setRefreshing(false);
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
+  const updateOrderStatus = async (
+    orderId: string,
+    status: string,
+    extra?: { estimatedPrepMinutes?: number; estimatedPrepRange?: string },
+  ) => {
     try {
       await apiRequest("PUT", `/api/business/orders/${orderId}/status`, {
         status,
+        ...(extra || {}),
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
@@ -189,7 +198,16 @@ export default function BusinessOrdersScreen() {
   };
 
   const handleStartPreparing = (orderId: string) => {
-    updateOrderStatus(orderId, "preparing");
+    // Preguntar el tiempo estimado para avisar a los repartidores por adelantado
+    setPrepModal({ visible: true, orderId });
+  };
+
+  const confirmStartPreparing = (orderId: string, range: string, minutes: number) => {
+    setPrepModal({ visible: false, orderId: null });
+    updateOrderStatus(orderId, "preparing", {
+      estimatedPrepMinutes: minutes,
+      estimatedPrepRange: range,
+    });
   };
 
   const filteredOrders = orders.filter((order: any) => {
@@ -419,7 +437,7 @@ export default function BusinessOrdersScreen() {
         <View style={styles.orderFooter}>
           <View>
             <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-              €{(item.subtotal / 100).toFixed(2)}
+              {(item.subtotal / 100).toFixed(2)} €
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {getPaymentLabel(item.paymentMethod)}
@@ -430,7 +448,7 @@ export default function BusinessOrdersScreen() {
               type="small"
               style={{ color: ComeYaColors.success, fontWeight: "600" }}
             >
-              Recibes: €{(item.subtotal / 100).toFixed(2)}
+              Recibes: {(item.subtotal / 100).toFixed(2)} €
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {item.status === "delivered" ? "✅ Liquidado" : "⏳ Pendiente"}
@@ -699,6 +717,75 @@ export default function BusinessOrdersScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de tiempo de preparación (aviso anticipado al repartidor) */}
+      <Modal visible={prepModal.visible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <ThemedText type="h3" style={{ marginBottom: Spacing.sm }}>
+              ¿Cuánto tardará la preparación?
+            </ThemedText>
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}
+            >
+              Se avisará a los repartidores para que se acerquen al local.
+            </ThemedText>
+
+            <View style={styles.timeGrid}>
+              {[
+                { label: "5–10 min", range: "5-10 min", minutes: 8 },
+                { label: "10–20 min", range: "10-20 min", minutes: 15 },
+              ].map((opt) => (
+                <Pressable
+                  key={opt.range}
+                  onPress={() =>
+                    confirmStartPreparing(prepModal.orderId!, opt.range, opt.minutes)
+                  }
+                  style={[
+                    styles.timeOption,
+                    { backgroundColor: ComeYaColors.primary },
+                  ]}
+                >
+                  <ThemedText type="h4" style={{ color: "#FFF" }}>
+                    {opt.label}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={() => {
+                const id = prepModal.orderId;
+                setPrepModal({ visible: false, orderId: null });
+                if (id) updateOrderStatus(id, "ready");
+              }}
+              style={[
+                styles.modalButton,
+                { backgroundColor: ComeYaColors.success, marginTop: Spacing.md },
+              ]}
+            >
+              <ThemedText
+                type="body"
+                style={{ color: "#FFF", fontWeight: "700" }}
+              >
+                PEDIDO LISTO
+              </ThemedText>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setPrepModal({ visible: false, orderId: null })}
+              style={[
+                styles.modalButton,
+                { backgroundColor: theme.backgroundSecondary, marginTop: Spacing.sm },
+              ]}
+            >
+              <ThemedText type="body">Cancelar</ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <ThemedText type="h2">Pedidos</ThemedText>
       </View>

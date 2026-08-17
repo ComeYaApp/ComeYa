@@ -64,7 +64,7 @@ export const ZonesTab: React.FC<Props> = () => {
   }, [load]);
 
   const fmt = (cents: number) =>
-    isNaN(cents) ? "€0.00" : `€${(cents / 100).toFixed(2)}`;
+    isNaN(cents) ? "€0.00" : `${(cents / 100).toFixed(2)} €`;
 
   // ── Detail ────────────────────────────────────────────────────────────────
   if (selected) {

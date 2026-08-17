@@ -6,160 +6,17 @@ const router = express.Router();
 // Get wallet balance
 router.get("/balance", authenticateToken, async (req, res) => {
   try {
-    const { wallets, businesses, transactions, orders } = await import(
+    const { wallets, transactions, orders } = await import(
       "@shared/schema-mysql"
     );
     const { db } = await import("../db");
-    const { eq, and } = await import("drizzle-orm");
+    const { eq } = await import("drizzle-orm");
     const { cashSettlementService } = await import("../cashSettlementService");
-    const { financialService } = await import("../unifiedFinancialService");
 
-    if (req.user!.role === "business_owner" || req.user!.role === "business") {
-      const ownerBusinesses = await db
-        .select({ id: businesses.id })
-        .from(businesses)
-        .where(eq(businesses.ownerId, req.user!.id));
-
-      for (const business of ownerBusinesses) {
-        const [legacyWallet] = await db
-          .select()
-          .from(wallets)
-          .where(eq(wallets.userId, business.id))
-          .limit(1);
-
-        if (!legacyWallet) {
-          continue;
-        }
-
-        const hasLegacyBalance =
-          legacyWallet.balance !== 0 || legacyWallet.totalEarned !== 0;
-
-        const [ownerWallet] = await db
-          .select()
-          .from(wallets)
-          .where(eq(wallets.userId, req.user!.id))
-          .limit(1);
-
-        if (hasLegacyBalance) {
-          if (ownerWallet) {
-            await db
-              .update(wallets)
-              .set({
-                balance: ownerWallet.balance + legacyWallet.balance,
-                totalEarned: ownerWallet.totalEarned + legacyWallet.totalEarned,
-              })
-              .where(eq(wallets.userId, req.user!.id));
-          } else {
-            await db.insert(wallets).values({
-              userId: req.user!.id,
-              balance: legacyWallet.balance,
-              pendingBalance: 0,
-              totalEarned: legacyWallet.totalEarned,
-              totalWithdrawn: 0,
-              cashOwed: 0,
-              cashPending: 0,
-            });
-          }
-
-          await db
-            .update(wallets)
-            .set({
-              balance: 0,
-              totalEarned: 0,
-            })
-            .where(eq(wallets.userId, business.id));
-        }
-
-        await db
-          .update(transactions)
-          .set({ userId: req.user!.id })
-          .where(eq(transactions.userId, business.id));
-
-        const deliveredOrders = await db
-          .select()
-          .from(orders)
-          .where(
-            and(
-              eq(orders.businessId, business.id),
-              eq(orders.status, "delivered"),
-            ),
-          );
-
-        for (const order of deliveredOrders) {
-          const isCashOrder = order.paymentMethod === "cash";
-          if (isCashOrder && !order.cashSettled) {
-            continue;
-          }
-
-          const [existingBusinessTx] = await db
-            .select()
-            .from(transactions)
-            .where(
-              and(
-                eq(transactions.orderId, order.id),
-                eq(transactions.userId, req.user!.id),
-              ),
-            )
-            .limit(1);
-
-          if (existingBusinessTx) {
-            continue;
-          }
-
-          const commissions = await financialService.calculateCommissions(
-            order.total,
-            order.deliveryFee,
-            order.productosBase || order.subtotal,
-            order.nemyCommission || undefined,
-          );
-
-          await db
-            .update(orders)
-            .set({
-              platformFee: order.platformFee ?? commissions.platform,
-              businessEarnings: order.businessEarnings ?? commissions.business,
-            })
-            .where(eq(orders.id, order.id));
-
-          if (!isCashOrder) {
-            const [ownerWallet] = await db
-              .select()
-              .from(wallets)
-              .where(eq(wallets.userId, req.user!.id))
-              .limit(1);
-
-            if (ownerWallet) {
-              await db
-                .update(wallets)
-                .set({
-                  balance: ownerWallet.balance + commissions.business,
-                  totalEarned: ownerWallet.totalEarned + commissions.business,
-                })
-                .where(eq(wallets.userId, req.user!.id));
-            } else {
-              await db.insert(wallets).values({
-                userId: req.user!.id,
-                balance: commissions.business,
-                pendingBalance: 0,
-                totalEarned: commissions.business,
-                totalWithdrawn: 0,
-                cashOwed: 0,
-                cashPending: 0,
-              });
-            }
-          }
-
-          await db.insert(transactions).values({
-            userId: req.user!.id,
-            type: isCashOrder ? "cash_settlement" : "order_payment",
-            amount: commissions.business,
-            status: "completed",
-            description: `${isCashOrder ? "Efectivo liquidado" : "Pago por pedido"} #${order.id.slice(-8)}`,
-            orderId: order.id,
-          });
-        }
-      }
-    }
+    // SOLO LECTURA: las ganancias se calculan UNA vez al confirmar la entrega
+    // (confirm-receipt persiste businessEarnings/deliveryEarnings y crea payouts).
+    // Antes este endpoint recalcula y ESCRIBÍA comisiones en cada lectura, lo que
+    // hacía que los importes del negocio "cambiaran solos".
 
     const [wallet] = await db
       .select()

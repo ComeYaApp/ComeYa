@@ -229,7 +229,7 @@ export default function StripePaymentScreen() {
           </ThemedText>
 
           <ThemedText type="h1" style={{ color: PRIMARY, fontWeight: "900", marginTop: 8 }}>
-            €{displayAmount.toFixed(2)}
+            {displayAmount.toFixed(2)} €
           </ThemedText>
 
           {/* Order summary */}
@@ -240,7 +240,7 @@ export default function StripePaymentScreen() {
                   Suscripción mensual
                 </ThemedText>
                 <ThemedText type="body" style={{ color: text }}>
-                  €{displayAmount.toFixed(2)}/mes
+                  {displayAmount.toFixed(2)} €/mes
                 </ThemedText>
               </View>
             ) : (
@@ -250,7 +250,7 @@ export default function StripePaymentScreen() {
                     Importe
                   </ThemedText>
                   <ThemedText type="body" style={{ color: text }}>
-                    €{(subtotal || 0).toFixed(2)}
+                    {(subtotal || 0).toFixed(2)} €
                   </ThemedText>
                 </View>
                 <View style={styles.summaryRow}>
@@ -258,7 +258,7 @@ export default function StripePaymentScreen() {
                     Envío
                   </ThemedText>
                   <ThemedText type="body" style={{ color: text }}>
-                    €{(deliveryFee || 0).toFixed(2)}
+                    {(deliveryFee || 0).toFixed(2)} €
                   </ThemedText>
                 </View>
               </>
@@ -290,7 +290,7 @@ export default function StripePaymentScreen() {
             <>
               <Feather name="lock" size={18} color="#fff" />
               <ThemedText type="h4" style={{ color: "#fff", marginLeft: 8 }}>
-                Pagar €{displayAmount.toFixed(2)}
+                Pagar {displayAmount.toFixed(2)} €
               </ThemedText>
             </>
           )}

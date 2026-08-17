@@ -541,7 +541,7 @@ function ProductCard({
           {product.description}
         </Text>
         <Text style={[pc.price, { color: ComeYaColors.primary }]}>
-          €{(product.price / 100).toFixed(2)}
+          {(product.price / 100).toFixed(2)} €
         </Text>
       </View>
       <View style={pc.actions}>

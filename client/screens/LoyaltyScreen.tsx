@@ -156,7 +156,7 @@ export default function LoyaltyScreen() {
     },
     {
       id: "3",
-      title: "$50 Cashback",
+      title: "50 € de cashback",
       description: "Directo a tu billetera",
       pointsCost: 1000,
       type: "cashback",

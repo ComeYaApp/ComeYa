@@ -74,7 +74,7 @@ function ProductRow({
             {product.name}
           </ThemedText>
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            €{(product.price / 100).toFixed(2)}
+            {(product.price / 100).toFixed(2)} €
           </ThemedText>
         </View>
         <View style={styles.availabilityToggle}>
@@ -329,6 +329,34 @@ export default function BusinessManageScreen() {
             <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
               Configuración del negocio
             </ThemedText>
+
+            <Pressable
+              style={styles.settingRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                navigation.navigate("LogisticsRequest" as any);
+              }}
+            >
+              <View style={styles.settingInfo}>
+                <Feather name="package" size={20} color={theme.textSecondary} />
+                <View style={{ marginLeft: Spacing.md }}>
+                  <ThemedText type="body">Solicitar repartidor (Logística Local)</ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    Envía paquetes de tu comercio con la flota ComeYa (3,50 €)
+                  </ThemedText>
+                </View>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={theme.textSecondary}
+              />
+            </Pressable>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <Pressable
               style={styles.settingRow}

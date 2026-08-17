@@ -883,7 +883,7 @@ export default function AdminScreen() {
                           type="h4"
                           style={{ color: ComeYaColors.primary }}
                         >
-                          €{(p.price / 100).toFixed(2)}
+                          {(p.price / 100).toFixed(2)} €
                         </ThemedText>
                       </View>
                       <View style={styles.listItemFooter}>
@@ -2045,7 +2045,7 @@ export default function AdminScreen() {
                         Subtotal
                       </ThemedText>
                       <ThemedText type="body">
-                        €{(selectedOrder.subtotal / 100).toFixed(2)}
+                        {(selectedOrder.subtotal / 100).toFixed(2)} €
                       </ThemedText>
                     </View>
                     <View
@@ -2062,7 +2062,7 @@ export default function AdminScreen() {
                         Envío
                       </ThemedText>
                       <ThemedText type="body">
-                        €{(selectedOrder.deliveryFee / 100).toFixed(2)}
+                        {(selectedOrder.deliveryFee / 100).toFixed(2)} €
                       </ThemedText>
                     </View>
                     <View
@@ -2080,7 +2080,7 @@ export default function AdminScreen() {
                         type="h4"
                         style={{ color: ComeYaColors.primary }}
                       >
-                        €{(selectedOrder.total / 100).toFixed(2)}
+                        {(selectedOrder.total / 100).toFixed(2)} €
                       </ThemedText>
                     </View>
                     <View
@@ -2128,7 +2128,7 @@ export default function AdminScreen() {
                               Plataforma (15% productos)
                             </ThemedText>
                             <ThemedText type="body">
-                              €{(selectedOrder.platformFee / 100).toFixed(2)}
+                              {(selectedOrder.platformFee / 100).toFixed(2)} €
                             </ThemedText>
                           </View>
                         ) : null}

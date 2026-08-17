@@ -188,7 +188,7 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
     }
   };
 
-  const fmtEur = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+  const fmtEur = (cents: number) => `${(cents / 100).toFixed(2)} €`;
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("es-ES", {
       day: "numeric",

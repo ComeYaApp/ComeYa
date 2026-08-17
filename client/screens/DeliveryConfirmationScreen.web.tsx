@@ -244,7 +244,7 @@ export default function DeliveryConfirmationScreen({
               Total pagado
             </ThemedText>
             <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-              €{(orderDetails.total / 100).toFixed(2)}
+              {(orderDetails.total / 100).toFixed(2)} €
             </ThemedText>
           </View>
           <View style={s.orderDetail}>

@@ -89,37 +89,12 @@ export default function OrderTrackingScreen() {
     longitude: number;
   } | null>(null);
   const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
-  const [selectedTip, setSelectedTip] = useState<number | null>(null);
-  const [tipSent, setTipSent] = useState(false);
-  const [sendingTip, setSendingTip] = useState(false);
+  // La propina ya NO se ofrece durante el seguimiento: solo tras la entrega,
+  // desde la pantalla de valoración del pedido.
   const [dynamicETA, setDynamicETA] = useState<{
     minutes: number;
     confidence: number;
   } | null>(null);
-
-  const tipOptions = [10, 20, 30, 50];
-
-  const handleSendTip = async () => {
-    if (!selectedTip || !order?.deliveryPersonId || sendingTip) return;
-    setSendingTip(true);
-    try {
-      await apiRequest("POST", `/api/orders/${orderId}/tip`, {
-        amount: selectedTip,
-        deliveryPersonId: order.deliveryPersonId,
-      });
-      setTipSent(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error: any) {
-      console.error("Error sending tip:", error);
-      Alert.alert(
-        "No se pudo enviar la propina",
-        error?.message || "Inténtalo de nuevo más tarde",
-        [{ text: "OK" }],
-      );
-    } finally {
-      setSendingTip(false);
-    }
-  };
 
   // Poll for ETA updates every 30 seconds
   useEffect(() => {
@@ -771,16 +746,6 @@ export default function OrderTrackingScreen() {
                 ? () => handleCall(order.deliveryPersonPhone!)
                 : undefined
             }
-            onChatDriver={
-              order.deliveryPersonId
-                ? () =>
-                    navigation.navigate("OrderChat", {
-                      orderId: order.id,
-                      receiverId: order.deliveryPersonId!,
-                      receiverName: order.deliveryPersonName ?? "Repartidor",
-                    })
-                : undefined
-            }
           />
         ) : (
           <CollapsibleMap
@@ -788,6 +753,16 @@ export default function OrderTrackingScreen() {
             customerLocation={userLocation || undefined}
             status={order.status}
             isPickup={true}
+            onNavigateInApp={
+              businessLocation
+                ? () =>
+                    navigation.navigate("DriverNavigation", {
+                      destLat: businessLocation.latitude,
+                      destLng: businessLocation.longitude,
+                      destAddress: order.deliveryAddress || businessLocation.title || "Local",
+                    })
+                : undefined
+            }
           />
         )}
 
@@ -857,7 +832,7 @@ export default function OrderTrackingScreen() {
                     {itemQty}x {itemName}
                   </ThemedText>
                   <ThemedText type="body">
-                    €{(itemPrice * itemQty).toFixed(2)}
+                    {(itemPrice * itemQty).toFixed(2)} €
                   </ThemedText>
                 </View>
               );
@@ -874,14 +849,14 @@ export default function OrderTrackingScreen() {
                   Envío
                 </ThemedText>
                 <ThemedText type="small">
-                  €{order.deliveryFee.toFixed(2)}
+                  {order.deliveryFee.toFixed(2)} €
                 </ThemedText>
               </View>
             )}
             <View style={styles.itemRow}>
               <ThemedText type="h4">Total</ThemedText>
               <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-                €{order.total.toFixed(2)}
+                {order.total.toFixed(2)} €
               </ThemedText>
             </View>
           </View>
@@ -907,91 +882,6 @@ export default function OrderTrackingScreen() {
             </ThemedText>
           </View>
         </View>
-
-        {order.status === "delivered" &&
-        order.deliveryPersonId &&
-        !tipSent &&
-        user?.role === "customer" ? (
-          <View
-            style={[
-              styles.tipCard,
-              { backgroundColor: theme.card },
-              Shadows.md,
-            ]}
-          >
-            <View style={styles.tipHeader}>
-              <Feather name="heart" size={20} color={ComeYaColors.primary} />
-              <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
-                Agregar propina
-              </ThemedText>
-            </View>
-            <ThemedText
-              type="body"
-              style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
-            >
-              Agradece a tu repartidor por su servicio
-            </ThemedText>
-            <View style={styles.tipOptions}>
-              {tipOptions.map((tip) => (
-                <Pressable
-                  key={tip}
-                  onPress={() => {
-                    setSelectedTip(tip);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={[
-                    styles.tipOption,
-                    {
-                      backgroundColor:
-                        selectedTip === tip
-                          ? ComeYaColors.primary
-                          : theme.backgroundSecondary,
-                      borderColor:
-                        selectedTip === tip
-                          ? ComeYaColors.primary
-                          : theme.border,
-                    },
-                  ]}
-                >
-                  <ThemedText
-                    type="body"
-                    style={{
-                      color: selectedTip === tip ? "#FFFFFF" : theme.text,
-                      fontWeight: "600",
-                    }}
-                  >
-                    �${tip}
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable
-              onPress={handleSendTip}
-              disabled={!selectedTip || sendingTip}
-              style={[
-                styles.tipButton,
-                {
-                  backgroundColor: selectedTip
-                    ? ComeYaColors.primary
-                    : theme.backgroundSecondary,
-                  opacity: selectedTip && !sendingTip ? 1 : 0.5,
-                },
-              ]}
-            >
-              <Feather name="gift" size={18} color="#FFFFFF" />
-              <ThemedText
-                type="body"
-                style={{
-                  color: "#FFFFFF",
-                  marginLeft: Spacing.sm,
-                  fontWeight: "600",
-                }}
-              >
-                {sendingTip ? "Enviando..." : "Enviar propina"}
-              </ThemedText>
-            </Pressable>
-          </View>
-        ) : null}
 
         {order.status === "delivered" &&
         !(order as any).confirmedByCustomer &&
@@ -1080,25 +970,6 @@ export default function OrderTrackingScreen() {
           </View>
         ) : null}
 
-        {tipSent ? (
-          <View
-            style={[styles.tipCard, { backgroundColor: "#E8F5E9" }, Shadows.sm]}
-          >
-            <View style={styles.tipHeader}>
-              <Feather name="check-circle" size={20} color="#4CAF50" />
-              <ThemedText
-                type="h4"
-                style={{ marginLeft: Spacing.sm, color: "#2E7D32" }}
-              >
-                Propina enviada
-              </ThemedText>
-            </View>
-            <ThemedText type="body" style={{ color: "#4CAF50" }}>
-              Tu repartidor recibirá €{selectedTip}
-            </ThemedText>
-          </View>
-        ) : null}
-
         {order.status !== "cancelled" && (
           <Pressable
             onPress={() => {
@@ -1124,7 +995,7 @@ export default function OrderTrackingScreen() {
               type="body"
               style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}
             >
-              Reportar un problema
+              Reportar incidencia
             </ThemedText>
           </Pressable>
         )}
@@ -1230,37 +1101,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: Spacing.md,
-  },
-  tipCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.lg,
-  },
-  tipHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-  },
-  tipOptions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: Spacing.md,
-    gap: Spacing.sm,
-  },
-  tipOption: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tipButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
   },
   confirmButton: {
     flexDirection: "row",

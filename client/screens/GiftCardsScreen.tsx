@@ -325,7 +325,7 @@ export default function GiftCardsScreen() {
                         fontWeight: "600",
                       }}
                     >
-                      €{preset}
+                      {preset} €
                     </ThemedText>
                   </Pressable>
                 ))}
@@ -539,7 +539,7 @@ export default function GiftCardsScreen() {
               >
                 {purchaseMutation.isPending
                   ? "Creando..."
-                  : `Crear Gift Card €${amount}`}
+                  : `Crear Gift Card ${amount} €`}
               </ThemedText>
             </Pressable>
           </View>
@@ -600,7 +600,7 @@ export default function GiftCardsScreen() {
                           type="caption"
                           style={{ color: theme.textSecondary }}
                         >
-                          Saldo: €{card.balance?.toFixed(2)}
+                          Saldo: {card.balance?.toFixed(2)} €
                         </ThemedText>
                       )}
                     </View>
@@ -608,7 +608,7 @@ export default function GiftCardsScreen() {
                       type="body"
                       style={{ color: ComeYaColors.primary, fontWeight: "700" }}
                     >
-                      €{card.amount?.toFixed(2)}
+                      {card.amount?.toFixed(2)} €
                     </ThemedText>
                   </View>
 

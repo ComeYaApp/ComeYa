@@ -242,7 +242,7 @@ export default function ScheduleOrderScreen() {
           <View style={s.summaryRow}>
             <Text style={[s.summaryLabel, { color: sub }]}>Subtotal</Text>
             <Text style={[s.summaryValue, { color: PRIMARY }]}>
-              €{((subtotal || 0) / 100).toFixed(2)}
+              {((subtotal || 0) / 100).toFixed(2)} €
             </Text>
           </View>
         </View>

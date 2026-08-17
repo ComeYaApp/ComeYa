@@ -6,9 +6,9 @@ import { useTheme } from "@/hooks/useTheme";
 const PRIMARY = "#DC2626";
 
 function fmt(cents: number) {
-  if (cents >= 10_000_000) return `€${(cents / 100 / 1_000_000).toFixed(1)}M`;
-  if (cents >= 100_000) return `€${(cents / 100 / 1_000).toFixed(1)}K`;
-  return `€${(cents / 100).toFixed(0)}`;
+  if (cents >= 10_000_000) return `${(cents / 100 / 1_000_000).toFixed(1)} €M`;
+  if (cents >= 100_000) return `${(cents / 100 / 1_000).toFixed(1)} €K`;
+  return `${(cents / 100).toFixed(0)} €`;
 }
 
 function pct(a: number, b: number) {

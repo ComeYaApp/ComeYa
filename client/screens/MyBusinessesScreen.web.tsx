@@ -481,7 +481,7 @@ export default function MyBusinessesScreen() {
                         <Text
                           style={[s.statValue, { color: ComeYaColors.success }]}
                         >
-                          €{((biz.stats.totalRevenue || 0) / 100).toFixed(0)}
+                          {((biz.stats.totalRevenue || 0) / 100).toFixed(0)} €
                         </Text>
                         <Text style={[s.statLabel, { color: sub }]}>
                           Ingresos

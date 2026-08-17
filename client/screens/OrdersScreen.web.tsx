@@ -261,7 +261,7 @@ export default function OrdersScreen() {
                       </View>
                     </View>
                     <Text style={[s.orderTotal, { color: text }]}>
-                      €{(order.total / 100).toFixed(2)}
+                      {(order.total / 100).toFixed(2)} €
                     </Text>
                   </Pressable>
                 );
@@ -429,7 +429,7 @@ export default function OrdersScreen() {
                         Subtotal
                       </Text>
                       <Text style={[s.detailRowValue, { color: text }]}>
-                        €{((selected.subtotal || 0) / 100).toFixed(2)}
+                        {((selected.subtotal || 0) / 100).toFixed(2)} €
                       </Text>
                     </View>
                     <View style={s.detailRow}>
@@ -437,7 +437,7 @@ export default function OrdersScreen() {
                         Envío
                       </Text>
                       <Text style={[s.detailRowValue, { color: text }]}>
-                        €{((selected.deliveryFee || 0) / 100).toFixed(2)}
+                        {((selected.deliveryFee || 0) / 100).toFixed(2)} €
                       </Text>
                     </View>
                     <View style={[s.detailRow, s.detailTotalRow]}>
@@ -445,7 +445,7 @@ export default function OrdersScreen() {
                         Total
                       </Text>
                       <Text style={[s.detailTotalValue, { color: PRIMARY }]}>
-                        €{((selected.total || 0) / 100).toFixed(2)}
+                        {((selected.total || 0) / 100).toFixed(2)} €
                       </Text>
                     </View>
                   </View>

@@ -215,7 +215,7 @@ export default function DeliveryConfigScreen() {
                     ]}
                   >
                     <Text style={[ti.currentTxt, { color: tier.color }]}>
-                      €{parseFloat(val || "0").toFixed(2)}
+                      {parseFloat(val || "0").toFixed(2)} €
                     </Text>
                   </View>
                 </View>
@@ -309,7 +309,7 @@ export default function DeliveryConfigScreen() {
                   <View style={[pv.kmDot, { backgroundColor: color }]} />
                   <Text style={[pv.kmTxt, { color: text }]}>{km} km</Text>
                 </View>
-                <Text style={[pv.feeTxt, { color }]}>€{fee.toFixed(2)}</Text>
+                <Text style={[pv.feeTxt, { color }]}>{fee.toFixed(2)} €</Text>
                 <View
                   style={[
                     pv.barTrack,

@@ -131,6 +131,24 @@ router.post(
       const finalDeliveryFee =
         req.body.orderType === "pickup" ? 0 : subDeliveryFee;
 
+      // Recalcular la comisión según la tasa del negocio (suscripción
+      // Impulso Local 10% / Escaparate 8% / personalizada / 15% por defecto)
+      let productosBase = req.body.productosBase || null;
+      let nemyCommission = req.body.nemyCommission || null;
+      try {
+        const { SubscriptionService } = await import("../subscriptionService");
+        const rate = await SubscriptionService.getBusinessCommissionRate(
+          req.body.businessId,
+        );
+        if (rate !== 0.15 && subtotal > 0) {
+          // subtotal incluye markup: base = subtotal / (1 + rate)
+          productosBase = Math.round(subtotal / (1 + rate));
+          nemyCommission = subtotal - productosBase;
+        }
+      } catch (err) {
+        console.error("Error applying business commission rate:", err);
+      }
+
       // Total = subtotal (ya con comisión) + delivery - descuentos
       const calculatedTotal = Math.max(
         0,
@@ -145,8 +163,8 @@ router.post(
         items: req.body.items,
         status: req.body.status || "pending",
         subtotal: subtotal,
-        productosBase: req.body.productosBase || null,
-        nemyCommission: req.body.nemyCommission || null,
+        productosBase,
+        nemyCommission,
         deliveryFee: finalDeliveryFee,
         total: calculatedTotal,
         paymentMethod: req.body.paymentMethod,

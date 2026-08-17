@@ -169,7 +169,7 @@ export default function MarketsScreen() {
                       <View style={s.metaItem}>
                         <Feather name="truck" size={13} color={sub} />
                         <Text style={[s.metaText, { color: sub }]}>
-                          €{m.deliveryFee.toFixed(2)}
+                          {m.deliveryFee.toFixed(2)} €
                         </Text>
                       </View>
                     </View>

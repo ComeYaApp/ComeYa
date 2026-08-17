@@ -49,7 +49,7 @@ const METHOD_LABELS: Record<string, string> = {
   cash: "Efectivo",
 };
 
-const fmt = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 
 export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   const [tab, setTab] = useState<"payouts" | "history" | "metrics">("payouts");
@@ -775,7 +775,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                               { color: ComeYaColors.success },
                             ]}
                           >
-                            €{(data.amount / 100).toFixed(2)}
+                            {(data.amount / 100).toFixed(2)} €
                           </Text>
                           <Text style={[s.sub, { color: theme.textSecondary }]}>
                             {data.count} pagos

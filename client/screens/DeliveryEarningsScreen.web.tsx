@@ -197,15 +197,15 @@ export default function DeliveryEarningsScreen() {
               }}
             >
               {cashOwed > 0
-                ? `Debes €${cashOwed.toFixed(2)}`
-                : `€${canWithdraw.toFixed(2)} disponible`}
+                ? `Debes ${cashOwed.toFixed(2)} €`
+                : `${canWithdraw.toFixed(2)} € disponible`}
             </Text>
           </View>
         </View>
         <View style={s.sideStats}>
           <View style={[s.statBox, { backgroundColor: cardBg }]}>
             <Text style={[s.statNum, { color: text }]}>
-              €{totalEarned.toFixed(0)}
+              {totalEarned.toFixed(0)} €
             </Text>
             <Text style={[s.statLabel, { color: sub }]}>Total ganado</Text>
           </View>
@@ -240,7 +240,7 @@ export default function DeliveryEarningsScreen() {
             {cashOwed > 0 ? "🚨 Debes Depositar" : "✅ Disponible para Retirar"}
           </Text>
           <Text style={s.walletAmount}>
-            €{cashOwed > 0 ? cashOwed.toFixed(2) : canWithdraw.toFixed(2)}
+            {cashOwed > 0 ? cashOwed.toFixed(2) : canWithdraw.toFixed(2)} €
           </Text>
           {cashOwed > 0 && (
             <View style={s.deadlineRow}>
@@ -251,19 +251,19 @@ export default function DeliveryEarningsScreen() {
           <View style={s.breakdownGrid}>
             <View style={s.breakdownItem}>
               <Text style={s.breakdownLabel}>Balance digital</Text>
-              <Text style={s.breakdownValue}>€{balance.toFixed(2)}</Text>
+              <Text style={s.breakdownValue}>{balance.toFixed(2)} €</Text>
             </View>
             <View style={s.breakdownItem}>
               <Text style={s.breakdownLabel}>Deuda efectivo</Text>
-              <Text style={s.breakdownValue}>-€{cashOwed.toFixed(2)}</Text>
+              <Text style={s.breakdownValue}>-{cashOwed.toFixed(2)} €</Text>
             </View>
             <View style={s.breakdownItem}>
               <Text style={s.breakdownLabel}>Disponible</Text>
-              <Text style={s.breakdownValue}>€{canWithdraw.toFixed(2)}</Text>
+              <Text style={s.breakdownValue}>{canWithdraw.toFixed(2)} €</Text>
             </View>
             <View style={s.breakdownItem}>
               <Text style={s.breakdownLabel}>Total ganado</Text>
-              <Text style={s.breakdownValue}>€{totalEarned.toFixed(2)}</Text>
+              <Text style={s.breakdownValue}>{totalEarned.toFixed(2)} €</Text>
             </View>
           </View>
           {canWithdraw > 0 && (
@@ -305,7 +305,7 @@ export default function DeliveryEarningsScreen() {
               </Pressable>
             </View>
             <Text style={[s.withdrawSub, { color: sub }]}>
-              Disponible: €{canWithdraw.toFixed(2)} · Mínimo €50
+              Disponible: {canWithdraw.toFixed(2)} € · Mínimo €50
             </Text>
             <TextInput
               value={withdrawAmount}
@@ -341,7 +341,7 @@ export default function DeliveryEarningsScreen() {
         {/* Ganancias por período */}
         <View style={[s.earningsCard, { backgroundColor: PRIMARY }]}>
           <Text style={s.earningsLabel}>{PERIOD_LABELS[period]}</Text>
-          <Text style={s.earningsAmount}>€{periodEarnings.toFixed(2)}</Text>
+          <Text style={s.earningsAmount}>{periodEarnings.toFixed(2)} €</Text>
           <View style={s.periodRow}>
             {(["today", "week", "month"] as Period[]).map((p) => (
               <Pressable

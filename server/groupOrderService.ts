@@ -1,19 +1,22 @@
+// Pedidos grupales — alineado al esquema REAL de la BD
+// (group_orders: host_user_id, business_id, delivery_address_id, split_method, ...)
+// shareToken = id del grupo (la tabla real no tiene columna share_token).
 import { db } from "./db";
 import {
   groupOrders,
   groupOrderParticipants,
-  groupOrderInvitations,
-  orders,
+  businesses,
+  users,
 } from "@shared/schema-mysql";
-import { eq, and } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 export class GroupOrderService {
-  // Crear pedido grupal
   static async createGroupOrder(data: {
     creatorId: string;
     businessId: string;
-    businessName: string;
-    deliveryAddress: string;
+    businessName?: string;
+    deliveryAddress?: string;
+    deliveryAddressId?: string | null;
     deliveryLatitude?: string;
     deliveryLongitude?: string;
     expiresInMinutes?: number;
@@ -21,255 +24,169 @@ export class GroupOrderService {
     const {
       creatorId,
       businessId,
-      businessName,
-      deliveryAddress,
-      deliveryLatitude,
-      deliveryLongitude,
+      deliveryAddressId = null,
       expiresInMinutes = 60,
     } = data;
 
     const groupOrderId = crypto.randomUUID();
-    const shareToken = crypto.randomUUID().slice(0, 8);
     const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
 
     await db.insert(groupOrders).values({
       id: groupOrderId,
-      creatorId,
+      hostUserId: creatorId,
       businessId,
-      businessName,
-      deliveryAddress,
-      deliveryLatitude: deliveryLatitude || null,
-      deliveryLongitude: deliveryLongitude || null,
-      shareToken,
-      expiresAt,
+      deliveryAddressId,
+      splitMethod: "equal",
       status: "open",
+      expiresAt,
     });
 
     return {
       success: true,
       groupOrderId,
-      shareToken,
-      shareLink: `comeya://group-order/${shareToken}`,
+      // La tabla real no tiene share_token: usamos el propio id como token
+      shareToken: groupOrderId,
+      shareLink: `comeya://group-order/${groupOrderId}`,
     };
   }
 
-  // Unirse a pedido grupal
   static async joinGroupOrder(data: {
     shareToken: string;
     userId: string;
-    userName: string;
+    userName?: string;
     items: any[];
     subtotal: number;
   }) {
-    const { shareToken, userId, userName, items, subtotal } = data;
+    const { shareToken, userId, items, subtotal } = data;
 
-    // Buscar grupo
     const [group] = await db
       .select()
       .from(groupOrders)
-      .where(eq(groupOrders.shareToken, shareToken))
+      .where(eq(groupOrders.id, shareToken))
       .limit(1);
-
-    if (!group) {
-      return { success: false, error: "Grupo no encontrado" };
-    }
-
+    if (!group) return { success: false, error: "Grupo no encontrado" };
     if (group.status !== "open") {
-      return { success: false, error: "El grupo ya está cerrado" };
+      return { success: false, error: "El grupo ya no acepta participantes" };
     }
-
-    if (new Date() > new Date(group.expiresAt)) {
+    if (group.expiresAt && group.expiresAt < new Date()) {
       return { success: false, error: "El grupo ha expirado" };
     }
 
-    // Verificar si ya está en el grupo
     const [existing] = await db
       .select()
       .from(groupOrderParticipants)
-      .where(
-        and(
-          eq(groupOrderParticipants.groupOrderId, group.id),
-          eq(groupOrderParticipants.userId, userId),
-        ),
-      )
+      .where(eq(groupOrderParticipants.userId, userId))
       .limit(1);
-
     if (existing) {
-      return { success: false, error: "Ya estás en este grupo" };
+      return { success: true, participantId: existing.id, alreadyJoined: true };
     }
 
-    // Agregar participante
+    const participantId = crypto.randomUUID();
     await db.insert(groupOrderParticipants).values({
-      id: crypto.randomUUID(),
+      id: participantId,
       groupOrderId: group.id,
       userId,
-      userName,
-      items: JSON.stringify(items),
-      subtotal,
-      paymentStatus: "pending",
+      items: JSON.stringify(items || []),
+      subtotal: subtotal || 0,
+      paid: false,
     });
 
-    // Actualizar total del grupo
-    const participants = await db
-      .select()
-      .from(groupOrderParticipants)
-      .where(eq(groupOrderParticipants.groupOrderId, group.id));
-
-    const totalAmount = participants.reduce((sum, p) => sum + p.subtotal, 0);
-
-    await db
-      .update(groupOrders)
-      .set({ totalAmount })
-      .where(eq(groupOrders.id, group.id));
-
-    return { success: true, groupOrderId: group.id };
+    return { success: true, participantId };
   }
 
-  // Obtener detalles del grupo
   static async getGroupOrder(groupOrderId: string) {
     const [group] = await db
       .select()
       .from(groupOrders)
       .where(eq(groupOrders.id, groupOrderId))
       .limit(1);
+    if (!group) return { success: false, error: "Grupo no encontrado" };
 
-    if (!group) {
-      return { success: false, error: "Grupo no encontrado" };
-    }
+    const [business] = await db
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        image: businesses.image,
+      })
+      .from(businesses)
+      .where(eq(businesses.id, group.businessId))
+      .limit(1);
 
     const participants = await db
       .select()
       .from(groupOrderParticipants)
       .where(eq(groupOrderParticipants.groupOrderId, groupOrderId));
 
+    const userIds = participants.map((p) => p.userId);
+    let userNames: Record<string, string> = {};
+    if (userIds.length) {
+      const userRows = await db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(inArray(users.id, userIds));
+      userNames = Object.fromEntries(
+        userRows.map((u) => [u.id, u.name || "Invitado"]),
+      );
+    }
+
     return {
       success: true,
-      groupOrder: {
-        ...group,
-        participants: participants.map((p) => ({
-          ...p,
-          items: JSON.parse(p.items),
-        })),
-      },
+      group,
+      business: business || null,
+      participants: participants.map((p) => ({
+        ...p,
+        userName: userNames[p.userId] || "Invitado",
+      })),
     };
   }
 
-  // Cerrar grupo y crear pedido
-  static async lockAndOrder(groupOrderId: string, creatorId: string) {
-    const [group] = await db
+  static async markParticipantPaid(participantId: string, paymentProofUrl?: string) {
+    await db
+      .update(groupOrderParticipants)
+      .set({ paid: true, updatedAt: new Date() })
+      .where(eq(groupOrderParticipants.id, participantId));
+    return { success: true };
+  }
+
+  static async lockGroupOrder(groupOrderId: string, userId: string) {    const [group] = await db
       .select()
       .from(groupOrders)
       .where(eq(groupOrders.id, groupOrderId))
       .limit(1);
-
-    if (!group) {
-      return { success: false, error: "Grupo no encontrado" };
+    if (!group) return { success: false, error: "Grupo no encontrado" };
+    if (group.hostUserId !== userId) {
+      return {
+        success: false,
+        error: "Solo el anfitrión puede bloquear el grupo",
+      };
     }
 
-    if (group.creatorId !== creatorId) {
-      return { success: false, error: "Solo el creador puede cerrar el grupo" };
-    }
-
-    if (group.status !== "open") {
-      return { success: false, error: "El grupo ya está cerrado" };
-    }
-
-    // Obtener participantes
-    const participants = await db
-      .select()
-      .from(groupOrderParticipants)
-      .where(eq(groupOrderParticipants.groupOrderId, groupOrderId));
-
-    if (participants.length === 0) {
-      return { success: false, error: "No hay participantes en el grupo" };
-    }
-
-    // Combinar todos los items
-    const allItems: any[] = [];
-    for (const participant of participants) {
-      const items = JSON.parse(participant.items);
-      allItems.push(...items);
-    }
-
-    // Crear pedido principal
-    const orderId = crypto.randomUUID();
-    const totalAmount = participants.reduce((sum, p) => sum + p.subtotal, 0);
-    const deliveryFee = 2500; // Bs.25 fijo
-
-    await db.insert(orders).values({
-      id: orderId,
-      userId: group.creatorId,
-      businessId: group.businessId,
-      businessName: group.businessName,
-      items: JSON.stringify(allItems),
-      status: "pending",
-      subtotal: totalAmount,
-      deliveryFee,
-      total: totalAmount + deliveryFee,
-      paymentMethod: "group_split",
-      deliveryAddress: group.deliveryAddress,
-      deliveryLatitude: group.deliveryLatitude || null,
-      deliveryLongitude: group.deliveryLongitude || null,
-    });
-
-    // Actualizar grupo
     await db
       .update(groupOrders)
-      .set({
-        status: "locked",
-        orderId,
-        lockedAt: new Date(),
-        orderedAt: new Date(),
-      })
+      .set({ status: "locked", updatedAt: new Date() })
       .where(eq(groupOrders.id, groupOrderId));
-
-    return { success: true, orderId };
-  }
-
-  // Marcar pago de participante
-  static async markParticipantPaid(
-    participantId: string,
-    paymentProofUrl?: string,
-  ) {
-    await db
-      .update(groupOrderParticipants)
-      .set({
-        paymentStatus: "paid",
-        paymentProofUrl: paymentProofUrl || null,
-        paidAt: new Date(),
-      })
-      .where(eq(groupOrderParticipants.id, participantId));
-
     return { success: true };
   }
 
-  // Obtener grupos del usuario
-  static async getUserGroupOrders(userId: string) {
-    // Grupos creados
-    const createdGroups = await db
+  static async getMyGroups(userId: string) {
+    const hosted = await db
       .select()
       .from(groupOrders)
-      .where(eq(groupOrders.creatorId, userId));
+      .where(eq(groupOrders.hostUserId, userId));
 
-    // Grupos donde participa
     const participations = await db
-      .select()
+      .select({ groupOrderId: groupOrderParticipants.groupOrderId })
       .from(groupOrderParticipants)
       .where(eq(groupOrderParticipants.userId, userId));
 
-    const participantGroupIds = participations.map((p) => p.groupOrderId);
-    const participantGroups =
-      participantGroupIds.length > 0
-        ? await db
-            .select()
-            .from(groupOrders)
-            .where(eq(groupOrders.id, participantGroupIds[0])) // Simplificado
-        : [];
+    const ids = new Set<string>(hosted.map((g) => g.id));
+    for (const p of participations) ids.add(p.groupOrderId);
+    if (!ids.size) return [];
 
-    return {
-      success: true,
-      createdGroups,
-      participantGroups,
-    };
+    const groups = await db
+      .select()
+      .from(groupOrders)
+      .where(inArray(groupOrders.id, [...ids]));
+    return groups;
   }
 }

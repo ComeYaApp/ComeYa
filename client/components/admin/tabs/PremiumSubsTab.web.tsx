@@ -27,7 +27,7 @@ const PLAN_LABELS: Record<string, string> = {
   professional: "Profesional",
 };
 
-const fmt = (cents: number) => `€${(cents / 100).toFixed(2)}`;
+const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 const formatDate = (d: string | Date | null) =>
   d ? new Date(d).toLocaleDateString("es-ES") : "—";
 

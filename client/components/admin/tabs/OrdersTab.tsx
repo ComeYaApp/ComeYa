@@ -88,7 +88,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
             Cliente: {order.customerName}
           </Text>
           <Text style={styles.orderTotal}>
-            Total: €{(order.total / 100).toFixed(2)}
+            Total: {(order.total / 100).toFixed(2)} €
           </Text>
           <Text style={[styles.orderDate, { color: theme.textSecondary }]}>
             {new Date(order.createdAt).toLocaleString("es-ES")}

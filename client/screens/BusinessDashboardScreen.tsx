@@ -28,6 +28,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { formatCurrency } from "@/utils/currency";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type Period = "today" | "week" | "month";
@@ -136,7 +137,7 @@ function TopProductRow({
       </View>
       <View style={styles.revenueCol}>
         <ThemedText type="body" style={{ fontWeight: "600", color: "#4CAF50" }}>
-          €{product.revenue.toFixed(2)}
+          {product.revenue.toFixed(2)} €
         </ThemedText>
       </View>
     </Animated.View>
@@ -472,7 +473,7 @@ export default function BusinessDashboardScreen() {
               marginVertical: Spacing.sm,
             }}
           >
-            €{getRevenueForPeriod().toFixed(2)}
+            {formatCurrency(getRevenueForPeriod())}
           </ThemedText>
 
           <View style={styles.periodSelector}>
@@ -508,7 +509,7 @@ export default function BusinessDashboardScreen() {
 
           <View style={styles.totalRevenue}>
             <ThemedText type="small" style={{ color: "rgba(255,255,255,0.7)" }}>
-              Ingresos totales: €{stats.revenue.total.toFixed(2)}
+              Ingresos totales: {formatCurrency(stats.revenue.total)}
             </ThemedText>
           </View>
         </Animated.View>
@@ -563,7 +564,7 @@ export default function BusinessDashboardScreen() {
               Ticket promedio
             </ThemedText>
             <ThemedText type="h3">
-              €{stats.orders.avgValue.toFixed(2)}
+              {formatCurrency(stats.orders.avgValue)}
             </ThemedText>
           </View>
           <View style={{ alignItems: "flex-end" }}>
@@ -701,14 +702,14 @@ export default function BusinessDashboardScreen() {
                           color: ComeYaColors.primary,
                         }}
                       >
-                        €{(order.subtotal || 0).toFixed(2)}
+                        {(order.subtotal || 0).toFixed(2)} €
                       </ThemedText>
                       {order.deliveryFee > 0 ? (
                         <ThemedText
                           type="caption"
                           style={{ color: theme.textSecondary, marginTop: 2 }}
                         >
-                          + €{order.deliveryFee.toFixed(2)} envío
+                          + {order.deliveryFee.toFixed(2)} € envío
                         </ThemedText>
                       ) : null}
                     </View>

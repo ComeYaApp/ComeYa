@@ -1251,7 +1251,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         👤 {selectedOrder.customerName}
                       </ThemedText>
                       <ThemedText style={{ color: theme.textSecondary }}>
-                        💰 €{(selectedOrder.total / 100).toFixed(2)}
+                        💰 {(selectedOrder.total / 100).toFixed(2)} €
                       </ThemedText>
                     </View>
 
@@ -2282,7 +2282,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                             fontWeight: "bold",
                           }}
                         >
-                          €{(p.price / 100).toFixed(2)}
+                          {(p.price / 100).toFixed(2)} €
                         </ThemedText>
                       </View>
                       <View
@@ -2681,7 +2681,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                 <ThemedText
                   style={{ marginBottom: 15, color: theme.textSecondary }}
                 >
-                  💰 €{(selectedOrder.total / 100).toFixed(2)} |{" "}
+                  💰 {(selectedOrder.total / 100).toFixed(2)} € |{" "}
                   {selectedOrder.status}
                 </ThemedText>
                 <View style={{ flexDirection: "row", gap: 10 }}>

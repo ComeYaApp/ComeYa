@@ -93,18 +93,33 @@ router.post(
       const { giftCardId } = req.params;
       const { paymentProvider, proofImageUrl, referenceNumber, amount } =
         req.body;
-      if (!paymentProvider || !proofImageUrl || !amount) {
+      if (!paymentProvider || !proofImageUrl) {
         return res
           .status(400)
-          .json({ success: false, error: "Datos incompletos" });
+          .json({ success: false, error: "paymentProvider y proofImageUrl son requeridos" });
       }
+
+      // Si el cliente no envía amount, se deriva del importe de la gift card
+      let amountCents = amount ? Math.round(amount * 100) : 0;
+      if (!amountCents) {
+        const { giftCards } = await import("@shared/schema-mysql");
+        const { eq } = await import("drizzle-orm");
+        const { db } = await import("../db");
+        const [gc] = await db
+          .select()
+          .from(giftCards)
+          .where(eq(giftCards.id, giftCardId))
+          .limit(1);
+        amountCents = gc?.amount || 0;
+      }
+
       const result = await GiftCardService.submitPaymentProof({
         giftCardId,
         userId: req.user!.id,
         paymentProvider,
         proofImageUrl,
         referenceNumber,
-        amount: Math.round(amount * 100),
+        amount: amountCents,
       });
       res.json(result);
     } catch (error: any) {

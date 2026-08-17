@@ -6,7 +6,6 @@ import {
   Dimensions,
   Platform,
   Animated,
-  Linking,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -47,7 +46,7 @@ interface CollapsibleMapProps {
   eta?: string;
   status?: string;
   onCallDriver?: () => void;
-  onChatDriver?: () => void;
+  onNavigateInApp?: () => void; // navegación interna (pickup), sin apps externas
   isPickup?: boolean; // Nuevo: indica si es pedido pickup
 }
 
@@ -174,7 +173,7 @@ export function CollapsibleMap({
   eta,
   status = "preparing",
   onCallDriver,
-  onChatDriver,
+  onNavigateInApp,
   isPickup = false,
 }: CollapsibleMapProps) {
   const { theme, isDark } = useTheme();
@@ -488,35 +487,16 @@ export function CollapsibleMap({
                 <Feather name="phone" size={18} color={ComeYaColors.primary} />
               </Pressable>
             )}
-            {onChatDriver && (
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  onChatDriver();
-                }}
-                style={[
-                  styles.actionBtn,
-                  { backgroundColor: ComeYaColors.primary },
-                ]}
-              >
-                <Feather name="message-circle" size={18} color="#FFFFFF" />
-              </Pressable>
-            )}
           </View>
         </View>
       )}
 
-      {/* Botón Abrir en Google Maps (SOLO PICKUP) */}
-      {isPickup && isValidLocation(businessLocation) && (
+      {/* Botón CÓMO LLEGAR (SOLO PICKUP) — navegación DENTRO de la app */}
+      {isPickup && isValidLocation(businessLocation) && onNavigateInApp && (
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            const url = Platform.select({
-              ios: `maps://app?daddr=${businessLocation.latitude},${businessLocation.longitude}`,
-              android: `google.navigation:q=${businessLocation.latitude},${businessLocation.longitude}`,
-              default: `https://www.google.com/maps/dir/?api=1&destination=${businessLocation.latitude},${businessLocation.longitude}`,
-            });
-            Linking.openURL(url!);
+            onNavigateInApp();
           }}
           style={[
             styles.navigateButton,
@@ -533,7 +513,7 @@ export function CollapsibleMap({
               fontWeight: "600",
             }}
           >
-            Abrir en Google Maps
+            Cómo llegar
           </ThemedText>
         </Pressable>
       )}
