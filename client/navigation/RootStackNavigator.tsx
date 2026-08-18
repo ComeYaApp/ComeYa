@@ -198,6 +198,11 @@ export default function RootStackNavigator() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const navigationRef = useRef<any>(null);
 
+  // Ref siempre actualizada para el handler de deep links (evita closures
+  // obsoletos de isAuthenticated)
+  const isAuthRef = useRef(isAuthenticated);
+  isAuthRef.current = isAuthenticated;
+
   // Cuando isAuthenticated cambia a true (login exitoso), resetear a Main
   useEffect(() => {
     if (isAuthenticated) {
@@ -216,9 +221,20 @@ export default function RootStackNavigator() {
         typeof window !== "undefined" && window.location?.href ? window.location.href : ""
       );
       if (!incomingUrl) return;
-      // Enlace de referido: app.comeya.es?ref=CODIGO (web) o comeya://ref/CODIGO
       try {
         const url = new URL(incomingUrl);
+        const path = url.pathname.replace(/^\/+/, "");
+
+        // Stripe Connect: al completar el onboarding, volver a Métodos de pago
+        if (path.startsWith("stripe-connect")) {
+          const { navigationRef: navRef } = require("@/navigation/navigationRef");
+          if (isAuthRef.current && navRef?.isReady()) {
+            navRef.navigate("PaymentWalletSetup" as never);
+          }
+          return;
+        }
+
+        // Enlace de referido: app.comeya.es?ref=CODIGO (web) o comeya://ref/CODIGO
         const ref =
           url.searchParams.get("ref") ||
           (url.pathname.match(/\/ref\/([^/?]+)/) || [])[1] ||

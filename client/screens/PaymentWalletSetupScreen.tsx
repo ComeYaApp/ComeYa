@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -9,7 +9,7 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
@@ -135,18 +135,35 @@ export default function PaymentWalletSetupScreen() {
   }, []);
 
   // Cargar estado de Stripe para negocio y repartidor
-  useEffect(() => {
+  const prevCanReceive = useRef(false);
+  const loadStripeStatus = useCallback(async () => {
     if (isCustomer) return;
-    (async () => {
-      try {
-        const res = await apiRequest("GET", "/api/connect/status");
-        const data = await res.json();
-        if (res.ok) setStripeStatus(data);
-      } catch {
-        /* estado de Stripe no disponible */
+    try {
+      const res = await apiRequest("GET", "/api/connect/status");
+      const data = await res.json();
+      if (res.ok) {
+        setStripeStatus(data);
+        // Avisar cuando el onboarding se completó (al volver de Stripe)
+        if (data.canReceivePayments && !prevCanReceive.current) {
+          showToast("Cuenta Stripe conectada correctamente", "success");
+        }
+        prevCanReceive.current = !!data.canReceivePayments;
       }
-    })();
+    } catch {
+      /* estado de Stripe no disponible */
+    }
   }, [isCustomer]);
+
+  useEffect(() => {
+    loadStripeStatus();
+  }, [loadStripeStatus]);
+
+  // Refrescar al volver a esta pantalla (p. ej. tras el deep link de Stripe)
+  useFocusEffect(
+    useCallback(() => {
+      loadStripeStatus();
+    }, [loadStripeStatus]),
+  );
 
   const startStripeOnboarding = async () => {
     if (!user) return;
@@ -154,17 +171,26 @@ export default function PaymentWalletSetupScreen() {
     try {
       const res = await apiRequest("POST", "/api/connect/onboard", {});
       const data = await res.json();
-      if (data.success && data.onboardingUrl) {
-        const { Linking } = await import("react-native");
-        await Linking.openURL(data.onboardingUrl);
-      } else {
+      if (!res.ok || !data.success) {
+        const isServerConfigError =
+          res.status === 503 ||
+          /configurado|STRIPE_SECRET_KEY/i.test(data.error || "");
         Alert.alert(
           "Error",
-          data.error || "No se pudo iniciar la configuración de Stripe",
+          isServerConfigError
+            ? "Stripe no está configurado en el servidor. Avisa al administrador para activar los pagos automáticos."
+            : data.error || "No se pudo iniciar la configuración de Stripe",
         );
+        return;
       }
+      const { Linking } = await import("react-native");
+      await Linking.openURL(data.onboardingUrl);
+      showToast(
+        "Completa la configuración en el navegador y vuelve a la app",
+        "info",
+      );
     } catch {
-      Alert.alert("Error", "No se pudo conectar con Stripe");
+      Alert.alert("Error", "No se pudo conectar con el servidor");
     } finally {
       setStripeLoading(false);
     }

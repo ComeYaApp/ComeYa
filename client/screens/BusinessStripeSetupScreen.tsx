@@ -104,9 +104,14 @@ export default function BusinessStripeSetupScreen() {
           loadStripeStatus();
         }, 2000);
       } else {
+        const isServerConfigError =
+          response.status === 503 ||
+          /configurado|STRIPE_SECRET_KEY/i.test(data.error || "");
         Alert.alert(
           "Error",
-          data.error || "No se pudo iniciar la conexión con Stripe",
+          isServerConfigError
+            ? "Stripe no está configurado en el servidor. Avisa al administrador para activar los pagos automáticos."
+            : data.error || "No se pudo iniciar la conexión con Stripe",
         );
       }
     } catch (error: any) {
