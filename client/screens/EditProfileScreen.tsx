@@ -31,7 +31,8 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
-import * as FileSystem from "expo-file-system";
+// SDK 54: la API legacy de expo-file-system vive en el subpath /legacy
+import * as FileSystem from "expo-file-system/legacy";
 
 function resolveProfileImageUrl(profileImage: string): string {
   if (profileImage.startsWith("data:image/")) return profileImage;
