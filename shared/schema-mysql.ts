@@ -483,6 +483,12 @@ export const deliveryDrivers = mysqlTable("delivery_drivers", {
   vehicleBrand: varchar("vehicle_brand", { length: 100 }),
   vehicleModel: varchar("vehicle_model", { length: 100 }),
   vehicleColor: varchar("vehicle_color", { length: 50 }),
+  // Documentos del vehículo (verificación del repartidor)
+  vehiclePlatePhoto: text("vehicle_plate_photo"),
+  vehicleItvPhoto: text("vehicle_itv_photo"),
+  vehicleInsurancePhoto: text("vehicle_insurance_photo"),
+  vehicleLicensePhoto: text("vehicle_license_photo"),
+  updatedAt: timestamp("updated_at"),
   isAvailable: boolean("is_available").notNull().default(false),
   currentLatitude: text("current_latitude"),
   currentLongitude: text("current_longitude"),

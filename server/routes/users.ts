@@ -280,7 +280,22 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
       deleteVehicleInsurancePhoto === true ||
       deleteVehicleLicensePhoto === true;
 
-    if (docsChanged) {
+    // Cambios en los datos del vehículo (tipo/matrícula/etc.) → también
+    // requieren re-verificación, salvo el primer registro
+    const infoChanged =
+      !!existing &&
+      ((updates.vehicleType !== undefined &&
+        updates.vehicleType !== existing.vehicleType) ||
+        (updates.vehiclePlate !== undefined &&
+          updates.vehiclePlate !== existing.vehiclePlate) ||
+        (updates.vehicleBrand !== undefined &&
+          updates.vehicleBrand !== existing.vehicleBrand) ||
+        (updates.vehicleModel !== undefined &&
+          updates.vehicleModel !== existing.vehicleModel) ||
+        (updates.vehicleColor !== undefined &&
+          updates.vehicleColor !== existing.vehicleColor));
+
+    if (docsChanged || infoChanged) {
       const { users } = await import("@shared/schema-mysql");
       await db
         .update(users)
@@ -948,13 +963,14 @@ router.post("/verification-document", authenticateToken, async (req, res) => {
     }
 
     // Determine which table to update based on document type
+    // (compara la CLAVE original, no el nombre de columna)
     const isVehicleDocument = [
       "vehicleLicense",
       "vehiclePlate",
       "vehicleItv",
       "vehicleInsurance",
       "vehiclePhoto",
-    ].includes(field);
+    ].includes(key);
 
     if (isVehicleDocument) {
       // Update deliveryDrivers table for vehicle documents
@@ -964,11 +980,13 @@ router.post("/verification-document", authenticateToken, async (req, res) => {
         .from(deliveryDrivers)
         .where(eq(deliveryDrivers.userId, req.user!.id as string))
         .limit(1);
+      console.log("DEBUG existing driver:", !!existing, "field:", field);
       if (existing) {
-        await db
+        const updateQuery = db
           .update(deliveryDrivers)
           .set({ [field]: url, updatedAt: new Date() })
           .where(eq(deliveryDrivers.userId, req.user!.id as string));
+        await updateQuery;
       } else {
         await db
           .insert(deliveryDrivers)

@@ -2722,6 +2722,67 @@ export default function ProfileScreen() {
               contentContainerStyle={styles.editModalBody}
               keyboardShouldPersistTaps="handled"
             >
+              {/* Aviso de verificación: qué falta y qué recibe el admin */}
+              {(() => {
+                const missing: string[] = [];
+                if (!vehicleForm.vehicleType)
+                  missing.push("tipo de vehículo");
+                if (
+                  vehicleForm.vehicleType === "motorcycle" ||
+                  vehicleForm.vehicleType === "car"
+                ) {
+                  if (!vehicleForm.vehiclePlate.trim())
+                    missing.push("matrícula");
+                  if (!professionalData?.vehiclePhoto)
+                    missing.push("foto del vehículo");
+                  if (!professionalData?.vehicleItvPhoto)
+                    missing.push("ITV");
+                  if (!professionalData?.vehicleInsurancePhoto)
+                    missing.push("seguro");
+                  if (!professionalData?.vehicleLicensePhoto)
+                    missing.push("licencia de conducir");
+                }
+                return (
+                  <View
+                    style={[
+                      styles.strikeInfoCard,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        marginBottom: Spacing.md,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name={
+                        missing.length > 0
+                          ? "alert-circle"
+                          : "check-circle"
+                      }
+                      size={16}
+                      color={
+                        missing.length > 0
+                          ? ComeYaColors.warning
+                          : ComeYaColors.success
+                      }
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color: theme.textSecondary,
+                        marginLeft: Spacing.sm,
+                        flex: 1,
+                      }}
+                    >
+                      {missing.length > 0
+                        ? `Para completar tu verificación faltan: ${missing.join(", ")}. `
+                        : "Vehículo completo. "}
+                      Estos datos y documentos se envían al administrador junto
+                      con tus documentos personales. Al guardar cambios, tu
+                      cuenta vuelve a revisión.
+                    </ThemedText>
+                  </View>
+                );
+              })()}
               <ThemedText
                 type="caption"
                 style={{ color: theme.textSecondary, marginBottom: 4 }}
