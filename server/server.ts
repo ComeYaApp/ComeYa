@@ -3,8 +3,6 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
 import { config } from "dotenv";
 import { validateEnv } from "./env";
 import { createServer } from "http";
@@ -13,9 +11,6 @@ import { initializeWebSocket } from "./websocket";
 // Cargar variables de entorno antes de todo
 config({ path: ".env.local", override: true });
 config({ path: ".env", override: false });
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 validateEnv();
 

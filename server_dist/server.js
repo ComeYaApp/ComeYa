@@ -9173,8 +9173,6 @@ var import_cors = __toESM(require("cors"));
 var import_helmet = __toESM(require("helmet"));
 var import_express_rate_limit = __toESM(require("express-rate-limit"));
 var import_path2 = __toESM(require("path"));
-var import_url = require("url");
-var import_path3 = require("path");
 var import_dotenv2 = require("dotenv");
 init_env();
 var import_http = require("http");
@@ -25125,11 +25123,8 @@ router56.use("/app-config", appConfig_default);
 var routes_default = router56;
 
 // server/server.ts
-var import_meta = {};
 (0, import_dotenv2.config)({ path: ".env.local", override: true });
 (0, import_dotenv2.config)({ path: ".env", override: false });
-var __filename = (0, import_url.fileURLToPath)(import_meta.url);
-var __dirname = (0, import_path3.dirname)(__filename);
 validateEnv();
 var app = (0, import_express57.default)();
 var httpServer = (0, import_http.createServer)(app);
