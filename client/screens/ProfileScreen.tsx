@@ -2582,30 +2582,38 @@ export default function ProfileScreen() {
                     </>
                   )}
 
-                  {/* Show save button only for drivers (they can edit vehicle) */}
+                  {/* Los documentos personales se suben automáticamente al
+                      seleccionarlos; no hace falta botón de guardar aquí.
+                      El botón "Guardar vehículo" pertenece a la sección
+                      "Mi vehículo". */}
                   {user?.role === "delivery_driver" && (
-                    <Pressable
-                      onPress={saveVehicle}
-                      disabled={isSavingVehicle}
+                    <View
                       style={[
-                        styles.editSaveBtn,
+                        styles.strikeInfoCard,
                         {
-                          backgroundColor: ComeYaColors.primary,
-                          opacity: isSavingVehicle ? 0.7 : 1,
+                          backgroundColor: theme.backgroundSecondary,
+                          marginTop: Spacing.md,
                         },
                       ]}
                     >
-                      {isSavingVehicle ? (
-                        <ActivityIndicator color="#fff" size="small" />
-                      ) : (
-                        <ThemedText
-                          type="body"
-                          style={{ color: "#fff", fontWeight: "700" }}
-                        >
-                          Guardar vehículo
-                        </ThemedText>
-                      )}
-                    </Pressable>
+                      <Feather
+                        name="check-circle"
+                        size={16}
+                        color={ComeYaColors.success}
+                      />
+                      <ThemedText
+                        type="caption"
+                        style={{
+                          color: theme.textSecondary,
+                          marginLeft: Spacing.sm,
+                          flex: 1,
+                        }}
+                      >
+                        Los documentos se guardan automáticamente al subirlos.
+                        Al cambiarlos, tu cuenta pasa a revisión del
+                        administrador.
+                      </ThemedText>
+                    </View>
                   )}
 
                   {/* Info for business owners */}
