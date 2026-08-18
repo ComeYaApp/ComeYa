@@ -368,7 +368,10 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
           >
             <View style={s.sheetHandle} />
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
+            >
               {selected && (
                 <>
                   {/* Cabecera */}
@@ -847,30 +850,60 @@ function Row({ label, value, theme }: any) {
 }
 
 function DocRow({ label, url, theme }: any) {
+  const resolved = url
+    ? /^https?:\/\//i.test(url)
+      ? url
+      : null
+    : null;
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingVertical: 6,
-      }}
-    >
-      <Text style={{ color: theme.textSecondary, fontSize: 13 }}>{label}</Text>
-      {url ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Feather name="check-circle" size={14} color="#10B981" />
-          <Text style={{ color: "#10B981", fontSize: 12, fontWeight: "600" }}>
-            Subido
-          </Text>
-        </View>
-      ) : (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Feather name="alert-circle" size={14} color="#F59E0B" />
-          <Text style={{ color: "#F59E0B", fontSize: 12, fontWeight: "600" }}>
-            Pendiente
-          </Text>
-        </View>
+    <View style={{ paddingVertical: 6 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
+          {label}
+        </Text>
+        {url ? (
+          <View
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <Feather name="check-circle" size={14} color="#10B981" />
+            <Text
+              style={{ color: "#10B981", fontSize: 12, fontWeight: "600" }}
+            >
+              Subido
+            </Text>
+          </View>
+        ) : (
+          <View
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <Feather name="alert-circle" size={14} color="#F59E0B" />
+            <Text
+              style={{ color: "#F59E0B", fontSize: 12, fontWeight: "600" }}
+            >
+              Pendiente
+            </Text>
+          </View>
+        )}
+      </View>
+      {/* Vista previa del documento para revisarlo sin salir del modal */}
+      {resolved && (
+        <Image
+          source={{ uri: resolved }}
+          style={{
+            width: "100%",
+            height: 140,
+            borderRadius: BorderRadius.md,
+            marginTop: 6,
+            backgroundColor: theme.backgroundRoot,
+          }}
+          resizeMode="cover"
+        />
       )}
     </View>
   );
@@ -948,7 +981,10 @@ const s = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    maxHeight: "90%",
+    // Altura fija: el ScrollView interno hace flex:1 y es el que scrollea.
+    // Con maxHeight el scroll no se activaba (el contenido medía su tamaño
+    // completo y quedaba recortado sin poder desplazarse).
+    height: "90%",
   },
   sheetHandle: {
     width: 40,
