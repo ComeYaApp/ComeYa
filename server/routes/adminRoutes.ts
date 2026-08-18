@@ -145,7 +145,15 @@ router.get(
             .from(users)
             .where(eq(users.id, order.deliveryPersonId as string))
             .limit(1);
-          driver = driverData[0] || null;
+          const { deliveryDrivers } = await import("@shared/schema-mysql");
+          const [dd] = await db
+            .select({ vehicleType: deliveryDrivers.vehicleType })
+            .from(deliveryDrivers)
+            .where(eq(deliveryDrivers.userId, order.deliveryPersonId as string))
+            .limit(1);
+          driver = driverData[0]
+            ? { ...driverData[0], vehicleType: dd?.vehicleType ?? null }
+            : null;
         }
 
         ordersWithDetails.push({

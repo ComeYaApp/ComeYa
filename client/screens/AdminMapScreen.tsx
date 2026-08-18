@@ -6,11 +6,15 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import { vehicleMarkerMeta, ORDER_MARKER } from "@/utils/markerMeta";
 
 export default function AdminMapScreen() {
   const { theme } = useTheme();
@@ -66,12 +70,12 @@ export default function AdminMapScreen() {
           longitudeDelta: 0.1,
         }}
       >
-        {/* Pedidos activos */}
+        {/* Pedidos activos — paquete rojo */}
         {(filter === "all" || filter === "orders") &&
           activeOrders.map((order) => {
             if (!order.deliveryAddress?.latitude) return null;
             return (
-              <Marker
+              <SmartMarker
                 key={order.id}
                 coordinate={{
                   latitude: parseFloat(order.deliveryAddress.latitude),
@@ -79,43 +83,44 @@ export default function AdminMapScreen() {
                 }}
                 title={`Pedido #${order.id.slice(-6)}`}
                 description={`${order.customer?.name || "Cliente"} - ${order.status}`}
+                anchor={{ x: 0.5, y: 1 }}
+                trackKey={`ord_${order.id}`}
               >
-                <View
-                  style={[s.marker, { backgroundColor: ComeYaColors.primary }]}
-                >
-                  <Feather name="shopping-bag" size={16} color="#FFF" />
-                </View>
-              </Marker>
+                <MapPin
+                  icon={ORDER_MARKER.icon}
+                  color={ORDER_MARKER.color}
+                />
+              </SmartMarker>
             );
           })}
 
-        {/* Repartidores online */}
+        {/* Repartidores online — su vehículo */}
         {(filter === "all" || filter === "drivers") &&
           drivers.map((driver) => {
             if (!driver.location?.latitude) return null;
+            const vehicle = vehicleMarkerMeta(driver.vehicleType);
             return (
-              <Marker
+              <SmartMarker
                 key={driver.id}
                 coordinate={{
                   latitude: parseFloat(driver.location.latitude),
                   longitude: parseFloat(driver.location.longitude),
                 }}
                 title={driver.name}
-                description={driver.isOnline ? "En línea" : "Offline"}
+                description={`${vehicle.label} - ${driver.isOnline ? "En línea" : "Offline"}`}
+                anchor={{ x: 0.5, y: 0.5 }}
+                trackKey={`dr_${driver.id}_${driver.vehicleType ?? ""}_${driver.isOnline}`}
               >
-                <View
-                  style={[
-                    s.marker,
-                    {
-                      backgroundColor: driver.isOnline
-                        ? ComeYaColors.success
-                        : ComeYaColors.textSecondary,
-                    },
-                  ]}
-                >
-                  <Feather name="truck" size={16} color="#FFF" />
-                </View>
-              </Marker>
+                <DriverPin
+                  vehicleIcon={vehicle.icon}
+                  color={
+                    driver.isOnline
+                      ? ComeYaColors.success
+                      : "#6B7280"
+                  }
+                  pulse={!!driver.isOnline}
+                />
+              </SmartMarker>
             );
           })}
       </MapView>
@@ -211,15 +216,6 @@ export default function AdminMapScreen() {
 
 const s = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  marker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFF",
-  },
   filterBar: {
     position: "absolute",
     top: 16,

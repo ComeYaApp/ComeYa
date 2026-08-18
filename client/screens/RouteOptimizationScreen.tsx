@@ -10,7 +10,10 @@ import {
 } from "react-native";
 import { Colors } from "../constants/Colors";
 import { useAuth } from "../contexts/AuthContext";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Polyline } from "react-native-maps";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { DriverPin } from "@/components/map/DriverPin";
+import { NumberPin } from "@/components/map/NumberPin";
 
 interface DeliveryOrder {
   id: string;
@@ -392,27 +395,40 @@ export default function RouteOptimizationScreen() {
                 longitudeDelta: 0.05,
               }}
             >
-              <Marker
+              <SmartMarker
                 coordinate={driverLocation}
                 title="Tu ubicación"
-                pinColor="blue"
-              />
-
-              {optimizedRoute.orders.map((order, index) => (
-                <Marker
-                  key={order.id}
-                  coordinate={order.coordinates}
-                  title={`${index + 1}. ${order.customerName}`}
-                  description={order.address}
-                  pinColor={
-                    order.priority === "high"
-                      ? "red"
-                      : order.priority === "medium"
-                        ? "orange"
-                        : "green"
-                  }
+                anchor={{ x: 0.5, y: 0.5 }}
+                trackKey="me"
+              >
+                <DriverPin
+                  vehicleIcon="navigation"
+                  color={Colors.light.tint}
+                  size={38}
+                  showBadge={false}
                 />
-              ))}
+              </SmartMarker>
+
+              {optimizedRoute.orders.map((order, index) => {
+                const stopColor =
+                  order.priority === "high"
+                    ? "#DC2626"
+                    : order.priority === "medium"
+                      ? "#F59E0B"
+                      : "#10B981";
+                return (
+                  <SmartMarker
+                    key={order.id}
+                    coordinate={order.coordinates}
+                    title={`${index + 1}. ${order.customerName}`}
+                    description={order.address}
+                    anchor={{ x: 0.5, y: 1 }}
+                    trackKey={`stop_${order.id}_${order.priority}`}
+                  >
+                    <NumberPin label={index + 1} color={stopColor} />
+                  </SmartMarker>
+                );
+              })}
 
               <Polyline
                 coordinates={optimizedRoute.route}

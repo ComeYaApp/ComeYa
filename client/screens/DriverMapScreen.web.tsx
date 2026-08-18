@@ -13,6 +13,12 @@ import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 const GREEN = "#22C55E";
 import { apiRequest } from "@/lib/query-client";
+import {
+  pinIcon,
+  driverIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
+import { vehicleMarkerMeta, CUSTOMER_MARKER } from "@/utils/markerMeta";
 
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
@@ -70,6 +76,16 @@ export default function DriverMapScreen({
   } | null>(null);
   const [eta, setEta] = useState<string | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
+  // Vehículo del repartidor (icono del mapa)
+  const [driverVehicle, setDriverVehicle] = useState<string | null>(null);
+  useEffect(() => {
+    apiRequest("GET", "/api/users/profile/full")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.vehicleType) setDriverVehicle(d.vehicleType);
+      })
+      .catch(() => {});
+  }, []);
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
   const card = isDark ? "#1a1a1a" : "#fff";
@@ -147,11 +163,13 @@ export default function DriverMapScreen({
           driverMk.current = new google.maps.Marker({
             position: loc,
             map: gmap.current,
-            icon: {
-              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><circle cx="24" cy="24" r="22" fill="' + GREEN + '" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="18" fill="' + GREEN + '" opacity="0.3"/><path d="M14 28c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M17 30a2.5 2.5 0 105 0M27 30a2.5 2.5 0 105 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M17 24l2-5h6l2 3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>')}`,
-              scaledSize: new google.maps.Size(48, 48),
-              anchor: new google.maps.Point(24, 24),
-            },
+            icon: asGoogleIcon(
+              google,
+              driverIcon(
+                vehicleMarkerMeta(driverVehicle).icon,
+                ComeYaColors.primary,
+              ),
+            ),
             zIndex: 999,
             title: "Tu posición",
           });
@@ -194,17 +212,16 @@ export default function DriverMapScreen({
 
         const destPos = { lat, lng };
 
-        // Marker destino
+        // Marker destino — casa azul
         if (destMk.current) destMk.current.setMap(null);
         destMk.current = new google.maps.Marker({
           position: destPos,
           map: gmap.current,
           title: "Destino de entrega",
-          icon: {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="' + ComeYaColors.primary + '" stroke="white" stroke-width="3"/><path d="M10 20l10-8 10 8M12 20v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="14,38 26,38 20,48" fill="' + ComeYaColors.primary + '"/></svg>')}`,
-            scaledSize: new google.maps.Size(40, 48),
-            anchor: new google.maps.Point(20, 48),
-          },
+          icon: asGoogleIcon(
+            google,
+            pinIcon(CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
+          ),
         });
 
         gmap.current?.panTo(destPos);

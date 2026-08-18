@@ -262,7 +262,7 @@ router.get("/", authenticateToken, async (req, res) => {
 // Get order by ID — accesible por cliente, repartidor asignado y admin
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const { orders, users, deliveryDrivers } = await import(
+    const { orders, users, deliveryDrivers, businesses } = await import(
       "@shared/schema-mysql"
     );
     const { db } = await import("../db");
@@ -332,12 +332,32 @@ router.get("/:id", authenticateToken, async (req, res) => {
       }
     }
 
+    // Tipo y categorías del negocio (para el icono del mapa del cliente)
+    let businessInfo = null;
+    if (order.businessId) {
+      try {
+        const [bizData] = await db
+          .select({
+            type: businesses.type,
+            categories: businesses.categories,
+          })
+          .from(businesses)
+          .where(eq(businesses.id, order.businessId))
+          .limit(1);
+        if (bizData) businessInfo = bizData;
+      } catch {
+        /* sin tipo de negocio */
+      }
+    }
+
     // Return order with driver info included
     res.json({
       success: true,
       order: {
         ...order,
         driverInfo,
+        businessType: businessInfo?.type ?? null,
+        businessCategories: businessInfo?.categories ?? null,
       },
     });
   } catch (error: any) {

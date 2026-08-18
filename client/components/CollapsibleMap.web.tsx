@@ -21,6 +21,17 @@ import {
   distanceMeters,
   RouteCoordinate,
 } from "@/utils/directions";
+import {
+  pinIcon,
+  driverIcon,
+  businessLabelIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 interface Location {
   latitude: number;
@@ -35,6 +46,14 @@ interface CollapsibleMapProps {
   isLoading?: boolean;
   driverName?: string;
   driverPhoto?: string;
+  /** Vehículo del repartidor (vehicle_type): bike/bicycle/motorcycle/car… */
+  driverVehicle?: string;
+  /** Nombre del negocio (para la burbuja del mapa) */
+  businessName?: string;
+  /** Tipo de negocio (restaurant/market/…) para el icono */
+  businessType?: string;
+  /** Categorías del negocio ("pizza, burgers, …") para el icono */
+  businessCategories?: string;
   eta?: string;
   status?: string;
   onCallDriver?: () => void;
@@ -126,14 +145,6 @@ function loadGoogleMaps(): Promise<void> {
   });
 }
 
-function createPinIcon(color: string, icon: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="50" viewBox="0 0 40 50">
-    <path d="M20 0C8.95 0 0 8.95 0 20c0 14 20 30 20 30s20-16 20-30C40 8.95 31.05 0 20 0z" fill="${color}" stroke="white" stroke-width="2"/>
-    <text x="20" y="24" text-anchor="middle" fill="white" font-size="16" font-family="Arial">${icon}</text>
-  </svg>`;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
 export function CollapsibleMap({
   businessLocation,
   deliveryPersonLocation,
@@ -141,6 +152,10 @@ export function CollapsibleMap({
   isLoading = false,
   driverName,
   driverPhoto,
+  driverVehicle,
+  businessName,
+  businessType,
+  businessCategories,
   eta,
   status = "preparing",
   onCallDriver,
@@ -287,39 +302,51 @@ export function CollapsibleMap({
 
     const bounds = new google.maps.LatLngBounds();
 
-    // Negocio
+    // Negocio — burbuja con icono del tipo de negocio
     if (isValidLocation(businessLocation)) {
+      const bizMeta = businessMarkerMeta(businessType, businessCategories);
       const marker = new google.maps.Marker({
         position: { lat: businessLocation!.latitude, lng: businessLocation!.longitude },
         map: gmap.current,
-        title: businessLocation!.title || "Negocio",
-        icon: createPinIcon("#FF6B35", "\uD83C\uDFEA"),
+        title: businessName || businessLocation!.title || "Negocio",
+        icon: asGoogleIcon(
+          google,
+          businessLabelIcon({
+            iconKey: bizMeta.icon,
+            color: bizMeta.color,
+            title: businessName || "Negocio",
+          }),
+        ),
         animation: google.maps.Animation.DROP,
       });
       markersRef.current.push(marker);
       bounds.extend(marker.getPosition()!);
     }
 
-    // Repartidor
+    // Repartidor — círculo con su vehículo
     if (!isPickup && isValidLocation(deliveryPersonLocation)) {
+      const vehicle = vehicleMarkerMeta(driverVehicle);
       const marker = new google.maps.Marker({
         position: { lat: deliveryPersonLocation!.latitude, lng: deliveryPersonLocation!.longitude },
         map: gmap.current,
         title: driverName || "Repartidor",
-        icon: createPinIcon("#10B981", "\uD83D\uDE97"),
+        icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
         animation: google.maps.Animation.DROP,
       });
       markersRef.current.push(marker);
       bounds.extend(marker.getPosition()!);
     }
 
-    // Cliente
+    // Cliente — casa azul
     if (isValidLocation(customerLocation)) {
       const marker = new google.maps.Marker({
         position: { lat: customerLocation!.latitude, lng: customerLocation!.longitude },
         map: gmap.current,
         title: customerLocation!.title || "Tu ubicación",
-        icon: createPinIcon("#3B82F6", "\uD83C\uDFE0"),
+        icon: asGoogleIcon(
+          google,
+          pinIcon(CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
+        ),
         animation: google.maps.Animation.DROP,
       });
       markersRef.current.push(marker);

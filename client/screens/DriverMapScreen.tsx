@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Callout } from "react-native-maps";
+import MapView, { Polyline, PROVIDER_GOOGLE, Callout } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -27,6 +27,15 @@ import {
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { decodePolyline } from "@/utils/directions";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -95,6 +104,17 @@ export default function DriverMapScreen() {
   // Negocios cercanos en el mapa
   const [nearbyBusinesses, setNearbyBusinesses] = useState<NearbyBusiness[]>([]);
   const [showNearbyBusinesses, setShowNearbyBusinesses] = useState(false);
+
+  // Vehículo del repartidor (icono del mapa)
+  const [vehicleType, setVehicleType] = useState<string | null>(null);
+  useEffect(() => {
+    apiRequest("GET", "/api/users/profile/full")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.vehicleType) setVehicleType(d.vehicleType);
+      })
+      .catch(() => {});
+  }, []);
 
   // Cargar pedido activo del driver
   const loadActiveOrder = async () => {
@@ -336,31 +356,45 @@ export default function DriverMapScreen() {
         showsMyLocationButton={false}
         onMapReady={fitToRoute}
       >
-        {/* Marcador del driver */}
+        {/* Marcador del driver — su vehículo */}
         {driverLocation && (
-          <Marker coordinate={driverLocation} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.driverMarker}>
-              <Feather name="navigation" size={18} color="#FFF" />
-            </View>
-          </Marker>
+          <SmartMarker
+            coordinate={driverLocation}
+            anchor={{ x: 0.5, y: 0.5 }}
+            trackKey={`me_${vehicleType ?? ""}_${(user as any)?.profilePicture ?? ""}`}
+          >
+            <DriverPin
+              vehicleIcon={vehicleMarkerMeta(vehicleType).icon}
+              photo={(user as any)?.profilePicture}
+              color={ComeYaColors.primary}
+            />
+          </SmartMarker>
         )}
 
-        {/* Marcador del negocio */}
+        {/* Marcador del negocio de recogida */}
         {businessCoords && (
-          <Marker coordinate={businessCoords} anchor={{ x: 0.5, y: 1 }}>
-            <View style={[styles.poiMarker, { backgroundColor: "#FF9800" }]}>
-              <Feather name="shopping-bag" size={14} color="#FFF" />
-            </View>
-          </Marker>
+          <SmartMarker
+            coordinate={businessCoords}
+            anchor={{ x: 0.5, y: 1 }}
+            trackKey="pickup"
+          >
+            <BusinessBubblePin
+              icon={businessMarkerMeta().icon}
+              color={businessMarkerMeta().color}
+              title={activeOrder?.businessName || "Recogida"}
+              compact
+            />
+          </SmartMarker>
         )}
 
         {/* Marcador del cliente */}
         {customerCoords && (
-          <Marker coordinate={customerCoords} anchor={{ x: 0.5, y: 1 }}>
-            <View style={[styles.poiMarker, { backgroundColor: "#9C27B0" }]}>
-              <Feather name="home" size={14} color="#FFF" />
-            </View>
-          </Marker>
+          <SmartMarker coordinate={customerCoords} anchor={{ x: 0.5, y: 1 }} trackKey="dropoff">
+            <MapPin
+              icon={CUSTOMER_MARKER.icon}
+              color={CUSTOMER_MARKER.color}
+            />
+          </SmartMarker>
         )}
 
         {/* Ruta real desde el servidor (con cache + rate limiting) */}
@@ -373,42 +407,37 @@ export default function DriverMapScreen() {
         )}
 
         {/* Negocios cercanos en el mapa */}
-        {showNearbyBusinesses && nearbyBusinesses.map((biz) => (
-          <Marker
-            key={biz.id}
-            coordinate={{ latitude: biz.latitude, longitude: biz.longitude }}
-            anchor={{ x: 0.5, y: 1 }}
-          >
-            <View
-              style={[
-                styles.bizMarker,
-                {
-                  backgroundColor: biz.isOpen ? "#4CAF50" : "#9E9E9E",
-                  borderColor: biz.isOpen ? "#2E7D32" : "#757575",
-                },
-              ]}
+        {showNearbyBusinesses && nearbyBusinesses.map((biz) => {
+          const meta = businessMarkerMeta("restaurant", biz.categories ?? undefined);
+          return (
+            <SmartMarker
+              key={biz.id}
+              coordinate={{ latitude: biz.latitude, longitude: biz.longitude }}
+              anchor={{ x: 0.5, y: 1 }}
+              trackKey={`nb_${biz.id}_${biz.isOpen ? "open" : "closed"}`}
             >
-              <Feather
-                name={biz.isOpen ? "coffee" : "moon"}
-                size={10}
-                color="#FFF"
+              <MapPin
+                icon={meta.icon}
+                color={biz.isOpen ? "#10B981" : "#6B7280"}
+                size={26}
+                iconSize={14}
               />
-            </View>
-            <Callout>
-              <View style={styles.calloutView}>
-                <ThemedText type="small" style={{ fontWeight: "700" }}>
-                  {biz.name}
-                </ThemedText>
-                <ThemedText type="caption" style={{ color: biz.isOpen ? "#4CAF50" : "#F44336" }}>
-                  {biz.isOpen ? "🟢 Abierto" : "🔴 Cerrado"}
-                </ThemedText>
-                <ThemedText type="caption" style={{ color: "#666" }}>
-                  {biz.distanceKm} km
-                </ThemedText>
-              </View>
-            </Callout>
-          </Marker>
-        ))}
+              <Callout>
+                <View style={styles.calloutView}>
+                  <ThemedText type="small" style={{ fontWeight: "700" }}>
+                    {biz.name}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: biz.isOpen ? "#4CAF50" : "#F44336" }}>
+                    {biz.isOpen ? "Abierto" : "Cerrado"}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: "#666" }}>
+                    {biz.distanceKm} km
+                  </ThemedText>
+                </View>
+              </Callout>
+            </SmartMarker>
+          );
+        })}
       </MapView>
 
       {/* Header */}
@@ -647,49 +676,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   onlineDot: { width: 10, height: 10, borderRadius: 5 },
-  driverMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: ComeYaColors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  poiMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  bizMarker: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
   calloutView: {
     padding: 8,
     minWidth: 120,

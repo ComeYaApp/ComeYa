@@ -25,7 +25,19 @@ router.post(
       throw new ValidationError("Vehicle type and plate are required");
     }
 
-    if (!["bike", "motorcycle", "car"].includes(vehicleType)) {
+    // Se aceptan los valores de ambos flujos de registro (SignupScreen envía
+    // bicycle/ebike/scooter; BecomeDriverScreen envía bike/motorcycle/car)
+    if (
+      ![
+        "bike",
+        "bicycle",
+        "ebike",
+        "scooter",
+        "moped",
+        "motorcycle",
+        "car",
+      ].includes(vehicleType)
+    ) {
       throw new ValidationError("Invalid vehicle type");
     }
 
@@ -829,11 +841,20 @@ router.get(
       return res.json({ location: null });
     }
 
+    // Foto del repartidor para el marcador del mapa
+    const [driverUser] = await db
+      .select({ profilePicture: users.profilePicture })
+      .from(users)
+      .where(eq(users.id, order.deliveryPersonId))
+      .limit(1);
+
     res.json({
       location: {
         latitude: driver.currentLatitude,
         longitude: driver.currentLongitude,
         lastUpdate: driver.lastLocationUpdate,
+        vehicleType: driver.vehicleType,
+        photo: driverUser?.profilePicture || null,
       },
     });
   }),

@@ -20,6 +20,11 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import {
+  pinIcon,
+  circleIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
 
 type DriverNavigationRouteProp = RouteProp<
   RootStackParamList,
@@ -296,20 +301,12 @@ export default function DriverNavigationScreen() {
       ],
     });
 
-    // Marcador de destino
-    const destIcon = {
-      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><circle cx="18" cy="18" r="16" fill="#DC2626" stroke="white" stroke-width="2"/><text x="18" y="24" text-anchor="middle" fill="white" font-size="18">\uD83C\uDFEA</text></svg>`,
-      )}`,
-      size: new google.maps.Size(36, 36),
-      anchor: new google.maps.Point(18, 18),
-    };
-
+    // Marcador de destino — chincheta roja
     destMarkerRef.current = new google.maps.Marker({
       position: destinationCoord,
       map: gmap.current,
       title: destAddress || "Destino",
-      icon: destIcon,
+      icon: asGoogleIcon(google, pinIcon("#DC2626", "map-marker")),
       animation: google.maps.Animation.DROP,
     });
   }, [mapsReady]);
@@ -322,14 +319,6 @@ export default function DriverNavigationScreen() {
 
     const position = new google.maps.LatLng(driverLocation.latitude, driverLocation.longitude);
 
-    const driverIcon = {
-      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><circle cx="20" cy="20" r="17" fill="${ComeYaColors.primary}" stroke="white" stroke-width="3"/><text x="20" y="26" text-anchor="middle" fill="white" font-size="18">\uD83D\uDE97</text></svg>`,
-      )}`,
-      size: new google.maps.Size(40, 40),
-      anchor: new google.maps.Point(20, 20),
-    };
-
     if (driverMarkerRef.current) {
       driverMarkerRef.current.setPosition(position);
     } else {
@@ -337,7 +326,10 @@ export default function DriverNavigationScreen() {
         position,
         map: gmap.current,
         title: "Tu ubicación",
-        icon: driverIcon,
+        icon: asGoogleIcon(
+          google,
+          circleIcon(ComeYaColors.primary, "navigation", 40),
+        ),
         zIndex: 100,
       });
     }

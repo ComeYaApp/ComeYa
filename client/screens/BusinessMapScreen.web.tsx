@@ -15,6 +15,17 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import {
+  pinIcon,
+  driverIcon,
+  businessLabelIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -27,6 +38,7 @@ interface BusinessPin {
   id: string;
   name: string;
   type: string;
+  categories?: string;
   image: string;
   rating: number;
   deliveryTime: string;
@@ -181,6 +193,7 @@ export default function BusinessMapScreen() {
             id: b.id,
             name: b.name,
             type: b.type || "restaurant",
+            categories: b.categories || undefined,
             image: b.image || "",
             rating: (b.rating || 0) / 100,
             deliveryTime: b.delivery_time || b.deliveryTime || "30-45 min",
@@ -281,16 +294,14 @@ export default function BusinessMapScreen() {
         lat: parseFloat(order.deliveryLatitude),
         lng: parseFloat(order.deliveryLongitude),
       };
-      const homeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="56"><circle cx="24" cy="22" r="20" fill="#DC2626" stroke="white" stroke-width="3"/><path d="M14 22l10-8 10 8M16 22v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="16,42 32,42 24,56" fill="#DC2626"/></svg>`;
       homeMarkerRef.current = new google.maps.Marker({
         position: homePos,
         map: gmap.current,
         title: "Tu dirección",
-        icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(homeSvg)}`,
-          scaledSize: new google.maps.Size(48, 56),
-          anchor: new google.maps.Point(24, 56),
-        },
+        icon: asGoogleIcon(
+          google,
+          pinIcon(CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
+        ),
         zIndex: 90,
       });
     }
@@ -309,53 +320,22 @@ export default function BusinessMapScreen() {
           lng: parseFloat(data.location.longitude),
         };
 
-        // Cargar foto del repartidor si no la tenemos
-        let driverPhoto = order.deliveryPersonPhoto || null;
-        if (!driverPhoto && order.deliveryPersonId) {
-          try {
-            const dr = await apiRequest(
-              "GET",
-              `/api/users/${order.deliveryPersonId}`,
-            );
-            const dd = await dr.json();
-            driverPhoto = dd.user?.profilePicture || null;
-            setActiveOrders((prev) =>
-              prev.map((o) =>
-                o.id === order.id
-                  ? { ...o, deliveryPersonPhoto: driverPhoto || undefined }
-                  : o,
-              ),
-            );
-          } catch {}
-        }
-
-        const vehicleIcon =
-          order.vehicleType === "car"
-            ? "🚗"
-            : order.vehicleType === "bike"
-              ? "🚲"
-              : "🛵";
-        const driverSvg = driverPhoto
-          ? `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="72"><defs><clipPath id="dc"><circle cx="28" cy="28" r="24"/></clipPath></defs><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><image href="${driverPhoto}" x="4" y="4" width="48" height="48" clip-path="url(#dc)" preserveAspectRatio="xMidYMid slice"/><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`
-          : `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="72"><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><text x="28" y="36" text-anchor="middle" font-size="24">${vehicleIcon}</text><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`;
+        // Vehículo del repartidor (icono del mapa)
+        const vehicle = vehicleMarkerMeta(
+          data.location.vehicleType ?? order.vehicleType,
+        );
 
         if (driverMarkerRef.current) {
           driverMarkerRef.current.setPosition(driverPos);
-          driverMarkerRef.current.setIcon({
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`,
-            scaledSize: new google.maps.Size(64, 72),
-            anchor: new google.maps.Point(28, 72),
-          });
+          driverMarkerRef.current.setIcon(
+            asGoogleIcon(google, driverIcon(vehicle.icon)),
+          );
         } else {
           driverMarkerRef.current = new google.maps.Marker({
             position: driverPos,
             map: gmap.current,
             title: order.deliveryPersonName || "Repartidor",
-            icon: {
-              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`,
-              scaledSize: new google.maps.Size(64, 72),
-              anchor: new google.maps.Point(28, 72),
-            },
+            icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
             zIndex: 999,
           });
           driverMarkerRef.current.addListener("click", () =>
@@ -431,25 +411,21 @@ export default function BusinessMapScreen() {
         : businesses.filter((b) => b.type === categoryFilter);
 
     filtered.forEach((b) => {
-      const color = b.isOpen ? ComeYaColors.primary : "#9E9E9E";
-      const iconPath =
-        b.type === "market"
-          ? "M9 6h10l1 2H8L9 6zM7 8l1 10h8l1-10H7zm3 3v4m4-4v4"
-          : b.type === "pharmacy"
-            ? "M12 5v14M5 12h14"
-            : "M8 10h8M10 10V8a1 1 0 011-1h2a1 1 0 011 1v2M8 14h8l-1 5H9l-1-5z";
-
-      const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="140" height="52"><rect x="2" y="2" width="136" height="38" rx="19" fill="${b.isOpen ? "#fff" : "#f0f0f0"}" stroke="${color}" stroke-width="2"/><circle cx="22" cy="21" r="11" fill="${color}"/><path d="${iconPath}" stroke="white" stroke-width="1.8" fill="none" stroke-linecap="round" transform="translate(10,9)"/><text x="40" y="24" font-size="11" font-weight="bold" fill="${b.isOpen ? "#1a1a1a" : "#9E9E9E"}" font-family="Arial">${b.name.slice(0, 12)}${b.name.length > 12 ? "\u2026" : ""}</text><text x="40" y="36" font-size="9" fill="${color}" font-family="Arial">${b.isOpen ? b.deliveryTime : "Cerrado"}</text><polygon points="65,40 75,40 70,50" fill="${color}"/></svg>`;
+      const meta = businessMarkerMeta(b.type, b.categories);
 
       const marker = new google.maps.Marker({
         position: { lat: b.latitude, lng: b.longitude },
         map: gmap.current,
         title: b.name,
-        icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgIcon)}`,
-          scaledSize: new google.maps.Size(140, 52),
-          anchor: new google.maps.Point(70, 52),
-        },
+        icon: asGoogleIcon(
+          google,
+          businessLabelIcon({
+            iconKey: meta.icon,
+            color: meta.color,
+            title: b.name,
+            subtitle: b.isOpen ? b.deliveryTime : "Cerrado",
+          }),
+        ),
         zIndex: b.isOpen ? 10 : 1,
       });
 

@@ -28,6 +28,15 @@ import {
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useAuth } from "@/contexts/AuthContext";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -45,7 +54,13 @@ interface ActiveOrder {
   status: string;
   business: { latitude: number; longitude: number };
   customer: { latitude: number; longitude: number };
-  driver?: { latitude: number; longitude: number; name: string };
+  driver?: {
+    latitude: number;
+    longitude: number;
+    name: string;
+    vehicleType?: string;
+    photo?: string;
+  };
   eta?: number;
 }
 
@@ -136,6 +151,8 @@ export default function BusinessMapScreen() {
                     latitude: parseFloat(dData.location.latitude),
                     longitude: parseFloat(dData.location.longitude),
                     name: o.deliveryPersonName || "Repartidor",
+                    vehicleType: dData.location.vehicleType,
+                    photo: dData.location.photo,
                   };
                 }
               } catch {}
@@ -379,89 +396,37 @@ export default function BusinessMapScreen() {
             .filter(
               (b) => categoryFilter === "all" || b.type === categoryFilter,
             )
-            .map((b) => (
-              <Marker
-                key={b.id}
-                coordinate={{ latitude: b.latitude, longitude: b.longitude }}
-                onPress={() => handlePinPress(b)}
-                anchor={{ x: 0.5, y: 1 }}
-              >
-                <View style={styles.businessPinWrapper}>
-                  {/* Bubble con imagen y nombre */}
-                  <View
-                    style={[
-                      styles.businessBubble,
-                      {
-                        backgroundColor: b.isOpen ? "#fff" : "#f0f0f0",
-                        borderColor: b.isOpen ? ComeYaColors.primary : "#ccc",
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.businessBubbleIcon,
-                        {
-                          backgroundColor: b.isOpen
-                            ? ComeYaColors.primary + "15"
-                            : "#e0e0e0",
-                        },
-                      ]}
-                    >
-                      <Feather
-                        name={
-                          b.type === "market"
-                            ? "shopping-bag"
-                            : b.type === "pharmacy"
-                              ? "plus-circle"
-                              : "coffee"
-                        }
-                        size={18}
-                        color={b.isOpen ? ComeYaColors.primary : "#9E9E9E"}
-                      />
-                    </View>
-                    <View style={styles.businessBubbleInfo}>
-                      <ThemedText
-                        type="caption"
-                        style={{
-                          fontWeight: "700",
-                          fontSize: 11,
-                          color: b.isOpen ? "#1a1a1a" : "#9E9E9E",
-                        }}
-                        numberOfLines={1}
-                      >
-                        {b.name}
-                      </ThemedText>
-                      <ThemedText
-                        type="caption"
-                        style={{
-                          fontSize: 10,
-                          color: b.isOpen ? ComeYaColors.primary : "#9E9E9E",
-                          fontWeight: "600",
-                        }}
-                      >
-                        {b.isOpen
+            .map((b) => {
+              const meta = businessMarkerMeta(
+                b.type,
+                b.categories.join(","),
+              );
+              return (
+                <SmartMarker
+                  key={b.id}
+                  coordinate={{ latitude: b.latitude, longitude: b.longitude }}
+                  onPress={() => handlePinPress(b)}
+                  anchor={{ x: 0.5, y: 1 }}
+                  trackKey={`biz-${b.id}-${b.isOpen ? "open" : "closed"}`}
+                >
+                  <View style={styles.businessPinWrapper}>
+                    <BusinessBubblePin
+                      icon={meta.icon}
+                      color={meta.color}
+                      title={b.name}
+                      subtitle={
+                        b.isOpen
                           ? typeof b.deliveryTime === "string" &&
                             b.deliveryTime.includes("min")
                             ? b.deliveryTime
                             : "30-45 min"
-                          : "Cerrado"}
-                      </ThemedText>
-                    </View>
+                          : "Cerrado"
+                      }
+                    />
                   </View>
-                  {/* Tail del pin */}
-                  <View
-                    style={[
-                      styles.businessPinTail,
-                      {
-                        borderTopColor: b.isOpen
-                          ? ComeYaColors.primary
-                          : "#ccc",
-                      },
-                    ]}
-                  />
-                </View>
-              </Marker>
-            ))}
+                </SmartMarker>
+              );
+            })}
 
         {/* Pedidos activos del cliente */}
         {Marker &&
@@ -497,9 +462,9 @@ export default function BusinessMapScreen() {
                 }
               />
 
-              {/* Marcador repartidor */}
+              {/* Marcador repartidor — vehículo según su registro */}
               {order.driver && (
-                <Marker
+                <SmartMarker
                   coordinate={{
                     latitude: order.driver.latitude,
                     longitude: order.driver.longitude,
@@ -508,31 +473,18 @@ export default function BusinessMapScreen() {
                   onPress={() =>
                     navigation.navigate("OrderTracking", { orderId: order.id })
                   }
+                  trackKey={`drv-${order.id}-${order.driver.vehicleType ?? ""}-${order.driver.photo ?? ""}`}
                 >
-                  <View style={styles.driverPin}>
-                    <View style={styles.driverPinInner}>
-                      <ThemedText style={{ fontSize: 20 }}>🛵</ThemedText>
-                    </View>
-                    {order.eta !== undefined && (
-                      <View style={styles.driverPinLabel}>
-                        <ThemedText
-                          type="caption"
-                          style={{
-                            fontSize: 10,
-                            fontWeight: "700",
-                            color: "#fff",
-                          }}
-                        >
-                          {order.eta} min
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-                </Marker>
+                  <DriverPin
+                    vehicleIcon={vehicleMarkerMeta(order.driver.vehicleType).icon}
+                    photo={order.driver.photo}
+                    label={order.eta !== undefined ? `${order.eta} min` : undefined}
+                  />
+                </SmartMarker>
               )}
 
-              {/* Marcador destino cliente */}
-              <Marker
+              {/* Marcador destino cliente — casa azul */}
+              <SmartMarker
                 coordinate={{
                   latitude: order.customer.latitude,
                   longitude: order.customer.longitude,
@@ -541,27 +493,14 @@ export default function BusinessMapScreen() {
                 onPress={() =>
                   navigation.navigate("OrderTracking", { orderId: order.id })
                 }
+                trackKey={`cust-${order.id}-${order.eta ?? ""}`}
               >
-                <View style={styles.customerPinWrapper}>
-                  <View style={styles.customerBubble}>
-                    <Feather name="home" size={16} color="#fff" />
-                    {order.eta !== undefined && (
-                      <ThemedText
-                        type="caption"
-                        style={{
-                          color: "#fff",
-                          fontSize: 11,
-                          fontWeight: "700",
-                          marginLeft: 4,
-                        }}
-                      >
-                        {order.eta}'
-                      </ThemedText>
-                    )}
-                  </View>
-                  <View style={styles.customerPinTail} />
-                </View>
-              </Marker>
+                <MapPin
+                  icon={CUSTOMER_MARKER.icon}
+                  color={CUSTOMER_MARKER.color}
+                  label={order.eta !== undefined ? `${order.eta}'` : undefined}
+                />
+              </SmartMarker>
             </React.Fragment>
           ))}
       </MapView>
@@ -896,6 +835,13 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.sm,
     zIndex: 10,
   },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   floatBtn: {
     width: 44,
     height: 44,
@@ -923,92 +869,6 @@ const styles = StyleSheet.create({
 
   // Pins profesionales estilo Rappi/Uber
   businessPinWrapper: { alignItems: "center" },
-  businessBubble: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    maxWidth: 160,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
-    gap: 6,
-  },
-  businessBubbleIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  businessBubbleInfo: { flex: 1 },
-  businessPinTail: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 7,
-    borderRightWidth: 7,
-    borderTopWidth: 10,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    marginTop: -1,
-  },
-  driverPin: {
-    alignItems: "center",
-  },
-  driverPinInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#4CAF50",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  driverPinLabel: {
-    backgroundColor: "#4CAF50",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 4,
-    borderWidth: 1.5,
-    borderColor: "#fff",
-  },
-  customerBubble: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: ComeYaColors.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  customerPinTail: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 10,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: ComeYaColors.primary,
-    marginTop: -1,
-  },
 
   // Leyenda
   legend: {

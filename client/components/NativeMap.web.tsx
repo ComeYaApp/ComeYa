@@ -1,10 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { ComeYaColors } from "@/constants/theme";
+import {
+  pinIcon,
+  driverIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
+import { vehicleMarkerMeta, ORDER_MARKER } from "@/utils/markerMeta";
 
 interface Driver {
   id: string;
   name: string;
+  vehicleType?: string;
   location?: {
     latitude: string;
     longitude: string;
@@ -33,14 +40,6 @@ interface MapProps {
     latitudeDelta: number;
     longitudeDelta: number;
   };
-}
-
-function createPinIcon(emoji: string, bgColor: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-    <circle cx="18" cy="18" r="17" fill="${bgColor}" stroke="white" stroke-width="2"/>
-    <text x="18" y="24" text-anchor="middle" fill="white" font-size="18">${emoji}</text>
-  </svg>`;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 function loadGoogleMaps(): Promise<void> {
@@ -113,7 +112,7 @@ export function NativeMap({ activeOrders, onlineDrivers, initialRegion }: MapPro
 
     const bounds = new google.maps.LatLngBounds();
 
-    // Drivers
+    // Drivers — su vehículo
     onlineDrivers.forEach((driver) => {
       if (!driver.location?.latitude || !driver.location?.longitude) return;
       const lat = parseFloat(driver.location.latitude);
@@ -122,13 +121,16 @@ export function NativeMap({ activeOrders, onlineDrivers, initialRegion }: MapPro
         position: { lat, lng },
         map: gmap.current,
         title: driver.name,
-        icon: createPinIcon("\uD83D\uDE97", "#2196F3"),
+        icon: asGoogleIcon(
+          google,
+          driverIcon(vehicleMarkerMeta(driver.vehicleType).icon),
+        ),
       });
       markersRef.current.push(marker);
       bounds.extend(marker.getPosition()!);
     });
 
-    // Orders
+    // Orders — paquete
     activeOrders.forEach((order) => {
       if (!order.deliveryAddress?.latitude || !order.deliveryAddress?.longitude) return;
       const lat = parseFloat(order.deliveryAddress.latitude);
@@ -137,7 +139,10 @@ export function NativeMap({ activeOrders, onlineDrivers, initialRegion }: MapPro
         position: { lat, lng },
         map: gmap.current,
         title: `Pedido ${order.id.slice(0, 8)}`,
-        icon: createPinIcon("\uD83D\uDCE6", ComeYaColors.primary),
+        icon: asGoogleIcon(
+          google,
+          pinIcon(ORDER_MARKER.color, ORDER_MARKER.icon),
+        ),
       });
       markersRef.current.push(marker);
       bounds.extend(marker.getPosition()!);

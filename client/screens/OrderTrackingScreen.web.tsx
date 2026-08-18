@@ -21,6 +21,17 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  pinIcon,
+  driverIcon,
+  businessLabelIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 const PRIMARY = "#DC2626";
 
@@ -136,10 +147,14 @@ export default function OrderTrackingScreen() {
     confidence: number;
   } | null>(null);
   const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
+  const [driverVehicle, setDriverVehicle] = useState<string | null>(null);
   const [businessLocation, setBusinessLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
+  const [businessMeta, setBusinessMeta] = useState(
+    businessMarkerMeta("restaurant"),
+  );
   const { user } = useAuth();
   // La propina ya NO se ofrece durante el seguimiento: solo tras la entrega,
   // desde la pantalla de valoración del pedido.
@@ -204,6 +219,9 @@ export default function OrderTrackingScreen() {
             );
             const bizData = await bizRes.json();
             const biz = bizData.business;
+            setBusinessMeta(
+              businessMarkerMeta(biz?.type, biz?.categories),
+            );
             if (biz?.latitude && biz?.longitude) {
               setBusinessLocation({
                 lat: parseFloat(biz.latitude),
@@ -225,6 +243,11 @@ export default function OrderTrackingScreen() {
               );
             }
           } catch {}
+        }
+
+        // Vehículo del repartidor (icono del mapa)
+        if (apiOrder?.driverInfo?.vehicleType) {
+          setDriverVehicle(apiOrder.driverInfo.vehicleType);
         }
 
         // Cargar foto del repartidor
@@ -310,11 +333,10 @@ export default function OrderTrackingScreen() {
       position: pos,
       map: gmap.current,
       title: "Tu dirección",
-      icon: {
-        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><path d="M10 20l10-8 10 8M12 20v8h6v-5h4v5h6v-8" stroke="white" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
-        scaledSize: new google.maps.Size(40, 48),
-        anchor: new google.maps.Point(20, 48),
-      },
+      icon: asGoogleIcon(
+        google,
+        pinIcon(CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
+      ),
       zIndex: 90,
     });
   }, [
@@ -430,16 +452,29 @@ export default function OrderTrackingScreen() {
     const google = (window as any).google;
     if (businessMarkerRef.current) {
       businessMarkerRef.current.setPosition(businessLocation);
+      businessMarkerRef.current.setIcon(
+        asGoogleIcon(
+          google,
+          businessLabelIcon({
+            iconKey: businessMeta.icon,
+            color: businessMeta.color,
+            title: order?.businessName || "Negocio",
+          }),
+        ),
+      );
     } else {
       businessMarkerRef.current = new google.maps.Marker({
         position: businessLocation,
         map: gmap.current,
         title: order?.businessName || "Negocio",
-        icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#FF6B35" stroke="white" stroke-width="3"/><path d="M13 16h14M15 16v-2a1 1 0 011-1h8a1 1 0 011 1v2M13 20h14l-1 8H14l-1-8z" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="14,38 26,38 20,48" fill="#FF6B35"/></svg>')}`,
-          scaledSize: new google.maps.Size(40, 48),
-          anchor: new google.maps.Point(20, 48),
-        },
+        icon: asGoogleIcon(
+          google,
+          businessLabelIcon({
+            iconKey: businessMeta.icon,
+            color: businessMeta.color,
+            title: order?.businessName || "Negocio",
+          }),
+        ),
         zIndex: 100,
       });
     }
@@ -476,29 +511,19 @@ export default function OrderTrackingScreen() {
           lng: parseFloat(data.location.longitude),
         };
 
-        // Crear o mover marcador del repartidor con foto de perfil
-        const driverIconSvg = driverPhoto
-          ? `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="72"><defs><clipPath id="c"><circle cx="28" cy="28" r="24"/></clipPath></defs><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><circle cx="28" cy="28" r="27" fill="#10B981" opacity="0.3" stroke="none"/><image href="${driverPhoto}" x="4" y="4" width="48" height="48" clip-path="url(#c)" preserveAspectRatio="xMidYMid slice"/><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`
-          : `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="72"><circle cx="28" cy="28" r="27" fill="#10B981" stroke="white" stroke-width="3"/><path d="M18 32c0-2 1-4 3-5l5-2 4 2c2 1 3 3 3 5M21 34a3 3 0 106 0M35 34a3 3 0 106 0" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M22 27l3-6h6l2 4" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="20,55 36,55 28,68" fill="#10B981"/></svg>`;
-
+        // Crear o mover marcador del repartidor con su vehículo
+        const vehicle = vehicleMarkerMeta(driverVehicle);
         if (driverMarkerRef.current) {
           driverMarkerRef.current.setPosition(driverPos);
-          // Actualizar icono si ya existe (por si la foto cargó después)
-          driverMarkerRef.current.setIcon({
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverIconSvg)}`,
-            scaledSize: new google.maps.Size(64, 72),
-            anchor: new google.maps.Point(28, 72),
-          });
+          driverMarkerRef.current.setIcon(
+            asGoogleIcon(google, driverIcon(vehicle.icon)),
+          );
         } else {
           driverMarkerRef.current = new google.maps.Marker({
             position: driverPos,
             map: gmap.current,
             title: order.deliveryPersonName || "Repartidor",
-            icon: {
-              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverIconSvg)}`,
-              scaledSize: new google.maps.Size(64, 72),
-              anchor: new google.maps.Point(28, 72),
-            },
+            icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
             zIndex: 999,
             animation: google.maps.Animation.DROP,
           });

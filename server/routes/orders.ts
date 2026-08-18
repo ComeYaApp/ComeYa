@@ -823,18 +823,22 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       status: "open",
     });
 
-    // Notificar a los administradores
+    // Notificar a los administradores (sin romper la respuesta si falla la red)
     const { users, businesses } = await import("@shared/schema-mysql");
     const admins = await db
       .select({ id: users.id })
       .from(users)
       .where(inArray(users.role, ["admin", "super_admin"]));
-    for (const admin of admins) {
-      await sendPushToUser(admin.id, {
-        title: "⚠️ Incidencia reportada",
-        body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
-        data: { orderId: issueOrderId, screen: "AdminSupport" },
-      });
+    try {
+      for (const admin of admins) {
+        await sendPushToUser(admin.id, {
+          title: "⚠️ Incidencia reportada",
+          body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
+          data: { orderId: issueOrderId, screen: "AdminSupport" },
+        });
+      }
+    } catch (err) {
+      console.error("Error notifying admins of issue:", err);
     }
 
     // Notificar también al negocio del pedido
@@ -853,13 +857,6 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       }
     } catch (err) {
       console.error("Error notifying business of issue:", err);
-    }
-    for (const admin of admins) {
-      await sendPushToUser(admin.id, {
-        title: "⚠️ Problema reportado",
-        body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
-        data: { orderId: issueOrderId, screen: "AdminSupport" },
-      });
     }
 
     res.json({ success: true, message: "Problema reportado" });

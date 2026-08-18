@@ -18,6 +18,12 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import {
+  pinIcon,
+  driverIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
+import { vehicleMarkerMeta, CUSTOMER_MARKER } from "@/utils/markerMeta";
 
 const GOOGLE_MAPS_API_KEY =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
@@ -168,20 +174,13 @@ export default function BusinessDeliveryMapScreen() {
       const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
       const color = cfg.color;
 
-      // Marker repartidor
+      // Marker repartidor — su vehículo
       if (d.driver?.lat && d.driver?.lng) {
-        const driverSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44">
-          <circle cx="22" cy="22" r="20" fill="${color}" stroke="#fff" stroke-width="3"/>
-          <text x="22" y="27" text-anchor="middle" font-size="16" fill="white">🛵</text>
-        </svg>`;
+        const vehicle = vehicleMarkerMeta(d.driver.vehicleType);
         const driverMarker = new google.maps.Marker({
           position: { lat: d.driver.lat, lng: d.driver.lng },
           map: gmap.current,
-          icon: {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(driverSvg)}`,
-            scaledSize: new google.maps.Size(44, 44),
-            anchor: new google.maps.Point(22, 22),
-          },
+          icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
           title: `Repartidor: ${d.driver.name}`,
           zIndex: 20,
         });
@@ -189,20 +188,12 @@ export default function BusinessDeliveryMapScreen() {
         markers.current[`driver_${d.orderId}`] = driverMarker;
       }
 
-      // Marker cliente
+      // Marker cliente — casa con color de estado
       if (d.customer.lat && d.customer.lng) {
-        const customerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-          <circle cx="18" cy="18" r="16" fill="#fff" stroke="${color}" stroke-width="2.5"/>
-          <text x="18" y="23" text-anchor="middle" font-size="14" fill="${color}">📍</text>
-        </svg>`;
         const customerMarker = new google.maps.Marker({
           position: { lat: d.customer.lat, lng: d.customer.lng },
           map: gmap.current,
-          icon: {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(customerSvg)}`,
-            scaledSize: new google.maps.Size(36, 36),
-            anchor: new google.maps.Point(18, 36),
-          },
+          icon: asGoogleIcon(google, pinIcon(color, CUSTOMER_MARKER.icon)),
           title: `Cliente: ${d.customer.name}`,
           zIndex: 10,
         });

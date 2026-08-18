@@ -10,7 +10,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Polyline } from "react-native-maps";
 import { Feather } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
@@ -18,6 +18,15 @@ import * as Location from "expo-location";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 interface Business {
   id: string;
@@ -52,6 +61,7 @@ interface OrderTracking {
     name: string;
     latitude: number;
     longitude: number;
+    vehicleType?: string;
   };
   total: number;
   createdAt: string;
@@ -213,8 +223,10 @@ export default function MapViewScreen({ navigation }: any) {
             ? {
                 id: order.driver.id,
                 name: order.driver.name,
-                latitude: order.business?.latitude || 0,
-                longitude: order.business?.longitude || 0,
+                latitude: order.driver.latitude ?? order.business?.latitude ?? 0,
+                longitude:
+                  order.driver.longitude ?? order.business?.longitude ?? 0,
+                vehicleType: order.driver.vehicleType,
               }
             : undefined,
           total: order.total || 0,
@@ -320,62 +332,68 @@ export default function MapViewScreen({ navigation }: any) {
     order: OrderTracking,
     type: "customer" | "business" | "driver",
   ) => {
-    let coordinate, icon, label;
+    const selected = selectedOrder?.id === order.id;
 
-    switch (type) {
-      case "customer":
-        coordinate = {
-          latitude: order.customer.latitude,
-          longitude: order.customer.longitude,
-        };
-        icon = "user";
-        label = order.customer.name;
-        break;
-      case "business":
-        coordinate = {
-          latitude: order.business.latitude,
-          longitude: order.business.longitude,
-        };
-        icon = "shopping-bag";
-        label = order.business.name;
-        break;
-      case "driver":
-        if (!order.driver) return null;
-        coordinate = {
-          latitude: order.driver.latitude,
-          longitude: order.driver.longitude,
-        };
-        icon = "truck";
-        label = order.driver.name;
-        break;
+    if (type === "customer") {
+      return (
+        <SmartMarker
+          key={`${order.id}-customer`}
+          coordinate={{
+            latitude: order.customer.latitude,
+            longitude: order.customer.longitude,
+          }}
+          anchor={{ x: 0.5, y: 1 }}
+          onPress={() => centerOnOrder(order)}
+          trackKey={`${order.id}-cust-${selected}`}
+        >
+          <MapPin
+            icon={CUSTOMER_MARKER.icon}
+            color={order.color}
+            size={selected ? 42 : 36}
+          />
+        </SmartMarker>
+      );
     }
 
-    return (
-      <Marker
-        key={`${order.id}-${type}`}
-        coordinate={coordinate}
-        onPress={() => centerOnOrder(order)}
-      >
-        <View
-          style={[
-            styles.markerContainer,
-            {
-              backgroundColor: order.color,
-              borderColor: "#fff",
-              transform: [{ scale: selectedOrder?.id === order.id ? 1.2 : 1 }],
-            },
-          ]}
+    if (type === "business") {
+      return (
+        <SmartMarker
+          key={`${order.id}-business`}
+          coordinate={{
+            latitude: order.business.latitude,
+            longitude: order.business.longitude,
+          }}
+          anchor={{ x: 0.5, y: 1 }}
+          onPress={() => centerOnOrder(order)}
+          trackKey={`${order.id}-biz-${selected}`}
         >
-          <Feather
-            name={icon as any}
-            size={type === "driver" ? 18 : 16}
-            color="#fff"
+          <MapPin
+            icon={businessMarkerMeta().icon}
+            color={order.color}
+            size={selected ? 42 : 36}
           />
-          <View style={[styles.markerBadge, { backgroundColor: order.color }]}>
-            <Text style={styles.markerBadgeText}>{order.shortId}</Text>
-          </View>
-        </View>
-      </Marker>
+        </SmartMarker>
+      );
+    }
+
+    if (!order.driver) return null;
+    return (
+      <SmartMarker
+        key={`${order.id}-driver`}
+        coordinate={{
+          latitude: order.driver.latitude,
+          longitude: order.driver.longitude,
+        }}
+        anchor={{ x: 0.5, y: 0.5 }}
+        onPress={() => centerOnOrder(order)}
+        trackKey={`${order.id}-drv-${order.driver.vehicleType ?? ""}`}
+      >
+        <DriverPin
+          vehicleIcon={vehicleMarkerMeta(order.driver.vehicleType).icon}
+          color={order.color}
+          size={selected ? 50 : 44}
+        />
+      </SmartMarker>
     );
   };
 
@@ -559,31 +577,30 @@ export default function MapViewScreen({ navigation }: any) {
       >
         {businesses
           .filter((b) => activeOrders.some((o) => o.business.id === b.id))
-          .map((business) => (
-            <Marker
-              key={`business-${business.id}`}
-              coordinate={{
-                latitude: business.latitude,
-                longitude: business.longitude,
-              }}
-              pinColor={
-                business.isActive ? ComeYaColors.success : ComeYaColors.error
-              }
-            >
-              <View
-                style={[
-                  styles.businessMarker,
-                  {
-                    backgroundColor: business.isActive
-                      ? ComeYaColors.success
-                      : ComeYaColors.error,
-                  },
-                ]}
+          .map((business) => {
+            const meta = businessMarkerMeta(
+              "restaurant",
+              business.category,
+            );
+            return (
+              <SmartMarker
+                key={`business-${business.id}`}
+                coordinate={{
+                  latitude: business.latitude,
+                  longitude: business.longitude,
+                }}
+                anchor={{ x: 0.5, y: 1 }}
+                trackKey={`bizmap-${business.id}-${business.isActive}`}
               >
-                <Feather name="shopping-bag" size={16} color="#fff" />
-              </View>
-            </Marker>
-          ))}
+                <BusinessBubblePin
+                  icon={meta.icon}
+                  color={meta.color}
+                  title={business.name}
+                  compact
+                />
+              </SmartMarker>
+            );
+          })}
 
         {activeOrders.map((order) => (
           <React.Fragment key={order.id}>
@@ -893,43 +910,6 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-  },
-  markerContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  markerBadge: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  markerBadgeText: {
-    color: "#fff",
-    fontSize: 9,
-    fontWeight: "bold",
-  },
-  businessMarker: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
   },
   ordersPanel: {
     position: "absolute",

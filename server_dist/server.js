@@ -11227,7 +11227,7 @@ router3.get("/", authenticateToken, async (req, res) => {
 });
 router3.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const { orders: orders2, users: users6, deliveryDrivers: deliveryDrivers3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+    const { orders: orders2, users: users6, deliveryDrivers: deliveryDrivers3, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { eq: eq70, sql: sql18 } = await import("drizzle-orm");
     const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -11275,11 +11275,24 @@ router3.get("/:id", authenticateToken, async (req, res) => {
         console.error("Error fetching driver info:", err);
       }
     }
+    let businessInfo = null;
+    if (order.businessId) {
+      try {
+        const [bizData] = await db2.select({
+          type: businesses3.type,
+          categories: businesses3.categories
+        }).from(businesses3).where(eq70(businesses3.id, order.businessId)).limit(1);
+        if (bizData) businessInfo = bizData;
+      } catch {
+      }
+    }
     res.json({
       success: true,
       order: {
         ...order,
-        driverInfo
+        driverInfo,
+        businessType: businessInfo?.type ?? null,
+        businessCategories: businessInfo?.categories ?? null
       }
     });
   } catch (error) {
@@ -13163,7 +13176,9 @@ router8.get(
             name: users6.name,
             isOnline: users6.isActive
           }).from(users6).where(eq70(users6.id, order.deliveryPersonId)).limit(1);
-          driver = driverData[0] || null;
+          const { deliveryDrivers: deliveryDrivers3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+          const [dd] = await db2.select({ vehicleType: deliveryDrivers3.vehicleType }).from(deliveryDrivers3).where(eq70(deliveryDrivers3.userId, order.deliveryPersonId)).limit(1);
+          driver = driverData[0] ? { ...driverData[0], vehicleType: dd?.vehicleType ?? null } : null;
         }
         ordersWithDetails.push({
           id: order.id,
@@ -16424,7 +16439,15 @@ router21.post(
     if (!vehicleType || !vehiclePlate) {
       throw new ValidationError("Vehicle type and plate are required");
     }
-    if (!["bike", "motorcycle", "car"].includes(vehicleType)) {
+    if (![
+      "bike",
+      "bicycle",
+      "ebike",
+      "scooter",
+      "moped",
+      "motorcycle",
+      "car"
+    ].includes(vehicleType)) {
       throw new ValidationError("Invalid vehicle type");
     }
     const [existing] = await db.select().from(deliveryDrivers).where(eq36(deliveryDrivers.userId, userId)).limit(1);
@@ -16949,11 +16972,14 @@ router21.get(
     if (!driver || !driver.currentLatitude || !driver.currentLongitude) {
       return res.json({ location: null });
     }
+    const [driverUser] = await db.select({ profilePicture: users.profilePicture }).from(users).where(eq36(users.id, order.deliveryPersonId)).limit(1);
     res.json({
       location: {
         latitude: driver.currentLatitude,
         longitude: driver.currentLongitude,
-        lastUpdate: driver.lastLocationUpdate
+        lastUpdate: driver.lastLocationUpdate,
+        vehicleType: driver.vehicleType,
+        photo: driverUser?.profilePicture || null
       }
     });
   })
@@ -22261,12 +22287,16 @@ router43.post("/:id/report-issue", authenticateToken, async (req, res) => {
     });
     const { users: users6, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const admins = await db2.select({ id: users6.id }).from(users6).where(inArray5(users6.role, ["admin", "super_admin"]));
-    for (const admin of admins) {
-      await sendPushToUser(admin.id, {
-        title: "\u26A0\uFE0F Incidencia reportada",
-        body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
-        data: { orderId: issueOrderId, screen: "AdminSupport" }
-      });
+    try {
+      for (const admin of admins) {
+        await sendPushToUser(admin.id, {
+          title: "\u26A0\uFE0F Incidencia reportada",
+          body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
+          data: { orderId: issueOrderId, screen: "AdminSupport" }
+        });
+      }
+    } catch (err) {
+      console.error("Error notifying admins of issue:", err);
     }
     try {
       const [biz] = await db2.select({ ownerId: businesses3.ownerId }).from(businesses3).where(eq58(businesses3.id, order.businessId)).limit(1);
@@ -22279,13 +22309,6 @@ router43.post("/:id/report-issue", authenticateToken, async (req, res) => {
       }
     } catch (err) {
       console.error("Error notifying business of issue:", err);
-    }
-    for (const admin of admins) {
-      await sendPushToUser(admin.id, {
-        title: "\u26A0\uFE0F Problema reportado",
-        body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
-        data: { orderId: issueOrderId, screen: "AdminSupport" }
-      });
     }
     res.json({ success: true, message: "Problema reportado" });
   } catch (error) {
@@ -23873,12 +23896,16 @@ router52.get(
         };
         const [biz] = await db.select({
           name: businesses.name,
+          type: businesses.type,
+          categories: businesses.categories,
           latitude: businesses.latitude,
           longitude: businesses.longitude
         }).from(businesses).where(eq66(businesses.id, order.businessId)).limit(1);
         if (biz && biz.latitude && biz.longitude) {
           item.business = {
             name: biz.name || "Negocio",
+            type: biz.type,
+            categories: biz.categories,
             lat: parseFloat(biz.latitude),
             lng: parseFloat(biz.longitude)
           };
@@ -23892,12 +23919,14 @@ router52.get(
         if (order.deliveryPersonId) {
           const [driverRec] = await db.select({
             currentLatitude: deliveryDrivers.currentLatitude,
-            currentLongitude: deliveryDrivers.currentLongitude
+            currentLongitude: deliveryDrivers.currentLongitude,
+            vehicleType: deliveryDrivers.vehicleType
           }).from(deliveryDrivers).where(eq66(deliveryDrivers.userId, order.deliveryPersonId)).limit(1);
           if (driverRec && driverRec.currentLatitude && driverRec.currentLongitude) {
             const [driverUser] = await db.select({ name: users.name }).from(users).where(eq66(users.id, order.deliveryPersonId)).limit(1);
             item.driver = {
               name: driverUser?.name || "Repartidor",
+              vehicleType: driverRec.vehicleType,
               lat: parseFloat(driverRec.currentLatitude),
               lng: parseFloat(driverRec.currentLongitude)
             };

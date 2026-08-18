@@ -1,11 +1,16 @@
 import React from "react";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { StyleSheet } from "react-native";
 import { ComeYaColors } from "@/constants/theme";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import { vehicleMarkerMeta, ORDER_MARKER } from "@/utils/markerMeta";
 
 interface Driver {
   id: string;
   name: string;
+  vehicleType?: string;
   location?: {
     latitude: string;
     longitude: string;
@@ -36,15 +41,15 @@ export function NativeMap({ activeOrders, onlineDrivers }: MapProps) {
       style={styles.map}
       provider={PROVIDER_GOOGLE}
       initialRegion={{
-        latitude: 7.7758,
-        longitude: -104.3618,
+        latitude: 41.7636, // Soria, España
+        longitude: -2.4677,
         latitudeDelta: 0.05,
         longitudeDelta: 0.05,
       }}
     >
       {onlineDrivers.map((driver) =>
         driver.location ? (
-          <Marker
+          <SmartMarker
             key={`driver-${driver.id}`}
             coordinate={{
               latitude: parseFloat(driver.location.latitude),
@@ -52,13 +57,20 @@ export function NativeMap({ activeOrders, onlineDrivers }: MapProps) {
             }}
             title={driver.name}
             description={driver.activeOrder ? "En entrega" : "Disponible"}
-            pinColor="#2196F3"
-          />
+            anchor={{ x: 0.5, y: 0.5 }}
+            trackKey={`nd_${driver.id}_${driver.vehicleType ?? ""}`}
+          >
+            <DriverPin
+              vehicleIcon={vehicleMarkerMeta(driver.vehicleType).icon}
+              color={ComeYaColors.success}
+              size={38}
+            />
+          </SmartMarker>
         ) : null,
       )}
       {activeOrders.map((order) =>
         order.deliveryAddress?.latitude && order.deliveryAddress?.longitude ? (
-          <Marker
+          <SmartMarker
             key={`order-${order.id}`}
             coordinate={{
               latitude: parseFloat(order.deliveryAddress.latitude),
@@ -66,8 +78,11 @@ export function NativeMap({ activeOrders, onlineDrivers }: MapProps) {
             }}
             title={`Pedido ${order.id.slice(0, 8)}`}
             description={`${order.customer.name} - ${order.status}`}
-            pinColor={ComeYaColors.primary}
-          />
+            anchor={{ x: 0.5, y: 1 }}
+            trackKey={`no_${order.id}`}
+          >
+            <MapPin icon={ORDER_MARKER.icon} color={ORDER_MARKER.color} />
+          </SmartMarker>
         ) : null,
       )}
     </MapView>

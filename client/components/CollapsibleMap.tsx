@@ -5,7 +5,6 @@ import {
   Pressable,
   Dimensions,
   Platform,
-  Animated,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -29,6 +28,15 @@ import {
   distanceMeters,
   RouteCoordinate,
 } from "@/utils/directions";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { BusinessPin } from "@/components/map/BusinessPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 interface Location {
   latitude: number;
@@ -43,6 +51,14 @@ interface CollapsibleMapProps {
   isLoading?: boolean;
   driverName?: string;
   driverPhoto?: string;
+  /** Vehículo del repartidor (vehicle_type): bike/bicycle/motorcycle/car… */
+  driverVehicle?: string;
+  /** Nombre del negocio (para la burbuja del mapa) */
+  businessName?: string;
+  /** Tipo de negocio (restaurant/market/…) para el icono */
+  businessType?: string;
+  /** Categorías del negocio ("pizza, burgers, …") para el icono */
+  businessCategories?: string;
   eta?: string;
   status?: string;
   onCallDriver?: () => void;
@@ -106,63 +122,6 @@ const STATUS_LABELS_PICKUP: Record<
   cancelled: { label: "Cancelado", color: "#EF4444", icon: "x-circle" },
 };
 
-function PinMarker({
-  color,
-  icon,
-  iconColor,
-}: {
-  color: string;
-  icon: string;
-  iconColor?: string;
-}) {
-  return (
-    <View style={styles.pinContainer}>
-      <View style={[styles.pinBody, { backgroundColor: color }]}>
-        <Feather name={icon as any} size={16} color={iconColor || "#FFFFFF"} />
-      </View>
-      <View style={[styles.pinTip, { borderTopColor: color }]} />
-    </View>
-  );
-}
-
-function DriverMarker({ color }: { color: string }) {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, []);
-
-  return (
-    <View style={styles.pulsingWrapper}>
-      <Animated.View
-        style={[
-          styles.pulsingRing,
-          { borderColor: color, transform: [{ scale: pulseAnim }] },
-        ]}
-      />
-      <View style={styles.pinContainer}>
-        <View style={[styles.pinBody, { backgroundColor: "#E8F5E9" }]}>
-          <Feather name="navigation" size={16} color="#10B981" />
-        </View>
-        <View style={[styles.pinTip, { borderTopColor: "#E8F5E9" }]} />
-      </View>
-    </View>
-  );
-}
-
 export function CollapsibleMap({
   businessLocation,
   deliveryPersonLocation,
@@ -170,6 +129,10 @@ export function CollapsibleMap({
   isLoading = false,
   driverName,
   driverPhoto,
+  driverVehicle,
+  businessName,
+  businessType,
+  businessCategories,
   eta,
   status = "preparing",
   onCallDriver,
@@ -319,41 +282,51 @@ export function CollapsibleMap({
             mapType="standard"
             customMapStyle={isDark ? darkMapStyle : []}
           >
-            {/* Business marker - Restaurante o Mercado */}
+            {/* Business marker — burbuja con icono del tipo de negocio */}
             {isValidLocation(businessLocation) && (
-              <Marker
+              <SmartMarker
                 coordinate={businessLocation}
-                title="Negocio"
+                title={businessName || "Negocio"}
                 anchor={{ x: 0.5, y: 1 }}
+                trackKey={`biz-${businessType ?? ""}-${businessCategories ?? ""}-${businessName ?? ""}`}
               >
-                <PinMarker
-                  color="#FF6B35"
-                  icon={isPickup ? "shopping-bag" : "coffee"}
-                  iconColor="#FFFFFF"
+                <BusinessPin
+                  icon={businessMarkerMeta(businessType, businessCategories).icon}
+                  color={businessMarkerMeta(businessType, businessCategories).color}
+                  title={businessName || (isPickup ? "Recogida" : "Negocio")}
                 />
-              </Marker>
+              </SmartMarker>
             )}
 
-            {/* Driver marker — pulsing (SOLO DELIVERY) */}
+            {/* Driver marker — foto/vehículo con anillo pulsante (SOLO DELIVERY) */}
             {!isPickup && isValidLocation(deliveryPersonLocation) && (
-              <Marker
+              <SmartMarker
                 coordinate={deliveryPersonLocation}
-                title="Repartidor"
-                anchor={{ x: 0.5, y: 1 }}
+                title={driverName || "Repartidor"}
+                anchor={{ x: 0.5, y: 0.5 }}
+                trackKey={`drv-${driverVehicle ?? ""}-${driverPhoto ?? ""}`}
               >
-                <DriverMarker color="#10B981" />
-              </Marker>
+                <DriverPin
+                  vehicleIcon={vehicleMarkerMeta(driverVehicle).icon}
+                  photo={driverPhoto}
+                  label={eta}
+                />
+              </SmartMarker>
             )}
 
-            {/* Customer marker */}
+            {/* Customer marker — casa azul */}
             {isValidLocation(customerLocation) && (
-              <Marker
+              <SmartMarker
                 coordinate={customerLocation}
                 title="Tu ubicación"
                 anchor={{ x: 0.5, y: 1 }}
+                trackKey="customer"
               >
-                <PinMarker color="#E3F2FD" icon="home" iconColor="#3B82F6" />
-              </Marker>
+                <MapPin
+                  icon={CUSTOMER_MARKER.icon}
+                  color={CUSTOMER_MARKER.color}
+                />
+              </SmartMarker>
             )}
 
             {/* Route line */}
@@ -648,53 +621,6 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     justifyContent: "center",
     alignItems: "center",
-  },
-  // Pulsing wrapper for driver
-  pulsingWrapper: {
-    alignItems: "center",
-    justifyContent: "flex-end",
-    width: 50,
-    height: 60,
-  },
-  pulsingRing: {
-    position: "absolute",
-    bottom: 12,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 2,
-    opacity: 0.4,
-  },
-  // Pin markers (teardrop shape)
-  pinContainer: {
-    alignItems: "center",
-    justifyContent: "flex-end",
-    width: 40,
-    height: 50,
-  },
-  pinBody: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  pinTip: {
-    width: 0,
-    height: 0,
-    backgroundColor: "transparent",
-    borderStyle: "solid",
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 12,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    marginTop: -2,
   },
   navigateButton: {
     flexDirection: "row",

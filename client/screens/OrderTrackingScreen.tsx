@@ -89,6 +89,11 @@ export default function OrderTrackingScreen() {
     longitude: number;
   } | null>(null);
   const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
+  const [driverVehicle, setDriverVehicle] = useState<string | null>(null);
+  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [businessCategories, setBusinessCategories] = useState<string | null>(
+    null,
+  );
   // La propina ya NO se ofrece durante el seguimiento: solo tras la entrega,
   // desde la pantalla de valoración del pedido.
   const [dynamicETA, setDynamicETA] = useState<{
@@ -268,9 +273,16 @@ export default function OrderTrackingScreen() {
                   longitude: parseFloat(biz.longitude),
                 });
               }
+              if (biz?.type) setBusinessType(biz.type);
+              if (biz?.categories) setBusinessCategories(biz.categories);
             } catch {
               /* sin ubicación del negocio */
             }
+          }
+
+          // Vehículo del repartidor (para el icono del mapa)
+          if (apiOrder.driverInfo?.vehicleType) {
+            setDriverVehicle(apiOrder.driverInfo.vehicleType);
           }
 
           // Cargar foto del repartidor
@@ -737,8 +749,12 @@ export default function OrderTrackingScreen() {
             businessLocation={businessLocation || undefined}
             deliveryPersonLocation={deliveryLocation || undefined}
             customerLocation={userLocation || undefined}
+            businessName={order.businessName}
+            businessType={businessType || undefined}
+            businessCategories={businessCategories || undefined}
             driverName={order.deliveryPersonName}
             driverPhoto={driverPhoto || undefined}
+            driverVehicle={driverVehicle || undefined}
             eta={etaRange ?? undefined}
             status={order.status}
             onCallDriver={
@@ -751,6 +767,9 @@ export default function OrderTrackingScreen() {
           <CollapsibleMap
             businessLocation={businessLocation || undefined}
             customerLocation={userLocation || undefined}
+            businessName={order.businessName}
+            businessType={businessType || undefined}
+            businessCategories={businessCategories || undefined}
             status={order.status}
             isPickup={true}
             onNavigateInApp={

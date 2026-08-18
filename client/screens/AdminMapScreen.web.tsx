@@ -12,6 +12,17 @@ import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 import { apiRequest } from "@/lib/query-client";
+import {
+  pinIcon,
+  driverIcon,
+  businessLabelIcon,
+  asGoogleIcon,
+} from "@/utils/webMarkerSvg";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 function loadGoogleMaps(): Promise<void> {
   return new Promise(async (resolve, reject) => {
@@ -47,20 +58,14 @@ const BIZ_ICONS: Record<string, { color: string; icon: string }> = {
   default: { color: "#6B7280", icon: "home" },
 };
 
+type ViewMode = "all" | "businesses" | "drivers" | "deliveries";
+
 const STATUS_COLORS: Record<string, string> = {
   pending: "#F59E0B",
   accepted: "#3B82F6",
   preparing: "#8B5CF6",
   on_the_way: "#10B981",
   arrived: "#EC4899",
-};
-
-const createMarkerIcon = (emoji: string, bgColor: string, size = 40) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-    <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${bgColor}" stroke="white" stroke-width="2"/>
-    <text x="${size / 2}" y="${size / 2 + 6}" text-anchor="middle" fill="white" font-size="18" font-weight="bold">${emoji}</text>
-  </svg>`;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
 export default function AdminMapScreen() {
@@ -150,34 +155,28 @@ export default function AdminMapScreen() {
       });
       setLocationStats({ withCoords, withoutCoords });
 
-      // Mostrar businesses
+      // Mostrar businesses — burbuja con icono del tipo
       if (viewMode === "all" || viewMode === "businesses") {
         businesses.forEach((b: any) => {
           const lat = parseFloat(b.latitude);
           const lng = parseFloat(b.longitude);
           if (isNaN(lat) || isNaN(lng)) return;
 
-          const typeInfo = BIZ_ICONS[b.type] || BIZ_ICONS.default;
-          const iconUrl = createMarkerIcon(
-            typeInfo.icon === "coffee"
-              ? "🍽️"
-              : typeInfo.icon === "shopping-bag"
-                ? "🛒"
-                : typeInfo.icon === "shopping-cart"
-                  ? "🛍️"
-                  : "🏠",
-            typeInfo.color,
-          );
+          const meta = businessMarkerMeta(b.type, b.categories);
 
           const marker = new google.maps.Marker({
             position: { lat, lng },
             map: gmap.current,
             title: `${b.name}\n📍 ${b.address || "Sin dirección"}`,
-            icon: {
-              url: iconUrl,
-              scaledSize: new google.maps.Size(40, 40),
-              anchor: new google.maps.Point(20, 20),
-            },
+            icon: asGoogleIcon(
+              google,
+              businessLabelIcon({
+                iconKey: meta.icon,
+                color: meta.color,
+                title: b.name,
+                subtitle: b.isOpen ? "Abierto" : "Cerrado",
+              }),
+            ),
           });
 
           const info = new google.maps.InfoWindow({
@@ -194,23 +193,19 @@ export default function AdminMapScreen() {
         });
       }
 
-      // Mostrar drivers
+      // Mostrar drivers — su vehículo
       if (viewMode === "all" || viewMode === "drivers") {
         drivers.forEach((d: any) => {
           const lat = parseFloat(d.currentLatitude);
           const lng = parseFloat(d.currentLongitude);
           if (isNaN(lat) || isNaN(lng)) return;
 
-          const iconUrl = createMarkerIcon("🛵", "#10B981");
+          const vehicle = vehicleMarkerMeta(d.vehicleType);
           const marker = new google.maps.Marker({
             position: { lat, lng },
             map: gmap.current,
             title: `${d.name || "Repartidor"}\n📱 ${d.phone || "Sin teléfono"}`,
-            icon: {
-              url: iconUrl,
-              scaledSize: new google.maps.Size(40, 40),
-              anchor: new google.maps.Point(20, 20),
-            },
+            icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
           });
 
           const info = new google.maps.InfoWindow({
@@ -232,16 +227,15 @@ export default function AdminMapScreen() {
 
           // Negocio
           if (o.business?.lat && o.business?.lng) {
-            const bizIcon = createMarkerIcon("🏪", "#DC2626", 36);
+            const bizMeta = businessMarkerMeta(o.business.type);
             const bizMarker = new google.maps.Marker({
               position: { lat: o.business.lat, lng: o.business.lng },
               map: gmap.current,
-              title: `🏪 ${o.business.name} - Pedido ${o.orderNumber}`,
-              icon: {
-                url: bizIcon,
-                scaledSize: new google.maps.Size(36, 36),
-                anchor: new google.maps.Point(18, 36),
-              },
+              title: `${o.business.name} - Pedido ${o.orderNumber}`,
+              icon: asGoogleIcon(
+                google,
+                pinIcon(bizMeta.color, bizMeta.icon),
+              ),
               zIndex: 100,
             });
 
@@ -260,16 +254,14 @@ export default function AdminMapScreen() {
 
           // Cliente/Destino
           if (o.delivery?.lat && o.delivery?.lng) {
-            const custIcon = createMarkerIcon("🏠", "#3B82F6", 36);
             const custMarker = new google.maps.Marker({
               position: { lat: o.delivery.lat, lng: o.delivery.lng },
               map: gmap.current,
-              title: `🏠 Entrega - ${o.orderNumber}`,
-              icon: {
-                url: custIcon,
-                scaledSize: new google.maps.Size(36, 36),
-                anchor: new google.maps.Point(18, 36),
-              },
+              title: `Entrega - ${o.orderNumber}`,
+              icon: asGoogleIcon(
+                google,
+                pinIcon(CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
+              ),
               zIndex: 50,
             });
 
@@ -287,16 +279,12 @@ export default function AdminMapScreen() {
 
           // Repartidor
           if (o.driver?.lat && o.driver?.lng) {
-            const driverIcon = createMarkerIcon("🛵", "#10B981", 40);
+            const drvVehicle = vehicleMarkerMeta(o.driver.vehicleType);
             const driverMarker = new google.maps.Marker({
               position: { lat: o.driver.lat, lng: o.driver.lng },
               map: gmap.current,
-              title: `🛵 ${o.driver.name} - ${o.orderNumber}`,
-              icon: {
-                url: driverIcon,
-                scaledSize: new google.maps.Size(40, 40),
-                anchor: new google.maps.Point(20, 20),
-              },
+              title: `${o.driver.name} - ${o.orderNumber}`,
+              icon: asGoogleIcon(google, driverIcon(drvVehicle.icon)),
               zIndex: 200,
             });
 

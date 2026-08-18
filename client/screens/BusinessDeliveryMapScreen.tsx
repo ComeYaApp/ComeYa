@@ -5,13 +5,12 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
-  Text as RNText,
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import {
@@ -21,6 +20,15 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
 
 const STATUS_CONFIG: Record<
   string,
@@ -90,7 +98,7 @@ export default function BusinessDeliveryMapScreen() {
 
   // Business locations for markers
   const [businessLocations, setBusinessLocations] = useState<
-    { id: string; name: string; lat: number; lng: number }[]
+    { id: string; name: string; type?: string; lat: number; lng: number }[]
   >([]);
 
   const bg = isDark ? "#111" : "#f5f5f5";
@@ -116,6 +124,7 @@ export default function BusinessDeliveryMapScreen() {
             .map((b: any) => ({
               id: b.id,
               name: b.name,
+              type: b.type,
               lat: parseFloat(b.latitude),
               lng: parseFloat(b.longitude),
             }));
@@ -201,30 +210,34 @@ export default function BusinessDeliveryMapScreen() {
           showsMyLocationButton
         >
           {/* Business location markers - show all businesses of the owner */}
-          {businessLocations.map((biz) => (
-            <Marker
-              key={`business_${biz.id}`}
-              coordinate={{ latitude: biz.lat!, longitude: biz.lng! }}
-              title={biz.name}
-              description="Tu negocio"
-              pinColor="#DC2626"
-            >
-              <View
-                style={[styles.businessMarker, { backgroundColor: "#DC2626" }]}
+          {businessLocations.map((biz) => {
+            const meta = businessMarkerMeta(biz.type);
+            return (
+              <SmartMarker
+                key={`business_${biz.id}`}
+                coordinate={{ latitude: biz.lat!, longitude: biz.lng! }}
+                title={biz.name}
+                description="Tu negocio"
+                anchor={{ x: 0.5, y: 1 }}
+                trackKey={`biz_${biz.id}`}
               >
-                <RNText style={{ fontSize: 16 }}>🏪</RNText>
-              </View>
-            </Marker>
-          ))}
+                <BusinessBubblePin
+                  icon={meta.icon}
+                  color={meta.color}
+                  title={biz.name}
+                  compact
+                />
+              </SmartMarker>
+            );
+          })}
 
-          {/* Customer and Driver markers */}
+          {/* Customer markers — casa azul con estado */}
           {deliveries.map((d) => {
             const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
 
-            // Customer marker
             if (d.customer.lat && d.customer.lng) {
               return (
-                <Marker
+                <SmartMarker
                   key={`customer_${d.orderId}`}
                   coordinate={{
                     latitude: d.customer.lat,
@@ -232,39 +245,44 @@ export default function BusinessDeliveryMapScreen() {
                   }}
                   title={`Cliente: ${d.customer.name}`}
                   description={d.customer.address || "Sin dirección"}
-                  pinColor={cfg.color}
+                  anchor={{ x: 0.5, y: 1 }}
                   onPress={() => focusDelivery(d)}
-                />
+                  trackKey={`cust_${d.orderId}_${d.status}`}
+                >
+                  <MapPin
+                    icon={CUSTOMER_MARKER.icon}
+                    color={cfg.color}
+                  />
+                </SmartMarker>
               );
             }
             return null;
           })}
 
-          {/* Driver marker - separate iteration to handle null properly */}
+          {/* Driver markers — vehículo del repartidor */}
           {deliveries.map((d) => {
             const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
+            const vehicle = vehicleMarkerMeta(d.driver?.vehicleType);
 
             if (d.driver?.lat && d.driver?.lng) {
               return (
-                <Marker
+                <SmartMarker
                   key={`driver_${d.orderId}`}
                   coordinate={{
                     latitude: d.driver.lat,
                     longitude: d.driver.lng,
                   }}
                   title={`Repartidor: ${d.driver.name}`}
-                  description={d.driver.vehicleType}
+                  description={vehicle.label}
+                  anchor={{ x: 0.5, y: 0.5 }}
                   onPress={() => focusDelivery(d)}
+                  trackKey={`drv_${d.orderId}_${d.driver.vehicleType}`}
                 >
-                  <View
-                    style={[
-                      styles.driverMarker,
-                      { backgroundColor: cfg.color },
-                    ]}
-                  >
-                    <RNText style={{ fontSize: 16 }}>🛵</RNText>
-                  </View>
-                </Marker>
+                  <DriverPin
+                    vehicleIcon={vehicle.icon}
+                    label={cfg.label}
+                  />
+                </SmartMarker>
               );
             }
             return null;
@@ -557,22 +575,4 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   statusChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  driverMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  businessMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
 });

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -33,6 +33,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 // La API key NUNCA se expone al cliente — se usa proxy del servidor
 // El servidor tiene cache + rate limiting para ahorrar costos
 import { apiRequest } from "@/lib/query-client";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { DriverPin } from "@/components/map/DriverPin";
 
 /** Decodifica el polyline codificado de Google Directions */
 function decodePolyline(
@@ -250,21 +253,26 @@ export default function DriverNavigationScreen() {
         showsMyLocationButton={false}
         showsTraffic={true}
       >
-        {/* Marcador del driver (posición actual) */}
+        {/* Marcador de posición actual (repartidor o cliente navegando) */}
         {driverLocation && (
-          <Marker coordinate={driverLocation} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.driverMarker}>
-              <Feather name="navigation" size={18} color="#FFF" />
-            </View>
-          </Marker>
+          <SmartMarker
+            coordinate={driverLocation}
+            anchor={{ x: 0.5, y: 0.5 }}
+            trackKey="me"
+          >
+            <DriverPin
+              vehicleIcon="navigation"
+              color={ComeYaColors.primary}
+              size={38}
+              showBadge={false}
+            />
+          </SmartMarker>
         )}
 
         {/* Marcador del destino */}
-        <Marker coordinate={destinationCoord} anchor={{ x: 0.5, y: 1 }}>
-          <View style={[styles.destMarker, { backgroundColor: "#9C27B0" }]}>
-            <Feather name="map-pin" size={16} color="#FFF" />
-          </View>
-        </Marker>
+        <SmartMarker coordinate={destinationCoord} anchor={{ x: 0.5, y: 1 }} trackKey="dest">
+          <MapPin icon="map-marker" color="#DC2626" size={38} />
+        </SmartMarker>
 
         {/* Polilínea de la ruta real de Google Directions */}
         {routeCoords.length > 0 && (
@@ -490,39 +498,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: BorderRadius.full,
-  },
-
-  // Driver marker
-  driverMarker: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: ComeYaColors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#FFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-
-  // Destination marker
-  destMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#FFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 5,
   },
 
   // Recenter button

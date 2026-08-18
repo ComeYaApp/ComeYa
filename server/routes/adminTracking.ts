@@ -47,6 +47,8 @@ router.get(
         const [biz] = await db
           .select({
             name: businesses.name,
+            type: businesses.type,
+            categories: businesses.categories,
             latitude: businesses.latitude,
             longitude: businesses.longitude,
           })
@@ -57,6 +59,8 @@ router.get(
         if (biz && biz.latitude && biz.longitude) {
           item.business = {
             name: biz.name || "Negocio",
+            type: biz.type,
+            categories: biz.categories,
             lat: parseFloat(biz.latitude),
             lng: parseFloat(biz.longitude),
           };
@@ -76,6 +80,7 @@ router.get(
             .select({
               currentLatitude: deliveryDrivers.currentLatitude,
               currentLongitude: deliveryDrivers.currentLongitude,
+              vehicleType: deliveryDrivers.vehicleType,
             })
             .from(deliveryDrivers)
             .where(eq(deliveryDrivers.userId, order.deliveryPersonId))
@@ -94,6 +99,7 @@ router.get(
 
             item.driver = {
               name: driverUser?.name || "Repartidor",
+              vehicleType: driverRec.vehicleType,
               lat: parseFloat(driverRec.currentLatitude),
               lng: parseFloat(driverRec.currentLongitude),
             };
