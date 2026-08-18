@@ -46,7 +46,10 @@ function getMissingItems(u: any): string[] {
   if (!u.idDocumentUrl) missing.push("DNI anverso");
   if (!u.idDocumentBackUrl) missing.push("DNI reverso");
   if (!u.dni) missing.push("DNI (número)");
-  if (!u.address) missing.push("Dirección personal");
+  // La dirección personal solo aplica al repartidor; el negocio usa la
+  // dirección de su negocio (que se gestiona en Mis Negocios)
+  if (u.role !== "business_owner" && !u.address)
+    missing.push("Dirección personal");
   if (u.role === "business_owner") {
     if (!u.autonomoDocumentUrl) missing.push("Autónomo/empresa");
     if (!u.business?.address) missing.push("Dirección del negocio");

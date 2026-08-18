@@ -175,6 +175,8 @@ export default function ProfileScreen() {
     idDocumentUrl: string | null;
     idDocumentBackUrl: string | null;
     autonomoDocumentUrl: string | null;
+    dni: string | null;
+    address: string | null;
   } | null>(null);
   const [editName, setEditName] = useState(user?.name || "");
   const [editEmail, setEditEmail] = useState(user?.email || "");
@@ -936,6 +938,8 @@ export default function ProfileScreen() {
           idDocumentUrl: data.idDocumentUrl,
           idDocumentBackUrl: data.idDocumentBackUrl,
           autonomoDocumentUrl: data.autonomoDocumentUrl,
+          dni: data.dni,
+          address: data.address,
         });
         // Sincronizar dni/dirección (en el formulario y en el objeto de usuario)
         if (data.dni) {
@@ -1006,6 +1010,8 @@ export default function ProfileScreen() {
           idDocumentUrl: data.idDocumentUrl,
           idDocumentBackUrl: data.idDocumentBackUrl,
           autonomoDocumentUrl: data.autonomoDocumentUrl,
+          dni: data.dni,
+          address: data.address,
         });
         // Prefill con los valores REALES guardados (no vacíos)
         setVehicleForm({
@@ -1177,9 +1183,9 @@ export default function ProfileScreen() {
               const u = user as any;
               if (!d?.idDocumentUrl) missing.push("DNI anverso");
               if (!d?.idDocumentBackUrl) missing.push("DNI reverso");
-              if (!u?.dni) missing.push("número de DNI");
+              if (!d?.dni && !u?.dni) missing.push("número de DNI");
               if (user.role === "delivery_driver") {
-                if (!u?.address) missing.push("tu dirección");
+                if (!d?.address && !u?.address) missing.push("tu dirección");
                 if (!d?.vehiclePhoto) missing.push("foto del vehículo");
                 if (!d?.vehicleLicensePhoto)
                   missing.push("permiso de circulación");
