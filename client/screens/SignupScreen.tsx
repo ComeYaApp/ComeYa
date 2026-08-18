@@ -251,6 +251,12 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
     }
     if (s === 4 && needsDocs) {
       if (!idDocumentUri) e.idDocument = "Foto del DNI/NIE requerida";
+      // Anverso y reverso del documento de identidad (obligatorio para
+      // verificación en España)
+      if (role === "business_owner" || role === "delivery_driver") {
+        if (!idDocumentBackUri)
+          e.idDocumentBack = "Foto del reverso del DNI/NIE requerida";
+      }
       if (role === "business_owner") {
         if (!autonomoDocumentUri)
           e.autonomoDocument = "Documento de autónomo/empresa requerido";
@@ -951,7 +957,7 @@ export default function SignupScreen({ navigation, route }: SignupScreenProps) {
                 />
 
                 <DocUpload
-                  label="Foto del DNI / NIE (Reverso)"
+                  label="Foto del DNI / NIE (Reverso) *"
                   description="Parte trasera del documento de identidad"
                   uri={idDocumentBackUri}
                   error={errors.idDocumentBack}

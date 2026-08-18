@@ -2619,8 +2619,13 @@ export default function ProfileScreen() {
 
                       <DocumentUploadButton
                         documentType="idDocument"
-                        label="DNI / Identificación"
+                        label="DNI / Identificación (anverso)"
                         currentUrl={professionalData?.idDocumentUrl}
+                      />
+                      <DocumentUploadButton
+                        documentType="idDocumentBack"
+                        label="DNI / Identificación (reverso)"
+                        currentUrl={professionalData?.idDocumentBackUrl}
                       />
                       <DocumentUploadButton
                         documentType="autonomo"

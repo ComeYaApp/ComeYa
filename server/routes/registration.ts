@@ -100,6 +100,23 @@ router.post("/upload-documents", async (req, res) => {
       );
     }
 
+    // Persistir los documentos personales en users (DNI anverso/reverso y
+    // autónomo). Antes solo se subían a Cloudinary y se perdían: el admin
+    // no podía verificar nada.
+    const userUpdates: any = { verificationStatus: "pending" };
+    if (uploadedUrls.idDocument) userUpdates.idDocumentUrl = uploadedUrls.idDocument;
+    if (uploadedUrls.idDocumentBack)
+      userUpdates.idDocumentBackUrl = uploadedUrls.idDocumentBack;
+    if (uploadedUrls.autonomoDocument)
+      userUpdates.autonomoDocumentUrl = uploadedUrls.autonomoDocument;
+
+    if (Object.keys(userUpdates).length > 1) {
+      await db
+        .update(users)
+        .set(userUpdates as any)
+        .where(eq(users.id, userId));
+    }
+
     // Si es repartidor, crear/actualizar registro en delivery_drivers
     if (vehicleType) {
       const [existingDriver] = await db
