@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -28,6 +28,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Badge } from "@/components/Badge";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { useApp, ThemeMode } from "@/contexts/AppContext";
 import { useToast } from "@/contexts/ToastContext";
 import {
@@ -140,6 +141,7 @@ export default function ProfileScreen() {
   const { theme, themeMode, setThemeMode } = useTheme();
   const { settings, updateSettings } = useApp();
   const { user, logout, updateUser } = useAuth();
+  const { businesses } = useBusiness();
   const { showToast } = useToast();
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileImageVersion, setProfileImageVersion] = useState(0);
@@ -909,6 +911,10 @@ export default function ProfileScreen() {
   }, [showNotificationsModal]);
 
   // Cargar datos profesionales (docs, vehículo, dni, dirección) desde el server
+  // (updateUser se referencia por ref para que el callback sea estable y no
+  // provoque un bucle de recargas que hacía parpadear las imágenes)
+  const updateUserRef = useRef(updateUser);
+  updateUserRef.current = updateUser;
   const loadProfessionalDataFromServer = useCallback(
     async (syncForm = false) => {
       try {
@@ -934,11 +940,11 @@ export default function ProfileScreen() {
         // Sincronizar dni/dirección (en el formulario y en el objeto de usuario)
         if (data.dni) {
           setEditDni(data.dni);
-          updateUser({ dni: data.dni });
+          updateUserRef.current({ dni: data.dni });
         }
         if (data.address) {
           setEditAddress(data.address);
-          updateUser({ address: data.address });
+          updateUserRef.current({ address: data.address });
         }
         if (syncForm && data.vehicleType) {
           setVehicleForm({
@@ -953,7 +959,7 @@ export default function ProfileScreen() {
         console.log("Error loading professional data:", error);
       }
     },
-    [updateUser],
+    [],
   );
 
   // Cargar al montar para el checklist de verificación (driver y negocio)
@@ -1182,7 +1188,12 @@ export default function ProfileScreen() {
               if (user.role === "business_owner") {
                 if (!d?.autonomoDocumentUrl)
                   missing.push("documento de autónomo/empresa");
-                missing.push("la dirección de tu negocio (en Mis Negocios)");
+                // Dirección real del primer negocio (el mismo que revisa el admin)
+                const firstBiz = businesses[0];
+                if (!firstBiz)
+                  missing.push("crear tu negocio (en Mis Negocios)");
+                else if (!firstBiz.address)
+                  missing.push("la dirección de tu negocio (en Mis Negocios)");
               }
               return (
                 <View

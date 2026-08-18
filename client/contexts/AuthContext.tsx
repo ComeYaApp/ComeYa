@@ -441,6 +441,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setToken(null);
     setPendingVerificationPhone(null);
+
+    // Volver a la pantalla de login (evita quedarse en una pestaña
+    // del panel con sesión cerrada)
+    try {
+      const { navigationRef } = await import("@/navigation/navigationRef");
+      if (navigationRef.isReady()) {
+        navigationRef.reset({ index: 0, routes: [{ name: "Login" }] });
+      }
+    } catch {
+      /* navegación opcional */
+    }
   };
 
   const updateUser = async (updates: Partial<User>) => {
