@@ -177,6 +177,9 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState(user?.name || "");
   const [editEmail, setEditEmail] = useState(user?.email || "");
   const [editDni, setEditDni] = useState((user as any)?.dni || "");
+  const [editAddress, setEditAddress] = useState(
+    (user as any)?.address || "",
+  );
   const [editCurrentPassword, setEditCurrentPassword] = useState("");
   const [editNewPassword, setEditNewPassword] = useState("");
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -510,6 +513,7 @@ export default function ProfileScreen() {
         name: editName.trim(),
         email: editEmail.trim(),
         dni: editDni.trim(),
+        address: editAddress.trim(),
       });
       const data = await res.json();
       if (data.success || data.user) {
@@ -531,7 +535,11 @@ export default function ProfileScreen() {
             );
           }
         } else {
-          await updateUser({ name: editName.trim(), email: editEmail.trim() });
+          await updateUser({
+            name: editName.trim(),
+            email: editEmail.trim(),
+            address: editAddress.trim(),
+          });
           showToast("Perfil actualizado correctamente", "success");
         }
         setShowEditProfileModal(false);
@@ -2385,12 +2393,36 @@ export default function ProfileScreen() {
                       marginTop: 12,
                     }}
                   >
-                    DNI / Cédula
+                    DNI / NIE
                   </ThemedText>
                   <TextInput
                     value={editDni}
                     onChangeText={setEditDni}
                     placeholder="Número de documento"
+                    placeholderTextColor={theme.textSecondary}
+                    style={[
+                      styles.editInput,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        color: theme.text,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  />
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: theme.textSecondary,
+                      marginBottom: 4,
+                      marginTop: 12,
+                    }}
+                  >
+                    Dirección (donde vives)
+                  </ThemedText>
+                  <TextInput
+                    value={editAddress}
+                    onChangeText={setEditAddress}
+                    placeholder="Calle, número, ciudad"
                     placeholderTextColor={theme.textSecondary}
                     style={[
                       styles.editInput,

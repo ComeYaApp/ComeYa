@@ -38,6 +38,21 @@ const ROLE_LABEL: Record<string, string> = {
   business_owner: "Negocio",
 };
 
+// Documentos mínimos para aprobar (igual que la validación del servidor)
+function getMissingDocs(u: any): string[] {
+  const missing: string[] = [];
+  if (!u.idDocumentUrl) missing.push("DNI anverso");
+  if (!u.idDocumentBackUrl) missing.push("DNI reverso");
+  if (u.role === "business_owner" && !u.autonomoDocumentUrl)
+    missing.push("Autónomo/empresa");
+  if (u.role === "delivery_driver") {
+    if (!u.deliveryDriver?.vehicleLicensePhoto)
+      missing.push("Permiso de circulación");
+    if (!u.deliveryDriver?.vehiclePhoto) missing.push("Foto del vehículo");
+  }
+  return missing;
+}
+
 export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,18 +260,86 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       </Text>
                     </View>
                   </View>
-                  {/* Documentos */}
-                  <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
+                  {/* Documentos y completitud */}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: 6,
+                      marginTop: 6,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <View
+                      style={[
+                        s.badge,
+                        {
+                          backgroundColor:
+                            (getMissingDocs(u).length === 0
+                              ? "#10B981"
+                              : "#F59E0B") + "20",
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name={
+                          getMissingDocs(u).length === 0
+                            ? "check-circle"
+                            : "alert-circle"
+                        }
+                        size={11}
+                        color={
+                          getMissingDocs(u).length === 0
+                            ? "#10B981"
+                            : "#F59E0B"
+                        }
+                      />
+                      <Text
+                        style={{
+                          color:
+                            getMissingDocs(u).length === 0
+                              ? "#10B981"
+                              : "#F59E0B",
+                          fontSize: 11,
+                          fontWeight: "600",
+                          marginLeft: 3,
+                        }}
+                      >
+                        {getMissingDocs(u).length === 0
+                          ? "Docs completos"
+                          : `Faltan ${getMissingDocs(u).length}`}
+                      </Text>
+                    </View>
                     <DocBadge
-                      label="DNI/NIE"
+                      label="DNI"
                       has={!!u.idDocumentUrl}
                       theme={theme}
                     />
                     <DocBadge
-                      label="Autónomo"
-                      has={!!u.autonomoDocumentUrl}
+                      label="DNI reverso"
+                      has={!!u.idDocumentBackUrl}
                       theme={theme}
                     />
+                    {u.role === "business_owner" && (
+                      <DocBadge
+                        label="Autónomo"
+                        has={!!u.autonomoDocumentUrl}
+                        theme={theme}
+                      />
+                    )}
+                    {u.role === "delivery_driver" && (
+                      <>
+                        <DocBadge
+                          label="Permiso"
+                          has={!!u.deliveryDriver?.vehicleLicensePhoto}
+                          theme={theme}
+                        />
+                        <DocBadge
+                          label="Foto vehículo"
+                          has={!!u.deliveryDriver?.vehiclePhoto}
+                          theme={theme}
+                        />
+                      </>
+                    )}
                   </View>
                 </View>
 
@@ -543,8 +626,13 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   {/* Documentos */}
                   <Section title="Documentos personales" theme={theme}>
                     <DocRow
-                      label="Foto DNI/NIE"
+                      label="Foto DNI/NIE (anverso)"
                       url={selected.idDocumentUrl}
+                      theme={theme}
+                    />
+                    <DocRow
+                      label="Foto DNI/NIE (reverso)"
+                      url={selected.idDocumentBackUrl}
                       theme={theme}
                     />
                     <DocRow
@@ -617,53 +705,83 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       numberOfLines={3}
                     />
                   </Section>
-
-                  {/* Acciones */}
-                  <View style={s.actions}>
-                    <Pressable
-                      onPress={() => handleAction("reject")}
-                      disabled={saving}
-                      style={[
-                        s.actionBtn,
-                        {
-                          backgroundColor: "#EF4444",
-                          opacity: saving ? 0.6 : 1,
-                        },
-                      ]}
-                    >
-                      {saving ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                      ) : (
-                        <>
-                          <Feather name="x-circle" size={18} color="#FFF" />
-                          <Text style={s.actionBtnText}>Rechazar</Text>
-                        </>
-                      )}
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleAction("approve")}
-                      disabled={saving}
-                      style={[
-                        s.actionBtn,
-                        {
-                          backgroundColor: "#10B981",
-                          opacity: saving ? 0.6 : 1,
-                        },
-                      ]}
-                    >
-                      {saving ? (
-                        <ActivityIndicator color="#FFF" size="small" />
-                      ) : (
-                        <>
-                          <Feather name="check-circle" size={18} color="#FFF" />
-                          <Text style={s.actionBtnText}>Aprobar</Text>
-                        </>
-                      )}
-                    </Pressable>
-                  </View>
                 </>
               )}
             </ScrollView>
+
+            {/* Acciones fijas (siempre visibles, fuera del scroll) */}
+            {selected && (
+              <View style={s.footer}>
+                {(() => {
+                  const missing = getMissingDocs(selected);
+                  return missing.length > 0 ? (
+                    <Text
+                      style={{
+                        color: "#F59E0B",
+                        fontSize: 12,
+                        fontWeight: "600",
+                        marginBottom: 8,
+                      }}
+                    >
+                      ⚠️ Faltan documentos: {missing.join(", ")}
+                    </Text>
+                  ) : (
+                    <Text
+                      style={{
+                        color: "#10B981",
+                        fontSize: 12,
+                        fontWeight: "600",
+                        marginBottom: 8,
+                      }}
+                    >
+                      ✓ Documentos completos — puede aprobarse
+                    </Text>
+                  );
+                })()}
+                <View style={s.actions}>
+                  <Pressable
+                    onPress={() => handleAction("reject")}
+                    disabled={saving}
+                    style={[
+                      s.actionBtn,
+                      {
+                        backgroundColor: "#EF4444",
+                        opacity: saving ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <>
+                        <Feather name="x-circle" size={18} color="#FFF" />
+                        <Text style={s.actionBtnText}>Rechazar</Text>
+                      </>
+                    )}
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleAction("approve")}
+                    disabled={saving}
+                    style={[
+                      s.actionBtn,
+                      {
+                        backgroundColor: "#10B981",
+                        opacity: saving ? 0.6 : 1,
+                      },
+                    ]}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                      <>
+                        <Feather name="check-circle" size={18} color="#FFF" />
+                        <Text style={s.actionBtnText}>Aprobar</Text>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </Pressable>
         </Pressable>
       </Modal>
@@ -866,6 +984,11 @@ const s = StyleSheet.create({
     textAlignVertical: "top",
   },
   actions: { flexDirection: "row", gap: 12, marginTop: 8, marginBottom: 20 },
+  footer: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128,128,128,0.2)",
+  },
   actionBtn: {
     flex: 1,
     flexDirection: "row",
