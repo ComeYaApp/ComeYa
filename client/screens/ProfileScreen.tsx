@@ -607,6 +607,19 @@ export default function ProfileScreen() {
               }
             : null,
         );
+        // Mantener professionalData sincronizado (aviso de completitud y fotos)
+        setProfessionalData((prev) =>
+          prev
+            ? {
+                ...prev,
+                vehicleType: vehicleForm.vehicleType,
+                vehiclePlate: vehicleForm.vehiclePlate.trim().toUpperCase(),
+                vehicleBrand: vehicleForm.vehicleBrand.trim(),
+                vehicleModel: vehicleForm.vehicleModel.trim(),
+                vehicleColor: vehicleForm.vehicleColor.trim(),
+              }
+            : prev,
+        );
       } else {
         showToast(data.message || "Error al guardar vehículo", "error");
       }
@@ -929,6 +942,48 @@ export default function ProfileScreen() {
       loadProfessionalData();
     }
   }, [showEditProfileModal, user?.role]);
+
+  // Cargar datos reales del vehículo al abrir "Mi vehículo" (datos + fotos)
+  useEffect(() => {
+    if (!showVehicleModal || user?.role !== "delivery_driver") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiRequest("GET", "/api/users/profile/full");
+        const data = await res.json();
+        if (!data.success || cancelled) return;
+        setProfessionalData({
+          vehicleType: data.vehicleType,
+          vehiclePlate: data.vehiclePlate,
+          vehicleBrand: data.vehicleBrand,
+          vehicleModel: data.vehicleModel,
+          vehicleColor: data.vehicleColor,
+          vehicleYear: data.vehicleYear,
+          vehiclePhoto: data.vehiclePhoto,
+          vehiclePlatePhoto: data.vehiclePlatePhoto,
+          vehicleItvPhoto: data.vehicleItvPhoto,
+          vehicleInsurancePhoto: data.vehicleInsurancePhoto,
+          vehicleLicensePhoto: data.vehicleLicensePhoto,
+          idDocumentUrl: data.idDocumentUrl,
+          idDocumentBackUrl: data.idDocumentBackUrl,
+          autonomoDocumentUrl: data.autonomoDocumentUrl,
+        });
+        // Prefill con los valores REALES guardados (no vacíos)
+        setVehicleForm({
+          vehicleType: data.vehicleType || "",
+          vehicleBrand: data.vehicleBrand || "",
+          vehicleModel: data.vehicleModel || "",
+          vehiclePlate: data.vehiclePlate || "",
+          vehicleColor: data.vehicleColor || "",
+        });
+      } catch (error) {
+        console.log("Error loading vehicle data:", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showVehicleModal, user?.role]);
 
   const syncNotificationStatus = async () => {
     try {
@@ -1372,14 +1427,7 @@ export default function ProfileScreen() {
               }
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                // Pre-fill form with existing data
-                setVehicleForm({
-                  vehicleType: driverStats?.vehicleType || "",
-                  vehicleBrand: "",
-                  vehicleModel: "",
-                  vehiclePlate: driverStats?.vehiclePlate || "",
-                  vehicleColor: "",
-                });
+                // Los valores reales se cargan al abrir el modal
                 setShowVehicleModal(true);
               }}
             />
