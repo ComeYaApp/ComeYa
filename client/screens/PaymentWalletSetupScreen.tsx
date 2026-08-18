@@ -105,6 +105,14 @@ export default function PaymentWalletSetupScreen() {
   const isCustomer = user?.role === "customer";
   const METHODS = isCustomer ? CUSTOMER_METHODS : BUSINESS_METHODS;
 
+  // Estado de Stripe Connect (negocio y repartidor)
+  const [stripeStatus, setStripeStatus] = useState<{
+    hasAccount?: boolean;
+    onboardingComplete?: boolean;
+    canReceivePayments?: boolean;
+  } | null>(null);
+  const [stripeLoading, setStripeLoading] = useState(false);
+
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -120,11 +128,47 @@ export default function PaymentWalletSetupScreen() {
     : "Cuentas para recibir pagos";
   const subtitle = isCustomer
     ? "Guarda tus preferencias para agilizar el pago en el checkout"
-    : "ComeYa transferirá tus ganancias a estas cuentas tras cada entrega confirmada";
+    : "Con Stripe cobras automáticamente. Con Bizum, IBAN o PayPal, el administrador te transfiere manualmente al aprobar tus pagos.";
 
   useEffect(() => {
     loadAccounts();
   }, []);
+
+  // Cargar estado de Stripe para negocio y repartidor
+  useEffect(() => {
+    if (isCustomer) return;
+    (async () => {
+      try {
+        const res = await apiRequest("GET", "/api/connect/status");
+        const data = await res.json();
+        if (res.ok) setStripeStatus(data);
+      } catch {
+        /* estado de Stripe no disponible */
+      }
+    })();
+  }, [isCustomer]);
+
+  const startStripeOnboarding = async () => {
+    if (!user) return;
+    setStripeLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/connect/onboard", {});
+      const data = await res.json();
+      if (data.success && data.onboardingUrl) {
+        const { Linking } = await import("react-native");
+        await Linking.openURL(data.onboardingUrl);
+      } else {
+        Alert.alert(
+          "Error",
+          data.error || "No se pudo iniciar la configuración de Stripe",
+        );
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo conectar con Stripe");
+    } finally {
+      setStripeLoading(false);
+    }
+  };
 
   const loadAccounts = async () => {
     try {
@@ -289,13 +333,13 @@ export default function PaymentWalletSetupScreen() {
       {/* Banner Stripe Connect para negocios y repartidores */}
       {!isCustomer && (
         <Pressable
-          onPress={() =>
-            (navigation as any).navigate(
-              user?.role === "business_owner"
-                ? "BusinessStripeSetup"
-                : "WithdrawalScreen",
-            )
-          }
+          onPress={() => {
+            if (user?.role === "business_owner") {
+              (navigation as any).navigate("BusinessStripeSetup");
+            } else if (!stripeStatus?.canReceivePayments) {
+              startStripeOnboarding();
+            }
+          }}
           style={[
             styles.stripeConnectBanner,
             {
@@ -323,10 +367,22 @@ export default function PaymentWalletSetupScreen() {
               type="caption"
               style={{ color: theme.textSecondary, marginTop: 2 }}
             >
-              Conecta tu cuenta bancaria y recibe tus ganancias automáticamente
+              {user?.role === "business_owner"
+                ? "Configura tu cuenta bancaria y recibe tus ganancias automáticamente"
+                : stripeStatus?.canReceivePayments
+                  ? "Cuenta conectada — cobrarás automáticamente en tu banco"
+                  : stripeStatus?.hasAccount
+                    ? "Completa la configuración de tu cuenta para cobrar automáticamente"
+                    : "Conecta tu cuenta bancaria y cobra automáticamente en cada entrega"}
             </ThemedText>
           </View>
-          <Feather name="chevron-right" size={18} color="#635BFF" />
+          {stripeLoading ? (
+            <ActivityIndicator size="small" color="#635BFF" />
+          ) : stripeStatus?.canReceivePayments ? (
+            <Feather name="check-circle" size={18} color="#10B981" />
+          ) : (
+            <Feather name="chevron-right" size={18} color="#635BFF" />
+          )}
         </Pressable>
       )}
 

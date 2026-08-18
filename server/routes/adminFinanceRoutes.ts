@@ -567,6 +567,17 @@ router.post(
         })
         .where(eq(payouts.id, req.params.id));
 
+      // Si es una solicitud de retiro (order_id con prefijo wdr-),
+      // liquidar el saldo retenido en la wallet del usuario
+      if ((payout.orderId || "").startsWith("wdr-")) {
+        try {
+          const { settleWithdrawalWallet } = await import("../payoutService");
+          await settleWithdrawalWallet(payout.recipientId, payout.amount);
+        } catch (settleError) {
+          console.error("Error settling withdrawal wallet:", settleError);
+        }
+      }
+
       // Notificación push al recipiente
       try {
         const { sendPushToUser } = await import("../enhancedPushService");

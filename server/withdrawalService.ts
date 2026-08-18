@@ -1,13 +1,13 @@
 import { db } from "./db";
-import { wallets, withdrawalRequests, users } from "../shared/schema-mysql";
+import { wallets, payouts, users, paymentAccounts } from "../shared/schema-mysql";
 import { eq, and, desc } from "drizzle-orm";
 
-const MINIMUM_WITHDRAWAL = 5000; // Bs. 50 en centavos
+const MINIMUM_WITHDRAWAL = 5000; // 50 € en céntimos
 
 export interface WithdrawalRequest {
   userId: string;
   amount: number;
-  method: "pago_movil" | "bank_transfer";
+  method?: "pago_movil" | "bank_transfer";
   pagoMovilPhone?: string;
   pagoMovilBank?: string;
   pagoMovilCedula?: string;
@@ -19,11 +19,14 @@ export interface WithdrawalRequest {
   };
 }
 
+// Payouts de tipo retiro: order_id autogenerado con prefijo wdr- para
+// distinguirlos de los payouts de pedido
+const WITHDRAWAL_ORDER_PREFIX = "wdr-";
+
 export class WithdrawalService {
   async requestWithdrawal(request: WithdrawalRequest) {
     // 1. Validar usando unifiedFinancialService
     const { financialService } = await import("./unifiedFinancialService");
-    const { users } = await import("../shared/schema-mysql");
 
     const [user] = await db
       .select()
@@ -40,9 +43,11 @@ export class WithdrawalService {
       user.role,
     );
     if (!canWithdraw.allowed) {
-      throw new Error(
-        canWithdraw.reason || "No puedes retirar en este momento",
-      );
+      throw new Error(canWithdraw.reason || "No puedes retirar en este momento");
+    }
+
+    if (request.amount < MINIMUM_WITHDRAWAL) {
+      throw new Error("El monto mínimo de retiro es 50 €");
     }
 
     const wallet = await financialService.getWallet(request.userId);
@@ -53,11 +58,10 @@ export class WithdrawalService {
     }
 
     // Si no vienen datos bancarios, usar la cuenta de pago guardada del
-    // usuario (configurada en su perfil — Bizum/IBAN/PayPal)
+    // usuario (configurada en Métodos de pago — Bizum/IBAN/PayPal)
     let bankAccount = request.bankAccount;
     let pagoMovilPhone = request.pagoMovilPhone;
     if (!bankAccount && !pagoMovilPhone) {
-      const { paymentAccounts } = await import("../shared/schema-mysql");
       const accounts = await db
         .select()
         .from(paymentAccounts)
@@ -87,81 +91,118 @@ export class WithdrawalService {
       }
     }
 
-    // 2. Crear solicitud
-    await db.insert(withdrawalRequests).values({
-      userId: request.userId,
-      walletId: wallet.id,
+    const snapshot = bankAccount
+      ? JSON.stringify(bankAccount)
+      : JSON.stringify({ pagoMovilPhone: pagoMovilPhone || null });
+
+    // 2. Crear la solicitud como payout pendiente (el admin la aprueba)
+    const payoutId = crypto.randomUUID();
+    await db.insert(payouts).values({
+      id: payoutId,
+      orderId: `${WITHDRAWAL_ORDER_PREFIX}${payoutId}`,
+      recipientId: request.userId,
+      recipientType: user.role === "business_owner" ? "business" : "driver",
       amount: request.amount,
-      method: request.method,
-      pagoMovilPhone: pagoMovilPhone,
-      pagoMovilBank: request.pagoMovilBank,
-      pagoMovilCedula: request.pagoMovilCedula,
-      bankAccountNumber: bankAccount?.accountNumber,
-      bankName: bankAccount?.bankName,
-      accountHolder: bankAccount?.accountHolder,
-      accountType: bankAccount?.accountType,
+      method: request.method || "bank_transfer",
+      accountSnapshot: snapshot,
       status: "pending",
-      requestedAt: new Date(),
+      notes: JSON.stringify({ type: "withdrawal" }),
     });
 
-    // Obtener la solicitud creada
-    const [withdrawal] = await db
-      .select()
-      .from(withdrawalRequests)
-      .where(eq(withdrawalRequests.userId, request.userId))
-      .orderBy(desc(withdrawalRequests.requestedAt))
-      .limit(1);
+    // 3. Retener el saldo mientras el admin aprueba (evita retiros dobles)
+    await db
+      .update(wallets)
+      .set({
+        balance: Math.max(0, wallet.balance - request.amount),
+        pendingBalance: (wallet.pendingBalance || 0) + request.amount,
+      })
+      .where(eq(wallets.userId, request.userId));
 
-    return withdrawal; // Admin procesará manualmente
+    // 4. Notificar a los administradores
+    try {
+      const { notifyAdmins } = await import("./websocket");
+      notifyAdmins({
+        type: "new_withdrawal",
+        payoutId,
+        userId: request.userId,
+        amount: request.amount,
+        message: "Nueva solicitud de retiro pendiente de aprobación",
+      });
+      const { sendPushToUser } = await import("./enhancedPushService");
+      const pendingAdmins = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, "admin"));
+      for (const admin of pendingAdmins) {
+        await sendPushToUser(admin.id, {
+          title: "💰 Retiro pendiente",
+          body: `Un usuario solicitó retirar ${(request.amount / 100).toFixed(2)} €. Revisa Finanzas.`,
+          data: { screen: "AdminFinance" },
+        });
+      }
+    } catch (notifyError) {
+      console.error("Error notifying admins of withdrawal:", notifyError);
+    }
+
+    return {
+      success: true,
+      id: payoutId,
+      status: "pending",
+      message: "Solicitud enviada. El admin la aprobará pronto.",
+    };
   }
 
   async getWithdrawalHistory(userId: string) {
-    return await db
-      .select({
-        id: withdrawalRequests.id,
-        amount: withdrawalRequests.amount,
-        method: withdrawalRequests.method,
-        status: withdrawalRequests.status,
-        requestedAt: withdrawalRequests.requestedAt,
-        completedAt: withdrawalRequests.completedAt,
-        errorMessage: withdrawalRequests.errorMessage,
-      })
-      .from(withdrawalRequests)
-      .where(eq(withdrawalRequests.userId, userId))
-      .orderBy(desc(withdrawalRequests.requestedAt));
+    // Los retiros son payouts cuyo order_id empieza por el prefijo wdr-
+    const all = await db
+      .select()
+      .from(payouts)
+      .where(eq(payouts.recipientId, userId))
+      .orderBy(desc(payouts.createdAt));
+    return all.filter((p: any) =>
+      (p.orderId || "").startsWith(WITHDRAWAL_ORDER_PREFIX),
+    );
   }
 
-  // Admin: Aprobar retiro bancario manual
+  // Admin: Aprobar un retiro (marcar pagado + liquidar el saldo retenido)
   async approveWithdrawal(withdrawalId: string, adminId: string) {
     const [withdrawal] = await db
       .select()
-      .from(withdrawalRequests)
-      .where(eq(withdrawalRequests.id, withdrawalId))
+      .from(payouts)
+      .where(eq(payouts.id, withdrawalId))
       .limit(1);
 
     if (!withdrawal || withdrawal.status !== "pending") {
       throw new Error("Solicitud no válida");
     }
 
-    await db.transaction(async (tx) => {
-      // Marcar como completado
-      await tx
-        .update(withdrawalRequests)
-        .set({
-          status: "completed",
-          completedAt: new Date(),
-          approvedBy: adminId,
-        })
-        .where(eq(withdrawalRequests.id, withdrawalId));
+    await db
+      .update(payouts)
+      .set({
+        status: "paid",
+        paidBy: adminId,
+        paidAt: new Date(),
+      })
+      .where(eq(payouts.id, withdrawalId));
 
-      // Descontar de wallet
-      await tx
+    // Liquidar el saldo retenido
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, withdrawal.recipientId))
+      .limit(1);
+    if (wallet) {
+      await db
         .update(wallets)
         .set({
-          balance: db.raw(`balance - ${withdrawal.amount}`),
+          pendingBalance: Math.max(
+            0,
+            (wallet.pendingBalance || 0) - withdrawal.amount,
+          ),
+          totalWithdrawn: (wallet.totalWithdrawn || 0) + withdrawal.amount,
         })
-        .where(eq(wallets.userId, withdrawal.userId));
-    });
+        .where(eq(wallets.userId, withdrawal.recipientId));
+    }
 
     return { success: true };
   }
@@ -179,7 +220,6 @@ export async function getWalletBalance(userId: string) {
       .limit(1);
 
     if (!wallet) {
-      // Crear wallet si no existe
       await db.insert(wallets).values({
         userId,
         balance: 0,
@@ -222,29 +262,7 @@ export async function getWalletBalance(userId: string) {
 
 // Función para obtener historial de retiros
 export async function getWithdrawalHistory(userId: string) {
-  try {
-    const withdrawals = await db
-      .select({
-        id: withdrawalRequests.id,
-        amount: withdrawalRequests.amount,
-        method: withdrawalRequests.method,
-        status: withdrawalRequests.status,
-        requestedAt: withdrawalRequests.requestedAt,
-        completedAt: withdrawalRequests.completedAt,
-        errorMessage: withdrawalRequests.errorMessage,
-      })
-      .from(withdrawalRequests)
-      .where(eq(withdrawalRequests.userId, userId))
-      .orderBy(desc(withdrawalRequests.requestedAt));
-
-    return {
-      success: true,
-      withdrawals,
-    };
-  } catch (error: any) {
-    console.error("Error getting withdrawal history:", error);
-    throw new Error("Error al obtener historial de retiros");
-  }
+  return withdrawalService.getWithdrawalHistory(userId);
 }
 
 // Función para solicitar retiro
@@ -257,12 +275,12 @@ export async function cancelWithdrawal(withdrawalId: string, userId: string) {
   try {
     const [withdrawal] = await db
       .select()
-      .from(withdrawalRequests)
+      .from(payouts)
       .where(
         and(
-          eq(withdrawalRequests.id, withdrawalId),
-          eq(withdrawalRequests.userId, userId),
-          eq(withdrawalRequests.status, "pending"),
+          eq(payouts.id, withdrawalId),
+          eq(payouts.recipientId, userId),
+          eq(payouts.status, "pending"),
         ),
       )
       .limit(1);
@@ -274,12 +292,28 @@ export async function cancelWithdrawal(withdrawalId: string, userId: string) {
     }
 
     await db
-      .update(withdrawalRequests)
-      .set({
-        status: "cancelled",
-        completedAt: new Date(),
-      })
-      .where(eq(withdrawalRequests.id, withdrawalId));
+      .update(payouts)
+      .set({ status: "cancelled", paidAt: new Date() })
+      .where(eq(payouts.id, withdrawalId));
+
+    // Devolver el saldo retenido
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .limit(1);
+    if (wallet) {
+      await db
+        .update(wallets)
+        .set({
+          balance: wallet.balance + withdrawal.amount,
+          pendingBalance: Math.max(
+            0,
+            (wallet.pendingBalance || 0) - withdrawal.amount,
+          ),
+        })
+        .where(eq(wallets.userId, userId));
+    }
 
     return {
       success: true,
@@ -287,6 +321,6 @@ export async function cancelWithdrawal(withdrawalId: string, userId: string) {
     };
   } catch (error: any) {
     console.error("Error cancelling withdrawal:", error);
-    throw new Error("Error al cancelar retiro");
+    throw new Error(error.message || "Error al cancelar retiro");
   }
 }

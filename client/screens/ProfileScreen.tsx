@@ -1391,14 +1391,6 @@ export default function ProfileScreen() {
                 navigation.navigate("PaymentWalletSetup" as any)
               }
             />
-            <SettingsItem
-              icon="dollar-sign"
-              label="Cuentas de pago y retiros"
-              value="Stripe · IBAN"
-              onPress={() =>
-                navigation.navigate("WithdrawalScreen" as any)
-              }
-            />
             <View style={styles.strikesContainer}>
               <View style={styles.strikesHeader}>
                 <View style={styles.strikesIconContainer}>

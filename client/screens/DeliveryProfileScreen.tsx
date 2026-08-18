@@ -820,10 +820,10 @@ export default function DeliveryProfileScreen() {
           />
           <SettingsItem
             icon="credit-card"
-            label="Cuentas de pago y retiros"
+            label="Métodos de pago"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              navigation.navigate("WithdrawalScreen" as any);
+              navigation.navigate("PaymentWalletSetup" as any);
             }}
           />
         </View>

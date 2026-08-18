@@ -6,9 +6,14 @@ import {
   payouts,
   paymentAccounts,
   transactions,
+  businesses,
+  wallets,
 } from "../shared/schema-mysql";
 import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "./logger";
+
+// Payouts de tipo retiro (creados por withdrawalService): order_id con prefijo
+const WITHDRAWAL_ORDER_PREFIX = "wdr-";
 
 // Al confirmar un pago (comprobante verificado), crear los payouts pendientes
 export async function createPayoutsForOrder(orderId: string): Promise<void> {
@@ -28,9 +33,19 @@ export async function createPayoutsForOrder(orderId: string): Promise<void> {
 
   const inserts = [];
 
-  // Payout al negocio
+  // Payout al negocio — la cuenta de pago pertenece al DUEÑO del negocio
   if (order.businessEarnings && order.businessEarnings > 0) {
-    const account = await getDefaultAccount(order.businessId);
+    let account = null;
+    if (order.businessId) {
+      const [business] = await db
+        .select({ ownerId: businesses.ownerId })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      if (business?.ownerId) {
+        account = await getDefaultAccount(business.ownerId);
+      }
+    }
     inserts.push({
       orderId,
       recipientId: order.businessId,
@@ -65,6 +80,19 @@ export async function createPayoutsForOrder(orderId: string): Promise<void> {
     logger.info(`💰 Payouts created for order ${orderId}`, {
       count: inserts.length,
     });
+
+    // Notificar a los administradores (pagos manuales pendientes)
+    try {
+      const { notifyAdmins } = await import("./websocket");
+      notifyAdmins({
+        type: "new_payouts",
+        orderId,
+        count: inserts.length,
+        message: "Nuevos pagos pendientes de liberación manual",
+      });
+    } catch (notifyError) {
+      console.error("Error notifying admins of payouts:", notifyError);
+    }
   }
 }
 
@@ -92,6 +120,11 @@ export async function markPayoutPaid(
     })
     .where(eq(payouts.id, payoutId));
 
+  // Si es un retiro (wdr-), liquidar el saldo retenido en la wallet
+  if ((payout.orderId || "").startsWith(WITHDRAWAL_ORDER_PREFIX)) {
+    await settleWithdrawalWallet(payout.recipientId, payout.amount);
+  }
+
   // Registrar en transactions como historial contable
   await db.insert(transactions).values({
     orderId: payout.orderId,
@@ -111,26 +144,29 @@ export async function markPayoutPaid(
   logger.info(`✅ Payout ${payoutId} marked as paid by admin ${adminId}`);
 }
 
+// Liquidar el saldo retenido de un retiro aprobado/cancelado
+export async function settleWithdrawalWallet(
+  userId: string,
+  amount: number,
+): Promise<void> {
+  const [wallet] = await db
+    .select()
+    .from(wallets)
+    .where(eq(wallets.userId, userId))
+    .limit(1);
+  if (!wallet) return;
+  await db
+    .update(wallets)
+    .set({
+      pendingBalance: Math.max(0, (wallet.pendingBalance || 0) - amount),
+      totalWithdrawn: (wallet.totalWithdrawn || 0) + amount,
+    })
+    .where(eq(wallets.userId, userId));
+}
+
 // Obtener payouts pendientes (panel admin)
 export async function getPendingPayouts() {
-  const rows = await db.execute(
-    db
-      .select({
-        id: payouts.id,
-        orderId: payouts.orderId,
-        recipientId: payouts.recipientId,
-        recipientType: payouts.recipientType,
-        amount: payouts.amount,
-        method: payouts.method,
-        accountSnapshot: payouts.accountSnapshot,
-        status: payouts.status,
-        createdAt: payouts.createdAt,
-      })
-      .from(payouts)
-      .where(eq(payouts.status, "pending"))
-      .toSQL(),
-  );
-  return rows;
+  return db.select().from(payouts).where(eq(payouts.status, "pending"));
 }
 
 // Historial de pagos de un negocio o driver
