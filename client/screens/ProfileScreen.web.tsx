@@ -93,7 +93,10 @@ export default function ProfileScreen() {
               strikes: statusData.strikes || 0,
               vehicleType: profileData.vehicleType,
               vehiclePlate: profileData.vehiclePlate,
-              verificationStatus: user?.isActive ? "verified" : "pending",
+              verificationStatus:
+                profileData.verificationStatus ||
+                (user as any)?.verificationStatus ||
+                "pending",
             });
           }
         })
@@ -219,9 +222,11 @@ export default function ProfileScreen() {
 
   const approvalStatus =
     user?.role === "business_owner" || user?.role === "delivery_driver"
-      ? user?.isActive
+      ? user?.verificationStatus === "verified"
         ? { text: "Aprobado", variant: "success" as const }
-        : { text: "En revisión", variant: "warning" as const }
+        : user?.verificationStatus === "rejected"
+          ? { text: "Rechazado", variant: "error" as const }
+          : { text: "En revisión", variant: "warning" as const }
       : null;
 
   const subBadge =

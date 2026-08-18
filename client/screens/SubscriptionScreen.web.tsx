@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -56,44 +56,15 @@ const PAYMENT_METHODS = [
   },
 ];
 
-const PLANS = [
-  {
-    id: "premium",
-    name: "Premium",
-    price: "€15/mes",
-    gradient: ["#FF6B6B", "#4ECDC4"] as [string, string],
-    benefits: [
-      "Envío gratis ilimitado",
-      "10% descuento en todos los pedidos",
-      "Soporte prioritario 24/7",
-      "Acceso a ofertas exclusivas",
-    ],
-  },
-  {
-    id: "business",
-    name: "Business",
-    price: "€30/mes",
-    gradient: ["#667eea", "#764ba2"] as [string, string],
-    benefits: [
-      "Todo lo de Premium",
-      "15% descuento en todos los pedidos",
-      "Sin mínimo de pedido",
-      "Facturación para empresas",
-    ],
-  },
-];
-
 export default function SubscriptionScreen() {
   const navigation = useNavigation<any>();
   const { isDark } = useTheme();
   const { user } = useAuth();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedPlan, setSelectedPlan] = useState<"premium" | "business">(
-    "premium",
-  );
+  const [selectedPlan, setSelectedPlan] = useState<string>("");
   const [paymentModal, setPaymentModal] = useState<{
-    plan: "premium" | "business";
+    plan: string;
     amount: number;
     subscriptionId: string;
   } | null>(null);
@@ -154,8 +125,34 @@ export default function SubscriptionScreen() {
     },
   });
 
+  // Planes legacy (premium/business) retirados: solo los 7 de ComeYa
+  const BUSINESS_PLAN_KEYS = [
+    "impulso_local",
+    "top_soria",
+    "premium_soria",
+    "logistica_local",
+    "escaparate_soria",
+    "express_semana",
+  ];
+  const isBusinessOwner = user?.role === "business_owner";
+  const visiblePlans: Array<{ key: string; plan: any }> = plansData
+    ? Object.keys(plansData)
+        .filter((k) => {
+          const p = plansData[k];
+          if (!p?.price) return false;
+          return isBusinessOwner
+            ? BUSINESS_PLAN_KEYS.includes(k)
+            : k === "soria_local";
+        })
+        .map((k) => ({ key: k, plan: plansData[k] }))
+    : [];
+
+  const planLabel = (key: string) =>
+    plansData?.[key]?.name ||
+    (key === "premium" ? "Premium" : key === "business" ? "Business" : key);
+
   const subscribeMutation = useMutation({
-    mutationFn: async (plan: "premium" | "business") => {
+    mutationFn: async (plan: string) => {
       const res = await apiRequest("POST", "/api/subscriptions/subscribe", {
         plan,
         billingCycle: "monthly",
@@ -166,7 +163,7 @@ export default function SubscriptionScreen() {
       if (data.success && data.subscriptionId) {
         setPaymentModal({
           plan,
-          amount: plan === "premium" ? 1500 : 3000,
+          amount: plansData?.[plan]?.price || 0,
           subscriptionId: data.subscriptionId,
         });
       } else {
@@ -190,10 +187,19 @@ export default function SubscriptionScreen() {
   const isActive = subscriptionData?.status === "active";
   const isPending = subscriptionData?.status === "pending_payment";
 
-  const NAV_ITEMS = [
-    { id: "premium", label: "Plan Premium", icon: "star" },
-    { id: "business", label: "Plan Business", icon: "briefcase" },
-  ];
+  // NAV: los planes visibles del usuario
+  const NAV_ITEMS = visiblePlans.map(({ key, plan }) => ({
+    id: key,
+    label: plan.name || key,
+    icon: key === "top_soria" ? "star" : "zap",
+  }));
+
+  // Seleccionar el primer plan visible por defecto
+  useEffect(() => {
+    if (!selectedPlan && visiblePlans.length > 0) {
+      setSelectedPlan(visiblePlans[0].key);
+    }
+  }, [visiblePlans]);
 
   return (
     <WebLayout>
@@ -224,8 +230,7 @@ export default function SubscriptionScreen() {
               >
                 <Feather name="check-circle" size={13} color="#10B981" />
                 <Text style={[s.activeBadgeText, { color: "#10B981" }]}>
-                  Plan {currentPlan === "premium" ? "Premium" : "Business"}{" "}
-                  activo
+                  Plan {planLabel(currentPlan)} activo
                 </Text>
               </View>
             ) : (
@@ -292,8 +297,7 @@ export default function SubscriptionScreen() {
               <Feather name="check-circle" size={20} color="#10B981" />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[s.currentBannerTitle, { color: text }]}>
-                  Plan {currentPlan === "premium" ? "Premium" : "Business"}{" "}
-                  activo
+                  Plan {planLabel(currentPlan)} activo
                 </Text>
                 {plansData?.[currentPlan] && (
                   <Text style={[s.currentBannerSub, { color: sub }]}>
@@ -337,8 +341,8 @@ export default function SubscriptionScreen() {
                   ⏳ Verificando pago
                 </Text>
                 <Text style={[s.currentBannerSub, { color: sub }]}>
-                  Plan {currentPlan === "premium" ? "Premium" : "Business"} —
-                  pendiente de activación (5-15 min)
+                  Plan {planLabel(currentPlan)} — pendiente de activación
+                  (5-15 min)
                 </Text>
               </View>
               <Pressable
@@ -360,13 +364,24 @@ export default function SubscriptionScreen() {
 
           {/* Cards de planes */}
           <View style={s.plansRow}>
-            {PLANS.map((plan) => {
-              const isSelected = selectedPlan === plan.id;
-              const isCurrent = currentPlan === plan.id && isActive;
+            {visiblePlans.map(({ key, plan }) => {
+              const isSelected = selectedPlan === key;
+              const isCurrent = currentPlan === key && isActive;
+              const color = plan.color || PRIMARY;
+              const benefitsList: string[] =
+                Array.isArray(plan.benefitsList) &&
+                plan.benefitsList.length > 0
+                  ? plan.benefitsList
+                      .map((b: any) => b.description)
+                      .filter((d: any) => !!d)
+                  : (plan.description || "")
+                      .split("\n")
+                      .map((t: string) => t.trim())
+                      .filter((t: string) => t.length > 0);
               return (
                 <Pressable
-                  key={plan.id}
-                  onPress={() => setSelectedPlan(plan.id as any)}
+                  key={key}
+                  onPress={() => setSelectedPlan(key)}
                   style={[
                     s.planCard,
                     {
@@ -376,24 +391,22 @@ export default function SubscriptionScreen() {
                   ]}
                 >
                   {/* Header con gradiente simulado */}
-                  <View
-                    style={[
-                      s.planHeader,
-                      { backgroundColor: plan.gradient[0] },
-                    ]}
-                  >
+                  <View style={[s.planHeader, { backgroundColor: color }]}>
                     {isCurrent && (
                       <View style={s.currentPill}>
                         <Text style={s.currentPillText}>Activo</Text>
                       </View>
                     )}
                     <Text style={s.planName}>{plan.name}</Text>
-                    <Text style={s.planPrice}>{plan.price}</Text>
+                    <Text style={s.planPrice}>
+                      {(plan.price / 100).toFixed(2)} €/
+                      {plan.billingCycle === "weekly" ? "semana" : "mes"}
+                    </Text>
                   </View>
 
                   {/* Beneficios */}
                   <View style={s.planBody}>
-                    {plan.benefits.map((b, i) => (
+                    {benefitsList.map((b, i) => (
                       <View key={i} style={s.benefitRow}>
                         <View
                           style={[s.benefitDot, { backgroundColor: PRIMARY }]}
@@ -422,7 +435,7 @@ export default function SubscriptionScreen() {
                           Plan actual
                         </Text>
                       </View>
-                    ) : isPending && currentPlan === plan.id ? (
+                    ) : isPending && currentPlan === key ? (
                       <View style={[s.ctaBtn, { backgroundColor: "#FEF3C7" }]}>
                         <Feather name="clock" size={16} color="#F59E0B" />
                         <Text
@@ -437,7 +450,7 @@ export default function SubscriptionScreen() {
                       </View>
                     ) : (
                       <Pressable
-                        onPress={() => subscribeMutation.mutate(plan.id as any)}
+                        onPress={() => subscribeMutation.mutate(key)}
                         disabled={subscribeMutation.isPending}
                         style={[s.ctaBtn, { backgroundColor: PRIMARY }]}
                       >
@@ -453,7 +466,8 @@ export default function SubscriptionScreen() {
                                 marginLeft: 6,
                               }}
                             >
-                              Suscribirme — Pagar {plan.price}
+                              Suscribirme — Pagar{" "}
+                              {(plan.price / 100).toFixed(2)} €
                             </Text>
                           </>
                         )}
@@ -514,8 +528,8 @@ export default function SubscriptionScreen() {
                 ¿Cómo quieres pagar?
               </Text>
               <Text style={[ms.subtitle, { color: sub }]}>
-                Plan {paymentModal?.plan === "premium" ? "Premium" : "Business"}{" "}
-                — {((paymentModal?.amount || 0) / 100).toFixed(2)} €/mes
+                Plan {paymentModal ? planLabel(paymentModal.plan) : ""} —{" "}
+                {((paymentModal?.amount || 0) / 100).toFixed(2)} €/mes
               </Text>
               {PAYMENT_METHODS.map((m) => (
                 <TouchableOpacity

@@ -187,9 +187,11 @@ export default function ProfileScreen() {
 
   const approvalStatus =
     user?.role === "business_owner" || user?.role === "delivery_driver"
-      ? user?.isActive
+      ? user?.verificationStatus === "verified"
         ? { text: "Aprobado", variant: "success" as const }
-        : { text: "En revision", variant: "warning" as const }
+        : user?.verificationStatus === "rejected"
+          ? { text: "Rechazado", variant: "error" as const }
+          : { text: "En revisión", variant: "warning" as const }
       : null;
   const [driverStrikes, setDriverStrikes] = useState(0);
   const maxStrikes = 3;
@@ -277,6 +279,9 @@ export default function ProfileScreen() {
 
         // Note: Server now handles verification status reset automatically
         // Do NOT call reset-verification here - it would cause unnecessary reset
+
+        // Sincronizar el badge local: la cuenta vuelve a revisión
+        updateUser({ verificationStatus: "pending" });
 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showToast(data.message || "Documento actualizado", "success");
@@ -624,13 +629,19 @@ export default function ProfileScreen() {
           const profileData = await profileRes.json();
           if (statusData.success) setDriverStrikes(statusData.strikes || 0);
           if (profileData.success) {
+            const realStatus =
+              profileData.verificationStatus ||
+              (user as any)?.verificationStatus ||
+              "pending";
             setDriverStats({
               rating: statusData.rating || 0,
               totalDeliveries: statusData.totalDeliveries || 0,
               vehicleType: profileData.vehicleType,
               vehiclePlate: profileData.vehiclePlate,
-              verificationStatus: user?.isActive ? "verified" : "pending",
+              verificationStatus: realStatus,
             });
+            // Mantener el badge del encabezado sincronizado con el estado real
+            updateUser({ verificationStatus: realStatus });
           }
         } catch (error) {
           console.log("Error loading driver status:", error);
@@ -1372,6 +1383,22 @@ export default function ProfileScreen() {
                 setShowVehicleModal(true);
               }}
             />
+            <SettingsItem
+              icon="credit-card"
+              label="Métodos de pago"
+              value="Bizum · IBAN · PayPal"
+              onPress={() =>
+                navigation.navigate("PaymentWalletSetup" as any)
+              }
+            />
+            <SettingsItem
+              icon="dollar-sign"
+              label="Cuentas de pago y retiros"
+              value="Stripe · IBAN"
+              onPress={() =>
+                navigation.navigate("WithdrawalScreen" as any)
+              }
+            />
             <View style={styles.strikesContainer}>
               <View style={styles.strikesHeader}>
                 <View style={styles.strikesIconContainer}>
@@ -1477,15 +1504,6 @@ export default function ProfileScreen() {
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setShowNotificationsModal(true);
-            }}
-          />
-          <SettingsItem
-            icon="globe"
-            label="Idioma"
-            value="Español"
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowLanguageModal(true);
             }}
           />
         </View>

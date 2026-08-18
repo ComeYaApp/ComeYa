@@ -139,7 +139,7 @@ export default function SubscriptionScreen() {
 
   // ── Iniciar suscripción ──────────────────────────────────────────────────
   const initMutation = useMutation({
-    mutationFn: async (plan: "premium" | "business") => {
+    mutationFn: async (plan: string) => {
       const response = await apiRequest("POST", "/api/subscriptions/subscribe", {
         plan,
         billingCycle: "monthly",
@@ -178,7 +178,7 @@ export default function SubscriptionScreen() {
     isActive && !!subscriptionData?.cancelledAt && !subscriptionData?.autoRenew;
 
   // Precio desde BD o fallback (en centavos)
-  const getPlanPrice = (plan: "premium" | "business"): number => {
+  const getPlanPrice = (plan: string): number => {
     const dbPrice = plansData?.[plan]?.price;
     if (dbPrice != null && dbPrice > 0) return dbPrice;
     return plan === "premium" ? 1500 : 3000;
@@ -415,13 +415,22 @@ export default function SubscriptionScreen() {
 
         {/* ── PLANES DINÁMICOS (7 planes ComeYa Soria desde BD) ────────── */}
         {(() => {
+          // Planes legacy (premium/business) retirados: solo los 7 de ComeYa
+          const BUSINESS_PLAN_KEYS = [
+            "impulso_local",
+            "top_soria",
+            "premium_soria",
+            "logistica_local",
+            "escaparate_soria",
+            "express_semana",
+          ];
           const allPlans = plansData ? Object.keys(plansData) : [];
           const visiblePlans = allPlans.filter((planKey) => {
             const p = plansData[planKey];
             if (!p?.price) return false;
-            // Cliente → soria_local; negocio → el resto
+            // Cliente → soria_local; negocio → los 6 planes de negocio
             return isBusinessOwner
-              ? planKey !== "soria_local"
+              ? BUSINESS_PLAN_KEYS.includes(planKey)
               : planKey === "soria_local";
           });
 

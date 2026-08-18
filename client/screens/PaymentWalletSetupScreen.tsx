@@ -289,7 +289,13 @@ export default function PaymentWalletSetupScreen() {
       {/* Banner Stripe Connect para negocios y repartidores */}
       {!isCustomer && (
         <Pressable
-          onPress={() => (navigation as any).navigate("BusinessStripeSetup")}
+          onPress={() =>
+            (navigation as any).navigate(
+              user?.role === "business_owner"
+                ? "BusinessStripeSetup"
+                : "WithdrawalScreen",
+            )
+          }
           style={[
             styles.stripeConnectBanner,
             {

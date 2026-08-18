@@ -290,6 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role: data.user.role,
       phoneVerified: true,
       isActive: data.user.isActive,
+      verificationStatus: data.user.verificationStatus || "pending",
       profileImage: data.user.profileImage || undefined,
       biometricEnabled: data.user.biometricEnabled || false,
       stripeCustomerId: data.user.stripeCustomerId,
