@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -517,7 +517,15 @@ export default function ProfileScreen() {
       });
       const data = await res.json();
       if (data.success || data.user) {
-        // Si es driver o negocio,resetear verificación si cambió información crítica (DNI)
+        // Mantener el objeto de usuario y el formulario actualizados con lo
+        // guardado (dni/dirección incluidos) para que no aparezcan vacíos
+        await updateUser({
+          name: editName.trim(),
+          email: editEmail.trim(),
+          dni: editDni.trim(),
+          address: editAddress.trim(),
+        });
+        // Si es driver o negocio, resetear verificación si cambió información crítica (DNI)
         if (isDriverOrBusiness && editDni.trim()) {
           try {
             await apiRequest(
@@ -535,11 +543,6 @@ export default function ProfileScreen() {
             );
           }
         } else {
-          await updateUser({
-            name: editName.trim(),
-            email: editEmail.trim(),
-            address: editAddress.trim(),
-          });
           showToast("Perfil actualizado correctamente", "success");
         }
         setShowEditProfileModal(false);
@@ -905,51 +908,73 @@ export default function ProfileScreen() {
     }
   }, [showNotificationsModal]);
 
-  // Load professional data when edit modal opens (for drivers/business owners)
+  // Cargar datos profesionales (docs, vehículo, dni, dirección) desde el server
+  const loadProfessionalDataFromServer = useCallback(
+    async (syncForm = false) => {
+      try {
+        const res = await apiRequest("GET", "/api/users/profile/full");
+        const data = await res.json();
+        if (!data.success) return;
+        setProfessionalData({
+          vehicleType: data.vehicleType,
+          vehiclePlate: data.vehiclePlate,
+          vehicleBrand: data.vehicleBrand,
+          vehicleModel: data.vehicleModel,
+          vehicleColor: data.vehicleColor,
+          vehicleYear: data.vehicleYear,
+          vehiclePhoto: data.vehiclePhoto,
+          vehiclePlatePhoto: data.vehiclePlatePhoto,
+          vehicleItvPhoto: data.vehicleItvPhoto,
+          vehicleInsurancePhoto: data.vehicleInsurancePhoto,
+          vehicleLicensePhoto: data.vehicleLicensePhoto,
+          idDocumentUrl: data.idDocumentUrl,
+          idDocumentBackUrl: data.idDocumentBackUrl,
+          autonomoDocumentUrl: data.autonomoDocumentUrl,
+        });
+        // Sincronizar dni/dirección (en el formulario y en el objeto de usuario)
+        if (data.dni) {
+          setEditDni(data.dni);
+          updateUser({ dni: data.dni });
+        }
+        if (data.address) {
+          setEditAddress(data.address);
+          updateUser({ address: data.address });
+        }
+        if (syncForm && data.vehicleType) {
+          setVehicleForm({
+            vehicleType: data.vehicleType || "",
+            vehicleBrand: data.vehicleBrand || "",
+            vehicleModel: data.vehicleModel || "",
+            vehiclePlate: data.vehiclePlate || "",
+            vehicleColor: data.vehicleColor || "",
+          });
+        }
+      } catch (error) {
+        console.log("Error loading professional data:", error);
+      }
+    },
+    [updateUser],
+  );
+
+  // Cargar al montar para el checklist de verificación (driver y negocio)
+  useEffect(() => {
+    if (
+      user?.role === "delivery_driver" ||
+      user?.role === "business_owner"
+    ) {
+      loadProfessionalDataFromServer(false);
+    }
+  }, [user?.role, loadProfessionalDataFromServer]);
+
+  // Recargar y prellenar el formulario al abrir el modal de editar perfil
   useEffect(() => {
     if (
       showEditProfileModal &&
       (user?.role === "delivery_driver" || user?.role === "business_owner")
     ) {
-      const loadProfessionalData = async () => {
-        try {
-          const res = await apiRequest("GET", "/api/users/profile/full");
-          const data = await res.json();
-          if (data.success) {
-            setProfessionalData({
-              vehicleType: data.vehicleType,
-              vehiclePlate: data.vehiclePlate,
-              vehicleBrand: data.vehicleBrand,
-              vehicleModel: data.vehicleModel,
-              vehicleColor: data.vehicleColor,
-              vehicleYear: data.vehicleYear,
-              vehiclePhoto: data.vehiclePhoto,
-              vehiclePlatePhoto: data.vehiclePlatePhoto,
-              vehicleItvPhoto: data.vehicleItvPhoto,
-              vehicleInsurancePhoto: data.vehicleInsurancePhoto,
-              vehicleLicensePhoto: data.vehicleLicensePhoto,
-              idDocumentUrl: data.idDocumentUrl,
-              idDocumentBackUrl: data.idDocumentBackUrl,
-              autonomoDocumentUrl: data.autonomoDocumentUrl,
-            });
-            // Pre-fill vehicleForm from professional data (for profesion tab)
-            if (data.vehicleType) {
-              setVehicleForm({
-                vehicleType: data.vehicleType || "",
-                vehicleBrand: data.vehicleBrand || "",
-                vehicleModel: data.vehicleModel || "",
-                vehiclePlate: data.vehiclePlate || "",
-                vehicleColor: data.vehicleColor || "",
-              });
-            }
-          }
-        } catch (error) {
-          console.log("Error loading professional data:", error);
-        }
-      };
-      loadProfessionalData();
+      loadProfessionalDataFromServer(true);
     }
-  }, [showEditProfileModal, user?.role]);
+  }, [showEditProfileModal, user?.role, loadProfessionalDataFromServer]);
 
   // Cargar datos reales del vehículo al abrir "Mi vehículo" (datos + fotos)
   useEffect(() => {
@@ -1134,6 +1159,81 @@ export default function ProfileScreen() {
               style={{ marginTop: Spacing.xs }}
             />
           ) : null}
+
+          {/* Checklist de verificación: qué falta para completar la cuenta */}
+          {user &&
+            (user.role === "delivery_driver" ||
+              user.role === "business_owner") &&
+            approvalStatus?.text !== "Aprobado" &&
+            (() => {
+              const missing: string[] = [];
+              const d = professionalData;
+              const u = user as any;
+              if (!d?.idDocumentUrl) missing.push("DNI anverso");
+              if (!d?.idDocumentBackUrl) missing.push("DNI reverso");
+              if (!u?.dni) missing.push("número de DNI");
+              if (user.role === "delivery_driver") {
+                if (!u?.address) missing.push("tu dirección");
+                if (!d?.vehiclePhoto) missing.push("foto del vehículo");
+                if (!d?.vehicleLicensePhoto)
+                  missing.push("permiso de circulación");
+                if (!d?.vehicleType) missing.push("tipo de vehículo");
+              }
+              if (user.role === "business_owner") {
+                if (!d?.autonomoDocumentUrl)
+                  missing.push("documento de autónomo/empresa");
+                missing.push("la dirección de tu negocio (en Mis Negocios)");
+              }
+              return (
+                <View
+                  style={{
+                    marginTop: Spacing.sm,
+                    width: "100%",
+                    backgroundColor: "#F59E0B15",
+                    borderWidth: 1,
+                    borderColor: "#F59E0B40",
+                    borderRadius: 12,
+                    padding: 12,
+                  }}
+                >
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: "#F59E0B",
+                      fontWeight: "700",
+                      fontSize: 12,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {missing.length > 0
+                      ? "Para completar tu verificación faltan:"
+                      : "Documentos completos — el administrador revisará tu cuenta"}
+                  </ThemedText>
+                  {missing.length > 0 && (
+                    <>
+                      <ThemedText
+                        type="caption"
+                        style={{ color: theme.text, fontSize: 12, lineHeight: 18 }}
+                      >
+                        {missing.join(", ")}.
+                      </ThemedText>
+                      <ThemedText
+                        type="caption"
+                        style={{
+                          color: theme.textSecondary,
+                          fontSize: 11,
+                          marginTop: 4,
+                        }}
+                      >
+                        {user.role === "delivery_driver"
+                          ? "Súbelos en «Editar mi perfil» y en «Mi vehículo»."
+                          : "Súbelos en «Editar mi perfil»; la dirección se gestiona en «Mis Negocios»."}
+                      </ThemedText>
+                    </>
+                  )}
+                </View>
+              );
+            })()}
           {(() => {
             if (
               !subscription ||
@@ -2409,30 +2509,35 @@ export default function ProfileScreen() {
                       },
                     ]}
                   />
-                  <ThemedText
-                    type="caption"
-                    style={{
-                      color: theme.textSecondary,
-                      marginBottom: 4,
-                      marginTop: 12,
-                    }}
-                  >
-                    Dirección (donde vives)
-                  </ThemedText>
-                  <TextInput
-                    value={editAddress}
-                    onChangeText={setEditAddress}
-                    placeholder="Calle, número, ciudad"
-                    placeholderTextColor={theme.textSecondary}
-                    style={[
-                      styles.editInput,
-                      {
-                        backgroundColor: theme.backgroundSecondary,
-                        color: theme.text,
-                        borderColor: theme.border,
-                      },
-                    ]}
-                  />
+                  {/* Dirección: solo repartidor (el negocio la gestiona en Mis Negocios) */}
+                  {user?.role === "delivery_driver" && (
+                    <>
+                      <ThemedText
+                        type="caption"
+                        style={{
+                          color: theme.textSecondary,
+                          marginBottom: 4,
+                          marginTop: 12,
+                        }}
+                      >
+                        Dirección (donde vives)
+                      </ThemedText>
+                      <TextInput
+                        value={editAddress}
+                        onChangeText={setEditAddress}
+                        placeholder="Calle, número, ciudad"
+                        placeholderTextColor={theme.textSecondary}
+                        style={[
+                          styles.editInput,
+                          {
+                            backgroundColor: theme.backgroundSecondary,
+                            color: theme.text,
+                            borderColor: theme.border,
+                          },
+                        ]}
+                      />
+                    </>
+                  )}
                   <Pressable
                     onPress={saveProfile}
                     disabled={isSavingProfile}
