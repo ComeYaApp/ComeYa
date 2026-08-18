@@ -11,6 +11,8 @@ import {
   Modal,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import {
   ComeYaColors,
   Spacing,
@@ -38,17 +40,27 @@ const ROLE_LABEL: Record<string, string> = {
   business_owner: "Negocio",
 };
 
-// Documentos mínimos para aprobar (igual que la validación del servidor)
-function getMissingDocs(u: any): string[] {
+// Documentos e información mínimos para completar la verificación
+function getMissingItems(u: any): string[] {
   const missing: string[] = [];
   if (!u.idDocumentUrl) missing.push("DNI anverso");
   if (!u.idDocumentBackUrl) missing.push("DNI reverso");
-  if (u.role === "business_owner" && !u.autonomoDocumentUrl)
-    missing.push("Autónomo/empresa");
+  if (!u.dni) missing.push("DNI (número)");
+  if (!u.address) missing.push("Dirección personal");
+  if (u.role === "business_owner") {
+    if (!u.autonomoDocumentUrl) missing.push("Autónomo/empresa");
+    if (!u.business?.address) missing.push("Dirección del negocio");
+  }
   if (u.role === "delivery_driver") {
     if (!u.deliveryDriver?.vehicleLicensePhoto)
       missing.push("Permiso de circulación");
     if (!u.deliveryDriver?.vehiclePhoto) missing.push("Foto del vehículo");
+    if (!u.deliveryDriver?.vehicleType) missing.push("Tipo de vehículo");
+    if (
+      ["motorcycle", "car"].includes(u.deliveryDriver?.vehicleType) &&
+      !u.deliveryDriver?.vehiclePlate
+    )
+      missing.push("Matrícula");
   }
   return missing;
 }
@@ -62,6 +74,8 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
   const [selected, setSelected] = useState<any | null>(null);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   useEffect(() => {
     load();
@@ -105,6 +119,63 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
       showToast("Error de conexión", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Generar y compartir un PDF con toda la documentación del usuario
+  const handleDownloadPdf = async (u: any) => {
+    setGeneratingPdf(true);
+    try {
+      const img = (url?: string, alt = "No subido") =>
+        url
+          ? `<div><img src="${url}" style="width:100%;max-width:340px;margin:8px 0;border-radius:8px;border:1px solid #ddd;" /></div>`
+          : `<div style="color:#999;margin:8px 0;">${alt}</div>`;
+      const vehicle =
+        u.role === "delivery_driver"
+          ? `<h2>Vehículo</h2>
+             <p><b>Tipo:</b> ${u.deliveryDriver?.vehicleType || "—"}</p>
+             <p><b>Matrícula:</b> ${u.deliveryDriver?.vehiclePlate || "—"}</p>
+             <p>Foto del vehículo</p>${img(u.deliveryDriver?.vehiclePhoto)}
+             <p>Permiso de circulación</p>${img(u.deliveryDriver?.vehicleLicensePhoto)}
+             <p>ITV</p>${img(u.deliveryDriver?.vehicleItvPhoto)}
+             <p>Seguro</p>${img(u.deliveryDriver?.vehicleInsurancePhoto)}
+             <p>Foto matrícula</p>${img(u.deliveryDriver?.vehiclePlatePhoto)}`
+          : "";
+      const business =
+        u.role === "business_owner"
+          ? `<h2>Negocio</h2>
+             <p><b>Nombre:</b> ${u.business?.name || "—"}</p>
+             <p><b>Dirección:</b> ${u.business?.address || "—"}</p>
+             <p><b>Teléfono:</b> ${u.business?.phone || "—"}</p>`
+          : "";
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Documentación</title></head>
+        <body style="font-family:sans-serif;padding:24px;color:#111;">
+          <h1>Documentación — ${u.name}</h1>
+          <p><b>Rol:</b> ${ROLE_LABEL[u.role] || u.role}</p>
+          <p><b>Teléfono:</b> ${u.phone || "—"}</p>
+          <p><b>Email:</b> ${u.email || "—"}</p>
+          <p><b>DNI/NIE:</b> ${u.dni || "—"}</p>
+          <p><b>Dirección:</b> ${u.address || "—"}</p>
+          ${vehicle}
+          ${business}
+          <h2>Documentos personales</h2>
+          <p>DNI anverso</p>${img(u.idDocumentUrl)}
+          <p>DNI reverso</p>${img(u.idDocumentBackUrl)}
+          <p>Autónomo/empresa</p>${img(u.autonomoDocumentUrl)}
+        </body></html>`;
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Documentación de verificación",
+        });
+      } else {
+        showToast("PDF generado", "success");
+      }
+    } catch {
+      showToast("No se pudo generar el PDF", "error");
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -274,7 +345,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                         s.badge,
                         {
                           backgroundColor:
-                            (getMissingDocs(u).length === 0
+                            (getMissingItems(u).length === 0
                               ? "#10B981"
                               : "#F59E0B") + "20",
                         },
@@ -282,13 +353,13 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                     >
                       <Feather
                         name={
-                          getMissingDocs(u).length === 0
+                          getMissingItems(u).length === 0
                             ? "check-circle"
                             : "alert-circle"
                         }
                         size={11}
                         color={
-                          getMissingDocs(u).length === 0
+                          getMissingItems(u).length === 0
                             ? "#10B981"
                             : "#F59E0B"
                         }
@@ -296,7 +367,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       <Text
                         style={{
                           color:
-                            getMissingDocs(u).length === 0
+                            getMissingItems(u).length === 0
                               ? "#10B981"
                               : "#F59E0B",
                           fontSize: 11,
@@ -304,9 +375,9 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                           marginLeft: 3,
                         }}
                       >
-                        {getMissingDocs(u).length === 0
+                        {getMissingItems(u).length === 0
                           ? "Docs completos"
-                          : `Faltan ${getMissingDocs(u).length}`}
+                          : `Faltan ${getMissingItems(u).length}`}
                       </Text>
                     </View>
                     <DocBadge
@@ -341,6 +412,35 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       </>
                     )}
                   </View>
+
+                  {/* Status de la revisión: qué falta por subir */}
+                  {(() => {
+                    const missing = getMissingItems(u);
+                    return missing.length > 0 ? (
+                      <Text
+                        numberOfLines={2}
+                        style={{
+                          color: "#F59E0B",
+                          fontSize: 11,
+                          marginTop: 6,
+                          fontWeight: "600",
+                        }}
+                      >
+                        Falta: {missing.join(", ")}
+                      </Text>
+                    ) : (
+                      <Text
+                        style={{
+                          color: "#10B981",
+                          fontSize: 11,
+                          marginTop: 6,
+                          fontWeight: "600",
+                        }}
+                      >
+                        Todo completo — listo para revisar ✓
+                      </Text>
+                    );
+                  })()}
                 </View>
 
                 <Feather
@@ -430,7 +530,13 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                     />
                     <Row
                       label="Dirección"
-                      value={selected.address || "No proporcionada"}
+                      value={
+                        selected.address ||
+                        (selected.role === "business_owner"
+                          ? selected.business?.address
+                          : null) ||
+                        "No proporcionada"
+                      }
                       theme={theme}
                     />
                     <Row
@@ -446,11 +552,15 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   {selected.role === "delivery_driver" && (
                     <Section title="Foto de perfil" theme={theme}>
                       {selected.profileImage ? (
-                        <Image
-                          source={{ uri: selected.profileImage }}
-                          style={s.docImage}
-                          resizeMode="cover"
-                        />
+                        <Pressable
+                          onPress={() => setPreviewImage(selected.profileImage)}
+                        >
+                          <Image
+                            source={{ uri: selected.profileImage }}
+                            style={s.docImage}
+                            resizeMode="cover"
+                          />
+                        </Pressable>
                       ) : (
                         <View
                           style={[
@@ -533,13 +643,21 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       {/* Foto del vehículo */}
                       <Section title="Foto del vehículo" theme={theme}>
                         {selected.deliveryDriver?.vehiclePhoto ? (
-                          <Image
-                            source={{
-                              uri: selected.deliveryDriver.vehiclePhoto,
-                            }}
-                            style={s.docImage}
-                            resizeMode="cover"
-                          />
+                          <Pressable
+                            onPress={() =>
+                              setPreviewImage(
+                                selected.deliveryDriver.vehiclePhoto,
+                              )
+                            }
+                          >
+                            <Image
+                              source={{
+                                uri: selected.deliveryDriver.vehiclePhoto,
+                              }}
+                              style={s.docImage}
+                              resizeMode="cover"
+                            />
+                          </Pressable>
                         ) : (
                           <View
                             style={[
@@ -578,6 +696,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                                 null
                               }
                               theme={theme}
+                              onPreview={setPreviewImage}
                             />
                             <DocRow
                               label="ITV"
@@ -585,6 +704,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                                 selected.deliveryDriver.vehicleItvPhoto || null
                               }
                               theme={theme}
+                              onPreview={setPreviewImage}
                             />
                             <DocRow
                               label="Seguro"
@@ -593,6 +713,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                                 null
                               }
                               theme={theme}
+                              onPreview={setPreviewImage}
                             />
                             <DocRow
                               label="Matrícula"
@@ -600,6 +721,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                                 selected.deliveryDriver.vehiclePlatePhoto || null
                               }
                               theme={theme}
+                              onPreview={setPreviewImage}
                             />
                           </Section>
                         )}
@@ -638,16 +760,19 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       label="Foto DNI/NIE (anverso)"
                       url={selected.idDocumentUrl}
                       theme={theme}
+                      onPreview={setPreviewImage}
                     />
                     <DocRow
                       label="Foto DNI/NIE (reverso)"
                       url={selected.idDocumentBackUrl}
                       theme={theme}
+                      onPreview={setPreviewImage}
                     />
                     <DocRow
                       label="Cert. autónomo/empresa"
                       url={selected.autonomoDocumentUrl}
                       theme={theme}
+                      onPreview={setPreviewImage}
                     />
                   </Section>
 
@@ -721,8 +846,39 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
             {/* Acciones fijas (siempre visibles, fuera del scroll) */}
             {selected && (
               <View style={s.footer}>
+                {/* Descargar toda la documentación en PDF */}
+                <Pressable
+                  onPress={() => handleDownloadPdf(selected)}
+                  disabled={generatingPdf}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    marginBottom: 10,
+                    opacity: generatingPdf ? 0.6 : 1,
+                  }}
+                >
+                  {generatingPdf ? (
+                    <ActivityIndicator size="small" color={theme.text} />
+                  ) : (
+                    <Feather name="download" size={16} color={theme.text} />
+                  )}
+                  <Text
+                    style={{
+                      color: theme.text,
+                      fontWeight: "600",
+                      marginLeft: 8,
+                    }}
+                  >
+                    Descargar documentación (PDF)
+                  </Text>
+                </Pressable>
                 {(() => {
-                  const missing = getMissingDocs(selected);
+                  const missing = getMissingItems(selected);
                   return missing.length > 0 ? (
                     <Text
                       style={{
@@ -794,6 +950,38 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Visor de imagen a pantalla completa */}
+      <Modal
+        visible={!!previewImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImage(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.96)" }}>
+          <Pressable
+            onPress={() => setPreviewImage(null)}
+            style={{
+              position: "absolute",
+              top: 48,
+              right: 20,
+              zIndex: 10,
+              backgroundColor: "rgba(255,255,255,0.15)",
+              borderRadius: 20,
+              padding: 8,
+            }}
+          >
+            <Feather name="x" size={26} color="#FFF" />
+          </Pressable>
+          {previewImage && (
+            <Image
+              source={{ uri: previewImage }}
+              style={{ flex: 1 }}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -855,7 +1043,7 @@ function Row({ label, value, theme }: any) {
   );
 }
 
-function DocRow({ label, url, theme }: any) {
+function DocRow({ label, url, theme, onPreview }: any) {
   const resolved = url
     ? /^https?:\/\//i.test(url)
       ? url
@@ -897,19 +1085,32 @@ function DocRow({ label, url, theme }: any) {
           </View>
         )}
       </View>
-      {/* Vista previa del documento para revisarlo sin salir del modal */}
+      {/* Vista previa del documento: toca para verla a pantalla completa */}
       {resolved && (
-        <Image
-          source={{ uri: resolved }}
-          style={{
-            width: "100%",
-            height: 140,
-            borderRadius: BorderRadius.md,
-            marginTop: 6,
-            backgroundColor: theme.backgroundRoot,
-          }}
-          resizeMode="cover"
-        />
+        <Pressable onPress={() => onPreview && onPreview(resolved)}>
+          <Image
+            source={{ uri: resolved }}
+            style={{
+              width: "100%",
+              height: 140,
+              borderRadius: BorderRadius.md,
+              marginTop: 6,
+              backgroundColor: theme.backgroundRoot,
+            }}
+            resizeMode="cover"
+          />
+          <Text
+            style={{
+              color: ComeYaColors.primary,
+              fontSize: 11,
+              fontWeight: "600",
+              marginTop: 4,
+              textAlign: "center",
+            }}
+          >
+            Toca para ver en pantalla completa
+          </Text>
+        </Pressable>
       )}
     </View>
   );
