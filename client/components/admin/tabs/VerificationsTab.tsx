@@ -361,16 +361,22 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
         animationType="slide"
         onRequestClose={() => setSelected(null)}
       >
-        <Pressable style={s.overlay} onPress={() => setSelected(null)}>
+        <View style={s.overlay}>
+          {/* Fondo táctil para cerrar (capa separada: no envuelve el scroll) */}
           <Pressable
-            style={[s.sheet, { backgroundColor: theme.card }]}
-            onPress={(e) => e.stopPropagation()}
-          >
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setSelected(null)}
+          />
+
+          {/* Hoja: View normal, sin Pressable que robe el gesto al ScrollView */}
+          <View style={[s.sheet, { backgroundColor: theme.card }]}>
             <View style={s.sheetHandle} />
 
             <ScrollView
               style={{ flex: 1 }}
-              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
             >
               {selected && (
                 <>
@@ -785,8 +791,8 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                 </View>
               </View>
             )}
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
     </View>
   );
