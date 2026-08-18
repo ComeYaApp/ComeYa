@@ -55,6 +55,8 @@ router.get("/balance", authenticateToken, async (req, res) => {
           cashPending: createdWallet.cashPending || 0,
           availableBalance:
             createdWallet.balance - (createdWallet.cashOwed || 0),
+          availableForWithdrawal:
+            createdWallet.balance - (createdWallet.cashOwed || 0),
           totalEarned: createdWallet.totalEarned,
           totalWithdrawn: createdWallet.totalWithdrawn,
           pendingCashOrders: [],
@@ -78,6 +80,7 @@ router.get("/balance", authenticateToken, async (req, res) => {
         cashOwed: wallet.cashOwed || 0,
         cashPending: wallet.cashPending || 0,
         availableBalance: wallet.balance - (wallet.cashOwed || 0),
+        availableForWithdrawal: wallet.balance - (wallet.cashOwed || 0),
         totalEarned: wallet.totalEarned,
         totalWithdrawn: wallet.totalWithdrawn,
         pendingCashOrders,
@@ -192,7 +195,7 @@ router.post(
       const result = await requestWithdrawal({
         userId: req.user!.id,
         amount: req.body.amount,
-        method: req.body.method,
+        method: req.body.method || "bank_transfer",
         bankAccount: req.body.bankAccount,
       });
 

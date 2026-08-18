@@ -178,6 +178,25 @@ export class SubscriptionService {
     }
   }
 
+  // Revertir efectos del plan al expirar o cancelar (quitar destacado)
+  static async removePlanSideEffects(
+    userId: string,
+    plan: string,
+  ): Promise<void> {
+    try {
+      if (!["top_soria", "premium_soria", "express_semana"].includes(plan)) {
+        return;
+      }
+      const { businesses } = await import("@shared/schema-mysql");
+      await db
+        .update(businesses)
+        .set({ isFeatured: false })
+        .where(eq(businesses.ownerId, userId));
+    } catch (err) {
+      console.error("Error removing plan side effects:", err);
+    }
+  }
+
   // Obtener suscripción del usuario
   static async getUserSubscription(userId: string) {
     const [subscription] = await db
@@ -208,6 +227,8 @@ export class SubscriptionService {
         .update(subscriptions)
         .set({ status: "expired" })
         .where(eq(subscriptions.id, subscription.id));
+      // El plan dejó de estar activo: quitar el destacado de sus negocios
+      await this.removePlanSideEffects(userId, subscription.plan);
       return {
         plan: "free",
         status: "expired",

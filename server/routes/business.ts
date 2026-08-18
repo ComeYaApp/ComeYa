@@ -2006,10 +2006,14 @@ router.post(
 
       // Si ya tiene cuenta, retornar link de onboarding
       if (business.stripeAccountId) {
+        const baseUrl =
+          process.env.EXPO_PUBLIC_BACKEND_URL ||
+          process.env.BACKEND_URL ||
+          `http://localhost:${process.env.PORT || 3000}`;
         const accountLink = await stripe.accountLinks.create({
           account: business.stripeAccountId,
-          refresh_url: `${process.env.FRONTEND_URL || "http://localhost:8081"}/business/stripe/refresh`,
-          return_url: `${process.env.FRONTEND_URL || "http://localhost:8081"}/business/stripe/success`,
+          refresh_url: `${baseUrl}/api/business/stripe/refresh`,
+          return_url: `${baseUrl}/api/business/stripe/return`,
           type: "account_onboarding",
         });
 
@@ -2043,10 +2047,14 @@ router.post(
         .where(eq(businesses.id, business.id));
 
       // Crear link de onboarding
+      const baseUrl =
+        process.env.EXPO_PUBLIC_BACKEND_URL ||
+        process.env.BACKEND_URL ||
+        `http://localhost:${process.env.PORT || 3000}`;
       const accountLink = await stripe.accountLinks.create({
         account: account.id,
-        refresh_url: `${process.env.FRONTEND_URL || "http://localhost:8081"}/business/stripe/refresh`,
-        return_url: `${process.env.FRONTEND_URL || "http://localhost:8081"}/business/stripe/success`,
+        refresh_url: `${baseUrl}/api/business/stripe/refresh`,
+        return_url: `${baseUrl}/api/business/stripe/return`,
         type: "account_onboarding",
       });
 
@@ -2061,6 +2069,35 @@ router.post(
     }
   },
 );
+
+// GET /api/business/stripe/return — Stripe redirige aquí al terminar el
+// onboarding; se reenvía a la app móvil vía deep link
+router.get("/stripe/return", (req, res) => {
+  res.redirect("comeya://stripe-connect-complete");
+});
+
+// GET /api/business/stripe/refresh — reanudar onboarding incompleto
+router.get("/stripe/refresh", async (req, res) => {
+  try {
+    const { businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+    // Sin sesión: volver a la pantalla de Stripe de la app
+    const accountId = (req.query.accountId as string) || null;
+    if (!accountId) return res.redirect("comeya://stripe-connect-refresh");
+
+    const accountLink = await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: `${process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL}/api/business/stripe/refresh?accountId=${accountId}`,
+      return_url: `${process.env.EXPO_PUBLIC_BACKEND_URL || process.env.BACKEND_URL}/api/business/stripe/return`,
+      type: "account_onboarding",
+    });
+    res.redirect(accountLink.url);
+  } catch (error: any) {
+    res.redirect("comeya://stripe-connect-refresh");
+  }
+});
 
 // GET /api/business/stripe/status
 router.get(

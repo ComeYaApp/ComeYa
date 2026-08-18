@@ -41,8 +41,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import GamificationScreen from "@/screens/GamificationScreen";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
 import GiftCardsScreen from "@/screens/GiftCardsScreen";
-import GroupOrderScreen from "@/screens/GroupOrderScreen";
 import ScheduledOrdersScreen from "@/screens/ScheduledOrdersScreen";
+import NotificationPreferencesScreen from "@/screens/NotificationPreferencesScreen";
+import ReferralScreen from "@/screens/ReferralScreen";
 import AddressesScreen from "@/screens/AddressesScreen";
 import SavedAddressesScreen from "@/screens/SavedAddressesScreen";
 import AddAddressScreen from "@/screens/AddAddressScreen";
@@ -68,6 +69,8 @@ import LocationPickerScreen from "@/screens/LocationPickerScreen";
 import ChangePasswordScreen from "@/screens/ChangePasswordScreen";
 import ChangePhoneEmailScreen from "@/screens/ChangePhoneEmailScreen";
 import DriverNavigationScreen from "@/screens/DriverNavigationScreen";
+import DriverMyDeliveriesScreen from "@/screens/DriverMyDeliveriesScreen";
+import WithdrawalScreen from "@/screens/WithdrawalScreen";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -127,10 +130,9 @@ export type RootStackParamList = {
   Gamification: undefined;
   Subscriptions: undefined;
   GiftCards: undefined;
-  GroupOrder:
-    | { businessId?: string; groupOrderId?: string; shareToken?: string }
-    | undefined;
   ScheduledOrders: undefined;
+  NotificationPreferences: undefined;
+  Referral: undefined;
   Addresses: undefined;
   SavedAddresses: undefined;
   AddAddress: { address?: any; fromCheckout?: boolean } | undefined;
@@ -185,6 +187,9 @@ export type RootStackParamList = {
     destLng: number;
     destAddress: string;
   };
+  DriverDeliveries: undefined;
+  WithdrawalScreen: undefined;
+  LogisticsRequest: undefined;
   DeleteAccount: undefined;
 };
 
@@ -208,20 +213,24 @@ export default function RootStackNavigator() {
 
   // Deep link handler
   useEffect(() => {
-    function getPathFromUrl(url: string): string {
-      try { const parsed = new URL(url); return parsed.pathname.replace(/^\/+/, ""); }
-      catch { return ""; }
-    }
-
     const handleURL = (event?: { url?: string }) => {
       const incomingUrl = event?.url || (
         typeof window !== "undefined" && window.location?.href ? window.location.href : ""
       );
       if (!incomingUrl) return;
-      const path = getPathFromUrl(incomingUrl);
-      const match = path.match(/group-order\/([^/?]+)/);
-      if (match && match[1] && navigationRef.current) {
-        navigationRef.current.navigate("GroupOrder", { shareToken: match[1] });
+      // Enlace de referido: app.comeya.es?ref=CODIGO (web) o comeya://ref/CODIGO
+      try {
+        const url = new URL(incomingUrl);
+        const ref =
+          url.searchParams.get("ref") ||
+          (url.pathname.match(/\/ref\/([^/?]+)/) || [])[1] ||
+          "";
+        if (ref) {
+          const { setPendingReferral } = require("@/lib/referral");
+          setPendingReferral(ref.toUpperCase());
+        }
+      } catch {
+        /* URL no válida: ignorar */
       }
     };
 
@@ -284,8 +293,9 @@ export default function RootStackNavigator() {
           <Stack.Screen name="Gamification" component={GamificationScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Subscriptions" component={SubscriptionScreen} options={{ headerShown: false }} />
           <Stack.Screen name="GiftCards" component={GiftCardsScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="GroupOrder" component={GroupOrderScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ScheduledOrders" component={ScheduledOrdersScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ headerTitle: "Notificaciones" }} />
+          <Stack.Screen name="Referral" component={ReferralScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerTitle: "Editar perfil" }} />
           <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerTitle: "Cambiar contraseña" }} />
           <Stack.Screen name="ChangePhoneEmail" component={ChangePhoneEmailScreen} options={{ headerTitle: "Cambiar teléfono/correo" }} />
@@ -314,6 +324,8 @@ export default function RootStackNavigator() {
           <Stack.Screen name="DeliveryConfirmation" component={DeliveryConfirmationScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="DriverDeliveries" component={DriverMyDeliveriesScreen} options={{ headerTitle: "Mis entregas" }} />
+          <Stack.Screen name="WithdrawalScreen" component={WithdrawalScreen} options={{ headerShown: false }} />
           <Stack.Screen name="LogisticsRequest" component={LogisticsRequestScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ headerShown: false }} />
         </>

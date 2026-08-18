@@ -8,7 +8,9 @@ import {
   TextInput,
   Modal,
   Image,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -86,6 +88,13 @@ export default function CheckoutScreen({ route }: any) {
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>("stripe_card");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
+
+  // Cuándo recibir el pedido: ahora o programado
+  const [whenMode, setWhenMode] = useState<"asap" | "scheduled">("asap");
+  const [scheduledDate, setScheduledDate] = useState<Date>(
+    new Date(Date.now() + 60 * 60 * 1000),
+  );
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Cargar método de pago guardado como default
   useEffect(() => {
@@ -381,6 +390,57 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
 
     if (!selectedAddress) {
       showToast("Selecciona una dirección de entrega", "error");
+      return;
+    }
+
+    // Pedido programado: crear el schedule y salir del flujo normal
+    if (whenMode === "scheduled") {
+      if (scheduledDate.getTime() < Date.now() + 30 * 60 * 1000) {
+        showToast(
+          "Programa el pedido al menos 30 minutos en el futuro",
+          "error",
+        );
+        return;
+      }
+      setIsLoading(true);
+      try {
+        await apiRequest("POST", "/api/scheduled-orders", {
+          businessId: cart.businessId,
+          items: JSON.stringify(
+            cart.items.map((it: any) => ({
+              id: it.id,
+              name: it.product?.name,
+              price: it.product?.price ?? 0,
+              quantity: it.quantity,
+            })),
+          ),
+          scheduledFor: scheduledDate.toISOString(),
+          deliveryAddress: `${selectedAddress.street}, ${selectedAddress.city}`,
+          deliveryLatitude: selectedAddress.latitude
+            ? String(selectedAddress.latitude)
+            : undefined,
+          deliveryLongitude: selectedAddress.longitude
+            ? String(selectedAddress.longitude)
+            : undefined,
+          paymentMethod: "card",
+          notes: null,
+        });
+        await clearCart();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setIsLoading(false);
+        showToast("Pedido programado correctamente", "success");
+        navigation.reset({
+          index: 0,
+          routes: [
+            { name: "Main" },
+            { name: "ScheduledOrders" as never },
+          ],
+        });
+      } catch (error: any) {
+        console.error("Error scheduling order:", error);
+        showToast("No se pudo programar el pedido", "error");
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -1333,6 +1393,147 @@ navigation.navigate("DigitalPaymentMethod", {
           ) : null}
         </View>
 
+        {/* Cuándo recibir el pedido */}
+        <View
+          style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+        >
+          <View style={styles.sectionHeader}>
+            <Feather
+              name="clock"
+              size={20}
+              color={ComeYaColors.primary}
+            />
+            <ThemedText type="h4" style={styles.sectionTitle}>
+              ¿Cuándo lo quieres?
+            </ThemedText>
+          </View>
+          <View style={styles.whenRow}>
+            <Pressable
+              onPress={() => setWhenMode("asap")}
+              style={[
+                styles.whenOption,
+                {
+                  borderColor:
+                    whenMode === "asap"
+                      ? ComeYaColors.primary
+                      : theme.border,
+                  backgroundColor:
+                    whenMode === "asap"
+                      ? ComeYaColors.primary + "12"
+                      : "transparent",
+                },
+              ]}
+            >
+              <Feather
+                name="zap"
+                size={16}
+                color={
+                  whenMode === "asap" ? ComeYaColors.primary : theme.textSecondary
+                }
+              />
+              <ThemedText
+                type="small"
+                style={{
+                  color: whenMode === "asap" ? ComeYaColors.primary : theme.text,
+                  fontWeight: "600",
+                }}
+              >
+                Lo antes posible
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => setWhenMode("scheduled")}
+              style={[
+                styles.whenOption,
+                {
+                  borderColor:
+                    whenMode === "scheduled"
+                      ? ComeYaColors.primary
+                      : theme.border,
+                  backgroundColor:
+                    whenMode === "scheduled"
+                      ? ComeYaColors.primary + "12"
+                      : "transparent",
+                },
+              ]}
+            >
+              <Feather
+                name="calendar"
+                size={16}
+                color={
+                  whenMode === "scheduled"
+                    ? ComeYaColors.primary
+                    : theme.textSecondary
+                }
+              />
+              <ThemedText
+                type="small"
+                style={{
+                  color:
+                    whenMode === "scheduled" ? ComeYaColors.primary : theme.text,
+                  fontWeight: "600",
+                }}
+              >
+                Programar
+              </ThemedText>
+            </Pressable>
+          </View>
+          {whenMode === "scheduled" && (
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              style={styles.scheduleValue}
+            >
+              <Feather name="calendar" size={16} color={theme.textSecondary} />
+              <ThemedText type="body" style={{ marginLeft: Spacing.sm, flex: 1 }}>
+                {scheduledDate.toLocaleDateString("es-ES", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "short",
+                })}{" "}
+                ·{" "}
+                {scheduledDate.toLocaleTimeString("es-ES", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: ComeYaColors.primary, fontWeight: "600" }}
+              >
+                Cambiar
+              </ThemedText>
+            </Pressable>
+          )}
+          {whenMode === "scheduled" && showDatePicker && (
+            <DateTimePicker
+              value={scheduledDate}
+              mode="datetime"
+              minimumDate={new Date(Date.now() + 30 * 60 * 1000)}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={(event: any, date?: Date) => {
+                setShowDatePicker(Platform.OS === "ios");
+                if (date) setScheduledDate(date);
+                if (Platform.OS === "android" && event.type !== "dismissed") {
+                  setShowDatePicker(false);
+                }
+              }}
+            />
+          )}
+          {whenMode === "scheduled" && Platform.OS === "ios" && showDatePicker && (
+            <Pressable
+              onPress={() => setShowDatePicker(false)}
+              style={{ alignItems: "center", paddingVertical: Spacing.xs }}
+            >
+              <ThemedText
+                type="caption"
+                style={{ color: ComeYaColors.primary, fontWeight: "600" }}
+              >
+                Hecho
+              </ThemedText>
+            </Pressable>
+          )}
+        </View>
+
         <View
           style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
         >
@@ -1444,6 +1645,8 @@ navigation.navigate("DigitalPaymentMethod", {
         <Button onPress={handlePlaceOrder} disabled={isLoading}>
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : whenMode === "scheduled" ? (
+            "Programar pedido"
           ) : (
             "Confirmar pedido"
           )}
@@ -1489,6 +1692,28 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     marginLeft: Spacing.sm,
+  },
+  whenRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  whenOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+  },
+  scheduleValue: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   addressCard: {
     flexDirection: "row",

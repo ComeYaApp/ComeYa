@@ -31,6 +31,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import * as FileSystem from "expo-file-system";
 
 function resolveProfileImageUrl(profileImage: string): string {
   if (profileImage.startsWith("data:image/")) return profileImage;
@@ -485,75 +486,66 @@ export default function EditProfileScreen() {
       });
 
       // Subir documentos si se seleccionaron (solo si son cambios locales, no URLs)
-      const hasPersonalDocs =
-        (idDocUri && !idDocUri.startsWith("http")) ||
-        (idDocBackUri && !idDocBackUri.startsWith("http")) ||
-        (autonomoDocUri && !autonomoDocUri.startsWith("http"));
-      let needsReverify = false;
-      if (needsDocs && hasPersonalDocs) {
-        const formData = new FormData();
-        // Añadir documentos solo si son nuevos (URI locales, no URLs del servidor)
-        if (idDocUri && !idDocUri.startsWith("http")) {
-          formData.append("idDocumentUrl", idDocUri);
-          needsReverify = true;
-        }
-        if (idDocBackUri && !idDocBackUri.startsWith("http")) {
-          formData.append("idDocumentBackUrl", idDocBackUri);
-          needsReverify = true;
-        }
-        if (autonomoDocUri && !autonomoDocUri.startsWith("http")) {
-          formData.append("autonomoDocumentUrl", autonomoDocUri);
-          needsReverify = true;
-        }
-        if (
-          formData.has("idDocumentUrl") ||
-          formData.has("idDocumentBackUrl") ||
-          formData.has("autonomoDocumentUrl")
-        ) {
-          await apiRequest(
-            "POST",
-            `/api/users/${user.id}/verification-documents`,
-            formData,
-          );
+      const toBase64Image = async (uri: string) => {
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const mime = uri.toLowerCase().endsWith(".png")
+          ? "image/png"
+          : "image/jpeg";
+        return `data:${mime};base64,${base64}`;
+      };
+
+      // Documentos personales → endpoint de verificación (Cloudinary +
+      // verificación pasa a "pending" y se avisa al admin)
+      const personalDocsToUpload: { type: string; uri: string }[] = [];
+      if (idDocUri && !idDocUri.startsWith("http"))
+        personalDocsToUpload.push({ type: "idDocumentUrl", uri: idDocUri });
+      if (idDocBackUri && !idDocBackUri.startsWith("http"))
+        personalDocsToUpload.push({ type: "idDocumentBackUrl", uri: idDocBackUri });
+      if (autonomoDocUri && !autonomoDocUri.startsWith("http"))
+        personalDocsToUpload.push({
+          type: "autonomoDocumentUrl",
+          uri: autonomoDocUri,
+        });
+
+      if (needsDocs && personalDocsToUpload.length > 0) {
+        for (const doc of personalDocsToUpload) {
+          const image = await toBase64Image(doc.uri);
+          await apiRequest("POST", "/api/delivery-verification/upload-document", {
+            documentType: doc.type,
+            image,
+          });
         }
         setVerificationStatus("pending");
       }
 
-      // Subir documentos del vehículo si hay cambios locales
-      const hasVehicleDocs =
-        (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith("http")) ||
-        (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith("http")) ||
-        (vehicleInsurancePhotoUri &&
-          !vehicleInsurancePhotoUri.startsWith("http")) ||
-        (vehicleLicensePhotoUri && !vehicleLicensePhotoUri.startsWith("http"));
-      if (isDriver && hasVehicleDocs) {
-        const vehicleFormData = new FormData();
-        if (vehiclePlatePhotoUri && !vehiclePlatePhotoUri.startsWith("http"))
-          vehicleFormData.append("vehiclePlatePhoto", vehiclePlatePhotoUri);
-        if (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith("http"))
-          vehicleFormData.append("vehicleItvPhoto", vehicleItvPhotoUri);
-        if (
-          vehicleInsurancePhotoUri &&
-          !vehicleInsurancePhotoUri.startsWith("http")
-        )
-          vehicleFormData.append(
-            "vehicleInsurancePhoto",
-            vehicleInsurancePhotoUri,
-          );
-        if (
-          vehicleLicensePhotoUri &&
-          !vehicleLicensePhotoUri.startsWith("http")
-        )
-          vehicleFormData.append("vehicleLicensePhoto", vehicleLicensePhotoUri);
+      // Documentos del vehículo → PUT /api/users/vehicle (sube a Cloudinary,
+      // resetea la verificación y notifica al admin)
+      const vehicleUpdates: Record<string, string> = {};
+      if (
+        vehiclePlatePhotoUri &&
+        !vehiclePlatePhotoUri.startsWith("http")
+      )
+        vehicleUpdates.vehiclePlatePhoto =
+          await toBase64Image(vehiclePlatePhotoUri);
+      if (vehicleItvPhotoUri && !vehicleItvPhotoUri.startsWith("http"))
+        vehicleUpdates.vehicleItvPhoto = await toBase64Image(vehicleItvPhotoUri);
+      if (
+        vehicleInsurancePhotoUri &&
+        !vehicleInsurancePhotoUri.startsWith("http")
+      )
+        vehicleUpdates.vehicleInsurancePhoto =
+          await toBase64Image(vehicleInsurancePhotoUri);
+      if (
+        vehicleLicensePhotoUri &&
+        !vehicleLicensePhotoUri.startsWith("http")
+      )
+        vehicleUpdates.vehicleLicensePhoto =
+          await toBase64Image(vehicleLicensePhotoUri);
 
-        // Check if FormData has entries (Array.from not available, use forEach)
-        let hasVehicleDocs = false;
-        vehicleFormData.forEach(() => {
-          hasVehicleDocs = true;
-        });
-        if (hasVehicleDocs) {
-          await apiRequest("PUT", "/api/users/vehicle", vehicleFormData);
-        }
+      if (isDriver && Object.keys(vehicleUpdates).length > 0) {
+        await apiRequest("PUT", "/api/users/vehicle", vehicleUpdates);
         setVerificationStatus("pending");
       }
 

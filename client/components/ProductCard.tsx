@@ -19,6 +19,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { Product } from "@/types";
+import { formatEuros } from "@/utils/currency";
 
 interface ProductCardProps {
   product: Product;
@@ -56,9 +57,9 @@ export function ProductCard({
 
   const formatPrice = () => {
     if (product.isWeightBased) {
-      return `${product.price.toFixed(2)} €/${product.unit}`;
+      return `${formatEuros(product.price)}/${product.unit}`;
     }
-    return `${product.price.toFixed(2)} €`;
+    return formatEuros(product.price);
   };
 
   return (

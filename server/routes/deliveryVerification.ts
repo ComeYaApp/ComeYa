@@ -386,6 +386,12 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
           vehicleType: null,
         } as any);
       }
+
+      // Los documentos del vehículo también requieren re-verificación
+      await db
+        .update(users)
+        .set({ verificationStatus: "pending" })
+        .where(eq(users.id, userId));
     }
 
     // Notificar al admin

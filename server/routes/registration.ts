@@ -115,6 +115,9 @@ router.post("/upload-documents", async (req, res) => {
         vehicleModel: vehicleModel || null,
         vehicleColor: vehicleColor || null,
         vehiclePhoto: uploadedUrls.vehiclePhoto || null,
+        // Permiso de circulación y seguro: persistirlos para la verificación
+        vehicleLicensePhoto: uploadedUrls.vehicleDocument || null,
+        vehicleInsurancePhoto: uploadedUrls.insuranceDocument || null,
       };
 
       if (existingDriver) {
@@ -130,6 +133,12 @@ router.post("/upload-documents", async (req, res) => {
           isAvailable: false,
         } as any);
       }
+
+      // Los documentos enviados quedan pendientes de verificación
+      await db
+        .update(users)
+        .set({ verificationStatus: "pending" } as any)
+        .where(eq(users.id, userId));
     }
 
     res.json({

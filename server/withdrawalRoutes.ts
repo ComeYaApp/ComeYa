@@ -27,13 +27,12 @@ router.post("/request", authenticateToken, async (req, res) => {
     if (amount < 5000) {
       return res
         .status(400)
-        .json({ error: "El monto mínimo de retiro es $50 MXN" });
+        .json({ error: "El monto mínimo de retiro es 50 €" });
     }
 
     if (method === "bank_transfer" && !bankAccount) {
-      return res
-        .status(400)
-        .json({ error: "Debes proporcionar datos bancarios" });
+      // Se permite sin datos: withdrawalService usa la cuenta de pago
+      // guardada del usuario en su perfil
     }
 
     const result = await withdrawalService.requestWithdrawal({

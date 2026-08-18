@@ -10,6 +10,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,8 +47,8 @@ type BusinessProfileNavigationProp =
   NativeStackNavigationProp<RootStackParamList>;
 
 export default function BusinessProfileScreen() {
-  const { theme, themeMode } = useTheme();
-  const { user, updateUser } = useAuth();
+  const { theme, themeMode, setThemeMode } = useTheme();
+  const { user, updateUser, logout } = useAuth();
   const { showToast } = useToast();
   const navigation = useNavigation<BusinessProfileNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -59,6 +60,8 @@ export default function BusinessProfileScreen() {
   );
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Load profile image on mount
   useEffect(() => {
@@ -130,6 +133,23 @@ export default function BusinessProfileScreen() {
     container: {
       flex: 1,
       backgroundColor: theme.background,
+    },
+    modalOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      width: "100%",
+      paddingVertical: Spacing.md,
+    },
+    modalText: {
+      textAlign: "center",
+      marginBottom: Spacing.lg,
+    },
+    modalButtonCancel: {
+      backgroundColor: "#666",
+    },
+    modalButtonConfirm: {
+      backgroundColor: "#ef4444",
     },
     scrollView: {
       flex: 1,
@@ -354,8 +374,7 @@ export default function BusinessProfileScreen() {
             }
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              // Theme modal would open here
-              showToast("Configuración de temacoming soon", "info");
+              setShowThemeModal(true);
             }}
           />
           <SettingsItem
@@ -363,7 +382,7 @@ export default function BusinessProfileScreen() {
             label="Notificaciones"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showToast("Configuración de notificaciones coming soon", "info");
+              navigation.navigate("NotificationPreferences" as any);
             }}
           />
         </View>
@@ -421,14 +440,92 @@ export default function BusinessProfileScreen() {
             danger
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              showToast(
-                "Funcionalidad de cierre de sesión coming soon",
-                "info",
-              );
+              setShowLogoutModal(true);
             }}
           />
         </View>
       </ScrollView>
+
+      <Modal visible={showThemeModal} transparent animationType="fade">
+        <View style={baseStyles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowThemeModal(false)}
+          />
+          <View
+            style={[baseStyles.modalContent, { backgroundColor: theme.card }]}
+          >
+            <ThemedText type="h3" style={baseStyles.modalTitle}>
+              Seleccionar tema
+            </ThemedText>
+            {themeOptions.map((option) => (
+              <Pressable
+                key={option.value}
+                style={styles.modalOption}
+                onPress={() => {
+                  setThemeMode(option.value);
+                  setShowThemeModal(false);
+                }}
+              >
+                <ThemedText type="body">{option.label}</ThemedText>
+                {themeMode === option.value && (
+                  <Feather
+                    name="check"
+                    size={20}
+                    color={ComeYaColors.primary}
+                  />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showLogoutModal} transparent animationType="fade">
+        <View style={baseStyles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowLogoutModal(false)}
+          />
+          <View
+            style={[baseStyles.modalContent, { backgroundColor: theme.card }]}
+          >
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Cerrar sesión
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalText}>
+              ¿Estás seguro de que quieres cerrar sesión?
+            </ThemedText>
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonCancel,
+                  { backgroundColor: theme.background },
+                ]}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <ThemedText type="body">Cancelar</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonConfirm,
+                  { backgroundColor: "#ef4444" },
+                ]}
+                onPress={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                }}
+              >
+                <ThemedText type="body" style={{ color: "#fff" }}>
+                  Cerrar sesión
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }

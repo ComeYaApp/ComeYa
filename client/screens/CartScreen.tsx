@@ -21,6 +21,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { formatEuros } from "@/utils/currency";
 
 type CartScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -280,7 +281,7 @@ export default function CartScreen() {
                       marginTop: Spacing.sm,
                     }}
                   >
-                    {itemTotal.toFixed(2)} €
+                    {formatEuros(itemTotal)}
                   </ThemedText>
                 </View>
                 <View style={styles.itemActions}>
@@ -417,14 +418,14 @@ export default function CartScreen() {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Subtotal
           </ThemedText>
-          <ThemedText type="body">{subtotal.toFixed(2)} €</ThemedText>
+          <ThemedText type="body">{formatEuros(subtotal)}</ThemedText>
         </View>
         {orderType === "delivery" && (
           <View style={styles.summaryRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío
             </ThemedText>
-            <ThemedText type="body">{deliveryFee.toFixed(2)} €</ThemedText>
+            <ThemedText type="body">{formatEuros(deliveryFee)}</ThemedText>
           </View>
         )}
         {orderType === "pickup" && (
@@ -446,7 +447,7 @@ export default function CartScreen() {
         <View style={[styles.summaryRow, styles.totalRow]}>
           <ThemedText type="h3">Total</ThemedText>
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            {total.toFixed(2)} €
+            {formatEuros(total)}
           </ThemedText>
         </View>
         <Button

@@ -430,11 +430,17 @@ export default function SubscriptionScreen() {
             if (currentPlan === planKey && isActive) return null;
             const cycle = p.billingCycle === "weekly" ? "semana" : "mes";
             const color = (p.color || "#DC2626").replace("#", "");
-            const benefitsText = (p.description || "")
-              .split(".")
-              .map((t: string) => t.trim())
-              .filter((t: string) => t.length > 0)
-              .slice(0, 4);
+            // Beneficios priorizando la lista real de la BD; el texto de
+            // description es solo respaldo (se separa por saltos de línea)
+            const benefitsText: string[] =
+              Array.isArray(p.benefitsList) && p.benefitsList.length > 0
+                ? p.benefitsList
+                    .map((b: any) => b.description)
+                    .filter((d: any) => !!d)
+                : (p.description || "")
+                    .split("\n")
+                    .map((t: string) => t.trim())
+                    .filter((t: string) => t.length > 0);
             return (
               <TouchableOpacity
                 key={planKey}

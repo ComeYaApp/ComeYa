@@ -52,19 +52,54 @@ export class WithdrawalService {
       throw new Error("Saldo insuficiente");
     }
 
+    // Si no vienen datos bancarios, usar la cuenta de pago guardada del
+    // usuario (configurada en su perfil — Bizum/IBAN/PayPal)
+    let bankAccount = request.bankAccount;
+    let pagoMovilPhone = request.pagoMovilPhone;
+    if (!bankAccount && !pagoMovilPhone) {
+      const { paymentAccounts } = await import("../shared/schema-mysql");
+      const accounts = await db
+        .select()
+        .from(paymentAccounts)
+        .where(eq(paymentAccounts.userId, request.userId));
+      const account =
+        accounts.find((a: any) => a.isDefault) || accounts[0];
+      if (!account) {
+        throw new Error(
+          "Configura primero tu cuenta de pago en tu perfil (Métodos de pago)",
+        );
+      }
+      if (account.method === "bizum" && account.pagoMovilPhone) {
+        pagoMovilPhone = account.pagoMovilPhone;
+      } else {
+        bankAccount = {
+          accountNumber:
+            account.binanceId || account.zelleEmail || account.zinliEmail || "",
+          bankName:
+            account.method === "paypal"
+              ? "PayPal"
+              : account.method === "bizum"
+                ? "Bizum"
+                : "Transferencia SEPA",
+          accountHolder: account.zelleEmail || "",
+          accountType: account.method,
+        };
+      }
+    }
+
     // 2. Crear solicitud
     await db.insert(withdrawalRequests).values({
       userId: request.userId,
       walletId: wallet.id,
       amount: request.amount,
       method: request.method,
-      pagoMovilPhone: request.pagoMovilPhone,
+      pagoMovilPhone: pagoMovilPhone,
       pagoMovilBank: request.pagoMovilBank,
       pagoMovilCedula: request.pagoMovilCedula,
-      bankAccountNumber: request.bankAccount?.accountNumber,
-      bankName: request.bankAccount?.bankName,
-      accountHolder: request.bankAccount?.accountHolder,
-      accountType: request.bankAccount?.accountType,
+      bankAccountNumber: bankAccount?.accountNumber,
+      bankName: bankAccount?.bankName,
+      accountHolder: bankAccount?.accountHolder,
+      accountType: bankAccount?.accountType,
       status: "pending",
       requestedAt: new Date(),
     });

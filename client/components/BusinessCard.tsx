@@ -18,6 +18,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { Business } from "@/types";
+import { formatEuros } from "@/utils/currency";
 
 interface BusinessCardProps {
   business: Business;
@@ -109,9 +110,6 @@ export function BusinessCard({
                 CERRADO
               </ThemedText>
             </View>
-            <ThemedText type="caption" style={styles.closedSubtitle}>
-              Abre mañana a las 09:00
-            </ThemedText>
           </View>
         ) : null}
         {business.type === "market" ? (
@@ -165,7 +163,7 @@ export function BusinessCard({
               </>
             )}
             <ThemedText type="caption" style={{ color: theme.textSecondary, marginLeft: business.distance != null ? Spacing.md : 0 }}>
-              Envío {business.deliveryFee.toFixed(2)} €
+              Envío {formatEuros(business.deliveryFee)}
             </ThemedText>
           </View>
         </View>
@@ -212,10 +210,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 13,
     letterSpacing: 1,
-  },
-  closedSubtitle: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 11,
   },
   contentClosed: {
     opacity: 0.6,

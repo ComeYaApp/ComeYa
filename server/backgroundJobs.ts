@@ -1,7 +1,6 @@
 import { db } from "./db";
 import { orders, deliveryDrivers, withdrawals } from "@shared/schema-mysql";
 import { eq, and, lt, lte } from "drizzle-orm";
-import { processWithdrawal } from "./withdrawalService";
 import { releasePendingFunds } from "./commissionService";
 import { logger } from "./logger";
 
@@ -82,21 +81,17 @@ export async function deactivateInactiveDriversJob() {
 
 export async function processPendingWithdrawalsJob() {
   try {
-    logger.info("Running process withdrawals job");
+    // Los retiros se aprueban manualmente desde el panel del admin
+    // (Finanzas → Payouts). No se auto-procesan transferencias.
     const pending = await db
-      .select()
+      .select({ id: withdrawals.id })
       .from(withdrawals)
       .where(eq(withdrawals.status, "pending"))
-      .limit(10);
-
-    for (const withdrawal of pending) {
-      try {
-        await processWithdrawal(withdrawal.id);
-      } catch (error) {
-        logger.error("Failed to process withdrawal", error, {
-          withdrawalId: withdrawal.id,
-        });
-      }
+      .limit(1);
+    if (pending.length > 0) {
+      logger.info(
+        `Hay ${pending.length} retiro(s) pendiente(s) de aprobación manual`,
+      );
     }
   } catch (error) {
     logger.error("Process withdrawals job failed", error);
@@ -126,6 +121,41 @@ export async function updateBusinessStatsJob() {
   }
 }
 
+// Ejecutar pedidos programados cuya hora llegó (los convierte en pedidos reales)
+export async function executeScheduledOrdersJob() {
+  try {
+    const { ScheduledOrdersService } = await import(
+      "./scheduledOrdersService"
+    );
+    const results = await ScheduledOrdersService.executeScheduledOrders();
+    const executed = (results as any[]).filter((r) => r.success).length;
+    if (executed > 0) {
+      logger.info(`Executed ${executed} scheduled orders`);
+    }
+  } catch (error) {
+    logger.error("Execute scheduled orders job failed", error);
+  }
+}
+
+// Desbloquear repartidores cuyo periodo de bloqueo por strikes terminó
+export async function unblockExpiredDriversJob() {
+  try {
+    const now = new Date();
+    await db
+      .update(deliveryDrivers)
+      .set({ isBlocked: false })
+      .where(
+        and(
+          eq(deliveryDrivers.isBlocked, true),
+          lt(deliveryDrivers.blockedUntil!, now),
+        ),
+      );
+    logger.info("Unblocked expired driver blocks checked");
+  } catch (error) {
+    logger.error("Unblock expired drivers job failed", error);
+  }
+}
+
 export function startBackgroundJobs() {
   if (process.env.NODE_ENV !== "production") {
     logger.warn("Background jobs disabled in development");
@@ -140,9 +170,13 @@ export function startBackgroundJobs() {
   setInterval(processPendingWithdrawalsJob, 5 * 60 * 1000);
   setInterval(cleanupAuditLogsJob, 7 * 24 * 60 * 60 * 1000);
   setInterval(updateBusinessStatsJob, 6 * 60 * 60 * 1000);
+  setInterval(executeScheduledOrdersJob, 5 * 60 * 1000);
+  setInterval(unblockExpiredDriversJob, 60 * 60 * 1000);
 
   releaseFundsJob();
   processPendingWithdrawalsJob();
+  executeScheduledOrdersJob();
+  unblockExpiredDriversJob();
 
   logger.info("Background jobs started");
 }

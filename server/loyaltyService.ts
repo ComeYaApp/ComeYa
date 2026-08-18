@@ -79,6 +79,14 @@ export class LoyaltyService {
       // Actualizar progreso de challenges
       await this.updateChallengeProgress(userId, "orders", 1);
       await this.updateChallengeProgress(userId, "spending", orderTotal);
+
+      // Recompensa de referido: primer pedido completado del invitado
+      try {
+        const { ReferralService } = await import("./referralService");
+        await ReferralService.processReferralRewardForOrder(userId, orderId);
+      } catch (referralError) {
+        console.error("Error processing referral reward:", referralError);
+      }
     } catch (error) {
       console.error("Error awarding points for order:", error);
       throw error;
@@ -161,7 +169,7 @@ export class LoyaltyService {
         .set({
           tier: newTier,
           tierUpdatedAt: new Date(),
-          pointsToNextTier,
+          pointsToNextTier: pointsToNext,
         })
         .where(eq(loyaltyPoints.userId, userId));
     } catch (error) {

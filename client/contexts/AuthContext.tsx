@@ -258,6 +258,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signupDataRaw = await AsyncStorage.getItem("@ComeYa_pending_signup");
     const signupData = signupDataRaw ? JSON.parse(signupDataRaw) : null;
 
+    // Adjuntar el código de referido capturado al abrir la app por un enlace
+    if (signupData) {
+      try {
+        const pendingReferral = await AsyncStorage.getItem(
+          "@comeya/pending_referral_code",
+        );
+        if (pendingReferral) signupData.referralCode = pendingReferral;
+      } catch {
+        /* referido opcional */
+      }
+    }
+
     const response = await apiRequest("POST", "/api/auth/phone-login", {
       phone: normalizedPhone,
       code,

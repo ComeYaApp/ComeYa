@@ -53,6 +53,7 @@ import {
 import { Business } from "@/types";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
+import { formatCurrency } from "@/utils/currency";
 import { MainTabParamList } from "@/navigation/MainTabNavigator";
 import { calculateDistance } from "@/utils/distance";
 
@@ -116,7 +117,7 @@ export default function HomeScreen() {
     { id: "vip", title: "Hazte VIP", subtitle: "Envío gratis + 10% dto.", gradient: ["#FFD700", "#FFA000", "#FF8F00"], icon: "award", screen: "Subscriptions" },
     { id: "gift", title: "Tarjeta Regalo", subtitle: "El mejor detalle", gradient: ["#E91E63", "#C2185B", "#AD1457"], icon: "gift", screen: "GiftCards" },
     { id: "points", title: "Tus Puntos", subtitle: "Gana recompensas", gradient: ["#9C27B0", "#7B1FA2", "#6A1B9A"], icon: "zap", screen: "Gamification" },
-    { id: "referral", title: "Invita y Gana", subtitle: "Crédito para ambos", gradient: ["#00BCD4", "#0097A7", "#00838F"], icon: "share-2", screen: "Gamification" },
+    { id: "referral", title: "Invita y Gana", subtitle: "Puntos por cada amigo", gradient: ["#00BCD4", "#0097A7", "#00838F"], icon: "share-2", screen: "Referral" },
   ];
 
   // Obtener ubicación del usuario
@@ -185,7 +186,7 @@ export default function HomeScreen() {
       console.log("🔍 Raw businesses from API:", rawBusinesses);
 
       // Adaptar datos del backend al formato del frontend
-      const businessList: Business[] = rawBusinesses.map((b) => ({
+      const businessList: Business[] = rawBusinesses.map((b: any) => ({
         id: b.id,
         name: b.name,
         description: b.description || "",
@@ -299,7 +300,8 @@ export default function HomeScreen() {
             });
             break;
           case "economico":
-            filtered = filtered.filter((b) => b.deliveryFee <= 30);
+            // deliveryFee está en euros: económico = envío hasta 3 €
+            filtered = filtered.filter((b) => b.deliveryFee <= 3);
             break;
           case "popular":
             // Mostrar negocios destacados (featured)
@@ -536,7 +538,7 @@ export default function HomeScreen() {
                       type="small"
                       style={{ color: ComeYaColors.primary, marginTop: 2 }}
                     >
-                      {(product.price / 100).toFixed(2)} €
+                      {formatCurrency(product.price)}
                     </ThemedText>
                   </View>
                 </Pressable>
@@ -809,6 +811,80 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
+            {/* Recomendados de Soria — negocios destacados (plan Top Soria) */}
+            {!hasActiveFilters && featuredBusinesses.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <ThemedText type="h3" style={styles.sectionTitle}>
+                    Los Recomendados de Soria
+                  </ThemedText>
+                  <Feather name="award" size={18} color={ComeYaColors.primary} />
+                </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.featuredScroll}
+                >
+                  {featuredBusinesses.slice(0, 10).map((business, index) => (
+                    <Pressable
+                      key={`featured-${business.id || index}`}
+                      onPress={() =>
+                        navigation.navigate("BusinessDetail", {
+                          businessId: business.id,
+                        })
+                      }
+                      style={({ pressed }) => [
+                        styles.recommendedCard,
+                        {
+                          backgroundColor: theme.card,
+                          opacity: pressed ? 0.9 : 1,
+                        },
+                        Shadows.md,
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: business.bannerImage }}
+                        style={styles.recommendedImage}
+                        contentFit="cover"
+                      />
+                      <View style={styles.recommendedInfo}>
+                        <ThemedText
+                          type="small"
+                          style={styles.gridName}
+                          numberOfLines={1}
+                        >
+                          {business.name}
+                        </ThemedText>
+                        <View style={styles.gridMeta}>
+                          <View style={styles.ratingSmall}>
+                            <Feather name="star" size={10} color="#FFB800" />
+                            <ThemedText
+                              type="caption"
+                              style={{ marginLeft: 2 }}
+                            >
+                              {business.rating > 0
+                                ? business.rating.toFixed(1)
+                                : "Nuevo"}
+                            </ThemedText>
+                          </View>
+                          <View
+                            style={[
+                              styles.featuredOpenDot,
+                              {
+                                backgroundColor: business.isOpen
+                                  ? "#10B981"
+                                  : "#6B7280",
+                              },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
             {/* Restaurant Grid - Todos los restaurantes */}
             {displayBusinesses.length > 0 ? (
               <View style={styles.section}>
@@ -845,6 +921,23 @@ export default function HomeScreen() {
                           <Feather name="star" size={10} color="#FFFFFF" />
                         </View>
                       )}
+                      <View
+                        style={[
+                          styles.gridOpenBadge,
+                          {
+                            backgroundColor: business.isOpen
+                              ? "#10B981"
+                              : "#6B7280",
+                          },
+                        ]}
+                      >
+                        <ThemedText
+                          type="caption"
+                          style={styles.gridOpenBadgeText}
+                        >
+                          {business.isOpen ? "Abierto" : "Cerrado"}
+                        </ThemedText>
+                      </View>
                       <View style={styles.gridInfo}>
                         <ThemedText
                           type="small"
@@ -1303,6 +1396,46 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
+  },
+  gridOpenBadge: {
+    position: "absolute",
+    top: Spacing.xs,
+    left: Spacing.xs,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  gridOpenBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "700",
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.sm,
+  },
+  featuredScroll: {
+    gap: Spacing.md,
+    paddingRight: Spacing.lg,
+  },
+  recommendedCard: {
+    width: 150,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
+  },
+  recommendedImage: {
+    width: "100%",
+    height: 90,
+  },
+  recommendedInfo: {
+    padding: Spacing.sm,
+  },
+  featuredOpenDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   gridInfo: {
     padding: Spacing.sm,

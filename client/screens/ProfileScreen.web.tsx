@@ -950,12 +950,6 @@ function AccountSection({
               theme={theme}
             />
             <SettingItem
-              icon="users"
-              label="Pedido grupal"
-              onPress={() => navigation.navigate("GroupOrder")}
-              theme={theme}
-            />
-            <SettingItem
               icon="clock"
               label="Pedidos programados"
               onPress={() => navigation.navigate("ScheduledOrders")}

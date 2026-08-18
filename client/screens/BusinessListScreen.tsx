@@ -155,7 +155,8 @@ export default function BusinessListScreen() {
       });
     }
     if (activeFilters.includes("cheap")) {
-      filtered = filtered.filter((b) => b.deliveryFee <= 30);
+      // deliveryFee está en euros: económico = envío hasta 3 €
+      filtered = filtered.filter((b) => b.deliveryFee <= 3);
     }
     if (activeFilters.includes("rating")) {
       filtered = filtered.sort((a, b) => b.rating - a.rating);

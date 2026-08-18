@@ -15,8 +15,8 @@ type DaySchedule = {
 };
 
 function getZonedNow(): Date {
-  // get timezone string from env, default to Caracas
-  const timezone = process.env.BUSINESS_TIMEZONE || "America/Caracas";
+  // ComeYa opera en Soria, España: hora de Madrid por defecto
+  const timezone = process.env.BUSINESS_TIMEZONE || "Europe/Madrid";
   try {
     // Get the time components as numbers in the target timezone
     const parts = new Intl.DateTimeFormat("en-US", {

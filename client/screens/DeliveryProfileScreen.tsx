@@ -38,7 +38,9 @@ import { apiRequest, getApiUrl } from "@/lib/query-client";
 import {
   SettingsItem,
   resolveProfileImageUrl,
+  getRoleLabel,
   styles as baseStyles,
+  themeOptions,
 } from "./BaseProfileScreen";
 
 type DeliveryProfileNavigationProp =
@@ -62,12 +64,15 @@ interface DriverStats {
 }
 
 export default function DeliveryProfileScreen() {
-  const { theme, themeMode } = useTheme();
-  const { user, updateUser } = useAuth();
+  const { theme, themeMode, setThemeMode } = useTheme();
+  const { user, updateUser, logout } = useAuth();
   const { showToast } = useToast();
   const navigation = useNavigation<DeliveryProfileNavigationProp>();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [profileImage, setProfileImage] = useState<string>("");
   const [profileImageVersion, setProfileImageVersion] = useState<number>(
@@ -78,7 +83,7 @@ export default function DeliveryProfileScreen() {
 
   const [driverStats, setDriverStats] = useState<DriverStats | null>(null);
   const [driverStrikes, setDriverStrikes] = useState(0);
-  const maxStrikes = 5;
+  const maxStrikes = 3; // El backend bloquea al llegar a 3 strikes
 
   // Preview modal state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -128,7 +133,12 @@ export default function DeliveryProfileScreen() {
             totalDeliveries: statusData.totalDeliveries || 0,
             vehicleType: profileData.vehicleType,
             vehiclePlate: profileData.vehiclePlate,
-            verificationStatus: user?.isActive ? "verified" : "pending",
+            // Estado real de verificación (no derivar de isActive, que por
+            // defecto es true y mostraba "Verificado" sin documentos)
+            verificationStatus:
+              profileData.verificationStatus ||
+              (user as any)?.verificationStatus ||
+              "pending",
             // Personal documents
             idDocumentUrl: profileData.idDocumentUrl,
             idDocumentBackUrl: profileData.idDocumentBackUrl,
@@ -229,6 +239,23 @@ export default function DeliveryProfileScreen() {
     container: {
       flex: 1,
       backgroundColor: theme.background,
+    },
+    modalOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      width: "100%",
+      paddingVertical: Spacing.md,
+    },
+    modalText: {
+      textAlign: "center",
+      marginBottom: Spacing.lg,
+    },
+    modalButtonCancel: {
+      backgroundColor: "#666",
+    },
+    modalButtonConfirm: {
+      backgroundColor: "#ef4444",
     },
     scrollView: {
       flex: 1,
@@ -792,11 +819,11 @@ export default function DeliveryProfileScreen() {
             }}
           />
           <SettingsItem
-            icon="clock"
-            label="Historial de pagos"
+            icon="credit-card"
+            label="Cuentas de pago y retiros"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showToast("Historial de pagos coming soon", "info");
+              navigation.navigate("WithdrawalScreen" as any);
             }}
           />
         </View>
@@ -835,7 +862,7 @@ export default function DeliveryProfileScreen() {
             }
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showToast("Configuración de tema coming soon", "info");
+              setShowThemeModal(true);
             }}
           />
           <SettingsItem
@@ -843,7 +870,7 @@ export default function DeliveryProfileScreen() {
             label="Notificaciones"
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              showToast("Configuración de notificaciones coming soon", "info");
+              navigation.navigate("NotificationPreferences" as any);
             }}
           />
         </View>
@@ -901,14 +928,88 @@ export default function DeliveryProfileScreen() {
             danger
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              showToast(
-                "Funcionalidad de cierre de sesión coming soon",
-                "info",
-              );
+              setShowLogoutModal(true);
             }}
           />
         </View>
       </ScrollView>
+
+      <Modal visible={showThemeModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowThemeModal(false)}
+          />
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Seleccionar tema
+            </ThemedText>
+            {themeOptions.map((option) => (
+              <Pressable
+                key={option.value}
+                style={styles.modalOption}
+                onPress={() => {
+                  setThemeMode(option.value);
+                  setShowThemeModal(false);
+                }}
+              >
+                <ThemedText type="body">{option.label}</ThemedText>
+                {themeMode === option.value && (
+                  <Feather
+                    name="check"
+                    size={20}
+                    color={ComeYaColors.primary}
+                  />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showLogoutModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setShowLogoutModal(false)}
+          />
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <ThemedText type="h3" style={styles.modalTitle}>
+              Cerrar sesión
+            </ThemedText>
+            <ThemedText type="body" style={styles.modalText}>
+              ¿Estás seguro de que quieres cerrar sesión?
+            </ThemedText>
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonCancel,
+                  { backgroundColor: theme.background },
+                ]}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <ThemedText type="body">Cancelar</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalButton,
+                  styles.modalButtonConfirm,
+                  { backgroundColor: "#ef4444" },
+                ]}
+                onPress={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                }}
+              >
+                <ThemedText type="body" style={{ color: "#fff" }}>
+                  Cerrar sesión
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Image Preview Modal */}
       <Modal

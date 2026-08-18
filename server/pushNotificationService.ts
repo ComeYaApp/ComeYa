@@ -17,29 +17,46 @@ export async function registerPushToken(
   token: string,
 ): Promise<void> {
   pushTokens.set(userId, token);
+  // Persistir en BD para que sobreviva reinicios del servidor
+  try {
+    await db.update(users).set({ pushToken: token }).where(eq(users.id, userId));
+  } catch {
+    /* opcional */
+  }
   logger.info("Push token registered", { userId });
 }
 
 export async function sendPushNotification(
   notification: PushNotification,
 ): Promise<void> {
-  const token = pushTokens.get(notification.userId);
+  // Token en memoria (registro reciente) o en BD (columna push_token)
+  let token = pushTokens.get(notification.userId);
+  if (!token) {
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, notification.userId))
+        .limit(1);
+      token = (user as any)?.pushToken || undefined;
+    } catch {
+      /* sin token en BD */
+    }
+  }
 
   if (!token) {
     logger.debug("No push token for user", { userId: notification.userId });
     return;
   }
 
-  try {
-    logger.info("Push notification sent", {
-      userId: notification.userId,
-      title: notification.title,
-    });
-  } catch (error) {
-    logger.error("Failed to send push notification", error, {
-      userId: notification.userId,
-    });
-  }
+  const { sendPushNotification: sendReal } = await import(
+    "./enhancedPushService"
+  );
+  await sendReal(token, {
+    title: notification.title,
+    body: notification.body,
+    data: notification.data,
+  });
 }
 
 export async function notifyOrderStatusChange(

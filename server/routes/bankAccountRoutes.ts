@@ -1,12 +1,12 @@
 import express from "express";
 import { authenticateToken } from "../authMiddleware";
 import { db } from "../db";
-import { users } from "@shared/schema-mysql";
+import { users, paymentAccounts } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
 
 const router = express.Router();
 
-// Obtener cuenta bancaria SPEI/CoDi del usuario
+// Obtener cuenta bancaria del usuario (IBAN/CLABE)
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const [user] = await db
@@ -19,9 +19,34 @@ router.get("/", authenticateToken, async (req, res) => {
     if (user?.bankAccount) {
       try {
         bankAccount = JSON.parse(user.bankAccount as string);
-      } catch (parseError) {
-        // Si no es JSON válido, devolver en crudo para no bloquear al usuario
+      } catch {
         bankAccount = user.bankAccount;
+      }
+    }
+
+    // Respaldo: cuenta guardada en payment_accounts (Métodos de pago)
+    if (!bankAccount) {
+      try {
+        const accounts = await db
+          .select()
+          .from(paymentAccounts)
+          .where(eq(paymentAccounts.userId, req.user!.id));
+        const account =
+          accounts.find((a: any) => a.isDefault) || accounts[0];
+        if (account) {
+          const numero = account.binanceId || account.pagoMovilPhone || "";
+          bankAccount = {
+            iban: account.method === "transferencia" ? numero : null,
+            clabe: account.method === "transferencia" ? null : numero,
+            bankName:
+              account.method === "paypal"
+                ? "PayPal"
+                : account.zelleEmail || "Transferencia SEPA",
+            accountHolder: account.zelleEmail || "",
+          };
+        }
+      } catch {
+        /* sin cuenta en payment_accounts */
       }
     }
 
@@ -32,20 +57,24 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Guardar/actualizar cuenta bancaria SPEI/CoDi del usuario
+// Guardar/actualizar cuenta bancaria (IBAN español o CLABE)
 router.post("/", authenticateToken, async (req, res) => {
   try {
-    const { clabe, bankName, accountHolder } = req.body || {};
+    const { iban, clabe, bankName, accountHolder } = req.body || {};
 
-    if (!clabe || `${clabe}`.trim().length !== 18) {
-      return res.status(400).json({ error: "CLABE debe tener 18 dígitos" });
+    const numero = `${iban || clabe || ""}`.trim().replace(/\s+/g, "");
+    if (numero.length !== 24 && numero.length !== 18) {
+      return res
+        .status(400)
+        .json({ error: "IBAN (24 caracteres) o CLABE (18 dígitos) requerido" });
     }
     if (!bankName || !accountHolder) {
       return res.status(400).json({ error: "Banco y titular son requeridos" });
     }
 
     const bankAccount = {
-      clabe: `${clabe}`.trim(),
+      iban: numero.length === 24 ? numero : null,
+      clabe: numero.length === 18 ? numero : null,
       bankName: `${bankName}`.trim(),
       accountHolder: `${accountHolder}`.trim(),
     };
@@ -54,6 +83,21 @@ router.post("/", authenticateToken, async (req, res) => {
       .update(users)
       .set({ bankAccount: JSON.stringify(bankAccount) })
       .where(eq(users.id, req.user!.id));
+
+    // Mantener también payment_accounts para el flujo de retiros
+    try {
+      await db.insert(paymentAccounts).values({
+        id: crypto.randomUUID(),
+        userId: req.user!.id,
+        method: "transferencia",
+        isDefault: true,
+        binanceId: numero,
+        zelleEmail: `${accountHolder}`.trim(),
+        label: `${bankName}`.trim(),
+      });
+    } catch {
+      /* opcional */
+    }
 
     res.json({ success: true, bankAccount });
   } catch (error: any) {

@@ -24,6 +24,58 @@ router.put("/push-token", authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/users/notification-preferences — preferencias de notificaciones
+router.get("/notification-preferences", authenticateToken, async (req, res) => {
+  try {
+    const { users } = await import("@shared/schema-mysql");
+    const [user] = await db
+      .select({ notificationPreferences: users.notificationPreferences })
+      .from(users)
+      .where(eq(users.id, req.user!.id as string))
+      .limit(1);
+    if (!user)
+      return res.status(404).json({ error: "Usuario no encontrado" });
+
+    let prefs = { promotions: true, news: true };
+    if (user.notificationPreferences) {
+      try {
+        const parsed = JSON.parse(user.notificationPreferences);
+        prefs = {
+          promotions:
+            typeof parsed.promotions === "boolean"
+              ? parsed.promotions
+              : true,
+          news: typeof parsed.news === "boolean" ? parsed.news : true,
+        };
+      } catch {
+        /* JSON inválido: usar valores por defecto */
+      }
+    }
+    res.json({ success: true, preferences: prefs });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/users/notification-preferences — guardar preferencias
+router.put("/notification-preferences", authenticateToken, async (req, res) => {
+  try {
+    const { promotions, news } = req.body || {};
+    const prefs = {
+      promotions: promotions !== false,
+      news: news !== false,
+    };
+    const { users } = await import("@shared/schema-mysql");
+    await db
+      .update(users)
+      .set({ notificationPreferences: JSON.stringify(prefs) })
+      .where(eq(users.id, req.user!.id as string));
+    res.json({ success: true, preferences: prefs });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/users/profile/full — perfil completo con datos de delivery_drivers
 router.get("/profile/full", authenticateToken, async (req, res) => {
   try {
@@ -72,6 +124,8 @@ router.get("/profile/full", authenticateToken, async (req, res) => {
       success: true,
       dni: user.dni,
       address: user.address,
+      verificationStatus: user.verificationStatus,
+      isActive: user.isActive,
       vehicleType,
       vehiclePlate,
       vehiclePhoto,
@@ -211,6 +265,37 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
       await db
         .insert(deliveryDrivers)
         .values({ id: crypto.randomUUID(), userId: req.user!.id, ...updates });
+    }
+
+    // Cambios en documentos del vehículo → re-verificación del admin
+    const docsChanged =
+      photoUrl !== undefined ||
+      plateUrl !== undefined ||
+      itvUrl !== undefined ||
+      insuranceUrl !== undefined ||
+      licenseUrl !== undefined ||
+      deleteVehiclePhoto === true ||
+      deleteVehiclePlatePhoto === true ||
+      deleteVehicleItvPhoto === true ||
+      deleteVehicleInsurancePhoto === true ||
+      deleteVehicleLicensePhoto === true;
+
+    if (docsChanged) {
+      const { users } = await import("@shared/schema-mysql");
+      await db
+        .update(users)
+        .set({ verificationStatus: "pending" })
+        .where(eq(users.id, req.user!.id as string));
+      try {
+        const { notifyAdmins } = await import("../websocket");
+        notifyAdmins({
+          type: "driver_document_updated",
+          userId: req.user!.id,
+          document: "vehicle",
+        });
+      } catch {
+        /* notificación opcional */
+      }
     }
 
     res.json({ success: true });
@@ -905,6 +990,26 @@ router.post("/verification-document", authenticateToken, async (req, res) => {
         .where(eq(users.id, req.user!.id as string));
     }
 
+    // Los documentos del vehículo también requieren re-verificación
+    if (isVehicleDocument) {
+      await db
+        .update(users)
+        .set({ verificationStatus: "pending" })
+        .where(eq(users.id, req.user!.id as string));
+    }
+
+    // Avisar al admin para revisar la documentación
+    try {
+      const { notifyAdmins } = await import("../websocket");
+      notifyAdmins({
+        type: "driver_document_updated",
+        userId: req.user!.id,
+        document: key,
+      });
+    } catch {
+      /* notificación opcional */
+    }
+
     res.json({
       success: true,
       url,
@@ -950,6 +1055,19 @@ router.put("/personal-docs", authenticateToken, async (req, res) => {
       .update(users)
       .set(updates)
       .where(eq(users.id, req.user!.id as string));
+
+    // Avisar al admin para la re-verificación
+    try {
+      const { notifyAdmins } = await import("../websocket");
+      notifyAdmins({
+        type: "driver_document_updated",
+        userId: req.user!.id,
+        document: "personal",
+      });
+    } catch {
+      /* notificación opcional */
+    }
+
     res.json({
       success: true,
       message: "Documentos guardados. Tu cuenta será revisada nuevamente.",

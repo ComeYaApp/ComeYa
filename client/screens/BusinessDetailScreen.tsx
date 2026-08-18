@@ -130,16 +130,16 @@ export default function BusinessDetailScreen() {
                 p.is_available === true ||
                 p.is_available === 1;
 
-              // Precio base en euros
-              const basePrice = (p.price || 0) / 100;
-              // Agregar comisión del 15%
-              const priceWithCommission = basePrice * 1.15;
+              // Precio con comisión del 15% incluida, redondeado a céntimos
+              // (p.price en céntimos → 1050 * 1.15 = 1207.5 → 1208 = 12,08 €)
+              const priceWithCommission =
+                Math.round((p.price || 0) * 1.15) / 100;
 
               return {
                 id: p.id,
                 name: p.name,
                 description: p.description || "",
-                price: priceWithCommission, // 👈 Precio con comisión incluida
+                price: priceWithCommission, // Precio con comisión incluida
                 image:
                   p.image ||
                   "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",

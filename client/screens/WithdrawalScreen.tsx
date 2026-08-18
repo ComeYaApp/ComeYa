@@ -35,6 +35,7 @@ export default function WithdrawalScreen() {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<"stripe" | "bank_transfer">("stripe");
   const [bankData, setBankData] = useState({
+    iban: "",
     clabe: "",
     bankName: "",
     accountHolder: "",
@@ -84,6 +85,7 @@ export default function WithdrawalScreen() {
             : data.bankAccount;
 
         setBankData({
+          iban: parsed?.iban || "",
           clabe: parsed?.clabe || "",
           bankName: parsed?.bankName || "",
           accountHolder: parsed?.accountHolder || "",
@@ -119,7 +121,8 @@ export default function WithdrawalScreen() {
 
     setOnboardingLoading(true);
     try {
-      const accountType = user.role === "business" ? "business" : "driver";
+      const accountType =
+        user.role === "business_owner" ? "business" : "driver";
 
       const response = await fetch(
         `${API_CONFIG.BASE_URL}/api/connect/onboard`,
@@ -131,7 +134,7 @@ export default function WithdrawalScreen() {
           },
           body: JSON.stringify({
             accountType,
-            businessId: user.role === "business" ? user.id : undefined,
+            businessId: user.role === "business_owner" ? user.id : undefined,
           }),
         },
       );
@@ -295,15 +298,16 @@ export default function WithdrawalScreen() {
     }
 
     if (method === "bank_transfer") {
+      const numeroCuenta = bankData.iban || bankData.clabe;
       if (
-        !bankData.clabe ||
-        bankData.clabe.length !== 18 ||
+        !numeroCuenta ||
+        (numeroCuenta.length !== 24 && numeroCuenta.length !== 18) ||
         !bankData.bankName ||
         !bankData.accountHolder
       ) {
         Alert.alert(
-          "Configura tu cuenta SPEI",
-          "Ve a Métodos de Pago > Agregar cuenta bancaria para guardar tu CLABE y titular.",
+          "Configura tu cuenta bancaria",
+          "Ve a Métodos de Pago > Agregar cuenta bancaria para guardar tu IBAN y titular.",
           [
             {
               text: "Ir a configurar",
@@ -331,6 +335,7 @@ export default function WithdrawalScreen() {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
+              iban: bankData.iban,
               clabe: bankData.clabe,
               bankName: bankData.bankName,
               accountHolder: bankData.accountHolder,
@@ -382,7 +387,15 @@ export default function WithdrawalScreen() {
           body: JSON.stringify({
             amount: amountNum * 100,
             method,
-            bankAccount: method === "bank_transfer" ? bankData : undefined,
+            bankAccount:
+              method === "bank_transfer"
+                ? {
+                    accountNumber: bankData.iban || bankData.clabe,
+                    bankName: bankData.bankName,
+                    accountHolder: bankData.accountHolder,
+                    accountType: "bank_transfer",
+                  }
+                : undefined,
           }),
         },
       );
@@ -397,7 +410,12 @@ export default function WithdrawalScreen() {
             : "Solicitud enviada. El admin procesará tu retiro pronto.",
         );
         setAmount("");
-        setBankData({ clabe: "", bankName: "", accountHolder: "" });
+        setBankData({
+          iban: "",
+          clabe: "",
+          bankName: "",
+          accountHolder: "",
+        });
         loadWalletData();
         loadTransactions();
         loadConnectStatus();
@@ -570,14 +588,16 @@ export default function WithdrawalScreen() {
                 style={{ marginRight: 8 }}
               />
               <Text style={{ fontWeight: "600", color: "#0F172A" }}>
-                Cuenta SPEI / CoDi para retiros
+                Cuenta bancaria para retiros (IBAN)
               </Text>
             </View>
 
-            {bankData.clabe ? (
+            {bankData.iban || bankData.clabe ? (
               <View style={styles.bankSummary}>
-                <Text style={styles.bankSummaryLabel}>CLABE</Text>
-                <Text style={styles.bankSummaryValue}>{bankData.clabe}</Text>
+                <Text style={styles.bankSummaryLabel}>Cuenta (IBAN)</Text>
+                <Text style={styles.bankSummaryValue}>
+                  {bankData.iban || bankData.clabe}
+                </Text>
                 <Text style={styles.bankSummaryLabel}>Banco</Text>
                 <Text style={styles.bankSummaryValue}>
                   {bankData.bankName || "—"}
@@ -589,7 +609,7 @@ export default function WithdrawalScreen() {
               </View>
             ) : (
               <Text style={{ color: "#6B7280", marginBottom: 8 }}>
-                Configura tu cuenta SPEI en Métodos de Pago. Se usará
+                Configura tu cuenta bancaria en Métodos de Pago. Se usará
                 automáticamente para tus retiros.
               </Text>
             )}
@@ -600,7 +620,7 @@ export default function WithdrawalScreen() {
             >
               <Ionicons name="settings-outline" size={16} color="#FF6B35" />
               <Text style={styles.secondaryButtonText}>
-                Configurar cuenta SPEI
+                Configurar cuenta bancaria
               </Text>
             </TouchableOpacity>
           </View>
@@ -942,7 +962,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#f44336",
     marginTop: 2,
-    infoCard: {
+  },
+  bankSummary: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+  },
+  bankSummaryLabel: {
+    fontSize: 11,
+    color: "#64748b",
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  bankSummaryValue: {
+    fontSize: 14,
+    color: "#0f172a",
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  secondaryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#FF6B35",
+    borderRadius: 8,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  secondaryButtonText: {
+    color: "#FF6B35",
+    fontWeight: "600",
+  },
+  infoCard: {
       backgroundColor: "#fff",
       marginHorizontal: 16,
       marginBottom: 8,
@@ -978,7 +1031,5 @@ const styles = StyleSheet.create({
       fontWeight: "600",
       fontSize: 13,
     },
-    fontStyle: "italic",
-    maxWidth: 150,
-  },
-});
+  }
+);

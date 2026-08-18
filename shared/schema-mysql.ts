@@ -42,11 +42,20 @@ export const users = mysqlTable("users", {
   pagoMovilBank: text("pago_movil_bank"),
   pagoMovilCedula: text("pago_movil_cedula"),
   bankAccount: text("bank_account"),
+  // Preferencias de notificaciones (JSON: {promotions, news}; los avisos de
+  // pedidos siempre se envían por ser operativos)
+  notificationPreferences: text("notification_preferences"),
+  // Referidos: código propio del usuario y quién lo invitó
+  referralCode: varchar("referral_code", { length: 20 }),
+  referredBy: varchar("referred_by", { length: 255 }),
+  referralRewardedAt: timestamp("referral_rewarded_at"),
   isActive: boolean("is_active").notNull().default(true),
   isOnline: boolean("is_online").notNull().default(false),
   lastActiveAt: timestamp("last_active_at"),
   profileImage: text("profile_image"),
+  pushToken: text("push_token"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at"),
 });
 
 export const addresses = mysqlTable("addresses", {

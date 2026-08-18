@@ -89,7 +89,11 @@ export default function ScheduledOrdersScreen() {
  };
  };
 
- const formatCurrency = (amount: number) => `${(amount / 100).toFixed(2)}`;
+ const formatCurrency = (amount: number) =>
+   (amount / 100).toLocaleString("es-ES", {
+     minimumFractionDigits: 2,
+     maximumFractionDigits: 2,
+   }) + " €";
 
  const upcomingOrders = (scheduledOrders as any[]).filter(
  (o) => o.status === "pending",

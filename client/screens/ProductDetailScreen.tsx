@@ -28,6 +28,7 @@ import {
 } from "@/constants/theme";
 import { mockProducts } from "@/data/mockData";
 import { Product } from "@/types";
+import { formatEuros } from "@/utils/currency";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useToast } from "@/contexts/ToastContext";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -225,7 +226,7 @@ export default function ProductDetailScreen() {
 
           <View style={styles.priceRow}>
             <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-              ${product.price}
+              {formatEuros(product.price)}
               {product.isWeightBased ? `/${product.unit}` : ""}
             </ThemedText>
             {!product.available ? (
@@ -371,7 +372,7 @@ export default function ProductDetailScreen() {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Total
           </ThemedText>
-          <ThemedText type="h2">{calculateTotal().toFixed(2)} €</ThemedText>
+          <ThemedText type="h2">{formatEuros(calculateTotal())}</ThemedText>
         </View>
         <Button
           onPress={handleAddToCart}

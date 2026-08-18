@@ -86,7 +86,7 @@ export default function ScheduleOrderScreen() {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast(
-        `Pedido programado para ${scheduledDate.toLocaleDateString("es-VE")}`,
+        `Pedido programado para ${scheduledDate.toLocaleDateString("es-ES")}`,
         "success",
       );
       navigation.goBack();
@@ -312,7 +312,7 @@ export default function ScheduleOrderScreen() {
             >
               <Feather name="calendar" size={20} color={ComeYaColors.primary} />
               <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
-                {scheduledDate.toLocaleDateString("es-VE", {
+                {scheduledDate.toLocaleDateString("es-ES", {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
@@ -344,7 +344,7 @@ export default function ScheduleOrderScreen() {
           >
             <Feather name="clock" size={20} color={ComeYaColors.primary} />
             <ThemedText type="body" style={{ marginLeft: Spacing.md }}>
-              {scheduledDate.toLocaleTimeString("es-VE", {
+              {scheduledDate.toLocaleTimeString("es-ES", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}

@@ -1243,14 +1243,6 @@ export default function ProfileScreen() {
                 }}
               />
               <SettingsItem
-                icon="users"
-                label="Pedido grupal"
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  navigation.navigate("GroupOrder" as any);
-                }}
-              />
-              <SettingsItem
                 icon="clock"
                 label="Pedidos programados"
                 onPress={() => {

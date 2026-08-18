@@ -9,10 +9,18 @@ import {
   ScrollView,
   Alert,
   Linking,
+  TextInput,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { API_CONFIG } from "../constants/config";
+
+const formatEuros = (cents: number | null | undefined): string =>
+  `${((cents ?? 0) / 100).toLocaleString("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} €`;
 
 interface WalletData {
   balance: number;
@@ -37,6 +45,8 @@ interface UniversalWalletProps {
   showConnectSetup?: boolean;
 }
 
+const CAN_WITHDRAW_ROLES = ["delivery_driver", "business_owner"];
+
 export default function UniversalWallet({
   showWithdrawals = true,
   showConnectSetup = true,
@@ -49,11 +59,18 @@ export default function UniversalWallet({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [onboardingLoading, setOnboardingLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   // Estado para mostrar historial
   const [showHistory, setShowHistory] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Modal de retiro
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+
+  const isEligible = CAN_WITHDRAW_ROLES.includes(user?.role || "");
 
   const fetchTransactions = async () => {
     setLoadingHistory(true);
@@ -71,7 +88,7 @@ export default function UniversalWallet({
         const data = await response.json();
         setTransactions(data.transactions || []);
       }
-    } catch (e) {
+    } catch {
       setTransactions([]);
     } finally {
       setLoadingHistory(false);
@@ -84,7 +101,6 @@ export default function UniversalWallet({
 
   const fetchData = async () => {
     try {
-      // Fetch wallet balance
       const walletResponse = await fetch(
         `${API_CONFIG.BASE_URL}/api/wallet/balance`,
         {
@@ -97,16 +113,12 @@ export default function UniversalWallet({
 
       if (walletResponse.ok) {
         const walletData = await walletResponse.json();
-        setWallet(walletData);
+        setWallet(walletData.wallet || walletData);
       }
 
-      // Fetch Connect status for eligible roles
-      if (
-        showConnectSetup &&
-        (user?.role === "driver" || user?.role === "business")
-      ) {
+      if (showConnectSetup && isEligible) {
         const connectResponse = await fetch(
-          `${API_CONFIG.BASE_URL}/api/stripe/connect/status`,
+          `${API_CONFIG.BASE_URL}/api/connect/status`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -142,26 +154,20 @@ export default function UniversalWallet({
 
     setOnboardingLoading(true);
     try {
-      const accountType = user.role === "business" ? "business" : "driver";
-
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}/api/stripe/connect/onboard`,
+        `${API_CONFIG.BASE_URL}/api/connect/onboard`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            accountType,
-            businessId: user.role === "business" ? user.id : undefined,
-          }),
+          body: JSON.stringify({}),
         },
       );
 
       if (response.ok) {
         const data = await response.json();
-
         const supported = await Linking.canOpenURL(data.onboardingUrl);
         if (supported) {
           await Linking.openURL(data.onboardingUrl);
@@ -172,22 +178,70 @@ export default function UniversalWallet({
         const error = await response.json();
         Alert.alert("Error", error.error || "Error al iniciar configuración");
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Error de conexión");
     } finally {
       setOnboardingLoading(false);
     }
   };
 
+  const handleWithdraw = async () => {
+    const euros = parseFloat(withdrawAmount.replace(",", "."));
+    if (!euros || Number.isNaN(euros) || euros <= 0) {
+      Alert.alert("Importe no válido", "Introduce un importe válido en euros.");
+      return;
+    }
+    const cents = Math.round(euros * 100);
+    if (cents < 5000) {
+      Alert.alert("Importe mínimo", "El monto mínimo de retiro es 50 €.");
+      return;
+    }
+    const available = wallet?.availableForWithdrawal ?? 0;
+    if (cents > available) {
+      Alert.alert("Saldo insuficiente", "No tienes saldo suficiente.");
+      return;
+    }
+
+    setWithdrawing(true);
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/wallet/withdraw`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ amount: cents }),
+      });
+
+      if (response.ok) {
+        Alert.alert(
+          "Solicitud enviada",
+          "Tu solicitud de retiro ha sido enviada y será revisada por el administrador.",
+        );
+        setShowWithdrawModal(false);
+        setWithdrawAmount("");
+        fetchData();
+      } else {
+        const error = await response.json();
+        Alert.alert("Error", error.error || "No se pudo procesar el retiro");
+      }
+    } catch {
+      Alert.alert("Error", "Error de conexión");
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
   const getRoleText = () => {
     switch (user?.role) {
-      case "driver":
+      case "delivery_driver":
         return "Repartidor";
-      case "business":
+      case "business_owner":
         return "Negocio";
       case "customer":
         return "Cliente";
       case "admin":
+      case "super_admin":
         return "Administrador";
       default:
         return "Usuario";
@@ -197,9 +251,9 @@ export default function UniversalWallet({
   const getBalanceColor = () => {
     if (!wallet) return "#6B7280";
     const available = wallet.availableForWithdrawal;
-    if (available >= 10000) return "#10B981"; // Green for $100+
-    if (available >= 5000) return "#F59E0B"; // Orange for $50+
-    return "#6B7280"; // Gray for less
+    if (available >= 10000) return "#10B981";
+    if (available >= 5000) return "#F59E0B";
+    return "#6B7280";
   };
 
   if (loading) {
@@ -223,71 +277,17 @@ export default function UniversalWallet({
         <Ionicons name="wallet-outline" size={32} color="#FF6B35" />
         <Text style={styles.title}>Mi Wallet</Text>
         <Text style={styles.subtitle}>{getRoleText()}</Text>
-        {/* Resumen financiero para drivers y negocios */}
-        {wallet && (user?.role === "driver" || user?.role === "business") && (
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#F3F4F6",
-              borderRadius: 8,
-              padding: 10,
-              alignItems: "center",
-            }}
-          >
-            <Text
-              style={{ fontSize: 13, color: "#374151", fontWeight: "bold" }}
-            >
-              Resumen financiero
-            </Text>
-            <Text style={{ fontSize: 13, color: "#374151" }}>
-              Tus ingresos:{" "}
-              <Text style={{ fontWeight: "bold", color: "#10B981" }}>
-                ${(wallet.totalEarned / 100).toFixed(2)}
-              </Text>{" "}
-              | Deuda pendiente:{" "}
-              <Text style={{ fontWeight: "bold", color: "#F59E0B" }}>
-                ${(wallet.cashOwed / 100).toFixed(2)}
-              </Text>{" "}
-              | Saldo para retiro:{" "}
-              <Text style={{ fontWeight: "bold", color: "#111827" }}>
-                ${(wallet.availableForWithdrawal / 100).toFixed(2)}
-              </Text>
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Banner de notificación si hay deuda de efectivo */}
       {wallet && wallet.cashOwed > 0 && (
-        <View
-          style={{
-            backgroundColor: "#FEF3C7",
-            borderRadius: 8,
-            marginHorizontal: 16,
-            marginBottom: 8,
-            padding: 12,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <Ionicons
-            name="warning"
-            size={20}
-            color="#F59E0B"
-            style={{ marginRight: 8 }}
-          />
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{ color: "#92400E", fontWeight: "bold", marginBottom: 2 }}
-            >
-              Tienes una deuda de efectivo pendiente
-            </Text>
-            <Text style={{ color: "#92400E", fontSize: 13 }}>
-              Recibiste entregas en efectivo. Debes entregar $
-              {(wallet.cashOwed / 100).toFixed(2)} al negocio antes de poder
-              retirar tu saldo.
-            </Text>
-          </View>
+        <View style={styles.warningBanner}>
+          <Ionicons name="warning" size={20} color="#F59E0B" />
+          <Text style={styles.warningText}>
+            Recibiste entregas en efectivo. Debes entregar{" "}
+            {formatEuros(wallet.cashOwed)} al negocio antes de poder retirar tu
+            saldo.
+          </Text>
         </View>
       )}
 
@@ -303,157 +303,142 @@ export default function UniversalWallet({
             <Ionicons name="cash-outline" size={24} color={getBalanceColor()} />
           </View>
           <Text style={[styles.balanceAmount, { color: getBalanceColor() }]}>
-            ${(wallet.availableForWithdrawal / 100).toFixed(2)} €
+            {formatEuros(wallet.availableForWithdrawal)}
           </Text>
-          <View style={styles.retainRow}>
-            <Text style={styles.retainLabel}>
-              Saldo retenido (deuda de efectivo):
-            </Text>
-            <Text style={styles.retainAmount}>
-              $
-              {wallet.cashOwed > 0
-                ? (wallet.cashOwed / 100).toFixed(2)
-                : "0.00"}
-            </Text>
-          </View>
           <View style={styles.balanceGrid}>
             <View style={styles.balanceItem}>
               <Text style={styles.balanceItemLabel}>Total Ganado</Text>
               <Text style={styles.balanceItemValue}>
-                ${(wallet.totalEarned / 100).toFixed(2)}
+                {formatEuros(wallet.totalEarned)}
               </Text>
             </View>
             <View style={styles.balanceItem}>
               <Text style={styles.balanceItemLabel}>Retirado</Text>
               <Text style={styles.balanceItemValue}>
-                ${(wallet.totalWithdrawn / 100).toFixed(2)}
+                {formatEuros(wallet.totalWithdrawn)}
               </Text>
             </View>
             <View style={styles.balanceItem}>
               <Text style={styles.balanceItemLabel}>Pendiente</Text>
               <Text style={styles.balanceItemValue}>
-                ${(wallet.pendingBalance / 100).toFixed(2)}
+                {formatEuros(wallet.pendingBalance)}
               </Text>
             </View>
             <View style={styles.balanceItem}>
               <Text style={styles.balanceItemLabel}>Balance</Text>
               <Text style={styles.balanceItemValue}>
-                ${(wallet.balance / 100).toFixed(2)}
+                {formatEuros(wallet.balance)}
               </Text>
             </View>
           </View>
         </View>
       )}
 
-      {/* Connect Status - Only for drivers and businesses */}
-      {showConnectSetup &&
-        (user?.role === "driver" || user?.role === "business") && (
-          <View style={styles.connectCard}>
-            <View style={styles.connectHeader}>
-              <Ionicons
-                name={
-                  connectStatus?.canReceivePayments
-                    ? "checkmark-circle"
-                    : "time-outline"
-                }
-                size={24}
-                color={
-                  connectStatus?.canReceivePayments ? "#10B981" : "#F59E0B"
-                }
-              />
-              <Text style={styles.connectTitle}>Cuenta Bancaria</Text>
-            </View>
-
-            {!connectStatus?.hasAccount ? (
-              <View>
-                <Text style={styles.connectDescription}>
-                  Conecta tu cuenta bancaria para retiros automáticos
-                </Text>
-                <TouchableOpacity
-                  style={styles.connectButton}
-                  onPress={startOnboarding}
-                  disabled={onboardingLoading}
-                >
-                  {onboardingLoading ? (
-                    <ActivityIndicator color="white" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons
-                        name="add-circle-outline"
-                        size={18}
-                        color="white"
-                      />
-                      <Text style={styles.connectButtonText}>Configurar</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : connectStatus.canReceivePayments ? (
-              <View style={styles.connectSuccess}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.connectSuccessText}>
-                  Cuenta configurada para retiros automáticos
-                </Text>
-              </View>
-            ) : (
-              <View>
-                <Text style={styles.connectWarning}>
-                  Completa la configuración de tu cuenta
-                </Text>
-                <TouchableOpacity
-                  style={styles.connectButton}
-                  onPress={startOnboarding}
-                  disabled={onboardingLoading}
-                >
-                  {onboardingLoading ? (
-                    <ActivityIndicator color="white" size="small" />
-                  ) : (
-                    <>
-                      <Ionicons
-                        name="refresh-outline"
-                        size={16}
-                        color="white"
-                      />
-                      <Text style={styles.connectButtonText}>Completar</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
+      {/* Connect Status - Solo repartidores y negocios */}
+      {showConnectSetup && isEligible && (
+        <View style={styles.connectCard}>
+          <View style={styles.connectHeader}>
+            <Ionicons
+              name={
+                connectStatus?.canReceivePayments
+                  ? "checkmark-circle"
+                  : "time-outline"
+              }
+              size={24}
+              color={connectStatus?.canReceivePayments ? "#10B981" : "#F59E0B"}
+            />
+            <Text style={styles.connectTitle}>Cuenta Bancaria (Stripe)</Text>
           </View>
-        )}
+
+          {!connectStatus?.hasAccount ? (
+            <View>
+              <Text style={styles.connectDescription}>
+                Conecta tu cuenta bancaria para retiros automáticos
+              </Text>
+              <TouchableOpacity
+                style={styles.connectButton}
+                onPress={startOnboarding}
+                disabled={onboardingLoading}
+              >
+                {onboardingLoading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={18}
+                      color="white"
+                    />
+                    <Text style={styles.connectButtonText}>Configurar</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : connectStatus.canReceivePayments ? (
+            <View style={styles.connectSuccess}>
+              <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+              <Text style={styles.connectSuccessText}>
+                Cuenta configurada para retiros automáticos
+              </Text>
+            </View>
+          ) : (
+            <View>
+              <Text style={styles.connectWarning}>
+                Completa la configuración de tu cuenta
+              </Text>
+              <TouchableOpacity
+                style={styles.connectButton}
+                onPress={startOnboarding}
+                disabled={onboardingLoading}
+              >
+                {onboardingLoading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="refresh-outline"
+                      size={16}
+                      color="white"
+                    />
+                    <Text style={styles.connectButtonText}>Completar</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Quick Actions */}
       <View style={styles.actionsCard}>
         <Text style={styles.actionsTitle}>Acciones Rápidas</Text>
         <View style={styles.actionsGrid}>
-          {showWithdrawals &&
-            (user?.role === "driver" || user?.role === "business") && (
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  wallet && wallet.cashOwed > 0 ? { opacity: 0.5 } : {},
-                ]}
-                disabled={wallet && wallet.cashOwed > 0}
-                onPress={() => {
-                  if (wallet && wallet.cashOwed > 0) {
-                    Alert.alert(
-                      "No puedes retirar",
-                      "No puedes retirar hasta saldar tu deuda de efectivo.",
-                    );
-                    return;
-                  }
-                  // Aquí iría la lógica de retiro real
-                }}
-              >
-                <Ionicons
-                  name="arrow-up-circle-outline"
-                  size={24}
-                  color="#FF6B35"
-                />
-                <Text style={styles.actionText}>Retirar</Text>
-              </TouchableOpacity>
-            )}
+          {showWithdrawals && isEligible && (
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                wallet && wallet.cashOwed > 0 ? { opacity: 0.5 } : {},
+              ]}
+              disabled={(wallet && wallet.cashOwed > 0) || false}
+              onPress={() => {
+                if (wallet && wallet.cashOwed > 0) {
+                  Alert.alert(
+                    "No puedes retirar",
+                    "No puedes retirar hasta saldar tu deuda de efectivo.",
+                  );
+                  return;
+                }
+                setShowWithdrawModal(true);
+              }}
+            >
+              <Ionicons
+                name="arrow-up-circle-outline"
+                size={24}
+                color="#FF6B35"
+              />
+              <Text style={styles.actionText}>Retirar</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => setShowHistory(!showHistory)}
@@ -461,85 +446,52 @@ export default function UniversalWallet({
             <Ionicons name="list-outline" size={24} color="#FF6B35" />
             <Text style={styles.actionText}>Historial</Text>
           </TouchableOpacity>
-          {/* Historial de transacciones */}
-          {showHistory && (
-            <View
-              style={{
-                backgroundColor: "white",
-                margin: 16,
-                borderRadius: 12,
-                padding: 12,
-                maxHeight: 320,
-              }}
-            >
-              <Text
-                style={{ fontWeight: "bold", fontSize: 16, marginBottom: 8 }}
-              >
-                Historial
+        </View>
+
+        {/* Historial de transacciones */}
+        {showHistory && (
+          <View style={styles.historyBox}>
+            <Text style={styles.historyTitle}>Historial</Text>
+            {loadingHistory ? (
+              <ActivityIndicator size="small" color="#FF6B35" />
+            ) : transactions.length === 0 ? (
+              <Text style={{ color: "#6B7280" }}>
+                No hay transacciones recientes.
               </Text>
-              {loadingHistory ? (
-                <ActivityIndicator size="small" color="#FF6B35" />
-              ) : transactions.length === 0 ? (
-                <Text style={{ color: "#6B7280" }}>
-                  No hay transacciones recientes.
-                </Text>
-              ) : (
-                <ScrollView style={{ maxHeight: 260 }}>
-                  {transactions.map((tx, idx) => (
-                    <View
-                      key={tx.id || idx}
+            ) : (
+              <ScrollView style={{ maxHeight: 260 }}>
+                {transactions.map((tx, idx) => (
+                  <View key={tx.id || idx} style={styles.historyRow}>
+                    <Ionicons
+                      name={
+                        tx.type === "cash_debt"
+                          ? "remove-circle-outline"
+                          : "add-circle-outline"
+                      }
+                      size={18}
+                      color={tx.type === "cash_debt" ? "#F59E0B" : "#10B981"}
+                    />
+                    <Text style={styles.historyText}>
+                      {tx.type === "cash_debt"
+                        ? "Deuda de efectivo"
+                        : tx.description || "Movimiento"}
+                    </Text>
+                    <Text
                       style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginBottom: 8,
+                        fontWeight: "bold",
+                        color:
+                          tx.amount < 0 ? "#F59E0B" : "#10B981",
                       }}
                     >
-                      <Ionicons
-                        name={
-                          tx.type === "cash_debt"
-                            ? "remove-circle-outline"
-                            : "add-circle-outline"
-                        }
-                        size={18}
-                        color={tx.type === "cash_debt" ? "#F59E0B" : "#10B981"}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text style={{ flex: 1, color: "#374151" }}>
-                        {tx.type === "cash_debt"
-                          ? "Deuda de efectivo"
-                          : tx.type === "wallet_payment"
-                            ? "Pago con billetera"
-                            : "Ingreso por entrega"}
-                      </Text>
-                      <Text
-                        style={{
-                          fontWeight: "bold",
-                          color:
-                            tx.type === "cash_debt" ? "#F59E0B" : "#10B981",
-                        }}
-                      >
-                        {tx.type === "cash_debt" ? "-" : "+"}$
-                        {Math.abs(tx.amount / 100).toFixed(2)}
-                      </Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-          )}
-
-          {(user?.role === "driver" || user?.role === "business") && (
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="card-outline" size={24} color="#FF6B35" />
-              <Text style={styles.actionText}>Métodos</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="help-circle-outline" size={24} color="#FF6B35" />
-            <Text style={styles.actionText}>Ayuda</Text>
-          </TouchableOpacity>
-        </View>
+                      {tx.amount < 0 ? "-" : "+"}
+                      {formatEuros(Math.abs(tx.amount))}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Info Card */}
@@ -548,11 +500,56 @@ export default function UniversalWallet({
         <View style={styles.infoContent}>
           <Text style={styles.infoTitle}>Pagos Seguros</Text>
           <Text style={styles.infoText}>
-            Todos los pagos son procesados de forma segura con encriptación
-            bancaria.
+            Los retiros se solicitan desde aquí y el administrador los procesa
+            mediante tu cuenta de pago configurada.
           </Text>
         </View>
       </View>
+
+      {/* Modal de retiro */}
+      <Modal
+        visible={showWithdrawModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowWithdrawModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Retirar saldo</Text>
+            <Text style={styles.modalSubtitle}>
+              Disponible: {formatEuros(wallet?.availableForWithdrawal ?? 0)}.
+              Mínimo 50 €. El pago se realiza a tu cuenta configurada.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Importe en euros (ej: 50)"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="decimal-pad"
+              value={withdrawAmount}
+              onChangeText={setWithdrawAmount}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancel]}
+                onPress={() => setShowWithdrawModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalConfirm]}
+                onPress={handleWithdraw}
+                disabled={withdrawing}
+              >
+                {withdrawing ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmText}>Solicitar retiro</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -623,14 +620,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FEF3C7",
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 16,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
   },
   warningText: {
-    fontSize: 12,
+    flex: 1,
+    fontSize: 13,
     color: "#92400E",
-    marginLeft: 6,
     fontWeight: "500",
   },
   balanceGrid: {
@@ -750,6 +749,26 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: "500",
   },
+  historyBox: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 12,
+  },
+  historyTitle: {
+    fontWeight: "bold",
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 8,
+  },
+  historyText: {
+    flex: 1,
+    color: "#374151",
+  },
   infoCard: {
     backgroundColor: "white",
     margin: 16,
@@ -777,5 +796,65 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6B7280",
     lineHeight: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: "#111827",
+    marginBottom: 16,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  modalCancel: {
+    backgroundColor: "#F3F4F6",
+  },
+  modalCancelText: {
+    color: "#374151",
+    fontWeight: "600",
+  },
+  modalConfirm: {
+    backgroundColor: "#FF6B35",
+  },
+  modalConfirmText: {
+    color: "white",
+    fontWeight: "600",
   },
 });

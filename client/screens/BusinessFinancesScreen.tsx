@@ -52,11 +52,18 @@ interface Payout {
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  pago_movil: "📱 Pago Móvil",
-  binance_pay: "🟡 Binance Pay",
-  zinli: "💜 Zinli",
-  zelle: "💙 Zelle",
+  pago_movil: "📱 Bizum",
+  binance_pay: "🏦 Transferencia (SEPA)",
+  zinli: "🅿️ PayPal",
+  zelle: "💳 Tarjeta",
   cash: "💵 Efectivo",
+  bizum: "📱 Bizum",
+  transferencia: "🏦 Transferencia (SEPA)",
+  paypal: "🅿️ PayPal",
+  bank_transfer: "🏦 Transferencia (SEPA)",
+  stripe: "💳 Tarjeta (Stripe)",
+  stripe_card: "💳 Tarjeta",
+  stripe_bizum: "📱 Bizum",
 };
 
 export default function BusinessFinancesScreen() {
@@ -311,10 +318,10 @@ export default function BusinessFinancesScreen() {
             • ComeYa agrega un 15% de markup al precio final del cliente
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • Métodos: Pago Móvil, Binance Pay, Zinli, Zelle, Efectivo
+            • Métodos: Bizum, Transferencia (SEPA), PayPal, Tarjeta
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • El admin transfiere tus ganancias al confirmar la entrega
+            • El admin transfiere tus ganancias a tu cuenta de pago
           </ThemedText>
         </View>
 

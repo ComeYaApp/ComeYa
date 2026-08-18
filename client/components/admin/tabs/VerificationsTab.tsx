@@ -477,24 +477,40 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       {selected.deliveryDriver &&
                         ["motorcycle", "car"].includes(
                           selected.deliveryDriver.vehicleType,
-                        ) && (() => {
-                          let vdocs: any = {};
-                          try { vdocs = JSON.parse(selected.deliveryDriver.verificationDocuments || "{}"); } catch {}
-                          return (
-                            <Section title="Documentos del vehículo" theme={theme}>
-                              <DocRow
-                                label="Permiso de circulación"
-                                url={vdocs.vehicleDocument || vdocs.vehicle_document || null}
-                                theme={theme}
-                              />
-                              <DocRow
-                                label="Seguro"
-                                url={vdocs.insuranceDocument || vdocs.insurance_document || null}
-                                theme={theme}
-                              />
-                            </Section>
-                          );
-                        })()}
+                        ) && (
+                          <Section title="Documentos del vehículo" theme={theme}>
+                            <DocRow
+                              label="Permiso de circulación"
+                              url={
+                                selected.deliveryDriver.vehicleLicensePhoto ||
+                                null
+                              }
+                              theme={theme}
+                            />
+                            <DocRow
+                              label="ITV"
+                              url={
+                                selected.deliveryDriver.vehicleItvPhoto || null
+                              }
+                              theme={theme}
+                            />
+                            <DocRow
+                              label="Seguro"
+                              url={
+                                selected.deliveryDriver.vehicleInsurancePhoto ||
+                                null
+                              }
+                              theme={theme}
+                            />
+                            <DocRow
+                              label="Matrícula"
+                              url={
+                                selected.deliveryDriver.vehiclePlatePhoto || null
+                              }
+                              theme={theme}
+                            />
+                          </Section>
+                        )}
                     </>
                   )}
 

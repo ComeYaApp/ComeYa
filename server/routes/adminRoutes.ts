@@ -1108,6 +1108,38 @@ router.put(
       const verificationStatus = action === "approve" ? "verified" : "rejected";
       const isActive = action === "approve";
 
+      // Antes de aprobar a un repartidor, validar que tenga los documentos
+      // mínimos (DNI anverso + permiso de circulación + foto del vehículo)
+      if (action === "approve") {
+        const [targetUser] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+        if (targetUser?.role === "delivery_driver") {
+          const { deliveryDrivers } = await import("@shared/schema-mysql");
+          const [dd] = await db
+            .select()
+            .from(deliveryDrivers)
+            .where(eq(deliveryDrivers.userId, userId))
+            .limit(1);
+          const missing: string[] = [];
+          if (!targetUser.idDocumentUrl)
+            missing.push("DNI/NIE (anverso)");
+          if (!(dd as any)?.vehicleLicensePhoto)
+            missing.push("Permiso de circulación");
+          if (!(dd as any)?.vehiclePhoto)
+            missing.push("Foto del vehículo");
+          if (missing.length > 0) {
+            return res.status(400).json({
+              error:
+                "El repartidor no ha subido todos los documentos requeridos: " +
+                missing.join(", "),
+            });
+          }
+        }
+      }
+
       await db
         .update(users)
         .set({

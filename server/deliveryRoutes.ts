@@ -19,7 +19,8 @@ router.post(
   "/register",
   authenticateToken,
   asyncHandler(async (req, res) => {
-    const { userId, vehicleType, vehiclePlate } = req.body;
+    const { userId, vehicleType, vehiclePlate, bankClabe, bankName } =
+      req.body;
 
     if (!vehicleType || !vehiclePlate) {
       throw new ValidationError("Vehicle type and plate are required");
@@ -91,6 +92,24 @@ router.post(
     }
 
     logger.delivery("Driver registered", { userId, driverId: driver.id });
+
+    // Guardar la cuenta de pago del repartidor (IBAN/CLABE) si la envió
+    if (bankClabe) {
+      try {
+        const { paymentAccounts } = await import("@shared/schema-mysql");
+        await db.insert(paymentAccounts).values({
+          id: crypto.randomUUID(),
+          userId,
+          method: "transferencia",
+          isDefault: true,
+          binanceId: bankClabe,
+          zelleEmail: bankName || "Transferencia SEPA",
+          label: "Cuenta principal",
+        });
+      } catch (accountError) {
+        console.error("Error saving driver bank account:", accountError);
+      }
+    }
 
     // Notificar a los administradores que hay un repartidor pendiente de aprobación
     try {
@@ -169,10 +188,36 @@ router.get(
       .where(eq(deliveryDrivers.userId, userId))
       .limit(1);
 
+    // Entregas completadas y valoración media del repartidor
+    let totalDeliveries = 0;
+    let rating = 0;
+    try {
+      const { sql } = await import("drizzle-orm");
+      const [deliveries] = await db.execute(sql`
+        SELECT
+          (SELECT COUNT(*) FROM orders o
+            WHERE o.delivery_person_id = ${userId}
+              AND o.status IN ('delivered', 'completed')) AS total,
+          (SELECT AVG(delivery_person_rating) FROM reviews r
+            WHERE r.delivery_person_id = ${userId}
+              AND r.delivery_person_rating IS NOT NULL) AS avgRating
+      `);
+      const row = (deliveries as any[])[0] as any;
+      totalDeliveries = Number(row?.total) || 0;
+      rating = Number(row?.avgRating) || 0;
+    } catch (statsError) {
+      console.error("Error loading driver stats in /status:", statsError);
+    }
+
     res.json({
       success: true,
       isOnline: driver?.isAvailable ?? false,
       verificationStatus: (req as any).user?.verificationStatus ?? "pending",
+      strikes: driver?.strikes ?? 0,
+      isBlocked: driver?.isBlocked ?? false,
+      blockedUntil: driver?.blockedUntil ?? null,
+      rating,
+      totalDeliveries,
     });
   }),
 );
@@ -521,6 +566,16 @@ router.post(
       .limit(1);
     if (!driver || !driver.isAvailable) {
       throw new AuthorizationError("Driver not available");
+    }
+
+    // Repartidor bloqueado por strikes: no puede aceptar pedidos
+    if (driver.isBlocked) {
+      if (driver.blockedUntil && new Date(driver.blockedUntil) > new Date()) {
+        throw new AuthorizationError(
+          `Repartidor bloqueado hasta ${driver.blockedUntil.toISOString()}`,
+        );
+      }
+      throw new AuthorizationError("Repartidor bloqueado");
     }
 
     await db

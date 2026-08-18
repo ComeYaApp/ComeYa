@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { scheduledOrders, orders } from "@shared/schema-mysql";
+import { scheduledOrders, orders, businesses } from "@shared/schema-mysql";
 import { eq, and, lte, gte } from "drizzle-orm";
 
 export class ScheduledOrdersService {
@@ -87,15 +87,57 @@ export class ScheduledOrdersService {
 
     for (const scheduled of pending) {
       try {
-        // Crear pedido real
+        // Items en JSON: [{ price (euros, comisión incluida), quantity, ... }]
+        let items: any[] = [];
+        try {
+          items = typeof scheduled.items === "string"
+            ? JSON.parse(scheduled.items)
+            : scheduled.items || [];
+          if (!Array.isArray(items)) items = [];
+        } catch {
+          items = [];
+        }
+
+        // Calcular importes en céntimos (mismo modelo que el checkout)
+        const subtotal = items.reduce(
+          (sum, it) =>
+            sum + Math.round((Number(it.price) || 0) * 100 * (Number(it.quantity) || 1)),
+          0,
+        );
+        const productosBase = Math.round(subtotal / 1.15);
+        const nemyCommission = subtotal - productosBase;
+
+        const [business] = await db
+          .select({
+            name: businesses.name,
+            image: businesses.image,
+            deliveryFee: businesses.deliveryFee,
+            ownerId: businesses.ownerId,
+          })
+          .from(businesses)
+          .where(eq(businesses.id, scheduled.businessId))
+          .limit(1);
+
+        const deliveryFee = Number(business?.deliveryFee) || 0;
+        const total = subtotal + deliveryFee;
+
+        // Crear pedido real con importes completos
         const [order] = await db.insert(orders).values({
           userId: scheduled.userId,
           businessId: scheduled.businessId,
+          businessName: business?.name || "Negocio",
+          businessImage: business?.image || null,
           items: scheduled.items,
-          deliveryAddressId: scheduled.deliveryAddressId,
-          paymentMethod: scheduled.paymentMethod,
-          notes: scheduled.notes,
           status: "pending",
+          subtotal,
+          productosBase,
+          nemyCommission,
+          deliveryFee,
+          total,
+          paymentMethod: scheduled.paymentMethod,
+          orderType: "delivery",
+          deliveryAddress: scheduled.deliveryAddress,
+          notes: scheduled.notes || null,
         });
 
         // Marcar como ejecutado
@@ -103,39 +145,27 @@ export class ScheduledOrdersService {
           .update(scheduledOrders)
           .set({
             status: "executed",
-            executedOrderId: order.insertId,
+            orderId: order.insertId,
           })
           .where(eq(scheduledOrders.id, scheduled.id));
 
-        // Si es recurrente, crear siguiente instancia
-        if (scheduled.recurringPattern) {
-          const nextDate = this.calculateNextOccurrence(
-            scheduled.scheduledFor,
-            scheduled.recurringPattern,
-            scheduled.recurringDays
-              ? JSON.parse(scheduled.recurringDays)
-              : null,
-          );
-
-          if (
-            nextDate &&
-            (!scheduled.recurringEndDate ||
-              nextDate <= scheduled.recurringEndDate)
-          ) {
-            await db.insert(scheduledOrders).values({
-              userId: scheduled.userId,
-              businessId: scheduled.businessId,
-              items: scheduled.items,
-              scheduledFor: nextDate,
-              recurringPattern: scheduled.recurringPattern,
-              recurringDays: scheduled.recurringDays,
-              recurringEndDate: scheduled.recurringEndDate,
-              deliveryAddressId: scheduled.deliveryAddressId,
-              paymentMethod: scheduled.paymentMethod,
-              notes: scheduled.notes,
-              status: "pending",
+        // Notificar al negocio y al cliente
+        try {
+          const { sendPushToUser } = await import("./enhancedPushService");
+          if (business?.ownerId) {
+            await sendPushToUser(business.ownerId, {
+              title: "🔔 Pedido programado",
+              body: `Se ha activado el pedido programado de un cliente. Revísalo y confírmalo.`,
+              data: { orderId: String(order.insertId), screen: "BusinessOrders" },
             });
           }
+          await sendPushToUser(scheduled.userId, {
+            title: "⏰ Pedido programado activado",
+            body: `Tu pedido programado en ${business?.name || "el negocio"} ya se ha enviado al local.`,
+            data: { orderId: String(order.insertId), screen: "OrderTracking" },
+          });
+        } catch (notifyError) {
+          console.error("Error notifying scheduled order execution:", notifyError);
         }
 
         results.push({
@@ -144,6 +174,7 @@ export class ScheduledOrdersService {
           success: true,
         });
       } catch (error) {
+        console.error("Error executing scheduled order:", error);
         await db
           .update(scheduledOrders)
           .set({ status: "failed" })
@@ -154,28 +185,5 @@ export class ScheduledOrdersService {
     }
 
     return results;
-  }
-
-  // Calcular próxima ocurrencia
-  private static calculateNextOccurrence(
-    currentDate: Date,
-    pattern: "daily" | "weekly" | "monthly",
-    days?: number[],
-  ): Date {
-    const next = new Date(currentDate);
-
-    switch (pattern) {
-      case "daily":
-        next.setDate(next.getDate() + 1);
-        break;
-      case "weekly":
-        next.setDate(next.getDate() + 7);
-        break;
-      case "monthly":
-        next.setMonth(next.getMonth() + 1);
-        break;
-    }
-
-    return next;
   }
 }

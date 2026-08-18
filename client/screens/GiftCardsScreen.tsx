@@ -28,6 +28,7 @@ import {
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
+import * as Clipboard from "expo-clipboard";
 
 const PRESET_AMOUNTS = [10, 25, 50, 100];
 const PROVIDERS = ["bizum", "transferencia", "stripe"];
@@ -575,9 +576,29 @@ export default function GiftCardsScreen() {
                       <Feather name="gift" size={24} color={st.color} />
                     </View>
                     <View style={styles.cardInfo}>
-                      <ThemedText type="body" style={{ fontWeight: "600" }}>
-                        {card.code}
-                      </ThemedText>
+                      <Pressable
+                        style={styles.codeCopyRow}
+                        onPress={async () => {
+                          try {
+                            await Clipboard.setStringAsync(card.code);
+                            showToast("Código copiado", "success");
+                            Haptics.impactAsync(
+                              Haptics.ImpactFeedbackStyle.Light,
+                            );
+                          } catch {
+                            showToast("No se pudo copiar el código", "error");
+                          }
+                        }}
+                      >
+                        <ThemedText type="body" style={{ fontWeight: "600" }}>
+                          {card.code}
+                        </ThemedText>
+                        <Feather
+                          name="copy"
+                          size={16}
+                          color={ComeYaColors.primary}
+                        />
+                      </Pressable>
                       <View
                         style={{
                           backgroundColor: st.color + "20",
@@ -865,6 +886,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   cardRow: { flexDirection: "row", alignItems: "center" },
+  codeCopyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+  },
   cardIcon: {
     width: 48,
     height: 48,

@@ -193,6 +193,26 @@ export default function GamificationScreen() {
         </View>
       </LinearGradient>
 
+      {/* Cómo ganar puntos */}
+      <View
+        style={[
+          styles.howToCard,
+          { backgroundColor: theme.card, borderColor: theme.divider },
+        ]}
+      >
+        <View style={styles.howToHeader}>
+          <Feather name="help-circle" size={16} color={ComeYaColors.primary} />
+          <ThemedText type="body" style={styles.howToTitle}>
+            ¿Cómo gano puntos?
+          </ThemedText>
+        </View>
+        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+          1 punto por cada euro de tus pedidos completados · retos y logros ·{" "}
+          500 puntos por cada amigo que complete su primer pedido con tu código
+          de invitación (mira «Invita y Gana»).
+        </ThemedText>
+      </View>
+
       {/* Tabs */}
       <View style={styles.tabs}>
         {(["rewards", "achievements", "leaderboard"] as const).map((tab) => (
@@ -473,6 +493,22 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     borderRadius: BorderRadius.xl,
     marginBottom: Spacing.lg,
+  },
+  howToCard: {
+    marginHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    gap: Spacing.xs,
+  },
+  howToHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  howToTitle: {
+    fontWeight: "600",
   },
   pointsHeader: {
     flexDirection: "row",

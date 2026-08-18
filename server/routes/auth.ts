@@ -82,6 +82,18 @@ router.post("/phone-login", async (req, res) => {
           phoneVerified: true,
           createdAt: new Date(),
         };
+        // Referido: atribuir la invitación si el código es válido
+        if (signupData.referralCode) {
+          try {
+            const { ReferralService } = await import("../referralService");
+            const inviterId = await ReferralService.resolveReferralCode(
+              signupData.referralCode,
+            );
+            if (inviterId) newUser.referredBy = inviterId;
+          } catch {
+            /* el referido es opcional: no bloquear el registro */
+          }
+        }
         await db.insert(users).values(newUser);
         user = newUser;
       } else {

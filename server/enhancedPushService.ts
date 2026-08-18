@@ -130,7 +130,8 @@ export async function sendOrderStatusNotification(
   }
 }
 
-async function sendPushNotification(
+// Envía un push real a un token de Expo (https://exp.host API v2)
+export async function sendPushNotification(
   pushToken: string,
   payload: NotificationPayload,
 ): Promise<void> {
@@ -210,9 +211,39 @@ export async function notifyPagoMovilStatus(
   await sendPushNotification(user.pushToken, notification);
 }
 
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  promotions: true,
+  news: true,
+};
+
+function parseNotificationPreferences(raw: string | null | undefined) {
+  if (!raw) return DEFAULT_NOTIFICATION_PREFERENCES;
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      promotions:
+        typeof parsed.promotions === "boolean"
+          ? parsed.promotions
+          : DEFAULT_NOTIFICATION_PREFERENCES.promotions,
+      news:
+        typeof parsed.news === "boolean"
+          ? parsed.news
+          : DEFAULT_NOTIFICATION_PREFERENCES.news,
+    };
+  } catch {
+    return DEFAULT_NOTIFICATION_PREFERENCES;
+  }
+}
+
 export async function sendPushToUser(
   userId: string,
-  payload: { title: string; body: string; data?: Record<string, any> },
+  payload: {
+    title: string;
+    body: string;
+    data?: Record<string, any>;
+    /** "orders" (operativos, siempre se envían) | "promotions" | "news" */
+    category?: "orders" | "promotions" | "news";
+  },
 ): Promise<void> {
   const [user] = await db
     .select()
@@ -220,6 +251,13 @@ export async function sendPushToUser(
     .where(eq(users.id, userId))
     .limit(1);
   if (!user?.pushToken) return;
+
+  // Respetar preferencias del usuario para categorías no operativas
+  if (payload.category === "promotions" || payload.category === "news") {
+    const prefs = parseNotificationPreferences(user.notificationPreferences);
+    if (!prefs[payload.category]) return;
+  }
+
   await sendPushNotification(user.pushToken, payload);
 }
 

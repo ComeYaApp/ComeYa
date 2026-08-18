@@ -185,4 +185,9 @@ const server = httpServer.listen(PORT, () => {
   import("./staleOrdersCron")
     .then(({ startStaleOrdersCron }) => startStaleOrdersCron())
     .catch(console.error);
+  // Jobs en segundo plano: liberación de fondos, pedidos programados,
+  // desbloqueo de repartidores, limpieza de strikes, etc.
+  import("./backgroundJobs")
+    .then(({ startBackgroundJobs }) => startBackgroundJobs())
+    .catch(console.error);
 });
