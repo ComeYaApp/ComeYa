@@ -2064,8 +2064,16 @@ router.post(
         accountId: account.id,
       });
     } catch (error: any) {
-      console.error("Stripe connect error:", error);
-      res.status(500).json({ error: error.message });
+      const rawMessage =
+        error?.raw?.message || error?.message || "Error al conectar con Stripe";
+      const friendly = String(rawMessage).split("\n")[0].trim();
+      console.error("Stripe connect error:", friendly);
+      res.status(502).json({
+        error: friendly,
+        connectNotActivated: /signed up for Connect/i.test(
+          String(rawMessage),
+        ),
+      });
     }
   },
 );

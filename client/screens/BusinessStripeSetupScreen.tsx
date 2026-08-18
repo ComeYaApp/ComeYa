@@ -116,7 +116,25 @@ export default function BusinessStripeSetupScreen() {
       }
     } catch (error: any) {
       console.error("Error connecting Stripe:", error);
-      Alert.alert("Error", "No se pudo conectar con Stripe. Intenta de nuevo.");
+      const message =
+        error?.message ||
+        "No se pudo conectar con el servidor. Inténtalo de nuevo.";
+      if (/signed up for Connect|stripe\.com\/connect/i.test(message)) {
+        Alert.alert(
+          "Stripe Connect no está activado",
+          "Para vincular cuentas bancarias, primero debes completar el alta de Stripe Connect en tu panel de Stripe (es gratuito y tarda un minuto).",
+          [
+            {
+              text: "Abrir panel de Stripe",
+              onPress: () =>
+                Linking.openURL("https://dashboard.stripe.com/connect"),
+            },
+            { text: "Cerrar", style: "cancel" },
+          ],
+        );
+      } else {
+        Alert.alert("Error", message);
+      }
     } finally {
       setConnecting(false);
     }

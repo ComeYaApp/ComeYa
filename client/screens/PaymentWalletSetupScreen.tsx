@@ -189,8 +189,26 @@ export default function PaymentWalletSetupScreen() {
         "Completa la configuración en el navegador y vuelve a la app",
         "info",
       );
-    } catch {
-      Alert.alert("Error", "No se pudo conectar con el servidor");
+    } catch (e: any) {
+      const message =
+        e?.message || "No se pudo conectar con el servidor. Inténtalo de nuevo.";
+      if (/signed up for Connect|stripe\.com\/connect/i.test(message)) {
+        const { Linking } = await import("react-native");
+        Alert.alert(
+          "Stripe Connect no está activado",
+          "Para vincular cuentas bancarias, primero debes completar el alta de Stripe Connect en tu panel de Stripe (es gratuito y tarda un minuto).",
+          [
+            {
+              text: "Abrir panel de Stripe",
+              onPress: () =>
+                Linking.openURL("https://dashboard.stripe.com/connect"),
+            },
+            { text: "Cerrar", style: "cancel" },
+          ],
+        );
+      } else {
+        Alert.alert("Error", message);
+      }
     } finally {
       setStripeLoading(false);
     }

@@ -163,8 +163,14 @@ router.post("/onboard", authenticateToken, async (req, res) => {
 
     res.json({ success: true, onboardingUrl: accountLink.url, accountId });
   } catch (error: any) {
-    console.error("Stripe Connect onboard error:", error);
-    res.status(500).json({ error: error.message });
+    const rawMessage =
+      error?.raw?.message || error?.message || "Error al conectar con Stripe";
+    const friendly = String(rawMessage).split("\n")[0].trim();
+    logger.error(`Stripe Connect onboard error: ${friendly}`);
+    res.status(502).json({
+      error: friendly,
+      connectNotActivated: /signed up for Connect/i.test(String(rawMessage)),
+    });
   }
 });
 
