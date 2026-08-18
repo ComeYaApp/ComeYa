@@ -1,5 +1,5 @@
 // Automated Payment Processor for MOUZO - Production Ready
-import { stripe } from "./stripeClient";
+import { getStripe } from "./stripeClient";
 import { db } from "./db";
 import { orders, transactions, businesses, users } from "@shared/schema-mysql";
 import { eq, and } from "drizzle-orm";
@@ -51,6 +51,7 @@ export async function createPaymentIntent(orderData: {
   currency: string;
   paymentMethodId?: string;
 }): Promise<ProcessPaymentResult> {
+  const stripe = getStripe();
   // Input validation
   if (!orderData.orderId || !orderData.businessId || !orderData.customerId) {
     return { success: false, error: "Missing required order information" };
@@ -201,6 +202,7 @@ export async function processDeliveryPayment(
   orderId: string,
   driverId: string,
 ): Promise<ProcessPaymentResult> {
+  const stripe = getStripe();
   if (!orderId || !driverId) {
     return { success: false, error: "Order ID and driver ID are required" };
   }
@@ -342,6 +344,7 @@ export async function processRefund(
   reason: string,
   amount?: number,
 ): Promise<ProcessPaymentResult> {
+  const stripe = getStripe();
   if (!orderId || !reason) {
     return { success: false, error: "Order ID and reason are required" };
   }

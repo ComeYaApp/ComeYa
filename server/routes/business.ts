@@ -2138,6 +2138,7 @@ router.get(
       }
 
       const account = await stripe.accounts.retrieve(business.stripeAccountId);
+      const { mapStripeRequirements } = await import("../stripeClient");
 
       res.json({
         success: true,
@@ -2146,6 +2147,9 @@ router.get(
         payoutsEnabled: account.payouts_enabled,
         detailsSubmitted: account.details_submitted,
         accountId: account.id,
+        requirements: mapStripeRequirements(
+          account.requirements?.currently_due || [],
+        ),
       });
     } catch (error: any) {
       console.error("Stripe status error:", error);

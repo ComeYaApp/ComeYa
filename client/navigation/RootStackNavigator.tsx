@@ -70,6 +70,7 @@ import ChangePasswordScreen from "@/screens/ChangePasswordScreen";
 import ChangePhoneEmailScreen from "@/screens/ChangePhoneEmailScreen";
 import DriverNavigationScreen from "@/screens/DriverNavigationScreen";
 import DriverMyDeliveriesScreen from "@/screens/DriverMyDeliveriesScreen";
+import StripeSetupScreen from "@/screens/StripeSetupScreen";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -187,6 +188,7 @@ export type RootStackParamList = {
     destAddress: string;
   };
   DriverDeliveries: undefined;
+  StripeSetup: undefined;
   LogisticsRequest: undefined;
   DeleteAccount: undefined;
 };
@@ -339,6 +341,7 @@ export default function RootStackNavigator() {
           <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DriverDeliveries" component={DriverMyDeliveriesScreen} options={{ headerTitle: "Mis entregas" }} />
+          <Stack.Screen name="StripeSetup" component={StripeSetupScreen} options={{ headerShown: false }} />
           <Stack.Screen name="LogisticsRequest" component={LogisticsRequestScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ headerShown: false }} />
         </>

@@ -111,7 +111,6 @@ export default function PaymentWalletSetupScreen() {
     onboardingComplete?: boolean;
     canReceivePayments?: boolean;
   } | null>(null);
-  const [stripeLoading, setStripeLoading] = useState(false);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,95 +163,6 @@ export default function PaymentWalletSetupScreen() {
       loadStripeStatus();
     }, [loadStripeStatus]),
   );
-
-  const startStripeOnboarding = async () => {
-    if (!user) return;
-    setStripeLoading(true);
-    try {
-      const res = await apiRequest("POST", "/api/connect/onboard", {});
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        const isServerConfigError =
-          res.status === 503 ||
-          /configurado|STRIPE_SECRET_KEY/i.test(data.error || "");
-        Alert.alert(
-          "Error",
-          isServerConfigError
-            ? "Stripe no está configurado en el servidor. Avisa al administrador para activar los pagos automáticos."
-            : data.error || "No se pudo iniciar la configuración de Stripe",
-        );
-        return;
-      }
-      const { Linking } = await import("react-native");
-      await Linking.openURL(data.onboardingUrl);
-      showToast(
-        "Completa la configuración en el navegador y vuelve a la app",
-        "info",
-      );
-    } catch (e: any) {
-      const message =
-        e?.message || "No se pudo conectar con el servidor. Inténtalo de nuevo.";
-      if (/signed up for Connect|stripe\.com\/connect/i.test(message)) {
-        const { Linking } = await import("react-native");
-        Alert.alert(
-          "Stripe Connect no está activado",
-          "Para vincular cuentas bancarias, primero debes completar el alta de Stripe Connect en tu panel de Stripe (es gratuito y tarda un minuto).",
-          [
-            {
-              text: "Abrir panel de Stripe",
-              onPress: () =>
-                Linking.openURL("https://dashboard.stripe.com/connect"),
-            },
-            { text: "Cerrar", style: "cancel" },
-          ],
-        );
-      } else {
-        Alert.alert("Error", message);
-      }
-    } finally {
-      setStripeLoading(false);
-    }
-  };
-
-  const handleDisconnectStripe = () => {
-    Alert.alert(
-      "Desvincular Stripe",
-      "Dejarás de cobrar automáticamente. Podrás volver a vincular tu cuenta cuando quieras.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Desvincular",
-          style: "destructive",
-          onPress: async () => {
-            setStripeLoading(true);
-            try {
-              const res = await apiRequest(
-                "POST",
-                "/api/connect/disconnect",
-                {},
-              );
-              const data = await res.json();
-              if (res.ok && data.success) {
-                setStripeStatus(null);
-                prevCanReceive.current = false;
-                showToast("Cuenta Stripe desvinculada", "success");
-              } else {
-                Alert.alert(
-                  "Error",
-                  data.error || "No se pudo desvincular la cuenta",
-                );
-              }
-            } catch {
-              Alert.alert("Error", "No se pudo conectar con el servidor");
-            } finally {
-              setStripeLoading(false);
-              loadStripeStatus();
-            }
-          },
-        },
-      ],
-    );
-  };
 
   const loadAccounts = async () => {
     try {
@@ -417,13 +327,13 @@ export default function PaymentWalletSetupScreen() {
       {/* Banner Stripe Connect para negocios y repartidores */}
       {!isCustomer && (
         <Pressable
-          onPress={() => {
-            if (user?.role === "business_owner") {
-              (navigation as any).navigate("BusinessStripeSetup");
-            } else if (!stripeStatus?.canReceivePayments) {
-              startStripeOnboarding();
-            }
-          }}
+          onPress={() =>
+            (navigation as any).navigate(
+              user?.role === "business_owner"
+                ? "BusinessStripeSetup"
+                : "StripeSetup",
+            )
+          }
           style={[
             styles.stripeConnectBanner,
             {
@@ -451,43 +361,18 @@ export default function PaymentWalletSetupScreen() {
               type="caption"
               style={{ color: theme.textSecondary, marginTop: 2 }}
             >
-              {user?.role === "business_owner"
-                ? "Configura tu cuenta bancaria y recibe tus ganancias automáticamente"
-                : stripeStatus?.canReceivePayments
-                  ? "Cuenta conectada — cobrarás automáticamente en tu banco"
-                  : stripeStatus?.hasAccount
-                    ? "Completa la configuración de tu cuenta para cobrar automáticamente"
-                    : "Conecta tu cuenta bancaria y cobra automáticamente en cada entrega"}
+              {stripeStatus?.canReceivePayments
+                ? "Cuenta conectada — cobrarás automáticamente"
+                : stripeStatus?.hasAccount
+                  ? "Cuenta en verificación — toca para completarla"
+                  : "Conecta tu cuenta bancaria y cobra automáticamente"}
             </ThemedText>
           </View>
-          {stripeLoading ? (
-            <ActivityIndicator size="small" color="#635BFF" />
-          ) : stripeStatus?.canReceivePayments ? (
+          {stripeStatus?.canReceivePayments ? (
             <Feather name="check-circle" size={18} color="#10B981" />
           ) : (
             <Feather name="chevron-right" size={18} color="#635BFF" />
           )}
-        </Pressable>
-      )}
-
-      {/* Desvincular cuenta Stripe (para volver a probar el flujo) */}
-      {!isCustomer && stripeStatus?.hasAccount && (
-        <Pressable
-          onPress={handleDisconnectStripe}
-          disabled={stripeLoading}
-          style={{
-            alignSelf: "flex-end",
-            paddingHorizontal: Spacing.sm,
-            paddingVertical: Spacing.xs,
-            marginTop: -Spacing.sm,
-          }}
-        >
-          <ThemedText
-            type="caption"
-            style={{ color: theme.textSecondary, textDecorationLine: "underline" }}
-          >
-            Desvincular cuenta Stripe
-          </ThemedText>
         </Pressable>
       )}
 

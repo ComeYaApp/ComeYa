@@ -111,6 +111,7 @@ router.get("/status", authenticateToken, async (req, res) => {
     }
 
     const account = await stripe.accounts.retrieve(accountId);
+    const { mapStripeRequirements } = await import("../stripeClient");
     res.json({
       hasAccount: true,
       accountId,
@@ -119,6 +120,9 @@ router.get("/status", authenticateToken, async (req, res) => {
       chargesEnabled: account.charges_enabled,
       payoutsEnabled: account.payouts_enabled,
       detailsSubmitted: account.details_submitted,
+      requirements: mapStripeRequirements(
+        account.requirements?.currently_due || [],
+      ),
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

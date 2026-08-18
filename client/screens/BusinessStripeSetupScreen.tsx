@@ -33,6 +33,7 @@ interface StripeStatus {
   payoutsEnabled: boolean;
   detailsSubmitted: boolean;
   accountId?: string;
+  requirements?: string[];
 }
 
 export default function BusinessStripeSetupScreen() {
@@ -63,6 +64,7 @@ export default function BusinessStripeSetupScreen() {
           payoutsEnabled: data.payoutsEnabled || false,
           detailsSubmitted: data.detailsSubmitted || false,
           accountId: data.accountId,
+          requirements: data.requirements || [],
         });
       }
     } catch (error) {
@@ -422,6 +424,52 @@ export default function BusinessStripeSetupScreen() {
                 </ThemedText>
               </View>
             </View>
+
+            {/* Requisitos reales pendientes según Stripe */}
+            {stripeStatus.connected &&
+              !stripeStatus.payoutsEnabled &&
+              (stripeStatus.requirements?.length || 0) > 0 && (
+                <View
+                  style={[
+                    styles.requirementsCard,
+                    {
+                      backgroundColor: "#FEF3C7",
+                      borderWidth: 1,
+                      borderColor: "#F59E0B40",
+                    },
+                    Shadows.sm,
+                  ]}
+                >
+                  <ThemedText
+                    type="h4"
+                    style={{ marginBottom: Spacing.md, color: "#92400E" }}
+                  >
+                    ⚠️ Faltan estos datos en Stripe
+                  </ThemedText>
+                  {stripeStatus.requirements!.map((req) => (
+                    <View key={req} style={styles.requirementRow}>
+                      <Feather
+                        name="alert-circle"
+                        size={16}
+                        color="#F59E0B"
+                      />
+                      <ThemedText
+                        type="body"
+                        style={{ marginLeft: Spacing.sm, color: "#92400E" }}
+                      >
+                        {req}
+                      </ThemedText>
+                    </View>
+                  ))}
+                  <ThemedText
+                    type="caption"
+                    style={{ color: "#92400E", marginTop: Spacing.sm }}
+                  >
+                    En modo prueba usa datos de prueba: la verificación es
+                    inmediata. Pulsa "Completar" para retomar la configuración.
+                  </ThemedText>
+                </View>
+              )}
           </>
         ) : (
           <>

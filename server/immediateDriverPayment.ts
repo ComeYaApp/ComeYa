@@ -1,5 +1,5 @@
 // IMMEDIATE Driver Payment System - Pay on Delivery
-import { stripe } from "./stripeClient";
+import { getStripe } from "./stripeClient";
 import { db } from "./db";
 import { orders, users, transactions } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
@@ -32,9 +32,10 @@ export async function payDriverImmediately(orderId: string) {
     }
 
     // IMMEDIATE transfer - NO WAITING
+    const stripe = getStripe();
     const transfer = await stripe.transfers.create({
       amount: order.deliveryEarnings || 0,
-      currency: "mxn",
+      currency: "eur",
       destination: driver.stripeAccountId,
       metadata: {
         orderId: orderId,

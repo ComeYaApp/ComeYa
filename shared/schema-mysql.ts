@@ -54,6 +54,8 @@ export const users = mysqlTable("users", {
   lastActiveAt: timestamp("last_active_at"),
   profileImage: text("profile_image"),
   pushToken: text("push_token"),
+  // Stripe Connect (cuenta vinculada del usuario)
+  stripeAccountId: varchar("stripe_account_id", { length: 255 }),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at"),
 });
@@ -151,6 +153,7 @@ export const orders = mysqlTable("orders", {
   confirmedByCustomerAt: timestamp("confirmed_by_customer_at"), // Cuándo confirmó la recepción
   fundsReleased: boolean("funds_released").default(false), // Si ya se liberaron los fondos
   fundsReleasedAt: timestamp("funds_released_at"), // Cuándo se liberaron
+  stripePaymentIntentId: text("stripe_payment_intent_id"), // PaymentIntent de Stripe
   businessTransferId: text("business_transfer_id"), // ID de transfer a negocio
   driverTransferId: text("driver_transfer_id"), // ID de transfer a repartidor
   // Asignación de repartidor

@@ -419,6 +419,8 @@ var init_schema_mysql = __esm({
       lastActiveAt: (0, import_mysql_core.timestamp)("last_active_at"),
       profileImage: (0, import_mysql_core.text)("profile_image"),
       pushToken: (0, import_mysql_core.text)("push_token"),
+      // Stripe Connect (cuenta vinculada del usuario)
+      stripeAccountId: (0, import_mysql_core.varchar)("stripe_account_id", { length: 255 }),
       createdAt: (0, import_mysql_core.timestamp)("created_at").default(import_drizzle_orm.sql`CURRENT_TIMESTAMP`),
       updatedAt: (0, import_mysql_core.timestamp)("updated_at")
     });
@@ -541,6 +543,8 @@ var init_schema_mysql = __esm({
       // Si ya se liberaron los fondos
       fundsReleasedAt: (0, import_mysql_core.timestamp)("funds_released_at"),
       // Cuándo se liberaron
+      stripePaymentIntentId: (0, import_mysql_core.text)("stripe_payment_intent_id"),
+      // PaymentIntent de Stripe
       businessTransferId: (0, import_mysql_core.text)("business_transfer_id"),
       // ID de transfer a negocio
       driverTransferId: (0, import_mysql_core.text)("driver_transfer_id"),
@@ -3339,7 +3343,8 @@ var init_dbHelper = __esm({
 // server/stripeClient.ts
 var stripeClient_exports = {};
 __export(stripeClient_exports, {
-  getStripe: () => getStripe
+  getStripe: () => getStripe,
+  mapStripeRequirements: () => mapStripeRequirements
 });
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -3352,12 +3357,29 @@ function getStripe() {
   }
   return stripeInstance;
 }
-var import_stripe, stripeInstance;
+function mapStripeRequirements(currentlyDue) {
+  return (currentlyDue || []).map((r) => REQUIREMENT_LABELS[r] || r);
+}
+var import_stripe, stripeInstance, REQUIREMENT_LABELS;
 var init_stripeClient = __esm({
   "server/stripeClient.ts"() {
     "use strict";
     import_stripe = __toESM(require("stripe"));
     stripeInstance = null;
+    REQUIREMENT_LABELS = {
+      "individual.first_name": "Nombre del titular",
+      "individual.last_name": "Apellidos del titular",
+      "individual.dob.day": "Fecha de nacimiento (d\xEDa)",
+      "individual.dob.month": "Fecha de nacimiento (mes)",
+      "individual.dob.year": "Fecha de nacimiento (a\xF1o)",
+      "individual.address.line1": "Direcci\xF3n del titular",
+      "individual.address.city": "Ciudad del titular",
+      "individual.address.postal_code": "C\xF3digo postal",
+      "individual.phone": "Tel\xE9fono del titular",
+      "individual.email": "Email del titular",
+      "individual.verification.document": "Documento de identidad",
+      "business_profile.url": "Web del negocio"
+    };
   }
 });
 
@@ -11349,13 +11371,17 @@ router2.get(
         });
       }
       const account = await stripe2.accounts.retrieve(business.stripeAccountId);
+      const { mapStripeRequirements: mapStripeRequirements2 } = await Promise.resolve().then(() => (init_stripeClient(), stripeClient_exports));
       res.json({
         success: true,
         connected: true,
         chargesEnabled: account.charges_enabled,
         payoutsEnabled: account.payouts_enabled,
         detailsSubmitted: account.details_submitted,
-        accountId: account.id
+        accountId: account.id,
+        requirements: mapStripeRequirements2(
+          account.requirements?.currently_due || []
+        )
       });
     } catch (error) {
       console.error("Stripe status error:", error);
@@ -23640,6 +23666,7 @@ router47.get("/status", authenticateToken, async (req, res) => {
       });
     }
     const account = await stripe2.accounts.retrieve(accountId);
+    const { mapStripeRequirements: mapStripeRequirements2 } = await Promise.resolve().then(() => (init_stripeClient(), stripeClient_exports));
     res.json({
       hasAccount: true,
       accountId,
@@ -23647,7 +23674,10 @@ router47.get("/status", authenticateToken, async (req, res) => {
       canReceivePayments: account.charges_enabled && account.payouts_enabled,
       chargesEnabled: account.charges_enabled,
       payoutsEnabled: account.payouts_enabled,
-      detailsSubmitted: account.details_submitted
+      detailsSubmitted: account.details_submitted,
+      requirements: mapStripeRequirements2(
+        account.requirements?.currently_due || []
+      )
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
