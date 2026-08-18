@@ -22,11 +22,13 @@ interface FundReleaseResult {
 }
 
 // ── Stripe helper ─────────────────────────────────────────────────────────────
-function getStripe() {
+async function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   try {
-    return require("stripe")(key);
+    const StripeModule = await import("stripe");
+    const StripeClass = StripeModule.default || StripeModule;
+    return new StripeClass(key);
   } catch {
     return null;
   }
@@ -154,7 +156,7 @@ async function notifyRecipientPayout(
 
 // ── Core: liberar fondos de una orden ────────────────────────────────────────
 async function releaseFunds(order: any): Promise<void> {
-  const stripe = getStripe();
+  const stripe = await getStripe();
 
   // Evitar duplicados
   const existing = await db

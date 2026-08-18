@@ -214,6 +214,46 @@ export default function PaymentWalletSetupScreen() {
     }
   };
 
+  const handleDisconnectStripe = () => {
+    Alert.alert(
+      "Desvincular Stripe",
+      "Dejarás de cobrar automáticamente. Podrás volver a vincular tu cuenta cuando quieras.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Desvincular",
+          style: "destructive",
+          onPress: async () => {
+            setStripeLoading(true);
+            try {
+              const res = await apiRequest(
+                "POST",
+                "/api/connect/disconnect",
+                {},
+              );
+              const data = await res.json();
+              if (res.ok && data.success) {
+                setStripeStatus(null);
+                prevCanReceive.current = false;
+                showToast("Cuenta Stripe desvinculada", "success");
+              } else {
+                Alert.alert(
+                  "Error",
+                  data.error || "No se pudo desvincular la cuenta",
+                );
+              }
+            } catch {
+              Alert.alert("Error", "No se pudo conectar con el servidor");
+            } finally {
+              setStripeLoading(false);
+              loadStripeStatus();
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const loadAccounts = async () => {
     try {
       const res = await apiRequest("GET", "/api/payouts/accounts");
@@ -427,6 +467,27 @@ export default function PaymentWalletSetupScreen() {
           ) : (
             <Feather name="chevron-right" size={18} color="#635BFF" />
           )}
+        </Pressable>
+      )}
+
+      {/* Desvincular cuenta Stripe (para volver a probar el flujo) */}
+      {!isCustomer && stripeStatus?.hasAccount && (
+        <Pressable
+          onPress={handleDisconnectStripe}
+          disabled={stripeLoading}
+          style={{
+            alignSelf: "flex-end",
+            paddingHorizontal: Spacing.sm,
+            paddingVertical: Spacing.xs,
+            marginTop: -Spacing.sm,
+          }}
+        >
+          <ThemedText
+            type="caption"
+            style={{ color: theme.textSecondary, textDecorationLine: "underline" }}
+          >
+            Desvincular cuenta Stripe
+          </ThemedText>
         </Pressable>
       )}
 

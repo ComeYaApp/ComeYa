@@ -233,6 +233,34 @@ router.get("/return", async (req, res) => {
     </div></body></html>`);
 });
 
+// ── POST /api/connect/disconnect — desvincular la cuenta Stripe ───────────────
+router.post("/disconnect", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+
+    // Limpiar la referencia en users
+    await db.execute(
+      sql`UPDATE users SET stripe_account_id = NULL WHERE id = ${userId}`,
+    );
+    // Y en la tabla del rol correspondiente
+    if (req.user!.role === "business_owner") {
+      await db.execute(
+        sql`UPDATE businesses SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE owner_id = ${userId}`,
+      );
+    } else if (req.user!.role === "delivery_driver") {
+      await db.execute(
+        sql`UPDATE delivery_drivers SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE user_id = ${userId}`,
+      );
+    }
+
+    res.json({ success: true, message: "Cuenta Stripe desvinculada" });
+  } catch (error: any) {
+    const rawMessage =
+      error?.raw?.message || error?.message || "Error al desvincular";
+    res.status(500).json({ error: String(rawMessage).split("\n")[0].trim() });
+  }
+});
+
 // ── GET /api/connect/refresh — link expirado ──────────────────────────────────
 router.get("/refresh", async (req, res) => {
   res.send(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">

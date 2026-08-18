@@ -140,7 +140,8 @@ router.get(
 
       // Si Stripe está configurado, obtener información real
       try {
-        const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+        const { getStripe } = await import("../stripeClient");
+      const stripe = getStripe();
         const balance = await stripe.balance.retrieve();
 
         res.json({

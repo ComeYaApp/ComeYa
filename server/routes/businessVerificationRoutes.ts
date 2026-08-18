@@ -42,8 +42,9 @@ router.post(
         .where(eq(businesses.id, businessId));
 
       if (process.env.TWILIO_ACCOUNT_SID) {
-        const twilio = require("twilio");
-        const client = twilio(
+        const TwilioModule = await import("twilio");
+        const TwilioClass = TwilioModule.default || TwilioModule;
+        const client = TwilioClass(
           process.env.TWILIO_ACCOUNT_SID,
           process.env.TWILIO_AUTH_TOKEN,
         );

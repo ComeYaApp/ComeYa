@@ -19,7 +19,7 @@
     "production:stop": "npm run pm2:stop",
     "expo:start:static:build": "npx expo start --no-dev --minify --localhost",
     "expo:static:build": "node scripts/build.js",
-    "server:build": "esbuild server/server.ts --platform=node --packages=external --bundle --format=esm --outdir=server_dist",
+    "server:build": "esbuild server/server.ts --platform=node --packages=external --bundle --format=cjs --outdir=server_dist",
     "db:push": "drizzle-kit push",
     "db:migrate": "tsx server/migrate.ts",
     "test:e2e": "playwright test e2e.spec.ts",

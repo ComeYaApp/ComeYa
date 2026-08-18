@@ -1993,7 +1993,8 @@ router.post(
     try {
       const { businesses } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
-      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+      const { getStripe } = await import("../stripeClient");
+      const stripe = getStripe();
 
       const [business] = await db
         .select()
@@ -2089,7 +2090,8 @@ router.get("/stripe/refresh", async (req, res) => {
   try {
     const { businesses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+    const { getStripe } = await import("../stripeClient");
+      const stripe = getStripe();
 
     // Sin sesión: volver a la pantalla de Stripe de la app
     const accountId = (req.query.accountId as string) || null;
@@ -2116,7 +2118,8 @@ router.get(
     try {
       const { businesses } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
-      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+      const { getStripe } = await import("../stripeClient");
+      const stripe = getStripe();
 
       const [business] = await db
         .select()
@@ -2160,7 +2163,8 @@ router.get(
     try {
       const { businesses } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
-      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+      const { getStripe } = await import("../stripeClient");
+      const stripe = getStripe();
 
       const [business] = await db
         .select()

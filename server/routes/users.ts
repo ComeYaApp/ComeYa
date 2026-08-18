@@ -866,7 +866,9 @@ router.post("/change-phone", authenticateToken, async (req, res) => {
     }
 
     // Enviar OTP al nuevo teléfono via Twilio
-    const twilio = require("twilio")(
+    const TwilioModule = await import("twilio");
+    const TwilioClass = TwilioModule.default || TwilioModule;
+    const twilio = TwilioClass(
       process.env.TWILIO_ACCOUNT_SID,
       process.env.TWILIO_AUTH_TOKEN,
     );
@@ -890,7 +892,9 @@ router.post("/verify-phone-change", authenticateToken, async (req, res) => {
     if (!newPhone || !code)
       return res.status(400).json({ error: "Teléfono y código requeridos" });
 
-    const twilio = require("twilio")(
+    const TwilioModule = await import("twilio");
+    const TwilioClass = TwilioModule.default || TwilioModule;
+    const twilio = TwilioClass(
       process.env.TWILIO_ACCOUNT_SID,
       process.env.TWILIO_AUTH_TOKEN,
     );

@@ -40,7 +40,9 @@ export class DeliveryNotificationService {
       // También notificar por SMS si hay número
       if (user.phone && process.env.TWILIO_ACCOUNT_SID) {
         try {
-          const twilio = require("twilio")(
+          const TwilioModule = await import("twilio");
+          const TwilioClass = TwilioModule.default || TwilioModule;
+          const twilio = TwilioClass(
             process.env.TWILIO_ACCOUNT_SID,
             process.env.TWILIO_AUTH_TOKEN,
           );
