@@ -141,22 +141,34 @@ router.get(
       // Si Stripe está configurado, obtener información real
       try {
         const { getStripe } = await import("../stripeClient");
-      const stripe = getStripe();
-        const balance = await stripe.balance.retrieve();
+        const stripe = getStripe();
+        const account = await stripe.accounts.retrieve();
+        let balance: any = { available: 0, pending: 0 };
+        try {
+          const b = await stripe.balance.retrieve();
+          balance = {
+            available: b.available?.[0]?.amount || 0,
+            pending: b.pending?.[0]?.amount || 0,
+          };
+        } catch (balanceError) {
+          console.error("Stripe balance error:", balanceError);
+        }
 
         res.json({
           success: true,
           status: {
             isConnected: true,
-            accountId: "Platform Account",
-            chargesEnabled: true,
-            payoutsEnabled: true,
+            accountId: account.id || null,
+            accountEmail: account.email || null,
+            accountName:
+              (account.settings?.dashboard?.display_name as string) ||
+              account.business_profile?.name ||
+              "ComeYa",
+            chargesEnabled: account.charges_enabled ?? true,
+            payoutsEnabled: account.payouts_enabled ?? true,
             requirements: [],
             lastSync: new Date().toISOString(),
-            balance: {
-              available: balance.available[0]?.amount || 0,
-              pending: balance.pending[0]?.amount || 0,
-            },
+            balance,
           },
         });
       } catch (stripeError: any) {
@@ -164,17 +176,15 @@ router.get(
         res.json({
           success: true,
           status: {
-            isConnected: true,
-            accountId: "Platform Account",
-            chargesEnabled: true,
-            payoutsEnabled: true,
-            requirements: [],
+            isConnected: !!process.env.STRIPE_SECRET_KEY,
+            accountId: null,
+            chargesEnabled: false,
+            payoutsEnabled: false,
+            requirements: ["No se pudo conectar con la API de Stripe"],
             lastSync: new Date().toISOString(),
-            balance: {
-              available: 0,
-              pending: 0,
-            },
-            error: "No se pudo conectar con Stripe API",
+            balance: { available: 0, pending: 0 },
+            error:
+              stripeError?.message || "No se pudo conectar con Stripe API",
           },
         });
       }
@@ -356,6 +366,8 @@ router.get(
         pending.map(async (p) => {
           let recipientName = "";
           let recipientUserId = p.recipientId;
+          let businessName: string | null = null;
+          const isWithdrawal = (p.orderId || "").startsWith("wdr-");
 
           if (p.recipientType === "business") {
             const [biz] = await db
@@ -363,8 +375,19 @@ router.get(
               .from(businesses)
               .where(eq(businesses.id, p.recipientId))
               .limit(1);
-            recipientName = biz?.name ?? "";
-            if (biz?.ownerId) recipientUserId = biz.ownerId;
+            if (biz) {
+              recipientName = biz.name ?? "";
+              businessName = biz.name ?? null;
+              if (biz.ownerId) recipientUserId = biz.ownerId;
+            } else if (isWithdrawal) {
+              // Los retiros guardan el id del USUARIO como recipientId
+              const [usr] = await db
+                .select({ name: users.name })
+                .from(users)
+                .where(eq(users.id, p.recipientId))
+                .limit(1);
+              recipientName = usr?.name ?? "";
+            }
           } else {
             const [usr] = await db
               .select({ name: users.name })
@@ -380,18 +403,20 @@ router.get(
             .from(paymentAccounts)
             .where(eq(paymentAccounts.userId, recipientUserId));
 
-          // Datos del pedido
-          const [order] = await db
-            .select({
-              paymentMethod: orders.paymentMethod,
-              assignedAt: orders.assignedAt,
-              deliveredAt: orders.deliveredAt,
-              total: orders.total,
-              businessName: orders.businessName,
-            })
-            .from(orders)
-            .where(eq(orders.id, p.orderId))
-            .limit(1);
+          // Datos del pedido (los retiros wdr- no tienen pedido asociado)
+          const [order] = isWithdrawal
+            ? [null]
+            : await db
+                .select({
+                  paymentMethod: orders.paymentMethod,
+                  assignedAt: orders.assignedAt,
+                  deliveredAt: orders.deliveredAt,
+                  total: orders.total,
+                  businessName: orders.businessName,
+                })
+                .from(orders)
+                .where(eq(orders.id, p.orderId))
+                .limit(1);
 
           let deliveryMinutes: number | null = null;
           if (order?.assignedAt && order?.deliveredAt) {
@@ -405,11 +430,12 @@ router.get(
           return {
             ...p,
             recipientName,
+            isWithdrawal,
             paymentAccounts: accounts,
             paymentMethod: order?.paymentMethod ?? null,
             deliveryMinutes,
             orderTotal: order?.total ?? null,
-            businessName: order?.businessName ?? null,
+            businessName: order?.businessName ?? businessName ?? null,
           };
         }),
       );
@@ -532,6 +558,38 @@ router.post(
   },
 );
 
+// POST /api/admin/finance/payout-proof-upload — subir comprobante de transferencia
+router.post(
+  "/payout-proof-upload",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { image } = req.body;
+      if (!image || typeof image !== "string" || !image.startsWith("data:image/")) {
+        return res.status(400).json({ success: false, error: "Imagen requerida (data:image/...)" });
+      }
+
+      const estimatedBytes = Math.ceil(image.length * 0.75);
+      if (estimatedBytes > 5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, error: "El archivo es muy pesado. Máximo 5MB" });
+      }
+
+      const { CloudinaryService } = await import("../cloudinaryService");
+      const url = await CloudinaryService.uploadImage(
+        image,
+        "comprobantes",
+        `payout-proof-${req.user!.id}-${Date.now()}`,
+      );
+
+      res.json({ success: true, url });
+    } catch (error: any) {
+      console.error("Payout proof upload error:", error);
+      res.status(500).json({ success: false, error: "Error al subir el comprobante" });
+    }
+  },
+);
+
 // POST /api/admin/payouts/:id/mark-paid — marcar payout como pagado + notificar
 router.post(
   "/payouts/:id/mark-paid",
@@ -553,6 +611,21 @@ router.post(
         .limit(1);
       if (!payout)
         return res.status(404).json({ error: "Payout no encontrado" });
+      if (payout.status === "paid" || payout.status === "stripe_auto")
+        return res.status(400).json({ error: "Este pago ya fue procesado" });
+
+      // El admin debe registrar referencia y comprobante antes de aprobar
+      const cleanNotes = (notes || "").trim();
+      if (!cleanNotes) {
+        return res.status(400).json({
+          error: "Indica la referencia / nota de la transferencia realizada",
+        });
+      }
+      if (!proofUrl) {
+        return res.status(400).json({
+          error: "Adjunta la captura del comprobante de la transferencia",
+        });
+      }
 
       await db
         .update(payouts)
@@ -560,11 +633,9 @@ router.post(
           status: "paid",
           paidBy: req.user!.id,
           paidAt: new Date(),
-          ...(notes ? { notes } : {}),
-          ...(method ? { method } : {}),
-          ...(proofUrl
-            ? { accountSnapshot: JSON.stringify({ proofUrl, notes, method }) }
-            : {}),
+          method: method || payout.method || "transferencia",
+          notes: cleanNotes,
+          proofUrl,
         })
         .where(eq(payouts.id, req.params.id));
 
@@ -637,12 +708,13 @@ router.get(
         "@shared/schema-mysql"
       );
       const { db } = await import("../db");
-      const { eq, desc } = await import("drizzle-orm");
+      const { inArray, eq, desc } = await import("drizzle-orm");
 
+      // Incluye pagos manuales (paid) y automáticos de Stripe (stripe_auto)
       const paid = await db
         .select()
         .from(payouts)
-        .where(eq(payouts.status, "paid"))
+        .where(inArray(payouts.status, ["paid", "stripe_auto"]))
         .orderBy(desc(payouts.paidAt));
 
       console.log(`[Finance] Found ${paid.length} paid payouts`);
@@ -658,7 +730,17 @@ router.get(
               .from(businesses)
               .where(eq(businesses.id, p.recipientId))
               .limit(1);
-            recipientName = biz?.name ?? "";
+            if (biz) {
+              recipientName = biz.name ?? "";
+            } else {
+              // Retiros wdr- guardan el id del usuario
+              const [usr] = await db
+                .select({ name: users.name })
+                .from(users)
+                .where(eq(users.id, p.recipientId))
+                .limit(1);
+              recipientName = usr?.name ?? "";
+            }
           } else {
             const [usr] = await db
               .select({ name: users.name })
@@ -676,20 +758,21 @@ router.get(
             businessName = order?.businessName ?? null;
           }
 
-          const snap = p.accountSnapshot
-            ? (() => {
-                try {
-                  return JSON.parse(p.accountSnapshot);
-                } catch {
-                  return null;
-                }
-              })()
-            : null;
+          // proofUrl vive en su columna; legacy: dentro de accountSnapshot
+          let proofUrl = p.proofUrl ?? null;
+          if (!proofUrl && p.accountSnapshot) {
+            try {
+              const snap = JSON.parse(p.accountSnapshot);
+              proofUrl = snap?.proofUrl ?? null;
+            } catch {
+              /* snapshot no JSON */
+            }
+          }
           return {
             ...p,
             recipientName,
             businessName,
-            proofUrl: snap?.proofUrl ?? null,
+            proofUrl,
           };
         }),
       );

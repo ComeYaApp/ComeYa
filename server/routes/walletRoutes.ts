@@ -172,6 +172,58 @@ router.get("/transactions", authenticateToken, async (req, res) => {
   }
 });
 
+// Get payout history (pagos de pedidos + retiros) para negocio o repartidor
+router.get("/payouts", authenticateToken, async (req, res) => {
+  try {
+    const { payouts, businesses } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq, inArray, or, desc } = await import("drizzle-orm");
+
+    const userId = req.user!.id;
+    const isBusinessOwner =
+      req.user!.role === "business_owner" || req.user!.role === "business";
+
+    let rows: any[] = [];
+    if (isBusinessOwner) {
+      // Payouts de TODOS sus negocios + sus retiros (wdr-)
+      const ownerBusinesses = await db
+        .select({ id: businesses.id })
+        .from(businesses)
+        .where(eq(businesses.ownerId, userId));
+      const businessIds = ownerBusinesses.map((b) => b.id);
+
+      if (businessIds.length > 0) {
+        rows = await db
+          .select()
+          .from(payouts)
+          .where(
+            or(
+              inArray(payouts.recipientId, businessIds),
+              eq(payouts.recipientId, userId),
+            ),
+          )
+          .orderBy(desc(payouts.createdAt));
+      } else {
+        rows = await db
+          .select()
+          .from(payouts)
+          .where(eq(payouts.recipientId, userId))
+          .orderBy(desc(payouts.createdAt));
+      }
+    } else {
+      rows = await db
+        .select()
+        .from(payouts)
+        .where(eq(payouts.recipientId, userId))
+        .orderBy(desc(payouts.createdAt));
+    }
+
+    res.json({ success: true, payouts: rows });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Request withdrawal
 router.post(
   "/withdraw",

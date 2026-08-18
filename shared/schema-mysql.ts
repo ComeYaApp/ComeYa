@@ -466,6 +466,7 @@ export const payouts = mysqlTable("payouts", {
   paidBy: varchar("paid_by", { length: 255 }), // admin que marcó como pagado
   paidAt: timestamp("paid_at"),
   stripeTransferId: varchar("stripe_transfer_id", { length: 255 }), // ID del transfer de Stripe
+  proofUrl: text("proof_url"), // comprobante de transferencia subido por el admin
   notes: text("notes"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });

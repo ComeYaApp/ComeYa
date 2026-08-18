@@ -46,9 +46,11 @@ interface Payout {
   orderId: string;
   amount: number;
   method: string | null;
-  status: "pending" | "paid";
+  status: "pending" | "paid" | "stripe_auto" | "cancelled";
   createdAt: string;
   paidAt?: string;
+  notes?: string | null;
+  proofUrl?: string | null;
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -61,9 +63,18 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   transferencia: "🏦 Transferencia (SEPA)",
   paypal: "🅿️ PayPal",
   bank_transfer: "🏦 Transferencia (SEPA)",
-  stripe: "💳 Tarjeta (Stripe)",
+  stripe: "💳 Stripe (automático)",
   stripe_card: "💳 Tarjeta",
   stripe_bizum: "📱 Bizum",
+  manual: "👤 Pago manual del admin",
+  stripe_failed_manual: "💳 Stripe fallido → manual",
+};
+
+const PAYOUT_STATUS_LABELS: Record<string, { text: string; color: string }> = {
+  pending: { text: "Pendiente de pago", color: ComeYaColors.warning },
+  paid: { text: "Pagado", color: ComeYaColors.success },
+  stripe_auto: { text: "Pagado (Stripe)", color: ComeYaColors.success },
+  cancelled: { text: "Cancelado", color: ComeYaColors.error },
 };
 
 export default function BusinessFinancesScreen() {
@@ -325,69 +336,85 @@ export default function BusinessFinancesScreen() {
           </ThemedText>
         </View>
 
-        {/* Payouts Pendientes */}
+        {/* Pagos (ventas) */}
         {payouts.length > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <ThemedText type="h3">Pagos Pendientes</ThemedText>
+              <ThemedText type="h3">Mis pagos</ThemedText>
               <Badge
-                text={`${payouts.filter((p) => p.status === "pending").length}`}
+                text={`${payouts.filter((p) => p.status === "pending").length} pendientes`}
                 variant="warning"
               />
             </View>
-            {payouts.map((payout, index) => (
-              <Animated.View
-                key={payout.id}
-                entering={FadeInDown.delay(index * 40).springify()}
-                style={[
-                  styles.transactionCard,
-                  { backgroundColor: theme.card },
-                  Shadows.sm,
-                ]}
-              >
-                <View style={styles.transactionHeader}>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText type="body" style={{ fontWeight: "600" }}>
-                      Pedido #{payout.orderId.slice(-6)}
-                    </ThemedText>
-                    <ThemedText
-                      type="caption"
-                      style={{ color: theme.textSecondary }}
-                    >
-                      {PAYMENT_METHOD_LABELS[payout.method || ""] ||
-                        "Sin método registrado"}
-                    </ThemedText>
-                    <ThemedText
-                      type="caption"
-                      style={{ color: theme.textSecondary }}
-                    >
-                      {new Date(payout.createdAt).toLocaleDateString("es-VE", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </ThemedText>
+            {payouts.map((payout, index) => {
+              const statusInfo =
+                PAYOUT_STATUS_LABELS[payout.status] ||
+                PAYOUT_STATUS_LABELS.pending;
+              const isWithdrawal = (payout.orderId || "").startsWith("wdr-");
+              return (
+                <Animated.View
+                  key={payout.id}
+                  entering={FadeInDown.delay(index * 40).springify()}
+                  style={[
+                    styles.transactionCard,
+                    { backgroundColor: theme.card },
+                    Shadows.sm,
+                  ]}
+                >
+                  <View style={styles.transactionHeader}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText type="body" style={{ fontWeight: "600" }}>
+                        {isWithdrawal
+                          ? "Retiro de saldo"
+                          : `Pedido #${payout.orderId.slice(-6)}`}
+                      </ThemedText>
+                      <ThemedText
+                        type="caption"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        {PAYMENT_METHOD_LABELS[payout.method || ""] ||
+                          "Sin método registrado"}
+                      </ThemedText>
+                      <ThemedText
+                        type="caption"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        {new Date(payout.createdAt).toLocaleDateString("es-ES", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                        {payout.paidAt
+                          ? ` · Pagado ${new Date(payout.paidAt).toLocaleDateString("es-ES", {
+                              day: "numeric",
+                              month: "short",
+                            })}`
+                          : ""}
+                      </ThemedText>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <ThemedText
+                        type="h4"
+                        style={{
+                          color:
+                            payout.status === "pending"
+                              ? ComeYaColors.warning
+                              : ComeYaColors.success,
+                        }}
+                      >
+                        {(payout.amount / 100).toFixed(2)} €
+                      </ThemedText>
+                      <Badge
+                        text={statusInfo.text}
+                        variant={
+                          payout.status === "pending" ? "warning" : "success"
+                        }
+                      />
+                    </View>
                   </View>
-                  <View style={{ alignItems: "flex-end" }}>
-                    <ThemedText
-                      type="h4"
-                      style={{
-                        color:
-                          payout.status === "paid"
-                            ? ComeYaColors.success
-                            : ComeYaColors.warning,
-                      }}
-                    >
-                      {payout.amount.toFixed(2)} €
-                    </ThemedText>
-                    <Badge
-                      text={payout.status === "paid" ? "Pagado" : "Pendiente"}
-                      variant={payout.status === "paid" ? "success" : "warning"}
-                    />
-                  </View>
-                </View>
-              </Animated.View>
-            ))}
+                </Animated.View>
+              );
+            })}
           </>
         )}
 

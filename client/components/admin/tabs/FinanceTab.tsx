@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
@@ -29,10 +30,13 @@ interface Payout {
   amount: number;
   method: string | null;
   accountSnapshot: string | null;
-  status: "pending" | "paid";
+  status: "pending" | "paid" | "stripe_auto";
   paidBy: string | null;
   paidAt: string | null;
   notes: string | null;
+  proofUrl?: string | null;
+  stripeTransferId?: string | null;
+  isWithdrawal?: boolean;
   createdAt: string;
   recipientName?: string;
   paymentAccounts?: any[];
@@ -44,6 +48,9 @@ const METHOD_LABELS: Record<string, string> = {
   bizum: "Bizum",
   transferencia: "Transferencia IBAN",
   paypal: "PayPal",
+  stripe: "Stripe (automático)",
+  manual: "Pago manual del admin",
+  stripe_failed_manual: "Stripe fallido → manual",
   stripe_card: "Tarjeta (Stripe)",
   stripe_bizum: "Bizum (Stripe)",
   cash: "Efectivo",
@@ -92,15 +99,55 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   }, []);
 
   const markPaid = async (payout: Payout) => {
+    if (!notes.trim()) {
+      showToast("Escribe la referencia / nota de la transferencia", "error");
+      return;
+    }
+    if (!proofUri) {
+      showToast("Adjunta la captura del comprobante de la transferencia", "error");
+      return;
+    }
+
     setProcessing(payout.id);
     try {
+      // 1. Subir la captura a Cloudinary
+      let proofUrl: string | null = null;
+      try {
+        const encoding = (FileSystem as any)?.EncodingType?.Base64 || "base64";
+        const base64 = await (FileSystem as any).readAsStringAsync(proofUri, {
+          encoding,
+        });
+        const extension = proofUri.split(".").pop()?.toLowerCase() || "jpg";
+        const mimeType = extension === "png" ? "image/png" : "image/jpeg";
+        const uploadRes = await apiRequest(
+          "POST",
+          "/api/admin/finance/payout-proof-upload",
+          { image: `data:${mimeType};base64,${base64}` },
+        );
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) {
+          showToast(uploadData.error || "No se pudo subir el comprobante", "error");
+          setProcessing(null);
+          return;
+        }
+        proofUrl = uploadData.url;
+      } catch (uploadErr: any) {
+        showToast(
+          uploadErr?.message || "No se pudo subir el comprobante",
+          "error",
+        );
+        setProcessing(null);
+        return;
+      }
+
+      // 2. Registrar el pago
       const res = await apiRequest(
         "POST",
         `/api/admin/finance/payouts/${payout.id}/mark-paid`,
         {
-          notes: notes || undefined,
+          notes: notes.trim(),
           method: payoutMethod,
-          proofUrl: proofUri || undefined,
+          proofUrl,
         },
       );
       const data = await res.json();
@@ -118,8 +165,8 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
       } else {
         showToast(data.error ?? "Error al procesar", "error");
       }
-    } catch {
-      showToast("Error de conexión", "error");
+    } catch (err: any) {
+      showToast(err?.message || "Error de conexión", "error");
     } finally {
       setProcessing(null);
     }
@@ -210,7 +257,8 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
             </Text>
           )}
           <Text style={[s.sub, { color: theme.textSecondary }]}>
-            Pedido #{selected.orderId.slice(0, 8)} ·{" "}
+            {selected.isWithdrawal ? "Retiro" : "Pedido"} #
+            {selected.orderId.slice(0, 8)} ·{" "}
             {new Date(selected.createdAt).toLocaleDateString("es-ES")}
           </Text>
         </View>
@@ -373,18 +421,18 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
           <Text
             style={[s.sub, { color: theme.textSecondary, marginBottom: 6 }]}
           >
-            Referencia / nota (opcional):
+            Referencia / nota (obligatorio):
           </Text>
           <TextInput
             style={[
               s.input,
               {
                 color: theme.text,
-                borderColor: theme.border,
+                borderColor: notes.trim() ? theme.border : ComeYaColors.warning,
                 backgroundColor: theme.backgroundSecondary,
               },
             ]}
-            placeholder="Ej: Bizum ref. 123456"
+            placeholder="Ej: Bizum ref. 123456 — enviado a María García"
             placeholderTextColor={theme.textSecondary}
             value={notes}
             onChangeText={setNotes}
@@ -399,7 +447,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
               { color: theme.textSecondary, marginBottom: 6, marginTop: 12 },
             ]}
           >
-            Captura de la transferencia (opcional):
+            Captura del comprobante (obligatorio):
           </Text>
           {proofUri ? (
             <View>
@@ -456,7 +504,13 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
         </View>
 
         <TouchableOpacity
-          style={[s.btn, { backgroundColor: ComeYaColors.success }]}
+          style={[
+            s.btn,
+            { backgroundColor: ComeYaColors.success },
+            !notes.trim() || !proofUri || processing === selected.id
+              ? { opacity: 0.5 }
+              : null,
+          ]}
           onPress={() => markPaid(selected)}
           disabled={processing === selected.id}
         >
@@ -469,6 +523,12 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
             </>
           )}
         </TouchableOpacity>
+        {(!notes.trim() || !proofUri) && (
+          <Text style={[s.sub, { color: ComeYaColors.warning, marginTop: 6 }]}>
+            Debes indicar la referencia y adjuntar la captura del comprobante
+            para poder registrar el pago.
+          </Text>
+        )}
       </ScrollView>
     );
   }
@@ -582,7 +642,8 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                   </Text>
                 )}
                 <Text style={[s.sub, { color: theme.textSecondary }]}>
-                  Pedido #{payout.orderId.slice(0, 8)} ·{" "}
+                  {payout.isWithdrawal ? "Retiro" : "Pedido"} #
+                  {payout.orderId.slice(0, 8)} ·{" "}
                   {new Date(payout.createdAt).toLocaleDateString("es-ES")}
                 </Text>
                 <View style={s.tapHint}>
@@ -662,7 +723,8 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                   </Text>
                 )}
                 <Text style={[s.sub, { color: theme.textSecondary }]}>
-                  Pedido #{payout.orderId.slice(0, 8)} · Creado:{" "}
+                  {payout.isWithdrawal ? "Retiro" : "Pedido"} #
+                  {payout.orderId.slice(0, 8)} · Creado:{" "}
                   {new Date(payout.createdAt).toLocaleDateString("es-ES")}
                 </Text>
                 {payout.method && (
@@ -673,15 +735,24 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                     ]}
                   >
                     <Feather
-                      name="check"
+                      name={payout.status === "stripe_auto" ? "zap" : "check"}
                       size={12}
                       color={ComeYaColors.success}
                     />
                     <Text style={[s.sub, { color: theme.text }]}>
-                      Pagado via {METHOD_LABELS[payout.method] ?? payout.method}
+                      {payout.status === "stripe_auto"
+                        ? "Pagado automáticamente vía "
+                        : "Pagado via "}
+                      {METHOD_LABELS[payout.method] ?? payout.method}
                     </Text>
                   </View>
                 )}
+                {payout.status === "stripe_auto" &&
+                  payout.stripeTransferId && (
+                    <Text style={[s.sub, { color: theme.textSecondary }]}>
+                      Transfer Stripe: {payout.stripeTransferId.slice(0, 24)}…
+                    </Text>
+                  )}
                 {payout.paidAt && (
                   <Text style={[s.sub, { color: ComeYaColors.success }]}>
                     ✓ Pagado:{" "}
@@ -697,6 +768,13 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                   >
                     Nota: {payout.notes}
                   </Text>
+                )}
+                {!!payout.proofUrl && (
+                  <Image
+                    source={{ uri: payout.proofUrl }}
+                    style={[s.proofImage, { height: 120 }]}
+                    resizeMode="contain"
+                  />
                 )}
               </View>
             ))
@@ -802,9 +880,11 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
               <Text
                 style={[s.sub, { color: ComeYaColors.primary, marginTop: 6 }]}
               >
-                Los pagos a negocios y repartidores se realizan manualmente via
-                Bizum, Transferencia IBAN o PayPal según la cuenta que hayan
-                configurado en su perfil.
+                Los pagos de pedidos pagados con tarjeta se liberan
+                automáticamente vía Stripe Connect cuando el cliente confirma la
+                entrega. Los pedidos pagados de forma manual (Bizum, IBAN,
+                PayPal o efectivo) se registran aquí cuando realizas la
+                transferencia al negocio o repartidor.
               </Text>
             </View>
           </>

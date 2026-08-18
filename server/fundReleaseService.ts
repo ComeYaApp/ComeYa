@@ -140,17 +140,21 @@ async function notifyRecipientPayout(
   amount: number,
   orderId: string,
   method: "stripe" | "manual",
+  type: "business" | "driver",
 ) {
   const amountEur = (amount / 100).toFixed(2);
   const msg =
     method === "stripe"
       ? `€${amountEur} transferidos automáticamente a tu cuenta bancaria`
-      : `€${amountEur} pendientes de transferencia manual por el pedido #${orderId.slice(-6)}`;
+      : `€${amountEur} pendientes de transferencia por el pedido #${orderId.slice(-6)}`;
 
   await sendPushToUser(userId, {
     title: method === "stripe" ? "✅ Pago recibido" : "⏳ Pago en proceso",
     body: msg,
-    data: { screen: "Wallet", orderId },
+    data: {
+      screen: type === "business" ? "BusinessFinances" : "DriverEarnings",
+      orderId,
+    },
   }).catch(() => {});
 }
 
@@ -164,6 +168,14 @@ async function releaseFunds(order: any): Promise<void> {
     .from(payouts)
     .where(eq(payouts.orderId, order.id));
   if (existing.length > 0) return;
+
+  // El dinero de la venta solo está en el saldo Stripe de la plataforma si el
+  // CLIENTE pagó con tarjeta/Bizum Stripe. Si pagó manual (Bizum a la cuenta
+  // del admin, transferencia, efectivo), el admin debe liberar manualmente
+  // aunque el negocio/repartidor tenga Stripe Connect activo.
+  const customerPaidWithStripe =
+    typeof order.paymentMethod === "string" &&
+    order.paymentMethod.startsWith("stripe_");
 
   const businessEarnings = order.businessEarnings ?? order.subtotal ?? 0;
   const deliveryEarnings = order.deliveryEarnings ?? order.deliveryFee ?? 0;
@@ -181,7 +193,7 @@ async function releaseFunds(order: any): Promise<void> {
       order.businessId,
     );
 
-    if (stripe && accountId) {
+    if (stripe && accountId && customerPaidWithStripe) {
       // Stripe automático
       const transferId = await stripeTransfer(
         stripe,
@@ -209,6 +221,7 @@ async function releaseFunds(order: any): Promise<void> {
             businessEarnings,
             order.id,
             "stripe",
+            "business",
           );
         logger.info(`✅ Stripe transfer to business: ${transferId}`, {
           orderId: order.id,
@@ -236,11 +249,12 @@ async function releaseFunds(order: any): Promise<void> {
             businessEarnings,
             order.id,
             "manual",
+            "business",
           );
         }
       }
     } else {
-      // Sin Stripe → manual
+      // Sin Stripe, sin Connect, o el cliente pagó manual → payout manual
       inserts.push({
         orderId: order.id,
         recipientId: order.businessId,
@@ -248,6 +262,9 @@ async function releaseFunds(order: any): Promise<void> {
         amount: businessEarnings,
         method: "manual",
         status: "pending" as const,
+        notes: customerPaidWithStripe
+          ? "Cliente pagó con Stripe pero el negocio no tiene Connect activo"
+          : `Cliente pagó de forma manual (${order.paymentMethod || "manual"})`,
       });
       if (ownerId) {
         await notifyAdminManualPayout(
@@ -261,6 +278,7 @@ async function releaseFunds(order: any): Promise<void> {
           businessEarnings,
           order.id,
           "manual",
+          "business",
         );
       }
     }
@@ -272,7 +290,7 @@ async function releaseFunds(order: any): Promise<void> {
       order.deliveryPersonId,
     );
 
-    if (stripe && accountId) {
+    if (stripe && accountId && customerPaidWithStripe) {
       const transferId = await stripeTransfer(
         stripe,
         deliveryEarnings,
@@ -299,6 +317,7 @@ async function releaseFunds(order: any): Promise<void> {
             deliveryEarnings,
             order.id,
             "stripe",
+            "driver",
           );
         logger.info(`✅ Stripe transfer to driver: ${transferId}`, {
           orderId: order.id,
@@ -325,6 +344,7 @@ async function releaseFunds(order: any): Promise<void> {
             deliveryEarnings,
             order.id,
             "manual",
+            "driver",
           );
         }
       }
@@ -336,6 +356,9 @@ async function releaseFunds(order: any): Promise<void> {
         amount: deliveryEarnings,
         method: "manual",
         status: "pending" as const,
+        notes: customerPaidWithStripe
+          ? "Cliente pagó con Stripe pero el repartidor no tiene Connect activo"
+          : `Cliente pagó de forma manual (${order.paymentMethod || "manual"})`,
       });
       if (userId) {
         await notifyAdminManualPayout(
@@ -349,6 +372,7 @@ async function releaseFunds(order: any): Promise<void> {
           deliveryEarnings,
           order.id,
           "manual",
+          "driver",
         );
       }
     }

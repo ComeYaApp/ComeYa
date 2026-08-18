@@ -204,6 +204,18 @@ export class WithdrawalService {
         .where(eq(wallets.userId, withdrawal.recipientId));
     }
 
+    // Notificar al recipiente que su retiro fue enviado
+    try {
+      const { sendPushToUser } = await import("./enhancedPushService");
+      await sendPushToUser(withdrawal.recipientId, {
+        title: "💰 Retiro enviado",
+        body: `ComeYa ha enviado tu retiro de €${(withdrawal.amount / 100).toFixed(2)}. Revísalo en tu cuenta.`,
+        data: { screen: "Wallet", payoutId: withdrawal.id },
+      });
+    } catch (notifyError) {
+      console.error("Error notifying withdrawal approval:", notifyError);
+    }
+
     return { success: true };
   }
 }
@@ -313,6 +325,18 @@ export async function cancelWithdrawal(withdrawalId: string, userId: string) {
           ),
         })
         .where(eq(wallets.userId, userId));
+    }
+
+    // Notificar al usuario que su retiro fue cancelado y el saldo devuelto
+    try {
+      const { sendPushToUser } = await import("./enhancedPushService");
+      await sendPushToUser(userId, {
+        title: "↩️ Retiro cancelado",
+        body: `Tu solicitud de retiro de €${(withdrawal.amount / 100).toFixed(2)} fue cancelada y el saldo fue devuelto a tu wallet.`,
+        data: { screen: "Wallet", payoutId: withdrawal.id },
+      });
+    } catch (notifyError) {
+      console.error("Error notifying withdrawal cancellation:", notifyError);
     }
 
     return {

@@ -91,10 +91,22 @@ export default function AdminPaymentAccountsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Record<string, any>>({});
+  const [stripeStatus, setStripeStatus] = useState<any>(null);
 
   useEffect(() => {
     loadAccounts();
+    loadStripeStatus();
   }, []);
+
+  const loadStripeStatus = async () => {
+    try {
+      const res = await apiRequest("GET", "/api/admin/finance/stripe-status");
+      const data = await res.json();
+      if (data.success) setStripeStatus(data.status);
+    } catch {
+      /* estado no disponible */
+    }
+  };
 
   const loadAccounts = async () => {
     try {
@@ -195,9 +207,65 @@ export default function AdminPaymentAccountsScreen() {
           <Feather name="info" size={18} color={ComeYaColors.primary} />
           <Text style={[styles.infoText, { color: ComeYaColors.primary }]}>
             Configura las cuentas donde los clientes enviaran sus pagos manuales
-            (Bizum y Transferencia).
+            (Bizum, Transferencia SEPA y PayPal). Los cobros con tarjeta entran
+            automaticamente por Stripe.
           </Text>
         </View>
+
+        {/* Stripe (plataforma) — conexión por variables de entorno */}
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}
+          onPress={() => navigation.navigate("AdminStripeSetup" as never)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.cardHeader}>
+            <View
+              style={[
+                styles.iconBox,
+                { backgroundColor: "#635BFF" + "20" },
+              ]}
+            >
+              <Feather name="zap" size={22} color="#635BFF" />
+            </View>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>
+              Stripe (cobros con tarjeta)
+            </Text>
+            <View style={{ flex: 1 }} />
+            <View
+              style={[
+                styles.statusPill,
+                {
+                  backgroundColor: stripeStatus?.isConnected
+                    ? ComeYaColors.success + "20"
+                    : ComeYaColors.warning + "20",
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: stripeStatus?.isConnected
+                    ? ComeYaColors.success
+                    : ComeYaColors.warning,
+                  fontSize: 12,
+                  fontWeight: "700",
+                }}
+              >
+                {stripeStatus?.isConnected ? "Conectado" : "Sin configurar"}
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+            {stripeStatus?.isConnected
+              ? `Cuenta: ${stripeStatus?.accountName || "ComeYa"} · Saldo disponible ${((stripeStatus?.balance?.available || 0) / 100).toFixed(2)} €`
+              : "Falta configurar STRIPE_SECRET_KEY en el servidor"}
+          </Text>
+          <View style={styles.tapHint}>
+            <Feather name="chevron-right" size={14} color={ComeYaColors.primary} />
+            <Text style={[styles.tapHintText, { color: ComeYaColors.primary }]}>
+              Ver estado y abrir el panel de Stripe
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         {PROVIDERS.map((provider) => (
           <View
@@ -305,6 +373,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardTitle: { fontSize: 17, fontWeight: "700" },
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  tapHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: Spacing.sm,
+  },
+  tapHintText: { fontSize: 13, fontWeight: "600" },
   label: {
     fontSize: 13,
     fontWeight: "500",

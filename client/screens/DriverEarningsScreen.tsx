@@ -46,6 +46,35 @@ interface EarningsData {
   }[];
 }
 
+interface Payout {
+  id: string;
+  orderId: string;
+  recipientId: string;
+  recipientType: string;
+  amount: number;
+  method: string | null;
+  status: "pending" | "paid" | "stripe_auto" | "cancelled";
+  paidAt: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+const PAYOUT_STATUS: Record<string, { text: string; color: string }> = {
+  pending: { text: "Pendiente", color: ComeYaColors.warning },
+  paid: { text: "Pagado", color: ComeYaColors.success },
+  stripe_auto: { text: "Pagado (Stripe)", color: ComeYaColors.success },
+  cancelled: { text: "Cancelado", color: ComeYaColors.error },
+};
+
+const PAYOUT_METHODS: Record<string, string> = {
+  bizum: "Bizum",
+  transferencia: "Transferencia IBAN",
+  paypal: "PayPal",
+  stripe: "Stripe (automático)",
+  manual: "Pago manual del admin",
+  bank_transfer: "Transferencia IBAN",
+};
+
 type Period = "today" | "week" | "month";
 
 function StatCard({
@@ -89,6 +118,12 @@ export default function DriverEarningsScreen() {
     queryKey: ["/api/delivery/stats"],
     enabled: !!user?.id,
   });
+
+  const { data: payoutsData } = useQuery<{ success: boolean; payouts: Payout[] }>({
+    queryKey: ["/api/wallet/payouts"],
+    enabled: !!user?.id,
+  });
+  const payouts = payoutsData?.payouts || [];
 
   const handleRefresh = () => refetch();
 
@@ -396,6 +431,104 @@ export default function DriverEarningsScreen() {
               style={{ color: theme.textSecondary, marginTop: Spacing.md }}
             >
               No hay entregas completadas aún
+            </ThemedText>
+          </View>
+        )}
+
+        {/* Historial de pagos */}
+        <ThemedText
+          type="h3"
+          style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }}
+        >
+          💰 Historial de Pagos
+        </ThemedText>
+
+        {payouts.length > 0 ? (
+          payouts.slice(0, 20).map((payout, index) => {
+            const statusInfo =
+              PAYOUT_STATUS[payout.status] || PAYOUT_STATUS.pending;
+            const isWithdrawal = (payout.orderId || "").startsWith("wdr-");
+            return (
+              <Animated.View
+                key={payout.id}
+                entering={FadeInRight.delay(index * 50).springify()}
+                style={[
+                  styles.deliveryItem,
+                  { backgroundColor: theme.card },
+                  Shadows.sm,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.deliveryIcon,
+                    { backgroundColor: statusInfo.color + "20" },
+                  ]}
+                >
+                  <Feather
+                    name={
+                      payout.status === "pending"
+                        ? "clock"
+                        : payout.status === "cancelled"
+                          ? "x-circle"
+                          : "zap"
+                    }
+                    size={20}
+                    color={statusInfo.color}
+                  />
+                </View>
+                <View style={styles.deliveryInfo}>
+                  <ThemedText type="body" numberOfLines={1}>
+                    {isWithdrawal
+                      ? "Retiro de saldo"
+                      : `Pedido #${payout.orderId.slice(-6)}`}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    {PAYOUT_METHODS[payout.method || ""] ||
+                      payout.method ||
+                      "Pago"}
+                    {" · "}
+                    {new Date(payout.createdAt).toLocaleDateString("es-ES", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </ThemedText>
+                  {payout.status === "pending" && (
+                    <ThemedText
+                      type="caption"
+                      style={{ color: statusInfo.color }}
+                    >
+                      {statusInfo.text} — el admin lo liberará pronto
+                    </ThemedText>
+                  )}
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <ThemedText
+                    type="body"
+                    style={{ color: statusInfo.color, fontWeight: "600" }}
+                  >
+                    +{(payout.amount / 100).toFixed(2)} €
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    {statusInfo.text}
+                  </ThemedText>
+                </View>
+              </Animated.View>
+            );
+          })
+        ) : (
+          <View style={styles.emptyState}>
+            <Feather name="dollar-sign" size={48} color={theme.textSecondary} />
+            <ThemedText
+              type="body"
+              style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+            >
+              Aún no tienes pagos registrados
             </ThemedText>
           </View>
         )}

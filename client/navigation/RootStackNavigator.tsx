@@ -59,6 +59,7 @@ import PrivacyScreen from "@/screens/PrivacyScreen";
 import DigitalPaymentMethodScreen from "@/screens/DigitalPaymentMethodScreen";
 import PaymentWebViewScreen from "@/screens/PaymentWebViewScreen";
 import AdminPaymentAccountsScreen from "@/screens/AdminPaymentAccountsScreen";
+import AdminStripeSetupScreen from "@/screens/AdminStripeSetupScreen";
 import PaymentProofScreen from "@/screens/PaymentProofScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import QRScannerScreen from "@/screens/QRScannerScreen";
@@ -161,6 +162,7 @@ export type RootStackParamList = {
     subscriptionId?: string;
   };
   AdminPaymentAccounts: undefined;
+  AdminStripeSetup: undefined;
   PaymentWebView: { orderId: string; paymentUrl: string; provider: string };
   DeliveryConfirmation: { orderId: string; orderDetails: any };
   BusinessDeliveryMap: undefined;
@@ -336,6 +338,7 @@ export default function RootStackNavigator() {
           <Stack.Screen name="PaymentProof" component={PaymentProofScreen} options={{ headerShown: false }} />
           <Stack.Screen name="StripePayment" component={StripePaymentScreen} options={{ headerShown: false }} />
           <Stack.Screen name="AdminPaymentAccounts" component={AdminPaymentAccountsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="AdminStripeSetup" component={AdminStripeSetupScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DeliveryConfirmation" component={DeliveryConfirmationScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ presentation: "modal", headerShown: false }} />

@@ -639,32 +639,36 @@ router.get(
       const { businessId } = req.query;
       const { businesses, payouts } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
-      const { desc } = await import("drizzle-orm");
+      const { eq, inArray, or, desc } = await import("drizzle-orm");
 
-      const [business] = businessId
-        ? await db
-            .select()
-            .from(businesses)
-            .where(
-              and(
+      // Todos los negocios del dueño (o solo uno si viene businessId)
+      const ownerBusinesses = await db
+        .select({ id: businesses.id })
+        .from(businesses)
+        .where(
+          businessId
+            ? and(
                 eq(businesses.id, businessId as string),
                 eq(businesses.ownerId, req.user!.id),
-              ),
-            )
-            .limit(1)
-        : await db
-            .select()
-            .from(businesses)
-            .where(eq(businesses.ownerId, req.user!.id))
-            .limit(1);
+              )
+            : eq(businesses.ownerId, req.user!.id),
+        );
 
-      if (!business)
-        return res.status(404).json({ error: "Negocio no encontrado" });
+      if (ownerBusinesses.length === 0) {
+        return res.json({ success: true, payouts: [] });
+      }
 
+      const businessIds = ownerBusinesses.map((b) => b.id);
       const businessPayouts = await db
         .select()
         .from(payouts)
-        .where(eq(payouts.recipientId, business.id))
+        .where(
+          or(
+            inArray(payouts.recipientId, businessIds),
+            // retiros del dueño (recipientId = id del usuario)
+            eq(payouts.recipientId, req.user!.id),
+          ),
+        )
         .orderBy(desc(payouts.createdAt));
 
       res.json({ success: true, payouts: businessPayouts });

@@ -1,5 +1,6 @@
 // Payment Accounts Routes - Get ComeYa receiving accounts
 import { Router } from "express";
+import { sql } from "drizzle-orm";
 import { authenticateToken, requireAdmin } from "../authMiddleware";
 import { db } from "../db";
 
@@ -57,7 +58,7 @@ router.get(
   },
 );
 
-// Admin: Update receiving account
+// Admin: Update receiving account (upsert para que nunca falle si la fila no existe)
 router.put(
   "/admin/receiving-accounts/:provider",
   authenticateToken,
@@ -67,10 +68,22 @@ router.put(
       const { provider } = req.params;
       const { accountData, isActive } = req.body;
 
-      await db.execute(
-        "UPDATE payment_receiving_accounts SET account_data = ?, is_active = ?, updated_at = NOW() WHERE provider = ?",
-        [JSON.stringify(accountData), isActive ?? true, provider],
-      );
+      if (!provider || !accountData || typeof accountData !== "object") {
+        return res.status(400).json({
+          success: false,
+          error: "provider y accountData son requeridos",
+        });
+      }
+
+      // db es drizzle: los placeholders ? no se enlazan, hay que usar plantilla sql
+      await db.execute(sql`
+        INSERT INTO payment_receiving_accounts (provider, account_data, is_active)
+        VALUES (${provider}, ${JSON.stringify(accountData)}, ${isActive ?? true})
+        ON DUPLICATE KEY UPDATE
+          account_data = VALUES(account_data),
+          is_active = VALUES(is_active),
+          updated_at = NOW()
+      `);
 
       res.json({ success: true, message: "Cuenta actualizada correctamente" });
     } catch (error) {

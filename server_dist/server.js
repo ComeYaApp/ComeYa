@@ -866,6 +866,8 @@ var init_schema_mysql = __esm({
       paidAt: (0, import_mysql_core.timestamp)("paid_at"),
       stripeTransferId: (0, import_mysql_core.varchar)("stripe_transfer_id", { length: 255 }),
       // ID del transfer de Stripe
+      proofUrl: (0, import_mysql_core.text)("proof_url"),
+      // comprobante de transferencia subido por el admin
       notes: (0, import_mysql_core.text)("notes"),
       createdAt: (0, import_mysql_core.timestamp)("created_at").default(import_drizzle_orm.sql`CURRENT_TIMESTAMP`)
     });
@@ -3327,9 +3329,9 @@ async function executeWithRetry(queryFn, maxRetries = 3) {
   console.error("\u274C All retry attempts exhausted");
   throw lastError;
 }
-async function queryWithRetry(sql18, params = []) {
+async function queryWithRetry(sql19, params = []) {
   return executeWithRetry(async (conn) => {
-    const [rows] = await conn.query(sql18, params);
+    const [rows] = await conn.query(sql19, params);
     return rows;
   });
 }
@@ -6861,6 +6863,16 @@ async function cancelWithdrawal(withdrawalId, userId) {
         )
       }).where((0, import_drizzle_orm30.eq)(wallets.userId, userId));
     }
+    try {
+      const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
+      await sendPushToUser2(userId, {
+        title: "\u21A9\uFE0F Retiro cancelado",
+        body: `Tu solicitud de retiro de \u20AC${(withdrawal.amount / 100).toFixed(2)} fue cancelada y el saldo fue devuelto a tu wallet.`,
+        data: { screen: "Wallet", payoutId: withdrawal.id }
+      });
+    } catch (notifyError) {
+      console.error("Error notifying withdrawal cancellation:", notifyError);
+    }
     return {
       success: true,
       message: "Solicitud de retiro cancelada"
@@ -6993,6 +7005,16 @@ var init_withdrawalService = __esm({
             ),
             totalWithdrawn: (wallet.totalWithdrawn || 0) + withdrawal.amount
           }).where((0, import_drizzle_orm30.eq)(wallets.userId, withdrawal.recipientId));
+        }
+        try {
+          const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
+          await sendPushToUser2(withdrawal.recipientId, {
+            title: "\u{1F4B0} Retiro enviado",
+            body: `ComeYa ha enviado tu retiro de \u20AC${(withdrawal.amount / 100).toFixed(2)}. Rev\xEDsalo en tu cuenta.`,
+            data: { screen: "Wallet", payoutId: withdrawal.id }
+          });
+        } catch (notifyError) {
+          console.error("Error notifying withdrawal approval:", notifyError);
         }
         return { success: true };
       }
@@ -7479,7 +7501,7 @@ async function getBusinessStripeAccount(businessId) {
     stripeAccountId: businesses.stripeAccountId,
     stripeAccountStatus: businesses.stripeAccountStatus,
     ownerId: businesses.ownerId
-  }).from(businesses).where((0, import_drizzle_orm45.eq)(businesses.id, businessId)).limit(1);
+  }).from(businesses).where((0, import_drizzle_orm46.eq)(businesses.id, businessId)).limit(1);
   if (!biz) return { accountId: null, ownerId: null };
   const active = biz.stripeAccountStatus === "active" && biz.stripeAccountId;
   return {
@@ -7492,7 +7514,7 @@ async function getDriverStripeAccount(driverId) {
     stripeAccountId: deliveryDrivers.stripeAccountId,
     stripeAccountStatus: deliveryDrivers.stripeAccountStatus,
     userId: deliveryDrivers.userId
-  }).from(deliveryDrivers).where((0, import_drizzle_orm45.eq)(deliveryDrivers.id, driverId)).limit(1);
+  }).from(deliveryDrivers).where((0, import_drizzle_orm46.eq)(deliveryDrivers.id, driverId)).limit(1);
   if (!driver) return { accountId: null, userId: null };
   const active = driver.stripeAccountStatus === "active" && driver.stripeAccountId;
   return {
@@ -7503,8 +7525,8 @@ async function getDriverStripeAccount(driverId) {
 async function notifyAdminManualPayout(orderId, recipientName, amount, type) {
   try {
     const { users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-    const { sql: sql18 } = await import("drizzle-orm");
-    const admins = await db.select({ id: users5.id }).from(users5).where(sql18`role IN ('admin', 'super_admin')`);
+    const { sql: sql19 } = await import("drizzle-orm");
+    const admins = await db.select({ id: users5.id }).from(users5).where(sql19`role IN ('admin', 'super_admin')`);
     const amountEur = (amount / 100).toFixed(2);
     const label = type === "business" ? "negocio" : "repartidor";
     for (const admin of admins) {
@@ -7519,20 +7541,24 @@ async function notifyAdminManualPayout(orderId, recipientName, amount, type) {
     logger.error("Error notifying admin of manual payout:", err);
   }
 }
-async function notifyRecipientPayout(userId, amount, orderId, method) {
+async function notifyRecipientPayout(userId, amount, orderId, method, type) {
   const amountEur = (amount / 100).toFixed(2);
-  const msg = method === "stripe" ? `\u20AC${amountEur} transferidos autom\xE1ticamente a tu cuenta bancaria` : `\u20AC${amountEur} pendientes de transferencia manual por el pedido #${orderId.slice(-6)}`;
+  const msg = method === "stripe" ? `\u20AC${amountEur} transferidos autom\xE1ticamente a tu cuenta bancaria` : `\u20AC${amountEur} pendientes de transferencia por el pedido #${orderId.slice(-6)}`;
   await sendPushToUser(userId, {
     title: method === "stripe" ? "\u2705 Pago recibido" : "\u23F3 Pago en proceso",
     body: msg,
-    data: { screen: "Wallet", orderId }
+    data: {
+      screen: type === "business" ? "BusinessFinances" : "DriverEarnings",
+      orderId
+    }
   }).catch(() => {
   });
 }
 async function releaseFunds(order) {
   const stripe2 = await getStripe3();
-  const existing = await db.select().from(payouts).where((0, import_drizzle_orm45.eq)(payouts.orderId, order.id));
+  const existing = await db.select().from(payouts).where((0, import_drizzle_orm46.eq)(payouts.orderId, order.id));
   if (existing.length > 0) return;
+  const customerPaidWithStripe = typeof order.paymentMethod === "string" && order.paymentMethod.startsWith("stripe_");
   const businessEarnings = order.businessEarnings ?? order.subtotal ?? 0;
   const deliveryEarnings = order.deliveryEarnings ?? order.deliveryFee ?? 0;
   const inserts = [];
@@ -7545,7 +7571,7 @@ async function releaseFunds(order) {
     const { accountId, ownerId } = await getBusinessStripeAccount(
       order.businessId
     );
-    if (stripe2 && accountId) {
+    if (stripe2 && accountId && customerPaidWithStripe) {
       const transferId = await stripeTransfer(
         stripe2,
         businessEarnings,
@@ -7571,7 +7597,8 @@ async function releaseFunds(order) {
             ownerId,
             businessEarnings,
             order.id,
-            "stripe"
+            "stripe",
+            "business"
           );
         logger.info(`\u2705 Stripe transfer to business: ${transferId}`, {
           orderId: order.id,
@@ -7597,7 +7624,8 @@ async function releaseFunds(order) {
             ownerId,
             businessEarnings,
             order.id,
-            "manual"
+            "manual",
+            "business"
           );
         }
       }
@@ -7608,7 +7636,8 @@ async function releaseFunds(order) {
         recipientType: "business",
         amount: businessEarnings,
         method: "manual",
-        status: "pending"
+        status: "pending",
+        notes: customerPaidWithStripe ? "Cliente pag\xF3 con Stripe pero el negocio no tiene Connect activo" : `Cliente pag\xF3 de forma manual (${order.paymentMethod || "manual"})`
       });
       if (ownerId) {
         await notifyAdminManualPayout(
@@ -7621,7 +7650,8 @@ async function releaseFunds(order) {
           ownerId,
           businessEarnings,
           order.id,
-          "manual"
+          "manual",
+          "business"
         );
       }
     }
@@ -7630,7 +7660,7 @@ async function releaseFunds(order) {
     const { accountId, userId } = await getDriverStripeAccount(
       order.deliveryPersonId
     );
-    if (stripe2 && accountId) {
+    if (stripe2 && accountId && customerPaidWithStripe) {
       const transferId = await stripeTransfer(
         stripe2,
         deliveryEarnings,
@@ -7656,7 +7686,8 @@ async function releaseFunds(order) {
             userId,
             deliveryEarnings,
             order.id,
-            "stripe"
+            "stripe",
+            "driver"
           );
         logger.info(`\u2705 Stripe transfer to driver: ${transferId}`, {
           orderId: order.id,
@@ -7682,7 +7713,8 @@ async function releaseFunds(order) {
             userId,
             deliveryEarnings,
             order.id,
-            "manual"
+            "manual",
+            "driver"
           );
         }
       }
@@ -7693,7 +7725,8 @@ async function releaseFunds(order) {
         recipientType: "driver",
         amount: deliveryEarnings,
         method: "manual",
-        status: "pending"
+        status: "pending",
+        notes: customerPaidWithStripe ? "Cliente pag\xF3 con Stripe pero el repartidor no tiene Connect activo" : `Cliente pag\xF3 de forma manual (${order.paymentMethod || "manual"})`
       });
       if (userId) {
         await notifyAdminManualPayout(
@@ -7706,13 +7739,14 @@ async function releaseFunds(order) {
           userId,
           deliveryEarnings,
           order.id,
-          "manual"
+          "manual",
+          "driver"
         );
       }
     }
   }
   if (inserts.length > 0) await db.insert(payouts).values(inserts);
-  await db.update(orders).set(orderUpdates).where((0, import_drizzle_orm45.eq)(orders.id, order.id));
+  await db.update(orders).set(orderUpdates).where((0, import_drizzle_orm46.eq)(orders.id, order.id));
   logger.info(`\u{1F4B0} Funds released for order ${order.id}`, {
     businessEarnings,
     deliveryEarnings,
@@ -7723,13 +7757,13 @@ async function releaseFunds(order) {
     }))
   });
 }
-var import_drizzle_orm45, FundReleaseService, fundReleaseService;
+var import_drizzle_orm46, FundReleaseService, fundReleaseService;
 var init_fundReleaseService = __esm({
   "server/fundReleaseService.ts"() {
     "use strict";
     init_db();
     init_schema_mysql();
-    import_drizzle_orm45 = require("drizzle-orm");
+    import_drizzle_orm46 = require("drizzle-orm");
     init_logger();
     init_enhancedPushService();
     FundReleaseService = class _FundReleaseService {
@@ -7743,7 +7777,7 @@ var init_fundReleaseService = __esm({
       }
       async releaseOnCustomerConfirmation(orderId, customerId) {
         try {
-          const [order] = await db.select().from(orders).where((0, import_drizzle_orm45.eq)(orders.id, orderId)).limit(1);
+          const [order] = await db.select().from(orders).where((0, import_drizzle_orm46.eq)(orders.id, orderId)).limit(1);
           if (!order) return { success: false, message: "Pedido no encontrado" };
           if (order.userId !== customerId)
             return { success: false, message: "No autorizado" };
@@ -7758,7 +7792,7 @@ var init_fundReleaseService = __esm({
             confirmedByCustomer: true,
             confirmedByCustomerAt: /* @__PURE__ */ new Date(),
             updatedAt: /* @__PURE__ */ new Date()
-          }).where((0, import_drizzle_orm45.eq)(orders.id, orderId));
+          }).where((0, import_drizzle_orm46.eq)(orders.id, orderId));
           await releaseFunds(order);
           return {
             success: true,
@@ -7773,7 +7807,7 @@ var init_fundReleaseService = __esm({
       }
       async releaseOrderFunds(orderId) {
         try {
-          const [order] = await db.select().from(orders).where((0, import_drizzle_orm45.eq)(orders.id, orderId)).limit(1);
+          const [order] = await db.select().from(orders).where((0, import_drizzle_orm46.eq)(orders.id, orderId)).limit(1);
           if (!order) return { success: false, message: "Pedido no encontrado" };
           if (order.fundsReleased)
             return { success: false, message: "Los fondos ya fueron liberados" };
@@ -7792,10 +7826,10 @@ var init_fundReleaseService = __esm({
       async autoReleaseFunds() {
         const deliveredAt24hAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
         const ordersToRelease = await db.select().from(orders).where(
-          (0, import_drizzle_orm45.and)(
-            (0, import_drizzle_orm45.eq)(orders.status, "delivered"),
-            (0, import_drizzle_orm45.eq)(orders.fundsReleased, false),
-            (0, import_drizzle_orm45.lt)(orders.deliveredAt, deliveredAt24hAgo)
+          (0, import_drizzle_orm46.and)(
+            (0, import_drizzle_orm46.eq)(orders.status, "delivered"),
+            (0, import_drizzle_orm46.eq)(orders.fundsReleased, false),
+            (0, import_drizzle_orm46.lt)(orders.deliveredAt, deliveredAt24hAgo)
           )
         );
         let released = 0, failed = 0;
@@ -7819,7 +7853,7 @@ var init_fundReleaseService = __esm({
       }
       async disputeOrder(orderId, customerId, reason) {
         try {
-          const [order] = await db.select().from(orders).where((0, import_drizzle_orm45.eq)(orders.id, orderId)).limit(1);
+          const [order] = await db.select().from(orders).where((0, import_drizzle_orm46.eq)(orders.id, orderId)).limit(1);
           if (!order) return { success: false, message: "Pedido no encontrado" };
           if (order.userId !== customerId)
             return { success: false, message: "No autorizado" };
@@ -7832,7 +7866,7 @@ var init_fundReleaseService = __esm({
             status: "disputed",
             cancellationReason: reason,
             updatedAt: /* @__PURE__ */ new Date()
-          }).where((0, import_drizzle_orm45.eq)(orders.id, orderId));
+          }).where((0, import_drizzle_orm46.eq)(orders.id, orderId));
           logger.warn(`\u26A0\uFE0F Order disputed: ${orderId}`, { customerId, reason });
           return {
             success: true,
@@ -7854,13 +7888,13 @@ var advancedCouponService_exports = {};
 __export(advancedCouponService_exports, {
   AdvancedCouponService: () => AdvancedCouponService
 });
-var import_drizzle_orm47, AdvancedCouponService;
+var import_drizzle_orm48, AdvancedCouponService;
 var init_advancedCouponService = __esm({
   "server/advancedCouponService.ts"() {
     "use strict";
     init_db();
     init_schema_mysql();
-    import_drizzle_orm47 = require("drizzle-orm");
+    import_drizzle_orm48 = require("drizzle-orm");
     AdvancedCouponService = class {
       /**
        * Valida un cupón y calcula el descuento aplicable
@@ -7868,7 +7902,7 @@ var init_advancedCouponService = __esm({
       static async validateCoupon(code, context) {
         try {
           const [coupon] = await db.select().from(coupons).where(
-            (0, import_drizzle_orm47.and)((0, import_drizzle_orm47.eq)(coupons.code, code.toUpperCase()), (0, import_drizzle_orm47.eq)(coupons.isActive, true))
+            (0, import_drizzle_orm48.and)((0, import_drizzle_orm48.eq)(coupons.code, code.toUpperCase()), (0, import_drizzle_orm48.eq)(coupons.isActive, true))
           ).limit(1);
           if (!coupon) {
             return { valid: false, discount: 0, message: "Cup\xF3n no v\xE1lido" };
@@ -8112,9 +8146,9 @@ var init_advancedCouponService = __esm({
         try {
           const now = /* @__PURE__ */ new Date();
           const availableCoupons = await db.select().from(coupons).where(
-            (0, import_drizzle_orm47.and)(
-              (0, import_drizzle_orm47.eq)(coupons.isActive, true),
-              (0, import_drizzle_orm47.or)((0, import_drizzle_orm47.isNull)(coupons.expiresAt), (0, import_drizzle_orm47.gte)(coupons.expiresAt, now))
+            (0, import_drizzle_orm48.and)(
+              (0, import_drizzle_orm48.eq)(coupons.isActive, true),
+              (0, import_drizzle_orm48.or)((0, import_drizzle_orm48.isNull)(coupons.expiresAt), (0, import_drizzle_orm48.gte)(coupons.expiresAt, now))
             )
           );
           const filtered = [];
@@ -8148,13 +8182,13 @@ var scheduledOrdersService_exports = {};
 __export(scheduledOrdersService_exports, {
   ScheduledOrdersService: () => ScheduledOrdersService
 });
-var import_drizzle_orm51, ScheduledOrdersService;
+var import_drizzle_orm52, ScheduledOrdersService;
 var init_scheduledOrdersService = __esm({
   "server/scheduledOrdersService.ts"() {
     "use strict";
     init_db();
     init_schema_mysql();
-    import_drizzle_orm51 = require("drizzle-orm");
+    import_drizzle_orm52 = require("drizzle-orm");
     ScheduledOrdersService = class {
       // Crear pedido programado
       static async createScheduledOrder(data) {
@@ -8177,9 +8211,9 @@ var init_scheduledOrdersService = __esm({
       // Obtener pedidos programados del usuario
       static async getUserScheduledOrders(userId) {
         const scheduled = await db.select().from(scheduledOrders).where(
-          (0, import_drizzle_orm51.and)(
-            (0, import_drizzle_orm51.eq)(scheduledOrders.userId, userId),
-            (0, import_drizzle_orm51.eq)(scheduledOrders.status, "pending")
+          (0, import_drizzle_orm52.and)(
+            (0, import_drizzle_orm52.eq)(scheduledOrders.userId, userId),
+            (0, import_drizzle_orm52.eq)(scheduledOrders.status, "pending")
           )
         );
         return scheduled;
@@ -8187,9 +8221,9 @@ var init_scheduledOrdersService = __esm({
       // Cancelar pedido programado
       static async cancelScheduledOrder(scheduledOrderId, userId) {
         await db.update(scheduledOrders).set({ status: "cancelled" }).where(
-          (0, import_drizzle_orm51.and)(
-            (0, import_drizzle_orm51.eq)(scheduledOrders.id, scheduledOrderId),
-            (0, import_drizzle_orm51.eq)(scheduledOrders.userId, userId)
+          (0, import_drizzle_orm52.and)(
+            (0, import_drizzle_orm52.eq)(scheduledOrders.id, scheduledOrderId),
+            (0, import_drizzle_orm52.eq)(scheduledOrders.userId, userId)
           )
         );
         return { success: true };
@@ -8198,9 +8232,9 @@ var init_scheduledOrdersService = __esm({
       static async executeScheduledOrders() {
         const now = /* @__PURE__ */ new Date();
         const pending = await db.select().from(scheduledOrders).where(
-          (0, import_drizzle_orm51.and)(
-            (0, import_drizzle_orm51.eq)(scheduledOrders.status, "pending"),
-            (0, import_drizzle_orm51.lte)(scheduledOrders.scheduledFor, now)
+          (0, import_drizzle_orm52.and)(
+            (0, import_drizzle_orm52.eq)(scheduledOrders.status, "pending"),
+            (0, import_drizzle_orm52.lte)(scheduledOrders.scheduledFor, now)
           )
         );
         const results = [];
@@ -8224,7 +8258,7 @@ var init_scheduledOrdersService = __esm({
               image: businesses.image,
               deliveryFee: businesses.deliveryFee,
               ownerId: businesses.ownerId
-            }).from(businesses).where((0, import_drizzle_orm51.eq)(businesses.id, scheduled.businessId)).limit(1);
+            }).from(businesses).where((0, import_drizzle_orm52.eq)(businesses.id, scheduled.businessId)).limit(1);
             const deliveryFee = Number(business?.deliveryFee) || 0;
             const total = subtotal + deliveryFee;
             const [order] = await db.insert(orders).values({
@@ -8247,7 +8281,7 @@ var init_scheduledOrdersService = __esm({
             await db.update(scheduledOrders).set({
               status: "executed",
               orderId: order.insertId
-            }).where((0, import_drizzle_orm51.eq)(scheduledOrders.id, scheduled.id));
+            }).where((0, import_drizzle_orm52.eq)(scheduledOrders.id, scheduled.id));
             try {
               const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
               if (business?.ownerId) {
@@ -8272,7 +8306,7 @@ var init_scheduledOrdersService = __esm({
             });
           } catch (error) {
             console.error("Error executing scheduled order:", error);
-            await db.update(scheduledOrders).set({ status: "failed" }).where((0, import_drizzle_orm51.eq)(scheduledOrders.id, scheduled.id));
+            await db.update(scheduledOrders).set({ status: "failed" }).where((0, import_drizzle_orm52.eq)(scheduledOrders.id, scheduled.id));
             results.push({ scheduledOrderId: scheduled.id, success: false, error });
           }
         }
@@ -8287,17 +8321,17 @@ var gamificationService_exports = {};
 __export(gamificationService_exports, {
   GamificationService: () => GamificationService
 });
-var import_drizzle_orm57, GamificationService;
+var import_drizzle_orm58, GamificationService;
 var init_gamificationService = __esm({
   "server/gamificationService.ts"() {
     "use strict";
     init_db();
     init_schema_mysql();
-    import_drizzle_orm57 = require("drizzle-orm");
+    import_drizzle_orm58 = require("drizzle-orm");
     GamificationService = class {
       // Inicializar puntos de usuario
       static async initializeUserPoints(userId) {
-        const [existing] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId)).limit(1);
+        const [existing] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId)).limit(1);
         if (!existing) {
           await db.insert(loyaltyPoints).values({
             id: crypto.randomUUID(),
@@ -8314,14 +8348,14 @@ var init_gamificationService = __esm({
       static async awardPoints(data) {
         const { userId, points, type, description, orderId } = data;
         await this.initializeUserPoints(userId);
-        const [userPoints] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId)).limit(1);
+        const [userPoints] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId)).limit(1);
         if (!userPoints) return { success: false, error: "Usuario no encontrado" };
         const newPoints = userPoints.currentPoints + points;
         const newTotalEarned = userPoints.totalEarned + points;
         await db.update(loyaltyPoints).set({
           currentPoints: newPoints,
           totalEarned: newTotalEarned
-        }).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId));
+        }).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId));
         await db.insert(loyaltyTransactions).values({
           id: crypto.randomUUID(),
           userId,
@@ -8354,18 +8388,18 @@ var init_gamificationService = __esm({
           tier: newTier,
           pointsToNextTier: pointsToNext,
           tierUpdatedAt: /* @__PURE__ */ new Date()
-        }).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId));
+        }).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId));
       }
       // Verificar y desbloquear achievements
       static async checkAchievements(userId) {
-        const userOrders = await db.select().from(orders).where((0, import_drizzle_orm57.eq)(orders.userId, userId));
+        const userOrders = await db.select().from(orders).where((0, import_drizzle_orm58.eq)(orders.userId, userId));
         const completedOrders = userOrders.filter((o) => o.status === "delivered");
         const orderCount = completedOrders.length;
         const totalSpent = completedOrders.reduce(
           (sum3, o) => sum3 + (o.total || 0),
           0
         );
-        const allAchievements = await db.select().from(achievements).where((0, import_drizzle_orm57.eq)(achievements.isActive, true));
+        const allAchievements = await db.select().from(achievements).where((0, import_drizzle_orm58.eq)(achievements.isActive, true));
         for (const achievement of allAchievements) {
           let qualifies = false;
           if (achievement.requirementType === "order_count")
@@ -8377,12 +8411,12 @@ var init_gamificationService = __esm({
       }
       // Desbloquear achievement por ID
       static async unlockAchievement(userId, achievementId) {
-        const [achievement] = await db.select().from(achievements).where((0, import_drizzle_orm57.eq)(achievements.id, achievementId)).limit(1);
+        const [achievement] = await db.select().from(achievements).where((0, import_drizzle_orm58.eq)(achievements.id, achievementId)).limit(1);
         if (!achievement) return;
         const [existing] = await db.select().from(userAchievements).where(
-          (0, import_drizzle_orm57.and)(
-            (0, import_drizzle_orm57.eq)(userAchievements.userId, userId),
-            (0, import_drizzle_orm57.eq)(userAchievements.achievementId, achievementId)
+          (0, import_drizzle_orm58.and)(
+            (0, import_drizzle_orm58.eq)(userAchievements.userId, userId),
+            (0, import_drizzle_orm58.eq)(userAchievements.achievementId, achievementId)
           )
         ).limit(1);
         if (existing) return;
@@ -8403,7 +8437,7 @@ var init_gamificationService = __esm({
       // Obtener puntos del usuario
       static async getUserPoints(userId) {
         await this.initializeUserPoints(userId);
-        const [points] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId)).limit(1);
+        const [points] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId)).limit(1);
         return { success: true, points };
       }
       // Obtener leaderboard
@@ -8415,7 +8449,7 @@ var init_gamificationService = __esm({
           tier: loyaltyPoints.tier,
           userName: users.name,
           userImage: users.profileImage
-        }).from(loyaltyPoints).leftJoin(users, (0, import_drizzle_orm57.eq)(loyaltyPoints.userId, users.id)).orderBy((0, import_drizzle_orm57.desc)(loyaltyPoints.totalEarned)).limit(limit);
+        }).from(loyaltyPoints).leftJoin(users, (0, import_drizzle_orm58.eq)(loyaltyPoints.userId, users.id)).orderBy((0, import_drizzle_orm58.desc)(loyaltyPoints.totalEarned)).limit(limit);
         return { success: true, leaderboard: topUsers };
       }
       // Obtener achievements del usuario
@@ -8425,9 +8459,9 @@ var init_gamificationService = __esm({
           unlockedAt: userAchievements.unlockedAt
         }).from(userAchievements).leftJoin(
           achievements,
-          (0, import_drizzle_orm57.eq)(userAchievements.achievementId, achievements.id)
-        ).where((0, import_drizzle_orm57.eq)(userAchievements.userId, userId));
-        const allAchievements = await db.select().from(achievements).where((0, import_drizzle_orm57.eq)(achievements.isActive, true));
+          (0, import_drizzle_orm58.eq)(userAchievements.achievementId, achievements.id)
+        ).where((0, import_drizzle_orm58.eq)(userAchievements.userId, userId));
+        const allAchievements = await db.select().from(achievements).where((0, import_drizzle_orm58.eq)(achievements.isActive, true));
         const unlockedIds = unlocked.map((u) => u.achievement?.id);
         const locked = allAchievements.filter((a) => !unlockedIds.includes(a.id));
         return {
@@ -8441,21 +8475,21 @@ var init_gamificationService = __esm({
       }
       // Canjear recompensa
       static async redeemReward(userId, rewardId) {
-        const [reward] = await db.select().from(loyaltyRewards).where((0, import_drizzle_orm57.eq)(loyaltyRewards.id, rewardId)).limit(1);
+        const [reward] = await db.select().from(loyaltyRewards).where((0, import_drizzle_orm58.eq)(loyaltyRewards.id, rewardId)).limit(1);
         if (!reward) {
           return { success: false, error: "Recompensa no encontrada" };
         }
         if (!reward.isAvailable) {
           return { success: false, error: "Recompensa no disponible" };
         }
-        const [userPoints] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId)).limit(1);
+        const [userPoints] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId)).limit(1);
         if (!userPoints || userPoints.currentPoints < reward.pointsCost) {
           return { success: false, error: "Puntos insuficientes" };
         }
         await db.update(loyaltyPoints).set({
           currentPoints: userPoints.currentPoints - reward.pointsCost,
           totalRedeemed: userPoints.totalRedeemed + reward.pointsCost
-        }).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId));
+        }).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId));
         await db.insert(loyaltyTransactions).values({
           id: crypto.randomUUID(),
           userId,
@@ -8477,8 +8511,8 @@ var init_gamificationService = __esm({
       }
       // Obtener recompensas disponibles
       static async getAvailableRewards(userId) {
-        const [userPoints] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm57.eq)(loyaltyPoints.userId, userId)).limit(1);
-        const rewards = await db.select().from(loyaltyRewards).where((0, import_drizzle_orm57.eq)(loyaltyRewards.isAvailable, true));
+        const [userPoints] = await db.select().from(loyaltyPoints).where((0, import_drizzle_orm58.eq)(loyaltyPoints.userId, userId)).limit(1);
+        const rewards = await db.select().from(loyaltyRewards).where((0, import_drizzle_orm58.eq)(loyaltyRewards.isAvailable, true));
         return {
           success: true,
           rewards: rewards.map((r) => ({
@@ -8508,11 +8542,11 @@ function generateQRData(orderId, pickupCode) {
     type: "pickup"
   });
 }
-var import_drizzle_orm61, pickupService;
+var import_drizzle_orm62, pickupService;
 var init_pickupService = __esm({
   "server/pickupService.ts"() {
     "use strict";
-    import_drizzle_orm61 = require("drizzle-orm");
+    import_drizzle_orm62 = require("drizzle-orm");
     init_db();
     init_schema_mysql();
     init_enhancedPushService();
@@ -8525,7 +8559,7 @@ var init_pickupService = __esm({
           pickupCode,
           pickupQrCode: qrData,
           estimatedPickupTime: estimatedMinutes
-        }).where((0, import_drizzle_orm61.eq)(orders.id, orderId));
+        }).where((0, import_drizzle_orm62.eq)(orders.id, orderId));
         return { pickupCode, qrData };
       },
       // Calcular tiempo restante
@@ -8574,7 +8608,7 @@ var init_pickupService = __esm({
         await db.update(orders).set({
           status: "ready",
           pickupReadyAt: /* @__PURE__ */ new Date()
-        }).where((0, import_drizzle_orm61.eq)(orders.id, orderId));
+        }).where((0, import_drizzle_orm62.eq)(orders.id, orderId));
         await sendPushToUser(userId, {
           title: "\u2705 \xA1Tu pedido est\xE1 listo!",
           body: "Puedes venir a recogerlo cuando quieras",
@@ -8587,7 +8621,7 @@ var init_pickupService = __esm({
       async customerArrived(orderId, businessOwnerId) {
         await db.update(orders).set({
           customerArrivedAt: /* @__PURE__ */ new Date()
-        }).where((0, import_drizzle_orm61.eq)(orders.id, orderId));
+        }).where((0, import_drizzle_orm62.eq)(orders.id, orderId));
         await sendPushToUser(businessOwnerId, {
           title: "\u{1F6B6} Cliente en el local",
           body: `El cliente lleg\xF3 a recoger el pedido #${orderId.slice(-6)}`,
@@ -8596,12 +8630,12 @@ var init_pickupService = __esm({
       },
       // Validar código de pickup
       async validatePickupCode(orderId, code) {
-        const [order] = await db.select().from(orders).where((0, import_drizzle_orm61.eq)(orders.id, orderId)).limit(1);
+        const [order] = await db.select().from(orders).where((0, import_drizzle_orm62.eq)(orders.id, orderId)).limit(1);
         return order?.pickupCode === code;
       },
       // Obtener estadísticas de tiempos por negocio
       async getBusinessAverageTime(businessId) {
-        const result = await db.select().from(orders).where((0, import_drizzle_orm61.eq)(orders.businessId, businessId));
+        const result = await db.select().from(orders).where((0, import_drizzle_orm62.eq)(orders.businessId, businessId));
         const pickupOrders = result.filter(
           (o) => o.orderType === "pickup" && o.pickupReadyAt && o.createdAt
         );
@@ -8615,7 +8649,7 @@ var init_pickupService = __esm({
       },
       // Contar pedidos pendientes del negocio (zona de espera)
       async getPendingOrdersCount(businessId, beforeOrderId) {
-        const allOrders = await db.select().from(orders).where((0, import_drizzle_orm61.eq)(orders.businessId, businessId));
+        const allOrders = await db.select().from(orders).where((0, import_drizzle_orm62.eq)(orders.businessId, businessId));
         const targetOrder = allOrders.find((o) => o.id === beforeOrderId);
         if (!targetOrder) return 0;
         const targetCreatedAt = new Date(targetOrder.createdAt).getTime();
@@ -8706,10 +8740,10 @@ function startAutoConfirmCron() {
       console.log("\u{1F504} Running auto-confirm delivery cron...");
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1e3);
       const ordersToConfirm = await db.select().from(orders).where(
-        (0, import_drizzle_orm73.and)(
-          (0, import_drizzle_orm73.eq)(orders.status, "delivered"),
-          (0, import_drizzle_orm73.isNull)(orders.confirmedByCustomer),
-          (0, import_drizzle_orm73.lt)(orders.deliveredAt, twelveHoursAgo)
+        (0, import_drizzle_orm74.and)(
+          (0, import_drizzle_orm74.eq)(orders.status, "delivered"),
+          (0, import_drizzle_orm74.isNull)(orders.confirmedByCustomer),
+          (0, import_drizzle_orm74.lt)(orders.deliveredAt, twelveHoursAgo)
         )
       );
       console.log(`\u{1F4E6} Found ${ordersToConfirm.length} orders to auto-confirm`);
@@ -8728,8 +8762,8 @@ function startAutoConfirmCron() {
             platformFee: commissions.platform,
             businessEarnings: commissions.business,
             deliveryEarnings: commissions.driver
-          }).where((0, import_drizzle_orm73.eq)(orders.id, order.id));
-          const [business] = await db.select({ ownerId: businesses.ownerId }).from(businesses).where((0, import_drizzle_orm73.eq)(businesses.id, order.businessId)).limit(1);
+          }).where((0, import_drizzle_orm74.eq)(orders.id, order.id));
+          const [business] = await db.select({ ownerId: businesses.ownerId }).from(businesses).where((0, import_drizzle_orm74.eq)(businesses.id, order.businessId)).limit(1);
           const businessOwnerId = business?.ownerId || order.businessId;
           if (order.paymentMethod === "cash") {
             const { cashSettlementService: cashSettlementService2 } = await Promise.resolve().then(() => (init_cashSettlementService(), cashSettlementService_exports));
@@ -8741,12 +8775,12 @@ function startAutoConfirmCron() {
               order.deliveryFee
             );
           } else {
-            const [businessWallet] = await db.select().from(wallets).where((0, import_drizzle_orm73.eq)(wallets.userId, businessOwnerId)).limit(1);
+            const [businessWallet] = await db.select().from(wallets).where((0, import_drizzle_orm74.eq)(wallets.userId, businessOwnerId)).limit(1);
             if (businessWallet) {
               await db.update(wallets).set({
                 balance: businessWallet.balance + commissions.business,
                 totalEarned: businessWallet.totalEarned + commissions.business
-              }).where((0, import_drizzle_orm73.eq)(wallets.userId, businessOwnerId));
+              }).where((0, import_drizzle_orm74.eq)(wallets.userId, businessOwnerId));
             } else {
               await db.insert(wallets).values({
                 userId: businessOwnerId,
@@ -8757,12 +8791,12 @@ function startAutoConfirmCron() {
               });
             }
             if (order.deliveryPersonId) {
-              const [driverWallet] = await db.select().from(wallets).where((0, import_drizzle_orm73.eq)(wallets.userId, order.deliveryPersonId)).limit(1);
+              const [driverWallet] = await db.select().from(wallets).where((0, import_drizzle_orm74.eq)(wallets.userId, order.deliveryPersonId)).limit(1);
               if (driverWallet) {
                 await db.update(wallets).set({
                   balance: driverWallet.balance + commissions.driver,
                   totalEarned: driverWallet.totalEarned + commissions.driver
-                }).where((0, import_drizzle_orm73.eq)(wallets.userId, order.deliveryPersonId));
+                }).where((0, import_drizzle_orm74.eq)(wallets.userId, order.deliveryPersonId));
               } else {
                 await db.insert(wallets).values({
                   userId: order.deliveryPersonId,
@@ -8804,14 +8838,14 @@ function startAutoConfirmCron() {
   });
   console.log("\u23F0 Auto-confirm delivery cron started (runs every hour)");
 }
-var import_node_cron2, import_drizzle_orm73;
+var import_node_cron2, import_drizzle_orm74;
 var init_autoConfirmDeliveryCron = __esm({
   "server/autoConfirmDeliveryCron.ts"() {
     "use strict";
     import_node_cron2 = __toESM(require("node-cron"));
     init_db();
     init_schema_mysql();
-    import_drizzle_orm73 = require("drizzle-orm");
+    import_drizzle_orm74 = require("drizzle-orm");
   }
 });
 
@@ -8901,10 +8935,10 @@ __export(staleOrdersCron_exports, {
 async function checkStaleOrders() {
   const cutoff = new Date(Date.now() - STALE_MINUTES * 60 * 1e3);
   const stale = await db.select().from(orders).where(
-    (0, import_drizzle_orm74.and)(
-      (0, import_drizzle_orm74.inArray)(orders.status, STALE_STATUSES),
-      (0, import_drizzle_orm74.isNull)(orders.deliveryPersonId),
-      (0, import_drizzle_orm74.lt)(orders.createdAt, cutoff)
+    (0, import_drizzle_orm75.and)(
+      (0, import_drizzle_orm75.inArray)(orders.status, STALE_STATUSES),
+      (0, import_drizzle_orm75.isNull)(orders.deliveryPersonId),
+      (0, import_drizzle_orm75.lt)(orders.createdAt, cutoff)
     )
   ).limit(50);
   for (const order of stale) {
@@ -8935,13 +8969,13 @@ async function checkStaleOrders() {
         cancellationReason: `Pedido estancado: sin repartidor tras ${STALE_MINUTES} minutos`,
         refundAmount: order.total,
         updatedAt: /* @__PURE__ */ new Date()
-      }).where((0, import_drizzle_orm74.eq)(orders.id, order.id));
+      }).where((0, import_drizzle_orm75.eq)(orders.id, order.id));
       await sendOrderStatusNotification(order.id, order.userId, "cancelled").catch(
         () => {
         }
       );
       try {
-        const [biz] = await db.select({ ownerId: businesses.ownerId }).from(businesses).where((0, import_drizzle_orm74.eq)(businesses.id, order.businessId)).limit(1);
+        const [biz] = await db.select({ ownerId: businesses.ownerId }).from(businesses).where((0, import_drizzle_orm75.eq)(businesses.id, order.businessId)).limit(1);
         if (biz?.ownerId) {
           await sendPushToUser(biz.ownerId, {
             title: "\u274C Pedido cancelado autom\xE1ticamente",
@@ -8953,7 +8987,7 @@ async function checkStaleOrders() {
       }
       if (!refundedAutomatically && (STRIPE_METHODS.includes(order.paymentMethod) || ["bizum", "paypal", "pago_movil"].includes(order.paymentMethod))) {
         try {
-          const admins = await db.select({ id: users.id }).from(users).where((0, import_drizzle_orm74.inArray)(users.role, ["admin", "super_admin"]));
+          const admins = await db.select({ id: users.id }).from(users).where((0, import_drizzle_orm75.inArray)(users.role, ["admin", "super_admin"]));
           for (const admin of admins) {
             await sendPushToUser(admin.id, {
               title: "\u{1F4B6} Devoluci\xF3n pendiente",
@@ -8991,13 +9025,13 @@ function stopStaleOrdersCron() {
     interval = null;
   }
 }
-var import_drizzle_orm74, STALE_MINUTES, STALE_STATUSES, STRIPE_METHODS, interval;
+var import_drizzle_orm75, STALE_MINUTES, STALE_STATUSES, STRIPE_METHODS, interval;
 var init_staleOrdersCron = __esm({
   "server/staleOrdersCron.ts"() {
     "use strict";
     init_db();
     init_schema_mysql();
-    import_drizzle_orm74 = require("drizzle-orm");
+    import_drizzle_orm75 = require("drizzle-orm");
     init_enhancedPushService();
     STALE_MINUTES = 30;
     STALE_STATUSES = ["pending", "accepted", "preparing", "ready"];
@@ -9008,20 +9042,20 @@ var init_staleOrdersCron = __esm({
 
 // server/commissionService.ts
 async function releasePendingFunds(orderId) {
-  const [order] = await db.select().from(orders).where((0, import_drizzle_orm75.eq)(orders.id, orderId)).limit(1);
+  const [order] = await db.select().from(orders).where((0, import_drizzle_orm76.eq)(orders.id, orderId)).limit(1);
   if (!order || !order.businessEarnings) return;
   logger.payment("Funds released immediately", {
     orderId,
     amount: order.businessEarnings
   });
 }
-var import_drizzle_orm75;
+var import_drizzle_orm76;
 var init_commissionService = __esm({
   "server/commissionService.ts"() {
     "use strict";
     init_db();
     init_schema_mysql();
-    import_drizzle_orm75 = require("drizzle-orm");
+    import_drizzle_orm76 = require("drizzle-orm");
     init_logger();
     init_errors();
     init_unifiedFinancialService();
@@ -9053,7 +9087,7 @@ async function releaseFundsJob() {
     }
     const holdTime = new Date(Date.now() - holdHours * 60 * 60 * 1e3);
     const ordersToRelease = await db.select().from(orders).where(
-      (0, import_drizzle_orm76.and)((0, import_drizzle_orm76.eq)(orders.status, "delivered"), (0, import_drizzle_orm76.lte)(orders.deliveredAt, holdTime))
+      (0, import_drizzle_orm77.and)((0, import_drizzle_orm77.eq)(orders.status, "delivered"), (0, import_drizzle_orm77.lte)(orders.deliveredAt, holdTime))
     );
     logger.info(`Releasing funds for ${ordersToRelease.length} orders`);
     for (const order of ordersToRelease) {
@@ -9072,9 +9106,9 @@ async function cleanupStrikesJob() {
     logger.info("Running cleanup strikes job");
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
     await db.update(deliveryDrivers).set({ strikes: 0 }).where(
-      (0, import_drizzle_orm76.and)(
-        (0, import_drizzle_orm76.lte)(deliveryDrivers.lastLocationUpdate, thirtyDaysAgo),
-        (0, import_drizzle_orm76.eq)(deliveryDrivers.strikes, 1)
+      (0, import_drizzle_orm77.and)(
+        (0, import_drizzle_orm77.lte)(deliveryDrivers.lastLocationUpdate, thirtyDaysAgo),
+        (0, import_drizzle_orm77.eq)(deliveryDrivers.strikes, 1)
       )
     );
     logger.info("Strikes cleaned up");
@@ -9087,9 +9121,9 @@ async function deactivateInactiveDriversJob() {
     logger.info("Running deactivate inactive drivers job");
     const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1e3);
     await db.update(deliveryDrivers).set({ isAvailable: false }).where(
-      (0, import_drizzle_orm76.and)(
-        (0, import_drizzle_orm76.eq)(deliveryDrivers.isAvailable, true),
-        (0, import_drizzle_orm76.lte)(deliveryDrivers.lastLocationUpdate, sixtyDaysAgo)
+      (0, import_drizzle_orm77.and)(
+        (0, import_drizzle_orm77.eq)(deliveryDrivers.isAvailable, true),
+        (0, import_drizzle_orm77.lte)(deliveryDrivers.lastLocationUpdate, sixtyDaysAgo)
       )
     );
     logger.info("Inactive drivers deactivated");
@@ -9099,7 +9133,7 @@ async function deactivateInactiveDriversJob() {
 }
 async function processPendingWithdrawalsJob() {
   try {
-    const pending = await db.select({ id: withdrawals.id }).from(withdrawals).where((0, import_drizzle_orm76.eq)(withdrawals.status, "pending")).limit(1);
+    const pending = await db.select({ id: withdrawals.id }).from(withdrawals).where((0, import_drizzle_orm77.eq)(withdrawals.status, "pending")).limit(1);
     if (pending.length > 0) {
       logger.info(
         `Hay ${pending.length} retiro(s) pendiente(s) de aprobaci\xF3n manual`
@@ -9114,7 +9148,7 @@ async function cleanupAuditLogsJob() {
     logger.info("Running cleanup audit logs job");
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1e3);
     const { auditLogs: auditLogs2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-    await db.delete(auditLogs2).where((0, import_drizzle_orm76.lt)(auditLogs2.createdAt, ninetyDaysAgo));
+    await db.delete(auditLogs2).where((0, import_drizzle_orm77.lt)(auditLogs2.createdAt, ninetyDaysAgo));
     logger.info("Audit logs cleaned up");
   } catch (error) {
     logger.error("Cleanup audit logs job failed", error);
@@ -9144,9 +9178,9 @@ async function unblockExpiredDriversJob() {
   try {
     const now = /* @__PURE__ */ new Date();
     await db.update(deliveryDrivers).set({ isBlocked: false }).where(
-      (0, import_drizzle_orm76.and)(
-        (0, import_drizzle_orm76.eq)(deliveryDrivers.isBlocked, true),
-        (0, import_drizzle_orm76.lt)(deliveryDrivers.blockedUntil, now)
+      (0, import_drizzle_orm77.and)(
+        (0, import_drizzle_orm77.eq)(deliveryDrivers.isBlocked, true),
+        (0, import_drizzle_orm77.lt)(deliveryDrivers.blockedUntil, now)
       )
     );
     logger.info("Unblocked expired driver blocks checked");
@@ -9177,13 +9211,13 @@ function startBackgroundJobs() {
 function stopBackgroundJobs() {
   logger.info("Stopping background jobs");
 }
-var import_drizzle_orm76;
+var import_drizzle_orm77;
 var init_backgroundJobs = __esm({
   "server/backgroundJobs.ts"() {
     "use strict";
     init_db();
     init_schema_mysql();
-    import_drizzle_orm76 = require("drizzle-orm");
+    import_drizzle_orm77 = require("drizzle-orm");
     init_commissionService();
     init_logger();
   }
@@ -9879,9 +9913,9 @@ router2.post(
 router2.get("/featured", async (req, res) => {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { sql: sql18 } = await import("drizzle-orm");
+    const { sql: sql19 } = await import("drizzle-orm");
     const [rows] = await db2.execute(
-      sql18`SELECT * FROM businesses WHERE is_featured = 1 AND is_active = 1 AND verification_status = 'verified' LIMIT 10`
+      sql19`SELECT * FROM businesses WHERE is_featured = 1 AND is_active = 1 AND verification_status = 'verified' LIMIT 10`
     );
     res.json({ success: true, businesses: rows });
   } catch (error) {
@@ -9957,7 +9991,7 @@ router2.get(
       const { businessId } = req.query;
       const { businesses: businesses3, orders: orders2, products: products3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql18 } = await import("drizzle-orm");
+      const { sql: sql19 } = await import("drizzle-orm");
       const [business] = businessId ? await db2.select().from(businesses3).where(
         (0, import_drizzle_orm10.and)(
           (0, import_drizzle_orm10.eq)(businesses3.id, businessId),
@@ -9988,7 +10022,7 @@ router2.get(
       );
       const totalRevenue = revenue(businessOrders);
       const avgValue = completedOrders.length > 0 ? Math.round(totalRevenue / completedOrders.length) : 0;
-      const [topProductRows] = await db2.execute(sql18`
+      const [topProductRows] = await db2.execute(sql19`
       SELECT 
         p.name,
         SUM(JSON_EXTRACT(oi.value, '$.quantity')) as quantity,
@@ -10062,7 +10096,7 @@ router2.get(
     try {
       const { businesses: businesses3, orders: orders2, users: users5, deliveryDrivers: deliveryDrivers3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql18, inArray: inArray6 } = await import("drizzle-orm");
+      const { sql: sql19, inArray: inArray6 } = await import("drizzle-orm");
       const ownerBusinesses = await db2.select({
         id: businesses3.id,
         name: businesses3.name,
@@ -10072,7 +10106,7 @@ router2.get(
       if (!ownerBusinesses.length)
         return res.json({ success: true, deliveries: [], stats: {} });
       const businessIds = ownerBusinesses.map((b) => b.id);
-      const [rows] = await db2.execute(sql18`
+      const [rows] = await db2.execute(sql19`
       SELECT
         o.id, o.status, o.subtotal, o.delivery_fee, o.total, o.created_at,
         o.business_id, o.delivery_address, o.payment_method,
@@ -10088,9 +10122,9 @@ router2.get(
       LEFT JOIN delivery_drivers dd ON o.delivery_person_id = dd.id
       LEFT JOIN users du  ON dd.user_id = du.id
       LEFT JOIN businesses b ON o.business_id = b.id
-      WHERE o.business_id IN (${sql18.join(
-        businessIds.map((id) => sql18`${id}`),
-        sql18`, `
+      WHERE o.business_id IN (${sql19.join(
+        businessIds.map((id) => sql19`${id}`),
+        sql19`, `
       )})
         AND o.status IN ('pending','accepted','preparing','ready','on_the_way')
       ORDER BY o.created_at DESC
@@ -10205,7 +10239,7 @@ router2.get(
       const { businessId } = req.query;
       const { businesses: businesses3, orders: orders2, users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql18 } = await import("drizzle-orm");
+      const { sql: sql19 } = await import("drizzle-orm");
       const [business] = businessId ? await db2.select().from(businesses3).where(
         (0, import_drizzle_orm10.and)(
           (0, import_drizzle_orm10.eq)(businesses3.id, businessId),
@@ -10214,7 +10248,7 @@ router2.get(
       ).limit(1) : await db2.select().from(businesses3).where((0, import_drizzle_orm10.eq)(businesses3.ownerId, req.user.id)).limit(1);
       if (!business)
         return res.status(404).json({ error: "Negocio no encontrado" });
-      const [orderRows] = await db2.execute(sql18`
+      const [orderRows] = await db2.execute(sql19`
       SELECT o.*, u.name as customer_name, u.phone as customer_phone
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
@@ -10293,16 +10327,24 @@ router2.get(
       const { businessId } = req.query;
       const { businesses: businesses3, payouts: payouts2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { desc: desc18 } = await import("drizzle-orm");
-      const [business] = businessId ? await db2.select().from(businesses3).where(
-        (0, import_drizzle_orm10.and)(
-          (0, import_drizzle_orm10.eq)(businesses3.id, businessId),
-          (0, import_drizzle_orm10.eq)(businesses3.ownerId, req.user.id)
+      const { eq: eq72, inArray: inArray6, or: or7, desc: desc18 } = await import("drizzle-orm");
+      const ownerBusinesses = await db2.select({ id: businesses3.id }).from(businesses3).where(
+        businessId ? (0, import_drizzle_orm10.and)(
+          eq72(businesses3.id, businessId),
+          eq72(businesses3.ownerId, req.user.id)
+        ) : eq72(businesses3.ownerId, req.user.id)
+      );
+      if (ownerBusinesses.length === 0) {
+        return res.json({ success: true, payouts: [] });
+      }
+      const businessIds = ownerBusinesses.map((b) => b.id);
+      const businessPayouts = await db2.select().from(payouts2).where(
+        or7(
+          inArray6(payouts2.recipientId, businessIds),
+          // retiros del dueño (recipientId = id del usuario)
+          eq72(payouts2.recipientId, req.user.id)
         )
-      ).limit(1) : await db2.select().from(businesses3).where((0, import_drizzle_orm10.eq)(businesses3.ownerId, req.user.id)).limit(1);
-      if (!business)
-        return res.status(404).json({ error: "Negocio no encontrado" });
-      const businessPayouts = await db2.select().from(payouts2).where((0, import_drizzle_orm10.eq)(payouts2.recipientId, business.id)).orderBy(desc18(payouts2.createdAt));
+      ).orderBy(desc18(payouts2.createdAt));
       res.json({ success: true, payouts: businessPayouts });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -10318,7 +10360,7 @@ router2.get(
       const { businessId, period = "week" } = req.query;
       const { businesses: businesses3, orders: orders2, users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql18 } = await import("drizzle-orm");
+      const { sql: sql19 } = await import("drizzle-orm");
       const [business] = businessId ? await db2.select().from(businesses3).where(
         (0, import_drizzle_orm10.and)(
           (0, import_drizzle_orm10.eq)(businesses3.id, businessId),
@@ -10341,7 +10383,7 @@ router2.get(
           startDate = /* @__PURE__ */ new Date(0);
           break;
       }
-      const [transactionRows] = await db2.execute(sql18`
+      const [transactionRows] = await db2.execute(sql19`
       SELECT 
         o.id,
         o.subtotal,
@@ -11054,9 +11096,9 @@ router2.get(
 router2.get("/:id", async (req, res) => {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { sql: sql18 } = await import("drizzle-orm");
+    const { sql: sql19 } = await import("drizzle-orm");
     console.log(`\u{1F4CD} GET /api/business/${req.params.id} called`);
-    const [bizRows] = await db2.execute(sql18`
+    const [bizRows] = await db2.execute(sql19`
       SELECT * FROM businesses WHERE id = ${req.params.id} LIMIT 1
     `);
     const business = bizRows[0];
@@ -11071,7 +11113,7 @@ router2.get("/:id", async (req, res) => {
     console.log(`\u2705 Found business: ${business.name}`);
     let productRows = [];
     try {
-      const [rows] = await db2.execute(sql18`
+      const [rows] = await db2.execute(sql19`
         SELECT * FROM products
         WHERE business_id = ${req.params.id}
           AND is_available = 1
@@ -11203,7 +11245,7 @@ router2.post(
     try {
       const { businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql18 } = await import("drizzle-orm");
+      const { sql: sql19 } = await import("drizzle-orm");
       const [business] = await db2.select().from(businesses3).where(
         (0, import_drizzle_orm10.and)(
           (0, import_drizzle_orm10.eq)(businesses3.id, req.params.id),
@@ -11913,7 +11955,7 @@ router3.get("/:id", authenticateToken, async (req, res) => {
   try {
     const { orders: orders2, users: users5, deliveryDrivers: deliveryDrivers3, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { eq: eq72, sql: sql18 } = await import("drizzle-orm");
+    const { eq: eq72, sql: sql19 } = await import("drizzle-orm");
     const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const [order] = await db2.select().from(orders2).where(eq72(orders2.id, orderId)).limit(1);
     if (!order) {
@@ -12801,14 +12843,14 @@ router4.get(
     try {
       const { users: users5, orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql18 } = await import("drizzle-orm");
+      const { sql: sql19 } = await import("drizzle-orm");
       const [userCount] = await db2.execute(
-        sql18`SELECT COUNT(*) as count FROM users`
+        sql19`SELECT COUNT(*) as count FROM users`
       );
       const [orderCount] = await db2.execute(
-        sql18`SELECT COUNT(*) as count FROM orders`
+        sql19`SELECT COUNT(*) as count FROM orders`
       );
-      const [activeUsers] = await db2.execute(sql18`
+      const [activeUsers] = await db2.execute(sql19`
       SELECT COUNT(DISTINCT userId) as count 
       FROM orders 
       WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -14607,21 +14649,27 @@ router8.put(
       const isActive = action === "approve";
       if (action === "approve") {
         const [targetUser] = await db2.select().from(users5).where(eq72(users5.id, userId)).limit(1);
+        const missing = [];
+        if (!targetUser?.idDocumentUrl)
+          missing.push("DNI/NIE (anverso)");
+        if (!targetUser?.idDocumentBackUrl)
+          missing.push("DNI/NIE (reverso)");
         if (targetUser?.role === "delivery_driver") {
           const { deliveryDrivers: deliveryDrivers3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
           const [dd] = await db2.select().from(deliveryDrivers3).where(eq72(deliveryDrivers3.userId, userId)).limit(1);
-          const missing = [];
-          if (!targetUser.idDocumentUrl)
-            missing.push("DNI/NIE (anverso)");
           if (!dd?.vehicleLicensePhoto)
             missing.push("Permiso de circulaci\xF3n");
           if (!dd?.vehiclePhoto)
             missing.push("Foto del veh\xEDculo");
-          if (missing.length > 0) {
-            return res.status(400).json({
-              error: "El repartidor no ha subido todos los documentos requeridos: " + missing.join(", ")
-            });
-          }
+        }
+        if (targetUser?.role === "business_owner") {
+          if (!targetUser?.autonomoDocumentUrl)
+            missing.push("Documento de aut\xF3nomo/empresa");
+        }
+        if (missing.length > 0) {
+          return res.status(400).json({
+            error: "El usuario no ha subido todos los documentos requeridos: " + missing.join(", ")
+          });
         }
       }
       await db2.update(users5).set({
@@ -15145,20 +15193,29 @@ router9.get(
       try {
         const { getStripe: getStripe4 } = await Promise.resolve().then(() => (init_stripeClient(), stripeClient_exports));
         const stripe2 = getStripe4();
-        const balance = await stripe2.balance.retrieve();
+        const account = await stripe2.accounts.retrieve();
+        let balance = { available: 0, pending: 0 };
+        try {
+          const b = await stripe2.balance.retrieve();
+          balance = {
+            available: b.available?.[0]?.amount || 0,
+            pending: b.pending?.[0]?.amount || 0
+          };
+        } catch (balanceError) {
+          console.error("Stripe balance error:", balanceError);
+        }
         res.json({
           success: true,
           status: {
             isConnected: true,
-            accountId: "Platform Account",
-            chargesEnabled: true,
-            payoutsEnabled: true,
+            accountId: account.id || null,
+            accountEmail: account.email || null,
+            accountName: account.settings?.dashboard?.display_name || account.business_profile?.name || "ComeYa",
+            chargesEnabled: account.charges_enabled ?? true,
+            payoutsEnabled: account.payouts_enabled ?? true,
             requirements: [],
             lastSync: (/* @__PURE__ */ new Date()).toISOString(),
-            balance: {
-              available: balance.available[0]?.amount || 0,
-              pending: balance.pending[0]?.amount || 0
-            }
+            balance
           }
         });
       } catch (stripeError) {
@@ -15166,17 +15223,14 @@ router9.get(
         res.json({
           success: true,
           status: {
-            isConnected: true,
-            accountId: "Platform Account",
-            chargesEnabled: true,
-            payoutsEnabled: true,
-            requirements: [],
+            isConnected: !!process.env.STRIPE_SECRET_KEY,
+            accountId: null,
+            chargesEnabled: false,
+            payoutsEnabled: false,
+            requirements: ["No se pudo conectar con la API de Stripe"],
             lastSync: (/* @__PURE__ */ new Date()).toISOString(),
-            balance: {
-              available: 0,
-              pending: 0
-            },
-            error: "No se pudo conectar con Stripe API"
+            balance: { available: 0, pending: 0 },
+            error: stripeError?.message || "No se pudo conectar con Stripe API"
           }
         });
       }
@@ -15312,16 +15366,24 @@ router9.get(
         pending.map(async (p) => {
           let recipientName = "";
           let recipientUserId = p.recipientId;
+          let businessName = null;
+          const isWithdrawal = (p.orderId || "").startsWith("wdr-");
           if (p.recipientType === "business") {
             const [biz] = await db2.select({ name: businesses3.name, ownerId: businesses3.ownerId }).from(businesses3).where(eq72(businesses3.id, p.recipientId)).limit(1);
-            recipientName = biz?.name ?? "";
-            if (biz?.ownerId) recipientUserId = biz.ownerId;
+            if (biz) {
+              recipientName = biz.name ?? "";
+              businessName = biz.name ?? null;
+              if (biz.ownerId) recipientUserId = biz.ownerId;
+            } else if (isWithdrawal) {
+              const [usr] = await db2.select({ name: users5.name }).from(users5).where(eq72(users5.id, p.recipientId)).limit(1);
+              recipientName = usr?.name ?? "";
+            }
           } else {
             const [usr] = await db2.select({ name: users5.name }).from(users5).where(eq72(users5.id, p.recipientId)).limit(1);
             recipientName = usr?.name ?? "";
           }
           const accounts = await db2.select().from(paymentAccounts2).where(eq72(paymentAccounts2.userId, recipientUserId));
-          const [order] = await db2.select({
+          const [order] = isWithdrawal ? [null] : await db2.select({
             paymentMethod: orders2.paymentMethod,
             assignedAt: orders2.assignedAt,
             deliveredAt: orders2.deliveredAt,
@@ -15337,11 +15399,12 @@ router9.get(
           return {
             ...p,
             recipientName,
+            isWithdrawal,
             paymentAccounts: accounts,
             paymentMethod: order?.paymentMethod ?? null,
             deliveryMinutes,
             orderTotal: order?.total ?? null,
-            businessName: order?.businessName ?? null
+            businessName: order?.businessName ?? businessName ?? null
           };
         })
       );
@@ -15431,6 +15494,33 @@ router9.post(
   }
 );
 router9.post(
+  "/payout-proof-upload",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { image } = req.body;
+      if (!image || typeof image !== "string" || !image.startsWith("data:image/")) {
+        return res.status(400).json({ success: false, error: "Imagen requerida (data:image/...)" });
+      }
+      const estimatedBytes = Math.ceil(image.length * 0.75);
+      if (estimatedBytes > 5 * 1024 * 1024) {
+        return res.status(400).json({ success: false, error: "El archivo es muy pesado. M\xE1ximo 5MB" });
+      }
+      const { CloudinaryService: CloudinaryService2 } = await Promise.resolve().then(() => (init_cloudinaryService(), cloudinaryService_exports));
+      const url = await CloudinaryService2.uploadImage(
+        image,
+        "comprobantes",
+        `payout-proof-${req.user.id}-${Date.now()}`
+      );
+      res.json({ success: true, url });
+    } catch (error) {
+      console.error("Payout proof upload error:", error);
+      res.status(500).json({ success: false, error: "Error al subir el comprobante" });
+    }
+  }
+);
+router9.post(
   "/payouts/:id/mark-paid",
   authenticateToken,
   requireRole("admin", "super_admin"),
@@ -15443,13 +15533,26 @@ router9.post(
       const [payout] = await db2.select().from(payouts2).where(eq72(payouts2.id, req.params.id)).limit(1);
       if (!payout)
         return res.status(404).json({ error: "Payout no encontrado" });
+      if (payout.status === "paid" || payout.status === "stripe_auto")
+        return res.status(400).json({ error: "Este pago ya fue procesado" });
+      const cleanNotes = (notes || "").trim();
+      if (!cleanNotes) {
+        return res.status(400).json({
+          error: "Indica la referencia / nota de la transferencia realizada"
+        });
+      }
+      if (!proofUrl) {
+        return res.status(400).json({
+          error: "Adjunta la captura del comprobante de la transferencia"
+        });
+      }
       await db2.update(payouts2).set({
         status: "paid",
         paidBy: req.user.id,
         paidAt: /* @__PURE__ */ new Date(),
-        ...notes ? { notes } : {},
-        ...method ? { method } : {},
-        ...proofUrl ? { accountSnapshot: JSON.stringify({ proofUrl, notes, method }) } : {}
+        method: method || payout.method || "transferencia",
+        notes: cleanNotes,
+        proofUrl
       }).where(eq72(payouts2.id, req.params.id));
       if ((payout.orderId || "").startsWith("wdr-")) {
         try {
@@ -15493,8 +15596,8 @@ router9.get(
     try {
       const { payouts: payouts2, users: users5, businesses: businesses3, orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { eq: eq72, desc: desc18 } = await import("drizzle-orm");
-      const paid = await db2.select().from(payouts2).where(eq72(payouts2.status, "paid")).orderBy(desc18(payouts2.paidAt));
+      const { inArray: inArray6, eq: eq72, desc: desc18 } = await import("drizzle-orm");
+      const paid = await db2.select().from(payouts2).where(inArray6(payouts2.status, ["paid", "stripe_auto"])).orderBy(desc18(payouts2.paidAt));
       console.log(`[Finance] Found ${paid.length} paid payouts`);
       const enriched = await Promise.all(
         paid.map(async (p) => {
@@ -15502,25 +15605,31 @@ router9.get(
           let businessName = null;
           if (p.recipientType === "business") {
             const [biz] = await db2.select({ name: businesses3.name }).from(businesses3).where(eq72(businesses3.id, p.recipientId)).limit(1);
-            recipientName = biz?.name ?? "";
+            if (biz) {
+              recipientName = biz.name ?? "";
+            } else {
+              const [usr] = await db2.select({ name: users5.name }).from(users5).where(eq72(users5.id, p.recipientId)).limit(1);
+              recipientName = usr?.name ?? "";
+            }
           } else {
             const [usr] = await db2.select({ name: users5.name }).from(users5).where(eq72(users5.id, p.recipientId)).limit(1);
             recipientName = usr?.name ?? "";
             const [order] = await db2.select({ businessName: orders2.businessName }).from(orders2).where(eq72(orders2.id, p.orderId)).limit(1);
             businessName = order?.businessName ?? null;
           }
-          const snap = p.accountSnapshot ? (() => {
+          let proofUrl = p.proofUrl ?? null;
+          if (!proofUrl && p.accountSnapshot) {
             try {
-              return JSON.parse(p.accountSnapshot);
+              const snap = JSON.parse(p.accountSnapshot);
+              proofUrl = snap?.proofUrl ?? null;
             } catch {
-              return null;
             }
-          })() : null;
+          }
           return {
             ...p,
             recipientName,
             businessName,
-            proofUrl: snap?.proofUrl ?? null
+            proofUrl
           };
         })
       );
@@ -15708,6 +15817,35 @@ router11.get("/transactions", authenticateToken, async (req, res) => {
     res.json({ success: true, transactions: walletTransactions2 });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+router11.get("/payouts", authenticateToken, async (req, res) => {
+  try {
+    const { payouts: payouts2, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { eq: eq72, inArray: inArray6, or: or7, desc: desc18 } = await import("drizzle-orm");
+    const userId = req.user.id;
+    const isBusinessOwner = req.user.role === "business_owner" || req.user.role === "business";
+    let rows = [];
+    if (isBusinessOwner) {
+      const ownerBusinesses = await db2.select({ id: businesses3.id }).from(businesses3).where(eq72(businesses3.ownerId, userId));
+      const businessIds = ownerBusinesses.map((b) => b.id);
+      if (businessIds.length > 0) {
+        rows = await db2.select().from(payouts2).where(
+          or7(
+            inArray6(payouts2.recipientId, businessIds),
+            eq72(payouts2.recipientId, userId)
+          )
+        ).orderBy(desc18(payouts2.createdAt));
+      } else {
+        rows = await db2.select().from(payouts2).where(eq72(payouts2.recipientId, userId)).orderBy(desc18(payouts2.createdAt));
+      }
+    } else {
+      rows = await db2.select().from(payouts2).where(eq72(payouts2.recipientId, userId)).orderBy(desc18(payouts2.createdAt));
+    }
+    res.json({ success: true, payouts: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 router11.post(
@@ -16455,7 +16593,7 @@ router17.get("/pending", authenticateToken, async (req, res) => {
       return res.json({ success: true, orders: [], total: 0 });
     }
     const businessIds = ownerBusinesses.map((b) => b.id);
-    const { inArray: inArray6, sql: sql18 } = await import("drizzle-orm");
+    const { inArray: inArray6, sql: sql19 } = await import("drizzle-orm");
     const allOrders = await db.select().from(orders);
     const pendingOrders = allOrders.filter(
       (o) => businessIds.includes(o.businessId) && o.paymentMethod === "cash" && o.status === "delivered" && o.cashSettled === false
@@ -17293,8 +17431,8 @@ router21.get(
     let totalDeliveries = 0;
     let rating = 0;
     try {
-      const { sql: sql18 } = await import("drizzle-orm");
-      const [deliveries] = await db.execute(sql18`
+      const { sql: sql19 } = await import("drizzle-orm");
+      const [deliveries] = await db.execute(sql19`
         SELECT
           (SELECT COUNT(*) FROM orders o
             WHERE o.delivery_person_id = ${userId}
@@ -18886,6 +19024,7 @@ var digitalPayments_default = router23;
 
 // server/routes/paymentAccounts.ts
 var import_express24 = require("express");
+var import_drizzle_orm45 = require("drizzle-orm");
 init_db();
 var router24 = (0, import_express24.Router)();
 router24.get("/receiving-accounts", authenticateToken, async (req, res) => {
@@ -18936,10 +19075,20 @@ router24.put(
     try {
       const { provider } = req.params;
       const { accountData, isActive } = req.body;
-      await db.execute(
-        "UPDATE payment_receiving_accounts SET account_data = ?, is_active = ?, updated_at = NOW() WHERE provider = ?",
-        [JSON.stringify(accountData), isActive ?? true, provider]
-      );
+      if (!provider || !accountData || typeof accountData !== "object") {
+        return res.status(400).json({
+          success: false,
+          error: "provider y accountData son requeridos"
+        });
+      }
+      await db.execute(import_drizzle_orm45.sql`
+        INSERT INTO payment_receiving_accounts (provider, account_data, is_active)
+        VALUES (${provider}, ${JSON.stringify(accountData)}, ${isActive ?? true})
+        ON DUPLICATE KEY UPDATE
+          account_data = VALUES(account_data),
+          is_active = VALUES(is_active),
+          updated_at = NOW()
+      `);
       res.json({ success: true, message: "Cuenta actualizada correctamente" });
     } catch (error) {
       console.error("Error updating payment account:", error);
@@ -19139,7 +19288,7 @@ var payoutRoutes_default = router26;
 var import_express27 = __toESM(require("express"));
 init_db();
 init_schema_mysql();
-var import_drizzle_orm46 = require("drizzle-orm");
+var import_drizzle_orm47 = require("drizzle-orm");
 var router27 = import_express27.default.Router();
 router27.get("/products", async (req, res) => {
   try {
@@ -19157,14 +19306,14 @@ router27.get("/products", async (req, res) => {
         isOpen: businesses.isOpen,
         deliveryFee: businesses.deliveryFee
       }
-    }).from(products).leftJoin(businesses, (0, import_drizzle_orm46.eq)(products.businessId, businesses.id)).where(
-      (0, import_drizzle_orm46.and)(
-        (0, import_drizzle_orm46.eq)(products.isAvailable, true),
-        (0, import_drizzle_orm46.eq)(businesses.isActive, true),
-        (0, import_drizzle_orm46.or)(
-          ...searchTerms.map((term) => (0, import_drizzle_orm46.like)(products.name, `%${term}%`)),
+    }).from(products).leftJoin(businesses, (0, import_drizzle_orm47.eq)(products.businessId, businesses.id)).where(
+      (0, import_drizzle_orm47.and)(
+        (0, import_drizzle_orm47.eq)(products.isAvailable, true),
+        (0, import_drizzle_orm47.eq)(businesses.isActive, true),
+        (0, import_drizzle_orm47.or)(
+          ...searchTerms.map((term) => (0, import_drizzle_orm47.like)(products.name, `%${term}%`)),
           ...searchTerms.map(
-            (term) => (0, import_drizzle_orm46.like)(products.description, `%${term}%`)
+            (term) => (0, import_drizzle_orm47.like)(products.description, `%${term}%`)
           )
         )
       )
@@ -19188,7 +19337,7 @@ var import_express28 = __toESM(require("express"));
 init_advancedCouponService();
 init_db();
 init_schema_mysql();
-var import_drizzle_orm48 = require("drizzle-orm");
+var import_drizzle_orm49 = require("drizzle-orm");
 var router28 = import_express28.default.Router();
 router28.get("/", authenticateToken, async (req, res) => {
   try {
@@ -19330,7 +19479,7 @@ router28.post(
           error: "C\xF3digo y valor de descuento son requeridos"
         });
       }
-      const [existing] = await db.select().from(coupons).where((0, import_drizzle_orm48.eq)(coupons.code, code.toUpperCase())).limit(1);
+      const [existing] = await db.select().from(coupons).where((0, import_drizzle_orm49.eq)(coupons.code, code.toUpperCase())).limit(1);
       if (existing) {
         return res.status(400).json({
           success: false,
@@ -19404,8 +19553,8 @@ router28.put(
           error: "No hay campos v\xE1lidos para actualizar"
         });
       }
-      await db.update(coupons).set(updates).where((0, import_drizzle_orm48.eq)(coupons.id, id));
-      const [updated] = await db.select().from(coupons).where((0, import_drizzle_orm48.eq)(coupons.id, id)).limit(1);
+      await db.update(coupons).set(updates).where((0, import_drizzle_orm49.eq)(coupons.id, id));
+      const [updated] = await db.select().from(coupons).where((0, import_drizzle_orm49.eq)(coupons.id, id)).limit(1);
       res.json({ success: true, coupon: updated });
     } catch (error) {
       console.error("Error updating coupon:", error);
@@ -19470,7 +19619,7 @@ var import_express29 = __toESM(require("express"));
 init_loyaltyService();
 init_db();
 init_schema_mysql();
-var import_drizzle_orm49 = require("drizzle-orm");
+var import_drizzle_orm50 = require("drizzle-orm");
 var router29 = import_express29.default.Router();
 router29.get("/points", authenticateToken, async (req, res) => {
   try {
@@ -19664,7 +19813,7 @@ router29.put(
     try {
       const { id } = req.params;
       const updates = req.body;
-      await db.update(loyaltyRewards).set(updates).where((0, import_drizzle_orm49.eq)(loyaltyRewards.id, id));
+      await db.update(loyaltyRewards).set(updates).where((0, import_drizzle_orm50.eq)(loyaltyRewards.id, id));
       res.json({
         success: true,
         message: "Recompensa actualizada exitosamente"
@@ -19682,7 +19831,7 @@ router29.delete(
   async (req, res) => {
     try {
       const { id } = req.params;
-      await db.update(loyaltyRewards).set({ isAvailable: false }).where((0, import_drizzle_orm49.eq)(loyaltyRewards.id, id));
+      await db.update(loyaltyRewards).set({ isAvailable: false }).where((0, import_drizzle_orm50.eq)(loyaltyRewards.id, id));
       res.json({
         success: true,
         message: "Recompensa desactivada exitosamente"
@@ -19801,7 +19950,7 @@ var import_express30 = __toESM(require("express"));
 // server/favoritesService.ts
 init_db();
 init_schema_mysql();
-var import_drizzle_orm50 = require("drizzle-orm");
+var import_drizzle_orm51 = require("drizzle-orm");
 var FavoritesService = class {
   // Agregar favorito
   static async addFavorite(userId, itemType, itemId) {
@@ -19822,21 +19971,21 @@ var FavoritesService = class {
   // Eliminar favorito
   static async removeFavorite(userId, itemType, itemId) {
     await db.delete(userFavorites).where(
-      (0, import_drizzle_orm50.and)(
-        (0, import_drizzle_orm50.eq)(userFavorites.userId, userId),
-        (0, import_drizzle_orm50.eq)(userFavorites.itemType, itemType),
-        (0, import_drizzle_orm50.eq)(userFavorites.itemId, itemId)
+      (0, import_drizzle_orm51.and)(
+        (0, import_drizzle_orm51.eq)(userFavorites.userId, userId),
+        (0, import_drizzle_orm51.eq)(userFavorites.itemType, itemType),
+        (0, import_drizzle_orm51.eq)(userFavorites.itemId, itemId)
       )
     );
     return { success: true };
   }
   // Obtener favoritos del usuario
   static async getUserFavorites(userId) {
-    const favorites2 = await db.select().from(userFavorites).where((0, import_drizzle_orm50.eq)(userFavorites.userId, userId));
+    const favorites2 = await db.select().from(userFavorites).where((0, import_drizzle_orm51.eq)(userFavorites.userId, userId));
     const businessIds = favorites2.filter((f) => f.itemType === "business").map((f) => f.itemId);
     const productIds = favorites2.filter((f) => f.itemType === "product").map((f) => f.itemId);
-    const favoriteBusinesses = businessIds.length > 0 ? await db.select().from(businesses).where((0, import_drizzle_orm50.eq)(businesses.id, businessIds[0])) : [];
-    const favoriteProducts = productIds.length > 0 ? await db.select().from(products).where((0, import_drizzle_orm50.eq)(products.id, productIds[0])) : [];
+    const favoriteBusinesses = businessIds.length > 0 ? await db.select().from(businesses).where((0, import_drizzle_orm51.eq)(businesses.id, businessIds[0])) : [];
+    const favoriteProducts = productIds.length > 0 ? await db.select().from(products).where((0, import_drizzle_orm51.eq)(products.id, productIds[0])) : [];
     return {
       businesses: favoriteBusinesses,
       products: favoriteProducts,
@@ -19846,10 +19995,10 @@ var FavoritesService = class {
   // Verificar si es favorito
   static async isFavorite(userId, itemType, itemId) {
     const [favorite] = await db.select().from(userFavorites).where(
-      (0, import_drizzle_orm50.and)(
-        (0, import_drizzle_orm50.eq)(userFavorites.userId, userId),
-        (0, import_drizzle_orm50.eq)(userFavorites.itemType, itemType),
-        (0, import_drizzle_orm50.eq)(userFavorites.itemId, itemId)
+      (0, import_drizzle_orm51.and)(
+        (0, import_drizzle_orm51.eq)(userFavorites.userId, userId),
+        (0, import_drizzle_orm51.eq)(userFavorites.itemType, itemType),
+        (0, import_drizzle_orm51.eq)(userFavorites.itemId, itemId)
       )
     ).limit(1);
     return !!favorite;
@@ -19962,11 +20111,11 @@ var import_express32 = __toESM(require("express"));
 // server/aiRecommendationsService.ts
 init_db();
 init_schema_mysql();
-var import_drizzle_orm52 = require("drizzle-orm");
+var import_drizzle_orm53 = require("drizzle-orm");
 var AIRecommendationsService = class {
   // Generar recomendaciones personalizadas
   static async generatePersonalizedRecommendations(userId) {
-    const userOrders = await db.select().from(orders).where((0, import_drizzle_orm52.eq)(orders.userId, userId)).orderBy((0, import_drizzle_orm52.desc)(orders.createdAt)).limit(50);
+    const userOrders = await db.select().from(orders).where((0, import_drizzle_orm53.eq)(orders.userId, userId)).orderBy((0, import_drizzle_orm53.desc)(orders.createdAt)).limit(50);
     if (userOrders.length === 0) {
       return this.getDefaultRecommendations(userId);
     }
@@ -19978,7 +20127,7 @@ var AIRecommendationsService = class {
       0,
       3
     )) {
-      const [business] = await db.select().from(businesses).where((0, import_drizzle_orm52.eq)(businesses.id, businessId)).limit(1);
+      const [business] = await db.select().from(businesses).where((0, import_drizzle_orm53.eq)(businesses.id, businessId)).limit(1);
       if (business) {
         recommendations.push({
           userId,
@@ -20005,7 +20154,7 @@ var AIRecommendationsService = class {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3)
       });
     }
-    await db.delete(aiRecommendations).where((0, import_drizzle_orm52.eq)(aiRecommendations.userId, userId));
+    await db.delete(aiRecommendations).where((0, import_drizzle_orm53.eq)(aiRecommendations.userId, userId));
     if (recommendations.length > 0) {
       await db.insert(aiRecommendations).values(recommendations);
     }
@@ -20015,28 +20164,28 @@ var AIRecommendationsService = class {
   static async getTrendingRecommendations() {
     const last24h = new Date(Date.now() - 24 * 60 * 60 * 1e3);
     const trending = await db.select({
-      productId: import_drizzle_orm52.sql`JSON_EXTRACT(items, '$[*].product.id')`,
-      count: import_drizzle_orm52.sql`COUNT(*)`
-    }).from(orders).where((0, import_drizzle_orm52.gte)(orders.createdAt, last24h)).groupBy(import_drizzle_orm52.sql`JSON_EXTRACT(items, '$[*].product.id')`).orderBy((0, import_drizzle_orm52.desc)(import_drizzle_orm52.sql`COUNT(*)`)).limit(10);
+      productId: import_drizzle_orm53.sql`JSON_EXTRACT(items, '$[*].product.id')`,
+      count: import_drizzle_orm53.sql`COUNT(*)`
+    }).from(orders).where((0, import_drizzle_orm53.gte)(orders.createdAt, last24h)).groupBy(import_drizzle_orm53.sql`JSON_EXTRACT(items, '$[*].product.id')`).orderBy((0, import_drizzle_orm53.desc)(import_drizzle_orm53.sql`COUNT(*)`)).limit(10);
     return trending;
   }
   // Obtener recomendaciones del usuario
   static async getUserRecommendations(userId) {
     const now = /* @__PURE__ */ new Date();
     const recommendations = await db.select().from(aiRecommendations).where(
-      (0, import_drizzle_orm52.and)(
-        (0, import_drizzle_orm52.eq)(aiRecommendations.userId, userId),
-        (0, import_drizzle_orm52.gte)(aiRecommendations.expiresAt, now)
+      (0, import_drizzle_orm53.and)(
+        (0, import_drizzle_orm53.eq)(aiRecommendations.userId, userId),
+        (0, import_drizzle_orm53.gte)(aiRecommendations.expiresAt, now)
       )
-    ).orderBy((0, import_drizzle_orm52.desc)(aiRecommendations.confidenceScore));
+    ).orderBy((0, import_drizzle_orm53.desc)(aiRecommendations.confidenceScore));
     const enriched = [];
     for (const rec of recommendations) {
       let itemData = null;
       if (rec.itemType === "business") {
-        const [business] = await db.select().from(businesses).where((0, import_drizzle_orm52.eq)(businesses.id, rec.itemId)).limit(1);
+        const [business] = await db.select().from(businesses).where((0, import_drizzle_orm53.eq)(businesses.id, rec.itemId)).limit(1);
         itemData = business;
       } else if (rec.itemType === "product") {
-        const [product] = await db.select().from(products).where((0, import_drizzle_orm52.eq)(products.id, rec.itemId)).limit(1);
+        const [product] = await db.select().from(products).where((0, import_drizzle_orm53.eq)(products.id, rec.itemId)).limit(1);
         itemData = product;
       }
       if (itemData) {
@@ -20050,7 +20199,7 @@ var AIRecommendationsService = class {
   }
   // Actualizar preferencias del usuario
   static async updateUserPreferences(userId, preferences) {
-    const existing = await db.select().from(userPreferences).where((0, import_drizzle_orm52.eq)(userPreferences.userId, userId)).limit(1);
+    const existing = await db.select().from(userPreferences).where((0, import_drizzle_orm53.eq)(userPreferences.userId, userId)).limit(1);
     if (existing.length > 0) {
       await db.update(userPreferences).set({
         cuisineTypes: preferences.cuisineTypes ? JSON.stringify(preferences.cuisineTypes) : null,
@@ -20060,7 +20209,7 @@ var AIRecommendationsService = class {
         favoriteCategories: preferences.favoriteCategories ? JSON.stringify(preferences.favoriteCategories) : null,
         spiceLevel: preferences.spiceLevel,
         healthScore: preferences.healthScore
-      }).where((0, import_drizzle_orm52.eq)(userPreferences.userId, userId));
+      }).where((0, import_drizzle_orm53.eq)(userPreferences.userId, userId));
     } else {
       await db.insert(userPreferences).values({
         userId,
@@ -20116,7 +20265,7 @@ var AIRecommendationsService = class {
   }
   // Recomendaciones por defecto para nuevos usuarios
   static async getDefaultRecommendations(userId) {
-    const topBusinesses = await db.select().from(businesses).where((0, import_drizzle_orm52.eq)(businesses.isActive, true)).orderBy((0, import_drizzle_orm52.desc)(businesses.rating)).limit(5);
+    const topBusinesses = await db.select().from(businesses).where((0, import_drizzle_orm53.eq)(businesses.isActive, true)).orderBy((0, import_drizzle_orm53.desc)(businesses.rating)).limit(5);
     const recommendations = topBusinesses.map((business, index) => ({
       userId,
       recommendationType: "trending",
@@ -20180,7 +20329,7 @@ var import_express33 = __toESM(require("express"));
 // server/supportService.ts
 init_db();
 init_schema_mysql();
-var import_drizzle_orm53 = require("drizzle-orm");
+var import_drizzle_orm54 = require("drizzle-orm");
 init_enhancedPushService();
 var SupportService = class {
   static async createTicket(data) {
@@ -20202,14 +20351,14 @@ var SupportService = class {
     return { success: true, ticketId };
   }
   static async getUserTickets(userId) {
-    return db.select().from(supportTickets).where((0, import_drizzle_orm53.eq)(supportTickets.userId, userId)).orderBy((0, import_drizzle_orm53.desc)(supportTickets.createdAt));
+    return db.select().from(supportTickets).where((0, import_drizzle_orm54.eq)(supportTickets.userId, userId)).orderBy((0, import_drizzle_orm54.desc)(supportTickets.createdAt));
   }
   static async getTicket(ticketId, userId) {
     const [ticket] = await db.select().from(supportTickets).where(
-      (0, import_drizzle_orm53.and)((0, import_drizzle_orm53.eq)(supportTickets.id, ticketId), (0, import_drizzle_orm53.eq)(supportTickets.userId, userId))
+      (0, import_drizzle_orm54.and)((0, import_drizzle_orm54.eq)(supportTickets.id, ticketId), (0, import_drizzle_orm54.eq)(supportTickets.userId, userId))
     ).limit(1);
     if (!ticket) throw new Error("Ticket no encontrado");
-    const messages = await db.select().from(ticketMessages).where((0, import_drizzle_orm53.eq)(ticketMessages.ticketId, ticketId)).orderBy(ticketMessages.createdAt);
+    const messages = await db.select().from(ticketMessages).where((0, import_drizzle_orm54.eq)(ticketMessages.ticketId, ticketId)).orderBy(ticketMessages.createdAt);
     return { ticket, messages };
   }
   static async addMessage(data) {
@@ -20219,9 +20368,9 @@ var SupportService = class {
       senderType: data.senderType,
       message: data.message
     });
-    await db.update(supportTickets).set({ updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm53.eq)(supportTickets.id, data.ticketId));
+    await db.update(supportTickets).set({ updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm54.eq)(supportTickets.id, data.ticketId));
     if (data.senderType === "admin") {
-      const [ticket] = await db.select().from(supportTickets).where((0, import_drizzle_orm53.eq)(supportTickets.id, data.ticketId)).limit(1);
+      const [ticket] = await db.select().from(supportTickets).where((0, import_drizzle_orm54.eq)(supportTickets.id, data.ticketId)).limit(1);
       if (ticket) {
         await sendPushToUser(ticket.userId, {
           title: "Respuesta de Soporte",
@@ -20237,18 +20386,18 @@ var SupportService = class {
     if (status === "resolved" || status === "closed")
       updateData.resolvedAt = /* @__PURE__ */ new Date();
     if (adminId) updateData.assignedTo = adminId;
-    await db.update(supportTickets).set(updateData).where((0, import_drizzle_orm53.eq)(supportTickets.id, ticketId));
+    await db.update(supportTickets).set(updateData).where((0, import_drizzle_orm54.eq)(supportTickets.id, ticketId));
     return { success: true };
   }
   static async getPendingTickets() {
-    return db.select().from(supportTickets).where((0, import_drizzle_orm53.eq)(supportTickets.status, "open")).orderBy((0, import_drizzle_orm53.desc)(supportTickets.createdAt));
+    return db.select().from(supportTickets).where((0, import_drizzle_orm54.eq)(supportTickets.status, "open")).orderBy((0, import_drizzle_orm54.desc)(supportTickets.createdAt));
   }
   static async assignTicket(ticketId, adminId) {
     await db.update(supportTickets).set({
       assignedTo: adminId,
       status: "in_progress",
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm53.eq)(supportTickets.id, ticketId));
+    }).where((0, import_drizzle_orm54.eq)(supportTickets.id, ticketId));
     return { success: true };
   }
 };
@@ -20436,7 +20585,7 @@ var import_express34 = __toESM(require("express"));
 // server/enhancedTrackingService.ts
 init_db();
 init_schema_mysql();
-var import_drizzle_orm54 = require("drizzle-orm");
+var import_drizzle_orm55 = require("drizzle-orm");
 init_enhancedPushService();
 var EnhancedTrackingService = class {
   // Calcular distancia entre dos puntos (Haversine)
@@ -20459,11 +20608,11 @@ var EnhancedTrackingService = class {
       currentLatitude: latitude.toString(),
       currentLongitude: longitude.toString(),
       lastLocationUpdate: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm54.eq)(deliveryDrivers.userId, driverId));
+    }).where((0, import_drizzle_orm55.eq)(deliveryDrivers.userId, driverId));
     const activeOrders = await db.select().from(orders).where(
-      (0, import_drizzle_orm54.and)(
-        (0, import_drizzle_orm54.eq)(orders.deliveryPersonId, driverId),
-        (0, import_drizzle_orm54.eq)(orders.status, "on_the_way")
+      (0, import_drizzle_orm55.and)(
+        (0, import_drizzle_orm55.eq)(orders.deliveryPersonId, driverId),
+        (0, import_drizzle_orm55.eq)(orders.status, "on_the_way")
       )
     );
     for (const order of activeOrders) {
@@ -20501,9 +20650,9 @@ var EnhancedTrackingService = class {
     for (const alert of alerts) {
       if (distanceMeters <= alert.distance) {
         const [existing] = await db.select().from(proximityAlerts).where(
-          (0, import_drizzle_orm54.and)(
-            (0, import_drizzle_orm54.eq)(proximityAlerts.orderId, orderId),
-            (0, import_drizzle_orm54.eq)(proximityAlerts.alertType, alert.type)
+          (0, import_drizzle_orm55.and)(
+            (0, import_drizzle_orm55.eq)(proximityAlerts.orderId, orderId),
+            (0, import_drizzle_orm55.eq)(proximityAlerts.alertType, alert.type)
           )
         ).limit(1);
         if (!existing) {
@@ -20526,7 +20675,7 @@ var EnhancedTrackingService = class {
   }
   // Verificar y enviar alertas de tiempo (5 min, 2 min)
   static async checkTimeAlerts(orderId, etaMinutes) {
-    const [order] = await db.select().from(orders).where((0, import_drizzle_orm54.eq)(orders.id, orderId)).limit(1);
+    const [order] = await db.select().from(orders).where((0, import_drizzle_orm55.eq)(orders.id, orderId)).limit(1);
     if (!order || !order.deliveryPersonId) return;
     const timeAlerts = [
       {
@@ -20543,9 +20692,9 @@ var EnhancedTrackingService = class {
     for (const alert of timeAlerts) {
       if (etaMinutes <= alert.threshold) {
         const [existing] = await db.select().from(proximityAlerts).where(
-          (0, import_drizzle_orm54.and)(
-            (0, import_drizzle_orm54.eq)(proximityAlerts.orderId, orderId),
-            (0, import_drizzle_orm54.eq)(proximityAlerts.alertType, alert.type)
+          (0, import_drizzle_orm55.and)(
+            (0, import_drizzle_orm55.eq)(proximityAlerts.orderId, orderId),
+            (0, import_drizzle_orm55.eq)(proximityAlerts.alertType, alert.type)
           )
         ).limit(1);
         if (!existing) {
@@ -20568,11 +20717,11 @@ var EnhancedTrackingService = class {
   }
   // Obtener ubicación actual del repartidor
   static async getDriverLocation(orderId) {
-    const [order] = await db.select().from(orders).where((0, import_drizzle_orm54.eq)(orders.id, orderId)).limit(1);
+    const [order] = await db.select().from(orders).where((0, import_drizzle_orm55.eq)(orders.id, orderId)).limit(1);
     if (!order || !order.deliveryPersonId) {
       return { success: false, error: "Pedido sin repartidor asignado" };
     }
-    const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm54.eq)(deliveryDrivers.userId, order.deliveryPersonId)).limit(1);
+    const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm55.eq)(deliveryDrivers.userId, order.deliveryPersonId)).limit(1);
     if (!driver || !driver.currentLatitude || !driver.currentLongitude) {
       return {
         success: false,
@@ -20590,11 +20739,11 @@ var EnhancedTrackingService = class {
   }
   // Calcular ETA dinámico
   static async calculateDynamicETA(orderId) {
-    const [order] = await db.select().from(orders).where((0, import_drizzle_orm54.eq)(orders.id, orderId)).limit(1);
+    const [order] = await db.select().from(orders).where((0, import_drizzle_orm55.eq)(orders.id, orderId)).limit(1);
     if (!order || !order.deliveryPersonId) {
       return { success: false, eta: null };
     }
-    const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm54.eq)(deliveryDrivers.userId, order.deliveryPersonId)).limit(1);
+    const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm55.eq)(deliveryDrivers.userId, order.deliveryPersonId)).limit(1);
     if (!driver || !driver.currentLatitude || !driver.currentLongitude || !order.deliveryLatitude || !order.deliveryLongitude) {
       return { success: false, eta: null };
     }
@@ -20630,7 +20779,7 @@ var EnhancedTrackingService = class {
   }
   // Obtener hitos del pedido
   static async getOrderMilestones(orderId) {
-    const [order] = await db.select().from(orders).where((0, import_drizzle_orm54.eq)(orders.id, orderId)).limit(1);
+    const [order] = await db.select().from(orders).where((0, import_drizzle_orm55.eq)(orders.id, orderId)).limit(1);
     if (!order) {
       return { success: false, milestones: null };
     }
@@ -20709,7 +20858,7 @@ var enhancedTracking_default = router34;
 // server/routes/subscriptions.ts
 var import_express35 = __toESM(require("express"));
 init_subscriptionService();
-var import_drizzle_orm55 = require("drizzle-orm");
+var import_drizzle_orm56 = require("drizzle-orm");
 var router35 = import_express35.default.Router();
 router35.get("/my-subscription", authenticateToken, async (req, res) => {
   try {
@@ -20784,7 +20933,7 @@ router35.post("/submit-proof", authenticateToken, async (req, res) => {
     const { subscriptions: subscriptions2, paymentProofs: paymentProofs2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { sql: drizzleSql } = await import("drizzle-orm");
     const { v4: uuidv4 } = await import("uuid");
-    const [sub] = await db2.select().from(subscriptions2).where((0, import_drizzle_orm55.eq)(subscriptions2.id, subscriptionId)).limit(1);
+    const [sub] = await db2.select().from(subscriptions2).where((0, import_drizzle_orm56.eq)(subscriptions2.id, subscriptionId)).limit(1);
     if (!sub || sub.userId !== userId) {
       return res.status(404).json({ error: "Suscripci\xF3n no encontrada" });
     }
@@ -20812,7 +20961,7 @@ router35.post("/submit-proof", authenticateToken, async (req, res) => {
     try {
       const { notifyAdminNewProof: notifyAdminNewProof2 } = await Promise.resolve().then(() => (init_websocket(), websocket_exports));
       const { users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-      const [u] = await db2.select({ name: users5.name }).from(users5).where((0, import_drizzle_orm55.eq)(users5.id, userId)).limit(1);
+      const [u] = await db2.select({ name: users5.name }).from(users5).where((0, import_drizzle_orm56.eq)(users5.id, userId)).limit(1);
       notifyAdminNewProof2({
         proofId,
         orderId: `sub_${subscriptionId}`,
@@ -20851,7 +21000,7 @@ router35.post(
         drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_by = ${req.user.id}, verified_at = NOW() WHERE id = ${proofId}`
       );
       const now = /* @__PURE__ */ new Date();
-      const [sub] = await db2.select().from(subscriptions2).where((0, import_drizzle_orm55.eq)(subscriptions2.id, subscriptionId)).limit(1);
+      const [sub] = await db2.select().from(subscriptions2).where((0, import_drizzle_orm56.eq)(subscriptions2.id, subscriptionId)).limit(1);
       if (sub) {
         const periodEnd = new Date(now);
         sub.billingCycle === "yearly" ? periodEnd.setFullYear(periodEnd.getFullYear() + 1) : periodEnd.setMonth(periodEnd.getMonth() + 1);
@@ -20862,7 +21011,7 @@ router35.post(
           autoRenew: true,
           cancelledAt: null
           // Limpiar cancelación previa si la hubiera
-        }).where((0, import_drizzle_orm55.eq)(subscriptions2.id, subscriptionId));
+        }).where((0, import_drizzle_orm56.eq)(subscriptions2.id, subscriptionId));
       }
       const { SubscriptionService: SubscriptionService2 } = await Promise.resolve().then(() => (init_subscriptionService(), subscriptionService_exports));
       await SubscriptionService2.applyPlanActivationSideEffects(
@@ -20969,7 +21118,7 @@ var import_express36 = __toESM(require("express"));
 // server/smartNotificationService.ts
 init_db();
 init_schema_mysql();
-var import_drizzle_orm56 = require("drizzle-orm");
+var import_drizzle_orm57 = require("drizzle-orm");
 init_enhancedPushService();
 var SmartNotificationService = class {
   // Segmentar usuarios
@@ -20979,31 +21128,31 @@ var SmartNotificationService = class {
     if (target.userSegment === "new") {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1e3);
       const newUsers = await db.select({ id: users.id }).from(users).where(
-        (0, import_drizzle_orm56.and)((0, import_drizzle_orm56.gte)(users.createdAt, sevenDaysAgo), (0, import_drizzle_orm56.eq)(users.role, "customer"))
+        (0, import_drizzle_orm57.and)((0, import_drizzle_orm57.gte)(users.createdAt, sevenDaysAgo), (0, import_drizzle_orm57.eq)(users.role, "customer"))
       );
       for (const user of newUsers) {
-        const [order] = await db.select().from(orders).where((0, import_drizzle_orm56.eq)(orders.userId, user.id)).limit(1);
+        const [order] = await db.select().from(orders).where((0, import_drizzle_orm57.eq)(orders.userId, user.id)).limit(1);
         if (!order) {
           userIds.push(user.id);
         }
       }
     } else if (target.userSegment === "inactive") {
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1e3);
-      const allUsers = await db.select({ id: users.id }).from(users).where((0, import_drizzle_orm56.eq)(users.role, "customer"));
+      const allUsers = await db.select({ id: users.id }).from(users).where((0, import_drizzle_orm57.eq)(users.role, "customer"));
       for (const user of allUsers) {
-        const [lastOrder] = await db.select().from(orders).where((0, import_drizzle_orm56.eq)(orders.userId, user.id)).orderBy((0, import_drizzle_orm56.desc)(orders.createdAt)).limit(1);
+        const [lastOrder] = await db.select().from(orders).where((0, import_drizzle_orm57.eq)(orders.userId, user.id)).orderBy((0, import_drizzle_orm57.desc)(orders.createdAt)).limit(1);
         if (lastOrder && lastOrder.createdAt < thirtyDaysAgo) {
           userIds.push(user.id);
         }
       }
     } else if (target.userSegment === "active") {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1e3);
-      const recentOrders = await db.select({ userId: orders.userId }).from(orders).where((0, import_drizzle_orm56.gte)(orders.createdAt, sevenDaysAgo)).groupBy(orders.userId);
+      const recentOrders = await db.select({ userId: orders.userId }).from(orders).where((0, import_drizzle_orm57.gte)(orders.createdAt, sevenDaysAgo)).groupBy(orders.userId);
       userIds.push(...recentOrders.map((o) => o.userId));
     } else if (target.userSegment === "vip") {
-      const allUsers = await db.select({ id: users.id }).from(users).where((0, import_drizzle_orm56.eq)(users.role, "customer"));
+      const allUsers = await db.select({ id: users.id }).from(users).where((0, import_drizzle_orm57.eq)(users.role, "customer"));
       for (const user of allUsers) {
-        const orderCount = await db.select({ count: import_drizzle_orm56.sql`COUNT(*)` }).from(orders).where((0, import_drizzle_orm56.eq)(orders.userId, user.id));
+        const orderCount = await db.select({ count: import_drizzle_orm57.sql`COUNT(*)` }).from(orders).where((0, import_drizzle_orm57.eq)(orders.userId, user.id));
         if (orderCount[0].count >= 10) {
           userIds.push(user.id);
         }
@@ -21098,9 +21247,9 @@ var SmartNotificationService = class {
   static async sendFavoriteBusinessPromotion(businessId, promotion) {
     const { userFavorites: userFavorites2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const favorites2 = await db.select().from(userFavorites2).where(
-      (0, import_drizzle_orm56.and)(
-        (0, import_drizzle_orm56.eq)(userFavorites2.itemType, "business"),
-        (0, import_drizzle_orm56.eq)(userFavorites2.itemId, businessId)
+      (0, import_drizzle_orm57.and)(
+        (0, import_drizzle_orm57.eq)(userFavorites2.itemType, "business"),
+        (0, import_drizzle_orm57.eq)(userFavorites2.itemId, businessId)
       )
     );
     let sent = 0;
@@ -21222,7 +21371,7 @@ var import_express37 = __toESM(require("express"));
 // server/enhancedReviewService.ts
 init_db();
 init_schema_mysql();
-var import_drizzle_orm58 = require("drizzle-orm");
+var import_drizzle_orm59 = require("drizzle-orm");
 init_cloudinaryService();
 var EnhancedReviewService = class {
   // Crear review mejorada
@@ -21286,12 +21435,12 @@ var EnhancedReviewService = class {
     if (tipAmount && tipAmount > 0 && deliveryPersonId && orderId) {
       try {
         const { wallets: wallets2, transactions: transactions4 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-        const [driverWallet] = await db.select().from(wallets2).where((0, import_drizzle_orm58.eq)(wallets2.userId, deliveryPersonId)).limit(1);
+        const [driverWallet] = await db.select().from(wallets2).where((0, import_drizzle_orm59.eq)(wallets2.userId, deliveryPersonId)).limit(1);
         if (driverWallet) {
           await db.update(wallets2).set({
             balance: driverWallet.balance + tipAmount,
             totalEarned: driverWallet.totalEarned + tipAmount
-          }).where((0, import_drizzle_orm58.eq)(wallets2.userId, deliveryPersonId));
+          }).where((0, import_drizzle_orm59.eq)(wallets2.userId, deliveryPersonId));
         }
         const txId = crypto.randomUUID();
         await db.insert(transactions4).values({
@@ -21317,8 +21466,8 @@ var EnhancedReviewService = class {
       const { GamificationService: GamificationService2 } = await Promise.resolve().then(() => (init_gamificationService(), gamificationService_exports));
       const { count: countFn } = await import("drizzle-orm");
       const { achievements: achTable } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-      const [{ value: reviewCount }] = await db.select({ value: countFn() }).from(reviews).where((0, import_drizzle_orm58.eq)(reviews.userId, userId));
-      const reviewAchievements = await db.select().from(achTable).where((0, import_drizzle_orm58.eq)(achTable.requirementType, "review_count"));
+      const [{ value: reviewCount }] = await db.select({ value: countFn() }).from(reviews).where((0, import_drizzle_orm59.eq)(reviews.userId, userId));
+      const reviewAchievements = await db.select().from(achTable).where((0, import_drizzle_orm59.eq)(achTable.requirementType, "review_count"));
       for (const ach of reviewAchievements) {
         if (Number(reviewCount) >= ach.requirementValue) {
           await GamificationService2.unlockAchievement(userId, ach.id);
@@ -21331,7 +21480,7 @@ var EnhancedReviewService = class {
   // Actualizar rating promedio del negocio
   static async updateBusinessRating(businessId) {
     const businessReviews = await db.select().from(reviews).where(
-      (0, import_drizzle_orm58.and)((0, import_drizzle_orm58.eq)(reviews.businessId, businessId), (0, import_drizzle_orm58.eq)(reviews.approved, true))
+      (0, import_drizzle_orm59.and)((0, import_drizzle_orm59.eq)(reviews.businessId, businessId), (0, import_drizzle_orm59.eq)(reviews.approved, true))
     );
     if (businessReviews.length === 0) return;
     const totalRating = businessReviews.reduce((sum3, r) => sum3 + r.rating, 0);
@@ -21339,12 +21488,12 @@ var EnhancedReviewService = class {
     await db.update(businesses).set({
       rating: avgRating,
       totalRatings: businessReviews.length
-    }).where((0, import_drizzle_orm58.eq)(businesses.id, businessId));
+    }).where((0, import_drizzle_orm59.eq)(businesses.id, businessId));
   }
   // Actualizar rating promedio del repartidor
   static async updateDriverRating(driverId) {
     const driverReviews = await db.select().from(reviews).where(
-      (0, import_drizzle_orm58.and)((0, import_drizzle_orm58.eq)(reviews.deliveryPersonId, driverId), (0, import_drizzle_orm58.eq)(reviews.approved, true))
+      (0, import_drizzle_orm59.and)((0, import_drizzle_orm59.eq)(reviews.deliveryPersonId, driverId), (0, import_drizzle_orm59.eq)(reviews.approved, true))
     );
     if (driverReviews.length === 0) return;
     const ratingsWithDriver = driverReviews.filter(
@@ -21359,21 +21508,21 @@ var EnhancedReviewService = class {
     await db.update(deliveryDrivers).set({
       rating: avgRating,
       totalRatings: ratingsWithDriver.length
-    }).where((0, import_drizzle_orm58.eq)(deliveryDrivers.userId, driverId));
+    }).where((0, import_drizzle_orm59.eq)(deliveryDrivers.userId, driverId));
   }
   // Obtener tags disponibles
   static async getTags() {
-    const tags = await db.select().from(reviewTags).where((0, import_drizzle_orm58.eq)(reviewTags.isActive, true)).orderBy(reviewTags.displayOrder);
+    const tags = await db.select().from(reviewTags).where((0, import_drizzle_orm59.eq)(reviewTags.isActive, true)).orderBy(reviewTags.displayOrder);
     return { success: true, tags };
   }
   // Obtener reviews de un negocio
   static async getBusinessReviews(businessId, limit = 20) {
     const businessReviews = await db.select().from(reviews).where(
-      (0, import_drizzle_orm58.and)((0, import_drizzle_orm58.eq)(reviews.businessId, businessId), (0, import_drizzle_orm58.eq)(reviews.approved, true))
-    ).orderBy((0, import_drizzle_orm58.desc)(reviews.createdAt)).limit(limit);
+      (0, import_drizzle_orm59.and)((0, import_drizzle_orm59.eq)(reviews.businessId, businessId), (0, import_drizzle_orm59.eq)(reviews.approved, true))
+    ).orderBy((0, import_drizzle_orm59.desc)(reviews.createdAt)).limit(limit);
     const reviewsWithResponses = await Promise.all(
       businessReviews.map(async (review) => {
-        const [response] = await db.select().from(reviewResponses).where((0, import_drizzle_orm58.eq)(reviewResponses.reviewId, review.id)).limit(1);
+        const [response] = await db.select().from(reviewResponses).where((0, import_drizzle_orm59.eq)(reviewResponses.reviewId, review.id)).limit(1);
         return {
           ...review,
           photos: review.photos ? JSON.parse(review.photos) : [],
@@ -21386,13 +21535,13 @@ var EnhancedReviewService = class {
   }
   // Responder a una review (solo dueño del negocio)
   static async respondToReview(reviewId, businessId, respondedBy, responseText) {
-    const [review] = await db.select().from(reviews).where((0, import_drizzle_orm58.and)((0, import_drizzle_orm58.eq)(reviews.id, reviewId), (0, import_drizzle_orm58.eq)(reviews.businessId, businessId))).limit(1);
+    const [review] = await db.select().from(reviews).where((0, import_drizzle_orm59.and)((0, import_drizzle_orm59.eq)(reviews.id, reviewId), (0, import_drizzle_orm59.eq)(reviews.businessId, businessId))).limit(1);
     if (!review) {
       return { success: false, error: "Review no encontrada" };
     }
-    const [existing] = await db.select().from(reviewResponses).where((0, import_drizzle_orm58.eq)(reviewResponses.reviewId, reviewId)).limit(1);
+    const [existing] = await db.select().from(reviewResponses).where((0, import_drizzle_orm59.eq)(reviewResponses.reviewId, reviewId)).limit(1);
     if (existing) {
-      await db.update(reviewResponses).set({ responseText, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm58.eq)(reviewResponses.id, existing.id));
+      await db.update(reviewResponses).set({ responseText, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm59.eq)(reviewResponses.id, existing.id));
     } else {
       await db.insert(reviewResponses).values({
         id: crypto.randomUUID(),
@@ -21498,7 +21647,7 @@ var import_express38 = __toESM(require("express"));
 // server/businessAnalyticsService.ts
 init_db();
 init_schema_mysql();
-var import_drizzle_orm59 = require("drizzle-orm");
+var import_drizzle_orm60 = require("drizzle-orm");
 var BusinessAnalyticsService = class {
   // Dashboard principal con métricas en tiempo real
   static async getDashboard(businessId, period = "week") {
@@ -21519,21 +21668,21 @@ var BusinessAnalyticsService = class {
         break;
     }
     const periodOrders = await db.select().from(orders).where(
-      startDate ? (0, import_drizzle_orm59.and)(
-        (0, import_drizzle_orm59.eq)(orders.businessId, businessId),
-        (0, import_drizzle_orm59.gte)(orders.createdAt, startDate)
-      ) : (0, import_drizzle_orm59.eq)(orders.businessId, businessId)
+      startDate ? (0, import_drizzle_orm60.and)(
+        (0, import_drizzle_orm60.eq)(orders.businessId, businessId),
+        (0, import_drizzle_orm60.gte)(orders.createdAt, startDate)
+      ) : (0, import_drizzle_orm60.eq)(orders.businessId, businessId)
     );
     const periodLength = startDate ? now.getTime() - startDate.getTime() : 0;
     const previousStartDate = startDate ? new Date(startDate.getTime() - periodLength) : null;
     const previousOrders = startDate && previousStartDate ? await db.select().from(orders).where(
-      (0, import_drizzle_orm59.and)(
-        (0, import_drizzle_orm59.eq)(orders.businessId, businessId),
-        (0, import_drizzle_orm59.gte)(orders.createdAt, previousStartDate),
-        (0, import_drizzle_orm59.lte)(orders.createdAt, startDate)
+      (0, import_drizzle_orm60.and)(
+        (0, import_drizzle_orm60.eq)(orders.businessId, businessId),
+        (0, import_drizzle_orm60.gte)(orders.createdAt, previousStartDate),
+        (0, import_drizzle_orm60.lte)(orders.createdAt, startDate)
       )
     ) : [];
-    const allOrders = startDate ? await db.select().from(orders).where((0, import_drizzle_orm59.eq)(orders.businessId, businessId)) : periodOrders;
+    const allOrders = startDate ? await db.select().from(orders).where((0, import_drizzle_orm60.eq)(orders.businessId, businessId)) : periodOrders;
     const todayStart = new Date(
       now.getFullYear(),
       now.getMonth(),
@@ -21559,7 +21708,7 @@ var BusinessAnalyticsService = class {
     const totalOrders = periodOrders.length;
     const previousTotalOrders = previousOrders.length;
     const ordersChange = previousTotalOrders > 0 ? (totalOrders - previousTotalOrders) / previousTotalOrders * 100 : 0;
-    const [business] = await db.select().from(businesses).where((0, import_drizzle_orm59.eq)(businesses.id, businessId)).limit(1);
+    const [business] = await db.select().from(businesses).where((0, import_drizzle_orm60.eq)(businesses.id, businessId)).limit(1);
     const rating = business?.rating ? business.rating / 10 : 0;
     return {
       success: true,
@@ -21588,10 +21737,10 @@ var BusinessAnalyticsService = class {
   static async getTopProducts(businessId, limit = 10) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
     const recentOrders = await db.select().from(orders).where(
-      (0, import_drizzle_orm59.and)(
-        (0, import_drizzle_orm59.eq)(orders.businessId, businessId),
-        (0, import_drizzle_orm59.eq)(orders.status, "delivered"),
-        (0, import_drizzle_orm59.gte)(orders.createdAt, thirtyDaysAgo)
+      (0, import_drizzle_orm60.and)(
+        (0, import_drizzle_orm60.eq)(orders.businessId, businessId),
+        (0, import_drizzle_orm60.eq)(orders.status, "delivered"),
+        (0, import_drizzle_orm60.gte)(orders.createdAt, thirtyDaysAgo)
       )
     );
     const productCounts = {};
@@ -21628,9 +21777,9 @@ var BusinessAnalyticsService = class {
   static async getPeakHours(businessId) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
     const recentOrders = await db.select().from(orders).where(
-      (0, import_drizzle_orm59.and)(
-        (0, import_drizzle_orm59.eq)(orders.businessId, businessId),
-        (0, import_drizzle_orm59.gte)(orders.createdAt, thirtyDaysAgo)
+      (0, import_drizzle_orm60.and)(
+        (0, import_drizzle_orm60.eq)(orders.businessId, businessId),
+        (0, import_drizzle_orm60.gte)(orders.createdAt, thirtyDaysAgo)
       )
     );
     const hourCounts = {};
@@ -21652,10 +21801,10 @@ var BusinessAnalyticsService = class {
   static async getSalesChart(businessId, days = 30) {
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
     const recentOrders = await db.select().from(orders).where(
-      (0, import_drizzle_orm59.and)(
-        (0, import_drizzle_orm59.eq)(orders.businessId, businessId),
-        (0, import_drizzle_orm59.eq)(orders.status, "delivered"),
-        (0, import_drizzle_orm59.gte)(orders.createdAt, startDate)
+      (0, import_drizzle_orm60.and)(
+        (0, import_drizzle_orm60.eq)(orders.businessId, businessId),
+        (0, import_drizzle_orm60.eq)(orders.status, "delivered"),
+        (0, import_drizzle_orm60.gte)(orders.createdAt, startDate)
       )
     );
     const dailySales = {};
@@ -21677,7 +21826,7 @@ var BusinessAnalyticsService = class {
   // Estadísticas de reviews
   static async getReviewStats(businessId) {
     const businessReviews = await db.select().from(reviews).where(
-      (0, import_drizzle_orm59.and)((0, import_drizzle_orm59.eq)(reviews.businessId, businessId), (0, import_drizzle_orm59.eq)(reviews.approved, true))
+      (0, import_drizzle_orm60.and)((0, import_drizzle_orm60.eq)(reviews.businessId, businessId), (0, import_drizzle_orm60.eq)(reviews.approved, true))
     );
     const totalReviews = businessReviews.length;
     if (totalReviews === 0) {
@@ -21721,18 +21870,18 @@ var BusinessAnalyticsService = class {
     const thisWeekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1e3);
     const lastWeekStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1e3);
     const thisWeekOrders = await db.select().from(orders).where(
-      (0, import_drizzle_orm59.and)(
-        (0, import_drizzle_orm59.eq)(orders.businessId, businessId),
-        (0, import_drizzle_orm59.eq)(orders.status, "delivered"),
-        (0, import_drizzle_orm59.gte)(orders.createdAt, thisWeekStart)
+      (0, import_drizzle_orm60.and)(
+        (0, import_drizzle_orm60.eq)(orders.businessId, businessId),
+        (0, import_drizzle_orm60.eq)(orders.status, "delivered"),
+        (0, import_drizzle_orm60.gte)(orders.createdAt, thisWeekStart)
       )
     );
     const lastWeekOrders = await db.select().from(orders).where(
-      (0, import_drizzle_orm59.and)(
-        (0, import_drizzle_orm59.eq)(orders.businessId, businessId),
-        (0, import_drizzle_orm59.eq)(orders.status, "delivered"),
-        (0, import_drizzle_orm59.gte)(orders.createdAt, lastWeekStart),
-        (0, import_drizzle_orm59.lte)(orders.createdAt, thisWeekStart)
+      (0, import_drizzle_orm60.and)(
+        (0, import_drizzle_orm60.eq)(orders.businessId, businessId),
+        (0, import_drizzle_orm60.eq)(orders.status, "delivered"),
+        (0, import_drizzle_orm60.gte)(orders.createdAt, lastWeekStart),
+        (0, import_drizzle_orm60.lte)(orders.createdAt, thisWeekStart)
       )
     );
     const thisWeekRevenue = thisWeekOrders.reduce(
@@ -22102,14 +22251,14 @@ var referrals_default = router41;
 
 // server/routes/orderChat.ts
 var import_express42 = __toESM(require("express"));
-var import_drizzle_orm60 = require("drizzle-orm");
+var import_drizzle_orm61 = require("drizzle-orm");
 var router42 = import_express42.default.Router();
 router42.get("/:orderId/chat", authenticateToken, async (req, res) => {
   try {
     const { orderId } = req.params;
     const { orders: orders2, users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm60.eq)(orders2.id, orderId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm61.eq)(orders2.id, orderId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -22146,7 +22295,7 @@ router42.post("/:orderId/chat", authenticateToken, async (req, res) => {
     }
     const { orders: orders2, users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm60.eq)(orders2.id, orderId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm61.eq)(orders2.id, orderId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -22156,7 +22305,7 @@ router42.post("/:orderId/chat", authenticateToken, async (req, res) => {
     if (!isCustomer && !isDriver && !isAdmin) {
       return res.status(403).json({ error: "No autorizado" });
     }
-    const [sender] = await db2.select().from(users5).where((0, import_drizzle_orm60.eq)(users5.id, req.user.id)).limit(1);
+    const [sender] = await db2.select().from(users5).where((0, import_drizzle_orm61.eq)(users5.id, req.user.id)).limit(1);
     const newMessage = {
       id: `msg-${Date.now()}`,
       orderId,
@@ -22172,7 +22321,7 @@ router42.post("/:orderId/chat", authenticateToken, async (req, res) => {
     await db2.update(orders2).set({
       chatMessages: JSON.stringify(chatMessages),
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm60.eq)(orders2.id, orderId));
+    }).where((0, import_drizzle_orm61.eq)(orders2.id, orderId));
     try {
       const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
       const receiverName = sender?.name || "Cliente";
@@ -22203,7 +22352,7 @@ router42.patch(
       const { orderId, messageId } = req.params;
       const { orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm60.eq)(orders2.id, orderId)).limit(1);
+      const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm61.eq)(orders2.id, orderId)).limit(1);
       if (!order) {
         return res.status(404).json({ error: "Pedido no encontrado" });
       }
@@ -22218,7 +22367,7 @@ router42.patch(
       await db2.update(orders2).set({
         chatMessages: JSON.stringify(chatMessages),
         updatedAt: /* @__PURE__ */ new Date()
-      }).where((0, import_drizzle_orm60.eq)(orders2.id, orderId));
+      }).where((0, import_drizzle_orm61.eq)(orders2.id, orderId));
       res.json({ success: true, message: "Mensaje marcado como le\xEDdo" });
     } catch (error) {
       console.error("Mark read error:", error);
@@ -22230,7 +22379,7 @@ var orderChat_default = router42;
 
 // server/routes/orders.ts
 var import_express43 = __toESM(require("express"));
-var import_drizzle_orm62 = require("drizzle-orm");
+var import_drizzle_orm63 = require("drizzle-orm");
 init_enhancedPushService();
 init_websocket();
 init_config();
@@ -22255,7 +22404,7 @@ router43.get("/", authenticateToken, async (req, res) => {
         name: businesses3.name,
         image: businesses3.image
       }
-    }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm62.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm62.eq)(orders2.userId, req.user.id)).orderBy((0, import_drizzle_orm62.desc)(orders2.createdAt));
+    }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm63.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm63.eq)(orders2.userId, req.user.id)).orderBy((0, import_drizzle_orm63.desc)(orders2.createdAt));
     res.json({ success: true, orders: userOrders });
   } catch (error) {
     console.error("Get orders error:", error);
@@ -22276,7 +22425,7 @@ router43.get("/:id", authenticateToken, async (req, res) => {
         phone: businesses3.phone,
         address: businesses3.address
       }
-    }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm62.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm62.eq)(orders2.id, orderId)).limit(1);
+    }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm63.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm63.eq)(orders2.id, orderId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -22329,12 +22478,12 @@ router43.post("/", authenticateToken, async (req, res) => {
     if (!businessId || !items || items.length === 0) {
       return res.status(400).json({ error: "Datos del pedido incompletos" });
     }
-    const [business] = await db2.select().from(businesses3).where((0, import_drizzle_orm62.and)((0, import_drizzle_orm62.eq)(businesses3.id, businessId), (0, import_drizzle_orm62.eq)(businesses3.isActive, true))).limit(1);
+    const [business] = await db2.select().from(businesses3).where((0, import_drizzle_orm63.and)((0, import_drizzle_orm63.eq)(businesses3.id, businessId), (0, import_drizzle_orm63.eq)(businesses3.isActive, true))).limit(1);
     if (!business) {
       return res.status(404).json({ error: "Negocio no encontrado" });
     }
     const productIds = items.map((item) => item.productId || item.product?.id).filter(Boolean);
-    const orderProducts = await db2.select().from(products3).where((0, import_drizzle_orm62.inArray)(products3.id, productIds));
+    const orderProducts = await db2.select().from(products3).where((0, import_drizzle_orm63.inArray)(products3.id, productIds));
     let subtotal = 0;
     const validItems = [];
     for (const item of items) {
@@ -22452,7 +22601,7 @@ router43.post("/:id/confirm", authenticateToken, async (req, res) => {
     const { orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const confirmId = req.params.id;
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm62.eq)(orders2.id, confirmId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm63.eq)(orders2.id, confirmId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user.id && req.user.role !== "admin")
       return res.status(403).json({ error: "No autorizado" });
@@ -22460,7 +22609,7 @@ router43.post("/:id/confirm", authenticateToken, async (req, res) => {
       status: "accepted",
       confirmedToBusinessAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm62.eq)(orders2.id, confirmId));
+    }).where((0, import_drizzle_orm63.eq)(orders2.id, confirmId));
     await sendOrderStatusNotification(confirmId, order.userId, "accepted");
     res.json({ success: true, message: "Pedido confirmado" });
   } catch (error) {
@@ -22473,7 +22622,7 @@ router43.post("/:id/cancel-regret", authenticateToken, async (req, res) => {
     const { orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const regretId = req.params.id;
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm62.eq)(orders2.id, regretId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm63.eq)(orders2.id, regretId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user.id && req.user.role !== "admin")
       return res.status(403).json({ error: "No autorizado" });
@@ -22485,7 +22634,7 @@ router43.post("/:id/cancel-regret", authenticateToken, async (req, res) => {
       cancelledBy: req.user.id,
       cancellationReason: "regret_period",
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm62.eq)(orders2.id, regretId));
+    }).where((0, import_drizzle_orm63.eq)(orders2.id, regretId));
     res.json({ success: true, message: "Pedido cancelado sin penalizaci\xF3n" });
   } catch (error) {
     console.error("Cancel regret error:", error);
@@ -22521,7 +22670,7 @@ router43.patch("/:id/status", authenticateToken, async (req, res) => {
     const [order] = await db2.select({
       order: orders2,
       business: businesses3
-    }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm62.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm62.eq)(orders2.id, statusId)).limit(1);
+    }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm63.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm63.eq)(orders2.id, statusId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -22532,7 +22681,7 @@ router43.patch("/:id/status", authenticateToken, async (req, res) => {
     await db2.update(orders2).set({
       status,
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm62.eq)(orders2.id, statusId));
+    }).where((0, import_drizzle_orm63.eq)(orders2.id, statusId));
     const o = order.order;
     if (status === "preparing") {
       await sendOrderStatusNotification(statusId, o.userId, "preparing");
@@ -22592,7 +22741,7 @@ router43.post("/:id/tip", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Monto de propina inv\xE1lido" });
     }
     const tipOrderId = req.params.id;
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm62.eq)(orders2.id, tipOrderId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm63.eq)(orders2.id, tipOrderId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user.id)
       return res.status(403).json({ error: "No autorizado" });
@@ -22601,12 +22750,12 @@ router43.post("/:id/tip", authenticateToken, async (req, res) => {
     const driverId = deliveryPersonId || order.deliveryPersonId;
     if (!driverId)
       return res.status(400).json({ error: "No hay repartidor asignado" });
-    const [driverWallet] = await db2.select().from(wallets2).where((0, import_drizzle_orm62.eq)(wallets2.userId, driverId)).limit(1);
+    const [driverWallet] = await db2.select().from(wallets2).where((0, import_drizzle_orm63.eq)(wallets2.userId, driverId)).limit(1);
     if (driverWallet) {
       await db2.update(wallets2).set({
         balance: driverWallet.balance + amount,
         totalEarned: driverWallet.totalEarned + amount
-      }).where((0, import_drizzle_orm62.eq)(wallets2.userId, driverId));
+      }).where((0, import_drizzle_orm63.eq)(wallets2.userId, driverId));
     }
     await db2.insert(transactions4).values({
       userId: driverId,
@@ -22626,7 +22775,7 @@ router43.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
     const { orders: orders2, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const pickupId = req.params.id;
-    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm62.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm62.eq)(orders2.id, pickupId)).limit(1);
+    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm63.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm63.eq)(orders2.id, pickupId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     const canMark = req.user.role === "admin" || req.user.role === "business_owner" && order.business?.ownerId === req.user.id;
     if (!canMark) {
@@ -22642,7 +22791,7 @@ router43.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
       status: "delivered",
       deliveredAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm62.eq)(orders2.id, pickupId));
+    }).where((0, import_drizzle_orm63.eq)(orders2.id, pickupId));
     await sendOrderStatusNotification(
       pickupId,
       order.order.userId,
@@ -22661,7 +22810,7 @@ router43.put("/:id/complete", authenticateToken, async (req, res) => {
     const { orders: orders2, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const completeId = req.params.id;
-    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm62.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm62.eq)(orders2.id, completeId)).limit(1);
+    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm63.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm63.eq)(orders2.id, completeId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -22689,7 +22838,7 @@ router43.put("/:id/complete", authenticateToken, async (req, res) => {
       fundsReleased: true,
       fundsReleasedAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm62.eq)(orders2.id, completeId));
+    }).where((0, import_drizzle_orm63.eq)(orders2.id, completeId));
     await sendOrderStatusNotification(
       completeId,
       order.order.userId,
@@ -22716,7 +22865,7 @@ router43.patch("/:id/cancel", authenticateToken, async (req, res) => {
     const { orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const cancelId = req.params.id;
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm62.eq)(orders2.id, cancelId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm63.eq)(orders2.id, cancelId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -22732,7 +22881,7 @@ router43.patch("/:id/cancel", authenticateToken, async (req, res) => {
     await db2.update(orders2).set({
       status: "cancelled",
       updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm62.eq)(orders2.id, cancelId));
+    }).where((0, import_drizzle_orm63.eq)(orders2.id, cancelId));
     res.json({ success: true, message: "Pedido cancelado" });
   } catch (error) {
     console.error("Cancel order error:", error);
@@ -22748,7 +22897,7 @@ router43.post("/:id/report-issue", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Tipo de problema y descripci\xF3n son obligatorios" });
     }
     const issueOrderId = req.params.id;
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm62.eq)(orders2.id, issueOrderId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm63.eq)(orders2.id, issueOrderId)).limit(1);
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user.id && req.user.role === "customer") {
       return res.status(403).json({ error: "No autorizado" });
@@ -22766,7 +22915,7 @@ router43.post("/:id/report-issue", authenticateToken, async (req, res) => {
       status: "open"
     });
     const { users: users5, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-    const admins = await db2.select({ id: users5.id }).from(users5).where((0, import_drizzle_orm62.inArray)(users5.role, ["admin", "super_admin"]));
+    const admins = await db2.select({ id: users5.id }).from(users5).where((0, import_drizzle_orm63.inArray)(users5.role, ["admin", "super_admin"]));
     try {
       for (const admin of admins) {
         await sendPushToUser(admin.id, {
@@ -22779,7 +22928,7 @@ router43.post("/:id/report-issue", authenticateToken, async (req, res) => {
       console.error("Error notifying admins of issue:", err);
     }
     try {
-      const [biz] = await db2.select({ ownerId: businesses3.ownerId }).from(businesses3).where((0, import_drizzle_orm62.eq)(businesses3.id, order.businessId)).limit(1);
+      const [biz] = await db2.select({ ownerId: businesses3.ownerId }).from(businesses3).where((0, import_drizzle_orm63.eq)(businesses3.id, order.businessId)).limit(1);
       if (biz?.ownerId) {
         await sendPushToUser(biz.ownerId, {
           title: "\u26A0\uFE0F Incidencia en tu pedido",
@@ -22802,12 +22951,12 @@ var orders_default = router43;
 var import_express44 = require("express");
 init_db();
 init_schema_mysql();
-var import_drizzle_orm63 = require("drizzle-orm");
+var import_drizzle_orm64 = require("drizzle-orm");
 var import_crypto = __toESM(require("crypto"));
 var router44 = (0, import_express44.Router)();
 router44.get("/", authenticateToken, async (req, res) => {
   try {
-    const list = await db.select().from(addresses).where((0, import_drizzle_orm63.eq)(addresses.userId, req.user.id));
+    const list = await db.select().from(addresses).where((0, import_drizzle_orm64.eq)(addresses.userId, req.user.id));
     res.json({ success: true, addresses: list });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -22821,7 +22970,7 @@ router44.post("/", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "label y street son requeridos" });
     }
     if (isDefault) {
-      await db.update(addresses).set({ isDefault: false }).where((0, import_drizzle_orm63.eq)(addresses.userId, userId));
+      await db.update(addresses).set({ isDefault: false }).where((0, import_drizzle_orm64.eq)(addresses.userId, userId));
     }
     const id = import_crypto.default.randomUUID();
     await db.insert(addresses).values({
@@ -22836,7 +22985,7 @@ router44.post("/", authenticateToken, async (req, res) => {
       longitude: longitude ? String(longitude) : null,
       isDefault: isDefault || false
     });
-    const [saved] = await db.select().from(addresses).where((0, import_drizzle_orm63.eq)(addresses.id, id)).limit(1);
+    const [saved] = await db.select().from(addresses).where((0, import_drizzle_orm64.eq)(addresses.id, id)).limit(1);
     res.json({ success: true, address: saved });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -22848,15 +22997,15 @@ router44.patch(
   async (req, res) => {
     try {
       const userId = req.user.id;
-      const [existing] = await db.select().from(addresses).where((0, import_drizzle_orm63.eq)(addresses.id, req.params.id)).limit(1);
+      const [existing] = await db.select().from(addresses).where((0, import_drizzle_orm64.eq)(addresses.id, req.params.id)).limit(1);
       if (!existing) {
         return res.status(404).json({ error: "Direcci\xF3n no encontrada" });
       }
       if (existing.userId !== userId) {
         return res.status(403).json({ error: "No autorizado" });
       }
-      await db.update(addresses).set({ isDefault: false }).where((0, import_drizzle_orm63.eq)(addresses.userId, userId));
-      await db.update(addresses).set({ isDefault: true }).where((0, import_drizzle_orm63.eq)(addresses.id, req.params.id));
+      await db.update(addresses).set({ isDefault: false }).where((0, import_drizzle_orm64.eq)(addresses.userId, userId));
+      await db.update(addresses).set({ isDefault: true }).where((0, import_drizzle_orm64.eq)(addresses.id, req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -22866,14 +23015,14 @@ router44.patch(
 router44.delete("/:id", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const [existing] = await db.select().from(addresses).where((0, import_drizzle_orm63.eq)(addresses.id, req.params.id)).limit(1);
+    const [existing] = await db.select().from(addresses).where((0, import_drizzle_orm64.eq)(addresses.id, req.params.id)).limit(1);
     if (!existing) {
       return res.status(404).json({ error: "Direcci\xF3n no encontrada" });
     }
     if (existing.userId !== userId) {
       return res.status(403).json({ error: "No autorizado" });
     }
-    await db.delete(addresses).where((0, import_drizzle_orm63.eq)(addresses.id, req.params.id));
+    await db.delete(addresses).where((0, import_drizzle_orm64.eq)(addresses.id, req.params.id));
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -22885,7 +23034,7 @@ var addressRoutes_default = router44;
 var import_express45 = require("express");
 init_db();
 init_schema_mysql();
-var import_drizzle_orm64 = require("drizzle-orm");
+var import_drizzle_orm65 = require("drizzle-orm");
 init_enhancedPushService();
 var import_crypto2 = __toESM(require("crypto"));
 var router45 = (0, import_express45.Router)();
@@ -22912,7 +23061,7 @@ router45.post(
           error: "businessId, pickupAddress y dropoffAddress son requeridos"
         });
       }
-      const [business] = await db.select().from(businesses).where((0, import_drizzle_orm64.eq)(businesses.id, businessId)).limit(1);
+      const [business] = await db.select().from(businesses).where((0, import_drizzle_orm65.eq)(businesses.id, businessId)).limit(1);
       if (!business) {
         return res.status(404).json({ error: "Negocio no encontrado" });
       }
@@ -22952,7 +23101,7 @@ router45.post(
 );
 router45.get("/driver-mine", authenticateToken, async (req, res) => {
   try {
-    const list = await db.select().from(deliveryRequests).where((0, import_drizzle_orm64.eq)(deliveryRequests.driverId, req.user.id)).orderBy((0, import_drizzle_orm64.desc)(deliveryRequests.createdAt)).limit(50);
+    const list = await db.select().from(deliveryRequests).where((0, import_drizzle_orm65.eq)(deliveryRequests.driverId, req.user.id)).orderBy((0, import_drizzle_orm65.desc)(deliveryRequests.createdAt)).limit(50);
     res.json({ success: true, requests: list });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -22961,11 +23110,11 @@ router45.get("/driver-mine", authenticateToken, async (req, res) => {
 router45.get("/available", authenticateToken, async (req, res) => {
   try {
     const list = await db.select().from(deliveryRequests).where(
-      (0, import_drizzle_orm64.and)(
-        (0, import_drizzle_orm64.eq)(deliveryRequests.status, "pending"),
-        (0, import_drizzle_orm64.isNull)(deliveryRequests.driverId)
+      (0, import_drizzle_orm65.and)(
+        (0, import_drizzle_orm65.eq)(deliveryRequests.status, "pending"),
+        (0, import_drizzle_orm65.isNull)(deliveryRequests.driverId)
       )
-    ).orderBy((0, import_drizzle_orm64.desc)(deliveryRequests.createdAt)).limit(50);
+    ).orderBy((0, import_drizzle_orm65.desc)(deliveryRequests.createdAt)).limit(50);
     res.json({ success: true, requests: list });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -22974,11 +23123,11 @@ router45.get("/available", authenticateToken, async (req, res) => {
 router45.get("/mine", authenticateToken, async (req, res) => {
   try {
     const { businesses: bTable } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-    const ownerBusinesses = await db.select({ id: bTable.id }).from(bTable).where((0, import_drizzle_orm64.eq)(bTable.ownerId, req.user.id));
+    const ownerBusinesses = await db.select({ id: bTable.id }).from(bTable).where((0, import_drizzle_orm65.eq)(bTable.ownerId, req.user.id));
     const ids = ownerBusinesses.map((b) => b.id);
     if (!ids.length) return res.json({ success: true, requests: [] });
     const { inArray: inArray6 } = await import("drizzle-orm");
-    const list = await db.select().from(deliveryRequests).where(inArray6(deliveryRequests.businessId, ids)).orderBy((0, import_drizzle_orm64.desc)(deliveryRequests.createdAt)).limit(50);
+    const list = await db.select().from(deliveryRequests).where(inArray6(deliveryRequests.businessId, ids)).orderBy((0, import_drizzle_orm65.desc)(deliveryRequests.createdAt)).limit(50);
     res.json({ success: true, requests: list });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -22990,7 +23139,7 @@ router45.post("/:id/accept", authenticateToken, async (req, res) => {
     if (role !== "delivery_driver" && role !== "admin") {
       return res.status(403).json({ error: "No autorizado" });
     }
-    const [request] = await db.select().from(deliveryRequests).where((0, import_drizzle_orm64.eq)(deliveryRequests.id, req.params.id)).limit(1);
+    const [request] = await db.select().from(deliveryRequests).where((0, import_drizzle_orm65.eq)(deliveryRequests.id, req.params.id)).limit(1);
     if (!request) return res.status(404).json({ error: "Solicitud no encontrada" });
     if (request.status !== "pending" || request.driverId) {
       return res.status(400).json({ error: "Solicitud ya asignada" });
@@ -22999,7 +23148,7 @@ router45.post("/:id/accept", authenticateToken, async (req, res) => {
       status: "accepted",
       driverId: req.user.id,
       acceptedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm64.eq)(deliveryRequests.id, req.params.id));
+    }).where((0, import_drizzle_orm65.eq)(deliveryRequests.id, req.params.id));
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -23007,21 +23156,21 @@ router45.post("/:id/accept", authenticateToken, async (req, res) => {
 });
 router45.post("/:id/complete", authenticateToken, async (req, res) => {
   try {
-    const [request] = await db.select().from(deliveryRequests).where((0, import_drizzle_orm64.eq)(deliveryRequests.id, req.params.id)).limit(1);
+    const [request] = await db.select().from(deliveryRequests).where((0, import_drizzle_orm65.eq)(deliveryRequests.id, req.params.id)).limit(1);
     if (!request) return res.status(404).json({ error: "Solicitud no encontrada" });
     if (request.driverId !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({ error: "No autorizado" });
     }
-    await db.update(deliveryRequests).set({ status: "delivered", deliveredAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm64.eq)(deliveryRequests.id, req.params.id));
+    await db.update(deliveryRequests).set({ status: "delivered", deliveredAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm65.eq)(deliveryRequests.id, req.params.id));
     try {
       const { wallets: wallets2, transactions: transactions4 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const driverId = request.driverId;
-      const [wallet] = await db.select().from(wallets2).where((0, import_drizzle_orm64.eq)(wallets2.userId, driverId)).limit(1);
+      const [wallet] = await db.select().from(wallets2).where((0, import_drizzle_orm65.eq)(wallets2.userId, driverId)).limit(1);
       if (wallet) {
         await db.update(wallets2).set({
           balance: wallet.balance + request.fee,
           totalEarned: wallet.totalEarned + request.fee
-        }).where((0, import_drizzle_orm64.eq)(wallets2.userId, driverId));
+        }).where((0, import_drizzle_orm65.eq)(wallets2.userId, driverId));
       }
       await db.insert(transactions4).values({
         id: import_crypto2.default.randomUUID(),
@@ -23050,7 +23199,7 @@ var deliveryRequestRoutes_default = router45;
 var import_express46 = __toESM(require("express"));
 init_db();
 init_schema_mysql();
-var import_drizzle_orm65 = require("drizzle-orm");
+var import_drizzle_orm66 = require("drizzle-orm");
 init_stripeClient();
 var router46 = import_express46.default.Router();
 router46.get("/publishable-key", async (_req, res) => {
@@ -23091,9 +23240,9 @@ router46.post("/create-payment-sheet", authenticateToken, async (req, res) => {
     }
     const stripe2 = getStripe();
     const { businesses: businesses3, orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-    const { sql: sql18 } = await import("drizzle-orm");
+    const { sql: sql19 } = await import("drizzle-orm");
     const [userRows] = await db.execute(
-      sql18`SELECT id, name, stripe_customer_id FROM users WHERE id = ${req.user.id} LIMIT 1`
+      sql19`SELECT id, name, stripe_customer_id FROM users WHERE id = ${req.user.id} LIMIT 1`
     );
     const user = userRows[0];
     let customerId = user?.stripe_customer_id;
@@ -23104,7 +23253,7 @@ router46.post("/create-payment-sheet", authenticateToken, async (req, res) => {
       });
       customerId = customer.id;
       await db.execute(
-        sql18`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${req.user.id}`
+        sql19`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${req.user.id}`
       );
     }
     const ephemeralKey = await stripe2.ephemeralKeys.create(
@@ -23139,7 +23288,7 @@ router46.post("/create-payment-sheet", authenticateToken, async (req, res) => {
         businessEarnings: subtotalCents,
         deliveryEarnings: deliveryFee || 0,
         updatedAt: /* @__PURE__ */ new Date()
-      }).where((0, import_drizzle_orm65.eq)(orders2.id, orderId));
+      }).where((0, import_drizzle_orm66.eq)(orders2.id, orderId));
     }
     res.json({
       paymentIntent: paymentIntent.client_secret,
@@ -23193,7 +23342,7 @@ router46.post("/create-payment-intent", authenticateToken, async (req, res) => {
     let business = null;
     if (businessId && !isGiftCard && !isSubscription) {
       const { businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-      const [b] = await db.select().from(businesses3).where((0, import_drizzle_orm65.eq)(businesses3.id, businessId)).limit(1);
+      const [b] = await db.select().from(businesses3).where((0, import_drizzle_orm66.eq)(businesses3.id, businessId)).limit(1);
       if (!b) return res.status(404).json({ message: "Negocio no encontrado" });
       business = b;
     }
@@ -23227,7 +23376,7 @@ router46.post("/create-payment-intent", authenticateToken, async (req, res) => {
         deliveryEarnings: deliveryFee || 0,
         // Delivery gets 100% of delivery fee
         updatedAt: /* @__PURE__ */ new Date()
-      }).where((0, import_drizzle_orm65.eq)(orders2.id, orderId));
+      }).where((0, import_drizzle_orm66.eq)(orders2.id, orderId));
     }
     res.json({ clientSecret: paymentIntent.client_secret });
   } catch (error) {
@@ -23243,7 +23392,7 @@ router46.post("/create-payment-intent", authenticateToken, async (req, res) => {
 });
 router46.get("/payment-method/:userId", authenticateToken, async (req, res) => {
   try {
-    const [user] = await db.select().from(users).where((0, import_drizzle_orm65.eq)(users.id, req.params.userId)).limit(1);
+    const [user] = await db.select().from(users).where((0, import_drizzle_orm66.eq)(users.id, req.params.userId)).limit(1);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -23272,7 +23421,7 @@ router46.post("/create-setup-intent", authenticateToken, async (req, res) => {
     const stripe2 = (await import("stripe")).default;
     const stripeClient = new stripe2(process.env.STRIPE_SECRET_KEY);
     const { userId } = req.body;
-    const [user] = await db.select().from(users).where((0, import_drizzle_orm65.eq)(users.id, userId)).limit(1);
+    const [user] = await db.select().from(users).where((0, import_drizzle_orm66.eq)(users.id, userId)).limit(1);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -23282,7 +23431,7 @@ router46.post("/create-setup-intent", authenticateToken, async (req, res) => {
         metadata: { userId }
       });
       customerId = customer.id;
-      await db.update(users).set({ stripeCustomerId: customerId }).where((0, import_drizzle_orm65.eq)(users.id, userId));
+      await db.update(users).set({ stripeCustomerId: customerId }).where((0, import_drizzle_orm66.eq)(users.id, userId));
     }
     const setupIntent = await stripeClient.setupIntents.create({
       customer: customerId,
@@ -23306,7 +23455,7 @@ router46.post("/save-payment-method", authenticateToken, async (req, res) => {
       stripePaymentMethodId: paymentMethodId,
       cardLast4: paymentMethod.card?.last4 || null,
       cardBrand: paymentMethod.card?.brand || null
-    }).where((0, import_drizzle_orm65.eq)(users.id, userId));
+    }).where((0, import_drizzle_orm66.eq)(users.id, userId));
     res.json({
       success: true,
       card: {
@@ -23327,7 +23476,7 @@ router46.delete(
         stripePaymentMethodId: null,
         cardLast4: null,
         cardBrand: null
-      }).where((0, import_drizzle_orm65.eq)(users.id, req.params.userId));
+      }).where((0, import_drizzle_orm66.eq)(users.id, req.params.userId));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -23349,7 +23498,7 @@ router46.post(
         businesses: businesses3,
         users: usersTable
       } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-      const [order] = await db.select().from(orders2).where((0, import_drizzle_orm65.eq)(orders2.id, req.params.orderId)).limit(1);
+      const [order] = await db.select().from(orders2).where((0, import_drizzle_orm66.eq)(orders2.id, req.params.orderId)).limit(1);
       if (!order) return res.status(404).json({ error: "Order not found" });
       if (order.userId !== req.user.id)
         return res.status(403).json({ error: "Not authorized" });
@@ -23359,13 +23508,13 @@ router46.post(
         return res.status(400).json({ error: "Already confirmed" });
       if (!order.paymentIntentId)
         return res.status(400).json({ error: "No payment found" });
-      const [business] = await db.select().from(businesses3).where((0, import_drizzle_orm65.eq)(businesses3.id, order.businessId)).limit(1);
+      const [business] = await db.select().from(businesses3).where((0, import_drizzle_orm66.eq)(businesses3.id, order.businessId)).limit(1);
       if (!business)
         return res.status(404).json({ error: "Business not found" });
       const hasStripeConnect = !!business.stripeAccountId;
       let driverAccount = null;
       if (order.deliveryPersonId) {
-        const [driver] = await db.select().from(usersTable).where((0, import_drizzle_orm65.eq)(usersTable.id, order.deliveryPersonId)).limit(1);
+        const [driver] = await db.select().from(usersTable).where((0, import_drizzle_orm66.eq)(usersTable.id, order.deliveryPersonId)).limit(1);
         driverAccount = driver?.stripeAccountId;
       }
       const businessAmount = order.businessEarnings || order.productosBase || order.subtotal || 0;
@@ -23411,7 +23560,7 @@ router46.post(
         driverPaymentStatus: driverTransferId ? "completed" : "pending",
         driverPaidAt: driverTransferId ? /* @__PURE__ */ new Date() : null,
         updatedAt: /* @__PURE__ */ new Date()
-      }).where((0, import_drizzle_orm65.eq)(orders2.id, order.id));
+      }).where((0, import_drizzle_orm66.eq)(orders2.id, order.id));
       try {
         const { LoyaltyService: LoyaltyService2 } = await Promise.resolve().then(() => (init_loyaltyService(), loyaltyService_exports));
         await LoyaltyService2.awardPointsForOrder(
@@ -23451,7 +23600,7 @@ router46.post(
         return res.status(400).json({ error: "subscriptionId y amount son requeridos" });
       }
       const { subscriptions: subscriptions2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-      const [sub] = await db.select().from(subscriptions2).where((0, import_drizzle_orm65.eq)(subscriptions2.id, subscriptionId)).limit(1);
+      const [sub] = await db.select().from(subscriptions2).where((0, import_drizzle_orm66.eq)(subscriptions2.id, subscriptionId)).limit(1);
       if (!sub || sub.userId !== req.user.id) {
         return res.status(404).json({ error: "Suscripci\xF3n no encontrada" });
       }
@@ -23475,10 +23624,10 @@ router46.post(
     try {
       const { subscriptionId } = req.params;
       const { subscriptions: subscriptions2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-      const { sql: sql18 } = await import("drizzle-orm");
-      let [sub] = await db.select().from(subscriptions2).where((0, import_drizzle_orm65.eq)(subscriptions2.id, subscriptionId)).limit(1);
+      const { sql: sql19 } = await import("drizzle-orm");
+      let [sub] = await db.select().from(subscriptions2).where((0, import_drizzle_orm66.eq)(subscriptions2.id, subscriptionId)).limit(1);
       if (!sub || sub.userId !== req.user.id) {
-        const [byUser] = await db.select().from(subscriptions2).where((0, import_drizzle_orm65.eq)(subscriptions2.userId, req.user.id)).limit(1);
+        const [byUser] = await db.select().from(subscriptions2).where((0, import_drizzle_orm66.eq)(subscriptions2.userId, req.user.id)).limit(1);
         if (!byUser)
           return res.status(404).json({ error: "Suscripci\xF3n no encontrada" });
         sub = byUser;
@@ -23493,7 +23642,7 @@ router46.post(
         autoRenew: true,
         cancelledAt: null
         // Limpiar cancelación previa si la hubiera
-      }).where((0, import_drizzle_orm65.eq)(subscriptions2.userId, req.user.id));
+      }).where((0, import_drizzle_orm66.eq)(subscriptions2.userId, req.user.id));
       const { SubscriptionService: SubscriptionService2 } = await Promise.resolve().then(() => (init_subscriptionService(), subscriptionService_exports));
       await SubscriptionService2.applyPlanActivationSideEffects(
         sub.userId,
@@ -23517,7 +23666,7 @@ router46.post(
 );
 router46.get("/cards", authenticateToken, async (req, res) => {
   try {
-    const [user] = await db.select().from(users).where((0, import_drizzle_orm65.eq)(users.id, req.user.id)).limit(1);
+    const [user] = await db.select().from(users).where((0, import_drizzle_orm66.eq)(users.id, req.user.id)).limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
     if (!user.stripePaymentMethodId || !user.cardLast4) {
       return res.json({ cards: [] });
@@ -23542,7 +23691,7 @@ router46.get("/history", authenticateToken, async (req, res) => {
   try {
     const { orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { desc: desc18 } = await import("drizzle-orm");
-    const userOrders = await db.select().from(orders2).where((0, import_drizzle_orm65.eq)(orders2.userId, req.user.id)).orderBy(desc18(orders2.createdAt)).limit(20);
+    const userOrders = await db.select().from(orders2).where((0, import_drizzle_orm66.eq)(orders2.userId, req.user.id)).orderBy(desc18(orders2.createdAt)).limit(20);
     const payments2 = userOrders.filter((o) => o.stripePaymentIntentId || o.paymentMethod).map((o) => ({
       payment: {
         id: o.stripePaymentIntentId || o.id,
@@ -23571,7 +23720,7 @@ router46.delete("/cards/:cardId", authenticateToken, async (req, res) => {
       stripePaymentMethodId: null,
       cardLast4: null,
       cardBrand: null
-    }).where((0, import_drizzle_orm65.eq)(users.id, req.user.id));
+    }).where((0, import_drizzle_orm66.eq)(users.id, req.user.id));
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -23583,36 +23732,36 @@ var stripePaymentRoutes_default = router46;
 var import_express47 = require("express");
 init_db();
 init_stripeClient();
-var import_drizzle_orm66 = require("drizzle-orm");
+var import_drizzle_orm67 = require("drizzle-orm");
 init_logger();
 var router47 = (0, import_express47.Router)();
 async function getStripeAccountId(userId) {
   const [rows] = await db.execute(
-    import_drizzle_orm66.sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`
+    import_drizzle_orm67.sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`
   );
   return rows[0]?.stripe_account_id || null;
 }
 async function saveStripeAccountId(userId, accountId, role) {
   await db.execute(
-    import_drizzle_orm66.sql`UPDATE users SET stripe_account_id = ${accountId} WHERE id = ${userId}`
+    import_drizzle_orm67.sql`UPDATE users SET stripe_account_id = ${accountId} WHERE id = ${userId}`
   );
   if (role === "business_owner") {
     await db.execute(
-      import_drizzle_orm66.sql`UPDATE businesses SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE owner_id = ${userId}`
+      import_drizzle_orm67.sql`UPDATE businesses SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE owner_id = ${userId}`
     );
   }
   if (role === "delivery_driver") {
     await db.execute(
-      import_drizzle_orm66.sql`UPDATE delivery_drivers SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE user_id = ${userId}`
+      import_drizzle_orm67.sql`UPDATE delivery_drivers SET stripe_account_id = ${accountId}, stripe_account_status = 'pending' WHERE user_id = ${userId}`
     );
   }
 }
 async function markAccountActive(stripeAccountId) {
   await db.execute(
-    import_drizzle_orm66.sql`UPDATE businesses SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`
+    import_drizzle_orm67.sql`UPDATE businesses SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`
   );
   await db.execute(
-    import_drizzle_orm66.sql`UPDATE delivery_drivers SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`
+    import_drizzle_orm67.sql`UPDATE delivery_drivers SET stripe_account_status = 'active' WHERE stripe_account_id = ${stripeAccountId}`
   );
   logger.info(`\u2705 Stripe account marked active: ${stripeAccountId}`);
 }
@@ -23692,7 +23841,7 @@ router47.post("/onboard", authenticateToken, async (req, res) => {
     let accountId = await getStripeAccountId(req.user.id);
     if (!accountId) {
       const [userRows] = await db.execute(
-        import_drizzle_orm66.sql`SELECT name, email FROM users WHERE id = ${req.user.id} LIMIT 1`
+        import_drizzle_orm67.sql`SELECT name, email FROM users WHERE id = ${req.user.id} LIMIT 1`
       );
       const user = userRows[0];
       const account = await stripe2.accounts.create({
@@ -23748,7 +23897,7 @@ router47.get("/return", async (req, res) => {
     try {
       const stripe2 = getStripe();
       const [userRows] = await db.execute(
-        import_drizzle_orm66.sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`
+        import_drizzle_orm67.sql`SELECT stripe_account_id FROM users WHERE id = ${userId} LIMIT 1`
       );
       const stripeAccountId = userRows[0]?.stripe_account_id;
       if (stripeAccountId) {
@@ -23777,15 +23926,15 @@ router47.post("/disconnect", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     await db.execute(
-      import_drizzle_orm66.sql`UPDATE users SET stripe_account_id = NULL WHERE id = ${userId}`
+      import_drizzle_orm67.sql`UPDATE users SET stripe_account_id = NULL WHERE id = ${userId}`
     );
     if (req.user.role === "business_owner") {
       await db.execute(
-        import_drizzle_orm66.sql`UPDATE businesses SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE owner_id = ${userId}`
+        import_drizzle_orm67.sql`UPDATE businesses SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE owner_id = ${userId}`
       );
     } else if (req.user.role === "delivery_driver") {
       await db.execute(
-        import_drizzle_orm66.sql`UPDATE delivery_drivers SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE user_id = ${userId}`
+        import_drizzle_orm67.sql`UPDATE delivery_drivers SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE user_id = ${userId}`
       );
     }
     res.json({ success: true, message: "Cuenta Stripe desvinculada" });
@@ -23820,13 +23969,13 @@ router47.get("/dashboard-link", authenticateToken, async (req, res) => {
 router47.delete("/disconnect", authenticateToken, async (req, res) => {
   try {
     await db.execute(
-      import_drizzle_orm66.sql`UPDATE users SET stripe_account_id = NULL WHERE id = ${req.user.id}`
+      import_drizzle_orm67.sql`UPDATE users SET stripe_account_id = NULL WHERE id = ${req.user.id}`
     );
     await db.execute(
-      import_drizzle_orm66.sql`UPDATE businesses SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE owner_id = ${req.user.id}`
+      import_drizzle_orm67.sql`UPDATE businesses SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE owner_id = ${req.user.id}`
     );
     await db.execute(
-      import_drizzle_orm66.sql`UPDATE delivery_drivers SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE user_id = ${req.user.id}`
+      import_drizzle_orm67.sql`UPDATE delivery_drivers SET stripe_account_id = NULL, stripe_account_status = 'not_connected' WHERE user_id = ${req.user.id}`
     );
     res.json({ success: true });
   } catch (error) {
@@ -23837,14 +23986,14 @@ var stripeConnect_default = router47;
 
 // server/routes/pickup.ts
 var import_express48 = __toESM(require("express"));
-var import_drizzle_orm67 = require("drizzle-orm");
+var import_drizzle_orm68 = require("drizzle-orm");
 init_pickupService();
 var router48 = import_express48.default.Router();
 router48.get("/:orderId/info", authenticateToken, async (req, res) => {
   try {
     const { orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm67.eq)(orders2.id, req.params.orderId)).limit(1);
+    const [order] = await db2.select().from(orders2).where((0, import_drizzle_orm68.eq)(orders2.id, req.params.orderId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -23879,7 +24028,7 @@ router48.post("/:orderId/arrived", authenticateToken, async (req, res) => {
   try {
     const { orders: orders2, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm67.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm67.eq)(orders2.id, req.params.orderId)).limit(1);
+    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm68.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm68.eq)(orders2.id, req.params.orderId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -23907,7 +24056,7 @@ router48.post("/:orderId/update-time", authenticateToken, async (req, res) => {
     if (!estimatedMinutes || estimatedMinutes < 5 || estimatedMinutes > 120) {
       return res.status(400).json({ error: "Tiempo estimado inv\xE1lido (5-120 min)" });
     }
-    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm67.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm67.eq)(orders2.id, req.params.orderId)).limit(1);
+    const [order] = await db2.select({ order: orders2, business: businesses3 }).from(orders2).leftJoin(businesses3, (0, import_drizzle_orm68.eq)(orders2.businessId, businesses3.id)).where((0, import_drizzle_orm68.eq)(orders2.id, req.params.orderId)).limit(1);
     if (!order) {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
@@ -23916,7 +24065,7 @@ router48.post("/:orderId/update-time", authenticateToken, async (req, res) => {
     }
     await db2.update(orders2).set({
       estimatedPickupTime: estimatedMinutes
-    }).where((0, import_drizzle_orm67.eq)(orders2.id, req.params.orderId));
+    }).where((0, import_drizzle_orm68.eq)(orders2.id, req.params.orderId));
     const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
     await sendPushToUser2(order.order.userId, {
       title: "\u23F1\uFE0F Tiempo actualizado",
@@ -23963,7 +24112,7 @@ var import_express49 = __toESM(require("express"));
 init_cloudinaryService();
 init_db();
 init_schema_mysql();
-var import_drizzle_orm68 = require("drizzle-orm");
+var import_drizzle_orm69 = require("drizzle-orm");
 var router49 = import_express49.default.Router();
 router49.post("/upload-documents", async (req, res) => {
   try {
@@ -24013,7 +24162,7 @@ router49.post("/upload-documents", async (req, res) => {
         "profiles",
         `profile-${userId}`
       );
-      await db.update(users).set({ profileImage: uploadedUrls.profilePhoto }).where((0, import_drizzle_orm68.eq)(users.id, userId));
+      await db.update(users).set({ profileImage: uploadedUrls.profilePhoto }).where((0, import_drizzle_orm69.eq)(users.id, userId));
     }
     if (vehiclePhoto) {
       uploadedUrls.vehiclePhoto = await CloudinaryService.uploadImage(
@@ -24036,8 +24185,17 @@ router49.post("/upload-documents", async (req, res) => {
         `insurance-${userId}`
       );
     }
+    const userUpdates = { verificationStatus: "pending" };
+    if (uploadedUrls.idDocument) userUpdates.idDocumentUrl = uploadedUrls.idDocument;
+    if (uploadedUrls.idDocumentBack)
+      userUpdates.idDocumentBackUrl = uploadedUrls.idDocumentBack;
+    if (uploadedUrls.autonomoDocument)
+      userUpdates.autonomoDocumentUrl = uploadedUrls.autonomoDocument;
+    if (Object.keys(userUpdates).length > 1) {
+      await db.update(users).set(userUpdates).where((0, import_drizzle_orm69.eq)(users.id, userId));
+    }
     if (vehicleType) {
-      const [existingDriver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm68.eq)(deliveryDrivers.userId, userId)).limit(1);
+      const [existingDriver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm69.eq)(deliveryDrivers.userId, userId)).limit(1);
       const driverData = {
         vehicleType,
         vehiclePlate: vehiclePlate || null,
@@ -24050,7 +24208,7 @@ router49.post("/upload-documents", async (req, res) => {
         vehicleInsurancePhoto: uploadedUrls.insuranceDocument || null
       };
       if (existingDriver) {
-        await db.update(deliveryDrivers).set(driverData).where((0, import_drizzle_orm68.eq)(deliveryDrivers.userId, userId));
+        await db.update(deliveryDrivers).set(driverData).where((0, import_drizzle_orm69.eq)(deliveryDrivers.userId, userId));
       } else {
         await db.insert(deliveryDrivers).values({
           id: crypto.randomUUID(),
@@ -24059,7 +24217,7 @@ router49.post("/upload-documents", async (req, res) => {
           isAvailable: false
         });
       }
-      await db.update(users).set({ verificationStatus: "pending" }).where((0, import_drizzle_orm68.eq)(users.id, userId));
+      await db.update(users).set({ verificationStatus: "pending" }).where((0, import_drizzle_orm69.eq)(users.id, userId));
     }
     res.json({
       success: true,
@@ -24077,7 +24235,7 @@ var registration_default = router49;
 var import_express50 = __toESM(require("express"));
 init_db();
 init_schema_mysql();
-var import_drizzle_orm69 = require("drizzle-orm");
+var import_drizzle_orm70 = require("drizzle-orm");
 function isBusinessOpenLocal(openingHoursRaw, isOpenManual, now = /* @__PURE__ */ new Date()) {
   const manualFlag = isOpenManual === true || isOpenManual === 1 || isOpenManual === "1";
   if (!manualFlag) return false;
@@ -24131,10 +24289,10 @@ router50.get("/nearby-businesses", authenticateToken, async (req, res) => {
       openingHours: businesses.openingHours,
       ownerId: businesses.ownerId
     }).from(businesses).where(
-      (0, import_drizzle_orm69.and)(
-        (0, import_drizzle_orm69.eq)(businesses.isActive, true),
-        import_drizzle_orm69.sql`${businesses.latitude} IS NOT NULL`,
-        import_drizzle_orm69.sql`${businesses.longitude} IS NOT NULL`
+      (0, import_drizzle_orm70.and)(
+        (0, import_drizzle_orm70.eq)(businesses.isActive, true),
+        import_drizzle_orm70.sql`${businesses.latitude} IS NOT NULL`,
+        import_drizzle_orm70.sql`${businesses.longitude} IS NOT NULL`
       )
     );
     const nearby = allBusinesses.map((biz) => {
@@ -24224,7 +24382,7 @@ var mapData_default = router50;
 var import_express51 = __toESM(require("express"));
 init_db();
 init_schema_mysql();
-var import_drizzle_orm70 = require("drizzle-orm");
+var import_drizzle_orm71 = require("drizzle-orm");
 var import_crypto3 = require("crypto");
 var router51 = import_express51.default.Router();
 router51.get(
@@ -24260,7 +24418,7 @@ router51.put(
         isActive,
         color,
         updatedAt: /* @__PURE__ */ new Date()
-      }).where((0, import_drizzle_orm70.eq)(subscriptionPlans.planKey, planKey));
+      }).where((0, import_drizzle_orm71.eq)(subscriptionPlans.planKey, planKey));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -24301,7 +24459,7 @@ router51.put(
         benefitType,
         benefitValue: parseInt(benefitValue) || 0,
         description
-      }).where((0, import_drizzle_orm70.eq)(subscriptionBenefits.id, req.params.id));
+      }).where((0, import_drizzle_orm71.eq)(subscriptionBenefits.id, req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -24314,7 +24472,7 @@ router51.delete(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      await db.delete(subscriptionBenefits).where((0, import_drizzle_orm70.eq)(subscriptionBenefits.id, req.params.id));
+      await db.delete(subscriptionBenefits).where((0, import_drizzle_orm71.eq)(subscriptionBenefits.id, req.params.id));
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -24342,7 +24500,7 @@ router51.get(
         createdAt: subscriptions.createdAt,
         userName: users.name,
         userEmail: users.email
-      }).from(subscriptions).leftJoin(users, (0, import_drizzle_orm70.eq)(subscriptions.userId, users.id)).where((0, import_drizzle_orm70.and)(import_drizzle_orm70.sql`${subscriptions.plan} != 'free'`)).orderBy((0, import_drizzle_orm70.desc)(subscriptions.createdAt));
+      }).from(subscriptions).leftJoin(users, (0, import_drizzle_orm71.eq)(subscriptions.userId, users.id)).where((0, import_drizzle_orm71.and)(import_drizzle_orm71.sql`${subscriptions.plan} != 'free'`)).orderBy((0, import_drizzle_orm71.desc)(subscriptions.createdAt));
       const result = subs.map((sub) => {
         const endDate = sub.currentPeriodEnd ? new Date(sub.currentPeriodEnd) : null;
         const daysLeft = endDate ? Math.max(
@@ -24386,7 +24544,7 @@ var adminSubscriptionPlans_default = router51;
 var import_express52 = __toESM(require("express"));
 init_db();
 init_schema_mysql();
-var import_drizzle_orm71 = require("drizzle-orm");
+var import_drizzle_orm72 = require("drizzle-orm");
 var router52 = import_express52.default.Router();
 router52.get(
   "/tracking/global",
@@ -24394,7 +24552,7 @@ router52.get(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const allOrders = await db.select().from(orders).orderBy((0, import_drizzle_orm71.desc)(orders.createdAt)).limit(50);
+      const allOrders = await db.select().from(orders).orderBy((0, import_drizzle_orm72.desc)(orders.createdAt)).limit(50);
       const result = [];
       for (const order of allOrders) {
         if (!order.businessId) continue;
@@ -24414,7 +24572,7 @@ router52.get(
           categories: businesses.categories,
           latitude: businesses.latitude,
           longitude: businesses.longitude
-        }).from(businesses).where((0, import_drizzle_orm71.eq)(businesses.id, order.businessId)).limit(1);
+        }).from(businesses).where((0, import_drizzle_orm72.eq)(businesses.id, order.businessId)).limit(1);
         if (biz && biz.latitude && biz.longitude) {
           item.business = {
             name: biz.name || "Negocio",
@@ -24435,9 +24593,9 @@ router52.get(
             currentLatitude: deliveryDrivers.currentLatitude,
             currentLongitude: deliveryDrivers.currentLongitude,
             vehicleType: deliveryDrivers.vehicleType
-          }).from(deliveryDrivers).where((0, import_drizzle_orm71.eq)(deliveryDrivers.userId, order.deliveryPersonId)).limit(1);
+          }).from(deliveryDrivers).where((0, import_drizzle_orm72.eq)(deliveryDrivers.userId, order.deliveryPersonId)).limit(1);
           if (driverRec && driverRec.currentLatitude && driverRec.currentLongitude) {
-            const [driverUser] = await db.select({ name: users.name }).from(users).where((0, import_drizzle_orm71.eq)(users.id, order.deliveryPersonId)).limit(1);
+            const [driverUser] = await db.select({ name: users.name }).from(users).where((0, import_drizzle_orm72.eq)(users.id, order.deliveryPersonId)).limit(1);
             item.driver = {
               name: driverUser?.name || "Repartidor",
               vehicleType: driverRec.vehicleType,
@@ -24634,7 +24792,7 @@ var businessCategories_default = router53;
 var import_express54 = __toESM(require("express"));
 init_db();
 init_schema_mysql();
-var import_drizzle_orm72 = require("drizzle-orm");
+var import_drizzle_orm73 = require("drizzle-orm");
 init_cloudinaryService();
 var router54 = import_express54.default.Router();
 var REQUIRED_DOCS = [
@@ -24667,22 +24825,22 @@ router54.post("/submit", async (req, res) => {
       vehicleModel,
       vehicleColor
     } = req.body;
-    const [user] = await db.select().from(users).where((0, import_drizzle_orm72.eq)(users.id, userId)).limit(1);
+    const [user] = await db.select().from(users).where((0, import_drizzle_orm73.eq)(users.id, userId)).limit(1);
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
     if (user.role !== "delivery_driver" && !req.body.applyAsDriver) {
-      await db.update(users).set({ role: "delivery_driver", verificationStatus: "pending" }).where((0, import_drizzle_orm72.eq)(users.id, userId));
+      await db.update(users).set({ role: "delivery_driver", verificationStatus: "pending" }).where((0, import_drizzle_orm73.eq)(users.id, userId));
     } else {
-      await db.update(users).set({ verificationStatus: "pending", updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm72.eq)(users.id, userId));
+      await db.update(users).set({ verificationStatus: "pending", updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm73.eq)(users.id, userId));
     }
     const userUpdates = { verificationStatus: "pending" };
     if (idDocumentUrl) userUpdates.idDocumentUrl = idDocumentUrl;
     if (idDocumentBackUrl) userUpdates.idDocumentBackUrl = idDocumentBackUrl;
     if (autonomoDocumentUrl)
       userUpdates.autonomoDocumentUrl = autonomoDocumentUrl;
-    await db.update(users).set(userUpdates).where((0, import_drizzle_orm72.eq)(users.id, userId));
-    const [existingDriver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm72.eq)(deliveryDrivers.userId, userId)).limit(1);
+    await db.update(users).set(userUpdates).where((0, import_drizzle_orm73.eq)(users.id, userId));
+    const [existingDriver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm73.eq)(deliveryDrivers.userId, userId)).limit(1);
     const driverUpdates = {
       vehicleType: vehicleType || null,
       vehiclePlate: vehiclePlate || null,
@@ -24696,7 +24854,7 @@ router54.post("/submit", async (req, res) => {
       vehicleLicensePhoto: vehicleLicensePhoto || null
     };
     if (existingDriver) {
-      await db.update(deliveryDrivers).set(driverUpdates).where((0, import_drizzle_orm72.eq)(deliveryDrivers.userId, userId));
+      await db.update(deliveryDrivers).set(driverUpdates).where((0, import_drizzle_orm73.eq)(deliveryDrivers.userId, userId));
     } else {
       await db.insert(deliveryDrivers).values({
         id: crypto.randomUUID(),
@@ -24730,11 +24888,11 @@ router54.post("/submit", async (req, res) => {
 router54.get("/status", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const [user] = await db.select().from(users).where((0, import_drizzle_orm72.eq)(users.id, userId)).limit(1);
+    const [user] = await db.select().from(users).where((0, import_drizzle_orm73.eq)(users.id, userId)).limit(1);
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
-    const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm72.eq)(deliveryDrivers.userId, userId)).limit(1);
+    const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm73.eq)(deliveryDrivers.userId, userId)).limit(1);
     const docs = {
       idDocumentUrl: !!user.idDocumentUrl,
       idDocumentBackUrl: !!user.idDocumentBackUrl,
@@ -24780,7 +24938,7 @@ router54.get("/status", authenticateToken, async (req, res) => {
 router54.post("/reset", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const [user] = await db.select().from(users).where((0, import_drizzle_orm72.eq)(users.id, userId)).limit(1);
+    const [user] = await db.select().from(users).where((0, import_drizzle_orm73.eq)(users.id, userId)).limit(1);
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
@@ -24792,7 +24950,7 @@ router54.post("/reset", authenticateToken, async (req, res) => {
     await db.update(users).set({
       verificationStatus: "pending",
       verificationNotes: null
-    }).where((0, import_drizzle_orm72.eq)(users.id, userId));
+    }).where((0, import_drizzle_orm73.eq)(users.id, userId));
     res.json({
       success: true,
       message: "Verificaci\xF3n reiniciada. Por favor, env\xEDa tus documentos nuevamente."
@@ -24842,13 +25000,13 @@ router54.post("/upload-document", authenticateToken, async (req, res) => {
     if (isUserField) {
       const updates = { verificationStatus: "pending" };
       updates[userFieldMap[documentType]] = url;
-      await db.update(users).set(updates).where((0, import_drizzle_orm72.eq)(users.id, userId));
+      await db.update(users).set(updates).where((0, import_drizzle_orm73.eq)(users.id, userId));
     } else {
-      const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm72.eq)(deliveryDrivers.userId, userId)).limit(1);
+      const [driver] = await db.select().from(deliveryDrivers).where((0, import_drizzle_orm73.eq)(deliveryDrivers.userId, userId)).limit(1);
       const updates = {};
       updates[driverFieldMap[documentType]] = url;
       if (driver) {
-        await db.update(deliveryDrivers).set(updates).where((0, import_drizzle_orm72.eq)(deliveryDrivers.userId, userId));
+        await db.update(deliveryDrivers).set(updates).where((0, import_drizzle_orm73.eq)(deliveryDrivers.userId, userId));
       } else {
         await db.insert(deliveryDrivers).values({
           id: crypto.randomUUID(),
@@ -24858,11 +25016,11 @@ router54.post("/upload-document", authenticateToken, async (req, res) => {
           vehicleType: null
         });
       }
-      await db.update(users).set({ verificationStatus: "pending" }).where((0, import_drizzle_orm72.eq)(users.id, userId));
+      await db.update(users).set({ verificationStatus: "pending" }).where((0, import_drizzle_orm73.eq)(users.id, userId));
     }
     try {
       const { notifyAdmins: notifyAdmins2 } = await Promise.resolve().then(() => (init_websocket(), websocket_exports));
-      const [user] = await db.select({ name: users.name }).from(users).where((0, import_drizzle_orm72.eq)(users.id, userId)).limit(1);
+      const [user] = await db.select({ name: users.name }).from(users).where((0, import_drizzle_orm73.eq)(users.id, userId)).limit(1);
       notifyAdmins2({
         type: "document_updated",
         userId,
