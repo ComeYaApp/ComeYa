@@ -235,8 +235,8 @@ router.post("/", authenticateToken, async (req, res) => {
     if ((!finalDeliveryLat || !finalDeliveryLng) && deliveryAddress) {
       try {
         const GMAPS_KEY =
-          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
           process.env.GOOGLE_MAPS_API_KEY ||
+          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
           "";
         if (GMAPS_KEY) {
           const addrText =

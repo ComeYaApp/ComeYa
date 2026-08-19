@@ -830,8 +830,8 @@ router.post(
     try {
       const { db } = await import("../db");
       const GMAPS_KEY =
-        process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
         process.env.GOOGLE_MAPS_API_KEY ||
+        process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
         "";
       if (!GMAPS_KEY)
         return res

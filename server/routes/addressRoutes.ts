@@ -32,8 +32,8 @@ async function geocodeAddress(
   city: string,
 ): Promise<{ lat: string; lng: string } | null> {
   const GMAPS_KEY =
-    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
     process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
     "";
   if (!GMAPS_KEY) return null;
   const base = `${street}, ${city || "Soria"}`;

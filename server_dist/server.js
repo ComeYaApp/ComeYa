@@ -10956,7 +10956,7 @@ router2.post(
           newBusiness.longitude = String(cached.lng);
         } else {
           try {
-            const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+            const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
             if (GMAPS_KEY) {
               const query = encodeURIComponent(`${address}, Soria, Espa\xF1a`);
               const geoRes = await fetch(
@@ -11092,7 +11092,7 @@ router2.post(
           newBusiness.longitude = String(cached.lng);
         } else {
           try {
-            const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+            const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
             if (GMAPS_KEY) {
               const query = encodeURIComponent(`${address}, Soria, Espa\xF1a`);
               const geoRes = await fetch(
@@ -11199,7 +11199,7 @@ router2.get("/:id", async (req, res) => {
     console.log(`\u2705 Found business: ${business.name}`);
     if ((!business.latitude || !business.longitude) && business.address) {
       try {
-        const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+        const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
         if (GMAPS_KEY) {
           const base = String(business.address);
           const query = encodeURIComponent(
@@ -11324,7 +11324,7 @@ router2.put(
           await db2.update(businesses3).set({ latitude: String(cached.lat), longitude: String(cached.lng) }).where((0, import_drizzle_orm10.eq)(businesses3.id, req.params.id));
         } else {
           try {
-            const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+            const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
             if (GMAPS_KEY) {
               const query = encodeURIComponent(
                 `${req.body.address}, Soria, Espa\xF1a`
@@ -11368,7 +11368,7 @@ router2.post(
         return res.status(404).json({ error: "Negocio no encontrado" });
       if (!business.address)
         return res.status(400).json({ error: "El negocio no tiene direcci\xF3n" });
-      const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+      const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
       if (!GMAPS_KEY)
         return res.status(500).json({ error: "Google Maps API key no configurada" });
       const query = encodeURIComponent(`${business.address}, Soria, Espa\xF1a`);
@@ -18125,7 +18125,7 @@ init_schema_mysql();
 var import_drizzle_orm44 = require("drizzle-orm");
 
 // server/services/googleMapsService.ts
-var API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_WEB_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
+var API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_WEB_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
 var cache2 = /* @__PURE__ */ new Map();
 var TTL = {
   // Directions: cache largo (las calles no cambian frecuentemente)
@@ -22941,7 +22941,7 @@ router44.post("/", authenticateToken, async (req, res) => {
     }
     if ((!finalDeliveryLat || !finalDeliveryLng) && deliveryAddress) {
       try {
-        const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+        const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
         if (GMAPS_KEY) {
           const addrText = typeof deliveryAddress === "string" ? deliveryAddress : (deliveryAddress?.street || "") + ", Soria, Espa\xF1a";
           const query = encodeURIComponent(
@@ -23381,7 +23381,7 @@ router45.get("/", authenticateToken, async (req, res) => {
   }
 });
 async function geocodeAddress2(street, city) {
-  const GMAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+  const GMAPS_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   if (!GMAPS_KEY) return null;
   const base = `${street}, ${city || "Soria"}`;
   const query = encodeURIComponent(

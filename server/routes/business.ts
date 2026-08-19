@@ -1407,8 +1407,8 @@ router.post(
         } else {
           try {
             const GMAPS_KEY =
-              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
               process.env.GOOGLE_MAPS_API_KEY ||
+              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
               "";
             if (GMAPS_KEY) {
               const query = encodeURIComponent(`${address}, Soria, España`);
@@ -1581,8 +1581,8 @@ router.post(
         } else {
           try {
             const GMAPS_KEY =
-              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
               process.env.GOOGLE_MAPS_API_KEY ||
+              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
               "";
             if (GMAPS_KEY) {
               const query = encodeURIComponent(`${address}, Soria, España`);
@@ -1733,8 +1733,8 @@ router.get("/:id", async (req, res) => {
     if ((!business.latitude || !business.longitude) && business.address) {
       try {
         const GMAPS_KEY =
-          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
           process.env.GOOGLE_MAPS_API_KEY ||
+          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
           "";
         if (GMAPS_KEY) {
           const base = String(business.address);
@@ -1890,8 +1890,8 @@ router.put(
         } else {
           try {
             const GMAPS_KEY =
-              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
               process.env.GOOGLE_MAPS_API_KEY ||
+              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
               "";
             if (GMAPS_KEY) {
               const query = encodeURIComponent(
@@ -1950,8 +1950,8 @@ router.post(
         return res.status(400).json({ error: "El negocio no tiene dirección" });
 
       const GMAPS_KEY =
-        process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
         process.env.GOOGLE_MAPS_API_KEY ||
+        process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
         "";
       if (!GMAPS_KEY)
         return res
