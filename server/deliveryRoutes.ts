@@ -461,14 +461,28 @@ router.get(
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
 
-    const myOrders = await db
-      .select()
+    // Join con users para el teléfono de contacto del cliente (el botón de
+    // WhatsApp de "Mis entregas" lo necesita; orders no guarda teléfono)
+    const rows = await db
+      .select({
+        order: orders,
+        customerPhone: users.phone,
+        customerName: users.name,
+      })
       .from(orders)
+      .leftJoin(users, eq(users.id, orders.userId))
       .where(eq(orders.deliveryPersonId, userId))
       .orderBy(sql`created_at DESC`)
       .limit(50);
 
-    res.json({ success: true, orders: myOrders });
+    res.json({
+      success: true,
+      orders: rows.map((r) => ({
+        ...r.order,
+        customerPhone: r.customerPhone,
+        customerName: r.customerName,
+      })),
+    });
   }),
 );
 

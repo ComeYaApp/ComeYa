@@ -17664,8 +17664,19 @@ router21.get(
   requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = req.user.id;
-    const myOrders = await db.select().from(orders).where((0, import_drizzle_orm42.eq)(orders.deliveryPersonId, userId)).orderBy(import_drizzle_orm42.sql`created_at DESC`).limit(50);
-    res.json({ success: true, orders: myOrders });
+    const rows = await db.select({
+      order: orders,
+      customerPhone: users.phone,
+      customerName: users.name
+    }).from(orders).leftJoin(users, (0, import_drizzle_orm42.eq)(users.id, orders.userId)).where((0, import_drizzle_orm42.eq)(orders.deliveryPersonId, userId)).orderBy(import_drizzle_orm42.sql`created_at DESC`).limit(50);
+    res.json({
+      success: true,
+      orders: rows.map((r) => ({
+        ...r.order,
+        customerPhone: r.customerPhone,
+        customerName: r.customerName
+      }))
+    });
   })
 );
 router21.get(

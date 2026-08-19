@@ -504,10 +504,16 @@ export default function DriverMyDeliveriesScreen() {
             </Pressable>
             <Pressable
               onPress={() => {
-                // Contacto con el cliente vía WhatsApp
-                const phone = String(
-                  (item as any).customerPhone || (item as any).deliveryAddressPhone || "",
+                // Contacto con el cliente vía WhatsApp (teléfono viene del
+                // perfil del cliente vía /api/delivery/my-orders)
+                const digits = String(
+                  (item as any).customerPhone || "",
                 ).replace(/\D/g, "");
+                // wa.me exige código de país: 9 dígitos starting 6/7/9 → España
+                const phone =
+                  digits.length === 9 && /^[679]/.test(digits)
+                    ? `34${digits}`
+                    : digits;
                 if (phone) {
                   Linking.openURL(`https://wa.me/${phone}`).catch(() => {});
                 } else {
