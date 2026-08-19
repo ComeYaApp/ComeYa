@@ -27,34 +27,20 @@ router.get("/", authenticateToken, async (req, res) => {
 // Geocodifica una dirección con Google Maps (clave del servidor) y devuelve
 // { lat, lng } o null si no se puede. Evita que se guarden direcciones sin
 // coordenadas, que luego rompen la navegación del repartidor.
+// Usa el servicio cacheado (caché BD + rate limit + límite diario).
 async function geocodeAddress(
   street: string,
   city: string,
 ): Promise<{ lat: string; lng: string } | null> {
-  const GMAPS_KEY =
-    process.env.GOOGLE_MAPS_API_KEY ||
-    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-    "";
-  if (!GMAPS_KEY) return null;
   const base = `${street}, ${city || "Soria"}`;
-  const query = encodeURIComponent(
-    base.toLowerCase().includes("soria") ? base : `${base}, Soria, España`,
+  const query = base.toLowerCase().includes("soria")
+    ? base
+    : `${base}, Soria, España`;
+  const { googleMapsService } = await import(
+    "../services/googleMapsService"
   );
-  try {
-    const geoRes = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
-    );
-    const geoData = await geoRes.json();
-    if (geoData.status === "OK" && geoData.results[0]) {
-      return {
-        lat: String(geoData.results[0].geometry.location.lat),
-        lng: String(geoData.results[0].geometry.location.lng),
-      };
-    }
-  } catch (err) {
-    console.error("[addresses] Geocodificación fallida:", err);
-  }
-  return null;
+  const result = await googleMapsService.geocodeAddress(query);
+  return result ? { lat: String(result.lat), lng: String(result.lng) } : null;
 }
 
 // POST /api/addresses — crear dirección para el usuario autenticado

@@ -1406,26 +1406,21 @@ router.post(
           newBusiness.longitude = String(cached.lng);
         } else {
           try {
-            const GMAPS_KEY =
-              process.env.GOOGLE_MAPS_API_KEY ||
-              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-              "";
-            if (GMAPS_KEY) {
-              const query = encodeURIComponent(`${address}, Soria, España`);
-              const geoRes = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
-              );
-              const geoData = await geoRes.json();
-              if (geoData.status === "OK" && geoData.results[0]) {
-                const { lat, lng } = geoData.results[0].geometry.location;
-                setGeocodeCache(`${address}, Soria, España`, lat, lng);
-                await db
-                  .update(businesses)
-                  .set({ latitude: String(lat), longitude: String(lng) })
-                  .where(eq(businesses.id, newBusiness.id));
-                newBusiness.latitude = String(lat);
-                newBusiness.longitude = String(lng);
-              }
+            // Servicio cacheado: caché BD + rate limit + límite diario
+            const { googleMapsService } = await import(
+              "../services/googleMapsService"
+            );
+            const geo = await googleMapsService.geocodeAddress(
+              `${address}, Soria, España`,
+            );
+            if (geo) {
+              setGeocodeCache(`${address}, Soria, España`, geo.lat, geo.lng);
+              await db
+                .update(businesses)
+                .set({ latitude: String(geo.lat), longitude: String(geo.lng) })
+                .where(eq(businesses.id, newBusiness.id));
+              newBusiness.latitude = String(geo.lat);
+              newBusiness.longitude = String(geo.lng);
             }
           } catch {
             /* geocoding falla silenciosamente */
@@ -1580,26 +1575,21 @@ router.post(
           newBusiness.longitude = String(cached.lng);
         } else {
           try {
-            const GMAPS_KEY =
-              process.env.GOOGLE_MAPS_API_KEY ||
-              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-              "";
-            if (GMAPS_KEY) {
-              const query = encodeURIComponent(`${address}, Soria, España`);
-              const geoRes = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
-              );
-              const geoData = await geoRes.json();
-              if (geoData.status === "OK" && geoData.results[0]) {
-                const { lat, lng } = geoData.results[0].geometry.location;
-                setGeocodeCache(`${address}, Soria, España`, lat, lng);
-                await db
-                  .update(businesses)
-                  .set({ latitude: String(lat), longitude: String(lng) })
-                  .where(eq(businesses.id, newBusiness.id));
-                newBusiness.latitude = String(lat);
-                newBusiness.longitude = String(lng);
-              }
+            // Servicio cacheado: caché BD + rate limit + límite diario
+            const { googleMapsService } = await import(
+              "../services/googleMapsService"
+            );
+            const geo = await googleMapsService.geocodeAddress(
+              `${address}, Soria, España`,
+            );
+            if (geo) {
+              setGeocodeCache(`${address}, Soria, España`, geo.lat, geo.lng);
+              await db
+                .update(businesses)
+                .set({ latitude: String(geo.lat), longitude: String(geo.lng) })
+                .where(eq(businesses.id, newBusiness.id));
+              newBusiness.latitude = String(geo.lat);
+              newBusiness.longitude = String(geo.lng);
             }
           } catch {
             /* geocoding falla silenciosamente */
@@ -1728,32 +1718,25 @@ router.get("/:id", async (req, res) => {
     console.log(`✅ Found business: ${business.name}`);
 
     // Autosanado de coordenadas: sin lat/lng el mapa de pickup y la
-    // navegación del repartidor no funcionan. Geocodificar la dirección y
-    // persistir para la próxima vez.
+    // navegación del repartidor no funcionan. Geocodificar la dirección
+    // (servicio cacheado) y persistir para la próxima vez.
     if ((!business.latitude || !business.longitude) && business.address) {
       try {
-        const GMAPS_KEY =
-          process.env.GOOGLE_MAPS_API_KEY ||
-          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-          "";
-        if (GMAPS_KEY) {
-          const base = String(business.address);
-          const query = encodeURIComponent(
-            base.toLowerCase().includes("soria") ? base : `${base}, Soria, España`,
+        const base = String(business.address);
+        const query = base.toLowerCase().includes("soria")
+          ? base
+          : `${base}, Soria, España`;
+        const { googleMapsService } = await import(
+          "../services/googleMapsService"
+        );
+        const geo = await googleMapsService.geocodeAddress(query);
+        if (geo) {
+          business.latitude = String(geo.lat);
+          business.longitude = String(geo.lng);
+          await db.execute(
+            sql`UPDATE businesses SET latitude = ${String(geo.lat)}, longitude = ${String(geo.lng)} WHERE id = ${business.id}`,
           );
-          const geoRes = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
-          );
-          const geoData = await geoRes.json();
-          if (geoData.status === "OK" && geoData.results[0]) {
-            const { lat, lng } = geoData.results[0].geometry.location;
-            business.latitude = String(lat);
-            business.longitude = String(lng);
-            await db.execute(
-              sql`UPDATE businesses SET latitude = ${String(lat)}, longitude = ${String(lng)} WHERE id = ${business.id}`,
-            );
-            console.log(`🗺️ Negocio ${business.name} geocodificado`);
-          }
+          console.log(`🗺️ Negocio ${business.name} geocodificado`);
         }
       } catch (geoErr: any) {
         console.error("Geocodificación del negocio falló:", geoErr.message);
@@ -1889,26 +1872,22 @@ router.put(
             .where(eq(businesses.id, req.params.id));
         } else {
           try {
-            const GMAPS_KEY =
-              process.env.GOOGLE_MAPS_API_KEY ||
-              process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-              "";
-            if (GMAPS_KEY) {
-              const query = encodeURIComponent(
+            const { googleMapsService } = await import(
+              "../services/googleMapsService"
+            );
+            const geo = await googleMapsService.geocodeAddress(
+              `${req.body.address}, Soria, España`,
+            );
+            if (geo) {
+              setGeocodeCache(
                 `${req.body.address}, Soria, España`,
+                geo.lat,
+                geo.lng,
               );
-              const geoRes = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
-              );
-              const geoData = await geoRes.json();
-              if (geoData.status === "OK" && geoData.results[0]) {
-                const { lat, lng } = geoData.results[0].geometry.location;
-                setGeocodeCache(`${req.body.address}, Soria, España`, lat, lng);
-                await db
-                  .update(businesses)
-                  .set({ latitude: String(lat), longitude: String(lng) })
-                  .where(eq(businesses.id, req.params.id));
-              }
+              await db
+                .update(businesses)
+                .set({ latitude: String(geo.lat), longitude: String(geo.lng) })
+                .where(eq(businesses.id, req.params.id));
             }
           } catch {
             /* geocoding falla silenciosamente */
@@ -1949,28 +1928,20 @@ router.post(
       if (!business.address)
         return res.status(400).json({ error: "El negocio no tiene dirección" });
 
-      const GMAPS_KEY =
-        process.env.GOOGLE_MAPS_API_KEY ||
-        process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-        "";
-      if (!GMAPS_KEY)
-        return res
-          .status(500)
-          .json({ error: "Google Maps API key no configurada" });
-
-      const query = encodeURIComponent(`${business.address}, Soria, España`);
-      const geoRes = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
+      const { googleMapsService } = await import(
+        "../services/googleMapsService"
       );
-      const geoData = await geoRes.json();
+      const geo = await googleMapsService.geocodeAddress(
+        `${business.address}, Soria, España`,
+      );
 
-      if (geoData.status !== "OK" || !geoData.results[0]) {
+      if (!geo) {
         return res
           .status(400)
           .json({ error: "No se pudo geocodificar la dirección" });
       }
 
-      const { lat, lng } = geoData.results[0].geometry.location;
+      const { lat, lng } = geo;
       await db
         .update(businesses)
         .set({ latitude: String(lat), longitude: String(lng) })

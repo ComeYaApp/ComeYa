@@ -231,31 +231,24 @@ router.post("/", authenticateToken, async (req, res) => {
       } catch {}
     }
 
-    // Si aún no hay coordenadas, geocodificar con Google Maps
+    // Si aún no hay coordenadas, geocodificar (servicio cacheado: una
+    // dirección = una llamada a Google para siempre, con rate limit)
     if ((!finalDeliveryLat || !finalDeliveryLng) && deliveryAddress) {
       try {
-        const GMAPS_KEY =
-          process.env.GOOGLE_MAPS_API_KEY ||
-          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-          "";
-        if (GMAPS_KEY) {
-          const addrText =
-            typeof deliveryAddress === "string"
-              ? deliveryAddress
-              : (deliveryAddress?.street || "") + ", Soria, España";
-          const query = encodeURIComponent(
-            addrText.includes("Soria")
-              ? addrText
-              : addrText + ", Soria, España",
-          );
-          const geoRes = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
-          );
-          const geoData = await geoRes.json();
-          if (geoData.status === "OK" && geoData.results[0]) {
-            finalDeliveryLat = String(geoData.results[0].geometry.location.lat);
-            finalDeliveryLng = String(geoData.results[0].geometry.location.lng);
-          }
+        const addrText =
+          typeof deliveryAddress === "string"
+            ? deliveryAddress
+            : (deliveryAddress?.street || "") + ", Soria, España";
+        const query = addrText.includes("Soria")
+          ? addrText
+          : addrText + ", Soria, España";
+        const { googleMapsService } = await import(
+          "../services/googleMapsService"
+        );
+        const geo = await googleMapsService.geocodeAddress(query);
+        if (geo) {
+          finalDeliveryLat = String(geo.lat);
+          finalDeliveryLng = String(geo.lng);
         }
       } catch {}
     }

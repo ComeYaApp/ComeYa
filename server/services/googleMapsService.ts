@@ -44,6 +44,32 @@ const RATE_LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
   all: { maxRequests: 100, windowMs: 60 * 1000 },           // Global: 100 req/min total
 };
 
+// ─── Límites diarios (protección del saldo de Google Cloud) ──────────────
+// Suaves (en memoria): un reinicio los resetea, pero evitan quemar el saldo
+// por un bucle o pico accidental. Ajustables por variables de entorno.
+const dailyCounters = new Map<string, { count: number; day: string }>();
+
+const DAILY_LIMITS: Record<string, number> = {
+  geocoding: Number(process.env.GOOGLE_GEOCODE_DAILY_LIMIT || 500),
+  directions: Number(process.env.GOOGLE_DIRECTIONS_DAILY_LIMIT || 2000),
+};
+
+function checkDailyLimit(endpoint: string): boolean {
+  const today = new Date().toISOString().slice(0, 10);
+  let counter = dailyCounters.get(endpoint);
+  if (!counter || counter.day !== today) {
+    counter = { count: 0, day: today };
+    dailyCounters.set(endpoint, counter);
+  }
+  const limit = DAILY_LIMITS[endpoint] ?? Number.MAX_SAFE_INTEGER;
+  if (counter.count >= limit) {
+    console.warn(`⚠️ [GoogleMaps] Límite DIARIO alcanzado: ${endpoint} (${limit}/día) — omitiendo llamada`);
+    return false;
+  }
+  counter.count++;
+  return true;
+}
+
 function checkRateLimit(endpoint: string): boolean {
   const now = Date.now();
   const limits = RATE_LIMITS[endpoint] || RATE_LIMITS.all;
@@ -113,6 +139,31 @@ setInterval(() => {
   }
 }, 30 * 60 * 1000);
 
+// ─── Caché persistente de geocodificación (BD) ───────────────────────────
+// Una dirección se geocodifica UNA sola vez y queda para siempre en BD:
+// es el mayor ahorro posible (cero coste en reinicios y entre servidores).
+let geocodeCacheReady = false;
+
+async function ensureGeocodeCacheTable() {
+  if (geocodeCacheReady) return;
+  try {
+    const { db } = await import("../db");
+    const { sql } = await import("drizzle-orm");
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS geocode_cache (
+        address_key VARCHAR(255) PRIMARY KEY,
+        lat DOUBLE NOT NULL,
+        lng DOUBLE NOT NULL,
+        formatted_address TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    geocodeCacheReady = true;
+  } catch (err) {
+    console.error("❌ [GoogleMaps] No se pudo crear geocode_cache:", err);
+  }
+}
+
 // ─── Core API Functions ──────────────────────────────────────────────────
 
 interface DirectionsResult {
@@ -164,7 +215,13 @@ export async function getDirections(
     return null;
   }
 
-  if (API_KEY) {
+  // Límite diario: si se alcanza, NO llamar a Google (OSRM sigue disponible)
+  const googleAllowed = checkDailyLimit("directions");
+  if (!googleAllowed) {
+    console.warn(`⚠️ [GoogleMaps] Directions: límite diario alcanzado — OSRM solamente`);
+  }
+
+  if (googleAllowed && API_KEY) {
     try {
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&language=es&key=${API_KEY}`;
 
@@ -333,19 +390,49 @@ function formatSeconds(s?: number): string {
 }
 
 /**
- * Geocodificar una dirección
+ * Geocodificar una dirección — con caché en memoria, caché persistente en
+ * BD (una dirección = una llamada a Google para siempre), rate limit por
+ * minuto y límite diario de gasto.
  */
 export async function geocodeAddress(address: string): Promise<GeocodingResult | null> {
-  const cacheKey = getCacheKey("geocoding", { address: address.toLowerCase().trim() });
-  
+  const normalized = address.toLowerCase().trim();
+  const cacheKey = getCacheKey("geocoding", { address: normalized });
+
+  // 1) Caché en memoria
   const cached = getFromCache<GeocodingResult>(cacheKey, TTL.geocoding);
   if (cached) {
     console.log(`🗺️ [GoogleMaps Cache HIT] Geocoding`);
     return cached;
   }
 
-  if (!checkRateLimit("geocoding")) {
-    console.warn(`⚠️ [GoogleMaps Rate Limit] Geocoding`);
+  // 2) Caché persistente en BD (sobrevive reinicios)
+  await ensureGeocodeCacheTable();
+  if (geocodeCacheReady) {
+    try {
+      const { db } = await import("../db");
+      const { sql } = await import("drizzle-orm");
+      const [rows]: any = await db.execute(
+        sql`SELECT lat, lng, formatted_address FROM geocode_cache WHERE address_key = ${normalized} LIMIT 1`,
+      );
+      const row = rows?.[0];
+      if (row) {
+        const result: GeocodingResult = {
+          lat: Number(row.lat),
+          lng: Number(row.lng),
+          formattedAddress: row.formatted_address || "",
+          placeId: "",
+        };
+        setCache(cacheKey, result);
+        return result;
+      }
+    } catch (err) {
+      console.error("❌ [GoogleMaps] Error leyendo geocode_cache:", err);
+    }
+  }
+
+  // 3) Límites: diario y por minuto (solo se cuentan llamadas reales a Google)
+  if (!checkDailyLimit("geocoding") || !checkRateLimit("geocoding")) {
+    console.warn(`⚠️ [GoogleMaps] Geocoding omitida por límite (${normalized})`);
     return null;
   }
 
@@ -368,6 +455,20 @@ export async function geocodeAddress(address: string): Promise<GeocodingResult |
     };
 
     setCache(cacheKey, result);
+
+    // 4) Persistir para no volver a pagar por esta dirección nunca más
+    try {
+      const { db } = await import("../db");
+      const { sql } = await import("drizzle-orm");
+      await db.execute(sql`
+        INSERT INTO geocode_cache (address_key, lat, lng, formatted_address)
+        VALUES (${normalized}, ${result.lat}, ${result.lng}, ${result.formattedAddress})
+        ON DUPLICATE KEY UPDATE lat = VALUES(lat), lng = VALUES(lng)
+      `);
+    } catch (err) {
+      console.error("❌ [GoogleMaps] Error guardando en geocode_cache:", err);
+    }
+
     return result;
   } catch {
     return null;

@@ -3,6 +3,7 @@ import { orders, deliveryDrivers, withdrawals } from "@shared/schema-mysql";
 import { eq, and, lt, lte } from "drizzle-orm";
 import { releasePendingFunds } from "./commissionService";
 import { logger } from "./logger";
+import { geocodeMissingCoordinatesJob } from "./geocodeService";
 
 export async function releaseFundsJob() {
   try {
@@ -172,11 +173,15 @@ export function startBackgroundJobs() {
   setInterval(updateBusinessStatsJob, 6 * 60 * 60 * 1000);
   setInterval(executeScheduledOrdersJob, 5 * 60 * 1000);
   setInterval(unblockExpiredDriversJob, 60 * 60 * 1000);
+  // Garantía de coordenadas: rellena lat/lng de negocios y direcciones
+  // que aún no los tengan (creados sin geocodificación o con la API caída)
+  setInterval(geocodeMissingCoordinatesJob, 30 * 60 * 1000);
 
   releaseFundsJob();
   processPendingWithdrawalsJob();
   executeScheduledOrdersJob();
   unblockExpiredDriversJob();
+  geocodeMissingCoordinatesJob();
 
   logger.info("Background jobs started");
 }
