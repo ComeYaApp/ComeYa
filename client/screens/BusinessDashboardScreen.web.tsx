@@ -14,7 +14,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
-import { formatCurrency } from "@/utils/currency";
+import { formatCurrency, formatEuros } from "@/utils/currency";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
 
@@ -141,7 +141,7 @@ export default function BusinessDashboardScreen() {
         },
         {
           label: "Ticket medio",
-          value: `${((stats.averageTicket || 0) / 100).toFixed(2)} €`,
+          value: formatCurrency(stats.averageTicket || 0),
           icon: "dollar-sign",
           color: "#8B5CF6",
         },
@@ -243,7 +243,7 @@ export default function BusinessDashboardScreen() {
               </Text>
               <Text style={s.revenueAmount}>{formatCurrency(periodRevenue)}</Text>
               <Text style={s.revenueTotal}>
-                Total histórico: {revenue.total.toFixed(2)} €
+                Total histórico: {formatCurrency(revenue.total)}
               </Text>
             </View>
 
@@ -302,7 +302,7 @@ export default function BusinessDashboardScreen() {
                       {p.quantity} uds.
                     </Text>
                     <Text style={[s.productRevenue, { color: "#4CAF50" }]}>
-                      {p.revenue.toFixed(2)} €
+                      {formatEuros(p.revenue)}
                     </Text>
                   </View>
                 ))}
@@ -357,7 +357,7 @@ export default function BusinessDashboardScreen() {
                       </Text>
                     </View>
                     <Text style={[s.orderTotal, { color: text }]}>
-                      {((order.total || 0) / 100).toFixed(2)} €
+                      {formatCurrency(order.total || 0)}
                     </Text>
                     <View
                       style={[

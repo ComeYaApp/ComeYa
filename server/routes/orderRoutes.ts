@@ -110,6 +110,61 @@ router.post(
         }
       }
 
+      // Resolver coordenadas de entrega: el checkout las envía; si no vienen,
+      // usar las de la dirección guardada o geocodificar (con caché y límites).
+      const toCoord = (v: any): string | null => {
+        const n = Number(v);
+        return Number.isFinite(n) ? String(n) : null;
+      };
+      let deliveryLatitude = toCoord(
+        req.body.deliveryLatitude ?? req.body.deliveryLat,
+      );
+      let deliveryLongitude = toCoord(
+        req.body.deliveryLongitude ?? req.body.deliveryLng,
+      );
+
+      if (!deliveryLatitude || !deliveryLongitude) {
+        if (req.body.deliveryAddressId) {
+          try {
+            const [addr] = await db
+              .select()
+              .from(addresses)
+              .where(eq(addresses.id, req.body.deliveryAddressId))
+              .limit(1);
+            if (addr?.latitude && addr?.longitude) {
+              deliveryLatitude = String(addr.latitude);
+              deliveryLongitude = String(addr.longitude);
+            }
+          } catch (addrErr) {
+            console.error("Error reading address coordinates:", addrErr);
+          }
+        }
+      }
+
+      if (
+        (!deliveryLatitude || !deliveryLongitude) &&
+        req.body.orderType !== "pickup"
+      ) {
+        const addressText =
+          typeof req.body.deliveryAddress === "string"
+            ? req.body.deliveryAddress
+            : req.body.deliveryAddress?.street ||
+              req.body.deliveryAddress?.fullAddress ||
+              null;
+        if (addressText) {
+          try {
+            const { geocodeAddress } = await import("../geocodeService");
+            const geo = await geocodeAddress(addressText);
+            if (geo?.lat && geo?.lng) {
+              deliveryLatitude = String(geo.lat);
+              deliveryLongitude = String(geo.lng);
+            }
+          } catch (geoErr) {
+            console.error("Error geocoding delivery address:", geoErr);
+          }
+        }
+      }
+
       // El subtotal que viene del frontend YA incluye la comisión del 15%
       // No necesitamos calcular productosBase ni nemyCommission por separado
       const subtotal = req.body.subtotal; // Productos con comisión incluida
@@ -170,6 +225,8 @@ router.post(
         paymentMethod: req.body.paymentMethod,
         orderType: req.body.orderType === "pickup" ? "pickup" : "delivery",
         deliveryAddress: req.body.deliveryAddress,
+        deliveryLatitude,
+        deliveryLongitude,
         notes: req.body.notes,
         substitutionPreference: req.body.substitutionPreference,
         itemSubstitutionPreferences: req.body.itemSubstitutionPreferences,
@@ -609,27 +666,41 @@ router.post(
       const driverLng = req.body.longitude ?? req.body.lng;
       const hasDriverCoords =
         typeof driverLat === "number" && typeof driverLng === "number";
+      // El repartidor web no tiene GPS: permite completar con confirmación
+      // explícita del repartidor, registrándolo en el log.
+      const confirmWithoutGps = req.body.confirmWithoutGps === true;
 
       if (process.env.NODE_ENV === "production") {
         if (!hasDriverCoords) {
-          return res
-            .status(400)
-            .json({ error: "Ubicación requerida para marcar entregado" });
+          if (!confirmWithoutGps) {
+            return res
+              .status(400)
+              .json({ error: "Ubicación requerida para marcar entregado" });
+          }
+          console.warn(
+            `[complete-delivery] Pedido ${orderId} marcado entregado sin GPS (confirmación explícita del repartidor)`,
+          );
         }
 
-        const deliveryLat =
+        // Las columnas son TEXT: parsear a número para que el chequeo de
+        // proximidad funcione de verdad.
+        const deliveryLatRaw =
           order.deliveryLatitude ?? order.deliveryLat ?? order.latitude;
-        const deliveryLng =
+        const deliveryLngRaw =
           order.deliveryLongitude ?? order.deliveryLng ?? order.longitude;
+        const toNum = (v: any) =>
+          v === null || v === undefined || v === "" ? NaN : Number(v);
+        const deliveryLatNum = toNum(deliveryLatRaw);
+        const deliveryLngNum = toNum(deliveryLngRaw);
         const hasDeliveryCoords =
-          typeof deliveryLat === "number" && typeof deliveryLng === "number";
+          !Number.isNaN(deliveryLatNum) && !Number.isNaN(deliveryLngNum);
 
-        if (hasDeliveryCoords) {
+        if (hasDriverCoords && hasDeliveryCoords) {
           const distanceKm = calculateDistance(
             Number(driverLat),
             Number(driverLng),
-            Number(deliveryLat),
-            Number(deliveryLng),
+            deliveryLatNum,
+            deliveryLngNum,
           );
           const maxDistanceMeters = 200;
           if (distanceKm * 1000 > maxDistanceMeters) {

@@ -294,12 +294,6 @@ export default function DriverMyDeliveriesScreen() {
     photoUri: string | null = null,
     orderData: any = null,
   ) => {
-    setOrders((prev: any[]) =>
-      prev.map((order) =>
-        order.id === orderId ? { ...order, status: "delivered" } : order,
-      ),
-    );
-
     try {
       // Convertir foto a base64 si existe
       let photoBase64: string | null = null;
@@ -318,11 +312,58 @@ export default function DriverMyDeliveriesScreen() {
         }
       }
 
-      await apiRequest("POST", `/api/orders/${orderId}/complete-delivery`, {
-        latitude: location?.latitude ?? null,
-        longitude: location?.longitude ?? null,
-        deliveryPhoto: photoBase64,
-      });
+      const attemptComplete = async (confirmWithoutGps: boolean) => {
+        await apiRequest("POST", `/api/orders/${orderId}/complete-delivery`, {
+          latitude: location?.latitude ?? null,
+          longitude: location?.longitude ?? null,
+          deliveryPhoto: photoBase64,
+          confirmWithoutGps,
+        });
+      };
+
+      try {
+        await attemptComplete(false);
+      } catch (error: any) {
+        let msg = error.message || "No se pudo confirmar la entrega";
+        try {
+          const jsonStart = msg.indexOf("{");
+          if (jsonStart !== -1) {
+            const parsed = JSON.parse(msg.slice(jsonStart));
+            msg = parsed.error || msg;
+          }
+        } catch {}
+        if (msg.toLowerCase().includes("ubicación")) {
+          // Sin señal GPS: confirmación explícita y reintento sin GPS
+          const confirmed = await new Promise<boolean>((resolve) => {
+            Alert.alert(
+              "GPS no disponible",
+              "No se pudo obtener tu ubicación. ¿Marcar el pedido como entregado de todos modos?",
+              [
+                {
+                  text: "Cancelar",
+                  style: "cancel",
+                  onPress: () => resolve(false),
+                },
+                { text: "Sí, lo entregué", onPress: () => resolve(true) },
+              ],
+            );
+          });
+          if (!confirmed) {
+            setOrders(previousOrders);
+            return;
+          }
+          await attemptComplete(true);
+        } else {
+          throw error;
+        }
+      }
+
+      // Marcar entregado solo tras éxito real del servidor
+      setOrders((prev: any[]) =>
+        prev.map((order) =>
+          order.id === orderId ? { ...order, status: "delivered" } : order,
+        ),
+      );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Mostrar pantalla post-entrega
       setCompletedOrder({

@@ -23,6 +23,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { formatCurrency, formatEuros } from "@/utils/currency";
 
 type Period = "week" | "month" | "all";
 
@@ -252,7 +253,7 @@ export default function BusinessFinancesScreen() {
               marginVertical: Spacing.sm,
             }}
           >
-            {summary.totalEarnings.toFixed(2)} €
+            {formatCurrency(summary.totalEarnings)}
           </ThemedText>
 
           <View style={styles.periodSelector}>
@@ -292,7 +293,7 @@ export default function BusinessFinancesScreen() {
                 Completados
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                {summary.completedAmount.toFixed(2)} €
+                {formatCurrency(summary.completedAmount)}
               </ThemedText>
             </View>
             <View style={styles.summaryItem}>
@@ -303,7 +304,7 @@ export default function BusinessFinancesScreen() {
                 Pendientes
               </ThemedText>
               <ThemedText type="h4" style={{ color: "#FFFFFF" }}>
-                {summary.pendingAmount.toFixed(2)} €
+                {formatCurrency(summary.pendingAmount)}
               </ThemedText>
             </View>
           </View>
@@ -402,7 +403,7 @@ export default function BusinessFinancesScreen() {
                               : ComeYaColors.success,
                         }}
                       >
-                        {(payout.amount / 100).toFixed(2)} €
+                        {formatEuros(payout.amount / 100)}
                       </ThemedText>
                       <Badge
                         text={statusInfo.text}
@@ -478,7 +479,7 @@ export default function BusinessFinancesScreen() {
                     type="h4"
                     style={{ color: getStatusColor(transaction.status) }}
                   >
-                    {transaction.subtotal.toFixed(2)} €
+                    {formatCurrency(transaction.subtotal)}
                   </ThemedText>
                   <Badge
                     text={getStatusLabel(transaction.status)}
@@ -560,9 +561,9 @@ export default function BusinessFinancesScreen() {
                       type="caption"
                       style={{ color: theme.textSecondary, marginLeft: 4 }}
                     >
-                      Envío: {transaction.deliveryFee.toFixed(2)} €
+                      Envío: {formatCurrency(transaction.deliveryFee)}
                       {" · "}
-                      Total: {transaction.total.toFixed(2)} €
+                      Total: {formatCurrency(transaction.total)}
                     </ThemedText>
                   </View>
                 ) : null}

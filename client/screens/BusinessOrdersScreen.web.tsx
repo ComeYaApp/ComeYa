@@ -5,6 +5,7 @@ import {
   ScrollView,
   Pressable,
   Text,
+  TextInput,
   ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -62,6 +63,9 @@ export default function BusinessOrdersScreen() {
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [selectedTime, setSelectedTime] = useState(20);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [pickupCodeOrder, setPickupCodeOrder] = useState<any>(null);
+  const [pickupCodeInput, setPickupCodeInput] = useState("");
+  const [pickupCodeLoading, setPickupCodeLoading] = useState(false);
   const prevPendingCount = useRef(0);
 
   const bg = isDark ? "#111" : "#f7f7f7";
@@ -124,6 +128,40 @@ export default function BusinessOrdersScreen() {
       showToast("No se pudo actualizar el pedido", "error");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const confirmPickupWithCode = async () => {
+    if (!pickupCodeOrder) return;
+    const code = pickupCodeInput.trim();
+    if (code.length !== 6) {
+      showToast("El código debe tener 6 dígitos", "warning");
+      return;
+    }
+    setPickupCodeLoading(true);
+    try {
+      const validateRes = await apiRequest(
+        "POST",
+        `/api/pickup/${pickupCodeOrder.id}/validate-code`,
+        { code },
+      );
+      const validateData = await validateRes.json();
+      if (!validateData.valid) {
+        showToast("El código no coincide con este pedido", "error");
+        return;
+      }
+      await apiRequest(
+        "POST",
+        `/api/orders/${pickupCodeOrder.id}/mark-picked-up`,
+      );
+      await loadOrders();
+      showToast("Pedido marcado como recogido", "success");
+      setPickupCodeOrder(null);
+      setPickupCodeInput("");
+    } catch {
+      showToast("No se pudo marcar como recogido", "error");
+    } finally {
+      setPickupCodeLoading(false);
     }
   };
 
@@ -523,26 +561,14 @@ export default function BusinessOrdersScreen() {
                         </Text>
                       </Pressable>
                     )}
-                    {order.status === "ready" &&
+                    {["ready", "on_the_way", "picked_up"].includes(
+                      order.status,
+                    ) &&
                       order.orderType === "pickup" && (
                         <Pressable
-                          onPress={async () => {
-                            try {
-                              await apiRequest(
-                                "POST",
-                                `/api/orders/${order.id}/mark-picked-up`,
-                              );
-                              await loadOrders();
-                              showToast(
-                                "Pedido marcado como recogido",
-                                "success",
-                              );
-                            } catch {
-                              showToast(
-                                "No se pudo marcar como recogido",
-                                "error",
-                              );
-                            }
+                          onPress={() => {
+                            setPickupCodeOrder(order);
+                            setPickupCodeInput("");
                           }}
                           style={[
                             s.actionBtn,
@@ -555,7 +581,8 @@ export default function BusinessOrdersScreen() {
                           </Text>
                         </Pressable>
                       )}
-                    {order.status === "on_the_way" && (
+                    {order.status === "on_the_way" &&
+                      order.orderType !== "pickup" && (
                       <View
                         style={[
                           s.actionBtn,
@@ -648,6 +675,75 @@ export default function BusinessOrdersScreen() {
                 ) : (
                   <Text style={{ color: "#fff", fontWeight: "700" }}>
                     Aceptar y notificar
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+      {/* Modal código de recogida (pickup) */}
+      {pickupCodeOrder && (
+        <View style={s.modalOverlay}>
+          <View
+            style={[s.modal, { backgroundColor: card, borderColor: border }]}
+          >
+            <Text style={[s.modalTitle, { color: text }]}>
+              Código de recogida
+            </Text>
+            <Text style={[s.modalSub, { color: sub }]}>
+              Pide al cliente el código de 6 dígitos (o escanea su QR desde la
+              app) para confirmar la entrega.
+            </Text>
+            <TextInput
+              value={pickupCodeInput}
+              onChangeText={(v) =>
+                setPickupCodeInput(v.replace(/[^0-9]/g, "").slice(0, 6))
+              }
+              placeholder="000000"
+              placeholderTextColor={sub}
+              maxLength={6}
+              style={[
+                s.codeInput,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  color: text,
+                  borderColor:
+                    pickupCodeInput.length === 6
+                      ? ComeYaColors.success
+                      : border,
+                },
+              ]}
+            />
+            <View style={s.modalBtns}>
+              <Pressable
+                onPress={() => setPickupCodeOrder(null)}
+                style={[
+                  s.modalBtn,
+                  { backgroundColor: theme.backgroundSecondary },
+                ]}
+              >
+                <Text style={{ color: text }}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmPickupWithCode}
+                disabled={pickupCodeLoading || pickupCodeInput.length !== 6}
+                style={[
+                  s.modalBtn,
+                  {
+                    backgroundColor: ComeYaColors.primary,
+                    opacity:
+                      pickupCodeLoading || pickupCodeInput.length !== 6
+                        ? 0.6
+                        : 1,
+                  },
+                ]}
+              >
+                {pickupCodeLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>
+                    Confirmar recogida
                   </Text>
                 )}
               </Pressable>
@@ -771,6 +867,18 @@ const s = StyleSheet.create({
   } as any,
   modal: { width: 440, padding: 28, borderRadius: 20, borderWidth: 1 },
   modalTitle: { fontSize: 20, fontWeight: "700", marginBottom: 20 },
+  modalSub: { fontSize: 13, marginBottom: 16, lineHeight: 18 },
+  codeInput: {
+    fontSize: 28,
+    fontFamily: "monospace",
+    textAlign: "center",
+    letterSpacing: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: 24,
+  },
   timeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",

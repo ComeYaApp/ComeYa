@@ -21,6 +21,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
+import { formatEuros } from "@/utils/currency";
 import {
   Spacing,
   BorderRadius,
@@ -404,7 +405,7 @@ export default function DeliveryEarningsScreen() {
                   type="caption"
                   style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
                 >
-                  {wallet.balance.toFixed(2)} €
+                  {formatEuros(wallet.balance)}
                 </ThemedText>
               </View>
               <View
@@ -428,12 +429,11 @@ export default function DeliveryEarningsScreen() {
                   type="caption"
                   style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
                 >
-                  €
-                  {(
+                  {formatEuros(
                     transactions
                       .filter((t) => t.type === "delivery_income")
-                      .reduce((sum, t) => sum + t.amount, 0) / 100
-                  ).toFixed(2)}
+                      .reduce((sum, t) => sum + t.amount, 0) / 100,
+                  )}
                 </ThemedText>
               </View>
               <View style={styles.breakdownRow}>
@@ -447,7 +447,7 @@ export default function DeliveryEarningsScreen() {
                   type="caption"
                   style={{ color: "rgba(255,255,255,1)", fontWeight: "700" }}
                 >
-                  -{wallet.cashOwed.toFixed(2)} €
+                  -{formatEuros(wallet.cashOwed)}
                 </ThemedText>
               </View>
               {wallet.canWithdraw > 0 ? (
@@ -475,7 +475,7 @@ export default function DeliveryEarningsScreen() {
                       fontWeight: "600",
                     }}
                   >
-                    {wallet.canWithdraw.toFixed(2)} €
+                    {formatEuros(wallet.canWithdraw)}
                   </ThemedText>
                 </View>
               ) : null}
@@ -560,7 +560,7 @@ export default function DeliveryEarningsScreen() {
                   Total ganado histórico
                 </ThemedText>
                 <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-                  {wallet.totalEarned.toFixed(2)} €
+                  {formatEuros(wallet.totalEarned)}
                 </ThemedText>
               </View>
               <View
@@ -699,7 +699,7 @@ export default function DeliveryEarningsScreen() {
                 marginVertical: Spacing.sm,
               }}
             >
-              {getEarningsForPeriod().toFixed(2)} €
+              {formatEuros(getEarningsForPeriod())}
             </ThemedText>
             <View style={styles.tipsRow}>
               <Feather name="gift" size={16} color="rgba(255,255,255,0.8)" />
@@ -707,7 +707,7 @@ export default function DeliveryEarningsScreen() {
                 type="caption"
                 style={{ color: "rgba(255,255,255,0.8)", marginLeft: 4 }}
               >
-                +{earnings.tips.toFixed(2)} € en propinas
+                +{formatEuros(earnings.tips)} en propinas
               </ThemedText>
             </View>
 
@@ -805,7 +805,7 @@ export default function DeliveryEarningsScreen() {
               type="body"
               style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
             >
-              Disponible para retirar: {wallet.canWithdraw.toFixed(2)} €
+              Disponible para retirar: {formatEuros(wallet.canWithdraw)}
             </ThemedText>
 
             <View
@@ -818,7 +818,7 @@ export default function DeliveryEarningsScreen() {
               ]}
             >
               <ThemedText type="h3" style={{ marginRight: Spacing.xs }}>
-                $
+                €
               </ThemedText>
               <TextInput
                 style={[styles.input, { color: theme.text }]}
@@ -880,7 +880,7 @@ export default function DeliveryEarningsScreen() {
               type="body"
               style={{ color: theme.textSecondary, marginBottom: Spacing.lg }}
             >
-              Deposita {wallet.cashOwed.toFixed(2)} € a la siguiente cuenta:
+              Deposita {formatEuros(wallet.cashOwed)} a la siguiente cuenta:
             </ThemedText>
 
             {/* Datos bancarios removidos - usar sección wallet */}

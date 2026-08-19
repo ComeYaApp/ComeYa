@@ -386,6 +386,25 @@ export default function OrdersScreen() {
                       </Pressable>
                     )}
 
+                  {/* Valorar pedido */}
+                  {selected.status === "delivered" && (
+                    <Pressable
+                      onPress={() =>
+                        navigation.navigate("Review", {
+                          orderId: selected.id,
+                          businessId: (selected as any).businessId,
+                          businessName: selected.businessName,
+                          deliveryPersonId: (selected as any)
+                            .deliveryPersonId,
+                        })
+                      }
+                      style={[s.confirmBtn, { backgroundColor: PRIMARY }]}
+                    >
+                      <Feather name="star" size={18} color="#fff" />
+                      <Text style={s.confirmBtnText}>Valorar pedido</Text>
+                    </Pressable>
+                  )}
+
                   {/* Pedir de nuevo */}
                   {(selected.status === "delivered" ||
                     selected.status === "cancelled") && (

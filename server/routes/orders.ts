@@ -437,6 +437,24 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "Pedido no encontrado" });
     }
 
+    // Los pedidos de recogida en local no pasan por estados de reparto:
+    // si entraban en el pool de drivers quedaban atascados "en camino".
+    const isPickup = order.order.orderType === "pickup";
+    if (
+      isPickup &&
+      [
+        "assigned_driver",
+        "picked_up",
+        "on_the_way",
+        "in_transit",
+        "arriving",
+      ].includes(status)
+    ) {
+      return res.status(400).json({
+        error: "Un pedido de recogida no puede pasar a estados de reparto",
+      });
+    }
+
     // Check permissions
     // El repartidor NO puede poner "delivered" directamente — debe usar /complete-delivery
     const canUpdate =
@@ -460,6 +478,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
 
     // Notificaciones según el nuevo estado
     const o = order.order;
+    const isPickupOrder = o.orderType === "pickup";
     if (status === "preparing") {
       await sendOrderStatusNotification(statusId, o.userId, "preparing");
     } else if (status === "ready") {
@@ -471,7 +490,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
           body: `${o.businessName} — Pedido #${o.id.slice(-6)} listo`,
           data: { orderId: o.id, screen: "DriverActiveOrder" },
         });
-      } else {
+      } else if (!isPickupOrder) {
         // Si no hay repartidor asignado, notificar a TODOS los drivers online
         // para que sepan que hay un nuevo pedido disponible (estilo Rappi/UberEats)
         try {
@@ -614,7 +633,11 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
         .json({ error: "Solo para pedidos de tipo pickup" });
     }
 
-    if (order.order.status !== "ready") {
+    // Recuperación: si una recogida quedó atascada en un estado de reparto
+    // (builds antiguos metían el pedido en el pool de drivers), permitir
+    // completarla igualmente.
+    const pickupTerminalStatuses = ["ready", "on_the_way", "picked_up"];
+    if (!pickupTerminalStatuses.includes(order.order.status)) {
       return res
         .status(400)
         .json({ error: "El pedido debe estar en estado 'listo'" });

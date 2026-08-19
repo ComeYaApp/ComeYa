@@ -6,7 +6,7 @@
 // geolocalizado aunque el intento del alta fallara.
 
 import { db } from "./db";
-import { businesses, addresses } from "@shared/schema-mysql";
+import { businesses, addresses, orders } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import { googleMapsService } from "./services/googleMapsService";
@@ -95,9 +95,47 @@ export async function geocodeMissingCoordinatesJob() {
       }
     }
 
-    if (bizFixed > 0 || addrFixed > 0) {
+    // 3) Pedidos antiguos sin coordenadas de entrega (los nuevos ya las
+    // guardan al crearse). Solo entregas activas/recientes con dirección.
+    const { and, ne } = await import("drizzle-orm");
+    const orderRows: any[] = await db
+      .select()
+      .from(orders)
+      .where(
+        and(ne(orders.status, "delivered"), ne(orders.status, "cancelled")),
+      )
+      .limit(40);
+    const ordersToFix = orderRows.filter(
+      (o: any) =>
+        !o.deliveryLatitude ||
+        !o.deliveryLongitude ||
+        o.deliveryLatitude === "" ||
+        o.deliveryLongitude === "",
+    );
+
+    let ordersFixed = 0;
+    for (const o of ordersToFix.slice(0, 20)) {
+      const addressText =
+        typeof o.deliveryAddress === "string"
+          ? o.deliveryAddress
+          : o.deliveryAddress?.street || null;
+      if (!addressText) continue;
+      const geo = await geocodeAddress(addressText);
+      if (geo) {
+        await db
+          .update(orders)
+          .set({
+            deliveryLatitude: String(geo.lat),
+            deliveryLongitude: String(geo.lng),
+          })
+          .where(eq(orders.id, o.id));
+        ordersFixed++;
+      }
+    }
+
+    if (bizFixed > 0 || addrFixed > 0 || ordersFixed > 0) {
       logger.info(
-        `[geocode] Job completado: ${bizFixed} negocios y ${addrFixed} direcciones geocodificados`,
+        `[geocode] Job completado: ${bizFixed} negocios, ${addrFixed} direcciones y ${ordersFixed} pedidos geocodificados`,
       );
     }
   } catch (error) {

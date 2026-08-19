@@ -14,15 +14,24 @@ import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { formatCurrency } from "@/utils/currency";
 import { LineChart } from "react-native-chart-kit";
 import { Platform } from "react-native";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 function fmt(cents: number) {
-  if (cents >= 100_000_00) return `${(cents / 100 / 1_000_000).toFixed(1)} €M`;
-  if (cents >= 1_000_00) return `${(cents / 100 / 1_000).toFixed(1)} €K`;
-  return `${(cents / 100).toFixed(0)} €`;
+  if (cents >= 100_000_00)
+    return `${(cents / 100 / 1_000_000).toLocaleString("es-ES", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} M€`;
+  if (cents >= 1_000_00)
+    return `${(cents / 100 / 1_000).toLocaleString("es-ES", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} K€`;
+  return formatCurrency(cents);
 }
 
 function pct(val: number, prev: number) {

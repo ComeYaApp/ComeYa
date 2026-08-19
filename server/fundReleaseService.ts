@@ -19,6 +19,7 @@ interface FundReleaseResult {
   message: string;
   orderId?: string;
   amountReleased?: number;
+  alreadyReleased?: boolean;
 }
 
 // ── Stripe helper ─────────────────────────────────────────────────────────────
@@ -422,7 +423,11 @@ export class FundReleaseService {
           message: "El pedido aún no ha sido entregado",
         };
       if (order.fundsReleased)
-        return { success: false, message: "Los fondos ya fueron liberados" };
+        return {
+          success: true,
+          alreadyReleased: true,
+          message: "Los fondos ya fueron liberados",
+        };
 
       await db
         .update(orders)

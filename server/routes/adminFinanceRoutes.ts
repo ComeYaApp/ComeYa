@@ -321,7 +321,7 @@ router.post(
       }
 
       // Generar CSV
-      const csvHeader = "Fecha,Pedido ID,Negocio,Comisión (MXN),Estado\n";
+      const csvHeader = "Fecha,Pedido ID,Negocio,Comisión (EUR),Estado\n";
       const csvRows = filteredOrders
         .map((order) => {
           const date = new Date(order.createdAt).toLocaleDateString("es-VE");

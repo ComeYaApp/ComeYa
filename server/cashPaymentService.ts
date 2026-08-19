@@ -30,7 +30,7 @@ export async function processCashPayment(
     if (cashReceived < orderTotal) {
       return {
         success: false,
-        error: `Efectivo insuficiente. Se requieren $${orderTotal}, recibido $${cashReceived}`,
+        error: `Efectivo insuficiente. Se requieren ${orderTotal} €, recibido ${cashReceived} €`,
       };
     }
 
@@ -42,7 +42,7 @@ export async function processCashPayment(
       customerId,
       businessId,
       amount: orderTotal,
-      currency: "MXN",
+      currency: "EUR",
       status: "succeeded",
       paymentMethod: "cash",
       processedAt: new Date(),

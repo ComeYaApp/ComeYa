@@ -837,8 +837,9 @@ router.post(
       .set({
         status: "delivered",
         deliveredAt,
-        deliveryLatitude: latitude?.toString(),
-        deliveryLongitude: longitude?.toString(),
+        // deliveryLatitude/Longitude guardan la dirección del cliente; no
+        // se pisan con la posición GPS del repartidor en el momento de
+        // entregar (rompía la navegación y el tracking de pedidos antiguos).
         actualDeliveryTime,
         actualPrepTime,
       })

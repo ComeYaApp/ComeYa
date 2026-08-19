@@ -28,7 +28,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
-import { formatCurrency } from "@/utils/currency";
+import { formatCurrency, formatEuros } from "@/utils/currency";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
 type Period = "today" | "week" | "month";
@@ -137,7 +137,7 @@ function TopProductRow({
       </View>
       <View style={styles.revenueCol}>
         <ThemedText type="body" style={{ fontWeight: "600", color: "#4CAF50" }}>
-          {product.revenue.toFixed(2)} €
+          {formatEuros(product.revenue)}
         </ThemedText>
       </View>
     </Animated.View>
@@ -702,14 +702,14 @@ export default function BusinessDashboardScreen() {
                           color: ComeYaColors.primary,
                         }}
                       >
-                        {(order.subtotal || 0).toFixed(2)} €
+                        {formatCurrency(order.subtotal || 0)}
                       </ThemedText>
                       {order.deliveryFee > 0 ? (
                         <ThemedText
                           type="caption"
                           style={{ color: theme.textSecondary, marginTop: 2 }}
                         >
-                          + {order.deliveryFee.toFixed(2)} € envío
+                          + {formatCurrency(order.deliveryFee)} envío
                         </ThemedText>
                       ) : null}
                     </View>

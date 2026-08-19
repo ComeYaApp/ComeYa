@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
+import { formatCurrency } from "@/utils/currency";
 
 const PRIMARY = "#DC2626";
 type Period = "today" | "week" | "month";
@@ -79,7 +80,7 @@ export default function BusinessStatsScreen() {
     {
       icon: "dollar-sign",
       label: "Ticket promedio",
-      value: `${(orders.avgValue / 100).toFixed(0)} €`,
+      value: formatCurrency(orders.avgValue),
       color: PRIMARY,
     },
   ];
@@ -105,7 +106,7 @@ export default function BusinessStatsScreen() {
                 Ingresos — {PERIOD_LABELS[period]}
               </Text>
               <Text style={s.heroAmount}>
-                {(periodRevenue / 100).toFixed(2)} €
+                {formatCurrency(periodRevenue)}
               </Text>
               <View style={s.periodRow}>
                 {(["today", "week", "month"] as Period[]).map((p) => (

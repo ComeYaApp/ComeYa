@@ -81,6 +81,8 @@ export default function ReviewScreenEnhanced() {
   const [comment, setComment] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [wantTip, setWantTip] = useState(false);
+  const [tipAmount, setTipAmount] = useState(2);
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -125,6 +127,7 @@ export default function ReviewScreenEnhanced() {
           comment: comment.trim() || undefined,
           tags: selectedTags.length ? selectedTags : undefined,
           photos: photos.length ? photos : undefined,
+          tipAmount: wantTip ? tipAmount * 100 : 0,
         })
       ).json(),
     onSuccess: () => {
@@ -265,6 +268,58 @@ export default function ReviewScreenEnhanced() {
                 onRate={setDriverRating}
                 label="Repartidor"
               />
+            </View>
+          )}
+
+          {/* Propina al repartidor */}
+          {deliveryPersonId && (
+            <View
+              style={[s.card, { backgroundColor: card, borderColor: border }]}
+            >
+              <View style={s.cardHeader}>
+                <Feather name="gift" size={18} color="#10B981" />
+                <Text style={[s.cardTitle, { color: text }]}>
+                  Propina al repartidor (opcional)
+                </Text>
+              </View>
+              <View style={s.tipsWrap}>
+                {[1, 2, 3, 5].map((amount) => {
+                  const active = wantTip && tipAmount === amount;
+                  return (
+                    <Pressable
+                      key={amount}
+                      onPress={() => {
+                        setWantTip(true);
+                        setTipAmount(amount);
+                      }}
+                      style={[
+                        s.tipBtn,
+                        {
+                          backgroundColor: active ? "#10B981" : cardBg,
+                          borderColor: active ? "#10B981" : border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          s.tipBtnText,
+                          { color: active ? "#fff" : text },
+                        ]}
+                      >
+                        {amount} €
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {wantTip && (
+                <Pressable
+                  onPress={() => setWantTip(false)}
+                  style={s.noTipBtn}
+                >
+                  <Text style={[s.noTipText, { color: sub }]}>Sin propina</Text>
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -465,6 +520,16 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   tagText: { fontSize: 13, fontWeight: "500" },
+  tipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tipBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tipBtnText: { fontSize: 14, fontWeight: "700" },
+  noTipBtn: { alignSelf: "flex-start", marginTop: 10, padding: 4 },
+  noTipText: { fontSize: 13, textDecorationLine: "underline" },
   photosRow: { flexDirection: "row", gap: 10 },
   photoWrap: { position: "relative" as any },
   photo: { width: 90, height: 90, borderRadius: 10 },

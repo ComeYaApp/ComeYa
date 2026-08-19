@@ -127,6 +127,7 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
           deliveryPhoto: extra?.photo ?? null,
           latitude: null,
           longitude: null,
+          confirmWithoutGps: true,
         };
       } else {
         endpoint = `/api/delivery/orders/${orderId}/status`;

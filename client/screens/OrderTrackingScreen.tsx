@@ -996,18 +996,51 @@ export default function OrderTrackingScreen() {
         ) : order.status === "delivered" &&
           (order as any).confirmedByCustomer &&
           user?.role === "customer" ? (
-          <View style={[styles.confirmButton, { backgroundColor: "#E8F5E9" }]}>
-            <Feather name="check-circle" size={20} color="#4CAF50" />
-            <ThemedText
-              type="body"
-              style={{
-                color: "#4CAF50",
-                marginLeft: Spacing.sm,
-                fontWeight: "600",
+          <View>
+            <View style={[styles.confirmButton, { backgroundColor: "#E8F5E9" }]}>
+              <Feather name="check-circle" size={20} color="#4CAF50" />
+              <ThemedText
+                type="body"
+                style={{
+                  color: "#4CAF50",
+                  marginLeft: Spacing.sm,
+                  fontWeight: "600",
+                }}
+              >
+                Entrega confirmada ✔
+              </ThemedText>
+            </View>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                navigation.replace("Review", {
+                  orderId: order.id,
+                  businessId: order.businessId,
+                  businessName: order.businessName,
+                  deliveryPersonId: order.deliveryPersonId,
+                });
               }}
+              style={[
+                styles.confirmButton,
+                {
+                  backgroundColor: ComeYaColors.primary,
+                  marginTop: Spacing.sm,
+                },
+                Shadows.md,
+              ]}
             >
-              Entrega confirmada ✔
-            </ThemedText>
+              <Feather name="star" size={20} color="#FFFFFF" />
+              <ThemedText
+                type="body"
+                style={{
+                  color: "#FFFFFF",
+                  marginLeft: Spacing.sm,
+                  fontWeight: "600",
+                }}
+              >
+                Valorar pedido
+              </ThemedText>
+            </Pressable>
           </View>
         ) : null}
 

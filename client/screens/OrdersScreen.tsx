@@ -289,21 +289,51 @@ export default function OrdersScreen() {
             </ThemedText>
           </View>
         ) : (
-          <Pressable
-            onPress={() => reorder(item)}
-            style={[
-              styles.reorderButton,
-              { backgroundColor: theme.backgroundSecondary },
-            ]}
-          >
-            <Feather name="refresh-cw" size={16} color={ComeYaColors.primary} />
-            <ThemedText
-              type="small"
-              style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+          <View>
+            {item.status === "delivered" ? (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  navigation.navigate("Review", {
+                    orderId: item.id,
+                    businessId: (item as any).businessId,
+                    businessName: item.businessName,
+                    deliveryPersonId: (item as any).deliveryPersonId,
+                  });
+                }}
+                style={[
+                  styles.reorderButton,
+                  { backgroundColor: ComeYaColors.primary },
+                ]}
+              >
+                <Feather name="star" size={16} color="#FFF" />
+                <ThemedText
+                  type="small"
+                  style={{ color: "#FFF", marginLeft: Spacing.xs }}
+                >
+                  Valorar pedido
+                </ThemedText>
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={() => reorder(item)}
+              style={[
+                styles.reorderButton,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  marginTop: item.status === "delivered" ? Spacing.xs : 0,
+                },
+              ]}
             >
-              Pedir de nuevo
-            </ThemedText>
-          </Pressable>
+              <Feather name="refresh-cw" size={16} color={ComeYaColors.primary} />
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs }}
+              >
+                Pedir de nuevo
+              </ThemedText>
+            </Pressable>
+          </View>
         )}
       </Pressable>
     );

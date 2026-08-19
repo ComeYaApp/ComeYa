@@ -16,6 +16,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatEuros } from "@/utils/currency";
 import {
   Spacing,
   BorderRadius,
@@ -221,7 +222,7 @@ export default function DriverEarningsScreen() {
               marginVertical: Spacing.sm,
             }}
           >
-            {getEarningsForPeriod().toFixed(2)} €
+            {formatEuros(getEarningsForPeriod())}
           </ThemedText>
 
           {getEarningsForPeriod() === 0 && earnings.total > 0 && (
@@ -309,7 +310,7 @@ export default function DriverEarningsScreen() {
                 Total ganado histórico
               </ThemedText>
               <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-                {earnings.total.toFixed(2)} €
+                {formatEuros(earnings.total)}
               </ThemedText>
             </View>
             <View
@@ -409,10 +410,9 @@ export default function DriverEarningsScreen() {
                   type="body"
                   style={{ color: ComeYaColors.success, fontWeight: "600" }}
                 >
-                  +€
-                  {(
-                    (delivery.deliveryEarnings || delivery.deliveryFee) / 100
-                  ).toFixed(2)}
+                  {formatEuros(
+                    (delivery.deliveryEarnings || delivery.deliveryFee) / 100,
+                  )}
                 </ThemedText>
                 <ThemedText
                   type="caption"
@@ -509,7 +509,7 @@ export default function DriverEarningsScreen() {
                     type="body"
                     style={{ color: statusInfo.color, fontWeight: "600" }}
                   >
-                    +{(payout.amount / 100).toFixed(2)} €
+                    {formatEuros(payout.amount / 100)}
                   </ThemedText>
                   <ThemedText
                     type="caption"
