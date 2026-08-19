@@ -74,6 +74,9 @@ export interface AdminUser {
   role: string;
   emailVerified: boolean;
   createdAt: string;
+  isActive?: boolean;
+  verificationStatus?: string | null;
+  referralCode?: string | null;
 }
 
 export interface AdminOrder {
@@ -109,6 +112,7 @@ export interface Business {
   type: string;
   description: string;
   image: string;
+  imageUrl?: string;
   address: string;
   phone: string;
   isActive: boolean;
@@ -116,7 +120,13 @@ export interface Business {
   minOrderAmount: number;
   customCommission: number | null;
   ownerId?: string;
+  ownerName?: string;
   verificationStatus?: "pending" | "verified" | "rejected" | null;
+  rating?: number | null;
+  minOrder?: number;
+  isFeatured?: boolean;
+  isPaused?: boolean;
+  createdAt?: string;
 }
 
 export interface Product {

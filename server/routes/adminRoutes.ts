@@ -382,17 +382,27 @@ router.get(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { businesses } = await import("@shared/schema-mysql");
+      const { businesses, users } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
+      const { eq, desc } = await import("drizzle-orm");
 
-      const allBusinesses = await db
-        .select()
+      const rows = await db
+        .select({
+          business: businesses,
+          owner: { id: users.id, name: users.name },
+        })
         .from(businesses)
-        .orderBy(businesses.createdAt);
+        .leftJoin(users, eq(businesses.ownerId, users.id))
+        .orderBy(desc(businesses.createdAt));
 
-      res.json({ success: true, businesses: allBusinesses });
+      const all = rows.map((r: any) => ({
+        ...r.business,
+        ownerName: r.owner?.name ?? null,
+      }));
+
+      res.json({ success: true, businesses: all });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 );
@@ -474,9 +484,41 @@ router.get(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      res.json({ success: true, zones: [] });
+      const { deliveryZones } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const zones = await db.select().from(deliveryZones);
+      res.json({ success: true, zones });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// Update zone
+router.put(
+  "/zones/:id",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { deliveryZones } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+      const { name, description, isActive } = req.body;
+
+      const updates: any = {};
+      if (name !== undefined) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      if (isActive !== undefined) updates.isActive = isActive;
+
+      await db
+        .update(deliveryZones)
+        .set(updates)
+        .where(eq(deliveryZones.id, req.params.id as any));
+
+      res.json({ success: true, message: "Zona actualizada" });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 );

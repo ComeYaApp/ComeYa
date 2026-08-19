@@ -58,6 +58,48 @@ interface MenuItem {
   color: string;
 }
 
+// Roles reales en la BD (evita guardar roles legacy como "driver"/"business")
+const ROLE_LABELS: Record<string, string> = {
+  customer: "Cliente",
+  business: "Dueño de negocio",
+  business_owner: "Dueño de negocio",
+  driver: "Repartidor",
+  delivery_driver: "Repartidor",
+  admin: "Administrador",
+  super_admin: "Super Admin",
+};
+
+const normalizeRole = (role: string) =>
+  role === "business"
+    ? "business_owner"
+    : role === "driver"
+      ? "delivery_driver"
+      : role;
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  accepted: "Aceptado",
+  preparing: "Preparando",
+  ready: "Listo",
+  assigned_driver: "Repartidor asignado",
+  picked_up: "Recogido",
+  on_the_way: "En camino",
+  in_transit: "En tránsito",
+  arriving: "Llegando",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+  refunded: "Reembolsado",
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+  stripe_card: "Tarjeta (Stripe)",
+  stripe_bizum: "Bizum (Stripe)",
+  bizum: "Bizum (manual)",
+  transferencia: "Transferencia SEPA",
+  paypal: "PayPal",
+  cash: "Efectivo",
+};
+
 const menuItems: MenuItem[] = [
   {
     title: "Verificaciones",
@@ -165,11 +207,8 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [userModalVisible, setUserModalVisible] = useState(false);
   const [orderModalVisible, setOrderModalVisible] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
   const [userRoleEdit, setUserRoleEdit] = useState("");
-  const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(
-    null,
-  );
-  const [businessModalVisible, setBusinessModalVisible] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<any | null>(null);
   const [driverModalVisible, setDriverModalVisible] = useState(false);
   const [drivers, setDrivers] = useState<any[]>([]);
@@ -181,9 +220,11 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
   const [selectedCoupon, setSelectedCoupon] = useState<any | null>(null);
   const [couponModalVisible, setCouponModalVisible] = useState(false);
   const [coupons, setCoupons] = useState<any[]>([]);
+  const [savingCoupon, setSavingCoupon] = useState(false);
   const [selectedZone, setSelectedZone] = useState<any | null>(null);
   const [zoneModalVisible, setZoneModalVisible] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
+  const [savingZone, setSavingZone] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
   const [adminLogs, setAdminLogs] = useState<any[]>([]);
@@ -194,11 +235,6 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
       setActiveTab(route.params.initialTab);
     }
   }, [route?.params?.initialTab]);
-
-  console.log("RENDER - Modal states:", {
-    userModalVisible,
-    selectedUser: selectedUser?.name,
-  });
 
   const fetchDashboardData = async () => {
     try {
@@ -297,9 +333,8 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
   };
 
   const openUserModal = (user: AdminUser) => {
-    console.log("Opening user modal for:", user.name);
     setSelectedUser(user);
-    setUserRoleEdit(user.role);
+    setUserRoleEdit(normalizeRole(user.role));
     setUserModalVisible(true);
   };
 
@@ -310,10 +345,11 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         "PUT",
         `/api/admin/users/${selectedUser.id}`,
         {
-          role: userRoleEdit,
+          role: normalizeRole(userRoleEdit),
           name: selectedUser.name,
           email: selectedUser.email,
           phone: selectedUser.phone,
+          isActive: selectedUser.isActive,
         },
       );
 
@@ -330,37 +366,9 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
     }
   };
 
+  // El detalle/edición del negocio lo gestiona BusinessesTab internamente
   const handleBusinessPress = (business: Business) => {
-    setSelectedBusiness(business);
-    setBusinessModalVisible(true);
-  };
-
-  const handleSaveBusiness = async () => {
-    if (!selectedBusiness) return;
-    try {
-      const res = await apiRequest(
-        "PUT",
-        `/api/admin/businesses/${selectedBusiness.id}`,
-        {
-          name: selectedBusiness.name,
-          address: selectedBusiness.address,
-          phone: selectedBusiness.phone,
-          type: selectedBusiness.type,
-          isActive: selectedBusiness.isActive,
-          customCommission: (selectedBusiness as any).customCommission ?? null,
-        },
-      );
-      const data = await res.json();
-      if (data.success) {
-        showToast("Negocio actualizado", "success");
-        setBusinessModalVisible(false);
-        fetchData();
-      } else {
-        showToast(data.error ?? "Error al guardar", "error");
-      }
-    } catch {
-      showToast("Error de conexion", "error");
-    }
+    fetchData();
   };
 
   const handleDriverPress = (driver: any) => {
@@ -396,41 +404,31 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
   const handleOrderPress = (order: AdminOrder) => {
     setSelectedOrder(order);
     setOrderModalVisible(true);
-    showToast(`Abriendo pedido #${order.id.slice(0, 8)}`, "info");
   };
 
-  const handleUserAction = (action: string, user: AdminUser) => {
-    Alert.alert(
-      `${action} Usuario`,
-      `¿Estás seguro de ${action.toLowerCase()} a ${user.name}?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Confirmar",
-          onPress: () => {
-            showToast(`Usuario ${action.toLowerCase()}`, "success");
-            setUserModalVisible(false);
-          },
-        },
-      ],
-    );
-  };
-
-  const handleOrderAction = (action: string, order: AdminOrder) => {
-    Alert.alert(
-      `${action} Pedido`,
-      `¿Cambiar estado del pedido #${order.id.slice(0, 8)}?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Confirmar",
-          onPress: () => {
-            showToast(`Pedido ${action.toLowerCase()}`, "success");
-            setOrderModalVisible(false);
-          },
-        },
-      ],
-    );
+  const handleUpdateOrderStatus = async (nextStatus?: string) => {
+    if (!selectedOrder) return;
+    const status = nextStatus ?? selectedOrder.status;
+    setSavingOrder(true);
+    try {
+      const res = await apiRequest(
+        "PATCH",
+        `/api/orders/${selectedOrder.id}/status`,
+        { status },
+      );
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Estado del pedido actualizado", "success");
+        setOrderModalVisible(false);
+        fetchData();
+      } else {
+        showToast(data.error || "No se pudo actualizar el estado", "error");
+      }
+    } catch (e: any) {
+      showToast(e?.message || "Error de conexión", "error");
+    } finally {
+      setSavingOrder(false);
+    }
   };
 
   const handleDashboardOrderPress = (order: ActiveOrder) => {
@@ -517,401 +515,21 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
               onBusinessPress={handleBusinessPress}
               onRefresh={fetchData}
             />
-            {businessModalVisible && selectedBusiness && (
-              <Pressable
-                style={styles.modalOverlay}
-                onPress={() => setBusinessModalVisible(false)}
-              >
-                <Pressable
-                  style={[styles.modalCard, { backgroundColor: theme.card }]}
-                  onPress={(e) => e.stopPropagation()}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 20,
-                    }}
-                  >
-                    <ThemedText type="h3" style={{ color: theme.text }}>
-                      Detalles del Negocio
-                    </ThemedText>
-                    <Pressable
-                      onPress={() => setBusinessModalVisible(false)}
-                      hitSlop={12}
-                    >
-                      <Feather name="x" size={24} color={theme.text} />
-                    </Pressable>
-                  </View>
-
-                  <ScrollView showsVerticalScrollIndicator={false}>
-                    <View style={{ alignItems: "center", marginBottom: 20 }}>
-                      <View
-                        style={{
-                          width: 70,
-                          height: 70,
-                          borderRadius: 35,
-                          backgroundColor: "#3B82F6",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          marginBottom: 15,
-                        }}
-                      >
-                        <ThemedText
-                          style={{
-                            color: "white",
-                            fontSize: 28,
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {selectedBusiness.name?.charAt(0).toUpperCase() ||
-                            "B"}
-                        </ThemedText>
-                      </View>
-
-                      <View style={{ width: "100%", marginBottom: 15 }}>
-                        <ThemedText
-                          style={{ marginBottom: 5, fontWeight: "600" }}
-                        >
-                          Nombre:
-                        </ThemedText>
-                        <TextInput
-                          style={{
-                            borderWidth: 1,
-                            borderColor: theme.border,
-                            padding: 12,
-                            borderRadius: 8,
-                            fontSize: 16,
-                            color: theme.text,
-                            backgroundColor: theme.backgroundSecondary,
-                          }}
-                          value={selectedBusiness.name}
-                          onChangeText={(text) =>
-                            setSelectedBusiness({
-                              ...selectedBusiness,
-                              name: text,
-                            })
-                          }
-                          placeholder="Nombre del negocio"
-                          placeholderTextColor={theme.textSecondary}
-                        />
-                      </View>
-
-                      <View style={{ width: "100%", marginBottom: 15 }}>
-                        <ThemedText
-                          style={{ marginBottom: 5, fontWeight: "600" }}
-                        >
-                          Dirección:
-                        </ThemedText>
-                        <TextInput
-                          style={{
-                            borderWidth: 1,
-                            borderColor: theme.border,
-                            padding: 12,
-                            borderRadius: 8,
-                            fontSize: 16,
-                            color: theme.text,
-                            backgroundColor: theme.backgroundSecondary,
-                          }}
-                          value={selectedBusiness.address || ""}
-                          onChangeText={(text) =>
-                            setSelectedBusiness({
-                              ...selectedBusiness,
-                              address: text,
-                            })
-                          }
-                          placeholder="Dirección"
-                          placeholderTextColor={theme.textSecondary}
-                        />
-                      </View>
-
-                      <View style={{ width: "100%", marginBottom: 15 }}>
-                        <ThemedText
-                          style={{ marginBottom: 5, fontWeight: "600" }}
-                        >
-                          Telefono:
-                        </ThemedText>
-                        <TextInput
-                          style={{
-                            borderWidth: 1,
-                            borderColor: theme.border,
-                            padding: 12,
-                            borderRadius: 8,
-                            fontSize: 16,
-                            color: theme.text,
-                            backgroundColor: theme.backgroundSecondary,
-                          }}
-                          value={selectedBusiness.phone || ""}
-                          onChangeText={(text) =>
-                            setSelectedBusiness({
-                              ...selectedBusiness,
-                              phone: text,
-                            })
-                          }
-                          placeholder="Telefono"
-                          placeholderTextColor={theme.textSecondary}
-                          keyboardType="phone-pad"
-                        />
-                      </View>
-
-                      {/* Comision personalizada */}
-                      <View
-                        style={{
-                          width: "100%",
-                          marginBottom: 15,
-                          backgroundColor: theme.backgroundSecondary,
-                          padding: 12,
-                          borderRadius: 10,
-                        }}
-                      >
-                        <ThemedText
-                          style={{
-                            fontWeight: "700",
-                            color: theme.text,
-                            marginBottom: 4,
-                          }}
-                        >
-                          Comision personalizada (%)
-                        </ThemedText>
-                        <ThemedText
-                          style={{
-                            fontSize: 12,
-                            color: theme.textSecondary,
-                            marginBottom: 8,
-                          }}
-                        >
-                          {(selectedBusiness as any).customCommission != null
-                            ? `Usando comision especifica: ${(selectedBusiness as any).customCommission}%`
-                            : "Usando comision global del sistema"}
-                        </ThemedText>
-                        <TextInput
-                          style={{
-                            borderWidth: 1,
-                            borderColor: theme.border,
-                            padding: 12,
-                            borderRadius: 8,
-                            fontSize: 16,
-                            color: theme.text,
-                            backgroundColor: theme.card,
-                          }}
-                          value={
-                            (selectedBusiness as any).customCommission != null
-                              ? String(
-                                  (selectedBusiness as any).customCommission,
-                                )
-                              : ""
-                          }
-                          onChangeText={(text) =>
-                            setSelectedBusiness({
-                              ...selectedBusiness,
-                              customCommission:
-                                text === "" ? null : parseInt(text) || 0,
-                            } as any)
-                          }
-                          placeholder="Dejar vacio = usa global"
-                          placeholderTextColor={theme.textSecondary}
-                          keyboardType="numeric"
-                        />
-                      </View>
-                    </View>
-
-                    <ThemedText
-                      style={{
-                        fontWeight: "bold",
-                        marginBottom: 15,
-                        fontSize: 16,
-                      }}
-                    >
-                      Tipo de Negocio:
-                    </ThemedText>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        gap: 10,
-                        marginBottom: 25,
-                      }}
-                    >
-                      {[
-                        {
-                          key: "restaurant",
-                          label: "Restaurante",
-                          color: "#3B82F6",
-                        },
-                        { key: "market", label: "Mercado", color: "#10B981" },
-                      ].map((type) => (
-                        <Pressable
-                          key={type.key}
-                          onPress={() =>
-                            setSelectedBusiness({
-                              ...selectedBusiness,
-                              type: type.key,
-                            })
-                          }
-                          style={{
-                            paddingVertical: 12,
-                            paddingHorizontal: 20,
-                            borderRadius: 25,
-                            backgroundColor:
-                              selectedBusiness.type === type.key
-                                ? type.color
-                                : "#f5f5f5",
-                            borderWidth: 1,
-                            borderColor:
-                              selectedBusiness.type === type.key
-                                ? type.color
-                                : "#ddd",
-                            flex: 1,
-                            alignItems: "center",
-                          }}
-                        >
-                          <ThemedText
-                            style={{
-                              color:
-                                selectedBusiness.type === type.key
-                                  ? "white"
-                                  : "#333",
-                              fontWeight:
-                                selectedBusiness.type === type.key
-                                  ? "bold"
-                                  : "normal",
-                            }}
-                          >
-                            {type.label}
-                          </ThemedText>
-                        </Pressable>
-                      ))}
-                    </View>
-
-                    <View
-                      style={{
-                        backgroundColor: theme.backgroundSecondary,
-                        padding: 15,
-                        borderRadius: 10,
-                        marginBottom: 20,
-                      }}
-                    >
-                      <ThemedText
-                        style={{
-                          fontSize: 12,
-                          color: theme.textSecondary,
-                          marginBottom: 8,
-                        }}
-                      >
-                        Estado:
-                      </ThemedText>
-                      <View style={{ flexDirection: "row", gap: 10 }}>
-                        <Pressable
-                          onPress={() =>
-                            setSelectedBusiness({
-                              ...selectedBusiness,
-                              isActive: true,
-                            })
-                          }
-                          style={{
-                            padding: 12,
-                            borderRadius: 8,
-                            backgroundColor: selectedBusiness.isActive
-                              ? "#10B981"
-                              : theme.backgroundSecondary,
-                            flex: 1,
-                            alignItems: "center",
-                          }}
-                        >
-                          <ThemedText
-                            style={{
-                              color: selectedBusiness.isActive
-                                ? "white"
-                                : theme.text,
-                            }}
-                          >
-                            Activo
-                          </ThemedText>
-                        </Pressable>
-                        <Pressable
-                          onPress={() =>
-                            setSelectedBusiness({
-                              ...selectedBusiness,
-                              isActive: false,
-                            })
-                          }
-                          style={{
-                            padding: 12,
-                            borderRadius: 8,
-                            backgroundColor: !selectedBusiness.isActive
-                              ? "#EF4444"
-                              : theme.backgroundSecondary,
-                            flex: 1,
-                            alignItems: "center",
-                          }}
-                        >
-                          <ThemedText
-                            style={{
-                              color: !selectedBusiness.isActive
-                                ? "white"
-                                : theme.text,
-                            }}
-                          >
-                            Inactivo
-                          </ThemedText>
-                        </Pressable>
-                      </View>
-                    </View>
-                  </ScrollView>
-
-                  <Pressable
-                    style={{
-                      padding: 16,
-                      backgroundColor: "#FF8C00",
-                      borderRadius: 10,
-                      alignItems: "center",
-                      marginTop: 10,
-                    }}
-                    onPress={handleSaveBusiness}
-                  >
-                    <ThemedText
-                      style={{
-                        color: "white",
-                        fontWeight: "bold",
-                        fontSize: 16,
-                      }}
-                    >
-                      Guardar Cambios
-                    </ThemedText>
-                  </Pressable>
-                </Pressable>
-              </Pressable>
-            )}
           </View>
         );
       case "users":
         return (
           <View style={{ flex: 1 }}>
             <UsersTab users={users} onUserPress={openUserModal} />
-            {userModalVisible && selectedUser && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: "rgba(0,0,0,0.7)",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  zIndex: 999999,
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: theme.card,
-                    borderRadius: 15,
-                    padding: 25,
-                    width: "90%",
-                    maxWidth: 450,
-                    maxHeight: "80%",
-                  }}
-                >
+            <Modal
+              transparent
+              animationType="fade"
+              visible={userModalVisible && !!selectedUser}
+              onRequestClose={() => setUserModalVisible(false)}
+            >
+              <View style={styles.modalOverlayCentered}>
+                {selectedUser && (
+                <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
                   <View
                     style={{
                       flexDirection: "row",
@@ -1049,13 +667,22 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                     >
                       {[
                         { key: "customer", label: "Cliente", color: "#6B7280" },
-                        { key: "business", label: "Negocio", color: "#3B82F6" },
                         {
-                          key: "driver",
+                          key: "business_owner",
+                          label: "Dueño de negocio",
+                          color: "#3B82F6",
+                        },
+                        {
+                          key: "delivery_driver",
                           label: "Repartidor",
                           color: "#10B981",
                         },
-                        { key: "admin", label: "ComeYa", color: "#9333EA" },
+                        { key: "admin", label: "Admin", color: "#9333EA" },
+                        {
+                          key: "super_admin",
+                          label: "Super Admin",
+                          color: "#7C3AED",
+                        },
                       ].map((role) => (
                         <Pressable
                           key={role.key}
@@ -1118,7 +745,22 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         <ThemedText
                           style={{ fontWeight: "bold", color: theme.text }}
                         >
-                          {selectedUser.role}
+                          {ROLE_LABELS[selectedUser.role] ||
+                            selectedUser.role}
+                        </ThemedText>
+                      </ThemedText>
+                      <ThemedText
+                        style={{ marginBottom: 5, color: theme.text }}
+                      >
+                        Verificación:{" "}
+                        <ThemedText
+                          style={{ fontWeight: "bold", color: theme.text }}
+                        >
+                          {selectedUser.verificationStatus
+                            ? selectedUser.verificationStatus === "verified"
+                              ? "Verificado ✓"
+                              : selectedUser.verificationStatus
+                            : "Sin verificar"}
                         </ThemedText>
                       </ThemedText>
                       <ThemedText>
@@ -1129,6 +771,102 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                           )}
                         </ThemedText>
                       </ThemedText>
+                    </View>
+
+                    <ThemedText
+                      style={{
+                        fontWeight: "bold",
+                        marginBottom: 15,
+                        fontSize: 16,
+                      }}
+                    >
+                      Estado de la cuenta:
+                    </ThemedText>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 10,
+                        marginBottom: 25,
+                      }}
+                    >
+                      <Pressable
+                        onPress={() =>
+                          setSelectedUser({
+                            ...selectedUser,
+                            isActive: true,
+                          })
+                        }
+                        style={{
+                          paddingVertical: 12,
+                          paddingHorizontal: 20,
+                          borderRadius: 25,
+                          backgroundColor:
+                            selectedUser.isActive !== false
+                              ? "#10B981"
+                              : theme.backgroundSecondary,
+                          borderWidth: 1,
+                          borderColor:
+                            selectedUser.isActive !== false
+                              ? "#10B981"
+                              : theme.border,
+                          flex: 1,
+                          alignItems: "center",
+                        }}
+                      >
+                        <ThemedText
+                          style={{
+                            color:
+                              selectedUser.isActive !== false
+                                ? "white"
+                                : theme.text,
+                            fontWeight:
+                              selectedUser.isActive !== false
+                                ? "bold"
+                                : "normal",
+                          }}
+                        >
+                          Activo
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        onPress={() =>
+                          setSelectedUser({
+                            ...selectedUser,
+                            isActive: false,
+                          })
+                        }
+                        style={{
+                          paddingVertical: 12,
+                          paddingHorizontal: 20,
+                          borderRadius: 25,
+                          backgroundColor:
+                            selectedUser.isActive === false
+                              ? "#EF4444"
+                              : theme.backgroundSecondary,
+                          borderWidth: 1,
+                          borderColor:
+                            selectedUser.isActive === false
+                              ? "#EF4444"
+                              : theme.border,
+                          flex: 1,
+                          alignItems: "center",
+                        }}
+                      >
+                        <ThemedText
+                          style={{
+                            color:
+                              selectedUser.isActive === false
+                                ? "white"
+                                : theme.text,
+                            fontWeight:
+                              selectedUser.isActive === false
+                                ? "bold"
+                                : "normal",
+                          }}
+                        >
+                          Bloqueado
+                        </ThemedText>
+                      </Pressable>
                     </View>
                   </ScrollView>
 
@@ -1153,8 +891,9 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                     </ThemedText>
                   </Pressable>
                 </View>
+                )}
               </View>
-            )}
+            </Modal>
           </View>
         );
       case "orders":
@@ -1194,11 +933,17 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
             ) : (
               <OrdersTab orders={orders} onOrderPress={handleOrderPress} />
             )}
-            {orderModalVisible && selectedOrder && (
+            <Modal
+              transparent
+              animationType="fade"
+              visible={orderModalVisible && !!selectedOrder}
+              onRequestClose={() => setOrderModalVisible(false)}
+            >
               <Pressable
                 style={styles.modalOverlay}
                 onPress={() => setOrderModalVisible(false)}
               >
+                {selectedOrder && (
                 <Pressable
                   style={[styles.modalCard, { backgroundColor: theme.card }]}
                   onPress={(e) => e.stopPropagation()}
@@ -1280,8 +1025,8 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                           color: "#F59E0B",
                         },
                         {
-                          key: "confirmed",
-                          label: "Confirmado",
+                          key: "accepted",
+                          label: "Aceptado",
                           color: "#3B82F6",
                         },
                         {
@@ -1290,6 +1035,11 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                           color: "#8B5CF6",
                         },
                         { key: "ready", label: "Listo", color: "#06B6D4" },
+                        {
+                          key: "picked_up",
+                          label: "Recogido",
+                          color: "#0EA5E9",
+                        },
                         {
                           key: "on_the_way",
                           label: "En Camino",
@@ -1376,9 +1126,22 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         <ThemedText
                           style={{ fontWeight: "bold", color: theme.text }}
                         >
-                          {selectedOrder.paymentMethod === "card"
-                            ? "Tarjeta"
-                            : "Efectivo"}
+                          {PAYMENT_LABELS[selectedOrder.paymentMethod] ||
+                            selectedOrder.paymentMethod ||
+                            "—"}
+                        </ThemedText>
+                      </ThemedText>
+                      <ThemedText
+                        style={{ marginBottom: 5, color: theme.text }}
+                      >
+                        Cliente:{" "}
+                        <ThemedText
+                          style={{ fontWeight: "bold", color: theme.text }}
+                        >
+                          {selectedOrder.customerName}
+                          {selectedOrder.customerPhone
+                            ? ` · ${selectedOrder.customerPhone}`
+                            : ""}
                         </ThemedText>
                       </ThemedText>
                       <ThemedText
@@ -1389,6 +1152,22 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                           style={{ fontWeight: "bold", color: theme.text }}
                         >
                           {selectedOrder.deliveryAddress}
+                        </ThemedText>
+                      </ThemedText>
+                      <ThemedText
+                        style={{ marginBottom: 5, color: theme.text }}
+                      >
+                        Total:{" "}
+                        <ThemedText
+                          style={{ fontWeight: "bold", color: theme.text }}
+                        >
+                          {((selectedOrder.total ?? 0) / 100).toFixed(2)} €
+                          {selectedOrder.subtotal
+                            ? ` · Subtotal ${(selectedOrder.subtotal / 100).toFixed(2)} €`
+                            : ""}
+                          {selectedOrder.deliveryFee
+                            ? ` · Envío ${(selectedOrder.deliveryFee / 100).toFixed(2)} €`
+                            : ""}
                         </ThemedText>
                       </ThemedText>
                       <ThemedText style={{ color: theme.text }}>
@@ -1412,6 +1191,62 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         </ThemedText>
                       ) : null}
                     </View>
+
+                    <View
+                      style={{
+                        backgroundColor: theme.backgroundSecondary,
+                        padding: 15,
+                        borderRadius: 10,
+                        marginBottom: 20,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                      }}
+                    >
+                      <ThemedText
+                        style={{
+                          fontSize: 12,
+                          color: theme.textSecondary,
+                          marginBottom: 8,
+                        }}
+                      >
+                        Productos:
+                      </ThemedText>
+                      {(() => {
+                        try {
+                          const parsed = JSON.parse(selectedOrder.items || "[]");
+                          const list = Array.isArray(parsed) ? parsed : [];
+                          if (list.length === 0)
+                            return (
+                              <ThemedText
+                                style={{
+                                  color: theme.textSecondary,
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Sin detalle de productos
+                              </ThemedText>
+                            );
+                          return list.map((item: any, i: number) => (
+                            <ThemedText
+                              key={i}
+                              style={{ marginBottom: 4, color: theme.text }}
+                            >
+                              • {item.quantity ?? 1}×{" "}
+                              {item.name || item.productName || "Producto"}
+                              {item.price
+                                ? ` — ${((item.price * (item.quantity ?? 1)) / 100).toFixed(2)} €`
+                                : ""}
+                            </ThemedText>
+                          ));
+                        } catch {
+                          return (
+                            <ThemedText style={{ color: theme.text }}>
+                              {selectedOrder.items || "Sin detalle"}
+                            </ThemedText>
+                          );
+                        }
+                      })()}
+                    </View>
                   </ScrollView>
 
                   <Pressable
@@ -1421,11 +1256,10 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                       borderRadius: 10,
                       alignItems: "center",
                       marginTop: 10,
+                      opacity: savingOrder ? 0.6 : 1,
                     }}
-                    onPress={() => {
-                      showToast("Estado del pedido actualizado", "success");
-                      setOrderModalVisible(false);
-                    }}
+                    onPress={() => handleUpdateOrderStatus()}
+                    disabled={savingOrder}
                   >
                     <ThemedText
                       style={{
@@ -1434,12 +1268,13 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         fontSize: 16,
                       }}
                     >
-                      Actualizar Estado
+                      {savingOrder ? "Actualizando..." : "Actualizar Estado"}
                     </ThemedText>
                   </Pressable>
                 </Pressable>
+                )}
               </Pressable>
-            )}
+            </Modal>
           </View>
         );
       case "coupons":
@@ -1743,16 +1578,15 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                   </ScrollView>
 
                   <Pressable
+                    onPress={handleUpdateCoupon}
+                    disabled={savingCoupon}
                     style={{
                       padding: 16,
-                      backgroundColor: "#FF8C00",
+                      backgroundColor: "#FF5722",
                       borderRadius: 10,
                       alignItems: "center",
                       marginTop: 10,
-                    }}
-                    onPress={() => {
-                      showToast("Cupón actualizado", "success");
-                      setCouponModalVisible(false);
+                      opacity: savingCoupon ? 0.6 : 1,
                     }}
                   >
                     <ThemedText
@@ -1762,7 +1596,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         fontSize: 16,
                       }}
                     >
-                      Actualizar Cupón
+                      {savingCoupon ? "Actualizando..." : "Actualizar Cupón"}
                     </ThemedText>
                   </Pressable>
                 </View>
@@ -2089,16 +1923,15 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                   </ScrollView>
 
                   <Pressable
+                    onPress={handleUpdateZone}
+                    disabled={savingZone}
                     style={{
                       padding: 16,
                       backgroundColor: "#FF8C00",
                       borderRadius: 10,
                       alignItems: "center",
                       marginTop: 10,
-                    }}
-                    onPress={() => {
-                      showToast("Zona actualizada", "success");
-                      setZoneModalVisible(false);
+                      opacity: savingZone ? 0.6 : 1,
                     }}
                   >
                     <ThemedText
@@ -2108,7 +1941,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         fontSize: 16,
                       }}
                     >
-                      Actualizar Zona
+                      {savingZone ? "Actualizando..." : "Actualizar Zona"}
                     </ThemedText>
                   </Pressable>
                 </View>
@@ -2508,6 +2341,65 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
     setCouponModalVisible(true);
   };
 
+  const handleUpdateCoupon = async () => {
+    if (!selectedCoupon) return;
+    setSavingCoupon(true);
+    try {
+      const res = await apiRequest(
+        "PUT",
+        `/api/coupons/admin/${selectedCoupon.id}`,
+        {
+          code: selectedCoupon.code,
+          discountType: selectedCoupon.discountType,
+          discountValue: selectedCoupon.discountValue,
+          minOrderAmount: selectedCoupon.minOrderAmount,
+          maxUses: selectedCoupon.maxUses,
+          isActive: selectedCoupon.isActive,
+        },
+      );
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        showToast("Cupón actualizado", "success");
+        setCouponModalVisible(false);
+        fetchCoupons();
+      } else {
+        showToast(data.error ?? "No se pudo actualizar el cupón", "error");
+      }
+    } catch (e: any) {
+      showToast(e?.message || "Error de conexión", "error");
+    } finally {
+      setSavingCoupon(false);
+    }
+  };
+
+  const handleUpdateZone = async () => {
+    if (!selectedZone) return;
+    setSavingZone(true);
+    try {
+      const res = await apiRequest(
+        "PUT",
+        `/api/admin/zones/${selectedZone.id}`,
+        {
+          name: selectedZone.name,
+          description: selectedZone.description,
+          isActive: selectedZone.isActive,
+        },
+      );
+      const data = await res.json();
+      if (res.ok && data.success !== false) {
+        showToast("Zona actualizada", "success");
+        setZoneModalVisible(false);
+        fetchZones();
+      } else {
+        showToast(data.error ?? "No se pudo actualizar la zona", "error");
+      }
+    } catch (e: any) {
+      showToast(e?.message || "Error de conexión", "error");
+    } finally {
+      setSavingZone(false);
+    }
+  };
+
   const fetchZones = async () => {
     try {
       const res = await apiRequest("GET", "/api/admin/zones");
@@ -2547,15 +2439,6 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
   };
 
   if (activeTab) {
-    // Tabs que manejan su propio scroll internamente
-    const selfScrollingTabs = [
-      "dashboard",
-      "finance",
-      "drivers",
-      "verifications",
-    ];
-    const isSelfScrolling = selfScrollingTabs.includes(activeTab);
-
     return (
       <SafeAreaView
         style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -2571,23 +2454,10 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
             </ThemedText>
           </View>
         </View>
-        {isSelfScrolling ? (
-          <View style={{ flex: 1 }}>{renderTabContent()}</View>
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={ComeYaColors.primary}
-              />
-            }
-          >
-            {renderTabContent()}
-          </ScrollView>
-        )}
+        {/* Cada tab gestiona su propio scroll; los overlays/modal se centran
+            sobre la pantalla (antes iban dentro de un ScrollView y el overlay
+            quedaba fuera del viewport en listas largas) */}
+        <View style={{ flex: 1 }}>{renderTabContent()}</View>
       </SafeAreaView>
     );
   }
@@ -2693,9 +2563,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                       borderRadius: 8,
                       alignItems: "center",
                     }}
-                    onPress={() =>
-                      handleOrderAction("Confirmar", selectedOrder)
-                    }
+                    onPress={() => handleUpdateOrderStatus("accepted")}
                   >
                     <ThemedText style={{ color: "white", fontWeight: "bold" }}>
                       Confirmar
@@ -2709,7 +2577,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                       borderRadius: 8,
                       alignItems: "center",
                     }}
-                    onPress={() => handleOrderAction("Cancelar", selectedOrder)}
+                    onPress={() => handleUpdateOrderStatus("cancelled")}
                   >
                     <ThemedText style={{ color: "white", fontWeight: "bold" }}>
                       Cancelar
@@ -2792,6 +2660,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.lg,
+  },
+  modalOverlayCentered: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
     alignItems: "center",
     padding: Spacing.lg,

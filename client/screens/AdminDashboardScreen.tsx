@@ -10,6 +10,7 @@ import {
   Pressable,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
@@ -128,6 +129,7 @@ function StatRow({
 
 export default function AdminDashboardScreen() {
   const { theme, isDark } = useTheme();
+  const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -287,7 +289,11 @@ export default function AdminDashboardScreen() {
           width={cardW}
           trend={revTrend}
         />
-        <Pressable onPress={() => navigation.navigate("Orders")}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate("AdminTab", { initialTab: "orders" })
+          }
+        >
           <KpiCard
             icon="clock"
             label="Pedidos activos"
@@ -297,14 +303,20 @@ export default function AdminDashboardScreen() {
             sub="en proceso"
           />
         </Pressable>
-        <KpiCard
-          icon="alert-circle"
-          label="Pagos pendientes"
-          value={metrics?.pendingPayments ?? 0}
-          color={ComeYaColors.error}
-          width={cardW}
-          sub="por verificar"
-        />
+        <Pressable
+          onPress={() =>
+            navigation.navigate("AdminTab", { initialTab: "finance" })
+          }
+        >
+          <KpiCard
+            icon="alert-circle"
+            label="Pagos pendientes"
+            value={metrics?.pendingPayments ?? 0}
+            color={ComeYaColors.error}
+            width={cardW}
+            sub="por verificar"
+          />
+        </Pressable>
       </View>
 
       {/* ── Gráfico ventas ── */}

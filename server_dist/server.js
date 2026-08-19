@@ -14104,12 +14104,20 @@ router8.get(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+      const { businesses: businesses3, users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const allBusinesses = await db2.select().from(businesses3).orderBy(businesses3.createdAt);
-      res.json({ success: true, businesses: allBusinesses });
+      const { eq: eq72, desc: desc18 } = await import("drizzle-orm");
+      const rows = await db2.select({
+        business: businesses3,
+        owner: { id: users5.id, name: users5.name }
+      }).from(businesses3).leftJoin(users5, eq72(businesses3.ownerId, users5.id)).orderBy(desc18(businesses3.createdAt));
+      const all = rows.map((r) => ({
+        ...r.business,
+        ownerName: r.owner?.name ?? null
+      }));
+      res.json({ success: true, businesses: all });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 );
@@ -14167,9 +14175,33 @@ router8.get(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      res.json({ success: true, zones: [] });
+      const { deliveryZones: deliveryZones2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+      const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      const zones = await db2.select().from(deliveryZones2);
+      res.json({ success: true, zones });
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  }
+);
+router8.put(
+  "/zones/:id",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { deliveryZones: deliveryZones2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+      const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      const { eq: eq72 } = await import("drizzle-orm");
+      const { name, description, isActive } = req.body;
+      const updates = {};
+      if (name !== void 0) updates.name = name;
+      if (description !== void 0) updates.description = description;
+      if (isActive !== void 0) updates.isActive = isActive;
+      await db2.update(deliveryZones2).set(updates).where(eq72(deliveryZones2.id, req.params.id));
+      res.json({ success: true, message: "Zona actualizada" });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 );

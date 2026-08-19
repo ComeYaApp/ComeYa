@@ -8,9 +8,11 @@ import {
   Modal,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { Business } from "../types/admin.types";
 import { useTheme } from "@/hooks/useTheme";
@@ -21,6 +23,20 @@ interface BusinessesTabProps {
   onBusinessPress: (business: Business) => void;
   onRefresh?: () => void;
 }
+
+const TYPE_LABELS: Record<string, string> = {
+  restaurant: "Restaurante",
+  market: "Mercado",
+  grocery: "Supermercado",
+  pharmacy: "Farmacia",
+  other: "Otro",
+};
+
+const VERIFICATION_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  verified: "Verificado",
+  rejected: "Rechazado",
+};
 
 export const BusinessesTab: React.FC<BusinessesTabProps> = ({
   businesses,
@@ -40,10 +56,14 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
     (b) => b.verificationStatus === "pending",
   );
 
+  const imageOf = (b: Business) => (b as any).imageUrl || b.image || "";
+
   const handleBusinessPress = (business: Business) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedBusiness(business);
-    setCustomCommission(business.customCommission?.toString() || "");
+    setCustomCommission(
+      business.customCommission?.toString() || "",
+    );
     setModalVisible(true);
   };
 
@@ -81,9 +101,8 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
     }
   };
 
-  const handleSaveCommission = async () => {
+  const handleSaveBusiness = async () => {
     if (!selectedBusiness) return;
-
     const commissionValue =
       customCommission.trim() === "" ? null : parseFloat(customCommission);
 
@@ -100,32 +119,37 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
 
     setSaving(true);
     try {
-      await apiRequest(
+      const res = await apiRequest(
         "PUT",
-        `/api/admin/businesses/${selectedBusiness.id}/commission`,
+        `/api/admin/businesses/${selectedBusiness.id}`,
         {
+          name: selectedBusiness.name,
+          address: selectedBusiness.address,
+          phone: selectedBusiness.phone,
+          type: selectedBusiness.type,
+          isActive: selectedBusiness.isActive,
           customCommission: commissionValue,
         },
       );
-
-      Alert.alert(
-        "Éxito",
-        commissionValue === null
-          ? "Se usará la comisión global del sistema"
-          : `Comisión personalizada establecida en ${commissionValue}%`,
-      );
-
-      setModalVisible(false);
-      // Actualizar la lista
-      onBusinessPress(selectedBusiness);
+      const data = await res.json();
+      if (data.success) {
+        Alert.alert("Éxito", "Negocio actualizado correctamente");
+        setModalVisible(false);
+        onRefresh?.();
+      } else {
+        Alert.alert("Error", data.error ?? "No se pudo guardar el negocio");
+      }
     } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.message || "No se pudo actualizar la comisión",
-      );
+      Alert.alert("Error", error.message || "No se pudo actualizar el negocio");
     } finally {
       setSaving(false);
     }
+  };
+
+  const updateField = (field: keyof Business, value: any) => {
+    setSelectedBusiness((prev) =>
+      prev ? { ...prev, [field]: value } : prev,
+    );
   };
 
   return (
@@ -202,72 +226,110 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
             style={[styles.card, { backgroundColor: theme.card }]}
             onPress={() => handleBusinessPress(business)}
           >
-            <View style={styles.businessHeader}>
-              <Text style={[styles.businessName, { color: theme.text }]}>
-                {business.name}
-              </Text>
-              <View style={styles.badgeRow}>
-                {business.verificationStatus &&
-                  business.verificationStatus !== "verified" && (
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        {
-                          backgroundColor:
-                            business.verificationStatus === "pending"
-                              ? "#F59E0B"
-                              : ComeYaColors.error,
-                          marginRight: 6,
-                        },
-                      ]}
-                    >
-                      <Text style={styles.statusText}>
-                        {business.verificationStatus === "pending"
-                          ? "Pendiente"
-                          : "Rechazado"}
-                      </Text>
-                    </View>
-                  )}
+            <View style={styles.cardRow}>
+              {imageOf(business) ? (
+                <Image
+                  source={{ uri: imageOf(business) }}
+                  style={styles.cardImage}
+                  contentFit="cover"
+                  transition={150}
+                />
+              ) : (
                 <View
                   style={[
-                    styles.statusBadge,
+                    styles.cardImage,
                     {
-                      backgroundColor: business.isActive
-                        ? ComeYaColors.success
-                        : ComeYaColors.error,
+                      backgroundColor: theme.backgroundSecondary,
+                      justifyContent: "center",
+                      alignItems: "center",
                     },
                   ]}
                 >
-                  <Text style={styles.statusText}>
-                    {business.isActive ? "Activo" : "Inactivo"}
+                  <Feather
+                    name="briefcase"
+                    size={22}
+                    color={theme.textSecondary}
+                  />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <View style={styles.businessHeader}>
+                  <Text
+                    style={[styles.businessName, { color: theme.text }]}
+                    numberOfLines={1}
+                  >
+                    {business.name}
                   </Text>
                 </View>
+                <Text
+                  style={[styles.businessType, { color: theme.textSecondary }]}
+                >
+                  {TYPE_LABELS[business.type] || business.type}
+                  {business.rating ? ` · ★ ${(business.rating / 10).toFixed(1)}` : ""}
+                </Text>
+                <Text
+                  style={[styles.businessAddress, { color: theme.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {business.address || "Sin dirección"}
+                </Text>
+                <Text
+                  style={[styles.businessPhone, { color: theme.textSecondary }]}
+                >
+                  {business.phone || "Sin teléfono"}
+                </Text>
               </View>
             </View>
-            <Text style={[styles.businessType, { color: theme.textSecondary }]}>
-              {business.type === "restaurant" ? "Restaurante" : "Mercado"}
-            </Text>
-            <Text
-              style={[styles.businessAddress, { color: theme.textSecondary }]}
-            >
-              {business.address || "Sin dirección"}
-            </Text>
-            <Text
-              style={[styles.businessPhone, { color: theme.textSecondary }]}
-            >
-              {business.phone || "Sin teléfono"}
-            </Text>
-            <View style={styles.commissionRow}>
-              <Feather name="percent" size={14} color={ComeYaColors.primary} />
-              <Text
-                style={[styles.commissionText, { color: theme.textSecondary }]}
+            <View style={styles.badgeRow}>
+              {business.verificationStatus &&
+                business.verificationStatus !== "verified" && (
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      {
+                        backgroundColor:
+                          business.verificationStatus === "pending"
+                            ? "#F59E0B"
+                            : ComeYaColors.error,
+                        marginRight: 6,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>
+                      {VERIFICATION_LABELS[business.verificationStatus] ||
+                        business.verificationStatus}
+                    </Text>
+                  </View>
+                )}
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: business.isActive
+                      ? ComeYaColors.success
+                      : ComeYaColors.error,
+                  },
+                ]}
               >
-                Comisión:{" "}
-                {business.customCommission !== null &&
-                business.customCommission !== undefined
-                  ? `${business.customCommission}% (personalizada)`
-                  : "Global del sistema"}
-              </Text>
+                <Text style={styles.statusText}>
+                  {business.isActive ? "Activo" : "Inactivo"}
+                </Text>
+              </View>
+              <View style={styles.commissionRow}>
+                <Feather
+                  name="percent"
+                  size={14}
+                  color={ComeYaColors.primary}
+                />
+                <Text
+                  style={[styles.commissionText, { color: theme.textSecondary }]}
+                >
+                  {business.customCommission !== null &&
+                  business.customCommission !== undefined
+                    ? `Comisión ${business.customCommission}%`
+                    : "Comisión global"}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
         ))}
@@ -285,88 +347,395 @@ export const BusinessesTab: React.FC<BusinessesTabProps> = ({
               style={[styles.modalHeader, { borderBottomColor: theme.border }]}
             >
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Comisión Personalizada
+                Detalles del negocio
               </Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Feather name="x" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalBody}>
-              <Text style={[styles.businessNameModal, { color: theme.text }]}>
-                {selectedBusiness?.name}
-              </Text>
-
-              <Text style={[styles.label, { color: theme.text }]}>
-                Comisión (%)
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.backgroundSecondary,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  },
-                ]}
-                value={customCommission}
-                onChangeText={setCustomCommission}
-                placeholder="Ej: 15 (vacío = usar global)"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="decimal-pad"
-              />
-
-              <View
-                style={[
-                  styles.infoBox,
-                  { backgroundColor: ComeYaColors.primary + "10" },
-                ]}
+            {selectedBusiness && (
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={{ padding: Spacing.lg }}
+                showsVerticalScrollIndicator={false}
               >
-                <Feather name="info" size={16} color={ComeYaColors.primary} />
-                <Text
-                  style={[styles.infoText, { color: ComeYaColors.primary }]}
-                >
-                  Deja vacío para usar la comisión global del sistema. Ingresa
-                  un número entre 0-100 para establecer una comisión
-                  personalizada.
-                </Text>
-              </View>
+                {/* Foto + badges */}
+                <View style={{ alignItems: "center", marginBottom: Spacing.lg }}>
+                  {imageOf(selectedBusiness) ? (
+                    <Image
+                      source={{ uri: imageOf(selectedBusiness) }}
+                      style={styles.modalImage}
+                      contentFit="cover"
+                      transition={150}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.modalImage,
+                        {
+                          backgroundColor: ComeYaColors.primary + "20",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name="briefcase"
+                        size={40}
+                        color={ComeYaColors.primary}
+                      />
+                    </View>
+                  )}
+                  <View style={styles.badgeRow}>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor: selectedBusiness.isActive
+                            ? ComeYaColors.success
+                            : ComeYaColors.error,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.statusText}>
+                        {selectedBusiness.isActive ? "Activo" : "Inactivo"}
+                      </Text>
+                    </View>
+                    {selectedBusiness.verificationStatus && (
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          {
+                            backgroundColor:
+                              selectedBusiness.verificationStatus === "verified"
+                                ? ComeYaColors.primary
+                                : selectedBusiness.verificationStatus ===
+                                    "pending"
+                                  ? "#F59E0B"
+                                  : ComeYaColors.error,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.statusText}>
+                          {VERIFICATION_LABELS[
+                            selectedBusiness.verificationStatus
+                          ] || selectedBusiness.verificationStatus}
+                        </Text>
+                      </View>
+                    )}
+                    {selectedBusiness.isFeatured && (
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          { backgroundColor: "#8B5CF6" },
+                        ]}
+                      >
+                        <Text style={styles.statusText}>⭐ Destacado</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
 
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
+                {/* Información del negocio */}
+                <View
                   style={[
-                    styles.button,
-                    styles.cancelButton,
-                    { borderColor: theme.border },
+                    styles.infoBox,
+                    { backgroundColor: theme.backgroundSecondary },
                   ]}
-                  onPress={() => setModalVisible(false)}
-                  disabled={saving}
                 >
-                  <Text style={[styles.buttonText, { color: theme.text }]}>
-                    Cancelar
-                  </Text>
-                </TouchableOpacity>
+                  <InfoRow
+                    icon="user"
+                    label="Dueño"
+                    value={
+                      (selectedBusiness as any).ownerName ||
+                      (selectedBusiness.ownerId
+                        ? "ID " + selectedBusiness.ownerId.slice(0, 8)
+                        : "Sin dueño")
+                    }
+                    theme={theme}
+                  />
+                  <InfoRow
+                    icon="calendar"
+                    label="Creado"
+                    value={
+                      selectedBusiness.createdAt
+                        ? new Date(
+                            selectedBusiness.createdAt,
+                          ).toLocaleDateString("es-ES")
+                        : "—"
+                    }
+                    theme={theme}
+                  />
+                  <InfoRow
+                    icon="star"
+                    label="Rating"
+                    value={
+                      selectedBusiness.rating
+                        ? `${(selectedBusiness.rating / 10).toFixed(1)} ★`
+                        : "Sin valoraciones"
+                    }
+                    theme={theme}
+                  />
+                  <InfoRow
+                    icon="truck"
+                    label="Envío"
+                    value={
+                      selectedBusiness.deliveryFee
+                        ? `${(selectedBusiness.deliveryFee / 100).toFixed(2)} €`
+                        : "Gratis"
+                    }
+                    theme={theme}
+                  />
+                  <InfoRow
+                    icon="shopping-cart"
+                    label="Pedido mínimo"
+                    value={
+                      selectedBusiness.minOrder
+                        ? `${(selectedBusiness.minOrder / 100).toFixed(2)} €`
+                        : "Sin mínimo"
+                    }
+                    theme={theme}
+                  />
+                </View>
+
+                {/* Nombre */}
+                <Text style={[styles.label, { color: theme.text }]}>Nombre</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  value={selectedBusiness.name}
+                  onChangeText={(text) => updateField("name", text)}
+                  placeholder="Nombre del negocio"
+                  placeholderTextColor={theme.textSecondary}
+                />
+
+                {/* Dirección */}
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Dirección
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  value={selectedBusiness.address || ""}
+                  onChangeText={(text) => updateField("address", text)}
+                  placeholder="Dirección"
+                  placeholderTextColor={theme.textSecondary}
+                />
+
+                {/* Teléfono */}
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Teléfono
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  value={selectedBusiness.phone || ""}
+                  onChangeText={(text) => updateField("phone", text)}
+                  placeholder="Teléfono"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="phone-pad"
+                />
+
+                {/* Tipo */}
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Tipo de negocio
+                </Text>
+                <View style={styles.typeRow}>
+                  {[
+                    { key: "restaurant", label: "Restaurante" },
+                    { key: "market", label: "Mercado" },
+                    { key: "grocery", label: "Supermercado" },
+                    { key: "pharmacy", label: "Farmacia" },
+                  ].map((type) => (
+                    <TouchableOpacity
+                      key={type.key}
+                      onPress={() => updateField("type", type.key)}
+                      style={[
+                        styles.typeChip,
+                        {
+                          backgroundColor:
+                            selectedBusiness.type === type.key
+                              ? ComeYaColors.primary
+                              : theme.backgroundSecondary,
+                          borderColor:
+                            selectedBusiness.type === type.key
+                              ? ComeYaColors.primary
+                              : theme.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color:
+                            selectedBusiness.type === type.key
+                              ? "#fff"
+                              : theme.text,
+                          fontWeight: "600",
+                          fontSize: 13,
+                        }}
+                      >
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Comisión */}
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Comisión personalizada (%)
+                </Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      color: theme.text,
+                      borderColor: theme.border,
+                    },
+                  ]}
+                  value={customCommission}
+                  onChangeText={setCustomCommission}
+                  placeholder="Vacío = usar comisión global del sistema"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="decimal-pad"
+                />
+
+                {/* Estado */}
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Estado
+                </Text>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      {
+                        backgroundColor: selectedBusiness.isActive
+                          ? ComeYaColors.success
+                          : theme.backgroundSecondary,
+                        borderWidth: 1,
+                        borderColor: selectedBusiness.isActive
+                          ? ComeYaColors.success
+                          : theme.border,
+                      },
+                    ]}
+                    onPress={() => updateField("isActive", true)}
+                  >
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        {
+                          color: selectedBusiness.isActive
+                            ? "#fff"
+                            : theme.text,
+                        },
+                      ]}
+                    >
+                      Activo
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.button,
+                      {
+                        backgroundColor: !selectedBusiness.isActive
+                          ? ComeYaColors.error
+                          : theme.backgroundSecondary,
+                        borderWidth: 1,
+                        borderColor: !selectedBusiness.isActive
+                          ? ComeYaColors.error
+                          : theme.border,
+                      },
+                    ]}
+                    onPress={() => updateField("isActive", false)}
+                  >
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        {
+                          color: !selectedBusiness.isActive
+                            ? "#fff"
+                            : theme.text,
+                        },
+                      ]}
+                    >
+                      Inactivo
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity
                   style={[
-                    styles.button,
                     styles.saveButton,
-                    { backgroundColor: ComeYaColors.primary },
+                    {
+                      backgroundColor: ComeYaColors.primary,
+                      opacity: saving ? 0.6 : 1,
+                    },
                   ]}
-                  onPress={handleSaveCommission}
+                  onPress={handleSaveBusiness}
                   disabled={saving}
                 >
-                  <Text style={[styles.buttonText, { color: "#fff" }]}>
-                    {saving ? "Guardando..." : "Guardar"}
-                  </Text>
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Feather name="save" size={16} color="#fff" />
+                      <Text style={[styles.buttonText, { color: "#fff" }]}>
+                        Guardar cambios
+                      </Text>
+                    </>
+                  )}
                 </TouchableOpacity>
-              </View>
-            </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
     </>
   );
 };
+
+function InfoRow({
+  icon,
+  label,
+  value,
+  theme,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  theme: any;
+}) {
+  return (
+    <View style={styles.infoRow}>
+      <Feather name={icon} size={14} color={theme.textSecondary} />
+      <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+        {label}
+      </Text>
+      <Text style={[styles.infoValue, { color: theme.text }]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -400,20 +769,37 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  badgeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   card: {
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 3,
+  },
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cardImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
   },
   businessHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
   },
   businessName: {
     fontSize: 16,
@@ -431,22 +817,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   businessType: {
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: 13,
+    marginTop: 2,
   },
   businessAddress: {
     fontSize: 12,
-    marginBottom: 4,
+    marginTop: 2,
   },
   businessPhone: {
     fontSize: 12,
-    marginBottom: 8,
+    marginTop: 2,
   },
   commissionRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 4,
-    gap: 6,
+    gap: 4,
   },
   commissionText: {
     fontSize: 12,
@@ -460,7 +845,10 @@ const styles = StyleSheet.create({
   modalContent: {
     borderTopLeftRadius: BorderRadius.xl,
     borderTopRightRadius: BorderRadius.xl,
-    paddingBottom: Spacing.xl,
+    maxHeight: "92%",
+  },
+  modalScroll: {
+    flexGrow: 0,
   },
   modalHeader: {
     flexDirection: "row",
@@ -473,41 +861,61 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
   },
-  modalBody: {
-    padding: Spacing.lg,
+  modalImage: {
+    width: 110,
+    height: 110,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
   },
-  businessNameModal: {
-    fontSize: 18,
-    fontWeight: "600",
+  infoBox: {
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
     marginBottom: Spacing.lg,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 5,
+  },
+  infoLabel: {
+    fontSize: 13,
+    width: 90,
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
   },
   label: {
     fontSize: 14,
     fontWeight: "600",
     marginBottom: Spacing.sm,
+    marginTop: Spacing.sm,
   },
   input: {
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     fontSize: 16,
     borderWidth: 1,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
-  infoBox: {
+  typeRow: {
     flexDirection: "row",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.lg,
-    gap: Spacing.sm,
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: Spacing.sm,
   },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 18,
+  typeChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
   },
   buttonRow: {
     flexDirection: "row",
     gap: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   button: {
     flex: 1,
@@ -520,10 +928,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   saveButton: {
-    // backgroundColor set inline
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.lg,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
 });

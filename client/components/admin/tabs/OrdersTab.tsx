@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from "react-native";
 import * as Haptics from "expo-haptics";
+import { Feather } from "@expo/vector-icons";
 import { ComeYaColors } from "../../../constants/theme";
 import { AdminOrder } from "../types/admin.types";
 import { useTheme } from "@/hooks/useTheme";
@@ -45,14 +46,32 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       pending: "Pendiente",
+      accepted: "Aceptado",
       confirmed: "Confirmado",
       preparing: "Preparando",
       ready: "Listo",
-      picked_up: "En camino",
+      assigned_driver: "Repartidor asignado",
+      picked_up: "Recogido",
+      on_the_way: "En camino",
+      in_transit: "En tránsito",
+      arriving: "Llegando",
       delivered: "Entregado",
       cancelled: "Cancelado",
+      refunded: "Reembolsado",
     };
     return labels[status] || status;
+  };
+
+  const getPaymentLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      stripe_card: "💳 Tarjeta",
+      stripe_bizum: "📱 Bizum",
+      bizum: "📱 Bizum",
+      transferencia: "🏦 Transferencia",
+      paypal: "🅿️ PayPal",
+      cash: "💵 Efectivo",
+    };
+    return labels[method] || method || "—";
   };
 
   return (
@@ -85,7 +104,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
             {order.businessName}
           </Text>
           <Text style={[styles.customerName, { color: theme.textSecondary }]}>
-            Cliente: {order.customerName}
+            Cliente: {order.customerName} · {getPaymentLabel(order.paymentMethod)}
           </Text>
           <Text style={styles.orderTotal}>
             Total: {(order.total / 100).toFixed(2)} €
@@ -93,6 +112,12 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
           <Text style={[styles.orderDate, { color: theme.textSecondary }]}>
             {new Date(order.createdAt).toLocaleString("es-ES")}
           </Text>
+          <View style={styles.tapHint}>
+            <Feather name="edit-3" size={12} color={ComeYaColors.primary} />
+            <Text style={[styles.tapHintText, { color: ComeYaColors.primary }]}>
+              Toca para ver el detalle y actualizar el estado
+            </Text>
+          </View>
         </TouchableOpacity>
       ))}
     </ScrollView>
@@ -129,4 +154,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   orderDate: { fontSize: 12 },
+  tapHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+  },
+  tapHintText: { fontSize: 11, fontWeight: "500" },
 });
