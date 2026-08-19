@@ -209,3 +209,6 @@ test-wallet-endpoint.txt
 verify-replit-backend.js
 create-available-orders.js
 .gradle-comeya/  
+
+# Credenciales de firma locales (NO subir a git)
+credentials.json

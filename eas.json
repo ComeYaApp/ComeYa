@@ -13,14 +13,6 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "credentials": {
-          "keystore": {
-            "path": "android/app/release.keystore",
-            "keyAlias": "comeya-key",
-            "keyPassword": "comeya2026",
-            "keystorePassword": "comeya2026"
-          }
-        },
         "env": {
           "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
           "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
@@ -50,14 +42,6 @@
     "production": {
       "android": {
         "buildType": "app-bundle",
-        "credentials": {
-          "keystore": {
-            "path": "android/app/release.keystore",
-            "keyAlias": "comeya-key",
-            "keyPassword": "comeya2026",
-            "keystorePassword": "comeya2026"
-          }
-        },
         "env": {
           "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
           "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
