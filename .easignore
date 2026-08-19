@@ -3,6 +3,9 @@ node_modules/
 
 # Build outputs de Android (no necesarios para iOS, ocupan 2.5 GB)
 android/
+# Excepción: el keystore de firma debe poder subirse a EAS Build
+!android/app/
+!android/app/release.keystore
 
 # Artefactos locales: los APK/AAB no deben subirse a EAS (ocupan cientos de MB
 # y fueron la causa del ECONNRESET en la subida)
