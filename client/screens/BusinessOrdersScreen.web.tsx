@@ -10,6 +10,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBusiness } from "@/contexts/BusinessContext";
 import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
@@ -51,6 +52,9 @@ export default function BusinessOrdersScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const { showToast } = useToast();
+  // El selector de negocios de la barra lateral debe filtrar esta lista:
+  // sin businessId el servidor devuelve otro negocio del mismo dueño
+  const { selectedBusiness } = useBusiness();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("pending");
@@ -68,7 +72,10 @@ export default function BusinessOrdersScreen() {
 
   const loadOrders = async () => {
     try {
-      const res = await apiRequest("GET", "/api/business/orders");
+      const url = selectedBusiness
+        ? `/api/business/orders?businessId=${selectedBusiness.id}`
+        : "/api/business/orders";
+      const res = await apiRequest("GET", url);
       const data = await res.json();
       if (data.success) {
         const newOrders = data.orders;
@@ -99,7 +106,7 @@ export default function BusinessOrdersScreen() {
     loadOrders();
     const interval = setInterval(loadOrders, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedBusiness?.id]);
 
   const updateStatus = async (
     orderId: string,

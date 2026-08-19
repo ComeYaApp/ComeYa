@@ -10861,6 +10861,9 @@ router2.get(
           businessImage: row.business_image,
           items: row.items,
           status: row.status,
+          // orderType es imprescindible en el panel: los pedidos de recogida
+          // no deben avisar a repartidores ni pedir tiempo de preparación
+          orderType: row.order_type || "delivery",
           subtotal: row.subtotal,
           deliveryFee: row.delivery_fee,
           total: row.total,
