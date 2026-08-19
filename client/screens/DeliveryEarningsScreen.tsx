@@ -257,7 +257,7 @@ export default function DeliveryEarningsScreen() {
       return;
     }
     if (amount < 50) {
-      Alert.alert("Error", "El monto mínimo de retiro es $50");
+      Alert.alert("Error", "El monto mínimo de retiro es 50 €");
       return;
     }
     withdrawMutation.mutate(amount);
@@ -834,7 +834,7 @@ export default function DeliveryEarningsScreen() {
               type="caption"
               style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
             >
-              Mínimo $50. El retiro se procesa en 1-3 días hábiles.
+              Mínimo 50 €. El retiro se procesa en 1-3 días hábiles.
             </ThemedText>
 
             <Pressable

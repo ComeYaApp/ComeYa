@@ -106,15 +106,17 @@ export class FinanceService {
       return {
         totalUsers: allUsers.length,
         totalOrders: allOrders.length,
-        totalRevenue: Math.round(totalRevenue / 100), // Convert to pesos
+        // Importes en céntimos exactos: el cliente formatea (evita redondeos
+        // que alteraban los importes, ej. 59,80 € -> 60 €)
+        totalRevenue: totalRevenue,
         pendingOrders: ordersByStatus.pending,
         completedOrders: ordersByStatus.delivered,
         cancelledOrders: ordersByStatus.cancelled,
         todayOrders: todayOrders.length,
-        todayRevenue: Math.round(todayRevenue / 100), // Convert to pesos
-        platformCommission: Math.round(platformCommission / 100),
-        businessPayouts: Math.round(businessPayouts / 100),
-        driverPayouts: Math.round(driverPayouts / 100),
+        todayRevenue: todayRevenue,
+        platformCommission: platformCommission,
+        businessPayouts: businessPayouts,
+        driverPayouts: driverPayouts,
         usersByRole,
         ordersByStatus,
       };
@@ -181,12 +183,13 @@ export class FinanceService {
         completedOrders: completedOrders.length,
         pendingOrders: businessOrders.filter((o) => o.status === "pending")
           .length,
-        totalRevenue: Math.round(totalRevenue / 100),
-        businessEarnings: Math.round(businessEarnings / 100),
+        // Importes en céntimos exactos (sin redondeo de euros)
+        totalRevenue: totalRevenue,
+        businessEarnings: businessEarnings,
         todayOrders: todayOrders.length,
         averageOrderValue:
           completedOrders.length > 0
-            ? Math.round(totalRevenue / completedOrders.length / 100)
+            ? Math.round(totalRevenue / completedOrders.length)
             : 0,
       };
     } catch (error) {
@@ -236,12 +239,13 @@ export class FinanceService {
 
       return {
         totalDeliveries: completedOrders.length,
-        totalEarnings: Math.round(driverEarnings / 100),
+        // Importes en céntimos exactos (sin redondeo de euros)
+        totalEarnings: driverEarnings,
         todayDeliveries: todayOrders.length,
-        todayEarnings: Math.round(todayEarnings / 100),
+        todayEarnings: todayEarnings,
         averageEarningsPerDelivery:
           completedOrders.length > 0
-            ? Math.round(driverEarnings / completedOrders.length / 100)
+            ? Math.round(driverEarnings / completedOrders.length)
             : 0,
       };
     } catch (error) {

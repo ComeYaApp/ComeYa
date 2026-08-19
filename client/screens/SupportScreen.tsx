@@ -152,10 +152,10 @@ export default function SupportScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>
-                  ¿Necesitas ayuda inmediata?
+                  Asistente ComeYa
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Chatea con nuestro asistente IA para respuestas instantáneas
+                  Respuestas automáticas instantáneas, sin esperas
                 </ThemedText>
               </View>
               <Feather

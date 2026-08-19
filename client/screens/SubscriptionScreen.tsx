@@ -177,11 +177,20 @@ export default function SubscriptionScreen() {
   const isCancelledAtPeriodEnd =
     isActive && !!subscriptionData?.cancelledAt && !subscriptionData?.autoRenew;
 
-  // Precio desde BD o fallback (en centavos)
+  // Precio desde BD o fallback (en centavos) — planes Soria 2026
   const getPlanPrice = (plan: string): number => {
     const dbPrice = plansData?.[plan]?.price;
     if (dbPrice != null && dbPrice > 0) return dbPrice;
-    return plan === "premium" ? 1500 : 3000;
+    const fallback: Record<string, number> = {
+      soria_local: 499,
+      impulso_local: 2900,
+      top_soria: 7900,
+      premium_soria: 9900,
+      logistica_local: 3900,
+      escaparate_soria: 1900,
+      express_semana: 4900,
+    };
+    return fallback[plan] ?? 0;
   };
 
   // ── Seleccionar método de pago ───────────────────────────────────────────

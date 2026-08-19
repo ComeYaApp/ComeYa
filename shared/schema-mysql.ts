@@ -617,6 +617,7 @@ export const reviews = mysqlTable("reviews", {
   comment: text("comment"),
   photos: text("photos"), // JSON array de URLs
   tags: text("tags"), // JSON array de tag IDs
+  tipAmount: int("tip_amount"), // propina al repartidor en centavos
   approved: boolean("approved").notNull().default(true),
   flagged: boolean("flagged").notNull().default(false),
   moderationReason: text("moderation_reason"),

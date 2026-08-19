@@ -123,7 +123,15 @@ export default function DriverMapScreen() {
       const data = await res.json();
       if (data.success && data.orders?.length > 0) {
         const active = data.orders.find((o: any) =>
-          ["ready", "accepted", "picked_up", "on_the_way"].includes(o.status),
+          [
+            "accepted",
+            "preparing",
+            "ready",
+            "picked_up",
+            "on_the_way",
+            "in_transit",
+            "arriving",
+          ].includes(o.status),
         );
         setActiveOrder(active || null);
       } else {
@@ -161,7 +169,9 @@ export default function DriverMapScreen() {
   const loadRouteFromServer = useCallback(async () => {
     if (!driverLocation || !activeOrder) return;
 
-    const isPickingUp = activeOrder.status === "ready" || activeOrder.status === "accepted";
+    const isPickingUp = ["accepted", "preparing", "ready"].includes(
+      activeOrder.status,
+    );
     const destLat = isPickingUp ? activeOrder.businessLatitude : activeOrder.deliveryLatitude;
     const destLng = isPickingUp ? activeOrder.businessLongitude : activeOrder.deliveryLongitude;
 

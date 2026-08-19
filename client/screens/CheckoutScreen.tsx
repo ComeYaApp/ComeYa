@@ -37,6 +37,7 @@ import {
   calculateDeliveryFee,
   estimateDeliveryTime,
 } from "@/utils/distance";
+import { formatEuros } from "@/utils/currency";
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 
 type SubstitutionOption = "refund" | "call" | "substitute";
@@ -565,7 +566,16 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
   if (!cart) {
     return (
       <View
-        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+        style={[
+          styles.container,
+          {
+            backgroundColor: theme.backgroundRoot,
+            paddingTop: insets.top + Spacing.xl,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: Spacing.lg,
+          },
+        ]}
       >
         <ThemedText type="h2">No hay productos en el carrito</ThemedText>
       </View>
@@ -625,7 +635,7 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
         setAppliedCoupon(data.coupon);
         setCouponDiscount(finalDiscount);
         showToast(
-          `¡Cupón aplicado! Ahorras ${finalDiscount.toFixed(2)} €`,
+          `¡Cupón aplicado! Ahorras ${formatEuros(finalDiscount)}`,
           "success",
         );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -1183,7 +1193,7 @@ navigation.navigate("DigitalPaymentMethod", {
                   type="small"
                   style={{ color: theme.textSecondary, marginTop: 4 }}
                 >
-                  Ahorras {couponDiscount.toFixed(2)} €
+                  Ahorras {formatEuros(couponDiscount)}
                 </ThemedText>
               </View>
               <Pressable
@@ -1559,7 +1569,7 @@ navigation.navigate("DigitalPaymentMethod", {
                 {item.quantity}x {item.product.name}
               </ThemedText>
               <ThemedText type="small">
-                {(item.product.price * item.quantity).toFixed(2)} €
+                {formatEuros(item.product.price * item.quantity)}
               </ThemedText>
             </View>
           ))}
@@ -1580,14 +1590,14 @@ navigation.navigate("DigitalPaymentMethod", {
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
             Subtotal
           </ThemedText>
-          <ThemedText type="body">{subtotal.toFixed(2)} €</ThemedText>
+          <ThemedText type="body">{formatEuros(subtotal)}</ThemedText>
         </View>
         {confirmedOrderType === "delivery" && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
             </ThemedText>
-            <ThemedText type="body">{(finalDeliveryFee ?? 0).toFixed(2)} €</ThemedText>
+            <ThemedText type="body">{formatEuros(finalDeliveryFee ?? 0)}</ThemedText>
           </View>
         )}
         {confirmedOrderType === "pickup" && (
@@ -1612,7 +1622,7 @@ navigation.navigate("DigitalPaymentMethod", {
               Cupón ({couponCode})
             </ThemedText>
             <ThemedText type="body" style={{ color: ComeYaColors.success }}>
-              -{couponDiscount.toFixed(2)} €
+              -{formatEuros(couponDiscount)}
             </ThemedText>
           </View>
         )}
@@ -1622,7 +1632,7 @@ navigation.navigate("DigitalPaymentMethod", {
               ⭐ Descuento Premium
             </ThemedText>
             <ThemedText type="body" style={{ color: "#7C3AED" }}>
-              -{subDiscount.toFixed(2)} €
+              -{formatEuros(subDiscount)}
             </ThemedText>
           </View>
         )}
@@ -1639,7 +1649,7 @@ navigation.navigate("DigitalPaymentMethod", {
         <View style={[styles.totalRow, styles.grandTotal]}>
           <ThemedText type="h3">Total</ThemedText>
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            {total.toFixed(2)} €
+            {formatEuros(total)}
           </ThemedText>
         </View>
         <Button onPress={handlePlaceOrder} disabled={isLoading}>

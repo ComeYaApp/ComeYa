@@ -33,6 +33,7 @@ import { mockBusinesses, mockProducts } from "@/data/mockData";
 import { Business, Product } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
+import { formatEuros } from "@/utils/currency";
 
 type BusinessDetailRouteProp = RouteProp<RootStackParamList, "BusinessDetail">;
 type BusinessDetailNavigationProp = NativeStackNavigationProp<
@@ -289,11 +290,11 @@ export default function BusinessDetailScreen() {
                 </ThemedText>
                 <View style={styles.dividerDot} />
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Envío ${business.deliveryFee}
+                  Envío {formatEuros(business.deliveryFee)}
                 </ThemedText>
                 <View style={styles.dividerDot} />
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Min. ${business.minimumOrder}
+                  Min. {formatEuros(business.minimumOrder)}
                 </ThemedText>
               </View>
               <View style={styles.contactRow}>

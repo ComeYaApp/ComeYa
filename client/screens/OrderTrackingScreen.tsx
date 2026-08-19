@@ -88,6 +88,9 @@ export default function OrderTrackingScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [businessAddressText, setBusinessAddressText] = useState<string | null>(
+    null,
+  );
   const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
   const [driverVehicle, setDriverVehicle] = useState<string | null>(null);
   const [businessType, setBusinessType] = useState<string | null>(null);
@@ -273,6 +276,7 @@ export default function OrderTrackingScreen() {
                   longitude: parseFloat(biz.longitude),
                 });
               }
+              if (biz?.address) setBusinessAddressText(biz.address);
               if (biz?.type) setBusinessType(biz.type);
               if (biz?.categories) setBusinessCategories(biz.categories);
             } catch {
@@ -340,6 +344,29 @@ export default function OrderTrackingScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const cleanPhone = phone.replace(/\D/g, "");
     Linking.openURL(`https://wa.me/${cleanPhone}`);
+  };
+
+  /** "Cómo llegar" al local: usa la navegación interna si hay coordenadas
+   *  del negocio y, si no, abre Google Maps buscando por dirección. */
+  const handleNavigateToBusiness = () => {
+    if (businessLocation) {
+      navigation.navigate("DriverNavigation", {
+        destLat: businessLocation.latitude,
+        destLng: businessLocation.longitude,
+        destAddress:
+          businessAddressText ||
+          (order ? parseDeliveryAddress(order.deliveryAddress) : "") ||
+          order?.businessName ||
+          "Local",
+      });
+      return;
+    }
+    const query = businessAddressText || order?.businessName;
+    if (query) {
+      Linking.openURL(
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+      ).catch(() => {});
+    }
   };
 
   if (!order) {
@@ -772,16 +799,7 @@ export default function OrderTrackingScreen() {
             businessCategories={businessCategories || undefined}
             status={order.status}
             isPickup={true}
-            onNavigateInApp={
-              businessLocation
-                ? () =>
-                    navigation.navigate("DriverNavigation", {
-                      destLat: businessLocation.latitude,
-                      destLng: businessLocation.longitude,
-                      destAddress: order.deliveryAddress || businessLocation.title || "Local",
-                    })
-                : undefined
-            }
+            onNavigateInApp={handleNavigateToBusiness}
           />
         )}
 

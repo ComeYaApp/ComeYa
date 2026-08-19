@@ -1689,7 +1689,8 @@ router.get(
         success: true,
         pendingOrders: pendingOrders.length,
         todayOrders: todayOrders.length,
-        todayRevenue: Math.round(todayRevenue / 100),
+        // Céntimos exactos: el cliente formatea (evita redondeos tipo 59,80 -> 60)
+        todayRevenue: todayRevenue,
       });
     } catch (error: any) {
       console.error("Business stats error:", error);

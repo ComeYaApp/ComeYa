@@ -141,6 +141,48 @@ export default function App() {
     setShowNotificationModal(false);
   };
 
+  // Al tocar una notificación (o abrir la app desde una), navegar a la
+  // pantalla indicada en data.screen o, si hay orderId, al seguimiento.
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    const handleResponse = (response: Notifications.NotificationResponse) => {
+      const data = response.notification.request.content.data as
+        | { screen?: string; orderId?: string; orderType?: string }
+        | undefined;
+      if (!data) return;
+      // navigationRef es un ref global: se navega con tipos relajados
+      if (data.orderId) {
+        (navigationRef as any).navigate("OrderTracking", {
+          orderId: data.orderId,
+        });
+        return;
+      }
+      const allowed = [
+        "Orders",
+        "Subscriptions",
+        "DriverEarnings",
+        "DriverMyDeliveries",
+        "BusinessOrders",
+        "Main",
+      ];
+      if (data.screen && allowed.includes(data.screen)) {
+        (navigationRef as any).navigate(data.screen);
+      }
+    };
+
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      handleResponse,
+    );
+    // App abierta desde una notificación (arranque en frío)
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (response) handleResponse(response);
+      })
+      .catch(() => {});
+    return () => sub.remove();
+  }, []);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }

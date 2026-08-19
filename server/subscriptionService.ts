@@ -9,8 +9,8 @@ import {
 import { eq, and, gte } from "drizzle-orm";
 
 export class SubscriptionService {
-  // Planes hardcoded como fallback si la BD no tiene datos
-  // Precios en centavos: 1500 = €15, 3000 = €30
+  // Planes hardcoded como fallback si la BD no tiene datos.
+  // Estructura Soria 2026. Precios en céntimos: 499 = 4,99 €, etc.
   static readonly PLANS_FALLBACK = {
     free: {
       name: "Free",
@@ -23,26 +23,81 @@ export class SubscriptionService {
         noMinimumOrder: false,
       },
     },
-    premium: {
-      name: "Premium",
-      price: 1500, // centavos = €15/mes
+    soria_local: {
+      name: "Plan Soria Local",
+      price: 499, // 4,99 €/mes
       benefits: {
         freeDelivery: true,
-        discountPercentage: 10,
+        discountPercentage: 50,
+        prioritySupport: false,
+        exclusiveDeals: false,
+        noMinimumOrder: false,
+      },
+    },
+    impulso_local: {
+      name: "Impulso Local",
+      price: 2900, // 29 €/mes + comisión 10%
+      benefits: {
+        freeDelivery: false,
+        discountPercentage: 0,
+        prioritySupport: false,
+        exclusiveDeals: false,
+        noMinimumOrder: false,
+      },
+    },
+    top_soria: {
+      name: "Top Soria",
+      price: 7900, // 79 €/mes
+      benefits: {
+        freeDelivery: false,
+        discountPercentage: 0,
         prioritySupport: true,
         exclusiveDeals: true,
         noMinimumOrder: false,
       },
     },
-    business: {
-      name: "Business",
-      price: 3000, // centavos = €30/mes
+    premium_soria: {
+      name: "Premium Soria",
+      price: 9900, // 99 €/mes
       benefits: {
-        freeDelivery: true,
-        discountPercentage: 15,
+        freeDelivery: false,
+        discountPercentage: 0,
         prioritySupport: true,
         exclusiveDeals: true,
-        noMinimumOrder: true,
+        noMinimumOrder: false,
+      },
+    },
+    logistica_local: {
+      name: "Logística Local (B2B)",
+      price: 3900, // 39 €/mes + 3,50 € por entrega
+      benefits: {
+        freeDelivery: false,
+        discountPercentage: 0,
+        prioritySupport: false,
+        exclusiveDeals: false,
+        noMinimumOrder: false,
+      },
+    },
+    escaparate_soria: {
+      name: "Escaparate Soria",
+      price: 1900, // 19 €/mes + comisión 8%
+      benefits: {
+        freeDelivery: false,
+        discountPercentage: 0,
+        prioritySupport: false,
+        exclusiveDeals: false,
+        noMinimumOrder: false,
+      },
+    },
+    express_semana: {
+      name: "Express Semanal (Eventos)",
+      price: 4900, // 49 €/semana
+      benefits: {
+        freeDelivery: false,
+        discountPercentage: 0,
+        prioritySupport: true,
+        exclusiveDeals: false,
+        noMinimumOrder: false,
       },
     },
   };

@@ -17,6 +17,31 @@ interface PaymentSheetResult {
   error?: string;
 }
 
+/** Traduce errores técnicos (Stripe/API/JSON crudo) a mensajes legibles.
+ *  El usuario nunca debe ver identificadores internos como "cus_...". */
+function friendlyPaymentError(raw?: string): string {
+  const msg = (raw || "").trim();
+  if (!msg) return "No se pudo iniciar el pago. Inténtalo de nuevo.";
+  const lower = msg.toLowerCase();
+  if (
+    lower.includes("no such customer") ||
+    lower.includes("cus_") ||
+    lower.includes("api_key") ||
+    lower.includes("apikey") ||
+    lower.includes("resource_missing") ||
+    msg.startsWith("{") ||
+    lower.includes("internal server error") ||
+    lower.includes("failed to fetch")
+  ) {
+    return "No se pudo iniciar el pago. Inténtalo de nuevo en unos momentos.";
+  }
+  if (lower.includes("stripe not configured")) {
+    return "Los pagos con tarjeta no están disponibles ahora mismo.";
+  }
+  // Errores controlados del servidor (ya vienen en español): se muestran tal cual
+  return msg;
+}
+
 export function useStripePaymentSheet() {
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +69,7 @@ export function useStripePaymentSheet() {
       if (!data.paymentIntent || !data.ephemeralKey || !data.customer) {
         return {
           success: false,
-          error: data.error || "Error al inicializar el pago",
+          error: friendlyPaymentError(data.error),
         };
       }
 
@@ -72,19 +97,23 @@ export function useStripePaymentSheet() {
         },
       });
 
-      if (initError) return { success: false, error: initError.message };
+      if (initError)
+        return { success: false, error: friendlyPaymentError(initError.message) };
 
       const { error: presentError } = await StripeModule.presentPaymentSheet();
 
       if (presentError) {
         if (presentError.code === "Canceled")
           return { success: false, error: "Pago cancelado" };
-        return { success: false, error: presentError.message };
+        return {
+          success: false,
+          error: friendlyPaymentError(presentError.message),
+        };
       }
 
       return { success: true };
     } catch (error: any) {
-      return { success: false, error: error.message };
+      return { success: false, error: friendlyPaymentError(error?.message) };
     } finally {
       setLoading(false);
     }

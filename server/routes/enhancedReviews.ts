@@ -21,6 +21,31 @@ router.post("/", authenticateToken, async (req, res) => {
       tipAmount,
     } = req.body;
 
+    if (!orderId || !businessId) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Falta el pedido o el negocio" });
+    }
+    const validRating = (r: any) =>
+      r === undefined || r === null || (Number.isInteger(r) && r >= 1 && r <= 5);
+    if (
+      !validRating(foodRating) ||
+      !validRating(deliveryRating) ||
+      !validRating(packagingRating) ||
+      !validRating(driverRating)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Las puntuaciones deben ir de 1 a 5" });
+    }
+    // tipAmount llega en céntimos (entero); sin propina = 0
+    const tipCents = Math.round(Number(tipAmount) || 0);
+    if (!Number.isFinite(tipCents) || tipCents < 0 || tipCents > 50000) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Cantidad de propina no válida" });
+    }
+
     const result = await EnhancedReviewService.createReview({
       userId: req.user!.id,
       orderId,
@@ -33,13 +58,16 @@ router.post("/", authenticateToken, async (req, res) => {
       comment,
       tags,
       photos,
-      tipAmount: tipAmount || 0,
+      tipAmount: tipCents,
     });
 
     res.json(result);
   } catch (error: any) {
     console.error("Create review error:", error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({
+      success: false,
+      error: "No se pudo guardar la reseña. Inténtalo de nuevo.",
+    });
   }
 });
 
@@ -78,7 +106,7 @@ router.post(
   requireRole("business_owner"),
   async (req, res) => {
     try {
-      const { reviewId } = req.params;
+      const { reviewId } = req.params as { reviewId: string };
       const { businessId, responseText } = req.body;
 
       if (!responseText || responseText.trim().length === 0) {

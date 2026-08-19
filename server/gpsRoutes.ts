@@ -387,7 +387,9 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { orderId } = req.params;
-      const userId = (req as any).user?.userId;
+      // authMiddleware asigna req.user.id (no userId); con userId siempre
+      // salía undefined y el enlace público nunca se podía generar
+      const userId = (req as any).user?.id ?? (req as any).user?.userId;
 
       // Verify user owns this order
       const order = await db

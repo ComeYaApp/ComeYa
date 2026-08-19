@@ -459,19 +459,12 @@ router.post(
       const { eq } = await import("drizzle-orm");
 
       const all = await db.select().from(payouts);
-      let fixed = 0;
+      const fixed = 0;
 
-      for (const p of all) {
-        // Si el monto es > 1000 Bs. asumimos que está en centavos (pedidos reales no superan Bs. 1000 en pruebas)
-        // Umbral: > 500 para negocios (delivery fee max ~Bs. 50, productos base max ~Bs. 500 en pruebas)
-        if (p.amount > 500) {
-          await db
-            .update(payouts)
-            .set({ amount: Math.round(p.amount / 100) })
-            .where(eq(payouts.id, p.id));
-          fixed++;
-        }
-      }
+      // No-op de seguridad: este endpoint era un parche legacy que dividía
+      // por 100 los montos antiguos (bolívares). Con todos los importes ya en
+      // céntimos, volver a dividir corrompería los datos (59,80 € -> 0,60 €).
+      // Se mantiene por compatibilidad, sin modificar nada.
 
       res.json({ success: true, fixed, total: all.length });
     } catch (error: any) {

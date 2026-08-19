@@ -126,7 +126,7 @@ function EmptyState() {
         type="h3"
         style={{ marginTop: Spacing.lg, textAlign: "center" }}
       >
-        Chat de Soporte
+        Chat de Soporte — Asistente ComeYa
       </ThemedText>
       <ThemedText
         type="body"
@@ -137,7 +137,7 @@ function EmptyState() {
           paddingHorizontal: Spacing.xl,
         }}
       >
-        Pregúntame lo que necesites sobre ComeYa
+        Respuestas automáticas. Pregúntame lo que necesites sobre ComeYa.
       </ThemedText>
     </View>
   );

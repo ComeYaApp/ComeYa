@@ -462,25 +462,33 @@ router.get(
     const userId = (req as any).user.id;
 
     // Join con users para el teléfono de contacto del cliente (el botón de
-    // WhatsApp de "Mis entregas" lo necesita; orders no guarda teléfono)
+    // WhatsApp de "Mis entregas" lo necesita; orders no guarda teléfono) y con
+    // businesses para las coordenadas del local (navegación de recogida)
     const rows = await db
       .select({
         order: orders,
         customerPhone: users.phone,
         customerName: users.name,
+        businessLatitude: businesses.latitude,
+        businessLongitude: businesses.longitude,
+        businessAddress: businesses.address,
       })
       .from(orders)
       .leftJoin(users, eq(users.id, orders.userId))
+      .leftJoin(businesses, eq(businesses.id, orders.businessId))
       .where(eq(orders.deliveryPersonId, userId))
       .orderBy(sql`created_at DESC`)
       .limit(50);
 
     res.json({
       success: true,
-      orders: rows.map((r) => ({
+      orders: rows.map((r: any) => ({
         ...r.order,
         customerPhone: r.customerPhone,
         customerName: r.customerName,
+        businessLatitude: r.businessLatitude,
+        businessLongitude: r.businessLongitude,
+        businessAddress: r.businessAddress,
       })),
     });
   }),
@@ -527,6 +535,9 @@ router.get(
         businessId: orders.businessId,
         businessName: orders.businessName,
         businessImage: orders.businessImage,
+        businessLatitude: businesses.latitude,
+        businessLongitude: businesses.longitude,
+        businessAddress: businesses.address,
         status: orders.status,
         subtotal: orders.subtotal,
         deliveryFee: orders.deliveryFee,

@@ -183,7 +183,8 @@ export default function ReviewScreenEnhanced() {
         comment: comment.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         photos: photos.length > 0 ? photos : undefined,
-        tipAmount: wantTip ? tipAmount : 0,
+        // tipAmount en céntimos: el servidor abona la wallet en céntimos
+        tipAmount: wantTip ? tipAmount * 100 : 0,
       });
       return response.json();
     },
@@ -409,7 +410,7 @@ export default function ReviewScreenEnhanced() {
           <TextInput
             value={comment}
             onChangeText={setComment}
-            placeholder="Cuentanos mas sobre tu experiencia..."
+            placeholder="Cuéntanos más sobre tu experiencia..."
             placeholderTextColor={theme.textSecondary}
             style={[
               styles.textArea,
@@ -605,7 +606,7 @@ export default function ReviewScreenEnhanced() {
           >
             {submitReviewMutation.isPending
               ? "Enviando..."
-              : "Enviar calificacion"}
+              : "Enviar calificación"}
           </ThemedText>
         </Pressable>
       </ScrollView>

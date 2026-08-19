@@ -24,6 +24,39 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
+// Geocodifica una dirección con Google Maps (clave del servidor) y devuelve
+// { lat, lng } o null si no se puede. Evita que se guarden direcciones sin
+// coordenadas, que luego rompen la navegación del repartidor.
+async function geocodeAddress(
+  street: string,
+  city: string,
+): Promise<{ lat: string; lng: string } | null> {
+  const GMAPS_KEY =
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_MAPS_API_KEY ||
+    "";
+  if (!GMAPS_KEY) return null;
+  const base = `${street}, ${city || "Soria"}`;
+  const query = encodeURIComponent(
+    base.toLowerCase().includes("soria") ? base : `${base}, Soria, España`,
+  );
+  try {
+    const geoRes = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
+    );
+    const geoData = await geoRes.json();
+    if (geoData.status === "OK" && geoData.results[0]) {
+      return {
+        lat: String(geoData.results[0].geometry.location.lat),
+        lng: String(geoData.results[0].geometry.location.lng),
+      };
+    }
+  } catch (err) {
+    console.error("[addresses] Geocodificación fallida:", err);
+  }
+  return null;
+}
+
 // POST /api/addresses — crear dirección para el usuario autenticado
 router.post("/", authenticateToken, async (req, res) => {
   try {
@@ -41,6 +74,17 @@ router.post("/", authenticateToken, async (req, res) => {
         .where(eq(addresses.userId, userId));
     }
 
+    // Si llegan sin coordenadas, geocodificar para no guardar dirección "ciega"
+    let finalLat = latitude ? String(latitude) : null;
+    let finalLng = longitude ? String(longitude) : null;
+    if (!finalLat || !finalLng) {
+      const geo = await geocodeAddress(street, city || "");
+      if (geo) {
+        finalLat = geo.lat;
+        finalLng = geo.lng;
+      }
+    }
+
     const id = crypto.randomUUID();
     await db.insert(addresses).values({
       id,
@@ -50,8 +94,8 @@ router.post("/", authenticateToken, async (req, res) => {
       city: city || "",
       state: state || "",
       zipCode: zipCode || null,
-      latitude: latitude ? String(latitude) : null,
-      longitude: longitude ? String(longitude) : null,
+      latitude: finalLat,
+      longitude: finalLng,
       isDefault: isDefault || false,
     });
 

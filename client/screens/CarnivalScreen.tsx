@@ -102,7 +102,7 @@ async function scheduleEventReminders(
       content: {
         title:
           i === 0 ? "Recordatorio Carnaval 2026" : "Recordatorio (repetido)",
-        body: `${event.title} comienza en ${60 - i * 5} minutos! Ubicacion: ${event.location}`,
+        body: `${event.title} comienza en ${60 - i * 5} minutos! Ubicación: ${event.location}`,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.MAX,
       },

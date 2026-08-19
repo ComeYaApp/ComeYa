@@ -42,6 +42,7 @@ import enhancedReviewsRoutes from "./routes/enhancedReviews";
 import businessAnalyticsRoutes from "./routes/businessAnalytics";
 import gamificationRoutes from "./routes/gamification";
 import giftCardsRoutes from "./routes/giftCards";
+import groupOrdersRoutes from "./routes/groupOrders";
 import referralRoutes from "./routes/referrals";
 import orderChatRoutes from "./routes/orderChat";
 // Router con rutas complementarias de pedidos (tip, mark-picked-up, PATCH status,
@@ -327,6 +328,7 @@ router.use("/reviews", enhancedReviewsRoutes);
 router.use("/analytics", businessAnalyticsRoutes);
 router.use("/gamification", gamificationRoutes);
 router.use("/gift-cards", giftCardsRoutes);
+router.use("/group-orders", groupOrdersRoutes);
 router.use("/referrals", referralRoutes);
 router.use("/orders", orderChatRoutes);
 router.use("/orders", orderExtraRoutes);

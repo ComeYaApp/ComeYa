@@ -415,13 +415,46 @@ export default function DriverMyDeliveriesScreen() {
     return { lat, lng };
   };
 
-  /** Navega internamente al destino del pedido usando la pantalla GPS interna */
+  const getBusinessCoordinates = (
+    order: any,
+  ): { lat: number | null; lng: number | null } => {
+    const lat =
+      [order.businessLatitude, order.businessLat]
+        .map(parseCoordinate)
+        .find((value) => value !== null) ?? null;
+    const lng =
+      [order.businessLongitude, order.businessLng]
+        .map(parseCoordinate)
+        .find((value) => value !== null) ?? null;
+    return { lat, lng };
+  };
+
+  /** Navega al destino del pedido según su estado:
+   *  - Aceptado/preparando/listo → ir al LOCAL a recoger (coords del negocio)
+   *  - Recogido/en camino → ir a la dirección de ENTREGA del cliente
+   *  Si faltan coordenadas, abre Google Maps buscando por dirección. */
   const showNavigationOptions = (order: any) => {
-    const { lat, lng } = getOrderCoordinates(order);
-    const address = parseDeliveryAddress(order.deliveryAddress);
+    const goingToBusiness = ["accepted", "preparing", "ready"].includes(
+      order.status,
+    );
+    const { lat, lng } = goingToBusiness
+      ? getBusinessCoordinates(order)
+      : getOrderCoordinates(order);
+    const address = goingToBusiness
+      ? order.businessAddress || order.businessName || ""
+      : parseDeliveryAddress(order.deliveryAddress);
 
     if (lat === null || lng === null) {
-      Alert.alert("Error", "No hay coordenadas disponibles para este pedido");
+      if (address) {
+        Linking.openURL(
+          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,
+        ).catch(() => {});
+        return;
+      }
+      Alert.alert(
+        "Sin datos de navegación",
+        "Este pedido no tiene coordenadas ni dirección guardadas. Contacta con el negocio.",
+      );
       return;
     }
 

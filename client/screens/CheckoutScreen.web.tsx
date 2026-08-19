@@ -485,7 +485,15 @@ export default function CheckoutScreen({ route }: any) {
   if (!cart) {
     return (
       <View
-        style={[styles.container, { backgroundColor: bg }]}
+        style={[
+          styles.container,
+          {
+            backgroundColor: bg,
+            paddingTop: Spacing.xl,
+            alignItems: "center",
+            justifyContent: "center",
+          },
+        ]}
       >
         <ThemedText type="h2">No hay productos en el carrito</ThemedText>
       </View>

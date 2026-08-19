@@ -153,6 +153,12 @@ const PLANS: PlanDef[] = [
     multipleStatements: false,
   });
 
+  // Los planes legacy (Premium 15 € / Business 30 €) quedan desactivados:
+  // la app ya solo muestra la estructura Soria.
+  await conn.query(
+    "UPDATE subscription_plans SET is_active = 0 WHERE plan_key IN ('premium', 'business')",
+  );
+
   for (const plan of PLANS) {
     const id = `plan-${plan.planKey}`;
     await conn.query(

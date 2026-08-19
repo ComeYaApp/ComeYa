@@ -7,6 +7,81 @@ import { getStripe } from "../stripeClient";
 
 const router = express.Router();
 
+// ---------------------------------------------------------------------------
+// Utilidades de cliente Stripe
+// El stripe_customer_id guardado en BD puede quedar huérfano (cambio de clave
+// test/live o cliente borrado en el panel de Stripe). Al usarlo la API
+// responde "No such customer": lo detectamos, creamos un customer nuevo,
+// lo persistimos y reintentamos la operación una vez.
+// ---------------------------------------------------------------------------
+
+function isMissingStripeCustomerError(error: any): boolean {
+  return (
+    error?.code === "resource_missing" ||
+    (typeof error?.message === "string" &&
+      error.message.includes("No such customer"))
+  );
+}
+
+async function loadUserForStripe(userId: string): Promise<any> {
+  const { sql } = await import("drizzle-orm");
+  const [userRows]: any = await db.execute(
+    sql`SELECT id, name, stripe_customer_id FROM users WHERE id = ${userId} LIMIT 1`,
+  );
+  return userRows[0];
+}
+
+async function createAndStoreStripeCustomer(
+  userId: string,
+  name?: string | null,
+): Promise<string> {
+  const stripe = getStripe();
+  const customer = await stripe.customers.create({
+    metadata: { userId },
+    ...(name ? { name } : {}),
+  });
+  const { sql } = await import("drizzle-orm");
+  await db.execute(
+    sql`UPDATE users SET stripe_customer_id = ${customer.id} WHERE id = ${userId}`,
+  );
+  return customer.id;
+}
+
+/** Ejecuta op(customerId); si el customer guardado no existe en Stripe,
+ *  crea uno nuevo, lo guarda y reintenta una vez. */
+async function withStripeCustomer<T>(
+  userId: string,
+  op: (customerId: string) => Promise<T>,
+): Promise<{ result: T; customerId: string }> {
+  const user = await loadUserForStripe(userId);
+  let customerId: string | undefined = user?.stripe_customer_id;
+  if (!customerId) {
+    customerId = await createAndStoreStripeCustomer(userId, user?.name);
+  }
+  try {
+    return { result: await op(customerId), customerId };
+  } catch (error) {
+    if (isMissingStripeCustomerError(error)) {
+      customerId = await createAndStoreStripeCustomer(userId, user?.name);
+      return { result: await op(customerId), customerId };
+    }
+    throw error;
+  }
+}
+
+/** Registra el detalle en el log del servidor y responde al cliente con un
+ *  mensaje legible, sin filtrar errores técnicos de Stripe. */
+function stripeErrorResponse(res: any, error: any, context: string) {
+  console.error(`[stripe] ${context}`, {
+    code: error?.code,
+    type: error?.type,
+    message: error?.message,
+  });
+  res.status(500).json({
+    error: "No se pudo procesar el pago. Inténtalo de nuevo en unos momentos.",
+  });
+}
+
 // Publishable key for Stripe SDK (public endpoint)
 router.get("/publishable-key", async (_req, res) => {
   try {
@@ -16,7 +91,7 @@ router.get("/publishable-key", async (_req, res) => {
 
     res.json({ publishableKey: process.env.STRIPE_PUBLISHABLE_KEY });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "publishable-key");
   }
 });
 
@@ -50,62 +125,49 @@ router.post("/create-payment-sheet", authenticateToken, async (req, res) => {
     }
 
     const stripe = getStripe();
-    const { businesses, orders } = await import("@shared/schema-mysql");
-
-    // Obtener o crear customer de Stripe usando SQL raw (stripeCustomerId no esta en schema Drizzle)
-    const { sql } = await import("drizzle-orm");
-    const [userRows]: any = await db.execute(
-      sql`SELECT id, name, stripe_customer_id FROM users WHERE id = ${req.user!.id} LIMIT 1`,
-    );
-    const user = userRows[0];
-    let customerId = user?.stripe_customer_id;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        metadata: { userId: req.user!.id },
-        ...(user?.name && { name: user.name }),
-      });
-      customerId = customer.id;
-      await db.execute(
-        sql`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${req.user!.id}`,
-      );
-    }
-
-    // Ephemeral key para el Payment Sheet
-    const ephemeralKey = await stripe.ephemeralKeys.create(
-      { customer: customerId },
-      { apiVersion: "2024-06-20" },
-    );
+    const { orders } = await import("@shared/schema-mysql");
 
     // Calcular comision
     const subtotalCents = Math.round(subtotal || 0);
     const nemyCommission = Math.round(subtotalCents * 0.15);
     const amountCents = Math.round(amount);
 
-    // Crear PaymentIntent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountCents,
-      currency: "eur",
-      customer: customerId,
-      automatic_payment_methods: { enabled: true },
-      metadata: {
-        userId: req.user!.id,
-        businessId: businessId || "",
-        orderId: orderId || "",
-        giftCardId: giftCardId || "",
-        subtotal: subtotalCents.toString(),
-        deliveryFee: (deliveryFee || 0).toString(),
-        nemyCommission: nemyCommission.toString(),
+    // Customer + ephemeral key + PaymentIntent con recuperacion automatica:
+    // si el customer guardado ya no existe en la cuenta de Stripe se crea
+    // uno nuevo y se reintenta una vez.
+    const { result: payment, customerId } = await withStripeCustomer(
+      req.user!.id,
+      async (cid) => {
+        const ephemeralKey = await stripe.ephemeralKeys.create(
+          { customer: cid },
+          { apiVersion: "2024-06-20" },
+        );
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amountCents,
+          currency: "eur",
+          customer: cid,
+          automatic_payment_methods: { enabled: true },
+          metadata: {
+            userId: req.user!.id,
+            businessId: businessId || "",
+            orderId: orderId || "",
+            giftCardId: giftCardId || "",
+            subtotal: subtotalCents.toString(),
+            deliveryFee: (deliveryFee || 0).toString(),
+            nemyCommission: nemyCommission.toString(),
+          },
+        });
+        return { ephemeralKeySecret: ephemeralKey.secret, paymentIntent };
       },
-    });
+    );
 
     // Actualizar pedido con el paymentIntentId solo para pedidos normales
     if (!isGiftCard && orderId) {
       await db
         .update(orders)
         .set({
-          paymentIntentId: paymentIntent.id,
-          stripePaymentIntentId: paymentIntent.id,
+          paymentIntentId: payment.paymentIntent.id,
+          stripePaymentIntentId: payment.paymentIntent.id,
           productosBase: subtotalCents,
           nemyCommission,
           platformFee: nemyCommission,
@@ -117,14 +179,13 @@ router.post("/create-payment-sheet", authenticateToken, async (req, res) => {
     }
 
     res.json({
-      paymentIntent: paymentIntent.client_secret,
-      ephemeralKey: ephemeralKey.secret,
+      paymentIntent: payment.paymentIntent.client_secret,
+      ephemeralKey: payment.ephemeralKeySecret,
       customer: customerId,
       publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     });
   } catch (error: any) {
-    console.error("Create payment sheet error:", error);
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "create-payment-sheet");
   }
 });
 
@@ -233,9 +294,7 @@ router.post("/create-payment-intent", authenticateToken, async (req, res) => {
       type: error?.type,
       message: error?.message,
     });
-    res
-      .status(500)
-      .json({ message: "No se pudo crear el pago", error: error?.message });
+    res.status(500).json({ message: "No se pudo crear el pago" });
   }
 });
 
@@ -269,7 +328,7 @@ router.get("/payment-method/:userId", authenticateToken, async (req, res) => {
 
     res.json({ hasCard: false });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "payment-method");
   }
 });
 
@@ -283,40 +342,20 @@ router.post("/create-setup-intent", authenticateToken, async (req, res) => {
     const stripe = (await import("stripe")).default;
     const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY);
 
-    const { userId } = req.body;
+    const userId = req.body?.userId || req.user!.id;
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    let customerId = user.stripeCustomerId;
-
-    if (!customerId) {
-      const customer = await stripeClient.customers.create({
-        metadata: { userId },
-      });
-      customerId = customer.id;
-
-      await db
-        .update(users)
-        .set({ stripeCustomerId: customerId })
-        .where(eq(users.id, userId));
-    }
-
-    const setupIntent = await stripeClient.setupIntents.create({
-      customer: customerId,
-      payment_method_types: ["card"],
-    });
+    const { result: setupIntent } = await withStripeCustomer(
+      userId,
+      async (cid) =>
+        stripeClient.setupIntents.create({
+          customer: cid,
+          payment_method_types: ["card"],
+        }),
+    );
 
     res.json({ clientSecret: setupIntent.client_secret });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "create-setup-intent");
   }
 });
 
@@ -352,7 +391,7 @@ router.post("/save-payment-method", authenticateToken, async (req, res) => {
       },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "save-payment-method");
   }
 });
 
@@ -373,7 +412,7 @@ router.delete(
 
       res.json({ success: true });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      stripeErrorResponse(res, error, "delete-payment-method");
     }
   },
 );
@@ -516,7 +555,9 @@ router.post(
       });
     } catch (error: any) {
       console.error("Confirm delivery error:", error);
-      res.status(500).json({ error: error.message });
+      res
+        .status(500)
+        .json({ error: "No se pudo confirmar la entrega. Inténtalo de nuevo." });
     }
   },
 );
@@ -557,7 +598,7 @@ router.post(
 
       res.json({ clientSecret: paymentIntent.client_secret });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      stripeErrorResponse(res, error, "create-subscription-payment-intent");
     }
   },
 );
@@ -626,7 +667,7 @@ router.post(
 
       res.json({ success: true, plan: sub.plan });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      stripeErrorResponse(res, error, "confirm-subscription");
     }
   },
 );
@@ -658,7 +699,7 @@ router.get("/cards", authenticateToken, async (req, res) => {
       ],
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "cards");
   }
 });
 
@@ -695,7 +736,7 @@ router.get("/history", authenticateToken, async (req, res) => {
 
     res.json({ payments });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "history");
   }
 });
 
@@ -717,7 +758,7 @@ router.delete("/cards/:cardId", authenticateToken, async (req, res) => {
       .where(eq(users.id, req.user!.id));
     res.json({ success: true });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    stripeErrorResponse(res, error, "delete-card");
   }
 });
 

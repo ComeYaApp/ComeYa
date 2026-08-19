@@ -40,21 +40,28 @@ export class EnhancedReviewService {
       tipAmount,
     } = data;
 
-    // Subir fotos a Cloudinary
+    // Subir fotos a Cloudinary. Si una foto falla (credenciales, red, etc.)
+    // se guarda la reseña sin ella: nunca bloqueamos el envío por las fotos.
     let photoUrls: string[] = [];
     if (photos && photos.length > 0) {
-      photoUrls = await Promise.all(
+      const uploaded = await Promise.all(
         photos.map(async (photo, index) => {
-          if (photo.startsWith("data:image/")) {
+          if (!photo.startsWith("data:image/")) {
+            return photo;
+          }
+          try {
             return await CloudinaryService.uploadImage(
               photo,
               "reviews",
               `review-${orderId}-${index}`,
             );
+          } catch (err) {
+            console.error(`[reviews] No se pudo subir la foto ${index}:`, err);
+            return null;
           }
-          return photo;
         }),
       );
+      photoUrls = uploaded.filter((u): u is string => !!u);
     }
 
     // Calcular rating general (promedio)

@@ -35,7 +35,8 @@ export async function sendOrderStatusNotification(
     case "accepted":
       notification = {
         title: "¡Pedido aceptado! 🎉",
-        body: `${order.businessName} aceptó tu pedido - Listo en ${order.estimatedPrepTime || 25} min`,
+        // estimatedPrepMinutes es la columna real del schema (minutos estimados)
+        body: `${order.businessName} aceptó tu pedido - Listo en ${(order as any).estimatedPrepMinutes || 25} min`,
         data: { orderId, screen: "OrderTracking" },
       };
       break;

@@ -414,7 +414,7 @@ export default function BusinessStripeSetupScreen() {
               <View style={styles.requirementRow}>
                 <Feather name="check" size={18} color={ComeYaColors.success} />
                 <ThemedText type="body" style={{ marginLeft: Spacing.sm }}>
-                  Cuenta bancaria (IBAN espanol)
+                  Cuenta bancaria (IBAN español)
                 </ThemedText>
               </View>
               <View style={styles.requirementRow}>
