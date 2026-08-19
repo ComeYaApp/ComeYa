@@ -35,6 +35,7 @@ interface AuthContextType {
   disableBiometric: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [biometricType, setBiometricType] = useState<string | null>(null);
 
   useEffect(() => {
-    loadUser();
+    loadUser().then(() => refreshUser());
     checkBiometricAvailability();
   }, []);
 
@@ -462,6 +463,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Sincroniza el usuario cacheado con el servidor. Sin esto, estados que el
+  // admin cambia después del login (p.ej. verificación aprobada) nunca llegan
+  // a la app porque loadUser solo lee el AsyncStorage del momento del login.
+  const refreshUser = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (!stored) return;
+      const storedUser = JSON.parse(stored);
+      const currentToken =
+        storedUser.token || (await AsyncStorage.getItem("token"));
+      if (!currentToken) return;
+
+      const response = await apiRequest("GET", "/api/auth/me");
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data?.success || !data?.user) return;
+
+      const fresh = data.user as Record<string, unknown>;
+      const updated: Record<string, unknown> = { ...storedUser };
+      // Solo sobrescribir campos con valor (profileImage puede ser null en BD
+      // y no debe borrar una imagen que el usuario tiene en caché)
+      for (const [key, value] of Object.entries(fresh)) {
+        if (value !== undefined && value !== null) updated[key] = value;
+      }
+
+      const changed =
+        storedUser.verificationStatus !== updated.verificationStatus ||
+        storedUser.isActive !== updated.isActive ||
+        storedUser.role !== updated.role ||
+        storedUser.name !== updated.name ||
+        storedUser.profileImage !== updated.profileImage;
+
+      if (changed) {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        setUser(updated as unknown as User);
+      } else if (!user) {
+        setUser(storedUser);
+      }
+    } catch {
+      // silencioso: la app continúa con el usuario cacheado
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -482,6 +526,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         disableBiometric,
         logout,
         updateUser,
+        refreshUser,
       }}
     >
       {children}

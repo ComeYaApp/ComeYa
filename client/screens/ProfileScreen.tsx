@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -140,7 +140,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { theme, themeMode, setThemeMode } = useTheme();
   const { settings, updateSettings } = useApp();
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, refreshUser } = useAuth();
   const { businesses } = useBusiness();
   const { showToast } = useToast();
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -501,6 +501,14 @@ export default function ProfileScreen() {
       refetchSubscription();
     }
   }, [user?.id, refetchSubscription]);
+
+  // Refrescar el usuario desde el servidor al enfocar el perfil: así el badge
+  // de verificación (aprobado por el admin) se actualiza sin cerrar sesión
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+    }, [refreshUser]),
+  );
 
   const saveProfile = async () => {
     if (!editName.trim()) {
