@@ -22,32 +22,39 @@
     "adhoc": {
       "distribution": "internal",
       "ios": {
-        "image": "macos-sequoia-15.6-xcode-26.0"
-      },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
-        "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
-        "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
-        "EXPO_PUBLIC_NODE_ENV": "production",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
+        "image": "macos-sequoia-15.6-xcode-26.0",
+        "env": {
+          "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
+          "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
+          "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
+          "EXPO_PUBLIC_NODE_ENV": "production",
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+        }
       }
     },
     "production": {
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "env": {
+          "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
+          "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
+          "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
+          "EXPO_PUBLIC_NODE_ENV": "production",
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
+        }
       },
       "ios": {
         "image": "macos-sequoia-15.6-xcode-26.0",
-        "distribution": "store"
+        "distribution": "store",
+        "env": {
+          "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
+          "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
+          "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
+          "EXPO_PUBLIC_NODE_ENV": "production",
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+        }
       },
-      "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://comeya-backend.onrender.com",
-        "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
-        "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
-        "EXPO_PUBLIC_NODE_ENV": "production",
-        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
