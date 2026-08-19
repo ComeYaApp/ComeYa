@@ -143,6 +143,11 @@ export function CollapsibleMap({
   const [mapAvailable, setMapAvailable] = useState(false);
   // Ruta real por calles (Google Directions vía /api/gps/directions)
   const [routePath, setRoutePath] = useState<RouteCoordinate[]>([]);
+  // Info de la ruta real (distancia y duración de Google) para la tarjeta
+  const [routeInfo, setRouteInfo] = useState<{
+    distanceText?: string;
+    durationText?: string;
+  } | null>(null);
   const lastRouteRef = useRef<{
     origin: RouteCoordinate;
     destination: RouteCoordinate;
@@ -171,6 +176,7 @@ export function CollapsibleMap({
         : null;
     if (!origin || !destination) {
       setRoutePath([]);
+      setRouteInfo(null);
       lastRouteRef.current = null;
       return;
     }
@@ -191,6 +197,10 @@ export function CollapsibleMap({
         lastRouteRef.current = { origin, destination };
         if (result && result.coordinates.length >= 2) {
           setRoutePath(result.coordinates);
+          setRouteInfo({
+            distanceText: result.distanceText,
+            durationText: result.durationText,
+          });
         }
       })
       .finally(() => {
@@ -473,31 +483,86 @@ export function CollapsibleMap({
         </View>
       )}
 
-      {/* Botón CÓMO LLEGAR (SOLO PICKUP) — navegación DENTRO de la app */}
-      {isPickup && isValidLocation(businessLocation) && onNavigateInApp && (
-        <Pressable
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onNavigateInApp();
-          }}
-          style={[
-            styles.navigateButton,
-            { backgroundColor: ComeYaColors.primary },
-            Shadows.lg,
-          ]}
-        >
-          <Feather name="navigation" size={18} color="#FFFFFF" />
-          <ThemedText
-            type="body"
-            style={{
-              color: "#FFFFFF",
-              marginLeft: Spacing.sm,
-              fontWeight: "600",
-            }}
+      {/* Tarjeta de destino + botón CÓMO LLEGAR (SOLO PICKUP) — estilo Uber */}
+      {isPickup && onNavigateInApp && (
+        <View style={styles.pickupCardWrap}>
+          <View
+            style={[
+              styles.driverCard,
+              { backgroundColor: theme.card },
+              Shadows.lg,
+            ]}
           >
-            Cómo llegar
-          </ThemedText>
-        </Pressable>
+            <View style={styles.driverLeft}>
+              <View
+                style={[
+                  styles.driverAvatar,
+                  {
+                    backgroundColor:
+                      businessMarkerMeta(businessType, businessCategories)
+                        .color + "20",
+                  },
+                ]}
+              >
+                <Feather
+                  name="shopping-bag"
+                  size={22}
+                  color={
+                    businessMarkerMeta(businessType, businessCategories).color
+                  }
+                />
+              </View>
+              <View style={styles.driverInfo}>
+                <ThemedText type="h4" numberOfLines={1}>
+                  {businessName || "Recogida en el local"}
+                </ThemedText>
+                {routeInfo?.distanceText && routeInfo?.durationText ? (
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                    numberOfLines={1}
+                  >
+                    A {routeInfo.distanceText} · {routeInfo.durationText} en
+                    coche
+                  </ThemedText>
+                ) : (
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                    numberOfLines={1}
+                  >
+                    {isValidLocation(businessLocation)
+                      ? "Sigue la ruta hasta el local"
+                      : "Abre Google Maps para llegar al local"}
+                  </ThemedText>
+                )}
+              </View>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onNavigateInApp();
+            }}
+            style={[
+              styles.navigateButton,
+              { backgroundColor: ComeYaColors.primary },
+              Shadows.lg,
+            ]}
+          >
+            <Feather name="navigation" size={18} color="#FFFFFF" />
+            <ThemedText
+              type="body"
+              style={{
+                color: "#FFFFFF",
+                marginLeft: Spacing.sm,
+                fontWeight: "600",
+              }}
+            >
+              Cómo llegar
+            </ThemedText>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -631,13 +696,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  pickupCardWrap: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
+  },
   navigateButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     padding: Spacing.md,
     paddingHorizontal: Spacing.lg,
-    margin: Spacing.md,
+    marginTop: Spacing.sm,
     borderRadius: BorderRadius.lg,
   },
 });

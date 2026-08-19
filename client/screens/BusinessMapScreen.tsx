@@ -212,20 +212,14 @@ export default function BusinessMapScreen() {
           }),
         );
 
-        // Filtrar pedidos con coordenadas válidas
-        const validOrders = mapped.filter(
-          (o) =>
-            o.business.latitude !== 0 &&
-            o.business.longitude !== 0 &&
-            o.customer.latitude !== 0 &&
-            o.customer.longitude !== 0,
-        );
-
-        setActiveOrders(validOrders);
+        // Se conservan TODOS los pedidos activos (la tarjeta inferior debe
+        // mostrarlos aunque falten coordenadas); los marcadores del mapa se
+        // filtran en el render
+        setActiveOrders(mapped);
         console.log(
           "🗺️ Active orders loaded:",
-          validOrders.length,
-          validOrders,
+          mapped.length,
+          mapped,
         );
       } catch (e) {
         console.error("Error loading active orders:", e);
@@ -428,11 +422,21 @@ export default function BusinessMapScreen() {
               );
             })}
 
-        {/* Pedidos activos del cliente */}
+        {/* Pedidos activos del cliente (solo los que tienen coordenadas
+            válidas dibujan ruta/marcadores; la tarjeta inferior los muestra
+            todos) */}
         {Marker &&
           Polyline &&
-          activeOrders.map((order) => (
-            <React.Fragment key={order.id}>
+          activeOrders
+            .filter(
+              (o) =>
+                o.business.latitude !== 0 &&
+                o.business.longitude !== 0 &&
+                o.customer.latitude !== 0 &&
+                o.customer.longitude !== 0,
+            )
+            .map((order) => (
+              <React.Fragment key={order.id}>
               {/* Ruta negocio → cliente (o negocio → driver → cliente si hay driver) */}
               <Polyline
                 coordinates={[

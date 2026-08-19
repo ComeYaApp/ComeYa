@@ -120,7 +120,15 @@ export default function BusinessOrdersScreen() {
     }
   };
 
-  const handleStartPreparing = (orderId: string) => {
+  const handleStartPreparing = (
+    orderId: string,
+    isPickup = false,
+  ) => {
+    // Recogida en local: no hay repartidores que avisar
+    if (isPickup) {
+      updateStatus(orderId, "preparing");
+      return;
+    }
     // Selector simple de tiempo estimado (aviso anticipado a repartidores)
     if (typeof window !== "undefined" && (window as any).confirm) {
       const choice = (window as any).prompt(
@@ -475,7 +483,12 @@ export default function BusinessOrdersScreen() {
                     )}
                     {order.status === "accepted" && (
                       <Pressable
-                        onPress={() => handleStartPreparing(order.id)}
+                        onPress={() =>
+                          handleStartPreparing(
+                            order.id,
+                            order.orderType === "pickup",
+                          )
+                        }
                         disabled={!!actionLoading}
                         style={[
                           s.actionBtn,
