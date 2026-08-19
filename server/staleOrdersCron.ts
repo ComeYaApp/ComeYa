@@ -2,7 +2,7 @@
 // la devolución del importe (Stripe automática; resto marcada para el admin).
 import { db } from "./db";
 import { orders, users, businesses } from "@shared/schema-mysql";
-import { inArray, lt, and, isNull, eq } from "drizzle-orm";
+import { inArray, lt, and, isNull, eq, ne } from "drizzle-orm";
 import { sendPushToUser, sendOrderStatusNotification } from "./enhancedPushService";
 
 const STALE_MINUTES = 30;
@@ -21,6 +21,9 @@ export async function checkStaleOrders(): Promise<number> {
         inArray(orders.status as any, STALE_STATUSES),
         isNull(orders.deliveryPersonId),
         lt(orders.createdAt, cutoff),
+        // Los pedidos de recogida en local no llevan repartidor: no deben
+        // cancelarse por "falta de asignación"
+        ne(orders.orderType, "pickup"),
       ),
     )
     .limit(50);

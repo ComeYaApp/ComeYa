@@ -442,11 +442,17 @@ router.get(
         ),
       );
 
-    const { isNull: isNullOp } = await import("drizzle-orm");
+    const { isNull: isNullOp, ne: neOp } = await import("drizzle-orm");
     const availableOrders = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.status, "ready"), isNullOp(orders.deliveryPersonId)))
+      .where(
+        and(
+          eq(orders.status, "ready"),
+          isNullOp(orders.deliveryPersonId),
+          neOp(orders.orderType, "pickup"),
+        ),
+      )
       .limit(10);
 
     res.json({ orders: myOrders, availableOrders });
@@ -527,8 +533,9 @@ router.get(
     }
 
     // SIN RESTRICCIÓN DE DISTANCIA - Muestra TODOS los pedidos disponibles.
+    // Los pedidos de recogida en local (pickup) NO llevan repartidor.
     // Los pedidos de negocios destacados (Top/Premium Soria) salen primero.
-    const { isNull, desc } = await import("drizzle-orm");
+    const { isNull, desc, ne } = await import("drizzle-orm");
     const availableOrders = await db
       .select({
         id: orders.id,
@@ -539,6 +546,7 @@ router.get(
         businessLongitude: businesses.longitude,
         businessAddress: businesses.address,
         status: orders.status,
+        items: orders.items, // la lista del repartidor muestra el nº de productos
         subtotal: orders.subtotal,
         deliveryFee: orders.deliveryFee,
         total: orders.total,
@@ -551,7 +559,13 @@ router.get(
       })
       .from(orders)
       .leftJoin(businesses, eq(businesses.id, orders.businessId))
-      .where(and(eq(orders.status, "ready"), isNull(orders.deliveryPersonId)))
+      .where(
+        and(
+          eq(orders.status, "ready"),
+          isNull(orders.deliveryPersonId),
+          ne(orders.orderType, "pickup"),
+        ),
+      )
       .orderBy(desc(businesses.isFeatured), desc(orders.createdAt))
       .limit(100);
 

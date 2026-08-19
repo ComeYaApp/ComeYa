@@ -190,6 +190,18 @@ router.post(
 
       const orderId = createdOrder[0].id;
 
+      // Pedidos de recogida en local: generar código de 6 dígitos y QR ahora
+      // que conocemos el orderId (el QR del cliente contiene ambos). Sin esto
+      // el modal de QR crashea con "Invalid data".
+      if (createdOrder[0].orderType === "pickup") {
+        try {
+          const { pickupService } = await import("../pickupService");
+          await pickupService.createPickupOrder(orderId, 15);
+        } catch (err) {
+          console.error("Error generating pickup codes:", err);
+        }
+      }
+
       // Notify business owner about the new order (push + websocket)
       try {
         const [biz] = await db

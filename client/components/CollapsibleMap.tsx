@@ -149,18 +149,26 @@ export function CollapsibleMap({
   } | null>(null);
   const routeLoadingRef = useRef(false);
 
-  // Recalcular ruta real cuando el repartidor avanza (>150 m) o cambia el destino
+  // Recalcular ruta real cuando el repartidor avanza (>150 m) o cambia el destino.
+  // Pickup: ruta del CLIENTE a la TIENDA (va él a buscar su pedido).
+  // Delivery: ruta del repartidor (o del local) hasta el cliente.
   useEffect(() => {
-    if (isPickup) return;
-    const driver = isValidLocation(deliveryPersonLocation)
-      ? deliveryPersonLocation
-      : null;
-    const destination = isValidLocation(customerLocation)
-      ? customerLocation
-      : null;
-    const origin =
-      driver ??
-      (isValidLocation(businessLocation) ? businessLocation : null);
+    const origin = isPickup
+      ? isValidLocation(customerLocation)
+        ? customerLocation
+        : null
+      : isValidLocation(deliveryPersonLocation)
+        ? deliveryPersonLocation
+        : isValidLocation(businessLocation)
+          ? businessLocation
+          : null;
+    const destination = isPickup
+      ? isValidLocation(businessLocation)
+        ? businessLocation
+        : null
+      : isValidLocation(customerLocation)
+        ? customerLocation
+        : null;
     if (!origin || !destination) {
       setRoutePath([]);
       lastRouteRef.current = null;
@@ -254,13 +262,14 @@ export function CollapsibleMap({
     };
   };
 
-  const routeCoords = isPickup
-    ? [customerLocation, businessLocation].filter(isValidLocation)
-    : routePath.length >= 2
+  const routeCoords =
+    routePath.length >= 2
       ? routePath
-      : [businessLocation, deliveryPersonLocation, customerLocation].filter(
-          isValidLocation,
-        );
+      : isPickup
+        ? [customerLocation, businessLocation].filter(isValidLocation)
+        : [businessLocation, deliveryPersonLocation, customerLocation].filter(
+            isValidLocation,
+          );
   const hasAnyLocation =
     routeCoords.length > 0 ||
     [businessLocation, deliveryPersonLocation, customerLocation].some(

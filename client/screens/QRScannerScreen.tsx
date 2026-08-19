@@ -32,10 +32,41 @@ export default function QRScannerScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     try {
-      // El QR contiene el orderId
-      const orderId = data;
+      // El QR del cliente de recogida es un JSON: {orderId, pickupCode, type}
+      let orderId = data;
+      let pickupCode: string | null = null;
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === "object" && parsed.orderId) {
+          orderId = parsed.orderId;
+          pickupCode = parsed.pickupCode || null;
+        }
+      } catch {
+        // QR con orderId pelado: flujo anterior
+      }
 
-      // Marcar pedido como entregado
+      if (pickupCode) {
+        // Verificar el código de recogida de 6 dígitos contra el pedido
+        const validateRes = await apiRequest(
+          "POST",
+          `/api/pickup/${orderId}/validate-code`,
+          { code: pickupCode },
+        );
+        const validateData = await validateRes.json();
+        if (!validateData.valid) {
+          throw new Error("El código del QR no coincide con este pedido");
+        }
+        // Marcar como recogido (entrega en local completada)
+        await apiRequest("POST", `/api/orders/${orderId}/mark-picked-up`);
+        Alert.alert(
+          "✅ Pedido recogido",
+          `El pedido #${String(orderId).slice(-6)} ha sido entregado al cliente.`,
+          [{ text: "OK", onPress: () => navigation.goBack() }],
+        );
+        return;
+      }
+
+      // Marcar pedido como entregado (QR con orderId directo)
       const response = await apiRequest(
         "PUT",
         `/api/orders/${orderId}/complete`,

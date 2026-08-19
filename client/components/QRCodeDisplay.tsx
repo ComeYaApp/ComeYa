@@ -53,12 +53,20 @@ export function QRCodeDisplay({
           </ThemedText>
 
           <View style={[styles.qrContainer, { backgroundColor: "#FFFFFF" }]}>
-            <QRCode
-              value={qrData}
-              size={200}
-              backgroundColor="#FFFFFF"
-              color="#000000"
-            />
+            {qrData ? (
+              <QRCode
+                value={qrData}
+                size={200}
+                backgroundColor="#FFFFFF"
+                color="#000000"
+              />
+            ) : (
+              // Sin datos de QR (pedido muy antiguo): mostrar solo el código
+              // numérico en grande en lugar de crashear ("Invalid data")
+              <View style={styles.qrFallback}>
+                <Feather name="key" size={48} color="#000000" />
+              </View>
+            )}
           </View>
 
           <View
@@ -119,6 +127,12 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.lg,
+  },
+  qrFallback: {
+    width: 200,
+    height: 200,
+    justifyContent: "center",
+    alignItems: "center",
   },
   codeContainer: {
     paddingVertical: Spacing.lg,

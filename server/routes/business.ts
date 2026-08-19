@@ -1267,8 +1267,12 @@ router.put(
         );
         await sendOrderStatusNotification(order.id, order.userId, status);
 
+        // Pedidos de recogida en local: el cliente se acerca él mismo, no hay
+        // que avisar a ningún repartidor en ningún cambio de estado
+        const isPickupOrder = order.orderType === "pickup";
+
         // PREPARANDO: avisar al repartidor asignado o broadcast a disponibles
-        if (status === "preparing") {
+        if (status === "preparing" && !isPickupOrder) {
           const rangeText = estimatedPrepRange || "unos minutos";
           if (order.deliveryPersonId) {
             await sendPushToUser(order.deliveryPersonId, {
@@ -1288,7 +1292,7 @@ router.put(
           }
         }
 
-        if (status === "ready") {
+        if (status === "ready" && !isPickupOrder) {
           if (order.deliveryPersonId) {
             await sendPushToUser(order.deliveryPersonId, {
               title: "📦 Pedido listo para recoger",
@@ -1722,6 +1726,39 @@ router.get("/:id", async (req, res) => {
     }
 
     console.log(`✅ Found business: ${business.name}`);
+
+    // Autosanado de coordenadas: sin lat/lng el mapa de pickup y la
+    // navegación del repartidor no funcionan. Geocodificar la dirección y
+    // persistir para la próxima vez.
+    if ((!business.latitude || !business.longitude) && business.address) {
+      try {
+        const GMAPS_KEY =
+          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+          process.env.GOOGLE_MAPS_API_KEY ||
+          "";
+        if (GMAPS_KEY) {
+          const base = String(business.address);
+          const query = encodeURIComponent(
+            base.toLowerCase().includes("soria") ? base : `${base}, Soria, España`,
+          );
+          const geoRes = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GMAPS_KEY}`,
+          );
+          const geoData = await geoRes.json();
+          if (geoData.status === "OK" && geoData.results[0]) {
+            const { lat, lng } = geoData.results[0].geometry.location;
+            business.latitude = String(lat);
+            business.longitude = String(lng);
+            await db.execute(
+              sql`UPDATE businesses SET latitude = ${String(lat)}, longitude = ${String(lng)} WHERE id = ${business.id}`,
+            );
+            console.log(`🗺️ Negocio ${business.name} geocodificado`);
+          }
+        }
+      } catch (geoErr: any) {
+        console.error("Geocodificación del negocio falló:", geoErr.message);
+      }
+    }
 
     // Obtener productos
     let productRows: any[] = [];

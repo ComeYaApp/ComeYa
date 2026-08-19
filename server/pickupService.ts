@@ -36,6 +36,32 @@ export const pickupService = {
     return { pickupCode, qrData };
   },
 
+  /** Garantiza que un pedido pickup tenga código y QR. Los pedidos creados
+   *  antes de esta lógica llegaban con pickupCode/pickupQrCode a NULL y el
+   *  QR del cliente crasheaba ("Invalid data"). */
+  async ensurePickupCodes(order: {
+    id: string;
+    pickupCode: string | null;
+    pickupQrCode: string | null;
+  }): Promise<{ pickupCode: string; pickupQrCode: string }> {
+    if (order.pickupCode && order.pickupQrCode) {
+      return {
+        pickupCode: order.pickupCode,
+        pickupQrCode: order.pickupQrCode,
+      };
+    }
+    const pickupCode = order.pickupCode || generatePickupCode();
+    const pickupQrCode = generateQRData(order.id, pickupCode);
+    await db
+      .update(orders)
+      .set({ pickupCode, pickupQrCode })
+      .where(eq(orders.id, order.id));
+    console.log(
+      `[pickup] Códigos regenerados para el pedido #${order.id.slice(-6)}`,
+    );
+    return { pickupCode, pickupQrCode };
+  },
+
   // Calcular tiempo restante
   getTimeRemaining(order: any): number | null {
     if (!order.estimatedPickupTime || !order.createdAt) return null;

@@ -63,6 +63,7 @@ import AdminStripeSetupScreen from "@/screens/AdminStripeSetupScreen";
 import PaymentProofScreen from "@/screens/PaymentProofScreen";
 import DeliveryConfirmationScreen from "@/screens/DeliveryConfirmationScreen";
 import QRScannerScreen from "@/screens/QRScannerScreen";
+import PickupScannerScreen from "@/screens/PickupScannerScreen";
 import StripePaymentScreen from "@/screens/StripePaymentScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
@@ -184,6 +185,7 @@ export type RootStackParamList = {
   Terms: undefined;
   Privacy: undefined;
   QRScanner: undefined;
+  PickupScanner: undefined;
   DriverNavigation: {
     destLat: number;
     destLng: number;
@@ -342,6 +344,7 @@ export default function RootStackNavigator() {
           <Stack.Screen name="PaymentWebView" component={PaymentWebViewScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DeliveryConfirmation" component={DeliveryConfirmationScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ presentation: "modal", headerShown: false }} />
+          <Stack.Screen name="PickupScanner" component={PickupScannerScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DriverDeliveries" component={DriverMyDeliveriesScreen} options={{ headerTitle: "Mis entregas" }} />
           <Stack.Screen name="StripeSetup" component={StripeSetupScreen} options={{ headerShown: false }} />

@@ -27,6 +27,9 @@ router.get("/:orderId/info", authenticateToken, async (req, res) => {
         .json({ error: "Este pedido no es de tipo pickup" });
     }
 
+    // Pedidos creados sin código (histórico): regenerar código y QR al vuelo
+    const codes = await pickupService.ensurePickupCodes(order);
+
     const timeRemaining = pickupService.getTimeRemaining(order);
     const progress = pickupService.getProgress(order);
     const pendingBefore = await pickupService.getPendingOrdersCount(
@@ -37,8 +40,8 @@ router.get("/:orderId/info", authenticateToken, async (req, res) => {
     res.json({
       success: true,
       pickup: {
-        code: order.pickupCode,
-        qrCode: order.pickupQrCode,
+        code: codes.pickupCode,
+        qrCode: codes.pickupQrCode,
         estimatedMinutes: order.estimatedPickupTime,
         timeRemaining,
         progress,

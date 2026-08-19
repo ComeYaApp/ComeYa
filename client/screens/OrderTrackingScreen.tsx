@@ -104,8 +104,10 @@ export default function OrderTrackingScreen() {
     confidence: number;
   } | null>(null);
 
-  // Poll for ETA updates every 30 seconds
+  // Poll for ETA updates every 30 seconds (en pickup el tiempo restante
+  // viene de la info de pickup, no del repartidor)
   useEffect(() => {
+    if (orderType === "pickup") return;
     const fetchETA = async () => {
       if (!orderId) return;
       try {
@@ -128,10 +130,12 @@ export default function OrderTrackingScreen() {
     fetchETA();
     const interval = setInterval(fetchETA, 30000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, orderType]);
 
-  // Poll for delivery person location every 10 seconds
+  // Poll for delivery person location every 3 seconds
+  // (solo pedidos delivery: en pickup no hay repartidor)
   useEffect(() => {
+    if (orderType === "pickup") return;
     const fetchDeliveryLocation = async () => {
       if (!orderId) return;
       try {
@@ -156,7 +160,7 @@ export default function OrderTrackingScreen() {
     fetchDeliveryLocation();
     const interval = setInterval(fetchDeliveryLocation, 3000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, orderType]);
 
   // Cargar info de pickup y actualizar cada 30s
   useEffect(() => {
@@ -432,10 +436,10 @@ export default function OrderTrackingScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
       {/* Modal QR Code */}
-      {pickupInfo && (
+      {pickupInfo && (pickupInfo.code || pickupInfo.qrCode) && (
         <QRCodeDisplay
           visible={showQR}
-          code={pickupInfo.code}
+          code={pickupInfo.code || "—"}
           qrData={pickupInfo.qrCode}
           onClose={() => setShowQR(false)}
         />

@@ -304,8 +304,19 @@ export default function DriverAvailableOrdersScreen() {
   };
 
   const renderOrder = ({ item }: { item: any }) => {
-    const items =
-      typeof item.items === "string" ? JSON.parse(item.items) : item.items;
+    // items puede no venir en el endpoint: sin el fallback, `items.length`
+    // crasheaba la pantalla completa
+    const parsedItems =
+      typeof item.items === "string"
+        ? (() => {
+            try {
+              return JSON.parse(item.items);
+            } catch {
+              return [];
+            }
+          })()
+        : item.items;
+    const items: any[] = Array.isArray(parsedItems) ? parsedItems : [];
     const distanceKm = item.distanceKm
       ? (item.distanceKm / 1000).toFixed(1)
       : null;

@@ -197,8 +197,15 @@ export default function BusinessOrdersScreen() {
     });
   };
 
-  const handleStartPreparing = (orderId: string) => {
-    // Preguntar el tiempo estimado para avisar a los repartidores por adelantado
+  const handleStartPreparing = (orderId: string, isPickup = false) => {
+    if (isPickup) {
+      // Recogida en local: no hay repartidores que avisar, simplemente pasar
+      // a preparando (el cliente ya recibió el tiempo estimado al aceptar)
+      updateOrderStatus(orderId, "preparing");
+      return;
+    }
+    // Delivery: preguntar el tiempo estimado para avisar a los repartidores
+    // por adelantado
     setPrepModal({ visible: true, orderId });
   };
 
@@ -524,7 +531,9 @@ export default function BusinessOrdersScreen() {
 
           {item.status === "accepted" && (
             <Pressable
-              onPress={() => handleStartPreparing(item.id)}
+              onPress={() =>
+                handleStartPreparing(item.id, item.orderType === "pickup")
+              }
               style={[
                 styles.actionButton,
                 { backgroundColor: ComeYaColors.primary, flex: 1 },
