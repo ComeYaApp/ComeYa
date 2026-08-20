@@ -20,6 +20,10 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import {
+  fetchRouteDirections,
+  distanceMeters,
+} from "@/utils/directions";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   pinIcon,
@@ -163,6 +167,12 @@ export default function OrderTrackingScreen() {
   const customerMarkerRef = useRef<any>(null);
   const routeLineRef = useRef<any>(null);
   const driverRouteLineRef = useRef<any>(null);
+  const driverRouteCoordsRef = useRef<{ lat: number; lng: number }[] | null>(
+    null,
+  );
+  const lastDriverRoutePointRef = useRef<{ lat: number; lng: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     loadGoogleMaps()
@@ -534,18 +544,45 @@ export default function OrderTrackingScreen() {
             lat: parseFloat(order.deliveryLatitude),
             lng: parseFloat(order.deliveryLongitude),
           };
+          // Ruta real por calles vía el proxy del servidor; solo se re-pide
+          // si el repartidor se movió >100 m (protege la cuota de Google)
+          const shouldRefetch =
+            !lastDriverRoutePointRef.current ||
+            !driverRouteCoordsRef.current ||
+            distanceMeters(
+              {
+                latitude: lastDriverRoutePointRef.current.lat,
+                longitude: lastDriverRoutePointRef.current.lng,
+              },
+              { latitude: driverPos.lat, longitude: driverPos.lng },
+            ) > 100;
+          if (shouldRefetch) {
+            lastDriverRoutePointRef.current = driverPos;
+            const route = await fetchRouteDirections(
+              { latitude: driverPos.lat, longitude: driverPos.lng },
+              { latitude: clientPos.lat, longitude: clientPos.lng },
+            );
+            if (route && route.coordinates.length >= 2) {
+              driverRouteCoordsRef.current = route.coordinates.map((c) => ({
+                lat: c.latitude,
+                lng: c.longitude,
+              }));
+            }
+          }
           if (driverRouteLineRef.current) {
             driverRouteLineRef.current.setMap(null);
             driverRouteLineRef.current = null;
           }
-          driverRouteLineRef.current = new google.maps.Polyline({
-            path: [driverPos, clientPos],
-            geodesic: true,
-            strokeColor: "#10B981",
-            strokeOpacity: 0.9,
-            strokeWeight: 5,
-            map: gmap.current,
-          });
+          if (driverRouteCoordsRef.current) {
+            driverRouteLineRef.current = new google.maps.Polyline({
+              path: driverRouteCoordsRef.current,
+              geodesic: true,
+              strokeColor: "#DC2626",
+              strokeOpacity: 0.9,
+              strokeWeight: 5,
+              map: gmap.current,
+            });
+          }
 
           // Ajustar bounds: repartidor + cliente
           const b = new google.maps.LatLngBounds();

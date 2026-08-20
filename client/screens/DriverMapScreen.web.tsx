@@ -14,6 +14,10 @@ const SORIA = { lat: 41.7636, lng: -2.4677 };
 const GREEN = "#22C55E";
 import { apiRequest } from "@/lib/query-client";
 import {
+  fetchRouteDirections,
+  distanceMeters,
+} from "@/utils/directions";
+import {
   pinIcon,
   driverIcon,
   asGoogleIcon,
@@ -115,23 +119,72 @@ export default function DriverMapScreen({
     setEta(`~${mins} min`);
   };
 
-  // ── Dibujar ruta entre dos puntos ──────────────────────────────────────────
+  // ── Dibujar ruta real por calles entre dos puntos ─────────────────────────
+  // Vía el proxy del servidor (Google Directions con fallback OSRM). Solo se
+  // re-pide si el origen se movió >100 m; sin geometría, línea discontinua.
+  const routeCoordsRef = useRef<{ lat: number; lng: number }[] | null>(null);
+  const lastRouteFromRef = useRef<{ lat: number; lng: number } | null>(null);
   const drawRoute = useCallback(
-    (
+    async (
       google: any,
       from: { lat: number; lng: number },
       to: { lat: number; lng: number },
     ) => {
+      const shouldRefetch =
+        !routeCoordsRef.current ||
+        !lastRouteFromRef.current ||
+        distanceMeters(
+          {
+            latitude: lastRouteFromRef.current.lat,
+            longitude: lastRouteFromRef.current.lng,
+          },
+          { latitude: from.lat, longitude: from.lng },
+        ) > 100;
+
+      if (shouldRefetch) {
+        lastRouteFromRef.current = from;
+        const route = await fetchRouteDirections(
+          { latitude: from.lat, longitude: from.lng },
+          { latitude: to.lat, longitude: to.lng },
+        );
+        if (route && route.coordinates.length >= 2 && !route.fallback) {
+          routeCoordsRef.current = route.coordinates.map((c) => ({
+            lat: c.latitude,
+            lng: c.longitude,
+          }));
+          if (route.distanceText) setDistance(route.distanceText);
+          if (route.durationText) setEta(route.durationText);
+        } else {
+          routeCoordsRef.current = null;
+        }
+      }
+
+      const hasRealRoute = !!routeCoordsRef.current;
       if (routeLine.current) routeLine.current.setMap(null);
       routeLine.current = new google.maps.Polyline({
-        path: [from, to],
+        path: hasRealRoute ? routeCoordsRef.current! : [from, to],
         geodesic: true,
-        strokeColor: GREEN,
-        strokeOpacity: 0.9,
+        strokeColor: ComeYaColors.primary,
+        strokeOpacity: hasRealRoute ? 0.9 : 0,
         strokeWeight: 4,
+        ...(hasRealRoute
+          ? {}
+          : {
+              icons: [
+                {
+                  icon: {
+                    path: "M 0,-1 0,1",
+                    strokeOpacity: 0.7,
+                    scale: 3,
+                  },
+                  offset: "0",
+                  repeat: "16px",
+                },
+              ],
+            }),
         map: gmap.current,
       });
-      calcEta(from.lat, from.lng, to.lat, to.lng);
+      if (!hasRealRoute) calcEta(from.lat, from.lng, to.lat, to.lng);
     },
     [],
   );

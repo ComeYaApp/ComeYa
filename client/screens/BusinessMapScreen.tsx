@@ -26,6 +26,11 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import {
+  fetchRouteDirections,
+  distanceMeters,
+  type RouteCoordinate,
+} from "@/utils/directions";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useAuth } from "@/contexts/AuthContext";
 import { SmartMarker } from "@/components/map/SmartMarker";
@@ -52,6 +57,7 @@ interface ActiveOrder {
   id: string;
   businessName: string;
   status: string;
+  orderType?: "delivery" | "pickup";
   business: { latitude: number; longitude: number };
   customer: { latitude: number; longitude: number };
   driver?: {
@@ -96,6 +102,13 @@ export default function BusinessMapScreen() {
   const [Marker, setMarker] = useState<any>(null);
   const [Polyline, setPolyline] = useState<any>(null);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+  // Rutas reales por calles por pedido (decodificadas del servidor)
+  const [orderRoutes, setOrderRoutes] = useState<
+    Record<string, { coords: RouteCoordinate[]; fallback: boolean }>
+  >({});
+  const routeEndpointsRef = useRef<
+    Record<string, { origin: RouteCoordinate; dest: RouteCoordinate }>
+  >({});
   const [Circle, setCircle] = useState<any>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const mapRef = useRef<any>(null);
@@ -196,6 +209,7 @@ export default function BusinessMapScreen() {
               id: o.id,
               businessName: o.businessName || "Negocio",
               status: o.status,
+              orderType: o.orderType === "pickup" ? "pickup" : "delivery",
               business: { latitude: bizLat, longitude: bizLng },
               customer: { latitude: custLat, longitude: custLng },
               driver: driverLoc,
@@ -229,6 +243,66 @@ export default function BusinessMapScreen() {
     const interval = setInterval(fetchOrders, 15000);
     return () => clearInterval(interval);
   }, [user, userLocation]);
+
+  // Rutas reales por calles para cada pedido activo (delivery y recogida).
+  // Solo se re-pide la ruta si el repartidor se movió >150 m o cambió el
+  // destino >20 m; máx. 3 pedidos simultáneos para proteger la cuota de
+  // Google (el servidor además cachea y aplica límites diarios).
+  useEffect(() => {
+    const transitStatuses = [
+      "picked_up",
+      "on_the_way",
+      "in_transit",
+      "arriving",
+    ];
+    activeOrders.slice(0, 3).forEach((order) => {
+      if (order.business.latitude === 0 || order.customer.latitude === 0)
+        return;
+
+      const biz: RouteCoordinate = {
+        latitude: order.business.latitude,
+        longitude: order.business.longitude,
+      };
+      const cust: RouteCoordinate = {
+        latitude: order.customer.latitude,
+        longitude: order.customer.longitude,
+      };
+
+      let origin: RouteCoordinate;
+      let dest: RouteCoordinate;
+      if (order.orderType === "pickup") {
+        // Recogida: el cliente va al restaurante
+        origin = cust;
+        dest = biz;
+      } else {
+        // Delivery: repartidor → casa si está en camino; si no, negocio → casa
+        origin =
+          order.driver && transitStatuses.includes(order.status)
+            ? order.driver
+            : biz;
+        dest = cust;
+      }
+
+      const cached = routeEndpointsRef.current[order.id];
+      if (cached) {
+        const originMoved = distanceMeters(cached.origin, origin) > 150;
+        const destMoved = distanceMeters(cached.dest, dest) > 20;
+        if (!originMoved && !destMoved) return;
+      }
+      routeEndpointsRef.current[order.id] = { origin, dest };
+
+      fetchRouteDirections(origin, dest).then((result) => {
+        if (!result) return;
+        setOrderRoutes((prev) => ({
+          ...prev,
+          [order.id]: {
+            coords: result.coordinates,
+            fallback: result.fallback,
+          },
+        }));
+      });
+    });
+  }, [activeOrders]);
 
   // Pedir permiso de ubicación y centrar mapa cuando llegue
   useEffect(() => {
@@ -437,32 +511,38 @@ export default function BusinessMapScreen() {
             )
             .map((order) => (
               <React.Fragment key={order.id}>
-              {/* Ruta negocio → cliente (o negocio → driver → cliente si hay driver) */}
+              {/* Ruta real por calles (negocio→casa o repartidor→casa en
+                  delivery; cliente→restaurante en recogida). Si el servidor
+                  no devuelve geometría, línea discontinua como estimación */}
               <Polyline
-                coordinates={[
-                  {
-                    latitude: order.business.latitude,
-                    longitude: order.business.longitude,
-                  },
-                  ...(order.driver
-                    ? [
+                coordinates={
+                  (orderRoutes[order.id]?.coords?.length ?? 0) > 0
+                    ? orderRoutes[order.id]!.coords
+                    : [
                         {
-                          latitude: order.driver.latitude,
-                          longitude: order.driver.longitude,
+                          latitude: order.business.latitude,
+                          longitude: order.business.longitude,
+                        },
+                        ...(order.driver
+                          ? [
+                              {
+                                latitude: order.driver.latitude,
+                                longitude: order.driver.longitude,
+                              },
+                            ]
+                          : []),
+                        {
+                          latitude: order.customer.latitude,
+                          longitude: order.customer.longitude,
                         },
                       ]
-                    : []),
-                  {
-                    latitude: order.customer.latitude,
-                    longitude: order.customer.longitude,
-                  },
-                ]}
-                strokeColor={
-                  STATUS_LABELS[order.status]?.color || ComeYaColors.primary
                 }
-                strokeWidth={3}
+                strokeColor={ComeYaColors.primary}
+                strokeWidth={4}
                 lineDashPattern={
-                  order.status === "on_the_way" ? undefined : [10, 5]
+                  (orderRoutes[order.id]?.coords?.length ?? 0) > 0
+                    ? undefined
+                    : [10, 5]
                 }
               />
 
