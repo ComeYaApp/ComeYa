@@ -1969,6 +1969,35 @@ var init_db = __esm({
             if (err.code !== "ER_DUP_FIELDNAME")
               console.log("Migration note:", err.message);
           }
+          try {
+            await conn.query(
+              `ALTER TABLE reviews ADD COLUMN delivery_person_rating INT DEFAULT NULL`
+            );
+            console.log("\u2705 Added delivery_person_rating to reviews");
+          } catch (err) {
+            if (err.code !== "ER_DUP_FIELDNAME")
+              console.log("Migration note:", err.message);
+          }
+          try {
+            await conn.query(
+              `ALTER TABLE reviews ADD COLUMN tip_amount INT DEFAULT NULL`
+            );
+            console.log("\u2705 Added tip_amount to reviews");
+          } catch (err) {
+            if (err.code !== "ER_DUP_FIELDNAME")
+              console.log("Migration note:", err.message);
+          }
+          for (const col of ["food_rating", "delivery_rating", "packaging_rating"]) {
+            try {
+              await conn.query(
+                `ALTER TABLE reviews ADD COLUMN ${col} INT DEFAULT NULL`
+              );
+              console.log(`\u2705 Added ${col} to reviews`);
+            } catch (err) {
+              if (err.code !== "ER_DUP_FIELDNAME")
+                console.log("Migration note:", err.message);
+            }
+          }
           conn.release();
         }).catch((err) => {
           console.error("\u274C Database connection failed:", err.message);

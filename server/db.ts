@@ -214,6 +214,43 @@ if (isTest && useDbStubs) {
             console.log("Migration note:", err.message);
         }
 
+        // Reviews: calificación del repartidor (fallaba el stats del driver y
+        // el INSERT de reseñas con "Unknown column 'delivery_person_rating'")
+        try {
+          await conn.query(
+            `ALTER TABLE reviews ADD COLUMN delivery_person_rating INT DEFAULT NULL`,
+          );
+          console.log("✅ Added delivery_person_rating to reviews");
+        } catch (err: any) {
+          if (err.code !== "ER_DUP_FIELDNAME")
+            console.log("Migration note:", err.message);
+        }
+
+        // Reviews: propina al repartidor en céntimos
+        try {
+          await conn.query(
+            `ALTER TABLE reviews ADD COLUMN tip_amount INT DEFAULT NULL`,
+          );
+          console.log("✅ Added tip_amount to reviews");
+        } catch (err: any) {
+          if (err.code !== "ER_DUP_FIELDNAME")
+            console.log("Migration note:", err.message);
+        }
+
+        // Reviews: columnas de valoración (comida/envío/empaque) por si la
+        // tabla de producción se creó con el esquema antiguo
+        for (const col of ["food_rating", "delivery_rating", "packaging_rating"]) {
+          try {
+            await conn.query(
+              `ALTER TABLE reviews ADD COLUMN ${col} INT DEFAULT NULL`,
+            );
+            console.log(`✅ Added ${col} to reviews`);
+          } catch (err: any) {
+            if (err.code !== "ER_DUP_FIELDNAME")
+              console.log("Migration note:", err.message);
+          }
+        }
+
         conn.release();
       })
       .catch((err) => {
