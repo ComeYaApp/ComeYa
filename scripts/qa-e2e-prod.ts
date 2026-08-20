@@ -210,7 +210,10 @@ async function main() {
   // Validar código y entregar con el flujo QR
   const codeValid = await api("POST", `/pickup/${pickupId}/validate-code`, OWNER, { code: pickup.code });
   ok("negocio valida código de recogida", codeValid.status === 200 && codeValid.data?.valid === true);
-  const pickedUp = await api("POST", `/orders/${pickupId}/mark-picked-up`, OWNER);
+  // Seguridad: sin código el servidor debe rechazar la recogida
+  const pickedUpNoCode = await api("POST", `/orders/${pickupId}/mark-picked-up`, OWNER, {});
+  ok("recogida SIN código es rechazada (seguridad)", pickedUpNoCode.status === 400, `status=${pickedUpNoCode.status}`);
+  const pickedUp = await api("POST", `/orders/${pickupId}/mark-picked-up`, OWNER, { code: pickup.code });
   ok("pickup marcado como recogido (entrega completada)", pickedUp.status === 200);
   const orderAfter = await api("GET", `/orders/${pickupId}`, CUSTOMER);
   ok("estado final del pickup = delivered", orderAfter.data?.order?.status === "delivered", orderAfter.data?.order?.status);

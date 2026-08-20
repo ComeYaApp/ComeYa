@@ -643,6 +643,27 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
         .json({ error: "El pedido debe estar en estado 'listo'" });
     }
 
+    // SEGURIDAD: solo se cierra la recogida con el código de 6 dígitos que
+    // tiene el cliente (escrito o escaneado de su QR). Sin él, el dueño del
+    // negocio podría cerrar pedidos sin que el cliente los reciba.
+    const { code } = req.body;
+    if (typeof code !== "string" || code.trim().length !== 6) {
+      return res
+        .status(400)
+        .json({ error: "Código de recogida requerido (6 dígitos)" });
+    }
+
+    const { pickupService } = await import("../pickupService");
+    // Pedidos antiguos sin código: regenerarlo para poder validar
+    await pickupService.ensurePickupCodes(order.order as any);
+    const codeValid = await pickupService.validatePickupCode(
+      pickupId,
+      code.trim(),
+    );
+    if (!codeValid) {
+      return res.status(400).json({ error: "Código de recogida inválido" });
+    }
+
     // Marcar como entregado
     await db
       .update(orders)

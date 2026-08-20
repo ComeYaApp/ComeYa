@@ -23431,6 +23431,19 @@ router44.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
     if (!pickupTerminalStatuses.includes(order.order.status)) {
       return res.status(400).json({ error: "El pedido debe estar en estado 'listo'" });
     }
+    const { code } = req.body;
+    if (typeof code !== "string" || code.trim().length !== 6) {
+      return res.status(400).json({ error: "C\xF3digo de recogida requerido (6 d\xEDgitos)" });
+    }
+    const { pickupService: pickupService2 } = await Promise.resolve().then(() => (init_pickupService(), pickupService_exports));
+    await pickupService2.ensurePickupCodes(order.order);
+    const codeValid = await pickupService2.validatePickupCode(
+      pickupId,
+      code.trim()
+    );
+    if (!codeValid) {
+      return res.status(400).json({ error: "C\xF3digo de recogida inv\xE1lido" });
+    }
     await db2.update(orders2).set({
       status: "delivered",
       deliveredAt: /* @__PURE__ */ new Date(),

@@ -518,23 +518,24 @@ export default function BusinessOrdersScreen() {
             </>
           )}
 
-          {item.status === "ready" && item.orderType === "pickup" && (
-            <Pressable
-              onPress={() => navigation.navigate("PickupScanner" as any)}
-              style={[
-                styles.actionButton,
-                { backgroundColor: ComeYaColors.success, flex: 1 },
-              ]}
-            >
-              <Feather name="hash" size={18} color="#FFF" />
-              <ThemedText
-                type="small"
-                style={{ color: "#FFF", marginLeft: Spacing.xs }}
+          {["ready", "on_the_way", "picked_up"].includes(item.status) &&
+            item.orderType === "pickup" && (
+              <Pressable
+                onPress={() => navigation.navigate("PickupScanner" as any)}
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: ComeYaColors.success, flex: 1 },
+                ]}
               >
-                Escanear Código
-              </ThemedText>
-            </Pressable>
-          )}
+                <Feather name="hash" size={18} color="#FFF" />
+                <ThemedText
+                  type="small"
+                  style={{ color: "#FFF", marginLeft: Spacing.xs }}
+                >
+                  Escanear Código
+                </ThemedText>
+              </Pressable>
+            )}
 
           {item.status === "accepted" && (
             <Pressable
@@ -573,39 +574,6 @@ export default function BusinessOrdersScreen() {
               </ThemedText>
             </Pressable>
           )}
-
-          {["ready", "on_the_way", "picked_up"].includes(item.status) &&
-            item.orderType === "pickup" && (
-              <Pressable
-                onPress={async () => {
-                  try {
-                    await apiRequest(
-                      "POST",
-                      `/api/orders/${item.id}/mark-picked-up`,
-                    );
-                    Haptics.notificationAsync(
-                      Haptics.NotificationFeedbackType.Success,
-                    ).catch(() => {});
-                    loadOrders();
-                  } catch (error) {
-                    console.error("Error marking as picked up:", error);
-                    Alert.alert("Error", "No se pudo marcar como recogido");
-                  }
-                }}
-                style={[
-                  styles.actionButton,
-                  { backgroundColor: ComeYaColors.primary, flex: 1 },
-                ]}
-              >
-                <Feather name="shopping-bag" size={18} color="#FFF" />
-                <ThemedText
-                  type="small"
-                  style={{ color: "#FFF", marginLeft: Spacing.xs }}
-                >
-                  Cliente Recogió Pedido
-                </ThemedText>
-              </Pressable>
-            )}
 
           {item.status === "on_the_way" && item.orderType !== "pickup" && (
             <View

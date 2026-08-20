@@ -48,7 +48,9 @@ export default function PickupScannerScreen() {
           throw new Error("El código del QR no coincide con este pedido");
         }
       }
-      await apiRequest("POST", `/api/orders/${orderId}/mark-picked-up`);
+      await apiRequest("POST", `/api/orders/${orderId}/mark-picked-up`, {
+        code: pickupCode,
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("🎉 ¡Listo!", "Pedido marcado como recogido", [
         { text: "OK", onPress: () => navigation.goBack() },
@@ -83,7 +85,7 @@ export default function PickupScannerScreen() {
         // QR con contenido plano: no es un QR de recogida válido
       }
 
-      if (!orderId) {
+      if (!orderId || !pickupCode) {
         throw new Error(
           "QR no válido para recogida. Pide al cliente el código de 6 dígitos.",
         );
@@ -149,6 +151,7 @@ export default function PickupScannerScreen() {
                   await apiRequest(
                     "POST",
                     `/api/orders/${order.id}/mark-picked-up`,
+                    { code },
                   );
                   Haptics.notificationAsync(
                     Haptics.NotificationFeedbackType.Success,

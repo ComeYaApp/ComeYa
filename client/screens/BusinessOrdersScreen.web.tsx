@@ -153,6 +153,7 @@ export default function BusinessOrdersScreen() {
       await apiRequest(
         "POST",
         `/api/orders/${pickupCodeOrder.id}/mark-picked-up`,
+        { code },
       );
       await loadOrders();
       showToast("Pedido marcado como recogido", "success");

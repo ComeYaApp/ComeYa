@@ -57,7 +57,9 @@ export default function QRScannerScreen() {
           throw new Error("El código del QR no coincide con este pedido");
         }
         // Marcar como recogido (entrega en local completada)
-        await apiRequest("POST", `/api/orders/${orderId}/mark-picked-up`);
+        await apiRequest("POST", `/api/orders/${orderId}/mark-picked-up`, {
+          code: pickupCode,
+        });
         Alert.alert(
           "✅ Pedido recogido",
           `El pedido #${String(orderId).slice(-6)} ha sido entregado al cliente.`,
