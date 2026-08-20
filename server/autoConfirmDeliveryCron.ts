@@ -6,7 +6,7 @@ import {
   transactions,
   businesses,
 } from "@shared/schema-mysql";
-import { eq, and, lt, isNull } from "drizzle-orm";
+import { eq, and, lt, isNull, or } from "drizzle-orm";
 
 /**
  * Auto-confirm deliveries after 12 hours if customer hasn't confirmed
@@ -18,7 +18,8 @@ export function startAutoConfirmCron() {
     try {
       console.log("🔄 Running auto-confirm delivery cron...");
 
-      // Find orders delivered more than 12 hours ago without customer confirmation
+      // Find orders delivered more than 12 hours ago without customer confirmation.
+      // La columna es booleana (0/1): sin confirmar puede ser 0 o NULL.
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
       const ordersToConfirm = await db
@@ -27,7 +28,10 @@ export function startAutoConfirmCron() {
         .where(
           and(
             eq(orders.status, "delivered"),
-            isNull(orders.confirmedByCustomer),
+            or(
+              isNull(orders.confirmedByCustomer),
+              eq(orders.confirmedByCustomer, false),
+            ),
             lt(orders.deliveredAt, twelveHoursAgo),
           ),
         );

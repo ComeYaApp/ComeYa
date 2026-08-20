@@ -9384,7 +9384,10 @@ function startAutoConfirmCron() {
       const ordersToConfirm = await db.select().from(orders).where(
         (0, import_drizzle_orm76.and)(
           (0, import_drizzle_orm76.eq)(orders.status, "delivered"),
-          (0, import_drizzle_orm76.isNull)(orders.confirmedByCustomer),
+          (0, import_drizzle_orm76.or)(
+            (0, import_drizzle_orm76.isNull)(orders.confirmedByCustomer),
+            (0, import_drizzle_orm76.eq)(orders.confirmedByCustomer, false)
+          ),
           (0, import_drizzle_orm76.lt)(orders.deliveredAt, twelveHoursAgo)
         )
       );
@@ -10978,7 +10981,7 @@ router2.get(
       const { businessId } = req.query;
       const { businesses: businesses3, payouts: payouts2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { eq: eq74, inArray: inArray7, or: or7, desc: desc18 } = await import("drizzle-orm");
+      const { eq: eq74, inArray: inArray7, or: or8, desc: desc18 } = await import("drizzle-orm");
       const ownerBusinesses = await db2.select({ id: businesses3.id }).from(businesses3).where(
         businessId ? (0, import_drizzle_orm10.and)(
           eq74(businesses3.id, businessId),
@@ -10990,7 +10993,7 @@ router2.get(
       }
       const businessIds = ownerBusinesses.map((b) => b.id);
       const businessPayouts = await db2.select().from(payouts2).where(
-        or7(
+        or8(
           inArray7(payouts2.recipientId, businessIds),
           // retiros del dueño (recipientId = id del usuario)
           eq74(payouts2.recipientId, req.user.id)
@@ -15567,9 +15570,9 @@ router8.get(
     try {
       const { users: users5, deliveryDrivers: deliveryDrivers3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { eq: eq74, or: or7, asc } = await import("drizzle-orm");
+      const { eq: eq74, or: or8, asc } = await import("drizzle-orm");
       const pendingDrivers = await db2.select().from(users5).where(
-        or7(
+        or8(
           eq74(users5.role, "delivery_driver"),
           eq74(users5.verificationStatus, "pending")
         )
@@ -16560,7 +16563,7 @@ router11.get("/payouts", authenticateToken, async (req, res) => {
   try {
     const { payouts: payouts2, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { eq: eq74, inArray: inArray7, or: or7, desc: desc18 } = await import("drizzle-orm");
+    const { eq: eq74, inArray: inArray7, or: or8, desc: desc18 } = await import("drizzle-orm");
     const userId = req.user.id;
     const isBusinessOwner = req.user.role === "business_owner" || req.user.role === "business";
     let rows = [];
@@ -16569,7 +16572,7 @@ router11.get("/payouts", authenticateToken, async (req, res) => {
       const businessIds = ownerBusinesses.map((b) => b.id);
       if (businessIds.length > 0) {
         rows = await db2.select().from(payouts2).where(
-          or7(
+          or8(
             inArray7(payouts2.recipientId, businessIds),
             eq74(payouts2.recipientId, userId)
           )
@@ -18023,12 +18026,12 @@ router20.get("/check/:userId/:itemId", authenticateToken, async (req, res) => {
   try {
     const { favorites: favorites2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { and: and42, eq: eq74, or: or7 } = await import("drizzle-orm");
+    const { and: and42, eq: eq74, or: or8 } = await import("drizzle-orm");
     const { userId, itemId } = req.params;
     const [favorite] = await db2.select().from(favorites2).where(
       and42(
         eq74(favorites2.userId, userId),
-        or7(eq74(favorites2.businessId, itemId), eq74(favorites2.productId, itemId))
+        or8(eq74(favorites2.businessId, itemId), eq74(favorites2.productId, itemId))
       )
     ).limit(1);
     res.json({ isFavorite: !!favorite, favoriteId: favorite?.id });
