@@ -954,6 +954,7 @@ export default function OrderTrackingScreen() {
                             businessId: order.businessId,
                             businessName: order.businessName,
                             deliveryPersonId: order.deliveryPersonId,
+                            allowTip: true,
                           });
                         } else {
                           Alert.alert(
@@ -1010,37 +1011,58 @@ export default function OrderTrackingScreen() {
                 Entrega confirmada ✔
               </ThemedText>
             </View>
-            <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                navigation.replace("Review", {
-                  orderId: order.id,
-                  businessId: order.businessId,
-                  businessName: order.businessName,
-                  deliveryPersonId: order.deliveryPersonId,
-                });
-              }}
-              style={[
-                styles.confirmButton,
-                {
-                  backgroundColor: ComeYaColors.primary,
-                  marginTop: Spacing.sm,
-                },
-                Shadows.md,
-              ]}
-            >
-              <Feather name="star" size={20} color="#FFFFFF" />
-              <ThemedText
-                type="body"
-                style={{
-                  color: "#FFFFFF",
-                  marginLeft: Spacing.sm,
-                  fontWeight: "600",
-                }}
+            {(order as any).hasReview ? (
+              <View
+                style={[
+                  styles.confirmButton,
+                  { backgroundColor: "#FFD70022", marginTop: Spacing.sm },
+                ]}
               >
-                Valorar pedido
-              </ThemedText>
-            </Pressable>
+                <Feather name="star" size={20} color="#FFD700" />
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: "#B8860B",
+                    marginLeft: Spacing.sm,
+                    fontWeight: "600",
+                  }}
+                >
+                  Pedido valorado
+                </ThemedText>
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  navigation.replace("Review", {
+                    orderId: order.id,
+                    businessId: order.businessId,
+                    businessName: order.businessName,
+                    deliveryPersonId: order.deliveryPersonId,
+                  });
+                }}
+                style={[
+                  styles.confirmButton,
+                  {
+                    backgroundColor: ComeYaColors.primary,
+                    marginTop: Spacing.sm,
+                  },
+                  Shadows.md,
+                ]}
+              >
+                <Feather name="star" size={20} color="#FFFFFF" />
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: "#FFFFFF",
+                    marginLeft: Spacing.sm,
+                    fontWeight: "600",
+                  }}
+                >
+                  Valorar pedido
+                </ThemedText>
+              </Pressable>
+            )}
           </View>
         ) : null}
 

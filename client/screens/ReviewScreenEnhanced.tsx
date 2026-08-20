@@ -36,6 +36,7 @@ type ReviewScreenRouteProp = RouteProp<
       businessId: string;
       businessName: string;
       deliveryPersonId?: string;
+      allowTip?: boolean;
     };
   },
   "Review"
@@ -104,7 +105,8 @@ export default function ReviewScreenEnhanced() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
-  const { orderId, businessId, businessName, deliveryPersonId } = route.params;
+  const { orderId, businessId, businessName, deliveryPersonId, allowTip } =
+    route.params;
 
   const [foodRating, setFoodRating] = useState(0);
   const [deliveryRating, setDeliveryRating] = useState(0);
@@ -188,7 +190,11 @@ export default function ReviewScreenEnhanced() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      if (data?.success === false) {
+        showToast(data.error || "No se pudo enviar la reseña", "error");
+        return;
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({
         queryKey: ["/api/users", user?.id, "orders"],
@@ -422,7 +428,7 @@ export default function ReviewScreenEnhanced() {
           />
         </Animated.View>
 
-        {deliveryPersonId ? (
+        {deliveryPersonId && allowTip ? (
           <Animated.View
             entering={FadeInDown.delay(350)}
             style={[

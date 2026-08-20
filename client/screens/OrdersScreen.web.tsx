@@ -386,24 +386,45 @@ export default function OrdersScreen() {
                       </Pressable>
                     )}
 
-                  {/* Valorar pedido */}
-                  {selected.status === "delivered" && (
-                    <Pressable
-                      onPress={() =>
-                        navigation.navigate("Review", {
-                          orderId: selected.id,
-                          businessId: (selected as any).businessId,
-                          businessName: selected.businessName,
-                          deliveryPersonId: (selected as any)
-                            .deliveryPersonId,
-                        })
-                      }
-                      style={[s.confirmBtn, { backgroundColor: PRIMARY }]}
-                    >
-                      <Feather name="star" size={18} color="#fff" />
-                      <Text style={s.confirmBtnText}>Valorar pedido</Text>
-                    </Pressable>
-                  )}
+                  {/* Valorar pedido / Pedido valorado */}
+                  {selected.status === "delivered" &&
+                    (selected as any).hasReview && (
+                      <View
+                        style={[
+                          s.confirmBtn,
+                          { backgroundColor: "#FFD70022" },
+                        ]}
+                      >
+                        <Feather name="star" size={18} color="#FFD700" />
+                        <Text
+                          style={{
+                            color: "#B8860B",
+                            fontWeight: "700",
+                            fontSize: 15,
+                          }}
+                        >
+                          Pedido valorado
+                        </Text>
+                      </View>
+                    )}
+                  {selected.status === "delivered" &&
+                    !(selected as any).hasReview && (
+                      <Pressable
+                        onPress={() =>
+                          navigation.navigate("Review", {
+                            orderId: selected.id,
+                            businessId: (selected as any).businessId,
+                            businessName: selected.businessName,
+                            deliveryPersonId: (selected as any)
+                              .deliveryPersonId,
+                          })
+                        }
+                        style={[s.confirmBtn, { backgroundColor: PRIMARY }]}
+                      >
+                        <Feather name="star" size={18} color="#fff" />
+                        <Text style={s.confirmBtnText}>Valorar pedido</Text>
+                      </Pressable>
+                    )}
 
                   {/* Pedir de nuevo */}
                   {(selected.status === "delivered" ||

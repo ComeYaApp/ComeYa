@@ -28,6 +28,7 @@ type Route = RouteProp<
       businessId: string;
       businessName: string;
       deliveryPersonId?: string;
+      allowTip?: boolean;
     };
   },
   "Review"
@@ -72,7 +73,8 @@ export default function ReviewScreenEnhanced() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  const { orderId, businessId, businessName, deliveryPersonId } = route.params;
+  const { orderId, businessId, businessName, deliveryPersonId, allowTip } =
+    route.params;
 
   const [foodRating, setFoodRating] = useState(0);
   const [deliveryRating, setDeliveryRating] = useState(0);
@@ -130,7 +132,11 @@ export default function ReviewScreenEnhanced() {
           tipAmount: wantTip ? tipAmount * 100 : 0,
         })
       ).json(),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      if (data?.success === false) {
+        showToast(data.error || "No se pudo enviar la reseña", "error");
+        return;
+      }
       showToast("¡Gracias por tu opinión!", "success");
       queryClient.invalidateQueries({
         queryKey: ["/api/users", user?.id, "orders"],
@@ -271,8 +277,8 @@ export default function ReviewScreenEnhanced() {
             </View>
           )}
 
-          {/* Propina al repartidor */}
-          {deliveryPersonId && (
+          {/* Propina al repartidor — solo al confirmar la entrega */}
+          {deliveryPersonId && allowTip && (
             <View
               style={[s.card, { backgroundColor: card, borderColor: border }]}
             >

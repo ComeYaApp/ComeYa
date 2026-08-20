@@ -980,6 +980,7 @@ export default function OrderTrackingScreen() {
                               businessId: order.businessId,
                               businessName: order.businessName,
                               deliveryPersonId: order.deliveryPersonId,
+                              allowTip: true,
                             } as never,
                           );
                         } else {
@@ -1017,18 +1018,78 @@ export default function OrderTrackingScreen() {
             {order?.status === "delivered" &&
               (order as any).confirmedByCustomer &&
               user?.role === "customer" && (
-                <View style={[s.confirmButton, { backgroundColor: "#E8F5E9" }]}>
-                  <Feather name="check-circle" size={20} color="#4CAF50" />
-                  <ThemedText
-                    type="body"
-                    style={{
-                      color: "#4CAF50",
-                      marginLeft: Spacing.sm,
-                      fontWeight: "600",
-                    }}
+                <View>
+                  <View
+                    style={[s.confirmButton, { backgroundColor: "#E8F5E9" }]}
                   >
-                    Entrega confirmada ✔
-                  </ThemedText>
+                    <Feather name="check-circle" size={20} color="#4CAF50" />
+                    <ThemedText
+                      type="body"
+                      style={{
+                        color: "#4CAF50",
+                        marginLeft: Spacing.sm,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Entrega confirmada ✔
+                    </ThemedText>
+                  </View>
+                  {(order as any).hasReview ? (
+                    <View
+                      style={[
+                        s.confirmButton,
+                        {
+                          backgroundColor: "#FFD70022",
+                          marginTop: Spacing.sm,
+                        },
+                      ]}
+                    >
+                      <Feather name="star" size={20} color="#FFD700" />
+                      <ThemedText
+                        type="body"
+                        style={{
+                          color: "#B8860B",
+                          marginLeft: Spacing.sm,
+                          fontWeight: "600",
+                        }}
+                      >
+                        Pedido valorado
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() =>
+                        navigation.navigate(
+                          "Review" as never,
+                          {
+                            orderId: order.id,
+                            businessId: order.businessId,
+                            businessName: order.businessName,
+                            deliveryPersonId: order.deliveryPersonId,
+                          } as never,
+                        )
+                      }
+                      style={[
+                        s.confirmButton,
+                        {
+                          backgroundColor: ComeYaColors.primary,
+                          marginTop: Spacing.sm,
+                        },
+                      ]}
+                    >
+                      <Feather name="star" size={20} color="#FFF" />
+                      <ThemedText
+                        type="body"
+                        style={{
+                          color: "#FFF",
+                          marginLeft: Spacing.sm,
+                          fontWeight: "600",
+                        }}
+                      >
+                        Valorar pedido
+                      </ThemedText>
+                    </Pressable>
+                  )}
                 </View>
               )}
 

@@ -296,7 +296,7 @@ router.post(
 // Get user orders
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    const { orders } = await import("@shared/schema-mysql");
+    const { orders, reviews } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq, inArray } = await import("drizzle-orm");
 
@@ -322,7 +322,27 @@ router.get("/", authenticateToken, async (req, res) => {
         .where(eq(orders.userId, req.user!.id));
     }
 
-    res.json({ success: true, orders: userOrders });
+    // Marcar si cada pedido ya fue valorado (para mostrar "Pedido valorado"
+    // en vez del botón de valorar)
+    const reviewedOrderIds = new Set<string>();
+    if (userOrders.length > 0) {
+      const revs = await db
+        .select({ orderId: reviews.orderId })
+        .from(reviews)
+        .where(
+          inArray(
+            reviews.orderId,
+            userOrders.map((o: any) => o.id),
+          ),
+        );
+      for (const r of revs) reviewedOrderIds.add(r.orderId);
+    }
+    const ordersWithFlag = userOrders.map((o: any) => ({
+      ...o,
+      hasReview: reviewedOrderIds.has(o.id),
+    }));
+
+    res.json({ success: true, orders: ordersWithFlag });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -331,9 +351,8 @@ router.get("/", authenticateToken, async (req, res) => {
 // Get order by ID — accesible por cliente, repartidor asignado y admin
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const { orders, users, deliveryDrivers, businesses } = await import(
-      "@shared/schema-mysql"
-    );
+    const { orders, users, deliveryDrivers, businesses, reviews } =
+      await import("@shared/schema-mysql");
     const { db } = await import("../db");
     const { eq, sql } = await import("drizzle-orm");
     const orderId = Array.isArray(req.params.id)
@@ -419,6 +438,19 @@ router.get("/:id", authenticateToken, async (req, res) => {
       }
     }
 
+    // ¿Ya valorado? (para "Pedido valorado" en la pantalla de seguimiento)
+    let hasReview = false;
+    try {
+      const [existingReview] = await db
+        .select({ id: reviews.id })
+        .from(reviews)
+        .where(eq(reviews.orderId, orderId))
+        .limit(1);
+      hasReview = !!existingReview;
+    } catch {
+      /* la tabla podría no existir aún */
+    }
+
     // Return order with driver info included
     res.json({
       success: true,
@@ -427,6 +459,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
         driverInfo,
         businessType: businessInfo?.type ?? null,
         businessCategories: businessInfo?.categories ?? null,
+        hasReview,
       },
     });
   } catch (error: any) {

@@ -1,5 +1,6 @@
 import { db } from "./db";
 import {
+  orders,
   reviews,
   reviewTags,
   reviewResponses,
@@ -39,6 +40,36 @@ export class EnhancedReviewService {
       photos,
       tipAmount,
     } = data;
+
+    // Un pedido solo puede valorarse una vez y solo su dueño. Sin esto se
+    // podían enviar reseñas infinitas (rating inflado y propinas repetidas
+    // a la wallet del repartidor).
+    const [orderRow] = await db
+      .select({ id: orders.id, userId: orders.userId })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+    if (!orderRow) {
+      return { success: false, error: "Pedido no encontrado" };
+    }
+    if (orderRow.userId !== userId) {
+      return {
+        success: false,
+        error: "Solo puedes valorar tus propios pedidos",
+      };
+    }
+    const [existingReview] = await db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(eq(reviews.orderId, orderId))
+      .limit(1);
+    if (existingReview) {
+      return {
+        success: false,
+        error: "Ya valoraste este pedido",
+        alreadyReviewed: true,
+      };
+    }
 
     // Subir fotos a Cloudinary. Si una foto falla (credenciales, red, etc.)
     // se guarda la reseña sin ella: nunca bloqueamos el envío por las fotos.

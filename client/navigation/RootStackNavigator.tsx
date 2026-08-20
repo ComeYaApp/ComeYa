@@ -111,6 +111,9 @@ export type RootStackParamList = {
     businessId: string;
     businessName: string;
     deliveryPersonId?: string;
+    // La propina solo se ofrece al confirmar la entrega (el repartidor
+    // acaba de entregar); valorar más tarde no incluye propina.
+    allowTip?: boolean;
   };
   Legal: { type: "terms" | "privacy" | "refund" };
   ScheduleOrder: {

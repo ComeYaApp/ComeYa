@@ -291,29 +291,50 @@ export default function OrdersScreen() {
         ) : (
           <View>
             {item.status === "delivered" ? (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  navigation.navigate("Review", {
-                    orderId: item.id,
-                    businessId: (item as any).businessId,
-                    businessName: item.businessName,
-                    deliveryPersonId: (item as any).deliveryPersonId,
-                  });
-                }}
-                style={[
-                  styles.reorderButton,
-                  { backgroundColor: ComeYaColors.primary },
-                ]}
-              >
-                <Feather name="star" size={16} color="#FFF" />
-                <ThemedText
-                  type="small"
-                  style={{ color: "#FFF", marginLeft: Spacing.xs }}
+              (item as any).hasReview ? (
+                <View
+                  style={[
+                    styles.reorderButton,
+                    { backgroundColor: "#FFD70022" },
+                  ]}
                 >
-                  Valorar pedido
-                </ThemedText>
-              </Pressable>
+                  <Feather name="star" size={16} color="#FFD700" />
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: "#B8860B",
+                      marginLeft: Spacing.xs,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Pedido valorado
+                  </ThemedText>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    navigation.navigate("Review", {
+                      orderId: item.id,
+                      businessId: (item as any).businessId,
+                      businessName: item.businessName,
+                      deliveryPersonId: (item as any).deliveryPersonId,
+                    });
+                  }}
+                  style={[
+                    styles.reorderButton,
+                    { backgroundColor: ComeYaColors.primary },
+                  ]}
+                >
+                  <Feather name="star" size={16} color="#FFF" />
+                  <ThemedText
+                    type="small"
+                    style={{ color: "#FFF", marginLeft: Spacing.xs }}
+                  >
+                    Valorar pedido
+                  </ThemedText>
+                </Pressable>
+              )
             ) : null}
             <Pressable
               onPress={() => reorder(item)}

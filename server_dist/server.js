@@ -12652,7 +12652,7 @@ router3.post(
 );
 router3.get("/", authenticateToken, async (req, res) => {
   try {
-    const { orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+    const { orders: orders2, reviews: reviews2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { eq: eq74, inArray: inArray7 } = await import("drizzle-orm");
     let userOrders;
@@ -12666,14 +12666,28 @@ router3.get("/", authenticateToken, async (req, res) => {
     } else {
       userOrders = await db2.select().from(orders2).where(eq74(orders2.userId, req.user.id));
     }
-    res.json({ success: true, orders: userOrders });
+    const reviewedOrderIds = /* @__PURE__ */ new Set();
+    if (userOrders.length > 0) {
+      const revs = await db2.select({ orderId: reviews2.orderId }).from(reviews2).where(
+        inArray7(
+          reviews2.orderId,
+          userOrders.map((o) => o.id)
+        )
+      );
+      for (const r of revs) reviewedOrderIds.add(r.orderId);
+    }
+    const ordersWithFlag = userOrders.map((o) => ({
+      ...o,
+      hasReview: reviewedOrderIds.has(o.id)
+    }));
+    res.json({ success: true, orders: ordersWithFlag });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 router3.get("/:id", authenticateToken, async (req, res) => {
   try {
-    const { orders: orders2, users: users5, deliveryDrivers: deliveryDrivers3, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
+    const { orders: orders2, users: users5, deliveryDrivers: deliveryDrivers3, businesses: businesses3, reviews: reviews2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { eq: eq74, sql: sql19 } = await import("drizzle-orm");
     const orderId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
@@ -12732,13 +12746,20 @@ router3.get("/:id", authenticateToken, async (req, res) => {
       } catch {
       }
     }
+    let hasReview = false;
+    try {
+      const [existingReview] = await db2.select({ id: reviews2.id }).from(reviews2).where(eq74(reviews2.orderId, orderId)).limit(1);
+      hasReview = !!existingReview;
+    } catch {
+    }
     res.json({
       success: true,
       order: {
         ...order,
         driverInfo,
         businessType: businessInfo?.type ?? null,
-        businessCategories: businessInfo?.categories ?? null
+        businessCategories: businessInfo?.categories ?? null,
+        hasReview
       }
     });
   } catch (error) {
@@ -21836,6 +21857,24 @@ var EnhancedReviewService = class {
       photos,
       tipAmount
     } = data;
+    const [orderRow] = await db.select({ id: orders.id, userId: orders.userId }).from(orders).where((0, import_drizzle_orm61.eq)(orders.id, orderId)).limit(1);
+    if (!orderRow) {
+      return { success: false, error: "Pedido no encontrado" };
+    }
+    if (orderRow.userId !== userId) {
+      return {
+        success: false,
+        error: "Solo puedes valorar tus propios pedidos"
+      };
+    }
+    const [existingReview] = await db.select({ id: reviews.id }).from(reviews).where((0, import_drizzle_orm61.eq)(reviews.orderId, orderId)).limit(1);
+    if (existingReview) {
+      return {
+        success: false,
+        error: "Ya valoraste este pedido",
+        alreadyReviewed: true
+      };
+    }
     let photoUrls = [];
     if (photos && photos.length > 0) {
       const uploaded = await Promise.all(
