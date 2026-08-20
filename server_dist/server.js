@@ -23447,13 +23447,15 @@ router44.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
     await db2.update(orders2).set({
       status: "delivered",
       deliveredAt: /* @__PURE__ */ new Date(),
+      confirmedByCustomer: true,
+      confirmedByCustomerAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
     }).where((0, import_drizzle_orm65.eq)(orders2.id, pickupId));
-    await sendOrderStatusNotification(
-      pickupId,
-      order.order.userId,
-      "delivered"
-    );
+    await sendPushToUser(order.order.userId, {
+      title: "\u{1F6CD}\uFE0F \xA1Pedido recogido!",
+      body: `Gracias por recoger tu pedido en ${order.business?.name || order.order.businessName || "el negocio"}. \xA1Califica tu experiencia!`,
+      data: { orderId: pickupId, screen: "OrderTracking" }
+    });
     const { fundReleaseService: fundReleaseService2 } = await Promise.resolve().then(() => (init_fundReleaseService(), fundReleaseService_exports));
     await fundReleaseService2.releaseOrderFunds(pickupId);
     res.json({ success: true, message: "Pedido marcado como recogido" });

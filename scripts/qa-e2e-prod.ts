@@ -217,6 +217,10 @@ async function main() {
   ok("pickup marcado como recogido (entrega completada)", pickedUp.status === 200);
   const orderAfter = await api("GET", `/orders/${pickupId}`, CUSTOMER);
   ok("estado final del pickup = delivered", orderAfter.data?.order?.status === "delivered", orderAfter.data?.order?.status);
+  ok(
+    "pickup queda confirmado automáticamente (pasa a historial sin confirmar)",
+    orderAfter.data?.order?.confirmedByCustomer === true,
+  );
 
   console.log("\n═══ D. INCIDENCIA ═══");
   const inc = await api("POST", `/orders/${orderId}/report-issue`, CUSTOMER, {

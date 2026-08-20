@@ -664,22 +664,26 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
       return res.status(400).json({ error: "Código de recogida inválido" });
     }
 
-    // Marcar como entregado
+    // Marcar como entregado. La validación del código/QR del cliente YA es
+    // la confirmación de recepción: el pedido pasa directo al historial del
+    // cliente como completado, sin pedirle confirmar de nuevo.
     await db
       .update(orders)
       .set({
         status: "delivered",
         deliveredAt: new Date(),
+        confirmedByCustomer: true,
+        confirmedByCustomerAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(orders.id, pickupId));
 
-    // Notificar al cliente
-    await sendOrderStatusNotification(
-      pickupId,
-      order.order.userId,
-      "delivered",
-    );
+    // Notificar al cliente que ya puede calificar su experiencia
+    await sendPushToUser(order.order.userId, {
+      title: "🛍️ ¡Pedido recogido!",
+      body: `Gracias por recoger tu pedido en ${order.business?.name || order.order.businessName || "el negocio"}. ¡Califica tu experiencia!`,
+      data: { orderId: pickupId, screen: "OrderTracking" },
+    });
 
     // Liberar fondos (si aplica)
     const { fundReleaseService } = await import("../fundReleaseService");
