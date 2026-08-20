@@ -251,6 +251,24 @@ if (isTest && useDbStubs) {
           }
         }
 
+        // Reviews: columnas que escribe el INSERT de reseñas — sin ellas el
+        // envío fallaba siempre ("No se pudo enviar la reseña")
+        for (const [col, ddl] of [
+          ["delivery_person_id", "VARCHAR(255) DEFAULT NULL"],
+          ["photos", "TEXT DEFAULT NULL"],
+          ["tags", "TEXT DEFAULT NULL"],
+        ] as const) {
+          try {
+            await conn.query(
+              `ALTER TABLE reviews ADD COLUMN ${col} ${ddl}`,
+            );
+            console.log(`✅ Added ${col} to reviews`);
+          } catch (err: any) {
+            if (err.code !== "ER_DUP_FIELDNAME")
+              console.log("Migration note:", err.message);
+          }
+        }
+
         conn.release();
       })
       .catch((err) => {

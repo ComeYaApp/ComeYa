@@ -1998,6 +1998,21 @@ var init_db = __esm({
                 console.log("Migration note:", err.message);
             }
           }
+          for (const [col, ddl] of [
+            ["delivery_person_id", "VARCHAR(255) DEFAULT NULL"],
+            ["photos", "TEXT DEFAULT NULL"],
+            ["tags", "TEXT DEFAULT NULL"]
+          ]) {
+            try {
+              await conn.query(
+                `ALTER TABLE reviews ADD COLUMN ${col} ${ddl}`
+              );
+              console.log(`\u2705 Added ${col} to reviews`);
+            } catch (err) {
+              if (err.code !== "ER_DUP_FIELDNAME")
+                console.log("Migration note:", err.message);
+            }
+          }
           conn.release();
         }).catch((err) => {
           console.error("\u274C Database connection failed:", err.message);
