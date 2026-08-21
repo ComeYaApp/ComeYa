@@ -92,7 +92,7 @@ android {
         applicationId 'com.comeya.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 15
+        versionCode 16
         versionName "1.0.12"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
@@ -188,3 +188,6 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+// FCM: genera los recursos del sender de Firebase a partir de google-services.json
+apply plugin: "com.google.gms.google-services"
