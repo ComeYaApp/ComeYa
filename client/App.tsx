@@ -25,7 +25,7 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { navigationRef } from "@/navigation/navigationRef";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { BusinessProvider } from "@/contexts/BusinessContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { AppProvider } from "@/contexts/AppContext";
@@ -59,7 +59,6 @@ export default function App() {
   });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [authCallbackHandled, setAuthCallbackHandled] = useState(false);
 
   // Detectar /auth-callback ANTES de que AuthContext cargue
@@ -103,6 +102,18 @@ export default function App() {
     }
   }, [fontsLoaded, fontError]);
 
+  // Android 8+: sin canal de notificaciones no se muestra nada
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      Notifications.setNotificationChannelAsync("default", {
+        name: "Notificaciones",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#DC2626",
+      }).catch(() => {});
+    }
+  }, []);
+
   useEffect(() => {
     const checkOnboarding = async () => {
       const completed = await checkOnboardingCompleted();
@@ -111,35 +122,6 @@ export default function App() {
     };
     checkOnboarding();
   }, []);
-
-  useEffect(() => {
-    const checkNotificationPermission = async () => {
-      if (Platform.OS === "web") {
-        // Skip notification setup on web platform
-        return;
-      }
-
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      if (existingStatus !== "granted") {
-        setShowNotificationModal(true);
-      }
-    };
-
-    if (!showOnboarding && onboardingChecked) {
-      const timer = setTimeout(checkNotificationPermission, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [showOnboarding, onboardingChecked]);
-
-  const handleAcceptNotifications = async () => {
-    setShowNotificationModal(false);
-    await Notifications.requestPermissionsAsync();
-  };
-
-  const handleDeclineNotifications = () => {
-    setShowNotificationModal(false);
-  };
 
   // Al tocar una notificación (o abrir la app desde una), navegar a la
   // pantalla indicada en data.screen o, si hay orderId, al seguimiento.
@@ -216,10 +198,8 @@ export default function App() {
                                 onComplete={() => setShowOnboarding(false)}
                               />
                             )}
-                            <NotificationPermissionModal
-                              visible={showNotificationModal}
-                              onAccept={handleAcceptNotifications}
-                              onDecline={handleDeclineNotifications}
+                            <NotificationPermissionGate
+                              active={!showOnboarding && onboardingChecked}
                             />
                           </CartProvider>
                         </BusinessProvider>
@@ -234,6 +214,33 @@ export default function App() {
         </SafeAreaProvider>
       </QueryClientProvider>
     </ErrorBoundary>
+  );
+}
+
+function NotificationPermissionGate({ active }: { active: boolean }) {
+  const [visible, setVisible] = useState(false);
+  const { registerPushToken } = useAuth();
+
+  useEffect(() => {
+    if (!active || Platform.OS === "web") return;
+    const check = async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") setVisible(true);
+    };
+    const timer = setTimeout(check, 1000);
+    return () => clearTimeout(timer);
+  }, [active]);
+
+  return (
+    <NotificationPermissionModal
+      visible={visible}
+      onAccept={async () => {
+        setVisible(false);
+        // registerPushToken pide el permiso, obtiene el token Expo y lo sube
+        await registerPushToken();
+      }}
+      onDecline={() => setVisible(false)}
+    />
   );
 }
 

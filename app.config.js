@@ -81,6 +81,12 @@ export default {
       "expo-web-browser",
       "expo-secure-store",
       "expo-location",
+      [
+        "expo-notifications",
+        {
+          color: "#DC2626",
+        },
+      ],
     ],
     experiments: {
       reactCompiler: true,

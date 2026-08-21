@@ -8,14 +8,7 @@ export interface ProximityAlert {
   estimatedTime?: number; // seconds
 }
 
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// El handler global de notificaciones lo registra App.tsx (con banner y lista)
 
 class ProximityNotificationService {
   private sentNotifications: Set<string> = new Set();

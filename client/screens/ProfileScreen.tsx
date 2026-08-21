@@ -140,7 +140,8 @@ export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const { theme, themeMode, setThemeMode } = useTheme();
   const { settings, updateSettings } = useApp();
-  const { user, logout, updateUser, refreshUser } = useAuth();
+  const { user, logout, updateUser, refreshUser, registerPushToken } =
+    useAuth();
   const { businesses } = useBusiness();
   const { showToast } = useToast();
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -1073,6 +1074,8 @@ export default function ProfileScreen() {
         );
         return;
       }
+      // Con permiso concedido, registrar el token Expo en el servidor
+      registerPushToken();
       await updateSettings({ notificationsEnabled: true });
       showToast("Notificaciones activadas", "success");
     } else {

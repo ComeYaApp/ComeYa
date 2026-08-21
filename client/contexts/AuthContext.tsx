@@ -30,6 +30,7 @@ interface AuthContextType {
   ) => Promise<{ requiresVerification: boolean; userId?: string }>;
   verifyPhone: (phone: string, code: string) => Promise<User>;
   resendVerification: (phone: string) => Promise<void>;
+  registerPushToken: () => Promise<void>;
   loginWithBiometric: () => Promise<boolean>;
   enableBiometric: () => Promise<boolean>;
   disableBiometric: () => Promise<void>;
@@ -111,8 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (status !== "granted") return;
       const { data: token } = await Notifications.getExpoPushTokenAsync();
       await apiRequest("PUT", "/api/users/push-token", { token });
-    } catch {
-      // silent — no bloquear login si falla
+    } catch (error) {
+      // No bloquear el login/apertura, pero dejar rastro: sin token no hay push
+      console.warn("No se pudo registrar el push token:", error);
     }
   };
 
@@ -129,6 +131,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (userData.token) {
           await AsyncStorage.setItem("token", userData.token);
         }
+
+        // Refrescar el push token en cada apertura de la app: auto-sanar
+        // tokens borrados (p.ej. InvalidCredentials) sin esperar un login nuevo
+        registerPushToken();
       }
 
       // Load pending verification phone
@@ -521,6 +527,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signup,
         verifyPhone,
         resendVerification,
+        registerPushToken,
         loginWithBiometric,
         enableBiometric,
         disableBiometric,

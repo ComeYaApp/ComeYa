@@ -161,9 +161,16 @@ export async function sendPushNotification(
         const status = result?.data?.status;
         if (status && status !== "ok") {
           const reason = result?.data?.details?.error;
-          if (status === "error" && (reason === "DeviceNotRegistered" || reason === "InvalidCredentials")) {
+          if (status === "error" && reason === "DeviceNotRegistered") {
             await db.update(users).set({ pushToken: null }).where(eq(users.pushToken, pushToken));
             console.log(`🗑️ Push token inválido eliminado (${reason})`);
+          } else if (reason === "InvalidCredentials") {
+            // Fallo de credenciales APNs/FCM del proyecto en Expo, no del
+            // dispositivo: borrar el token dejaría al usuario sin push para siempre
+            console.error(
+              "🚨 Push InvalidCredentials: revisa las credenciales push (Apple Push Key / FCM v1) del proyecto en expo.dev",
+              JSON.stringify(result?.data?.details ?? {}),
+            );
           } else {
             console.error(`Push error status=${status}:`, JSON.stringify(result?.data?.details ?? {}));
           }
