@@ -8,13 +8,17 @@ config.resolver.alias = {
   "@shared": path.resolve(__dirname, "shared"),
 };
 
-// En web, redirigir react-native-worklets (runtime nativo inexistente en navegador) a un shim seguro
+// En web, redirigir módulos nativos inexistentes en navegador a shims seguros
 const originalResolveRequest = config.resolver.resolveRequest;
+const WEB_SHIMS = {
+  "react-native-worklets": "client/shims/react-native-worklets.js",
+  "@stripe/stripe-react-native": "client/shims/stripe-react-native.js",
+};
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === "web" && moduleName === "react-native-worklets") {
+  if (platform === "web" && WEB_SHIMS[moduleName]) {
     return {
       type: "sourceFile",
-      filePath: path.resolve(__dirname, "client/shims/react-native-worklets.js"),
+      filePath: path.resolve(__dirname, WEB_SHIMS[moduleName]),
     };
   }
   return originalResolveRequest

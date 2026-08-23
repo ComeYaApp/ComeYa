@@ -7,10 +7,17 @@ export interface RouteCoordinate {
   longitude: number;
 }
 
+export interface RouteStep {
+  instruction: string;
+  distance?: { text: string; value: number };
+  duration?: { text: string; value: number };
+}
+
 export interface DirectionsResult {
   coordinates: RouteCoordinate[];
   distanceText?: string;
   durationText?: string;
+  steps?: RouteStep[];
   fallback: boolean;
 }
 
@@ -68,6 +75,7 @@ export async function fetchRouteDirections(
         coordinates: decodePolyline(data.polyline),
         distanceText: data.distance?.text,
         durationText: data.duration?.text,
+        steps: data.steps || [],
         fallback: false,
       };
     }
@@ -77,6 +85,7 @@ export async function fetchRouteDirections(
       coordinates: [origin, destination],
       distanceText: data.distance?.text,
       durationText: data.duration?.text,
+      steps: [],
       fallback: true,
     };
   } catch (err) {

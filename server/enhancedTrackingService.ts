@@ -8,6 +8,10 @@ interface Location {
   longitude: number;
 }
 
+// Caché corta de ETA por pedido (el cliente hace polling cada 30s)
+const ETA_CACHE_TTL_MS = 60_000;
+const etaCache = new Map<string, { at: number; minutes: number }>();
+
 export class EnhancedTrackingService {
   // Calcular distancia entre dos puntos (Haversine)
   private static calculateDistance(loc1: Location, loc2: Location): number {
@@ -36,106 +40,18 @@ export class EnhancedTrackingService {
     heading?: number,
     speed?: number,
   ) {
-    // Actualizar ubicación del repartidor
-    await db
-      .update(deliveryDrivers)
-      .set({
-        currentLatitude: latitude.toString(),
-        currentLongitude: longitude.toString(),
-        lastLocationUpdate: new Date(),
-      })
-      .where(eq(deliveryDrivers.userId, driverId));
-
-    // Buscar pedidos activos del repartidor
-    const activeOrders = await db
-      .select()
-      .from(orders)
-      .where(
-        and(
-          eq(orders.deliveryPersonId, driverId),
-          eq(orders.status, "on_the_way"),
-        ),
-      );
-
-    // Verificar proximidad para cada pedido
-    for (const order of activeOrders) {
-      if (!order.deliveryLatitude || !order.deliveryLongitude) continue;
-
-      const customerLocation: Location = {
-        latitude: parseFloat(order.deliveryLatitude),
-        longitude: parseFloat(order.deliveryLongitude),
-      };
-
-      const driverLocation: Location = { latitude, longitude };
-      const distance = this.calculateDistance(driverLocation, customerLocation);
-      const distanceMeters = distance * 1000;
-
-      // Notificar si está cerca
-      await this.checkProximityAlerts(
-        order.id,
-        order.userId,
-        driverId,
-        distanceMeters,
-      );
-    }
-
+    // Pipeline unificado: persistencia + websocket + alerts throttled
+    const { handleDriverLocationUpdate } = await import("./trackingPipeline");
+    const result = await handleDriverLocationUpdate(
+      driverId,
+      latitude,
+      longitude,
+      { heading, speed },
+    );
     return {
-      success: true,
+      success: result.success,
       location: { latitude, longitude, heading, speed },
     };
-  }
-
-  // Verificar y enviar alertas de proximidad
-  private static async checkProximityAlerts(
-    orderId: string,
-    customerId: string,
-    driverId: string,
-    distanceMeters: number,
-  ) {
-    const alerts = [
-      { type: "nearby", distance: 500, message: "Tu repartidor está a 500m" },
-      {
-        type: "approaching",
-        distance: 200,
-        message: "Tu repartidor está llegando (200m)",
-      },
-      { type: "arrived", distance: 50, message: "¡Tu repartidor ha llegado!" },
-    ];
-
-    for (const alert of alerts) {
-      if (distanceMeters <= alert.distance) {
-        // Verificar si ya se envió esta alerta
-        const [existing] = await db
-          .select()
-          .from(proximityAlerts)
-          .where(
-            and(
-              eq(proximityAlerts.orderId, orderId),
-              eq(proximityAlerts.alertType, alert.type),
-            ),
-          )
-          .limit(1);
-
-        if (!existing) {
-          // Crear alerta
-          await db.insert(proximityAlerts).values({
-            orderId,
-            driverId,
-            alertType: alert.type,
-            distance: Math.round(distanceMeters),
-            destinationType: "customer",
-            notificationSent: true,
-          });
-
-          // Enviar notificación push
-          await sendPushToUser(customerId, {
-            title: alert.message,
-            body: `Pedido #${orderId.slice(-6)}`,
-            data: { orderId, screen: "OrderTracking", type: alert.type },
-          });
-        }
-      }
-    }
   }
 
   // Verificar y enviar alertas de tiempo (5 min, 2 min)
@@ -270,9 +186,43 @@ export class EnhancedTrackingService {
 
     const distance = this.calculateDistance(driverLocation, customerLocation);
 
-    // Velocidad promedio: 30 km/h en ciudad
-    const avgSpeed = 30;
-    const etaMinutes = Math.ceil((distance / avgSpeed) * 60);
+    // ETA real con Google Directions (cacheado por el servicio) si el
+    // repartidor va en camino y hay distancia relevante; si no, estimación
+    let etaMinutes: number | null = null;
+    const etaCacheKey = `eta:${orderId}`;
+    const cachedETA = etaCache.get(etaCacheKey);
+    if (cachedETA && Date.now() - cachedETA.at < ETA_CACHE_TTL_MS) {
+      etaMinutes = cachedETA.minutes;
+    } else if (
+      ["picked_up", "on_the_way", "in_transit", "arriving"].includes(
+        order.status,
+      ) &&
+      distance > 1
+    ) {
+      try {
+        const { googleMapsService } = await import(
+          "./services/googleMapsService"
+        );
+        const dirs = await googleMapsService.getDirections(
+          driverLocation.latitude,
+          driverLocation.longitude,
+          customerLocation.latitude,
+          customerLocation.longitude,
+        );
+        if (dirs?.duration?.value) {
+          etaMinutes = Math.max(1, Math.ceil(dirs.duration.value / 60));
+          etaCache.set(etaCacheKey, { at: Date.now(), minutes: etaMinutes });
+        }
+      } catch (e) {
+        console.error("ETA directions fallback:", e);
+      }
+    }
+
+    // Fallback: velocidad promedio de 30 km/h en ciudad
+    if (etaMinutes == null) {
+      const avgSpeed = 30;
+      etaMinutes = Math.ceil((distance / avgSpeed) * 60);
+    }
 
     // Agregar tiempo de preparación si aún está en el negocio
     let totalETA = etaMinutes;

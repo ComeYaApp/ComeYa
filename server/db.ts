@@ -183,6 +183,19 @@ if (isTest && useDbStubs) {
             console.log("Migration note:", err.message);
         }
 
+        // proximity_alerts / delivery_proofs: las tablas antiguas se crearon
+        // sin default en el id y los INSERT fallaban con ER_NO_DEFAULT_FOR_FIELD
+        for (const table of ["proximity_alerts", "delivery_proofs"]) {
+          try {
+            await conn.query(
+              `ALTER TABLE ${table} MODIFY id VARCHAR(255) NOT NULL DEFAULT (UUID())`,
+            );
+            console.log(`✅ ${table} id default UUID asegurado`);
+          } catch (err: any) {
+            console.log(`Migration note (${table}):`, err.message);
+          }
+        }
+
         try {
           await conn.query(
             `ALTER TABLE users ADD COLUMN profile_image TEXT DEFAULT NULL`,

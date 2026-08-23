@@ -470,6 +470,13 @@ export default function DriverMapScreen() {
         </View>
         <ThemedText type="h3">Mi Mapa</ThemedText>
         <View style={styles.headerRight}>
+          {/* Ruta múltiple (multi-pedido) */}
+          <Pressable
+            onPress={() => navigation.navigate("RouteOptimization")}
+            style={styles.headerBtn}
+          >
+            <Feather name="layers" size={18} color={ComeYaColors.primary} />
+          </Pressable>
           {/* Toggle negocios cercanos */}
           <Pressable
             onPress={() => setShowNearbyBusinesses(!showNearbyBusinesses)}

@@ -14,51 +14,60 @@ import MapView, { Polyline } from "react-native-maps";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { DriverPin } from "@/components/map/DriverPin";
 import { NumberPin } from "@/components/map/NumberPin";
+import { apiRequest } from "@/lib/query-client";
 
-interface DeliveryOrder {
+interface AvailableOrder {
   id: string;
-  customerName: string;
+  businessName: string;
   address: string;
-  coordinates: {
-    latitude: number;
-    longitude: number;
-  };
-  estimatedTime: number;
-  priority: "high" | "medium" | "low";
-  value: number;
-  distance: number;
-  status: "pending" | "picked_up" | "delivered";
+  fee: number;
+  paymentMethod: string;
+  itemsCount: number;
+  businessLatitude: number;
+  businessLongitude: number;
 }
 
-interface RouteOptimization {
-  totalDistance: number;
-  totalTime: number;
-  estimatedEarnings: number;
-  fuelCost: number;
-  netProfit: number;
-  orders: DeliveryOrder[];
-  route: {
-    latitude: number;
-    longitude: number;
+interface RouteNode {
+  id: string;
+  kind: "start" | "pickup" | "drop";
+  orderId?: string;
+  lat: number;
+  lng: number;
+  label: string;
+  fee: number;
+  paymentMethod: string | null;
+  address?: string;
+}
+
+interface OptimizedRoute {
+  nodes: RouteNode[];
+  legs: {
+    from: string;
+    to: string;
+    distanceMeters: number;
+    durationMinutes: number;
   }[];
+  totalDistanceKm: string;
+  totalDurationMinutes: number;
+  totalEarnings: number;
 }
 
-export default function RouteOptimizationScreen() {
+export default function RouteOptimizationScreen({ navigation }: any) {
   const { user } = useAuth();
-  const [availableOrders, setAvailableOrders] = useState<DeliveryOrder[]>([]);
+  const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-  const [optimizedRoute, setOptimizedRoute] =
-    useState<RouteOptimization | null>(null);
+  const [optimizedRoute, setOptimizedRoute] = useState<OptimizedRoute | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
+  const [optimizing, setOptimizing] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const [activeTab, setActiveTab] = useState<"orders" | "route" | "settings">(
     "orders",
   );
 
-  // Settings
+  // Settings (máximo de pedidos por ruta)
   const [maxOrders, setMaxOrders] = useState(4);
-  const [maxDistance, setMaxDistance] = useState(15);
-  const [prioritizeEarnings, setPrioritizeEarnings] = useState(true);
-  const [avoidTraffic, setAvoidTraffic] = useState(true);
 
   const driverLocation = {
     latitude: 41.7636,
@@ -72,45 +81,49 @@ export default function RouteOptimizationScreen() {
   const loadAvailableOrders = async () => {
     setLoading(true);
     try {
-      const mockOrders: DeliveryOrder[] = [
-        {
-          id: "1",
-          customerName: "Maria Garcia",
-          address: "Calle Collado 12, Centro",
-          coordinates: { latitude: 41.765, longitude: -2.465 },
-          estimatedTime: 15,
-          priority: "high",
-          value: 1500,
-          distance: 1.2,
-          status: "pending",
-        },
-        {
-          id: "2",
-          customerName: "Carlos Lopez",
-          address: "Av. Valladolid 45, Norte",
-          coordinates: { latitude: 41.77, longitude: -2.46 },
-          estimatedTime: 20,
-          priority: "medium",
-          value: 2200,
-          distance: 2.1,
-          status: "pending",
-        },
-        {
-          id: "3",
-          customerName: "Ana Martinez",
-          address: "Calle Real 8, Sur",
-          coordinates: { latitude: 41.758, longitude: -2.472 },
-          estimatedTime: 18,
-          priority: "high",
-          value: 1800,
-          distance: 1.8,
-          status: "pending",
-        },
-      ];
-      setAvailableOrders(mockOrders);
+      const response = await apiRequest(
+        "GET",
+        "/api/delivery/available-orders",
+      );
+      const data = await response.json();
+      const orders: AvailableOrder[] = (data.orders || []).map((o: any) => {
+        let address = o.businessAddress || o.businessName || "";
+        try {
+          const parsed =
+            typeof o.deliveryAddress === "string"
+              ? JSON.parse(o.deliveryAddress)
+              : o.deliveryAddress;
+          if (parsed?.street) {
+            address = `${parsed.street}${
+              parsed.city ? `, ${parsed.city}` : ""
+            }`;
+          }
+        } catch {}
+        let itemsCount = 0;
+        try {
+          const items =
+            typeof o.items === "string" ? JSON.parse(o.items) : o.items;
+          itemsCount = Array.isArray(items) ? items.length : 0;
+        } catch {}
+        return {
+          id: o.id,
+          businessName: o.businessName || "Negocio",
+          address,
+          fee: Number(o.deliveryFee) || 0,
+          paymentMethod: o.paymentMethod || "digital",
+          itemsCount,
+          businessLatitude: o.businessLatitude
+            ? parseFloat(o.businessLatitude)
+            : 0,
+          businessLongitude: o.businessLongitude
+            ? parseFloat(o.businessLongitude)
+            : 0,
+        };
+      });
+      setAvailableOrders(orders);
     } catch (error) {
       console.error("Error loading orders:", error);
-      Alert.alert("Error", "No se pudieron cargar los pedidos");
+      Alert.alert("Error", "No se pudieron cargar los pedidos disponibles");
     } finally {
       setLoading(false);
     }
@@ -137,135 +150,80 @@ export default function RouteOptimizationScreen() {
       Alert.alert("Error", "Selecciona al menos un pedido");
       return;
     }
-
+    setOptimizing(true);
     try {
-      const selectedOrdersData = availableOrders.filter((order) =>
-        selectedOrders.includes(order.id),
-      );
-
-      // Simple optimization algorithm (in real app, use Google Maps API or similar)
-      const optimized = optimizeDeliveryRoute(
-        selectedOrdersData,
-        driverLocation,
-      );
-      setOptimizedRoute(optimized);
-      setActiveTab("route");
-    } catch (error) {
-      console.error("Error optimizing route:", error);
-      Alert.alert("Error", "No se pudo optimizar la ruta");
-    }
-  };
-
-  const optimizeDeliveryRoute = (
-    orders: DeliveryOrder[],
-    startLocation: any,
-  ): RouteOptimization => {
-    // Simple nearest neighbor algorithm
-    let currentLocation = startLocation;
-    let optimizedOrders: DeliveryOrder[] = [];
-    let remainingOrders = [...orders];
-    let totalDistance = 0;
-    let totalTime = 0;
-    let route = [startLocation];
-
-    while (remainingOrders.length > 0) {
-      // Find nearest order
-      let nearestOrder = remainingOrders[0];
-      let nearestDistance = calculateDistance(
-        currentLocation,
-        nearestOrder.coordinates,
-      );
-      let nearestIndex = 0;
-
-      for (let i = 1; i < remainingOrders.length; i++) {
-        const distance = calculateDistance(
-          currentLocation,
-          remainingOrders[i].coordinates,
-        );
-        if (distance < nearestDistance) {
-          nearestOrder = remainingOrders[i];
-          nearestDistance = distance;
-          nearestIndex = i;
-        }
+      const response = await apiRequest("POST", "/api/driver/route/optimize", {
+        orderIds: selectedOrders,
+      });
+      const data = await response.json();
+      if (data.success && data.route) {
+        setOptimizedRoute(data.route);
+        setActiveTab("route");
+      } else {
+        throw new Error(data.error || "Error optimizando ruta");
       }
-
-      optimizedOrders.push(nearestOrder);
-      route.push(nearestOrder.coordinates);
-      totalDistance += nearestDistance;
-      totalTime += nearestOrder.estimatedTime + (nearestDistance / 30) * 60; // Assuming 30 km/h average speed
-      currentLocation = nearestOrder.coordinates;
-      remainingOrders.splice(nearestIndex, 1);
+    } catch (error: any) {
+      console.error("Error optimizing route:", error);
+      Alert.alert(
+        "Error",
+        error?.message || "No se pudo optimizar la ruta",
+      );
+    } finally {
+      setOptimizing(false);
     }
-
-    const estimatedEarnings = optimizedOrders.reduce(
-      (sum, order) => sum + order.value * 0.15,
-      0,
-    );
-    const fuelCost = totalDistance * 8; // $8 per km
-    const netProfit = estimatedEarnings - fuelCost;
-
-    return {
-      totalDistance: Math.round(totalDistance * 10) / 10,
-      totalTime: Math.round(totalTime),
-      estimatedEarnings: Math.round(estimatedEarnings),
-      fuelCost: Math.round(fuelCost),
-      netProfit: Math.round(netProfit),
-      orders: optimizedOrders,
-      route,
-    };
-  };
-
-  const calculateDistance = (point1: any, point2: any): number => {
-    const R = 6371; // Earth's radius in km
-    const dLat = ((point2.latitude - point1.latitude) * Math.PI) / 180;
-    const dLon = ((point2.longitude - point1.longitude) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((point1.latitude * Math.PI) / 180) *
-        Math.cos((point2.latitude * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
   };
 
   const acceptOptimizedRoute = async () => {
     if (!optimizedRoute) return;
-
+    setAccepting(true);
     try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/driver/accept-route`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.token}`,
-          },
-          body: JSON.stringify({
-            orderIds: optimizedRoute.orders.map((o) => o.id),
-            route: optimizedRoute.route,
-          }),
-        },
-      );
-
-      if (response.ok) {
-        Alert.alert("Éxito", "Ruta aceptada. ¡Comienza las entregas!");
-        // Navigate to delivery screen
+      const orderIds = optimizedRoute.nodes
+        .filter((n) => n.orderId)
+        .map((n) => n.orderId!);
+      const response = await apiRequest("POST", "/api/driver/accept-route", {
+        orderIds,
+      });
+      const data = await response.json();
+      if (data.success) {
+        Alert.alert(
+          "Ruta aceptada 🎉",
+          `${data.assigned?.length ?? orderIds.length} pedidos asignados a tu ruta. Ve a "Mi Mapa" para empezar las recogidas.`,
+          [
+            {
+              text: "Ir a Mi Mapa",
+              onPress: () => navigation?.goBack?.(),
+            },
+          ],
+        );
+        setSelectedOrders([]);
+        setOptimizedRoute(null);
+        setActiveTab("orders");
+        loadAvailableOrders();
       } else {
-        throw new Error("Error accepting route");
+        throw new Error(data.error || "Error aceptando ruta");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error accepting route:", error);
-      Alert.alert("Error", "No se pudo aceptar la ruta");
+      Alert.alert(
+        "Error",
+        error?.message || "No se pudo aceptar la ruta",
+      );
+    } finally {
+      setAccepting(false);
     }
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatEuro = (amount: number) => {
+    // deliveryFee viene en centavos desde la API
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
       currency: "EUR",
-    }).format(amount / 100);
+    }).format((Number(amount) || 0) / 100);
   };
+
+  const routeCoordinates = optimizedRoute
+    ? optimizedRoute.nodes.map((n) => ({ latitude: n.lat, longitude: n.lng }))
+    : [];
 
   const renderOrders = () => (
     <ScrollView>
@@ -276,6 +234,12 @@ export default function RouteOptimizationScreen() {
         <Text style={styles.sectionSubtitle}>
           Selecciona hasta {maxOrders} pedidos para optimizar tu ruta
         </Text>
+
+        {availableOrders.length === 0 && (
+          <Text style={styles.noRouteText}>
+            No hay pedidos listos para recoger ahora mismo
+          </Text>
+        )}
 
         {availableOrders.map((order) => (
           <TouchableOpacity
@@ -288,35 +252,29 @@ export default function RouteOptimizationScreen() {
           >
             <View style={styles.orderHeader}>
               <View style={styles.orderInfo}>
-                <Text style={styles.customerName}>{order.customerName}</Text>
+                <Text style={styles.customerName}>{order.businessName}</Text>
                 <Text style={styles.orderAddress}>{order.address}</Text>
               </View>
               <View style={styles.orderMeta}>
-                <Text style={styles.orderValue}>
-                  {formatCurrency(order.value)}
-                </Text>
-                <View
-                  style={[
-                    styles.priorityBadge,
-                    styles[
-                      `priority${order.priority.charAt(0).toUpperCase() + order.priority.slice(1)}`
-                    ],
-                  ]}
-                >
+                <Text style={styles.orderValue}>{formatEuro(order.fee)}</Text>
+                <View style={[styles.priorityBadge, styles.priorityHigh]}>
                   <Text style={styles.priorityText}>
-                    {order.priority.toUpperCase()}
+                    {order.itemsCount} prod.
                   </Text>
                 </View>
               </View>
             </View>
 
             <View style={styles.orderDetails}>
-              <Text style={styles.orderDetailText}>📍 {order.distance} km</Text>
+              <Text style={styles.orderDetailText}>🏪 Recoger en local</Text>
               <Text style={styles.orderDetailText}>
-                ⏱️ {order.estimatedTime} min
+                💰 {formatEuro(order.fee)} ganancia
               </Text>
               <Text style={styles.orderDetailText}>
-                💰 {formatCurrency(order.value * 0.15)} ganancia
+                💳{" "}
+                {order.paymentMethod === "cash"
+                  ? "Cobrar en efectivo"
+                  : "Pagado digitalmente"}
               </Text>
             </View>
 
@@ -335,12 +293,15 @@ export default function RouteOptimizationScreen() {
           <TouchableOpacity
             style={[
               styles.optimizeButton,
-              selectedOrders.length === 0 && styles.optimizeButtonDisabled,
+              (selectedOrders.length === 0 || optimizing) &&
+                styles.optimizeButtonDisabled,
             ]}
             onPress={optimizeRoute}
-            disabled={selectedOrders.length === 0}
+            disabled={selectedOrders.length === 0 || optimizing}
           >
-            <Text style={styles.optimizeButtonText}>Optimizar Ruta</Text>
+            <Text style={styles.optimizeButtonText}>
+              {optimizing ? "Optimizando..." : "Optimizar Ruta"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -354,34 +315,27 @@ export default function RouteOptimizationScreen() {
           <View style={styles.routeStats}>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>
-                {optimizedRoute.totalDistance} km
+                {optimizedRoute.totalDistanceKm} km
               </Text>
               <Text style={styles.statLabel}>Distancia Total</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>
-                {Math.round(optimizedRoute.totalTime / 60)} h
+                {Math.round(optimizedRoute.totalDurationMinutes)} min
               </Text>
               <Text style={styles.statLabel}>Tiempo Estimado</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>
-                {formatCurrency(optimizedRoute.estimatedEarnings)}
+                {formatEuro(optimizedRoute.totalEarnings)}
               </Text>
               <Text style={styles.statLabel}>Ganancias</Text>
             </View>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>
-                {formatCurrency(optimizedRoute.netProfit)}
+                {optimizedRoute.nodes.filter((n) => n.orderId).length}
               </Text>
-              <Text
-                style={[
-                  styles.statLabel,
-                  { color: optimizedRoute.netProfit > 0 ? "green" : "red" },
-                ]}
-              >
-                Ganancia Neta
-              </Text>
+              <Text style={styles.statLabel}>Pedidos</Text>
             </View>
           </View>
 
@@ -389,8 +343,8 @@ export default function RouteOptimizationScreen() {
             <MapView
               style={styles.map}
               initialRegion={{
-                latitude: driverLocation.latitude,
-                longitude: driverLocation.longitude,
+                latitude: optimizedRoute.nodes[0]?.lat ?? 41.7636,
+                longitude: optimizedRoute.nodes[0]?.lng ?? -2.4677,
                 latitudeDelta: 0.05,
                 longitudeDelta: 0.05,
               }}
@@ -409,29 +363,26 @@ export default function RouteOptimizationScreen() {
                 />
               </SmartMarker>
 
-              {optimizedRoute.orders.map((order, index) => {
-                const stopColor =
-                  order.priority === "high"
-                    ? "#DC2626"
-                    : order.priority === "medium"
-                      ? "#F59E0B"
-                      : "#10B981";
-                return (
-                  <SmartMarker
-                    key={order.id}
-                    coordinate={order.coordinates}
-                    title={`${index + 1}. ${order.customerName}`}
-                    description={order.address}
-                    anchor={{ x: 0.5, y: 1 }}
-                    trackKey={`stop_${order.id}_${order.priority}`}
-                  >
-                    <NumberPin label={index + 1} color={stopColor} />
-                  </SmartMarker>
-                );
-              })}
+              {optimizedRoute.nodes
+                .filter((n) => n.kind !== "start")
+                .map((node, index) => {
+                  const stopColor =
+                    node.kind === "pickup" ? "#F59E0B" : "#DC2626";
+                  return (
+                    <SmartMarker
+                      key={node.id}
+                      coordinate={{ latitude: node.lat, longitude: node.lng }}
+                      title={`${index + 1}. ${node.label}`}
+                      anchor={{ x: 0.5, y: 1 }}
+                      trackKey={`stop_${node.id}_${node.kind}`}
+                    >
+                      <NumberPin label={index + 1} color={stopColor} />
+                    </SmartMarker>
+                  );
+                })}
 
               <Polyline
-                coordinates={optimizedRoute.route}
+                coordinates={routeCoordinates}
                 strokeColor={Colors.light.tint}
                 strokeWidth={3}
               />
@@ -439,29 +390,40 @@ export default function RouteOptimizationScreen() {
           </View>
 
           <View style={styles.routeList}>
-            <Text style={styles.routeListTitle}>Orden de Entregas</Text>
-            {optimizedRoute.orders.map((order, index) => (
-              <View key={order.id} style={styles.routeItem}>
-                <View style={styles.routeNumber}>
-                  <Text style={styles.routeNumberText}>{index + 1}</Text>
+            <Text style={styles.routeListTitle}>Orden de la Ruta</Text>
+            {optimizedRoute.nodes
+              .filter((n) => n.kind !== "start")
+              .map((node, index) => (
+                <View key={node.id} style={styles.routeItem}>
+                  <View style={styles.routeNumber}>
+                    <Text style={styles.routeNumberText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.routeItemInfo}>
+                    <Text style={styles.routeItemName}>{node.label}</Text>
+                    <Text style={styles.routeItemAddress}>
+                      {node.kind === "pickup"
+                        ? "Recogida en el negocio"
+                        : node.address || "Entrega al cliente"}
+                    </Text>
+                    <Text style={styles.routeItemMeta}>
+                      {formatEuro(node.fee || 0)} •{" "}
+                      {node.paymentMethod === "cash"
+                        ? "Efectivo"
+                        : "Pagado digital"}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.routeItemInfo}>
-                  <Text style={styles.routeItemName}>{order.customerName}</Text>
-                  <Text style={styles.routeItemAddress}>{order.address}</Text>
-                  <Text style={styles.routeItemMeta}>
-                    {order.distance} km • {order.estimatedTime} min •{" "}
-                    {formatCurrency(order.value)}
-                  </Text>
-                </View>
-              </View>
-            ))}
+              ))}
           </View>
 
           <TouchableOpacity
-            style={styles.acceptButton}
+            style={[styles.acceptButton, accepting && styles.optimizeButtonDisabled]}
             onPress={acceptOptimizedRoute}
+            disabled={accepting}
           >
-            <Text style={styles.acceptButtonText}>Aceptar Ruta y Comenzar</Text>
+            <Text style={styles.acceptButtonText}>
+              {accepting ? "Aceptando..." : "Aceptar Ruta y Comenzar"}
+            </Text>
           </TouchableOpacity>
         </>
       ) : (
@@ -505,64 +467,11 @@ export default function RouteOptimizationScreen() {
           </View>
         </View>
 
-        <View style={styles.settingCard}>
-          <Text style={styles.settingTitle}>Distancia Máxima (km)</Text>
-          <View style={styles.settingOptions}>
-            {[10, 15, 20, 25].map((dist) => (
-              <TouchableOpacity
-                key={dist}
-                style={[
-                  styles.settingOption,
-                  maxDistance === dist && styles.settingOptionActive,
-                ]}
-                onPress={() => setMaxDistance(dist)}
-              >
-                <Text
-                  style={[
-                    styles.settingOptionText,
-                    maxDistance === dist && styles.settingOptionTextActive,
-                  ]}
-                >
-                  {dist}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.settingCard}>
-          <View style={styles.settingToggle}>
-            <Text style={styles.settingTitle}>Priorizar Ganancias</Text>
-            <Switch
-              value={prioritizeEarnings}
-              onValueChange={setPrioritizeEarnings}
-              trackColor={{
-                false: Colors.light.tabIconDefault,
-                true: Colors.light.tint,
-              }}
-            />
-          </View>
-          <Text style={styles.settingDescription}>
-            Optimizar rutas basándose en las ganancias en lugar de la distancia
-          </Text>
-        </View>
-
-        <View style={styles.settingCard}>
-          <View style={styles.settingToggle}>
-            <Text style={styles.settingTitle}>Evitar Tráfico</Text>
-            <Switch
-              value={avoidTraffic}
-              onValueChange={setAvoidTraffic}
-              trackColor={{
-                false: Colors.light.tabIconDefault,
-                true: Colors.light.tint,
-              }}
-            />
-          </View>
-          <Text style={styles.settingDescription}>
-            Usar datos de tráfico en tiempo real para optimizar rutas
-          </Text>
-        </View>
+        <Text style={styles.sectionSubtitle}>
+          La optimización usa distancias y tiempos reales por calles (Google
+          Maps vía el servidor) y prioriza la ruta más corta respetando
+          recoger antes de entregar cada pedido.
+        </Text>
       </View>
     </ScrollView>
   );

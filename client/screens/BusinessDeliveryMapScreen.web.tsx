@@ -18,6 +18,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
 import {
   pinIcon,
   driverIcon,
@@ -25,8 +26,6 @@ import {
 } from "@/utils/webMarkerSvg";
 import { vehicleMarkerMeta, CUSTOMER_MARKER } from "@/utils/markerMeta";
 
-const GOOGLE_MAPS_API_KEY =
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY || "";
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 
 const STATUS_CONFIG: Record<
@@ -58,10 +57,12 @@ interface Delivery {
   };
   driver: {
     id: string;
+    rowId?: string;
     name: string;
     phone: string;
     lat: number | null;
     lng: number | null;
+    lastUpdate?: string | null;
     vehicleType: string;
     rating: string | null;
   } | null;
@@ -77,7 +78,7 @@ interface Stats {
 }
 
 function loadGoogleMaps(): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if ((window as any).google?.maps) {
       resolve();
       return;
@@ -87,9 +88,17 @@ function loadGoogleMaps(): Promise<void> {
       existing.addEventListener("load", () => resolve());
       return;
     }
+    // La key se pide al backend (como el resto de mapas web) para que la
+    // restricción por referer de la key de producción sea la correcta
+    const key = await fetch(
+      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
+    )
+      .then((r) => r.json())
+      .then((d) => d.key)
+      .catch(() => "");
     const script = document.createElement("script");
     script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry`;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = reject;
@@ -106,6 +115,9 @@ export default function BusinessDeliveryMapScreen() {
   const gmap = useRef<any>(null);
   const markers = useRef<Record<string, any>>({});
   const lines = useRef<Record<string, any>>({});
+  const routeCache = useRef<
+    Record<string, { point: { lat: number; lng: number }; coords: { lat: number; lng: number }[] }>
+  >({});
 
   const [mapsReady, setMapsReady] = useState(false);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -201,20 +213,63 @@ export default function BusinessDeliveryMapScreen() {
         markers.current[`customer_${d.orderId}`] = customerMarker;
       }
 
-      // Línea repartidor → cliente
+      // Línea repartidor → cliente (ruta real vía proxy para pedidos en
+      // camino; línea recta para el resto — protege la cuota de Google)
       if (d.driver?.lat && d.driver?.lng && d.customer.lat && d.customer.lng) {
-        const line = new google.maps.Polyline({
-          path: [
-            { lat: d.driver.lat, lng: d.driver.lng },
+        const drawLine = (path: { lat: number; lng: number }[]) => {
+          if (lines.current[`line_${d.orderId}`]) {
+            lines.current[`line_${d.orderId}`].setMap(null);
+          }
+          lines.current[`line_${d.orderId}`] = new google.maps.Polyline({
+            path,
+            geodesic: true,
+            strokeColor: color,
+            strokeOpacity: 0.6,
+            strokeWeight: 2,
+            map: gmap.current,
+          });
+        };
+
+        const driverPoint = { lat: d.driver.lat, lng: d.driver.lng };
+        const cached = routeCache.current[d.orderId];
+        const needsFetch =
+          d.status === "on_the_way" &&
+          (!cached ||
+            distanceMeters(
+              { latitude: cached.point.lat, longitude: cached.point.lng },
+              { latitude: driverPoint.lat, longitude: driverPoint.lng },
+            ) > 100);
+
+        if (needsFetch) {
+          drawLine([
+            driverPoint,
             { lat: d.customer.lat, lng: d.customer.lng },
-          ],
-          geodesic: true,
-          strokeColor: color,
-          strokeOpacity: 0.6,
-          strokeWeight: 2,
-          map: gmap.current,
-        });
-        lines.current[`line_${d.orderId}`] = line;
+          ]);
+          fetchRouteDirections(
+            { latitude: driverPoint.lat, longitude: driverPoint.lng },
+            { latitude: d.customer.lat, longitude: d.customer.lng },
+          )
+            .then((route) => {
+              if (route && route.coordinates.length >= 2) {
+                routeCache.current[d.orderId] = {
+                  point: driverPoint,
+                  coords: route.coordinates.map((c) => ({
+                    lat: c.latitude,
+                    lng: c.longitude,
+                  })),
+                };
+                drawLine(routeCache.current[d.orderId].coords);
+              }
+            })
+            .catch(() => {});
+        } else if (cached?.coords?.length) {
+          drawLine(cached.coords);
+        } else {
+          drawLine([
+            driverPoint,
+            { lat: d.customer.lat, lng: d.customer.lng },
+          ]);
+        }
       }
     });
   }, [mapsReady, deliveries]);

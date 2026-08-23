@@ -1,13 +1,7 @@
 import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
 import { db } from "../db";
-import {
-  orders,
-  users,
-  businesses,
-  deliveryDrivers,
-} from "@shared/schema-mysql";
-import { eq, desc } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 const router = express.Router();
 
@@ -17,99 +11,68 @@ router.get(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const allOrders = await db
-        .select()
-        .from(orders)
-        .orderBy(desc(orders.createdAt))
-        .limit(50);
+      // Una sola query con joins (antes eran 3 queries por pedido, N+1)
+      const [rows] = (await db.execute(sql`
+        SELECT
+          o.id, o.order_number, o.status,
+          o.delivery_latitude, o.delivery_longitude,
+          b.name AS business_name, b.type AS business_type,
+          b.categories AS business_categories,
+          b.latitude AS business_lat, b.longitude AS business_lng,
+          dd.current_latitude AS driver_lat,
+          dd.current_longitude AS driver_lng,
+          dd.vehicle_type AS driver_vehicle,
+          du.name AS driver_name
+        FROM orders o
+        LEFT JOIN businesses b ON o.business_id = b.id
+        LEFT JOIN delivery_drivers dd ON o.delivery_person_id = dd.user_id
+        LEFT JOIN users du ON dd.user_id = du.id
+        WHERE o.status NOT IN ('delivered', 'cancelled', 'refunded')
+          AND o.business_id IS NOT NULL
+        ORDER BY o.created_at DESC
+        LIMIT 50
+      `)) as any;
 
-      const result = [];
-
-      for (const order of allOrders) {
-        if (!order.businessId) continue;
-        if (
-          order.status === "delivered" ||
-          order.status === "cancelled" ||
-          order.status === "refunded"
-        )
-          continue;
-
+      const ordersResult = (rows as any[]).map((r) => {
         const item: any = {
-          id: order.id,
-          orderNumber: order.orderNumber,
-          status: order.status,
+          id: r.id,
+          orderNumber: r.order_number,
+          status: r.status,
           business: null,
           delivery: null,
           driver: null,
         };
 
-        // Get business
-        const [biz] = await db
-          .select({
-            name: businesses.name,
-            type: businesses.type,
-            categories: businesses.categories,
-            latitude: businesses.latitude,
-            longitude: businesses.longitude,
-          })
-          .from(businesses)
-          .where(eq(businesses.id, order.businessId))
-          .limit(1);
-
-        if (biz && biz.latitude && biz.longitude) {
+        if (r.business_lat && r.business_lng) {
           item.business = {
-            name: biz.name || "Negocio",
-            type: biz.type,
-            categories: biz.categories,
-            lat: parseFloat(biz.latitude),
-            lng: parseFloat(biz.longitude),
+            name: r.business_name || "Negocio",
+            type: r.business_type,
+            categories: r.business_categories,
+            lat: parseFloat(r.business_lat),
+            lng: parseFloat(r.business_lng),
           };
         }
 
-        // Get delivery location
-        if (order.deliveryLatitude && order.deliveryLongitude) {
+        if (r.delivery_latitude && r.delivery_longitude) {
           item.delivery = {
-            lat: parseFloat(order.deliveryLatitude),
-            lng: parseFloat(order.deliveryLongitude),
+            lat: parseFloat(r.delivery_latitude),
+            lng: parseFloat(r.delivery_longitude),
           };
         }
 
-        // Get driver
-        if (order.deliveryPersonId) {
-          const [driverRec] = await db
-            .select({
-              currentLatitude: deliveryDrivers.currentLatitude,
-              currentLongitude: deliveryDrivers.currentLongitude,
-              vehicleType: deliveryDrivers.vehicleType,
-            })
-            .from(deliveryDrivers)
-            .where(eq(deliveryDrivers.userId, order.deliveryPersonId))
-            .limit(1);
-
-          if (
-            driverRec &&
-            driverRec.currentLatitude &&
-            driverRec.currentLongitude
-          ) {
-            const [driverUser] = await db
-              .select({ name: users.name })
-              .from(users)
-              .where(eq(users.id, order.deliveryPersonId))
-              .limit(1);
-
-            item.driver = {
-              name: driverUser?.name || "Repartidor",
-              vehicleType: driverRec.vehicleType,
-              lat: parseFloat(driverRec.currentLatitude),
-              lng: parseFloat(driverRec.currentLongitude),
-            };
-          }
+        if (r.driver_lat && r.driver_lng) {
+          item.driver = {
+            name: r.driver_name || "Repartidor",
+            vehicleType: r.driver_vehicle,
+            lat: parseFloat(r.driver_lat),
+            lng: parseFloat(r.driver_lng),
+          };
         }
 
-        result.push(item);
-      }
+        return item;
+      });
 
-      res.json({ success: true, orders: result });
+      res.json({ success: true, orders: ordersResult });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

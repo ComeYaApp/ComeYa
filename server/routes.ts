@@ -61,8 +61,17 @@ import adminTrackingRoutes from "./routes/adminTracking";
 import businessCategoriesRoutes from "./routes/businessCategories";
 import deliveryVerificationRoutes from "./routes/deliveryVerification";
 import appConfigRoutes from "./routes/appConfig";
+import driverRoutes from "./routes/driverRoutes";
+import { gpsLimiter, geocodingLimiter } from "./rateLimiters";
 
 const router = express.Router();
+
+// Aplicar el limiter de geocodificación solo a los POST de creación de
+// direcciones (ahí se llama a la API de geocoding de Google)
+const geocodePostOnly = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.method === "POST") return geocodingLimiter(req, res, next);
+  next();
+};
 
 // ─── Public config (keys para el frontend) ───────────────────────────────────
 router.get("/config/maps-key", (_req, res) => {
@@ -289,9 +298,10 @@ router.use("/business", businessRoutes);
 router.use("/orders", orderRoutes);
 router.use("/users", userRoutes);
 router.use("/user", userRoutes);
-router.use("/addresses", addressRoutes);
+router.use("/addresses", geocodePostOnly, addressRoutes);
 router.use("/delivery-requests", deliveryRequestRoutes);
 router.use("/delivery", deliveryConfigRoutes);
+router.use("/driver", driverRoutes);
 router.use("/delivery", deliveryRoutes);
 router.use("/delivery", deliveryRoutesLegacy);
 router.use("/delivery-verification", deliveryVerificationRoutes);
@@ -313,7 +323,7 @@ router.use("/weekly-settlement", weeklySettlementRoutes);
 router.use("/audit", financialAuditRoutes);
 router.use("/favorites", favoritesRoutes);
 router.use("/business-verification", businessVerificationRoutes);
-router.use("/gps", gpsRoutes);
+router.use("/gps", gpsLimiter, gpsRoutes);
 router.use("/search", searchRoutes);
 router.use("/coupons", couponRoutes);
 router.use("/loyalty", loyaltyRoutes);

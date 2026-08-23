@@ -71,6 +71,8 @@ import LocationPickerScreen from "@/screens/LocationPickerScreen";
 import ChangePasswordScreen from "@/screens/ChangePasswordScreen";
 import ChangePhoneEmailScreen from "@/screens/ChangePhoneEmailScreen";
 import DriverNavigationScreen from "@/screens/DriverNavigationScreen";
+import RouteOptimizationScreen from "@/screens/RouteOptimizationScreen";
+import PublicTrackingScreen from "@/screens/PublicTrackingScreen";
 import DriverMyDeliveriesScreen from "@/screens/DriverMyDeliveriesScreen";
 import StripeSetupScreen from "@/screens/StripeSetupScreen";
 
@@ -194,6 +196,8 @@ export type RootStackParamList = {
     destLng: number;
     destAddress: string;
   };
+  RouteOptimization: undefined;
+  PublicTracking: { token: string };
   DriverDeliveries: undefined;
   StripeSetup: undefined;
   LogisticsRequest: undefined;
@@ -349,6 +353,8 @@ export default function RootStackNavigator() {
           <Stack.Screen name="QRScanner" component={QRScannerScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="PickupScanner" component={PickupScannerScreen} options={{ presentation: "modal", headerShown: false }} />
           <Stack.Screen name="DriverNavigation" component={DriverNavigationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="RouteOptimization" component={RouteOptimizationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PublicTracking" component={PublicTrackingScreen} options={{ headerShown: false }} />
           <Stack.Screen name="DriverDeliveries" component={DriverMyDeliveriesScreen} options={{ headerTitle: "Mis entregas" }} />
           <Stack.Screen name="StripeSetup" component={StripeSetupScreen} options={{ headerShown: false }} />
           <Stack.Screen name="LogisticsRequest" component={LogisticsRequestScreen} options={{ headerShown: false }} />

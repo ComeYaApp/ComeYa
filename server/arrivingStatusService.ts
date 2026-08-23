@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { orders, deliveryDrivers } from "@shared/schema-mysql";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNotNull } from "drizzle-orm";
 
 function calculateDistance(
   lat1: number,
@@ -75,7 +75,7 @@ export async function checkAllActiveOrdersForArriving(): Promise<void> {
     .where(
       and(
         inArray(orders.status, ["picked_up", "on_the_way", "in_transit"]),
-        eq(orders.deliveryPersonId, null as any), // Tiene driver asignado
+        isNotNull(orders.deliveryPersonId), // Tiene driver asignado
       ),
     );
 

@@ -20,6 +20,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
@@ -78,8 +79,8 @@ interface Stats {
 }
 
 const DEFAULT_REGION = {
-  latitude: 41.4975,
-  longitude: -2.1031,
+  latitude: 41.7636, // Soria
+  longitude: -2.4677,
   latitudeDelta: 0.05,
   longitudeDelta: 0.05,
 };
@@ -92,6 +93,13 @@ export default function BusinessDeliveryMapScreen() {
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  // Rutas reales por calles (vía proxy) para pedidos en camino
+  const [realRoutes, setRealRoutes] = useState<
+    Record<string, { latitude: number; longitude: number }[]>
+  >({});
+  const lastRoutePointRef = useRef<Record<string, { lat: number; lng: number }>>(
+    {},
+  );
   const [selected, setSelected] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -143,6 +151,46 @@ export default function BusinessDeliveryMapScreen() {
     const interval = setInterval(fetchDeliveries, 15000);
     return () => clearInterval(interval);
   }, [fetchDeliveries]);
+
+  // Rutas reales por calles para pedidos en camino (proxy con threshold
+  // de 100 m para proteger la cuota de Google)
+  useEffect(() => {
+    deliveries.forEach((d) => {
+      if (
+        d.status !== "on_the_way" ||
+        !d.driver?.lat ||
+        !d.driver?.lng ||
+        !d.customer.lat ||
+        !d.customer.lng
+      )
+        return;
+      const last = lastRoutePointRef.current[d.orderId];
+      const moved =
+        !last ||
+        distanceMeters(
+          { latitude: last.lat, longitude: last.lng },
+          { latitude: d.driver.lat, longitude: d.driver.lng },
+        ) > 100;
+      if (!moved) return;
+      lastRoutePointRef.current[d.orderId] = {
+        lat: d.driver.lat,
+        lng: d.driver.lng,
+      };
+      fetchRouteDirections(
+        { latitude: d.driver.lat, longitude: d.driver.lng },
+        { latitude: d.customer.lat, longitude: d.customer.lng },
+      )
+        .then((route) => {
+          if (route && route.coordinates.length >= 2) {
+            setRealRoutes((prev) => ({
+              ...prev,
+              [d.orderId]: route.coordinates,
+            }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [deliveries]);
 
   // Focus on selected delivery
   const focusDelivery = useCallback((d: Delivery) => {
@@ -298,13 +346,18 @@ export default function BusinessDeliveryMapScreen() {
               d.customer.lat &&
               d.customer.lng
             ) {
+              const real = realRoutes[d.orderId];
               return (
                 <Polyline
                   key={`line_${d.orderId}`}
-                  coordinates={[
-                    { latitude: d.driver.lat, longitude: d.driver.lng },
-                    { latitude: d.customer.lat, longitude: d.customer.lng },
-                  ]}
+                  coordinates={
+                    real && real.length >= 2
+                      ? real
+                      : [
+                          { latitude: d.driver.lat, longitude: d.driver.lng },
+                          { latitude: d.customer.lat, longitude: d.customer.lng },
+                        ]
+                  }
                   strokeColor={cfg.color}
                   strokeWidth={3}
                 />

@@ -66,6 +66,60 @@ router.get(
   },
 );
 
+// Places Autocomplete proxy — la key nunca sale del servidor y se cachea
+router.get(
+  "/places-autocomplete",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const input = (req.query.input as string) || "";
+      const lat = parseFloat(req.query.lat as string);
+      const lng = parseFloat(req.query.lng as string);
+
+      const bias =
+        !isNaN(lat) && !isNaN(lng)
+          ? { lat, lng, radiusM: 30000 }
+          : undefined;
+
+      const predictions = await googleMapsService.placesAutocomplete(input, bias);
+      res.json({ success: true, predictions });
+    } catch (error: any) {
+      console.error("Places autocomplete error:", error);
+      res.status(500).json({ error: "Failed to get place predictions" });
+    }
+  },
+);
+
+// Geocoding por proxy — reutiliza la caché de 24h del servicio (una
+// dirección = una sola llamada a Google para siempre)
+router.post(
+  "/geocode",
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { address } = req.body;
+      if (!address || typeof address !== "string" || address.trim().length < 3) {
+        return res.status(400).json({ error: "Dirección requerida" });
+      }
+      const result = await googleMapsService.geocodeAddress(address.trim());
+      if (!result) {
+        return res
+          .status(404)
+          .json({ error: "No se pudo geocodificar la dirección" });
+      }
+      res.json({
+        success: true,
+        lat: result.lat,
+        lng: result.lng,
+        formattedAddress: result.formattedAddress,
+      });
+    } catch (error: any) {
+      console.error("Geocode proxy error:", error);
+      res.status(500).json({ error: "Failed to geocode address" });
+    }
+  },
+);
+
 // Get Maps API usage stats (admin only)
 router.get(
   "/maps-stats",
@@ -477,6 +531,8 @@ router.get("/track/:token", async (req: Request, res: Response) => {
         businessName: order[0].businessName,
         estimatedDelivery: order[0].estimatedDelivery,
         deliveryAddress: order[0].deliveryAddress,
+        deliveryLatitude: order[0].deliveryLatitude,
+        deliveryLongitude: order[0].deliveryLongitude,
       },
       driverLocation,
     });

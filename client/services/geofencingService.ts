@@ -141,7 +141,7 @@ class GeofencingService {
 
     // Notify backend
     try {
-      await apiRequest("POST", "/api/delivery/geofence-event", {
+      await apiRequest("POST", "/api/gps/geofence-event", {
         orderId: region.orderId,
         type: "enter",
         location: region.type,

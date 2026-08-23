@@ -14,6 +14,7 @@ import * as Location from "expo-location";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
+import { apiRequest } from "@/lib/query-client";
 
 // ---------------------------------------------------------------------------
 // Mapa nativo (solo plataformas nativas)
@@ -38,6 +39,8 @@ export interface NominatimSuggestion {
   displayName: string;
   latitude: number;
   longitude: number;
+  mainText?: string;
+  secondaryText?: string;
   street?: string;
   city?: string;
   state?: string;
@@ -106,7 +109,9 @@ export function BusinessAddressMapPicker({
   }, [addressText, latitude, longitude, onAddressChange]);
 
   // ---------------------------------------------------------------------------
-  // Búsqueda de direcciones con Nominatim (OpenStreetMap — gratis, sin API key)
+  // Búsqueda de direcciones con Google Places vía proxy del servidor
+  // (debounce 400ms + caché/rate limits en el backend; Nominatim solo queda
+  // para reverse geocoding de pin y GPS)
   // ---------------------------------------------------------------------------
   const searchAddress = useCallback(async (query: string) => {
     if (query.trim().length < 3) {
@@ -116,38 +121,21 @@ export function BusinessAddressMapPicker({
     }
     setIsSearching(true);
     try {
-      const encoded = encodeURIComponent(`${query}, Soria, España`);
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=5&addressdetails=1&accept-language=es`,
-        {
-          headers: {
-            "User-Agent": "ComeYaApp/1.0",
-          },
-        },
+      const response = await apiRequest(
+        "GET",
+        `/api/gps/places-autocomplete?input=${encodeURIComponent(query)}`,
       );
-      const data = await res.json();
+      const data = await response.json();
 
-      const mapped: NominatimSuggestion[] = data.map((item: any) => ({
-        displayName: item.display_name,
-        latitude: parseFloat(item.lat),
-        longitude: parseFloat(item.lon),
-        street:
-          item.address?.road ||
-          item.address?.pedestrian ||
-          item.address?.path ||
-          undefined,
-        city:
-          item.address?.city ||
-          item.address?.town ||
-          item.address?.village ||
-          "Soria",
-        state:
-          item.address?.state ||
-          item.address?.region ||
-          item.address?.county ||
-          "Castilla y León",
-        postcode: item.address?.postcode || undefined,
-      }));
+      const mapped: NominatimSuggestion[] = (data.predictions || []).map(
+        (p: any) => ({
+          displayName: p.description,
+          mainText: p.mainText,
+          secondaryText: p.secondaryText,
+          latitude: 0,
+          longitude: 0,
+        }),
+      );
 
       setSuggestions(mapped);
       setShowSuggestions(mapped.length > 0);
@@ -165,24 +153,37 @@ export function BusinessAddressMapPicker({
     debounceRef.current = setTimeout(() => searchAddress(text), 400);
   };
 
-  const handleSelectSuggestion = (suggestion: NominatimSuggestion) => {
+  const handleSelectSuggestion = async (suggestion: NominatimSuggestion) => {
     setAddressText(suggestion.displayName);
-    setLatitude(suggestion.latitude);
-    setLongitude(suggestion.longitude);
     setShowSuggestions(false);
     setSuggestions([]);
 
-    // Animar el mapa a la nueva posición
-    setTimeout(() => {
-      if (mapRef.current) {
-        mapRef.current.animateToRegion?.({
-          latitude: suggestion.latitude,
-          longitude: suggestion.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        });
+    // Geocodificar la sugerencia vía el proxy del servidor (caché 24h)
+    try {
+      const response = await apiRequest("POST", "/api/gps/geocode", {
+        address: suggestion.displayName,
+      });
+      const data = await response.json();
+      if (data.success && data.lat != null && data.lng != null) {
+        setLatitude(data.lat);
+        setLongitude(data.lng);
+
+        // Animar el mapa a la nueva posición
+        setTimeout(() => {
+          if (mapRef.current) {
+            mapRef.current.animateToRegion?.({
+              latitude: data.lat,
+              longitude: data.lng,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
+            });
+          }
+        }, 100);
+        return;
       }
-    }, 100);
+    } catch {
+      // si falla el geocoding, al menos guardamos el texto
+    }
   };
 
   // ---------------------------------------------------------------------------

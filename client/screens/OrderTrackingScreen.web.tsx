@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  Alert,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,6 +14,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useDriverLocationSocket } from "@/hooks/useDriverLocationSocket";
 import {
   Spacing,
   BorderRadius,
@@ -370,8 +372,18 @@ export default function OrderTrackingScreen() {
       order.status === "on_the_way" ||
       order.status === "delivered" ||
       order.status === "cancelled"
-    )
+    ) {
+      // Si el repartidor ya va en camino, quitar la ruta roja estática
+      if (routeLineRef.current) {
+        if (typeof routeLineRef.current.setMap === "function") {
+          routeLineRef.current.setMap(null);
+        } else if (typeof routeLineRef.current.setDirections === "function") {
+          routeLineRef.current.setMap(null);
+        }
+        routeLineRef.current = null;
+      }
       return;
+    }
     const google = (window as any).google;
 
     // Limpiar ruta anterior
@@ -385,52 +397,37 @@ export default function OrderTrackingScreen() {
       lng: parseFloat(order.deliveryLongitude),
     };
 
-    // Ruta real por calles (Directions API - 1 sola llamada)
+    // Ruta real por calles vía el proxy del servidor (caché + rate limit;
+    // la cuota de Directions nunca se gasta desde el navegador)
     (async () => {
+      let coords: { lat: number; lng: number }[] | null = null;
       try {
-        const directionsService = new google.maps.DirectionsService();
-        const result = await new Promise<any>(
-          (resolve: any, reject: any) => {
-            directionsService.route(
-              {
-                origin: businessLocation as any,
-                destination: clientPos as any,
-                travelMode: google.maps.TravelMode.DRIVING,
-              },
-              (response: any, status: any) => {
-                if (status === google.maps.DirectionsStatus.OK && response) {
-                  resolve(response);
-                } else {
-                  reject(new Error(`Directions failed: ${status}`));
-                }
-              },
-            );
+        const route = await fetchRouteDirections(
+          {
+            latitude: businessLocation.lat,
+            longitude: businessLocation.lng,
           },
+          { latitude: clientPos.lat, longitude: clientPos.lng },
         );
-        if (!cancelled) {
-          routeLineRef.current = new google.maps.DirectionsRenderer({
-            map: gmap.current,
-            directions: result,
-            suppressMarkers: true,
-            polylineOptions: {
-              strokeColor: "#DC2626",
-              strokeOpacity: 0.85,
-              strokeWeight: 5,
-            },
-          });
+        if (route && route.coordinates.length >= 2) {
+          coords = route.coordinates.map((c) => ({
+            lat: c.latitude,
+            lng: c.longitude,
+          }));
         }
       } catch {
-        if (!cancelled) {
-          // Fallback: línea recta si Directions API falla
-          routeLineRef.current = new google.maps.Polyline({
-            path: [businessLocation, clientPos],
-            geodesic: true,
-            strokeColor: "#DC2626",
-            strokeOpacity: 0.85,
-            strokeWeight: 5,
-            map: gmap.current,
-          });
-        }
+        // sin ruta — se usará línea recta
+      }
+
+      if (!cancelled) {
+        routeLineRef.current = new google.maps.Polyline({
+          path: coords || [businessLocation, clientPos],
+          geodesic: true,
+          strokeColor: "#DC2626",
+          strokeOpacity: 0.85,
+          strokeWeight: 5,
+          map: gmap.current,
+        });
       }
 
       // Ajustar bounds
@@ -491,118 +488,100 @@ export default function OrderTrackingScreen() {
     if (!order?.deliveryLatitude) gmap.current.setCenter(businessLocation);
   }, [businessLocation]);
 
-  // ── useEffect principal de rutas y repartidor ──
+  // ── Posición del repartidor en vivo: WebSocket con fallback a polling ──
+  const { location: socketLocation } = useDriverLocationSocket(
+    order?.status === "on_the_way" ? orderId : null,
+    { fallbackIntervalMs: 5000 },
+  );
+
+  // ── useEffect principal de rutas y repartidor (socket + fallback) ──
   useEffect(() => {
     if (!mapsReady || !gmap.current || !order) return;
-    const google = (window as any).google;
-    // ── Repartidor en camino: polling GPS cada 10s con ruta verde ──
     if (order.status !== "on_the_way") return;
+    if (!socketLocation?.latitude || !socketLocation?.longitude) return;
+    const google = (window as any).google;
 
-    // Limpiar ruta roja previa
-    if (routeLineRef.current) {
-      if (typeof routeLineRef.current.setMap === "function")
-        routeLineRef.current.setMap(null);
-      else if (typeof routeLineRef.current.setDirections === "function")
-        routeLineRef.current.setMap(null);
-      routeLineRef.current = null;
+    const driverPos = {
+      lat: socketLocation.latitude,
+      lng: socketLocation.longitude,
+    };
+
+    // Crear o mover marcador del repartidor con su vehículo
+    const vehicle = vehicleMarkerMeta(driverVehicle);
+    if (driverMarkerRef.current) {
+      driverMarkerRef.current.setPosition(driverPos);
+      driverMarkerRef.current.setIcon(
+        asGoogleIcon(google, driverIcon(vehicle.icon)),
+      );
+    } else {
+      driverMarkerRef.current = new google.maps.Marker({
+        position: driverPos,
+        map: gmap.current,
+        title: order.deliveryPersonName || "Repartidor",
+        icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
+        zIndex: 999,
+        animation: google.maps.Animation.DROP,
+      });
     }
 
-    const updateDriver = async () => {
-      try {
-        const res = await apiRequest(
-          "GET",
-          `/api/delivery/location/${orderId}`,
-        );
-        const data = await res.json();
-        if (!data.location?.latitude || !data.location?.longitude) return;
-
-        const driverPos = {
-          lat: parseFloat(data.location.latitude),
-          lng: parseFloat(data.location.longitude),
-        };
-
-        // Crear o mover marcador del repartidor con su vehículo
-        const vehicle = vehicleMarkerMeta(driverVehicle);
-        if (driverMarkerRef.current) {
-          driverMarkerRef.current.setPosition(driverPos);
-          driverMarkerRef.current.setIcon(
-            asGoogleIcon(google, driverIcon(vehicle.icon)),
-          );
-        } else {
-          driverMarkerRef.current = new google.maps.Marker({
-            position: driverPos,
-            map: gmap.current,
-            title: order.deliveryPersonName || "Repartidor",
-            icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
-            zIndex: 999,
-            animation: google.maps.Animation.DROP,
-          });
-        }
-
-        if (order.deliveryLatitude && order.deliveryLongitude) {
-          const clientPos = {
-            lat: parseFloat(order.deliveryLatitude),
-            lng: parseFloat(order.deliveryLongitude),
-          };
-          // Ruta real por calles vía el proxy del servidor; solo se re-pide
-          // si el repartidor se movió >100 m (protege la cuota de Google)
-          const shouldRefetch =
-            !lastDriverRoutePointRef.current ||
-            !driverRouteCoordsRef.current ||
-            distanceMeters(
-              {
-                latitude: lastDriverRoutePointRef.current.lat,
-                longitude: lastDriverRoutePointRef.current.lng,
-              },
-              { latitude: driverPos.lat, longitude: driverPos.lng },
-            ) > 100;
-          if (shouldRefetch) {
-            lastDriverRoutePointRef.current = driverPos;
-            const route = await fetchRouteDirections(
-              { latitude: driverPos.lat, longitude: driverPos.lng },
-              { latitude: clientPos.lat, longitude: clientPos.lng },
-            );
+    if (order.deliveryLatitude && order.deliveryLongitude) {
+      const clientPos = {
+        lat: parseFloat(order.deliveryLatitude),
+        lng: parseFloat(order.deliveryLongitude),
+      };
+      // Ruta real por calles vía el proxy del servidor; solo se re-pide
+      // si el repartidor se movió >100 m (protege la cuota de Google)
+      const shouldRefetch =
+        !lastDriverRoutePointRef.current ||
+        !driverRouteCoordsRef.current ||
+        distanceMeters(
+          {
+            latitude: lastDriverRoutePointRef.current.lat,
+            longitude: lastDriverRoutePointRef.current.lng,
+          },
+          { latitude: driverPos.lat, longitude: driverPos.lng },
+        ) > 100;
+      if (shouldRefetch) {
+        lastDriverRoutePointRef.current = driverPos;
+        fetchRouteDirections(
+          { latitude: driverPos.lat, longitude: driverPos.lng },
+          { latitude: clientPos.lat, longitude: clientPos.lng },
+        )
+          .then((route) => {
             if (route && route.coordinates.length >= 2) {
               driverRouteCoordsRef.current = route.coordinates.map((c) => ({
                 lat: c.latitude,
                 lng: c.longitude,
               }));
+              if (driverRouteLineRef.current) {
+                driverRouteLineRef.current.setMap(null);
+              }
+              driverRouteLineRef.current = new google.maps.Polyline({
+                path: driverRouteCoordsRef.current,
+                geodesic: true,
+                strokeColor: "#10B981", // verde: repartidor → cliente
+                strokeOpacity: 0.9,
+                strokeWeight: 5,
+                map: gmap.current,
+              });
             }
-          }
-          if (driverRouteLineRef.current) {
-            driverRouteLineRef.current.setMap(null);
-            driverRouteLineRef.current = null;
-          }
-          if (driverRouteCoordsRef.current) {
-            driverRouteLineRef.current = new google.maps.Polyline({
-              path: driverRouteCoordsRef.current,
-              geodesic: true,
-              strokeColor: "#DC2626",
-              strokeOpacity: 0.9,
-              strokeWeight: 5,
-              map: gmap.current,
-            });
-          }
+          })
+          .catch(() => {});
+      }
 
-          // Ajustar bounds: repartidor + cliente
-          const b = new google.maps.LatLngBounds();
-          b.extend(driverPos);
-          b.extend(clientPos);
-          if (businessLocation) b.extend(businessLocation);
-          gmap.current.fitBounds(b, {
-            top: 60,
-            right: 60,
-            bottom: 60,
-            left: 60,
-          });
-        }
-      } catch {}
-    };
-
-    updateDriver();
-    const interval = setInterval(updateDriver, 10000);
-    return () => clearInterval(interval);
-  }, [mapsReady, order, businessLocation]);
+      // Ajustar bounds: repartidor + cliente
+      const b = new google.maps.LatLngBounds();
+      b.extend(driverPos);
+      b.extend(clientPos);
+      if (businessLocation) b.extend(businessLocation);
+      gmap.current.fitBounds(b, {
+        top: 60,
+        right: 60,
+        bottom: 60,
+        left: 60,
+      });
+    }
+  }, [mapsReady, order, businessLocation, socketLocation]);
 
   const currentStep = order ? STATUS_STEPS.indexOf(order.status) : 0;
   const statusInfo = STATUS_LABELS[order?.status] || {
@@ -1130,32 +1109,83 @@ export default function OrderTrackingScreen() {
                 </View>
               )}
 
-            {/* Botón reportar incidencia */}
+            {/* Botón compartir seguimiento + reportar incidencia */}
             {order?.status !== "cancelled" && (
-              <Pressable
-                onPress={() => {
-                  if (user?.role === "delivery_driver") {
-                    navigation.navigate("Support" as never);
-                  } else {
-                    navigation.navigate(
-                      "ReportIssue" as never,
-                      {
-                        orderId: order.id,
-                        orderNumber: order.id.slice(-6),
-                      } as never,
-                    );
-                  }
-                }}
-                style={[s.reportButton, { borderColor: theme.border }]}
-              >
-                <Feather name="alert-circle" size={18} color="#F59E0B" />
-                <ThemedText
-                  type="body"
-                  style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}
+              <>
+                <Pressable
+                  onPress={async () => {
+                    try {
+                      const response = await apiRequest(
+                        "POST",
+                        `/api/gps/tracking-token/${order.id}`,
+                      );
+                      const data = await response.json();
+                      if (!data.success || !data.trackingUrl) {
+                        throw new Error(
+                          data.error || "No se pudo generar el enlace",
+                        );
+                      }
+                      const nav = navigator as any;
+                      if (nav.share) {
+                        try {
+                          await nav.share({
+                            title: "Seguimiento de mi pedido",
+                            url: data.trackingUrl,
+                          });
+                          return;
+                        } catch {}
+                      }
+                      await nav.clipboard.writeText(data.trackingUrl);
+                      Alert.alert(
+                        "Enlace copiado",
+                        "El enlace de seguimiento en vivo se copió al portapapeles",
+                      );
+                    } catch (e: any) {
+                      Alert.alert(
+                        "Error",
+                        e?.message || "No se pudo compartir el seguimiento",
+                      );
+                    }
+                  }}
+                  style={[
+                    s.reportButton,
+                    { borderColor: theme.border, marginBottom: Spacing.sm },
+                  ]}
                 >
-                  Reportar incidencia
-                </ThemedText>
-              </Pressable>
+                  <Feather name="share-2" size={18} color={PRIMARY} />
+                  <ThemedText
+                    type="body"
+                    style={{ marginLeft: Spacing.sm, color: theme.text }}
+                  >
+                    Compartir seguimiento en vivo
+                  </ThemedText>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    if (user?.role === "delivery_driver") {
+                      navigation.navigate("Support" as never);
+                    } else {
+                      navigation.navigate(
+                        "ReportIssue" as never,
+                        {
+                          orderId: order.id,
+                          orderNumber: order.id.slice(-6),
+                        } as never,
+                      );
+                    }
+                  }}
+                  style={[s.reportButton, { borderColor: theme.border }]}
+                >
+                  <Feather name="alert-circle" size={18} color="#F59E0B" />
+                  <ThemedText
+                    type="body"
+                    style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}
+                  >
+                    Reportar incidencia
+                  </ThemedText>
+                </Pressable>
+              </>
             )}
           </ScrollView>
         </View>

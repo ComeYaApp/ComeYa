@@ -1,8 +1,66 @@
 import { Server as HTTPServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import jwt from "jsonwebtoken";
 import { logger } from "./logger";
 
 let io: SocketIOServer | null = null;
+
+interface SocketUser {
+  id: string;
+  role: string;
+}
+
+// Decodifica el JWT del handshake (auth.token) — el mismo secreto que el middleware HTTP
+function decodeSocketUser(socket: any): SocketUser | null {
+  const token = socket.handshake?.auth?.token || socket.handshake?.query?.token;
+  if (!token || typeof token !== "string") return null;
+  try {
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "comeya_local_secret_key",
+    ) as any;
+    if (!decoded?.id) return null;
+    return { id: decoded.id, role: decoded.role || "customer" };
+  } catch {
+    return null;
+  }
+}
+
+// Comprueba que el usuario puede ver la ubicación de este pedido
+async function canJoinOrderRoom(user: SocketUser, orderId: string): Promise<boolean> {
+  try {
+    const { db } = await import("./db");
+    const { orders, businesses } = await import("@shared/schema-mysql");
+    const { eq } = await import("drizzle-orm");
+
+    const [order] = await db
+      .select({
+        userId: orders.userId,
+        deliveryPersonId: orders.deliveryPersonId,
+        businessId: orders.businessId,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!order) return false;
+    if (user.role === "admin" || user.role === "super_admin") return true;
+    if (order.userId === user.id || order.deliveryPersonId === user.id) {
+      return true;
+    }
+    if (order.businessId) {
+      const [biz] = await db
+        .select({ ownerId: businesses.ownerId })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      if (biz?.ownerId === user.id) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 export function initializeWebSocket(httpServer: HTTPServer) {
   io = new SocketIOServer(httpServer, {
@@ -16,22 +74,40 @@ export function initializeWebSocket(httpServer: HTTPServer) {
   io.on("connection", (socket) => {
     logger.info(`🔌 WebSocket connected: ${socket.id}`);
 
-    // Join room por rol
+    // Autenticación por JWT en el handshake
+    socket.data.user = decodeSocketUser(socket);
+
+    // Unirse a una room de pedido para tracking en vivo (validado por rol)
+    socket.on("join_order", async (data: { orderId: string }) => {
+      const user: SocketUser | null = socket.data.user;
+      if (!user || !data?.orderId) return;
+      if (await canJoinOrderRoom(user, data.orderId)) {
+        socket.join(`order:${data.orderId}`);
+        logger.info(`📍 User ${user.id} joined order:${data.orderId}`);
+      }
+    });
+
+    // Join room por rol (compatibilidad con clientes existentes)
     socket.on(
       "join",
       (data: { userId: string; role: string; businessId?: string }) => {
-        socket.join(`user:${data.userId}`);
-        if (data.role === "business_owner" && data.businessId) {
+        // Si hay token válido, la identidad del token manda sobre el payload
+        const user: SocketUser | null = socket.data.user;
+        const userId = user?.id || data.userId;
+        const role = user?.role || data.role;
+
+        socket.join(`user:${userId}`);
+        if (role === "business_owner" && data.businessId) {
           socket.join(`business:${data.businessId}`);
           logger.info(`👔 Business ${data.businessId} joined room`);
         }
-        if (data.role === "delivery_driver") {
+        if (role === "delivery_driver") {
           socket.join("drivers");
-          logger.info(`🚗 Driver ${data.userId} joined drivers room`);
+          logger.info(`🚗 Driver ${userId} joined drivers room`);
         }
-        if (data.role === "admin") {
+        if (role === "admin") {
           socket.join("admins");
-          logger.info(`👨‍💼 Admin ${data.userId} joined admins room`);
+          logger.info(`👨‍💼 Admin ${userId} joined admins room`);
         }
       },
     );

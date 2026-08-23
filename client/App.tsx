@@ -22,6 +22,22 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 
+// Deep links: el enlace de seguimiento compartido (/track/:token) abre la
+// pantalla pública tanto en web como en la app móvil
+const linking = {
+  prefixes: [
+    process.env.EXPO_PUBLIC_FRONTEND_URL,
+    "https://app.comeya.es",
+    process.env.EXPO_PUBLIC_BACKEND_URL,
+    "comeya://",
+  ].filter(Boolean) as string[],
+  config: {
+    screens: {
+      PublicTracking: "track/:token",
+    },
+  },
+};
+
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { navigationRef } from "@/navigation/navigationRef";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -249,7 +265,11 @@ function AppThemedShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <NavigationContainer ref={navigationRef} theme={isDark ? DarkTheme : DefaultTheme}>
+      <NavigationContainer
+        ref={navigationRef}
+        theme={isDark ? DarkTheme : DefaultTheme}
+        linking={linking}
+      >
         {children}
       </NavigationContainer>
       <StatusBar style={isDark ? "light" : "dark"} />

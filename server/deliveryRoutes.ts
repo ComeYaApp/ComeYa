@@ -145,32 +145,10 @@ router.post(
       throw new ValidationError("Latitude and longitude required");
     }
 
-    await db
-      .update(deliveryDrivers)
-      .set({
-        currentLatitude: latitude.toString(),
-        currentLongitude: longitude.toString(),
-        lastLocationUpdate: new Date(),
-      })
-      .where(eq(deliveryDrivers.userId, userId));
-
-    // Verificar si el driver está cerca de alguna entrega
-    const { checkAndUpdateArrivingStatus } = await import(
-      "./arrivingStatusService"
-    );
-    const activeOrders = await db
-      .select()
-      .from(orders)
-      .where(
-        and(
-          eq(orders.deliveryPersonId, userId),
-          inArray(orders.status, ["picked_up", "on_the_way", "in_transit"]),
-        ),
-      );
-
-    for (const order of activeOrders) {
-      await checkAndUpdateArrivingStatus(order.id, latitude, longitude);
-    }
+    // Pipeline unificado: persiste ubicación, emite websocket y ejecuta
+    // checks throttled (proximidad, ETA, arriving, geofences)
+    const { handleDriverLocationUpdate } = await import("./trackingPipeline");
+    await handleDriverLocationUpdate(userId, latitude, longitude);
 
     res.json({ success: true });
   }),
@@ -888,6 +866,26 @@ router.post(
       "./enhancedPushService"
     );
     await sendOrderStatusNotification(orderId, order.userId, "delivered");
+
+    // Notificar al dueño del negocio que el pedido fue entregado
+    try {
+      const { sendPushToUser } = await import("./enhancedPushService");
+      const { businesses } = await import("@shared/schema-mysql");
+      const [biz] = await db
+        .select({ ownerId: businesses.ownerId, name: businesses.name })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      if (biz?.ownerId) {
+        await sendPushToUser(biz.ownerId, {
+          title: "✅ Pedido entregado",
+          body: `El pedido #${orderId.slice(-6)} fue entregado al cliente`,
+          data: { orderId, screen: "BusinessOrders", type: "delivered" },
+        });
+      }
+    } catch (err) {
+      console.error("Error notifying business of delivery:", err);
+    }
 
     logger.delivery("Order delivered", { orderId, driverId: userId });
 

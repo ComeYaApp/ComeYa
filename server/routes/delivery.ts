@@ -123,8 +123,28 @@ router.post(
         return res.status(404).json({ error: "Conductor no encontrado" });
       await db
         .update(orders)
-        .set({ driverId, status: "picked_up", updatedAt: new Date() })
+        .set({
+          deliveryPersonId: driverId,
+          status: "assigned",
+          assignedAt: new Date(),
+          updatedAt: new Date(),
+        })
         .where(eq(orders.id, orderId));
+
+      const { notifyDriverAssigned } = await import("../websocket");
+      notifyDriverAssigned(driverId, {
+        orderId,
+        status: "assigned",
+        assignedAt: new Date().toISOString(),
+      });
+
+      const { sendPushToUser } = await import("../enhancedPushService");
+      sendPushToUser(driverId, {
+        title: "🚀 Nuevo pedido asignado",
+        body: `Te han asignado el pedido #${orderId.slice(-6)}`,
+        data: { orderId, screen: "DriverMap" },
+      }).catch(() => {});
+
       res.json({ success: true, message: "Conductor asignado" });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

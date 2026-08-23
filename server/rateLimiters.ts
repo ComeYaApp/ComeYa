@@ -68,3 +68,21 @@ export const geocodingLimiter = rateLimit({
     );
   },
 });
+
+export const gpsLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 120, // defensa adicional; los límites reales de Google viven en googleMapsService
+  message: "Demasiadas solicitudes de mapas. Espera un momento.",
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    logger.security("GPS rate limit exceeded", {
+      ip: req.ip,
+      userId: (req as any).user?.id,
+      path: req.path,
+    });
+    throw new RateLimitError(
+      "Demasiadas solicitudes de mapas. Espera un momento.",
+    );
+  },
+});

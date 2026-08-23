@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import {
   mysqlTable,
   text,
@@ -767,7 +768,7 @@ export type DeliveryHeatmap = typeof deliveryHeatmap.$inferSelect;
 export const proximityAlerts = mysqlTable("proximity_alerts", {
   id: varchar("id", { length: 255 })
     .primaryKey()
-    .default(sql`(UUID())`),
+    .$defaultFn(() => randomUUID()),
   orderId: varchar("order_id", { length: 255 }).notNull(),
   driverId: varchar("driver_id", { length: 255 }).notNull(),
   alertType: varchar("alert_type", { length: 50 }).notNull(), // approaching, nearby, arrived
@@ -783,7 +784,7 @@ export type ProximityAlert = typeof proximityAlerts.$inferSelect;
 export const deliveryProofs = mysqlTable("delivery_proofs", {
   id: varchar("id", { length: 255 })
     .primaryKey()
-    .default(sql`(UUID())`),
+    .$defaultFn(() => randomUUID()),
   orderId: varchar("order_id", { length: 255 }).notNull().unique(),
   driverId: varchar("driver_id", { length: 255 }).notNull(),
   photoUrl: text("photo_url").notNull(),

@@ -41,6 +41,7 @@ const RATE_LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
   directions: { maxRequests: 40, windowMs: 60 * 1000 },     // 40 req/min (Google: 50 req/s con billing)
   geocoding: { maxRequests: 40, windowMs: 60 * 1000 },      // 40 req/min
   distanceMatrix: { maxRequests: 20, windowMs: 60 * 1000 }, // 20 req/min
+  places: { maxRequests: 20, windowMs: 60 * 1000 },         // 20 req/min
   all: { maxRequests: 100, windowMs: 60 * 1000 },           // Global: 100 req/min total
 };
 
@@ -52,6 +53,8 @@ const dailyCounters = new Map<string, { count: number; day: string }>();
 const DAILY_LIMITS: Record<string, number> = {
   geocoding: Number(process.env.GOOGLE_GEOCODE_DAILY_LIMIT || 500),
   directions: Number(process.env.GOOGLE_DIRECTIONS_DAILY_LIMIT || 2000),
+  matrix: Number(process.env.GOOGLE_MATRIX_DAILY_LIMIT || 1000),
+  places: Number(process.env.GOOGLE_PLACES_DAILY_LIMIT || 500),
 };
 
 function checkDailyLimit(endpoint: string): boolean {
@@ -576,6 +579,192 @@ export function decodePolyline(encoded: string): Array<{ latitude: number; longi
 }
 
 /**
+ * Distance Matrix — duraciones/distancia entre orígenes y destinos.
+ * Cache por celda normalizada + fallback Haversine cuando Google no responde.
+ */
+export interface MatrixCell {
+  distanceMeters: number;
+  durationSeconds: number;
+}
+
+export async function getDistanceMatrix(
+  origins: Array<{ lat: number; lng: number }>,
+  destinations: Array<{ lat: number; lng: number }>,
+): Promise<(MatrixCell | null)[][]> {
+  const rows: (MatrixCell | null)[][] = [];
+
+  // Intentar resolver cada celda desde caché
+  const missing: Array<{ oi: number; di: number }> = [];
+  for (let oi = 0; oi < origins.length; oi++) {
+    rows[oi] = [];
+    for (let di = 0; di < destinations.length; di++) {
+      const cacheKey = getCacheKey("matrix", {
+        oLat: origins[oi].lat,
+        oLng: origins[oi].lng,
+        dLat: destinations[di].lat,
+        dLng: destinations[di].lng,
+      });
+      const cached = getFromCache<MatrixCell>(cacheKey, TTL.distanceMatrix);
+      if (cached) {
+        rows[oi][di] = cached;
+      } else {
+        missing.push({ oi, di });
+      }
+    }
+  }
+
+  if (!missing.length) return rows;
+
+  if (
+    !API_KEY ||
+    !checkDailyLimit("matrix") ||
+    !checkRateLimit("distanceMatrix")
+  ) {
+    // Fallback: Haversine + velocidad media de 25 km/h
+    for (const { oi, di } of missing) {
+      const km = calculateHaversineDistance(
+        origins[oi].lat,
+        origins[oi].lng,
+        destinations[di].lat,
+        destinations[di].lng,
+      );
+      const cell: MatrixCell = {
+        distanceMeters: Math.round(km * 1000),
+        durationSeconds: Math.max(120, Math.round((km / 25) * 3600)),
+      };
+      rows[oi][di] = cell;
+      setCache(
+        getCacheKey("matrix", {
+          oLat: origins[oi].lat,
+          oLng: origins[oi].lng,
+          dLat: destinations[di].lat,
+          dLng: destinations[di].lng,
+        }),
+        cell,
+      );
+    }
+    return rows;
+  }
+
+  try {
+    const originsStr = origins
+      .map((o) => `${o.lat.toFixed(4)},${o.lng.toFixed(4)}`)
+      .join("|");
+    const destsStr = destinations
+      .map((d) => `${d.lat.toFixed(4)},${d.lng.toFixed(4)}`)
+      .join("|");
+    const url =
+      `https://maps.googleapis.com/maps/api/distancematrix/json` +
+      `?origins=${encodeURIComponent(originsStr)}` +
+      `&destinations=${encodeURIComponent(destsStr)}` +
+      `&mode=driving&language=es&key=${API_KEY}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data = await response.json();
+
+    if (data.status !== "OK" || !data.rows) throw new Error(data.status);
+
+    for (let oi = 0; oi < data.rows.length; oi++) {
+      for (let di = 0; di < data.rows[oi].elements.length; di++) {
+        const el = data.rows[oi].elements[di];
+        const cell: MatrixCell | null =
+          el.status === "OK"
+            ? {
+                distanceMeters: el.distance?.value ?? null,
+                durationSeconds: el.duration?.value ?? null,
+              }
+            : null;
+        if (cell && cell.distanceMeters != null) {
+          rows[oi][di] = cell;
+          setCache(
+            getCacheKey("matrix", {
+              oLat: origins[oi].lat,
+              oLng: origins[oi].lng,
+              dLat: destinations[di].lat,
+              dLng: destinations[di].lng,
+            }),
+            cell,
+          );
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("⚠️ [GoogleMaps] Distance Matrix falló, usando Haversine:", e);
+    for (const { oi, di } of missing) {
+      const km = calculateHaversineDistance(
+        origins[oi].lat,
+        origins[oi].lng,
+        destinations[di].lat,
+        destinations[di].lng,
+      );
+      rows[oi][di] = {
+        distanceMeters: Math.round(km * 1000),
+        durationSeconds: Math.max(120, Math.round((km / 25) * 3600)),
+      };
+    }
+  }
+
+  return rows;
+}
+
+/**
+ * Places Autocomplete — sugerencias de direcciones vía proxy (la key nunca
+ * sale del servidor). Cache por input normalizado para no pagar dos veces
+ * por la misma búsqueda.
+ */
+export interface PlacePrediction {
+  description: string;
+  mainText: string;
+  secondaryText: string;
+  placeId: string;
+}
+
+export async function placesAutocomplete(
+  input: string,
+  bias?: { lat: number; lng: number; radiusM?: number },
+): Promise<PlacePrediction[]> {
+  const normalized = input.trim().toLowerCase();
+  if (normalized.length < 3) return [];
+
+  const biasLat = bias ? Math.round(bias.lat * 100) / 100 : null;
+  const biasLng = bias ? Math.round(bias.lng * 100) / 100 : null;
+  const cacheKey = getCacheKey("places", { input: normalized, biasLat, biasLng });
+  const cached = getFromCache<PlacePrediction[]>(cacheKey, TTL.places);
+  if (cached) return cached;
+
+  if (!API_KEY || !checkDailyLimit("places") || !checkRateLimit("places")) {
+    return [];
+  }
+
+  try {
+    let url =
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
+      `?input=${encodeURIComponent(input)}&language=es` +
+      `&components=country:es&key=${API_KEY}`;
+    if (bias?.lat != null && bias?.lng != null) {
+      url += `&location=${bias.lat},${bias.lng}&radius=${bias.radiusM || 30000}`;
+    }
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const data = await response.json();
+
+    if (data.status !== "OK" || !data.predictions?.length) return [];
+
+    const predictions: PlacePrediction[] = data.predictions
+      .slice(0, 5)
+      .map((p: any) => ({
+        description: p.description,
+        mainText: p.structured_formatting?.main_text || p.description,
+        secondaryText: p.structured_formatting?.secondary_text || "",
+        placeId: p.place_id,
+      }));
+
+    setCache(cacheKey, predictions);
+    return predictions;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Obtener estadísticas de uso del servicio
  */
 export function getUsageStats() {
@@ -603,6 +792,8 @@ export const googleMapsService = {
   getDirections,
   geocodeAddress,
   getDirectionsBatch,
+  getDistanceMatrix,
+  placesAutocomplete,
   calculateHaversineDistance,
   estimateDeliveryTimeMinutes,
   decodePolyline,

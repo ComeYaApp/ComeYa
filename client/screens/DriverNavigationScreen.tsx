@@ -33,44 +33,22 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 // La API key NUNCA se expone al cliente — se usa proxy del servidor
 // El servidor tiene cache + rate limiting para ahorrar costos
 import { apiRequest } from "@/lib/query-client";
+import { decodePolyline, distanceMeters } from "@/utils/directions";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { DriverPin } from "@/components/map/DriverPin";
 
-/** Decodifica el polyline codificado de Google Directions */
-function decodePolyline(
-  encoded: string,
-): { latitude: number; longitude: number }[] {
-  const poly: { latitude: number; longitude: number }[] = [];
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-  while (index < encoded.length) {
-    let b: number;
-    let shift = 0;
-    let result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    lat += result & 1 ? ~(result >> 1) : result >> 1;
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    lng += result & 1 ? ~(result >> 1) : result >> 1;
-    poly.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+/** Distancia mínima en metros desde un punto hasta la polyline de la ruta. */
+function distanceToRouteMeters(
+  point: { latitude: number; longitude: number },
+  coords: { latitude: number; longitude: number }[],
+): number {
+  let min = Infinity;
+  for (const c of coords) {
+    const d = distanceMeters(point, c);
+    if (d < min) min = d;
   }
-  return poly;
-}
-
-/** Elimina etiquetas HTML de las instrucciones de Google Directions */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
+  return min;
 }
 
 export default function DriverNavigationScreen() {
@@ -96,9 +74,30 @@ export default function DriverNavigationScreen() {
   const [totalDuration, setTotalDuration] = useState("");
   const [loading, setLoading] = useState(true);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
+  const routeCoordsRef = useRef<{ latitude: number; longitude: number }[]>([]);
+  const lastRerouteAtRef = useRef<number>(0);
+  const lastSpokenStepRef = useRef<string>("");
 
   const destinationCoord = { latitude: destLat, longitude: destLng };
+
+  const REROUTE_MIN_INTERVAL_MS = 30_000;
+  const REROUTE_DEVIATION_M = 150;
+
+  // Voz turn-by-turn: habla la instrucción actual cuando cambia
+  useEffect(() => {
+    if (!voiceEnabled || !steps.length) return;
+    const instruction = steps[0].instruction;
+    if (!instruction || instruction === lastSpokenStepRef.current) return;
+    lastSpokenStepRef.current = instruction;
+    import("expo-speech")
+      .then((Speech) => {
+        Speech.stop();
+        Speech.speak(instruction, { language: "es-ES", rate: 0.95 });
+      })
+      .catch(() => {});
+  }, [steps, voiceEnabled]);
 
   // Inicializar GPS y obtener ruta (1 sola llamada a Directions API)
   useEffect(() => {
@@ -122,7 +121,8 @@ export default function DriverNavigationScreen() {
       // Obtener ruta real por calles
       fetchRoute(coords.latitude, coords.longitude);
 
-      // Seguimiento continuo (solo actualiza marcador, no recalcula ruta)
+      // Seguimiento continuo: mueve el marcador y recalcula la ruta
+      // automáticamente si el repartidor se desvía >150 m de la ruta
       locationSubRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
@@ -130,10 +130,26 @@ export default function DriverNavigationScreen() {
           distanceInterval: 20,
         },
         (l) => {
-          setDriverLocation({
+          const coords = {
             latitude: l.coords.latitude,
             longitude: l.coords.longitude,
-          });
+          };
+          setDriverLocation(coords);
+
+          const now = Date.now();
+          if (
+            routeCoordsRef.current.length > 2 &&
+            now - lastRerouteAtRef.current >= REROUTE_MIN_INTERVAL_MS
+          ) {
+            const deviation = distanceToRouteMeters(
+              coords,
+              routeCoordsRef.current,
+            );
+            if (deviation > REROUTE_DEVIATION_M) {
+              lastRerouteAtRef.current = now;
+              fetchRoute(coords.latitude, coords.longitude);
+            }
+          }
         },
       );
     };
@@ -142,6 +158,9 @@ export default function DriverNavigationScreen() {
 
     return () => {
       locationSubRef.current?.remove();
+      import("expo-speech")
+        .then((Speech) => Speech.stop())
+        .catch(() => {});
     };
   }, []);
 
@@ -158,13 +177,14 @@ export default function DriverNavigationScreen() {
 
       if (data.success && data.polyline) {
         const decoded = decodePolyline(data.polyline);
+        routeCoordsRef.current = decoded;
 
         setRouteCoords(decoded);
         setTotalDistance(data.distance?.text || "");
         setTotalDuration(data.duration?.text || "");
         setSteps(
           (data.steps || []).map((s: any) => ({
-            instruction: stripHtml(s.instruction || ""),
+            instruction: s.instruction || "",
             distance: s.distance?.text || "",
             duration: s.duration?.text || "",
           })),
@@ -186,6 +206,7 @@ export default function DriverNavigationScreen() {
           { latitude: originLat, longitude: originLng },
           { latitude: destLat, longitude: destLng },
         ];
+        routeCoordsRef.current = coords;
         setRouteCoords(coords);
         setTotalDistance(data.distance?.text || "");
         setTotalDuration(data.duration?.text || "");
@@ -352,17 +373,34 @@ export default function DriverNavigationScreen() {
           ) : null}
         </View>
 
-        <Pressable
-          onPress={handleRefreshRoute}
-          style={styles.iconButton}
-          disabled={routeLoading}
-        >
-          {routeLoading ? (
-            <ActivityIndicator size="small" color={ComeYaColors.primary} />
-          ) : (
-            <Feather name="refresh-cw" size={18} color={ComeYaColors.primary} />
-          )}
-        </Pressable>
+        <View style={{ flexDirection: "row" }}>
+          <Pressable
+            onPress={() => {
+              if (voiceEnabled) {
+                import("expo-speech").then((S) => S.stop()).catch(() => {});
+              }
+              setVoiceEnabled(!voiceEnabled);
+            }}
+            style={styles.iconButton}
+          >
+            <Feather
+              name={voiceEnabled ? "volume-2" : "volume-x"}
+              size={18}
+              color={voiceEnabled ? ComeYaColors.primary : theme.textSecondary}
+            />
+          </Pressable>
+          <Pressable
+            onPress={handleRefreshRoute}
+            style={styles.iconButton}
+            disabled={routeLoading}
+          >
+            {routeLoading ? (
+              <ActivityIndicator size="small" color={ComeYaColors.primary} />
+            ) : (
+              <Feather name="refresh-cw" size={18} color={ComeYaColors.primary} />
+            )}
+          </Pressable>
+        </View>
       </View>
 
       {/* Botón recentrar */}

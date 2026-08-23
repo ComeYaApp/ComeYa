@@ -351,13 +351,15 @@ router.get(
         o.delivery_latitude  AS customer_lat,
         o.delivery_longitude AS customer_lng,
         u.name  AS customer_name,  u.phone AS customer_phone,
-        dd.id   AS driver_id,      dd.vehicle_type, dd.rating AS driver_rating,
+        dd.id   AS driver_row_id,  dd.user_id AS driver_user_id,
+        dd.vehicle_type, dd.rating AS driver_rating,
         dd.current_latitude AS driver_lat, dd.current_longitude AS driver_lng,
+        dd.last_location_update AS driver_last_update,
         du.name AS driver_name,    du.phone AS driver_phone,
         b.name  AS business_name
       FROM orders o
       LEFT JOIN users u   ON o.user_id = u.id
-      LEFT JOIN delivery_drivers dd ON o.delivery_person_id = dd.id
+      LEFT JOIN delivery_drivers dd ON o.delivery_person_id = dd.user_id
       LEFT JOIN users du  ON dd.user_id = du.id
       LEFT JOIN businesses b ON o.business_id = b.id
       WHERE o.business_id IN (${sql.join(
@@ -396,13 +398,15 @@ router.get(
             lng: r.customer_lng ? parseFloat(r.customer_lng) : null,
             address: r.delivery_address || null,
           },
-          driver: r.driver_id
+          driver: r.driver_user_id
             ? {
-                id: r.driver_id,
+                id: r.driver_user_id,
+                rowId: r.driver_row_id,
                 name: r.driver_name,
                 phone: r.driver_phone,
                 lat: r.driver_lat ? parseFloat(r.driver_lat) : null,
                 lng: r.driver_lng ? parseFloat(r.driver_lng) : null,
+                lastUpdate: r.driver_last_update || null,
                 vehicleType: r.vehicle_type,
                 rating: r.driver_rating
                   ? (r.driver_rating / 10).toFixed(1)
@@ -1338,6 +1342,7 @@ router.post(
   "/create",
   authenticateToken,
   requireRole("business_owner"),
+  geocodingLimiter,
   async (req, res) => {
     try {
       const { businesses } = await import("@shared/schema-mysql");
@@ -1507,6 +1512,7 @@ router.post(
   "/",
   authenticateToken,
   requireRole("business_owner"),
+  geocodingLimiter,
   async (req, res) => {
     try {
       const { businesses } = await import("@shared/schema-mysql");

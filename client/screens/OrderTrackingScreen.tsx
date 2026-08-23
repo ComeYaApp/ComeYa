@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
@@ -24,6 +25,7 @@ import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { CollapsibleMap } from "@/components/CollapsibleMap";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
 import { useTheme } from "@/hooks/useTheme";
+import { useDriverLocationSocket } from "@/hooks/useDriverLocationSocket";
 import {
   Spacing,
   BorderRadius,
@@ -132,18 +134,35 @@ export default function OrderTrackingScreen() {
     return () => clearInterval(interval);
   }, [orderId, orderType]);
 
-  // Poll for delivery person location every 3 seconds
+  // Seguimiento en vivo del repartidor: WebSocket con fallback a polling
   // (solo pedidos delivery: en pickup no hay repartidor)
+  const {
+    location: socketLocation,
+    connected: socketConnected,
+    usingFallback: locationFallback,
+  } = useDriverLocationSocket(orderType === "pickup" ? null : orderId, {
+    fallbackIntervalMs: 5000,
+  });
+
   useEffect(() => {
-    if (orderType === "pickup") return;
+    if (!socketLocation) return;
+    setDeliveryLocation({
+      latitude: socketLocation.latitude,
+      longitude: socketLocation.longitude,
+    });
+  }, [socketLocation]);
+
+  // Fetch inicial inmediato (hasta que conecte el socket)
+  useEffect(() => {
+    if (orderType === "pickup" || !orderId) return;
+    let cancelled = false;
     const fetchDeliveryLocation = async () => {
-      if (!orderId) return;
       try {
         const response = await apiRequest(
           "GET",
           `/api/delivery/location/${orderId}`,
         );
-        if (response.ok) {
+        if (response.ok && !cancelled) {
           const data = await response.json();
           if (data.location) {
             setDeliveryLocation({
@@ -156,10 +175,10 @@ export default function OrderTrackingScreen() {
         console.log("Delivery location not available for this order");
       }
     };
-
     fetchDeliveryLocation();
-    const interval = setInterval(fetchDeliveryLocation, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+    };
   }, [orderId, orderType]);
 
   // Cargar info de pickup y actualizar cada 30s
@@ -1067,33 +1086,71 @@ export default function OrderTrackingScreen() {
         ) : null}
 
         {order.status !== "cancelled" && (
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              if (user?.role === "delivery_driver") {
-                // El repartidor va a soporte general, no al reporte de pedido de cliente
-                navigation.navigate("Support");
-              } else {
-                navigation.navigate("ReportIssue", {
-                  orderId: order.id,
-                  orderNumber: order.id.slice(-6),
-                });
-              }
-            }}
-            style={[styles.reportButton, { borderColor: theme.border }]}
-          >
-            <Feather
-              name="alert-circle"
-              size={18}
-              color={ComeYaColors.warning}
-            />
-            <ThemedText
-              type="body"
-              style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}
+          <>
+            <Pressable
+              onPress={async () => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                try {
+                  const response = await apiRequest(
+                    "POST",
+                    `/api/gps/tracking-token/${order.id}`,
+                  );
+                  const data = await response.json();
+                  if (!data.success || !data.trackingUrl) {
+                    throw new Error(
+                      data.error || "No se pudo generar el enlace",
+                    );
+                  }
+                  await Share.share({
+                    message: `Sigue mi pedido en vivo 🛵 ${data.trackingUrl}`,
+                    url: data.trackingUrl,
+                  });
+                } catch (e: any) {
+                  Alert.alert(
+                    "Error",
+                    e?.message || "No se pudo compartir el seguimiento",
+                  );
+                }
+              }}
+              style={[styles.reportButton, { borderColor: theme.border, marginBottom: Spacing.sm }]}
             >
-              Reportar incidencia
-            </ThemedText>
-          </Pressable>
+              <Feather name="share-2" size={18} color={ComeYaColors.primary} />
+              <ThemedText
+                type="body"
+                style={{ marginLeft: Spacing.sm, color: theme.text }}
+              >
+                Compartir seguimiento en vivo
+              </ThemedText>
+            </Pressable>
+
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                if (user?.role === "delivery_driver") {
+                  // El repartidor va a soporte general, no al reporte de pedido de cliente
+                  navigation.navigate("Support");
+                } else {
+                  navigation.navigate("ReportIssue", {
+                    orderId: order.id,
+                    orderNumber: order.id.slice(-6),
+                  });
+                }
+              }}
+              style={[styles.reportButton, { borderColor: theme.border }]}
+            >
+              <Feather
+                name="alert-circle"
+                size={18}
+                color={ComeYaColors.warning}
+              />
+              <ThemedText
+                type="body"
+                style={{ marginLeft: Spacing.sm, color: theme.textSecondary }}
+              >
+                Reportar incidencia
+              </ThemedText>
+            </Pressable>
+          </>
         )}
       </ScrollView>
     </View>

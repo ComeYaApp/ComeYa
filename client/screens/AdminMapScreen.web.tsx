@@ -12,6 +12,7 @@ import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 import { apiRequest } from "@/lib/query-client";
+import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
 import {
   pinIcon,
   driverIcon,
@@ -73,6 +74,15 @@ export default function AdminMapScreen() {
   const mapRef = useRef<HTMLDivElement>(null);
   const gmap = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const adminRouteCache = useRef<
+    Record<
+      string,
+      {
+        point: { lat: number; lng: number };
+        coords: { latitude: number; longitude: number }[];
+      }
+    >
+  >({});
   const [mapsReady, setMapsReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("deliveries");
   const [loading, setLoading] = useState(true);
@@ -120,6 +130,7 @@ export default function AdminMapScreen() {
     if (!google) return;
 
     clearMarkers();
+    let realRouteCount = 0;
 
     try {
       const [bizRes, driversRes, trackingRes] = await Promise.all([
@@ -301,8 +312,66 @@ export default function AdminMapScreen() {
             markersRef.current.push(driverMarker);
           }
 
-          // Ruta del negocio al cliente
+          // Ruta del negocio al cliente (real vía proxy para pedidos en
+          // camino, línea recta punteada para el resto — máx 5 reales)
           if (o.business?.lat && o.delivery?.lat) {
+            const isOnTheWay =
+              o.status === "on_the_way" && o.driver?.lat && o.driver?.lng;
+            if (isOnTheWay && realRouteCount < 5) {
+              realRouteCount++;
+              const key = o.id;
+              const cached = adminRouteCache.current[key];
+              const driverPoint = { lat: o.driver.lat, lng: o.driver.lng };
+              const moved =
+                !cached ||
+                distanceMeters(
+                  { latitude: cached.point.lat, longitude: cached.point.lng },
+                  { latitude: driverPoint.lat, longitude: driverPoint.lng },
+                ) > 100;
+              if (moved) {
+                adminRouteCache.current[key] = {
+                  point: driverPoint,
+                  coords: [],
+                };
+                fetchRouteDirections(
+                  { latitude: driverPoint.lat, longitude: driverPoint.lng },
+                  { latitude: o.delivery.lat, longitude: o.delivery.lng },
+                )
+                  .then((route) => {
+                    if (route && route.coordinates.length >= 2) {
+                      adminRouteCache.current[key].coords =
+                        route.coordinates;
+                      const poly = new google.maps.Polyline({
+                        path: route.coordinates.map((c) => ({
+                          lat: c.latitude,
+                          lng: c.longitude,
+                        })),
+                        geodesic: true,
+                        strokeColor: "#10B981",
+                        strokeOpacity: 0.8,
+                        strokeWeight: 4,
+                      });
+                      poly.setMap(gmap.current);
+                      markersRef.current.push(poly);
+                    }
+                  })
+                  .catch(() => {});
+              } else if (cached.coords.length) {
+                const poly = new google.maps.Polyline({
+                  path: cached.coords.map((c) => ({
+                    lat: c.latitude,
+                    lng: c.longitude,
+                  })),
+                  geodesic: true,
+                  strokeColor: "#10B981",
+                  strokeOpacity: 0.8,
+                  strokeWeight: 4,
+                });
+                poly.setMap(gmap.current);
+                markersRef.current.push(poly);
+              }
+            }
+
             const routePath = new google.maps.Polyline({
               path: [
                 { lat: o.business.lat, lng: o.business.lng },
@@ -312,7 +381,18 @@ export default function AdminMapScreen() {
               strokeColor: statusColor,
               strokeOpacity: 0.7,
               strokeWeight: 3,
-              icons: [{ offset: "0", repeat: "15px" }],
+              icons: [
+                {
+                  icon: {
+                    path: "M 0,-1 0,1",
+                    strokeOpacity: 1,
+                    strokeWeight: 1,
+                    scale: 2,
+                  },
+                  offset: "0",
+                  repeat: "15px",
+                },
+              ],
             });
             routePath.setMap(gmap.current);
             markersRef.current.push(routePath);

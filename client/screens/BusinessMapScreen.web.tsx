@@ -15,6 +15,9 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useDriverLocationSocket } from "@/hooks/useDriverLocationSocket";
+import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { clusterPoints, clusterSvg } from "@/utils/webClustering";
 import {
   pinIcon,
   driverIcon,
@@ -119,6 +122,12 @@ export default function BusinessMapScreen() {
   const driverMarkerRef = useRef<any>(null);
   const homeMarkerRef = useRef<any>(null);
   const routeLineRef = useRef<any>(null);
+  const lastDriverRoutePointRef = useRef<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const driverRouteCoordsRef = useRef<{ lat: number; lng: number }[] | null>(
+    null,
+  );
 
   const [businesses, setBusinesses] = useState<BusinessPin[]>([]);
   const [selected, setSelected] = useState<BusinessPin | null>(null);
@@ -131,6 +140,7 @@ export default function BusinessMapScreen() {
     lng: number;
   } | null>(null);
   const [showDriverPanel, setShowDriverPanel] = useState(false);
+  const [zoom, setZoom] = useState(14);
 
   // Cargar Google Maps
   useEffect(() => {
@@ -150,6 +160,11 @@ export default function BusinessMapScreen() {
       zoomControl: true,
       styles: isDark ? DARK_STYLE : [],
       gestureHandling: "greedy",
+    });
+
+    // Actualizar zoom para recalcular clusters
+    gmap.current.addListener("zoom_changed", () => {
+      setZoom(gmap.current?.getZoom() || 14);
     });
   }, [mapsReady, isDark]);
 
@@ -266,7 +281,15 @@ export default function BusinessMapScreen() {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Polling GPS del repartidor cuando hay pedido on_the_way
+  // Posición del repartidor en vivo: WebSocket con fallback a polling
+  const onTheWayOrder =
+    activeOrders.find((o) => o.status === "on_the_way") || null;
+  const { location: socketLocation } = useDriverLocationSocket(
+    onTheWayOrder?.id ?? null,
+    { fallbackIntervalMs: 5000 },
+  );
+
+  // Pin de casa + limpieza cuando no hay pedido en camino
   useEffect(() => {
     if (!mapsReady || !gmap.current) return;
     const order = activeOrders.find((o) => o.status === "on_the_way");
@@ -280,6 +303,8 @@ export default function BusinessMapScreen() {
         routeLineRef.current.setMap(null);
         routeLineRef.current = null;
       }
+      lastDriverRoutePointRef.current = null;
+      driverRouteCoordsRef.current = null;
       return;
     }
 
@@ -305,98 +330,106 @@ export default function BusinessMapScreen() {
         zIndex: 90,
       });
     }
-
-    const pollDriver = async () => {
-      try {
-        const res = await apiRequest(
-          "GET",
-          `/api/delivery/location/${order.id}`,
-        );
-        const data = await res.json();
-        if (!data.location?.latitude || !data.location?.longitude) return;
-        const google = (window as any).google;
-        const driverPos = {
-          lat: parseFloat(data.location.latitude),
-          lng: parseFloat(data.location.longitude),
-        };
-
-        // Vehículo del repartidor (icono del mapa)
-        const vehicle = vehicleMarkerMeta(
-          data.location.vehicleType ?? order.vehicleType,
-        );
-
-        if (driverMarkerRef.current) {
-          driverMarkerRef.current.setPosition(driverPos);
-          driverMarkerRef.current.setIcon(
-            asGoogleIcon(google, driverIcon(vehicle.icon)),
-          );
-        } else {
-          driverMarkerRef.current = new google.maps.Marker({
-            position: driverPos,
-            map: gmap.current,
-            title: order.deliveryPersonName || "Repartidor",
-            icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
-            zIndex: 999,
-          });
-          driverMarkerRef.current.addListener("click", () =>
-            setShowDriverPanel(true),
-          );
-        }
-
-        // Ruta verde repartidor → casa
-        if (order.deliveryLatitude && order.deliveryLongitude) {
-          const destPos = {
-            lat: parseFloat(order.deliveryLatitude),
-            lng: parseFloat(order.deliveryLongitude),
-          };
-          const ds = new google.maps.DirectionsService();
-          ds.route(
-            {
-              origin: driverPos,
-              destination: destPos,
-              travelMode: google.maps.TravelMode.DRIVING,
-            },
-            (result: any, status: any) => {
-              if (routeLineRef.current) {
-                routeLineRef.current.setMap(null);
-                routeLineRef.current = null;
-              }
-              // Si Directions falla (API no habilitada), dibujar línea recta
-              const path =
-                status === "OK"
-                  ? result.routes[0].overview_path
-                  : [driverPos, destPos];
-              routeLineRef.current = new google.maps.Polyline({
-                path,
-                geodesic: true,
-                strokeColor: "#10B981",
-                strokeOpacity: 0.9,
-                strokeWeight: 5,
-                map: gmap.current,
-              });
-            },
-          );
-          // Ajustar bounds
-          const b = new google.maps.LatLngBounds();
-          b.extend(driverPos);
-          b.extend(destPos);
-          gmap.current.fitBounds(b, {
-            top: 80,
-            right: 80,
-            bottom: 200,
-            left: 80,
-          });
-        }
-        setShowDriverPanel(true);
-      } catch {}
-    };
-
-    pollDriver();
-    const interval = setInterval(pollDriver, 10000);
-    return () => clearInterval(interval);
   }, [mapsReady, activeOrders]);
 
-  // Renderizar pins en el mapa
+  // Repartidor en camino: marcador + ruta verde vía proxy (threshold >100 m)
+  useEffect(() => {
+    if (!mapsReady || !gmap.current) return;
+    const order = activeOrders.find((o) => o.status === "on_the_way");
+    if (
+      !order ||
+      !socketLocation?.latitude ||
+      !socketLocation?.longitude
+    )
+      return;
+    const google = (window as any).google;
+    const driverPos = {
+      lat: socketLocation.latitude,
+      lng: socketLocation.longitude,
+    };
+
+    const vehicle = vehicleMarkerMeta(order.vehicleType);
+
+    if (driverMarkerRef.current) {
+      driverMarkerRef.current.setPosition(driverPos);
+      driverMarkerRef.current.setIcon(
+        asGoogleIcon(google, driverIcon(vehicle.icon)),
+      );
+    } else {
+      driverMarkerRef.current = new google.maps.Marker({
+        position: driverPos,
+        map: gmap.current,
+        title: order.deliveryPersonName || "Repartidor",
+        icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
+        zIndex: 999,
+      });
+      driverMarkerRef.current.addListener("click", () =>
+        setShowDriverPanel(true),
+      );
+    }
+
+    // Ruta verde repartidor → casa vía proxy (caché + rate limit en servidor)
+    if (order.deliveryLatitude && order.deliveryLongitude) {
+      const destPos = {
+        lat: parseFloat(order.deliveryLatitude),
+        lng: parseFloat(order.deliveryLongitude),
+      };
+
+      const shouldRefetch =
+        !lastDriverRoutePointRef.current ||
+        !driverRouteCoordsRef.current ||
+        distanceMeters(
+          {
+            latitude: lastDriverRoutePointRef.current.lat,
+            longitude: lastDriverRoutePointRef.current.lng,
+          },
+          { latitude: driverPos.lat, longitude: driverPos.lng },
+        ) > 100;
+
+      if (shouldRefetch) {
+        lastDriverRoutePointRef.current = driverPos;
+        fetchRouteDirections(
+          { latitude: driverPos.lat, longitude: driverPos.lng },
+          { latitude: destPos.lat, longitude: destPos.lng },
+        )
+          .then((route) => {
+            if (route && route.coordinates.length >= 2) {
+              driverRouteCoordsRef.current = route.coordinates.map((c) => ({
+                lat: c.latitude,
+                lng: c.longitude,
+              }));
+            }
+            if (routeLineRef.current) {
+              routeLineRef.current.setMap(null);
+              routeLineRef.current = null;
+            }
+            routeLineRef.current = new google.maps.Polyline({
+              path: driverRouteCoordsRef.current || [driverPos, destPos],
+              geodesic: true,
+              strokeColor: "#10B981",
+              strokeOpacity: 0.9,
+              strokeWeight: 5,
+              map: gmap.current,
+            });
+          })
+          .catch(() => {});
+      }
+
+      // Ajustar bounds
+      const b = new google.maps.LatLngBounds();
+      b.extend(driverPos);
+      b.extend(destPos);
+      gmap.current.fitBounds(b, {
+        top: 80,
+        right: 80,
+        bottom: 200,
+        left: 80,
+      });
+    }
+    setShowDriverPanel(true);
+  }, [mapsReady, activeOrders, socketLocation]);
+
+  // Renderizar pins en el mapa (con clustering según zoom)
   useEffect(() => {
     if (!mapsReady || !gmap.current || businesses.length === 0) return;
     const google = (window as any).google;
@@ -410,33 +443,60 @@ export default function BusinessMapScreen() {
         ? businesses
         : businesses.filter((b) => b.type === categoryFilter);
 
-    filtered.forEach((b) => {
-      const meta = businessMarkerMeta(b.type, b.categories);
+    const clusters = clusterPoints(
+      filtered.map((b) => ({
+        id: b.id,
+        lat: b.latitude,
+        lng: b.longitude,
+        data: b,
+      })),
+      zoom,
+    );
 
-      const marker = new google.maps.Marker({
-        position: { lat: b.latitude, lng: b.longitude },
-        map: gmap.current,
-        title: b.name,
-        icon: asGoogleIcon(
-          google,
-          businessLabelIcon({
-            iconKey: meta.icon,
-            color: meta.color,
-            title: b.name,
-            subtitle: b.isOpen ? b.deliveryTime : "Cerrado",
-          }),
-        ),
-        zIndex: b.isOpen ? 10 : 1,
-      });
-
-      marker.addListener("click", () => {
-        setSelected(b);
-        gmap.current?.panTo({ lat: b.latitude - 0.005, lng: b.longitude });
-      });
-
-      markersRef.current.push(marker);
+    clusters.forEach((cluster) => {
+      if (cluster.count === 1) {
+        const b = cluster.items[0].data;
+        const meta = businessMarkerMeta(b.type, b.categories);
+        const marker = new google.maps.Marker({
+          position: { lat: cluster.lat, lng: cluster.lng },
+          map: gmap.current,
+          title: b.name,
+          icon: asGoogleIcon(
+            google,
+            businessLabelIcon({
+              iconKey: meta.icon,
+              color: meta.color,
+              title: b.name,
+              subtitle: b.isOpen ? b.deliveryTime : "Cerrado",
+            }),
+          ),
+          zIndex: b.isOpen ? 10 : 1,
+        });
+        marker.addListener("click", () => {
+          setSelected(b);
+          gmap.current?.panTo({ lat: b.latitude - 0.005, lng: b.longitude });
+        });
+        markersRef.current.push(marker);
+      } else {
+        // Cluster con contador: al pulsar, hace zoom para expandirlo
+        const marker = new google.maps.Marker({
+          position: { lat: cluster.lat, lng: cluster.lng },
+          map: gmap.current,
+          title: `${cluster.count} negocios`,
+          icon: {
+            url: clusterSvg(cluster.count),
+            scaledSize: new google.maps.Size(44, 44),
+          },
+          zIndex: 50,
+        });
+        marker.addListener("click", () => {
+          gmap.current?.panTo({ lat: cluster.lat, lng: cluster.lng });
+          gmap.current?.setZoom(Math.min(20, (gmap.current.getZoom() || zoom) + 2));
+        });
+        markersRef.current.push(marker);
+      }
     });
-  }, [mapsReady, businesses, categoryFilter]);
+  }, [mapsReady, businesses, categoryFilter, zoom]);
 
   const handleCenterUser = useCallback(() => {
     if (!userLocation) return;

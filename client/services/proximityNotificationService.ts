@@ -187,7 +187,7 @@ class ProximityNotificationService {
     destinationType: string,
   ): Promise<void> {
     try {
-      await apiRequest("POST", "/api/delivery/proximity-alert", {
+      await apiRequest("POST", "/api/gps/proximity-alert", {
         orderId,
         type,
         distance,

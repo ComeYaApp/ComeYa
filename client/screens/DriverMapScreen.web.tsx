@@ -204,6 +204,7 @@ export default function DriverMapScreen({
     });
 
     // ── GPS del repartidor ──
+    let lastPostAt = 0;
     watchId.current = navigator.geolocation?.watchPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -228,11 +229,16 @@ export default function DriverMapScreen({
           });
         }
 
-        // Actualizar ubicación en servidor
-        apiRequest("POST", "/api/delivery/location", {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        }).catch(() => {});
+        // Actualizar ubicación en servidor (throttle 5s para no saturar
+        // la BD ni el pipeline de tracking con cada fix del GPS)
+        const now = Date.now();
+        if (now - lastPostAt >= 5000) {
+          lastPostAt = now;
+          apiRequest("POST", "/api/delivery/location", {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }).catch(() => {});
+        }
 
         // Redibujar ruta si hay destino
         if (destMk.current) {
@@ -244,11 +250,8 @@ export default function DriverMapScreen({
       { enableHighAccuracy: true, maximumAge: 5000 },
     ) as unknown as number;
 
-    // ── Cargar pedido activo (o el específico) ──
-    const endpoint = orderId
-      ? `/api/delivery/active-order`
-      : "/api/delivery/active-order";
-    apiRequest("GET", endpoint)
+    // ── Cargar pedido activo ──
+    apiRequest("GET", "/api/delivery/active-order")
       .then((r) => r.json())
       .then((data) => {
         const order = data.order;
