@@ -4,82 +4,107 @@ import { sql } from "drizzle-orm";
 
 const router = express.Router();
 
-// Dashboard metrics
+// Dashboard metrics — agregados en SQL (antes cargaba users, businesses y
+// orders completos en memoria) y con tiempo medio de entrega REAL (antes era
+// la constante 35).
 router.get(
   "/dashboard/metrics",
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { users, businesses, orders } = await import(
-        "@shared/schema-mysql"
-      );
       const { db } = await import("../db");
 
-      const allUsers = await db.select().from(users);
-      const allBusinesses = await db.select().from(businesses);
-      const allOrders = await db.select().from(orders);
+      const [[todayRow], [activeRow], [avgRow], [driverRow], [bizRow]] =
+        (await Promise.all([
+          db
+            .execute(sql`
+              SELECT
+                COUNT(*) AS orders_today,
+                SUM(status = 'cancelled') AS cancelled_today,
+                SUM(status = 'delivered') AS delivered_today,
+                COALESCE(SUM(CASE WHEN status = 'delivered' THEN total ELSE 0 END), 0) AS revenue_today
+              FROM orders WHERE created_at >= CURDATE()
+            `)
+            .then((r: any) => r[0]),
+          db
+            .execute(sql`
+              SELECT COUNT(*) AS active_orders FROM orders
+              WHERE status IN (
+                'pending','accepted','preparing','ready',
+                'assigned_driver','picked_up','on_the_way','in_transit','arriving'
+              )
+            `)
+            .then((r: any) => r[0]),
+          db
+            .execute(sql`
+              SELECT
+                AVG(TIMESTAMPDIFF(MINUTE, created_at, delivered_at)) AS avg_total,
+                AVG(TIMESTAMPDIFF(MINUTE, driver_picked_up_at, delivered_at)) AS avg_delivery
+              FROM orders
+              WHERE status = 'delivered' AND delivered_at IS NOT NULL
+                AND delivered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                AND TIMESTAMPDIFF(MINUTE, created_at, delivered_at) BETWEEN 1 AND 240
+            `)
+            .then((r: any) => r[0]),
+          db
+            .execute(sql`
+              SELECT
+                COUNT(*) AS total,
+                SUM(
+                  is_available = 1
+                  AND last_location_update IS NOT NULL
+                  AND last_location_update >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+                ) AS online
+              FROM delivery_drivers
+            `)
+            .then((r: any) => r[0]),
+          db
+            .execute(sql`
+              SELECT
+                COUNT(*) AS total,
+                SUM(is_paused = 1 OR is_active = 0) AS paused
+              FROM businesses
+            `)
+            .then((r: any) => r[0]),
+        ])) as any;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = (todayRow as any[])[0] || {};
+      const active = (activeRow as any[])[0] || {};
+      const avg = (avgRow as any[])[0] || {};
+      const drv = (driverRow as any[])[0] || {};
+      const biz = (bizRow as any[])[0] || {};
 
-      const todayOrders = allOrders.filter((o: any) => {
-        const orderDate = new Date(o.createdAt);
-        return orderDate >= today;
-      });
-
-      const sevenDaysAgo = new Date(today);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      const recentOrders = allOrders.filter((o: any) => {
-        const orderDate = new Date(o.createdAt);
-        return orderDate >= sevenDaysAgo;
-      });
-
-      const ordersToShow = todayOrders.length > 0 ? todayOrders : recentOrders;
-      const timeframe = todayOrders.length > 0 ? "hoy" : "últimos 7 días";
-
-      const cancelledToday = ordersToShow.filter(
-        (o: any) => o.status === "cancelled",
-      ).length;
-      const driversOnline = allUsers.filter(
-        (u: any) => u.role === "delivery_driver" && u.isActive,
-      ).length;
-      const totalDrivers = allUsers.filter(
-        (u: any) => u.role === "delivery_driver",
-      ).length;
-      const pausedBusinesses = allBusinesses.filter(
-        (b: any) => !b.isActive,
-      ).length;
-      const totalBusinesses = allBusinesses.length;
-
-      const activeOrdersCount = allOrders.filter((o: any) =>
-        ["pending", "accepted", "preparing", "ready", "on_the_way"].includes(
-          o.status,
-        ),
-      ).length;
-
-      const todayRevenue = ordersToShow
-        .filter((o: any) => o.status === "delivered")
-        .reduce((sum: number, o: any) => sum + Number(o.total), 0);
+      const ordersToday = Number(today.orders_today) || 0;
+      const cancelledToday = Number(today.cancelled_today) || 0;
+      const onlineDrivers = Number(drv.online) || 0;
+      const avgDeliveryTime =
+        avg.avg_delivery != null
+          ? Math.round(Number(avg.avg_delivery))
+          : avg.avg_total != null
+            ? Math.round(Number(avg.avg_total))
+            : null;
 
       res.json({
-        activeOrders: activeOrdersCount,
-        ordersToday: ordersToShow.length,
-        onlineDrivers: driversOnline,
-        todayOrders: ordersToShow.length,
-        todayRevenue: todayRevenue,
+        activeOrders: Number(active.active_orders) || 0,
+        ordersToday,
+        onlineDrivers,
+        todayOrders: ordersToday,
+        todayRevenue: Number(today.revenue_today) || 0,
+        deliveredToday: Number(today.delivered_today) || 0,
         cancelledToday,
         cancellationRate:
-          ordersToShow.length > 0
-            ? ((cancelledToday / ordersToShow.length) * 100).toFixed(1) + "%"
+          ordersToday > 0
+            ? ((cancelledToday / ordersToday) * 100).toFixed(1) + "%"
             : "0%",
-        avgDeliveryTime: 35,
-        driversOnline,
-        totalDrivers,
-        pausedBusinesses,
-        totalBusinesses,
-        timeframe,
+        avgDeliveryTime,
+        avgTotalTime:
+          avg.avg_total != null ? Math.round(Number(avg.avg_total)) : null,
+        driversOnline: onlineDrivers,
+        totalDrivers: Number(drv.total) || 0,
+        pausedBusinesses: Number(biz.paused) || 0,
+        totalBusinesses: Number(biz.total) || 0,
+        timeframe: "hoy",
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
@@ -89,93 +114,79 @@ router.get(
 );
 
 // Get active orders for dashboard
+// Una sola query con joins (antes: 3-4 queries por pedido) y con los estados
+// completos del enum — antes faltaban assigned_driver, picked_up, in_transit
+// y arriving, así que esos pedidos no aparecían en el mapa del admin.
 router.get(
   "/dashboard/active-orders",
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { orders, users, businesses } = await import(
-        "@shared/schema-mysql"
-      );
       const { db } = await import("../db");
-      const { eq, inArray } = await import("drizzle-orm");
 
-      const activeOrders = await db
-        .select()
-        .from(orders)
-        .where(
-          inArray(orders.status, [
-            "pending",
-            "accepted",
-            "preparing",
-            "ready",
-            "on_the_way",
-          ] as any),
-        );
+      const [rows] = (await db.execute(sql`
+        SELECT
+          o.id, o.status, o.total, o.created_at, o.payment_method, o.order_type,
+          o.delivery_latitude, o.delivery_longitude, o.delivery_address,
+          o.delivery_person_id,
+          u.id AS customer_id, u.name AS customer_name, u.phone AS customer_phone,
+          b.id AS business_id, b.name AS business_name,
+          b.latitude AS business_lat, b.longitude AS business_lng,
+          du.name AS driver_name,
+          dd.vehicle_type AS driver_vehicle,
+          dd.is_available AS driver_available,
+          dd.current_latitude AS driver_lat,
+          dd.current_longitude AS driver_lng,
+          dd.last_location_update AS driver_last_update
+        FROM orders o
+        LEFT JOIN users u ON o.user_id = u.id
+        LEFT JOIN businesses b ON o.business_id = b.id
+        LEFT JOIN delivery_drivers dd ON o.delivery_person_id = dd.user_id
+        LEFT JOIN users du ON dd.user_id = du.id
+        WHERE o.status IN (
+          'pending','accepted','preparing','ready',
+          'assigned_driver','picked_up','on_the_way','in_transit','arriving'
+        )
+        ORDER BY o.created_at DESC
+        LIMIT 200
+      `)) as any;
 
-      const ordersWithDetails = [];
-
-      for (const order of activeOrders) {
-        const customer = await db
-          .select({ id: users.id, name: users.name })
-          .from(users)
-          .where(eq(users.id, order.userId as string))
-          .limit(1);
-
-        const business = await db
-          .select({
-            id: businesses.id,
-            name: businesses.name,
-            latitude: businesses.latitude,
-            longitude: businesses.longitude,
-          })
-          .from(businesses)
-          .where(eq(businesses.id, order.businessId as string))
-          .limit(1);
-
-        let driver = null;
-        if (order.deliveryPersonId) {
-          const driverData = await db
-            .select({
-              id: users.id,
-              name: users.name,
-              isOnline: users.isActive,
-            })
-            .from(users)
-            .where(eq(users.id, order.deliveryPersonId as string))
-            .limit(1);
-          const { deliveryDrivers } = await import("@shared/schema-mysql");
-          const [dd] = await db
-            .select({ vehicleType: deliveryDrivers.vehicleType })
-            .from(deliveryDrivers)
-            .where(eq(deliveryDrivers.userId, order.deliveryPersonId as string))
-            .limit(1);
-          driver = driverData[0]
-            ? { ...driverData[0], vehicleType: dd?.vehicleType ?? null }
-            : null;
-        }
-
-        ordersWithDetails.push({
-          id: order.id,
-          status: order.status,
-          total: order.total || 0,
-          createdAt: order.createdAt,
-          customer: customer[0] || { id: "", name: "Cliente" },
-          business: business[0] || {
-            id: "",
-            name: "Negocio",
-            latitude: null,
-            longitude: null,
-          },
-          deliveryAddress: {
-            latitude: order.deliveryLatitude,
-            longitude: order.deliveryLongitude,
-            address: order.deliveryAddress || "Dirección no disponible",
-          },
-          driver,
-        });
-      }
+      const ordersWithDetails = (rows as any[]).map((r) => ({
+        id: r.id,
+        status: r.status,
+        total: Number(r.total) || 0,
+        createdAt: r.created_at,
+        paymentMethod: r.payment_method,
+        orderType: r.order_type,
+        customer: {
+          id: r.customer_id || "",
+          name: r.customer_name || "Cliente",
+          phone: r.customer_phone || null,
+        },
+        business: {
+          id: r.business_id || "",
+          name: r.business_name || "Negocio",
+          latitude: r.business_lat,
+          longitude: r.business_lng,
+        },
+        deliveryAddress: {
+          latitude: r.delivery_latitude,
+          longitude: r.delivery_longitude,
+          address: r.delivery_address || "Dirección no disponible",
+        },
+        driver: r.delivery_person_id
+          ? {
+              id: r.delivery_person_id,
+              name: r.driver_name || "Repartidor",
+              isOnline: !!r.driver_available,
+              vehicleType: r.driver_vehicle ?? null,
+              currentLatitude: r.driver_lat ?? null,
+              currentLongitude: r.driver_lng ?? null,
+              lastLocationUpdate: r.driver_last_update ?? null,
+            }
+          : null,
+      }));
 
       res.json({ orders: ordersWithDetails });
     } catch (error: any) {
@@ -185,42 +196,80 @@ router.get(
 );
 
 // Get online drivers for dashboard
+// Devuelve repartidores con GPS, marcando quién está realmente conectado
+// (disponible + GPS fresco). Antes: N+1 y devolvía TODOS los repartidores
+// pese al nombre del endpoint, con activeOrder siempre null.
 router.get(
   "/dashboard/online-drivers",
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { users, deliveryDrivers } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
-      const { eq } = await import("drizzle-orm");
+      const onlyOnline = req.query.onlyOnline === "true";
 
-      const driverUsers = await db
-        .select()
-        .from(users)
-        .where(eq(users.role, "delivery_driver"));
+      const [rows] = (await db.execute(sql`
+        SELECT
+          dd.user_id AS id, u.name, u.phone,
+          dd.vehicle_type, dd.vehicle_plate, dd.rating, dd.total_deliveries,
+          dd.is_available, dd.is_blocked,
+          dd.current_latitude, dd.current_longitude, dd.last_location_update,
+          u.last_active_at,
+          (
+            SELECT o.id FROM orders o
+            WHERE o.delivery_person_id = dd.user_id
+              AND o.status IN ('assigned_driver','picked_up','on_the_way','in_transit','arriving','ready')
+            ORDER BY o.created_at DESC LIMIT 1
+          ) AS active_order_id
+        FROM delivery_drivers dd
+        LEFT JOIN users u ON dd.user_id = u.id
+        ORDER BY dd.is_available DESC, dd.last_location_update DESC
+      `)) as any;
 
-      const driversWithDetails = await Promise.all(
-        driverUsers.map(async (driver: any) => {
-          const [dd] = await db
-            .select()
-            .from(deliveryDrivers)
-            .where(eq(deliveryDrivers.userId, driver.id as string))
-            .limit(1);
-          return {
-            id: driver.id,
-            name: driver.name,
-            isOnline: driver.isOnline ?? driver.isActive,
-            lastActiveAt: driver.lastActiveAt,
-            currentLatitude: dd?.currentLatitude ?? null,
-            currentLongitude: dd?.currentLongitude ?? null,
-            vehicleType: dd?.vehicleType ?? null,
-            activeOrder: null,
-          };
-        }),
-      );
+      const drivers = (rows as any[]).map((r) => {
+        const lastUpdate = r.last_location_update
+          ? new Date(r.last_location_update).getTime()
+          : null;
+        const lastUpdateMinutes =
+          lastUpdate != null
+            ? Math.max(0, Math.round((Date.now() - lastUpdate) / 60000))
+            : null;
+        const isOnline =
+          !!r.is_available && lastUpdateMinutes != null && lastUpdateMinutes < 10;
 
-      res.json({ drivers: driversWithDetails });
+        return {
+          id: r.id,
+          name: r.name || "Repartidor",
+          phone: r.phone || null,
+          isOnline,
+          isAvailable: !!r.is_available,
+          isBlocked: !!r.is_blocked,
+          lastActiveAt: r.last_active_at,
+          // Formato plano (el mapa nativo lo consume así) + objeto anidado
+          // por compatibilidad con consumidores antiguos
+          currentLatitude: r.current_latitude ?? null,
+          currentLongitude: r.current_longitude ?? null,
+          location:
+            r.current_latitude && r.current_longitude
+              ? {
+                  latitude: r.current_latitude,
+                  longitude: r.current_longitude,
+                }
+              : null,
+          lastLocationUpdate: r.last_location_update ?? null,
+          lastUpdateMinutes,
+          staleGps: lastUpdateMinutes == null || lastUpdateMinutes >= 10,
+          vehicleType: r.vehicle_type ?? null,
+          vehiclePlate: r.vehicle_plate ?? null,
+          rating: r.rating ? (r.rating / 10).toFixed(1) : null,
+          totalDeliveries: Number(r.total_deliveries) || 0,
+          activeOrder: r.active_order_id || null,
+        };
+      });
+
+      res.json({
+        drivers: onlyOnline ? drivers.filter((d) => d.isOnline) : drivers,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -1,59 +1,158 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  ScrollView,
+  Linking,
+  Alert,
 } from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE, Polyline } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
-import { ComeYaColors } from "@/constants/theme";
-import { apiRequest } from "@/lib/query-client";
+import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { apiRequest, apiRequestRaw } from "@/lib/query-client";
+import { useAdminOps, type OpsOrder } from "@/hooks/useAdminOps";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { DriverPin } from "@/components/map/DriverPin";
-import { vehicleMarkerMeta, ORDER_MARKER } from "@/utils/markerMeta";
+import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
+import {
+  businessMarkerMeta,
+  vehicleMarkerMeta,
+  CUSTOMER_MARKER,
+} from "@/utils/markerMeta";
+
+const SORIA_REGION = {
+  latitude: 41.7636,
+  longitude: -2.4677,
+  latitudeDelta: 0.08,
+  longitudeDelta: 0.08,
+};
+
+const STATUS_META: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pendiente", color: "#F59E0B" },
+  accepted: { label: "Aceptado", color: "#3B82F6" },
+  preparing: { label: "Preparando", color: "#8B5CF6" },
+  ready: { label: "Listo", color: "#10B981" },
+  assigned_driver: { label: "Asignado", color: "#6366F1" },
+  picked_up: { label: "Recogido", color: "#0EA5E9" },
+  on_the_way: { label: "En camino", color: "#DC2626" },
+  in_transit: { label: "En tránsito", color: "#DC2626" },
+  arriving: { label: "Llegando", color: "#EC4899" },
+};
+
+const statusMeta = (s: string) =>
+  STATUS_META[s] || { label: s, color: "#6B7280" };
+
+const euro = (cents: number) =>
+  new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
+    (Number(cents) || 0) / 100,
+  );
+
+type Filter = "all" | "orders" | "drivers" | "businesses" | "alerts";
 
 export default function AdminMapScreen() {
   const { theme } = useTheme();
-  const [loading, setLoading] = useState(true);
-  const [activeOrders, setActiveOrders] = useState<any[]>([]);
-  const [drivers, setDrivers] = useState<any[]>([]);
-  const [filter, setFilter] = useState<"all" | "orders" | "drivers">("all");
+  const insets = useSafeAreaInsets();
+  const mapRef = useRef<MapView>(null);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [selected, setSelected] = useState<OpsOrder | null>(null);
+  const [nearby, setNearby] = useState<any[] | null>(null);
+  const [assigning, setAssigning] = useState(false);
 
-  const load = async () => {
-    try {
-      const [ordersRes, driversRes] = await Promise.all([
-        apiRequest("GET", "/api/admin/dashboard/active-orders"),
-        apiRequest("GET", "/api/admin/dashboard/online-drivers"),
-      ]);
+  const {
+    kpis,
+    orders,
+    drivers,
+    businesses,
+    loading,
+    error,
+    socketConnected,
+    updatedAt,
+    refresh,
+  } = useAdminOps(15000);
 
-      const [ordersData, driversData] = await Promise.all([
-        ordersRes.json(),
-        driversRes.json(),
-      ]);
+  const visibleOrders = useMemo(
+    () => (filter === "alerts" ? orders.filter((o) => o.alerts.length > 0) : orders),
+    [orders, filter],
+  );
 
-      if (ordersData.orders) setActiveOrders(ordersData.orders);
-      if (driversData.drivers) setDrivers(driversData.drivers);
-    } catch (error) {
-      console.error("Error loading map data:", error);
-    } finally {
-      setLoading(false);
+  const showOrders = filter === "all" || filter === "orders" || filter === "alerts";
+  const showDrivers = filter === "all" || filter === "drivers";
+  const showBusinesses = filter === "all" || filter === "businesses";
+
+  const focusOrder = useCallback((o: OpsOrder) => {
+    setSelected(o);
+    setNearby(null);
+    const coords: { latitude: number; longitude: number }[] = [];
+    if (o.business) {
+      coords.push({ latitude: o.business.lat, longitude: o.business.lng });
     }
-  };
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 10000); // Actualizar cada 10s
-    return () => clearInterval(interval);
+    if (o.customer.lat != null && o.customer.lng != null) {
+      coords.push({ latitude: o.customer.lat, longitude: o.customer.lng });
+    }
+    if (o.driver?.lat != null && o.driver?.lng != null) {
+      coords.push({ latitude: o.driver.lat, longitude: o.driver.lng });
+    }
+    if (coords.length && mapRef.current) {
+      mapRef.current.fitToCoordinates(coords, {
+        edgePadding: { top: 120, right: 60, bottom: 320, left: 60 },
+        animated: true,
+      });
+    }
   }, []);
 
-  if (loading) {
+  const loadNearby = useCallback(async (orderId: string) => {
+    setNearby([]);
+    try {
+      const res = await apiRequest(
+        "GET",
+        `/api/admin/ops/nearby-drivers?orderId=${orderId}`,
+      );
+      const data = await res.json();
+      setNearby(data.drivers || []);
+    } catch {
+      setNearby([]);
+      Alert.alert("Error", "No se pudieron cargar los repartidores cercanos");
+    }
+  }, []);
+
+  const assign = useCallback(
+    async (orderId: string, driverId: string, driverName: string) => {
+      setAssigning(true);
+      try {
+        const res = await apiRequestRaw("POST", "/api/delivery/assign", {
+          orderId,
+          driverId,
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          Alert.alert("Asignado", `${driverName} ahora lleva este pedido`);
+          setNearby(null);
+          refresh();
+        } else {
+          Alert.alert("Error", data.error || "No se pudo asignar");
+        }
+      } catch (e: any) {
+        Alert.alert("Error", e?.message || "No se pudo asignar");
+      } finally {
+        setAssigning(false);
+      }
+    },
+    [refresh],
+  );
+
+  if (loading && !orders.length && !error) {
     return (
       <View style={[s.centered, { backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={ComeYaColors.primary} />
+        <Text style={{ color: theme.textSecondary, marginTop: Spacing.md }}>
+          Cargando centro de operaciones...
+        </Text>
       </View>
     );
   }
@@ -61,202 +160,534 @@ export default function AdminMapScreen() {
   return (
     <View style={{ flex: 1 }}>
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={{ flex: 1 }}
-        initialRegion={{
-          latitude: 41.7636,
-          longitude: -2.4677,
-          latitudeDelta: 0.1,
-          longitudeDelta: 0.1,
-        }}
+        initialRegion={SORIA_REGION}
       >
-        {/* Pedidos activos — paquete rojo */}
-        {(filter === "all" || filter === "orders") &&
-          activeOrders.map((order) => {
-            if (!order.deliveryAddress?.latitude) return null;
+        {/* Negocios */}
+        {showBusinesses &&
+          businesses.map((b) => {
+            const meta = businessMarkerMeta(
+              b.type ?? undefined,
+              b.categories ?? undefined,
+            );
             return (
               <SmartMarker
-                key={order.id}
-                coordinate={{
-                  latitude: parseFloat(order.deliveryAddress.latitude),
-                  longitude: parseFloat(order.deliveryAddress.longitude),
-                }}
-                title={`Pedido #${order.id.slice(-6)}`}
-                description={`${order.customer?.name || "Cliente"} - ${order.status}`}
+                key={`biz_${b.id}`}
+                coordinate={{ latitude: b.lat, longitude: b.lng }}
+                title={b.name}
+                description={`${b.isPaused ? "Pausado" : b.isOpen ? "Abierto" : "Cerrado"} · ${b.activeOrders} pedidos activos`}
                 anchor={{ x: 0.5, y: 1 }}
-                trackKey={`ord_${order.id}`}
+                trackKey={`biz_${b.id}_${b.isOpen}_${b.activeOrders}`}
               >
-                <MapPin
-                  icon={ORDER_MARKER.icon}
-                  color={ORDER_MARKER.color}
+                <BusinessBubblePin
+                  icon={meta.icon}
+                  color={b.isPaused ? "#6B7280" : meta.color}
+                  title={b.name}
+                  compact
                 />
               </SmartMarker>
             );
           })}
 
-        {/* Repartidores online — su vehículo */}
-        {(filter === "all" || filter === "drivers") &&
-          drivers.map((driver) => {
-            if (!driver.location?.latitude) return null;
-            const vehicle = vehicleMarkerMeta(driver.vehicleType);
+        {/* Pedidos: destino del cliente */}
+        {showOrders &&
+          visibleOrders.map((o) => {
+            if (o.customer.lat == null || o.customer.lng == null) return null;
+            const meta = statusMeta(o.status);
+            const hasAlert = o.alerts.length > 0;
             return (
               <SmartMarker
-                key={driver.id}
+                key={`ord_${o.id}`}
                 coordinate={{
-                  latitude: parseFloat(driver.location.latitude),
-                  longitude: parseFloat(driver.location.longitude),
+                  latitude: o.customer.lat,
+                  longitude: o.customer.lng,
                 }}
-                title={driver.name}
-                description={`${vehicle.label} - ${driver.isOnline ? "En línea" : "Offline"}`}
+                title={`#${o.id.slice(-6)} · ${meta.label}`}
+                description={`${o.customer.name} · ${euro(o.total)} · ${o.minutesActive ?? "?"} min`}
+                anchor={{ x: 0.5, y: 1 }}
+                onPress={() => focusOrder(o)}
+                trackKey={`ord_${o.id}_${o.status}_${hasAlert}`}
+              >
+                <MapPin
+                  icon={CUSTOMER_MARKER.icon}
+                  color={hasAlert ? "#DC2626" : meta.color}
+                  size={34}
+                />
+              </SmartMarker>
+            );
+          })}
+
+        {/* Repartidores */}
+        {showDrivers &&
+          drivers.map((d) => {
+            const vehicle = vehicleMarkerMeta(d.vehicleType);
+            const color = d.isBlocked
+              ? "#6B7280"
+              : d.staleGps
+                ? "#F59E0B"
+                : d.isOnline
+                  ? ComeYaColors.success
+                  : "#9CA3AF";
+            return (
+              <SmartMarker
+                key={`drv_${d.id}`}
+                coordinate={{ latitude: d.lat, longitude: d.lng }}
+                title={d.name}
+                description={`${vehicle.label} · ${
+                  d.isBlocked
+                    ? "Bloqueado"
+                    : d.staleGps
+                      ? `GPS hace ${d.lastUpdateMinutes ?? "?"} min`
+                      : d.isOnline
+                        ? "Conectado"
+                        : "Desconectado"
+                }`}
                 anchor={{ x: 0.5, y: 0.5 }}
-                trackKey={`dr_${driver.id}_${driver.vehicleType ?? ""}_${driver.isOnline}`}
+                trackKey={`drv_${d.id}_${d.isOnline}_${d.staleGps}`}
               >
                 <DriverPin
                   vehicleIcon={vehicle.icon}
-                  color={
-                    driver.isOnline
-                      ? ComeYaColors.success
-                      : "#6B7280"
-                  }
-                  pulse={!!driver.isOnline}
+                  color={color}
+                  pulse={d.isOnline && !d.staleGps}
                 />
               </SmartMarker>
             );
           })}
+
+        {/* Ruta del pedido seleccionado (etapa actual) */}
+        {(() => {
+          const dlat = selected?.driver?.lat;
+          const dlng = selected?.driver?.lng;
+          if (!selected || dlat == null || dlng == null) return null;
+
+          const isPickup = [
+            "assigned_driver",
+            "ready",
+            "accepted",
+            "preparing",
+          ].includes(selected.status);
+
+          let dest: { latitude: number; longitude: number } | null = null;
+          if (isPickup && selected.business) {
+            dest = {
+              latitude: selected.business.lat,
+              longitude: selected.business.lng,
+            };
+          } else if (
+            !isPickup &&
+            selected.customer.lat != null &&
+            selected.customer.lng != null
+          ) {
+            dest = {
+              latitude: selected.customer.lat,
+              longitude: selected.customer.lng,
+            };
+          }
+          if (!dest) return null;
+
+          return (
+            <Polyline
+              coordinates={[{ latitude: dlat, longitude: dlng }, dest]}
+              strokeColor={isPickup ? "#F59E0B" : "#10B981"}
+              strokeWidth={4}
+            />
+          );
+        })()}
       </MapView>
 
-      {/* Filter buttons */}
-      <View style={[s.filterBar, { backgroundColor: theme.card }]}>
-        <TouchableOpacity
-          style={[
-            s.filterBtn,
-            filter === "all" && { backgroundColor: ComeYaColors.primary },
-          ]}
-          onPress={() => setFilter("all")}
-        >
-          <Text
-            style={[
-              s.filterText,
-              { color: filter === "all" ? "#FFF" : theme.text },
-            ]}
-          >
-            Todo ({activeOrders.length + drivers.length})
-          </Text>
-        </TouchableOpacity>
+      {/* Header con KPIs */}
+      <View
+        style={[
+          s.header,
+          { backgroundColor: theme.card, paddingTop: insets.top + 8 },
+          Shadows.md,
+        ]}
+      >
+        <View style={s.headerTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.title, { color: theme.text }]}>Operaciones</Text>
+            <View style={s.liveRow}>
+              <View
+                style={[
+                  s.liveDot,
+                  { backgroundColor: socketConnected ? "#22C55E" : "#F59E0B" },
+                ]}
+              />
+              <Text style={[s.caption, { color: theme.textSecondary }]}>
+                {socketConnected ? "En vivo" : "Polling"}
+                {updatedAt
+                  ? ` · ${new Date(updatedAt).toLocaleTimeString("es-ES")}`
+                  : ""}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={refresh} style={s.iconBtn}>
+            <Feather name="refresh-cw" size={17} color={ComeYaColors.primary} />
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={[
-            s.filterBtn,
-            filter === "orders" && { backgroundColor: ComeYaColors.primary },
-          ]}
-          onPress={() => setFilter("orders")}
-        >
-          <Feather
-            name="shopping-bag"
-            size={16}
-            color={filter === "orders" ? "#FFF" : theme.text}
-          />
-          <Text
-            style={[
-              s.filterText,
-              { color: filter === "orders" ? "#FFF" : theme.text },
-            ]}
-          >
-            Pedidos ({activeOrders.length})
+        {error ? (
+          <Text style={[s.caption, { color: "#DC2626", marginTop: 4 }]}>
+            {error}
           </Text>
-        </TouchableOpacity>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginTop: 6 }}
+          >
+            <KpiChip label="Activos" value={kpis?.activeOrders ?? "-"} color="#3B82F6" />
+            <KpiChip
+              label="Sin repartidor"
+              value={kpis?.ordersWithoutDriver ?? "-"}
+              color={kpis?.ordersWithoutDriver ? "#DC2626" : "#22C55E"}
+            />
+            <KpiChip
+              label="Repartidores"
+              value={`${kpis?.drivers.online ?? 0}/${kpis?.drivers.total ?? 0}`}
+              color="#10B981"
+            />
+            <KpiChip
+              label="Alertas"
+              value={kpis?.alertCount ?? 0}
+              color={kpis?.alertCount ? "#DC2626" : "#22C55E"}
+            />
+            <KpiChip
+              label="Hoy"
+              value={euro(kpis?.revenueToday ?? 0)}
+              color="#F59E0B"
+            />
+            <KpiChip
+              label="T. medio"
+              value={
+                kpis?.avgDeliveryMinutes != null
+                  ? `${kpis.avgDeliveryMinutes}m`
+                  : "—"
+              }
+              color="#8B5CF6"
+            />
+          </ScrollView>
+        )}
 
-        <TouchableOpacity
-          style={[
-            s.filterBtn,
-            filter === "drivers" && { backgroundColor: ComeYaColors.primary },
-          ]}
-          onPress={() => setFilter("drivers")}
-        >
-          <Feather
-            name="truck"
-            size={16}
-            color={filter === "drivers" ? "#FFF" : theme.text}
-          />
-          <Text
-            style={[
-              s.filterText,
-              { color: filter === "drivers" ? "#FFF" : theme.text },
-            ]}
-          >
-            Repartidores ({drivers.length})
-          </Text>
-        </TouchableOpacity>
+        <View style={s.filterRow}>
+          {(
+            [
+              ["all", "Todo"],
+              ["orders", `Pedidos (${orders.length})`],
+              ["drivers", `Repartidores (${drivers.length})`],
+              ["businesses", `Negocios (${businesses.length})`],
+              ["alerts", `Alertas (${kpis?.alertCount ?? 0})`],
+            ] as [Filter, string][]
+          ).map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setFilter(key)}
+              style={[
+                s.filterBtn,
+                {
+                  backgroundColor:
+                    filter === key ? ComeYaColors.primary : "transparent",
+                  borderColor: filter === key ? ComeYaColors.primary : theme.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  s.filterTxt,
+                  { color: filter === key ? "#fff" : theme.textSecondary },
+                ]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
-      {/* Stats overlay */}
-      <View style={[s.statsOverlay, { backgroundColor: theme.card }]}>
-        <View style={s.statItem}>
-          <Feather name="activity" size={20} color={ComeYaColors.primary} />
-          <Text style={[s.statValue, { color: theme.text }]}>
-            {activeOrders.length}
-          </Text>
-          <Text style={[s.statLabel, { color: theme.textSecondary }]}>
-            Activos
-          </Text>
+      {/* Ficha del pedido seleccionado */}
+      {selected && (
+        <View
+          style={[
+            s.sheet,
+            { backgroundColor: theme.card, paddingBottom: insets.bottom + 12 },
+            Shadows.lg,
+          ]}
+        >
+          <ScrollView>
+            <View style={s.rowBetween}>
+              <Text style={[s.title, { color: theme.text }]}>
+                #{selected.id.slice(-6)}
+              </Text>
+              <TouchableOpacity onPress={() => setSelected(null)} style={s.iconBtn}>
+                <Feather name="x" size={18} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={[
+                s.statusPill,
+                { backgroundColor: statusMeta(selected.status).color },
+              ]}
+            >
+              <Text style={s.statusPillTxt}>
+                {statusMeta(selected.status).label} · {selected.minutesActive ?? "?"} min
+              </Text>
+            </View>
+
+            {selected.alerts.map((a, i) => (
+              <Text key={i} style={[s.caption, { color: "#DC2626", marginTop: 4 }]}>
+                ⚠️ {a.message}
+              </Text>
+            ))}
+
+            <Text style={[s.detailTxt, { color: theme.text, marginTop: Spacing.sm }]}>
+              🏪 {selected.business?.name || "—"} → 🏠 {selected.customer.name}
+            </Text>
+            <Text style={[s.caption, { color: theme.textSecondary }]}>
+              {selected.customer.address || "Sin dirección"}
+            </Text>
+            <Text style={[s.detailTxt, { color: theme.text, marginTop: 4 }]}>
+              {euro(selected.total)} ·{" "}
+              {selected.paymentMethod === "cash" ? "Efectivo" : "Pagado digital"}
+            </Text>
+
+            {selected.driver ? (
+              <Text style={[s.caption, { color: theme.textSecondary, marginTop: 4 }]}>
+                🛵 {selected.driver.name} · GPS{" "}
+                {selected.driver.lastUpdateMinutes != null
+                  ? `hace ${selected.driver.lastUpdateMinutes} min`
+                  : "sin datos"}
+              </Text>
+            ) : (
+              <Text style={[s.caption, { color: "#DC2626", marginTop: 4 }]}>
+                Sin repartidor asignado
+              </Text>
+            )}
+
+            <View style={s.actionRow}>
+              {selected.customer.phone && (
+                <ActionBtn
+                  icon="phone"
+                  label="Cliente"
+                  color="#10B981"
+                  onPress={() => Linking.openURL(`tel:${selected.customer.phone}`)}
+                />
+              )}
+              {selected.driver?.phone && (
+                <ActionBtn
+                  icon="phone"
+                  label="Repartidor"
+                  color="#0EA5E9"
+                  onPress={() => Linking.openURL(`tel:${selected.driver?.phone}`)}
+                />
+              )}
+              {selected.business?.phone && (
+                <ActionBtn
+                  icon="phone"
+                  label="Negocio"
+                  color="#3B82F6"
+                  onPress={() => Linking.openURL(`tel:${selected.business?.phone}`)}
+                />
+              )}
+              <ActionBtn
+                icon={selected.driver ? "repeat" : "user-plus"}
+                label={selected.driver ? "Reasignar" : "Asignar"}
+                color={ComeYaColors.primary}
+                onPress={() => loadNearby(selected.id)}
+              />
+            </View>
+
+            {nearby && (
+              <View style={[s.nearbyBox, { borderColor: theme.border }]}>
+                <Text style={[s.caption, { color: theme.textSecondary, fontWeight: "700" }]}>
+                  REPARTIDORES CERCANOS
+                </Text>
+                {nearby.length === 0 ? (
+                  <Text style={[s.caption, { color: theme.textSecondary }]}>
+                    No hay repartidores disponibles
+                  </Text>
+                ) : (
+                  nearby.map((d: any) => (
+                    <TouchableOpacity
+                      key={d.id}
+                      disabled={assigning || d.isCurrent}
+                      onPress={() => assign(selected.id, d.id, d.name)}
+                      style={[s.nearbyRow, { borderBottomColor: theme.border }]}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.caption, { color: theme.text, fontWeight: "600" }]}>
+                          {d.name} {d.isCurrent ? "(actual)" : ""}
+                        </Text>
+                        <Text style={[s.caption, { color: theme.textSecondary }]}>
+                          {d.isOnline ? "Conectado" : "Desconectado"}
+                          {d.distanceKm != null ? ` · ${d.distanceKm} km` : ""}
+                          {d.busy ? " · ocupado" : ""}
+                        </Text>
+                      </View>
+                      {!d.isCurrent && (
+                        <Feather
+                          name="chevron-right"
+                          size={16}
+                          color={ComeYaColors.primary}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
+            )}
+          </ScrollView>
         </View>
-        <View style={s.statItem}>
-          <Feather name="truck" size={20} color={ComeYaColors.success} />
-          <Text style={[s.statValue, { color: theme.text }]}>
-            {drivers.filter((d) => d.isOnline).length}
+      )}
+
+      {/* Lista rápida de alertas cuando no hay selección */}
+      {!selected && (kpis?.alertCount ?? 0) > 0 && (
+        <TouchableOpacity
+          onPress={() => setFilter("alerts")}
+          style={[s.alertBanner, { backgroundColor: "#DC2626" }, Shadows.md]}
+        >
+          <Feather name="alert-triangle" size={15} color="#fff" />
+          <Text style={s.alertBannerTxt}>
+            {kpis?.alertCount} pedido(s) necesitan atención
           </Text>
-          <Text style={[s.statLabel, { color: theme.textSecondary }]}>
-            Online
-          </Text>
-        </View>
-      </View>
+        </TouchableOpacity>
+      )}
     </View>
+  );
+}
+
+function KpiChip({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: any;
+  color: string;
+}) {
+  return (
+    <View style={[s.kpiChip, { borderLeftColor: color }]}>
+      <Text style={[s.kpiValue, { color }]}>{value}</Text>
+      <Text style={s.kpiLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ActionBtn({
+  icon,
+  label,
+  color,
+  onPress,
+}: {
+  icon: any;
+  label: string;
+  color: string;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity onPress={onPress} style={[s.actionBtn, { backgroundColor: color }]}>
+      <Feather name={icon} size={13} color="#fff" />
+      <Text style={s.actionTxt}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
 const s = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  filterBar: {
+  header: {
     position: "absolute",
-    top: 16,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    gap: 8,
-    padding: 8,
-    borderRadius: 12,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
+  headerTop: { flexDirection: "row", alignItems: "center" },
+  title: { fontSize: 17, fontWeight: "700" },
+  caption: { fontSize: 11 },
+  liveRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
+  liveDot: { width: 7, height: 7, borderRadius: 4 },
+  iconBtn: { padding: 8 },
+  kpiChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginRight: 6,
+    borderLeftWidth: 3,
+    backgroundColor: "rgba(128,128,128,0.08)",
+    borderRadius: 6,
+    minWidth: 74,
+  },
+  kpiValue: { fontSize: 14, fontWeight: "700" },
+  kpiLabel: { fontSize: 9, color: "#888", textTransform: "uppercase" },
+  filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 8 },
   filterBtn: {
-    flex: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  filterTxt: { fontSize: 11, fontWeight: "600" },
+  sheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: "52%",
+    padding: Spacing.md,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  statusPill: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    marginTop: 4,
+  },
+  statusPillTxt: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  detailTxt: { fontSize: 13, fontWeight: "600" },
+  actionRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: Spacing.sm },
+  actionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+  },
+  actionTxt: { color: "#fff", fontSize: 11, fontWeight: "600" },
+  nearbyBox: {
+    marginTop: Spacing.sm,
+    padding: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+  },
+  nearbyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  alertBanner: {
+    position: "absolute",
+    bottom: Spacing.lg,
+    left: Spacing.md,
+    right: Spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    padding: 10,
-    borderRadius: 8,
+    gap: 7,
+    paddingVertical: 11,
+    borderRadius: BorderRadius.md,
   },
-  filterText: { fontSize: 12, fontWeight: "600" },
-  statsOverlay: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 16,
-    borderRadius: 12,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  statItem: { alignItems: "center", gap: 4 },
-  statValue: { fontSize: 24, fontWeight: "700" },
-  statLabel: { fontSize: 11 },
+  alertBannerTxt: { color: "#fff", fontSize: 13, fontWeight: "700" },
 });

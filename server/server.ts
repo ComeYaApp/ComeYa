@@ -57,6 +57,10 @@ app.use(
         "/api/orders",
         "/api/delivery/location",
         "/api/tracking",
+        // El centro de operaciones del admin refresca cada pocos segundos y
+        // puede estar abierto en varias pestañas a la vez
+        "/api/admin/ops",
+        "/api/admin/tracking",
       ];
       return skipPaths.some((p) => req.path.startsWith(p.replace("/api", "")));
     },

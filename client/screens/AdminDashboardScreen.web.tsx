@@ -32,7 +32,7 @@ import { AuditLogsTab } from "@/components/admin/tabs/AuditLogsTab.web";
 
 // Web-specific screens embedded as panels
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
-import AdminMapPanel from "@/screens/AdminMapScreen.web";
+import AdminMapPanel from "@/screens/AdminOpsCenterScreen.web";
 import DeliveryConfigPanel from "@/screens/DeliveryConfigScreen.web";
 // Note: AdminPaymentAccountsScreen.web and AdminMapScreen.web export default, used directly as panels
 

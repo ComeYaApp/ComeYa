@@ -105,9 +105,20 @@ export function initializeWebSocket(httpServer: HTTPServer) {
           socket.join("drivers");
           logger.info(`🚗 Driver ${userId} joined drivers room`);
         }
-        if (role === "admin") {
+        // La room de admins expone datos sensibles (fraude, comprobantes,
+        // pedidos globales): exige token JWT verificado, no el payload del
+        // cliente. Antes cualquiera podía emitir join con role:"admin".
+        if (
+          (user?.role === "admin" || user?.role === "super_admin") &&
+          user?.id
+        ) {
           socket.join("admins");
-          logger.info(`👨‍💼 Admin ${userId} joined admins room`);
+          logger.info(`👨‍💼 Admin ${user.id} joined admins room`);
+        } else if (role === "admin" || role === "super_admin") {
+          logger.security("Intento de join a admins sin token válido", {
+            socketId: socket.id,
+            claimedUserId: data.userId,
+          });
         }
       },
     );

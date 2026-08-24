@@ -13,7 +13,7 @@ import ProfileStackNavigatorWeb from "@/navigation/ProfileStackNavigator.web";
 import GuestProfileScreen from "@/screens/GuestProfileScreen";
 import BusinessMapScreen from "@/screens/BusinessMapScreen";
 import AdminDashboardScreen from "@/screens/AdminDashboardScreen.web";
-import AdminMapScreen from "@/screens/AdminMapScreen.web";
+import AdminMapScreen from "@/screens/AdminOpsCenterScreen.web";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import DriverDashboardScreen from "@/screens/DriverDashboardScreen.web";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";

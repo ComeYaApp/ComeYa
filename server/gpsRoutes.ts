@@ -8,7 +8,7 @@ import {
   deliveryDrivers,
 } from "../shared/schema-mysql";
 import { eq, and, sql } from "drizzle-orm";
-import { authenticateToken } from "./authMiddleware";
+import { authenticateToken, requireRole } from "./authMiddleware";
 import { googleMapsService } from "./services/googleMapsService";
 
 const router = Router();
@@ -124,11 +124,8 @@ router.post(
 router.get(
   "/maps-stats",
   authenticateToken,
+  requireRole("admin", "super_admin"),
   async (req: Request, res: Response) => {
-    const userRole = (req as any).user?.role;
-    if (userRole !== "admin" && userRole !== "super_admin") {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
     res.json({ success: true, ...googleMapsService.getUsageStats() });
   },
 );
@@ -364,69 +361,42 @@ router.get(
 router.get(
   "/heatmap",
   authenticateToken,
+  requireRole("admin", "super_admin"),
   async (req: Request, res: Response) => {
     try {
-      const userRole = (req as any).user?.role;
+      // Ventana de fechas (por defecto 30 días) — antes escaneaba TODA la
+      // historia de pedidos entregados sin límite
+      const days = Math.min(
+        365,
+        Math.max(1, parseInt(req.query.days as string) || 30),
+      );
 
-      if (userRole !== "admin" && userRole !== "super_admin") {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
+      const [rows] = (await db.execute(sql`
+        SELECT
+          ROUND(delivery_latitude, 3) AS grid_lat,
+          ROUND(delivery_longitude, 3) AS grid_lng,
+          COUNT(*) AS order_count,
+          COALESCE(SUM(total), 0) AS total_revenue,
+          AVG(TIMESTAMPDIFF(MINUTE, created_at, delivered_at)) AS avg_minutes
+        FROM orders
+        WHERE status = 'delivered'
+          AND delivery_latitude IS NOT NULL
+          AND delivery_longitude IS NOT NULL
+          AND delivered_at >= DATE_SUB(NOW(), INTERVAL ${days} DAY)
+        GROUP BY grid_lat, grid_lng
+        ORDER BY order_count DESC
+        LIMIT 500
+      `)) as any;
 
-      // Get all completed orders with coordinates
-      const completedOrders = await db
-        .select({
-          latitude: orders.deliveryLatitude,
-          longitude: orders.deliveryLongitude,
-          total: orders.total,
-          deliveredAt: orders.deliveredAt,
-        })
-        .from(orders)
-        .where(
-          and(
-            eq(orders.status, "delivered"),
-            sql`${orders.deliveryLatitude} IS NOT NULL`,
-            sql`${orders.deliveryLongitude} IS NOT NULL`,
-          ),
-        );
+      const heatmap = (rows as any[]).map((r) => ({
+        latitude: parseFloat(r.grid_lat),
+        longitude: parseFloat(r.grid_lng),
+        orderCount: Number(r.order_count) || 0,
+        totalRevenue: Number(r.total_revenue) || 0,
+        avgMinutes: r.avg_minutes != null ? Math.round(Number(r.avg_minutes)) : null,
+      }));
 
-      // Group by grid cells (0.001 degree ~= 100m)
-      const heatmapData: Record<
-        string,
-        {
-          latitude: number;
-          longitude: number;
-          orderCount: number;
-          totalRevenue: number;
-        }
-      > = {};
-
-      completedOrders.forEach((order) => {
-        if (!order.latitude || !order.longitude) return;
-
-        const lat = parseFloat(order.latitude);
-        const lng = parseFloat(order.longitude);
-
-        // Round to grid cell
-        const gridLat = Math.round(lat * 1000) / 1000;
-        const gridLng = Math.round(lng * 1000) / 1000;
-        const gridCell = `${gridLat},${gridLng}`;
-
-        if (!heatmapData[gridCell]) {
-          heatmapData[gridCell] = {
-            latitude: gridLat,
-            longitude: gridLng,
-            orderCount: 0,
-            totalRevenue: 0,
-          };
-        }
-
-        heatmapData[gridCell].orderCount++;
-        heatmapData[gridCell].totalRevenue += order.total || 0;
-      });
-
-      const heatmap = Object.values(heatmapData);
-
-      res.json({ success: true, heatmap });
+      res.json({ success: true, days, heatmap });
     } catch (error) {
       console.error("Error getting heatmap:", error);
       res.status(500).json({ error: "Failed to get heatmap data" });

@@ -1959,8 +1959,10 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         const DeliveryConfigScreen = require("./DeliveryConfigScreen").default;
         return <DeliveryConfigScreen />;
       case "map":
-        const MapViewScreen = require("./MapViewScreen").default;
-        return <MapViewScreen navigation={{ goBack: handleBack }} />;
+        // Centro de operaciones unificado (antes MapViewScreen, que estaba
+        // roto en nativo y vacío en web)
+        const AdminMapScreen = require("./AdminMapScreen").default;
+        return <AdminMapScreen navigation={{ goBack: handleBack }} />;
       case "products":
       case "productos":
         return (

@@ -251,6 +251,9 @@ export async function handleDriverLocationUpdate(
       lastEmitAt.set(order.id, now);
       const payload = {
         orderId: order.id,
+        driverId: userId,
+        businessId: order.businessId,
+        status: order.status,
         latitude,
         longitude,
         heading: extra?.heading ?? null,
@@ -261,6 +264,8 @@ export async function handleDriverLocationUpdate(
         const io = getIO();
         io.to(`order:${order.id}`).emit("driver_location", payload);
         io.to(`business:${order.businessId}`).emit("driver_location", payload);
+        // El centro de operaciones del admin ve todo el movimiento en vivo
+        io.to("admins").emit("driver_location", payload);
       } catch {
         // socket.io no inicializado (tests) — ignorar
       }
