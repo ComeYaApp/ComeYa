@@ -40,6 +40,8 @@ import {
   ZonesTab,
   SettingsTab,
   VerificationsTab,
+  IssuesTab,
+  RefundsTab,
 } from "@/components/admin/tabs";
 import type {
   DashboardMetrics,
@@ -102,6 +104,13 @@ const PAYMENT_LABELS: Record<string, string> = {
 
 const menuItems: MenuItem[] = [
   {
+    title: "Incidencias",
+    subtitle: "Reportes de pedidos y reembolsos",
+    icon: "alert-circle",
+    tab: "issues",
+    color: "#EF4444",
+  },
+  {
     title: "Verificaciones",
     subtitle: "Aprobar repartidores y negocios",
     icon: "user-check",
@@ -142,6 +151,13 @@ const menuItems: MenuItem[] = [
     icon: "trending-up",
     tab: "finance",
     color: "#00BCD4",
+  },
+  {
+    title: "Devoluciones",
+    subtitle: "Reembolsos a clientes",
+    icon: "rotate-ccw",
+    tab: "refunds",
+    color: "#F59E0B",
   },
   {
     title: "Cupones",
@@ -1606,6 +1622,12 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         );
       case "support":
         return <SupportTab theme={theme} showToast={showToast} />;
+      case "issues":
+      case "incidencias":
+        return <IssuesTab theme={theme} showToast={showToast} />;
+      case "refunds":
+      case "devoluciones":
+        return <RefundsTab theme={theme} showToast={showToast} />;
       case "zones":
       case "zonas":
         return (

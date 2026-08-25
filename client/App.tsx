@@ -159,9 +159,24 @@ export default function App() {
       // navigationRef es un ref global: se navega con tipos relajados
       const nav = navigationRef as any;
 
-      // Destinos del panel admin: llevan sección del sidebar
+      // Destinos del panel admin. En web navega por sección del sidebar;
+      // en nativo abre el tab correspondiente de la app admin (AdminScreenNew)
       if (data.screen === "AdminDashboard" && data.section) {
-        nav.navigate("DashboardTab", { section: data.section });
+        if (Platform.OS === "web") {
+          nav.navigate("DashboardTab", { section: data.section });
+        } else {
+          const sectionToTab: Record<string, string> = {
+            support_issues: "issues",
+            finance_refunds: "refunds",
+            support_tickets: "support",
+            support_verifications: "verifications",
+            orders_active: "orders",
+            finance_earnings: "finance",
+            finance_payouts: "finance",
+          };
+          const tab = sectionToTab[data.section];
+          nav.navigate("AdminTab", tab ? { initialTab: tab } : undefined);
+        }
         return;
       }
 
