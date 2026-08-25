@@ -139,23 +139,32 @@ export default function App() {
     checkOnboarding();
   }, []);
 
-  // Al tocar una notificación (o abrir la app desde una), navegar a la
-  // pantalla indicada en data.screen o, si hay orderId, al seguimiento.
+  // Al tocar una notificación (o abrir la app desde una), navegar al destino
+  // indicado en data.screen. La pantalla explícita tiene PRIORIDAD sobre el
+  // orderId: si no, un push de "incidencia reportada" con orderId abría el
+  // seguimiento del pedido en vez del panel del admin (bug original).
   useEffect(() => {
-    if (Platform.OS === "web") return;
-
     const handleResponse = (response: Notifications.NotificationResponse) => {
       const data = response.notification.request.content.data as
-        | { screen?: string; orderId?: string; orderType?: string }
+        | {
+            screen?: string;
+            orderId?: string;
+            orderType?: string;
+            section?: string;
+            type?: string;
+            ticketId?: string;
+          }
         | undefined;
       if (!data) return;
       // navigationRef es un ref global: se navega con tipos relajados
-      if (data.orderId) {
-        (navigationRef as any).navigate("OrderTracking", {
-          orderId: data.orderId,
-        });
+      const nav = navigationRef as any;
+
+      // Destinos del panel admin: llevan sección del sidebar
+      if (data.screen === "AdminDashboard" && data.section) {
+        nav.navigate("DashboardTab", { section: data.section });
         return;
       }
+
       const allowed = [
         "Orders",
         "Subscriptions",
@@ -163,9 +172,22 @@ export default function App() {
         "DriverMyDeliveries",
         "BusinessOrders",
         "Main",
+        "TicketDetail",
+        "OrderTracking",
+        "Support",
+        "SupportChat",
       ];
       if (data.screen && allowed.includes(data.screen)) {
-        (navigationRef as any).navigate(data.screen);
+        const params: any = {};
+        if (data.orderId) params.orderId = data.orderId;
+        if (data.ticketId) params.ticketId = data.ticketId;
+        nav.navigate(data.screen, Object.keys(params).length ? params : undefined);
+        return;
+      }
+
+      // Fallback: si solo hay orderId, al seguimiento del pedido
+      if (data.orderId) {
+        nav.navigate("OrderTracking", { orderId: data.orderId });
       }
     };
 
@@ -179,6 +201,38 @@ export default function App() {
       })
       .catch(() => {});
     return () => sub.remove();
+  }, []);
+
+  // Web: abrir el panel admin en la sección correcta tras hacer clic en una
+  // notificación del service worker (llega como query param).
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const section = params.get("admin_section");
+    if (!section) return;
+
+    // Esperar a que la navegación y la sesión estén listas
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts += 1;
+      if (navigationRef.isReady?.()) {
+        try {
+          const raw = await AsyncStorage.getItem("@ComeYa_user");
+          const user = raw ? JSON.parse(raw) : null;
+          const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+          if (isAdmin) {
+            (navigationRef as any).navigate("DashboardTab", { section });
+            clearInterval(timer);
+            // Limpiar el query param sin recargar
+            window.history.replaceState({}, "", "/");
+          }
+        } catch {}
+      }
+      if (attempts > 20) clearInterval(timer); // ~10s y se rinde
+    }, 500);
+
+    return () => clearInterval(timer);
   }, []);
 
   if (!fontsLoaded && !fontError) {

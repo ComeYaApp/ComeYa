@@ -52,7 +52,7 @@ export default function SupportScreen() {
   const cardBg = isDark ? "#2a2a2a" : "#f9fafb";
 
   const { data: ticketsData, isLoading } = useQuery<{ tickets: any[] }>({
-    queryKey: ["/api/support/tickets", user?.id],
+    queryKey: ["/api/support/tickets"],
     enabled: !!user?.id,
   });
 
@@ -60,11 +60,10 @@ export default function SupportScreen() {
     mutationFn: async () =>
       (
         await apiRequest("POST", "/api/support/tickets", {
-          userId: user?.id,
           subject,
           category: "other",
           initialMessage: message,
-          priority: "normal",
+          priority: "medium",
         })
       ).json(),
     onSuccess: () => {

@@ -122,6 +122,82 @@ router.post("/dispute", authenticateToken, async (req, res) => {
       // No bloqueamos la respuesta si falla el strike
     }
 
+    // La disputa también entra en el circuito de incidencias para que el
+    // admin la vea, converse con el cliente y pueda compensarle
+    try {
+      const { randomUUID } = await import("crypto");
+      const schema = await import("@shared/schema-mysql");
+      const { orderIssues, supportTickets, ticketMessages, users, orders } = schema;
+      const { db } = await import("../db");
+      const { eq, inArray } = await import("drizzle-orm");
+      const { sendPushToUser } = await import("../enhancedPushService");
+
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+      if (order) {
+        // Evitar duplicar la incidencia si ya existe una abierta por disputa
+        const existing = await db
+          .select({ id: orderIssues.id })
+          .from(orderIssues)
+          .where(eq(orderIssues.orderId, orderId));
+        if (existing.length === 0) {
+          const ticketId = randomUUID();
+          await db.insert(supportTickets).values({
+            id: ticketId,
+            userId: req.user!.id,
+            orderId,
+            subject: `[Disputa #${orderId.slice(-6)}] ${reason}`.slice(0, 255),
+            category: "order_issue",
+            priority: "high",
+            status: "open",
+          });
+          await db.insert(ticketMessages).values({
+            ticketId,
+            senderId: req.user!.id,
+            senderType: "user",
+            message: reason,
+          });
+
+          const issueId = randomUUID();
+          await db.insert(orderIssues).values({
+            id: issueId,
+            orderId,
+            ticketId,
+            reportedBy: req.user!.id,
+            reporterRole: "customer",
+            issueType: "never_arrived",
+            description: `[Disputa de entrega] ${reason}`,
+            status: "open",
+            priority: "high",
+          });
+
+          const admins = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(inArray(users.role, ["admin", "super_admin"]));
+          for (const admin of admins) {
+            await sendPushToUser(admin.id, {
+              title: "⚠️ Disputa de entrega",
+              body: `Pedido #${orderId.slice(-6)}: ${reason.slice(0, 80)}`,
+              data: {
+                type: "order_issue",
+                issueId,
+                orderId,
+                screen: "AdminDashboard",
+                section: "support_issues",
+              },
+            }).catch(() => {});
+          }
+        }
+      }
+    } catch (issueErr) {
+      console.error("Error creating issue from dispute:", issueErr);
+      // La disputa ya quedó registrada; la incidencia es complementaria
+    }
+
     res.json(result);
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

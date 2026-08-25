@@ -56,7 +56,15 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
   try {
     const stripe = getStripe();
-    event = stripe.webhooks.constructEvent(req.body, sig, WEBHOOK_SECRET);
+    // Con el middleware express.raw registrado en server.ts, req.body llega
+    // como Buffer. Si ya fuera un objeto (json), la firma no se puede verificar.
+    const rawBody =
+      Buffer.isBuffer(req.body)
+        ? req.body
+        : typeof req.body === "string"
+          ? Buffer.from(req.body)
+          : Buffer.from(JSON.stringify(req.body));
+    event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET);
   } catch (err: any) {
     console.error("Webhook signature verification failed:", err.message);
     return res.status(400).json({ error: "Invalid signature" });
@@ -107,6 +115,28 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
       case "payout.failed":
         await handlePayoutFailed(event.data.object as Stripe.Payout, context);
+        break;
+
+      case "charge.refunded":
+        await handleChargeRefunded(
+          event.data.object as Stripe.Charge,
+          context,
+        );
+        break;
+
+      case "refund.updated": {
+        const refund = event.data.object as Stripe.Refund;
+        if (refund.status === "failed") {
+          await handleRefundFailed(refund, context);
+        }
+        break;
+      }
+
+      case "charge.dispute.created":
+        await handleDisputeCreated(
+          event.data.object as Stripe.Dispute,
+          context,
+        );
         break;
 
       default:
@@ -362,4 +392,107 @@ async function handlePayoutFailed(
     failureCode: payout.failure_code,
     failureMessage: payout.failure_message,
   });
+}
+
+// ── Reembolsos y disputas ─────────────────────────────────────────────────────
+// Reconcilia el estado real de Stripe con nuestra tabla refunds: si un
+// reembolso que dimos por bueno falla, o si el cliente abre una disputa en
+// su banco, el registro local se corrige y se avisa a los admins.
+
+async function handleChargeRefunded(
+  charge: Stripe.Charge,
+  context: WebhookContext,
+) {
+  const paymentIntentId =
+    typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id;
+  if (!paymentIntentId) return;
+
+  const { refunds } = await import("@shared/schema-mysql");
+  const rows = await db
+    .select()
+    .from(refunds)
+    .where(eq(refunds.stripePaymentIntentId, paymentIntentId));
+
+  for (const row of rows) {
+    if (row.status !== "completed") {
+      await db
+        .update(refunds)
+        .set({ status: "completed", processedAt: new Date() })
+        .where(eq(refunds.id, row.id));
+      logWebhookEvent(context, `Refund ${row.id} confirmada por Stripe`);
+    }
+  }
+}
+
+async function handleRefundFailed(
+  refund: Stripe.Refund,
+  context: WebhookContext,
+) {
+  const paymentIntentId =
+    typeof refund.payment_intent === "string"
+      ? refund.payment_intent
+      : refund.payment_intent?.id;
+  if (!paymentIntentId) return;
+
+  const { refunds } = await import("@shared/schema-mysql");
+  await db
+    .update(refunds)
+    .set({
+      status: "failed",
+      failureReason: refund.reason || "Stripe reportó fallo en la devolución",
+    })
+    .where(eq(refunds.stripePaymentIntentId, paymentIntentId));
+
+  logWebhookError(context, `Refund failed para PI ${paymentIntentId}`);
+}
+
+async function handleDisputeCreated(
+  dispute: Stripe.Dispute,
+  context: WebhookContext,
+) {
+  const paymentIntentId =
+    typeof dispute.payment_intent === "string"
+      ? dispute.payment_intent
+      : dispute.payment_intent?.id;
+  if (!paymentIntentId) return;
+
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.stripePaymentIntentId, paymentIntentId))
+    .limit(1);
+
+  logWebhookError(
+    context,
+    `Disputa abierta por el banco (chargeback) — PI ${paymentIntentId}`,
+    { orderId: order?.id, amount: dispute.amount, reason: dispute.reason },
+  );
+
+  // Avisar a los admins: un chargeback requiere respuesta en el panel de
+  // Stripe dentro del plazo o se pierde por defecto
+  if (order) {
+    try {
+      const { users } = await import("@shared/schema-mysql");
+      const { inArray } = await import("drizzle-orm");
+      const { sendPushToUser } = await import("./enhancedPushService");
+      const admins = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(inArray(users.role, ["admin", "super_admin"]));
+      for (const admin of admins) {
+        await sendPushToUser(admin.id, {
+          title: "🚨 Chargeback abierto",
+          body: `Pedido #${order.id.slice(-6)}: el cliente ha reclamado ${(dispute.amount / 100).toFixed(2)} € a su banco. Responde en Stripe antes del plazo.`,
+          data: {
+            orderId: order.id,
+            screen: "AdminDashboard",
+            section: "finance_refunds",
+            type: "chargeback",
+          },
+        }).catch(() => {});
+      }
+    } catch {}
+  }
 }

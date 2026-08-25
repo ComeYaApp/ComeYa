@@ -67,18 +67,17 @@ export default function SupportScreen() {
   const { data: ticketsData, isLoading } = useQuery<{
     tickets: SupportTicket[];
   }>({
-    queryKey: ["/api/support/tickets", user?.id],
+    queryKey: ["/api/support/tickets"],
     enabled: !!user?.id,
   });
 
   const createTicketMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/support/tickets", {
-        userId: user?.id,
         subject,
         category: "other",
         initialMessage: message,
-        priority: "normal",
+        priority: "medium",
       });
       return response.json();
     },
@@ -134,7 +133,7 @@ export default function SupportScreen() {
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                navigation.navigate("SupportChat");
+                (navigation as any).navigate("SupportChat");
               }}
               style={[
                 styles.chatPromoCard,
@@ -298,7 +297,7 @@ export default function SupportScreen() {
                   key={ticket.id}
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    navigation.navigate("TicketDetail", {
+                    (navigation as any).navigate("TicketDetail", {
                       ticketId: ticket.id,
                     });
                   }}

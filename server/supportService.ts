@@ -10,7 +10,7 @@ export class SupportService {
     subject: string;
     category: "order_issue" | "payment" | "delivery" | "other";
     priority?: "low" | "medium" | "high" | "urgent";
-    initialMessage: string;
+    initialMessage?: string;
   }) {
     const [result] = await db.insert(supportTickets).values({
       userId: data.userId,
@@ -23,12 +23,12 @@ export class SupportService {
 
     const ticketId = (result as any).insertId;
 
-    // Guardar mensaje inicial
+    // Guardar mensaje inicial (el asunto como fallback)
     await db.insert(ticketMessages).values({
       ticketId,
       senderId: data.userId,
       senderType: "user",
-      message: data.initialMessage,
+      message: data.initialMessage || data.subject || "(sin mensaje)",
     });
 
     return { success: true, ticketId };
@@ -42,12 +42,18 @@ export class SupportService {
       .orderBy(desc(supportTickets.createdAt));
   }
 
-  static async getTicket(ticketId: string, userId: string) {
+  static async getTicket(
+    ticketId: string,
+    userId: string,
+    isAdmin = false,
+  ) {
     const [ticket] = await db
       .select()
       .from(supportTickets)
       .where(
-        and(eq(supportTickets.id, ticketId), eq(supportTickets.userId, userId)),
+        isAdmin
+          ? eq(supportTickets.id, ticketId)
+          : and(eq(supportTickets.id, ticketId), eq(supportTickets.userId, userId)),
       )
       .limit(1);
 
@@ -90,7 +96,7 @@ export class SupportService {
         await sendPushToUser(ticket.userId, {
           title: "Respuesta de Soporte",
           body: data.message.substring(0, 100),
-          data: { ticketId: data.ticketId, screen: "SupportChat" },
+          data: { ticketId: data.ticketId, screen: "TicketDetail" },
         });
       }
     }
@@ -121,6 +127,34 @@ export class SupportService {
       .from(supportTickets)
       .where(eq(supportTickets.status, "open"))
       .orderBy(desc(supportTickets.createdAt));
+  }
+
+  /** Todos los tickets con nombre del usuario, para el panel admin. */
+  static async getAllTickets(status?: string) {
+    const { users } = await import("@shared/schema-mysql");
+    const rows = await db
+      .select({
+        id: supportTickets.id,
+        userId: supportTickets.userId,
+        orderId: supportTickets.orderId,
+        subject: supportTickets.subject,
+        category: supportTickets.category,
+        priority: supportTickets.priority,
+        status: supportTickets.status,
+        assignedTo: supportTickets.assignedTo,
+        createdAt: supportTickets.createdAt,
+        updatedAt: supportTickets.updatedAt,
+        resolvedAt: supportTickets.resolvedAt,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(supportTickets)
+      .leftJoin(users, eq(supportTickets.userId, users.id))
+      .orderBy(desc(supportTickets.createdAt));
+
+    return status && status !== "all"
+      ? rows.filter((t: any) => t.status === status)
+      : rows;
   }
 
   static async assignTicket(ticketId: string, adminId: string) {

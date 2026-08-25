@@ -469,6 +469,10 @@ export const payouts = mysqlTable("payouts", {
   stripeTransferId: varchar("stripe_transfer_id", { length: 255 }), // ID del transfer de Stripe
   proofUrl: text("proof_url"), // comprobante de transferencia subido por el admin
   notes: text("notes"),
+  // Descuento aplicado por una incidencia/reembolso del que este destinatario
+  // es responsable (modelo Uber "order error adjustment"). amount ya lo refleja.
+  adjustmentAmount: int("adjustment_amount").notNull().default(0),
+  adjustmentReason: text("adjustment_reason"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -1269,6 +1273,81 @@ export const ticketMessages = mysqlTable("ticket_messages", {
 });
 
 export type TicketMessage = typeof ticketMessages.$inferSelect;
+
+// Order Issues - Incidencias que el cliente reporta sobre un pedido.
+// El hilo de conversación vive en ticket_messages (vía ticketId).
+export const orderIssues = mysqlTable("order_issues", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  orderId: varchar("order_id", { length: 255 }).notNull(),
+  ticketId: varchar("ticket_id", { length: 255 }), // support_tickets.id — hilo de mensajes
+  reportedBy: varchar("reported_by", { length: 255 }).notNull(),
+  reporterRole: varchar("reporter_role", { length: 30 }).notNull(), // customer, business_owner, delivery_driver
+  // missing_items, wrong_items, damaged, quality, late_delivery,
+  // never_arrived, incomplete, driver_issue, other
+  issueType: varchar("issue_type", { length: 40 }).notNull(),
+  description: text("description").notNull(),
+  photos: text("photos"), // JSON array de URLs (Cloudinary)
+  affectedItems: text("affected_items"), // JSON array para reembolso parcial por ítem
+  status: varchar("status", { length: 20 }).notNull().default("open"), // open, in_review, resolved, rejected
+  priority: varchar("priority", { length: 20 }).notNull().default("medium"), // low, medium, high, urgent
+  // refund_full, refund_partial, redelivery, rejected
+  resolutionType: varchar("resolution_type", { length: 30 }),
+  resolutionAmount: int("resolution_amount"), // en centavos
+  liableParty: varchar("liable_party", { length: 20 }), // business, driver, platform
+  customerMessage: text("customer_message"), // respuesta visible para el cliente
+  internalNote: text("internal_note"), // nota solo para admins
+  assignedTo: varchar("assigned_to", { length: 255 }),
+  resolvedBy: varchar("resolved_by", { length: 255 }),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
+});
+
+export type OrderIssue = typeof orderIssues.$inferSelect;
+export type InsertOrderIssue = typeof orderIssues.$inferInsert;
+
+// Refunds - Libro de devoluciones al cliente. Única fuente de verdad de
+// "dinero que sale hacia el cliente", venga de una incidencia o de una
+// cancelación. Complementa payouts (que solo paga a negocio/repartidor).
+export const refunds = mysqlTable("refunds", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  orderId: varchar("order_id", { length: 255 }).notNull(),
+  issueId: varchar("issue_id", { length: 255 }), // order_issues.id si nace de una incidencia
+  customerId: varchar("customer_id", { length: 255 }).notNull(),
+  amount: int("amount").notNull(), // en centavos
+  type: varchar("type", { length: 20 }).notNull(), // issue, cancellation, dispute, manual
+  reason: text("reason"),
+  // stripe = devolución al PaymentIntent original (automática)
+  // manual_transfer = el admin transfiere a mano y sube comprobante
+  // cash_none = pagó en efectivo y nunca se cobró: nada que devolver
+  method: varchar("method", { length: 20 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, processing, completed, failed
+  stripeRefundId: varchar("stripe_refund_id", { length: 255 }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  liableParty: varchar("liable_party", { length: 20 }), // business, driver, platform
+  businessDeduction: int("business_deduction").notNull().default(0),
+  driverDeduction: int("driver_deduction").notNull().default(0),
+  platformCost: int("platform_cost").notNull().default(0),
+  payoutAdjusted: boolean("payout_adjusted").notNull().default(false), // si ya se descontó del payout
+  requestedBy: varchar("requested_by", { length: 255 }), // admin que lo autorizó (null = automático)
+  processedAt: timestamp("processed_at"),
+  failureReason: text("failure_reason"),
+  proofUrl: text("proof_url"), // comprobante de la transferencia manual
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
+});
+
+export type Refund = typeof refunds.$inferSelect;
+export type InsertRefund = typeof refunds.$inferInsert;
 
 // Business Categories - Categorías de negocios (farmacia, restaurante, ferretería, etc.)
 export const businessCategories = mysqlTable("business_categories", {

@@ -75,6 +75,26 @@ router.get(
       const drv = (driverRow as any[])[0] || {};
       const biz = (bizRow as any[])[0] || {};
 
+      // Contadores de badges del sidebar: cada uno tolerante a fallo para que
+      // una tabla pendiente de migrar no tumbe las métricas completas
+      const countSafe = async (query: any): Promise<number> => {
+        try {
+          const [result] = await db.execute(query);
+          const rows = result as any[];
+          return Number(rows?.[0]?.cnt) || 0;
+        } catch {
+          return 0;
+        }
+      };
+
+      const [openIssues, openTickets, pendingPayments, pendingVerifications] =
+        await Promise.all([
+          countSafe(sql`SELECT COUNT(*) AS cnt FROM order_issues WHERE status IN ('open', 'in_review')`),
+          countSafe(sql`SELECT COUNT(*) AS cnt FROM support_tickets WHERE status = 'open'`),
+          countSafe(sql`SELECT COUNT(*) AS cnt FROM payment_proofs WHERE status = 'pending'`),
+          countSafe(sql`SELECT COUNT(*) AS cnt FROM delivery_drivers WHERE verification_status = 'pending'`),
+        ]);
+
       const ordersToday = Number(today.orders_today) || 0;
       const cancelledToday = Number(today.cancelled_today) || 0;
       const onlineDrivers = Number(drv.online) || 0;
@@ -104,6 +124,12 @@ router.get(
         totalDrivers: Number(drv.total) || 0,
         pausedBusinesses: Number(biz.paused) || 0,
         totalBusinesses: Number(biz.total) || 0,
+        // Badges del sidebar (antes siempre a 0: nadie los calculaba)
+        pendingOrders: Number(active.active_orders) || 0,
+        openIssues,
+        openTickets,
+        pendingPayments,
+        pendingVerifications,
         timeframe: "hoy",
         timestamp: new Date().toISOString(),
       });

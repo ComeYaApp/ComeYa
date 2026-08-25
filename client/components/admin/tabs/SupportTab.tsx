@@ -66,7 +66,7 @@ export function SupportTab({ theme, showToast }: TabProps) {
 
   const updateTicketStatus = async (id: string, status: string) => {
     try {
-      await apiRequest("PUT", `/api/support/tickets/${id}`, { status });
+      await apiRequest("PATCH", `/api/support/tickets/${id}/status`, { status });
       showToast("Estado actualizado", "success");
       fetchTickets();
     } catch (error) {

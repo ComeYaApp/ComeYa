@@ -72,8 +72,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Stripe webhook necesita raw body para verificar firma
+// Los webhooks de Stripe necesitan el raw body SIN parsear para verificar
+// la firma: se registran antes del express.json general
 app.use("/api/connect/webhook", express.raw({ type: "application/json" }));
+app.use(
+  "/api/payments/webhook/stripe",
+  express.raw({ type: "application/json" }),
+);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));

@@ -25,6 +25,7 @@ const PRIORITY_META: Record<string, { label: string; color: string }> = {
 const STATUS_META: Record<string, { label: string; color: string }> = {
   open: { label: "Abierto", color: "#3B82F6" },
   in_progress: { label: "En proceso", color: "#F59E0B" },
+  resolved: { label: "Resuelto", color: "#22C55E" },
   closed: { label: "Cerrado", color: "#6B7280" },
 };
 
@@ -32,6 +33,7 @@ interface Ticket {
   id: string;
   userId: string;
   userName: string;
+  orderId: string | null;
   subject: string;
   status: string;
   priority: string;
@@ -59,7 +61,7 @@ export function SupportTab({}: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<
-    "all" | "open" | "in_progress" | "closed"
+    "all" | "open" | "in_progress" | "resolved" | "closed"
   >("open");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Ticket | null>(null);
@@ -81,7 +83,7 @@ export function SupportTab({}: Props) {
 
   const load = useCallback(async () => {
     try {
-      const res = await apiRequest("GET", "/api/support/admin/pending");
+      const res = await apiRequest("GET", "/api/support/admin/tickets");
       const data = await res.json();
       setTickets(data.tickets ?? []);
     } catch {
@@ -188,6 +190,12 @@ export function SupportTab({}: Props) {
       label: "En proceso",
       count: inProgCount,
       color: "#F59E0B",
+    },
+    {
+      id: "resolved",
+      label: "Resueltos",
+      count: tickets.filter((t) => t.status === "resolved").length,
+      color: "#22C55E",
     },
     {
       id: "closed",

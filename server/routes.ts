@@ -11,6 +11,9 @@ import paymentRoutes from "./routes/payments";
 import walletRoutes from "./routes/wallet";
 import adminRoutes from "./routes/adminRoutes";
 import adminFinanceRoutes from "./routes/adminFinanceRoutes";
+import adminIssuesRoutes from "./routes/adminIssues";
+import adminRefundsRoutes from "./routes/adminRefunds";
+import adminOrderActionsRoutes from "./routes/adminOrderActions";
 import adminExchangeRateRoutes from "./routes/adminExchangeRate";
 import walletRoutesV2 from "./routes/walletRoutes";
 import bankAccountRoutes from "./routes/bankAccountRoutes";
@@ -314,9 +317,18 @@ router.use("/payouts", payoutRoutes);
 router.use("/wallet", walletRoutesV2);
 router.use("/wallet", walletRoutes);
 router.use("/bank-account", bankAccountRoutes);
+// Rutas admin específicas antes del router genérico /admin para que
+// /admin/orders/:id/cancel y similares no queden tapadas
+router.use("/admin/issues", adminIssuesRoutes);
+router.use("/admin/refunds", adminRefundsRoutes);
+router.use("/admin/orders", adminOrderActionsRoutes);
 router.use("/admin", adminRoutes);
 router.use("/admin/finance", adminFinanceRoutes);
 router.use("/admin", adminExchangeRateRoutes);
+// Soporte: v2 (support_tickets + ticket_messages) ANTES que v1. Si no, el
+// router viejo (support_chats) captura /tickets/:id/messages y devuelve 403
+// para cualquier ticket creado tras la migración.
+router.use("/support", supportRoutesV2);
 router.use("/support", supportRoutes);
 router.use("/withdrawals", withdrawalRoutes);
 router.use("/cash-settlement", cashSettlementRoutes);
@@ -331,7 +343,6 @@ router.use("/loyalty", loyaltyRoutes);
 router.use("/favorites", favoritesRoutesV2);
 router.use("/scheduled-orders", scheduledOrdersRoutes);
 router.use("/ai", aiRecommendationsRoutes);
-router.use("/support", supportRoutesV2);
 router.use("/tracking", enhancedTrackingRoutes);
 router.use("/subscriptions", subscriptionRoutes);
 router.use("/smart-notifications", smartNotificationRoutes);

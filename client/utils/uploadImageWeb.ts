@@ -11,7 +11,8 @@ export type UploadFolder =
   | "products"
   | "comprobantes"
   | "reviews"
-  | "delivery-proofs";
+  | "delivery-proofs"
+  | "issues";
 
 /**
  * Abre el selector de archivos del browser y sube la imagen a Cloudinary
@@ -113,6 +114,8 @@ function getEndpointForFolder(folder: UploadFolder): string {
       return "/api/upload/review-image";
     case "delivery-proofs":
       return "/api/upload/delivery-proof";
+    case "issues":
+      return "/api/upload/image";
     default:
       return "/api/upload/image";
   }

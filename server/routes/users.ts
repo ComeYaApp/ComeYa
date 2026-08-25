@@ -1,9 +1,65 @@
 import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "../db";
 
 const router = express.Router();
+
+// GET /api/users/me/issues — incidencias del propio usuario, con la resolución
+// que dio el admin. Es la queryKey que ReportIssueScreen invalida al reportar.
+router.get("/me/issues", authenticateToken, async (req, res) => {
+  try {
+    const { orderIssues } = await import("@shared/schema-mysql");
+    const { desc } = await import("drizzle-orm");
+
+    const issues = await db
+      .select()
+      .from(orderIssues)
+      .where(eq(orderIssues.reportedBy, String(req.user!.id)))
+      .orderBy(desc(orderIssues.createdAt));
+
+    res.json({
+      success: true,
+      issues: issues.map((i: any) => ({
+        ...i,
+        photos: i.photos ? JSON.parse(i.photos) : [],
+        internalNote: undefined, // nota interna solo para admins
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/users/:id/issues — histórico de incidencias (propio o admin)
+router.get("/:id/issues", authenticateToken, async (req, res) => {
+  try {
+    const isAdmin =
+      req.user!.role === "admin" || req.user!.role === "super_admin";
+    if (!isAdmin && req.params.id !== req.user!.id) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
+    const { orderIssues } = await import("@shared/schema-mysql");
+
+    const issues = await db
+      .select()
+      .from(orderIssues)
+      .where(eq(orderIssues.reportedBy, String(req.params.id)))
+      .orderBy(desc(orderIssues.createdAt));
+
+    res.json({
+      success: true,
+      issues: issues.map((i: any) => ({
+        ...i,
+        photos: i.photos ? JSON.parse(i.photos) : [],
+        internalNote: isAdmin ? i.internalNote : undefined,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // PUT /api/users/push-token — registrar Expo push token
 router.put("/push-token", authenticateToken, async (req, res) => {

@@ -559,35 +559,30 @@ router.post(
   validateCustomerOrderOwnership,
   async (req, res) => {
     try {
-      const { orders } = await import("@shared/schema-mysql");
-      const { db } = await import("../db");
-      const { eq } = await import("drizzle-orm");
+      const { cancelOrder } = await import("../orderCancellationService");
       const orderId = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
 
-      const [order] = await db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, orderId))
-        .limit(1);
+      const result = await cancelOrder(
+        orderId,
+        req.user!.id,
+        req.body?.reason || "Cancelado por el cliente en el periodo de arrepentimiento",
+        { actorRole: "customer" },
+      );
 
-      if (!order) {
-        return res.status(404).json({ error: "Order not found" });
+      if (!result.success) {
+        return res.status(result.error === "not_found" ? 404 : 400).json({
+          error: result.message,
+        });
       }
 
-      if (order.status !== "pending") {
-        return res
-          .status(400)
-          .json({ error: "Solo se pueden cancelar pedidos pendientes" });
-      }
-
-      await db
-        .update(orders)
-        .set({ status: "cancelled" })
-        .where(eq(orders.id, orderId));
-
-      res.json({ success: true, message: "Pedido cancelado" });
+      res.json({
+        success: true,
+        message: "Pedido cancelado",
+        refund: result.refund,
+        policy: result.policy,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

@@ -141,24 +141,87 @@ router.get("/tickets", authenticateToken, async (req, res) => {
 // Obtener ticket específico
 router.get("/tickets/:id", authenticateToken, async (req, res) => {
   try {
-    const data = await SupportService.getTicket(req.params.id, req.user!.id);
+    const isAdmin =
+      req.user!.role === "admin" || req.user!.role === "super_admin";
+    const data = await SupportService.getTicket(
+      String(req.params.id),
+      String(req.user!.id),
+      isAdmin,
+    );
     res.json({ success: true, ...data });
   } catch (error: any) {
     res.status(404).json({ error: error.message });
   }
 });
 
+// Mensajes de un ticket (admin o dueño)
+router.get("/tickets/:id/messages", authenticateToken, async (req, res) => {
+  try {
+    const { ticketMessages, supportTickets: tickets } = await import(
+      "@shared/schema-mysql"
+    );
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const [ticket] = await db
+      .select()
+      .from(tickets)
+      .where(eq(tickets.id, String(req.params.id)))
+      .limit(1);
+
+    const isAdmin =
+      req.user!.role === "admin" || req.user!.role === "super_admin";
+    if (!ticket || (!isAdmin && ticket.userId !== req.user!.id)) {
+      return res.status(403).json({ error: "No tienes acceso a este ticket" });
+    }
+
+    const messages = await db
+      .select()
+      .from(ticketMessages)
+      .where(eq(ticketMessages.ticketId, String(req.params.id)))
+      .orderBy(ticketMessages.createdAt);
+
+    res.json({
+      success: true,
+      messages: messages.map((m: any) => ({
+        id: m.id,
+        ticketId: m.ticketId,
+        message: m.message,
+        isBot: false,
+        isAdmin: m.senderType === "admin",
+        senderName: m.senderType === "admin" ? "Soporte" : "Cliente",
+        createdAt: m.createdAt,
+      })),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Agregar mensaje
 router.post("/tickets/:id/messages", authenticateToken, async (req, res) => {
   try {
+    // Solo el dueño del ticket o un admin pueden escribir en él
+    const { supportTickets: tickets } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const [ticket] = await db
+      .select({ userId: tickets.userId })
+      .from(tickets)
+      .where(eq(tickets.id, String(req.params.id)))
+      .limit(1);
+
+    const isAdmin =
+      req.user!.role === "admin" || req.user!.role === "super_admin";
+    if (!ticket || (!isAdmin && ticket.userId !== req.user!.id)) {
+      return res.status(403).json({ error: "No tienes acceso a este ticket" });
+    }
+
     const result = await SupportService.addMessage({
-      ticketId: req.params.id,
+      ticketId: String(req.params.id),
       senderId: req.user!.id,
-      senderType:
-        req.user!.role === "admin" || req.user!.role === "super_admin"
-          ? "admin"
-          : "user",
-      ...req.body,
+      senderType: isAdmin ? "admin" : "user",
+      message: req.body.message,
     });
     res.json(result);
   } catch (error: any) {
@@ -174,7 +237,7 @@ router.patch(
   async (req, res) => {
     try {
       const result = await SupportService.updateTicketStatus(
-        req.params.id,
+        String(req.params.id),
         req.body.status,
         req.user!.id,
       );
@@ -200,6 +263,23 @@ router.get(
   },
 );
 
+// Listado completo para el panel admin: todos los estados y con userName
+router.get(
+  "/admin/tickets",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const tickets = await SupportService.getAllTickets(
+        req.query.status as string | undefined,
+      );
+      res.json({ success: true, tickets });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
 // Asignar ticket (solo admin)
 router.post(
   "/tickets/:id/assign",
@@ -208,7 +288,7 @@ router.post(
   async (req, res) => {
     try {
       const result = await SupportService.assignTicket(
-        req.params.id,
+        String(req.params.id),
         req.user!.id,
       );
       res.json(result);

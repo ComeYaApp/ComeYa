@@ -38,7 +38,7 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
       title: `${pendingProofs} comprobante${pendingProofs > 1 ? "s" : ""} sin verificar`,
       desc: "Requieren revisión manual antes de confirmar pedidos",
       action: "Verificar ahora",
-      onPress: () => onNavigate("proofs"),
+      onPress: () => onNavigate("finance_proofs"),
     });
   }
 
@@ -60,6 +60,19 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
     });
   }
 
+  const openIssues = metrics?.openIssues ?? 0;
+  if (openIssues > 0) {
+    alerts.push({
+      id: "issues",
+      icon: "alert-circle",
+      color: "#DC2626",
+      title: `${openIssues} incidencia${openIssues > 1 ? "s" : ""} de pedido pendiente${openIssues > 1 ? "s" : ""}`,
+      desc: "Clientes esperando resolución (reembolso, reenvío o respuesta)",
+      action: "Revisar",
+      onPress: () => onNavigate("support_issues"),
+    });
+  }
+
   const openTickets = metrics?.openTickets ?? 0;
   if (openTickets > 0) {
     alerts.push({
@@ -69,7 +82,7 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
       title: `${openTickets} ticket${openTickets > 1 ? "s" : ""} de soporte abierto${openTickets > 1 ? "s" : ""}`,
       desc: "Usuarios esperando respuesta del equipo",
       action: "Ver tickets",
-      onPress: () => onNavigate("support"),
+      onPress: () => onNavigate("support_tickets"),
     });
   }
 

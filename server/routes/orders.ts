@@ -6,6 +6,7 @@ import {
   sendOrderStatusNotification,
 } from "../enhancedPushService";
 import { notifyNewOrder } from "../websocket";
+import { ISSUE_LABELS } from "@shared/orderIssues";
 
 import { CONFIG } from "../config";
 
@@ -781,57 +782,55 @@ router.put("/:id/complete", authenticateToken, async (req, res) => {
 // Cancel order
 router.patch("/:id/cancel", authenticateToken, async (req, res) => {
   try {
-    const { orders } = await import("@shared/schema-mysql");
-    const { db } = await import("../db");
+    const { cancelOrder } = await import("../orderCancellationService");
 
     const cancelId = req.params.id as string;
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, cancelId))
-      .limit(1);
+    const isAdmin =
+      req.user!.role === "admin" || req.user!.role === "super_admin";
 
-    if (!order) {
-      return res.status(404).json({ error: "Pedido no encontrado" });
+    const result = await cancelOrder(
+      cancelId,
+      req.user!.id,
+      req.body?.reason || "Cancelado por el usuario",
+      {
+        actorRole: isAdmin ? (req.user!.role as any) : undefined,
+        refundOverride: isAdmin ? req.body?.refundAmount : undefined,
+        liableParty: isAdmin ? req.body?.liableParty : undefined,
+      },
+    );
+
+    if (!result.success) {
+      const code =
+        result.error === "not_found"
+          ? 404
+          : result.error === "forbidden"
+            ? 403
+            : 400;
+      return res.status(code).json({ error: result.message });
     }
 
-    // Check permissions
-    const canCancel =
-      order.userId === req.user!.id || req.user!.role === "admin";
-
-    if (!canCancel) {
-      return res.status(403).json({ error: "No autorizado" });
-    }
-
-    // Check if order can be cancelled
-    if (!["pending", "confirmed", "accepted"].includes(order.status)) {
-      return res.status(400).json({
-        error: "El pedido no puede ser cancelado en su estado actual",
-      });
-    }
-
-    await db
-      .update(orders)
-      .set({
-        status: "cancelled",
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, cancelId));
-
-    res.json({ success: true, message: "Pedido cancelado" });
+    res.json({
+      success: true,
+      message: "Pedido cancelado",
+      refund: result.refund,
+      policy: result.policy,
+    });
   } catch (error: any) {
     console.error("Cancel order error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Reportar problema en un pedido — crea ticket de soporte y notifica a admins
+// Reportar problema en un pedido — crea la incidencia, su hilo de mensajes
+// y notifica a admins y negocio.
 router.post("/:id/report-issue", authenticateToken, async (req, res) => {
   try {
-    const { orders, supportTickets } = await import("@shared/schema-mysql");
+    const { orders, orderIssues, supportTickets, ticketMessages } =
+      await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { randomUUID } = await import("crypto");
 
-    const { issueType, description, priority } = req.body;
+    const { issueType, description, priority, photos, affectedItems } = req.body;
     if (!issueType || !description) {
       return res
         .status(400)
@@ -846,22 +845,68 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       .limit(1);
 
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
-    if (order.userId !== req.user!.id && req.user!.role === "customer") {
+
+    // El cliente solo reporta sobre sus pedidos; el negocio solo sobre los suyos
+    const role = req.user!.role;
+    if (role === "customer" && order.userId !== req.user!.id) {
       return res.status(403).json({ error: "No autorizado" });
     }
+    if (role === "delivery_driver" && order.deliveryPersonId !== req.user!.id) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+    if (role === "business_owner") {
+      const { businesses } = await import("@shared/schema-mysql");
+      const [biz] = await db
+        .select({ ownerId: businesses.ownerId })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      if (biz?.ownerId !== req.user!.id) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+    }
 
-    const subject = `[Pedido #${issueOrderId.slice(-6)}] ${issueType}: ${description}`.slice(
+    const photoList: string[] = Array.isArray(photos)
+      ? photos.filter((p: any) => typeof p === "string" && p.length > 0)
+      : [];
+
+    // Ticket que aloja la conversación con el cliente
+    const ticketId = randomUUID();
+    const subject = `[Pedido #${issueOrderId.slice(-6)}] ${ISSUE_LABELS[issueType] || issueType}`.slice(
       0,
       255,
     );
-    // MySQL no soporta RETURNING: insert directo
     await db.insert(supportTickets).values({
+      id: ticketId,
       userId: req.user!.id,
       orderId: issueOrderId,
       subject,
       category: "order_issue",
       priority: priority || "medium",
       status: "open",
+    });
+
+    // El texto completo va al hilo, no truncado en el asunto
+    await db.insert(ticketMessages).values({
+      ticketId,
+      senderId: req.user!.id,
+      senderType: "user",
+      message: description,
+    });
+
+    const issueId = randomUUID();
+    await db.insert(orderIssues).values({
+      id: issueId,
+      orderId: issueOrderId,
+      ticketId,
+      reportedBy: req.user!.id,
+      reporterRole: role,
+      issueType,
+      description,
+      photos: photoList.length > 0 ? JSON.stringify(photoList) : null,
+      affectedItems: affectedItems ? JSON.stringify(affectedItems) : null,
+      status: "open",
+      priority: priority || "medium",
     });
 
     // Notificar a los administradores (sin romper la respuesta si falla la red)
@@ -874,12 +919,31 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       for (const admin of admins) {
         await sendPushToUser(admin.id, {
           title: "⚠️ Incidencia reportada",
-          body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
-          data: { orderId: issueOrderId, screen: "AdminSupport" },
+          body: `Pedido #${issueOrderId.slice(-6)}: ${ISSUE_LABELS[issueType] || issueType}`,
+          data: {
+            type: "order_issue",
+            issueId,
+            orderId: issueOrderId,
+            screen: "AdminDashboard",
+            section: "support_issues",
+          },
         });
       }
     } catch (err) {
       console.error("Error notifying admins of issue:", err);
+    }
+
+    // Aviso en tiempo real al panel admin abierto
+    try {
+      const { notifyAdminNewIssue } = await import("../websocket");
+      notifyAdminNewIssue({
+        issueId,
+        orderId: issueOrderId,
+        issueType,
+        priority: priority || "medium",
+      });
+    } catch (err) {
+      console.error("Error emitting admin issue event:", err);
     }
 
     // Notificar también al negocio del pedido
@@ -889,20 +953,81 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
         .from(businesses)
         .where(eq(businesses.id, order.businessId))
         .limit(1);
-      if (biz?.ownerId) {
+      if (biz?.ownerId && biz.ownerId !== req.user!.id) {
         await sendPushToUser(biz.ownerId, {
           title: "⚠️ Incidencia en tu pedido",
-          body: `Pedido #${issueOrderId.slice(-6)}: ${issueType}`,
-          data: { orderId: issueOrderId, screen: "BusinessOrders" },
+          body: `Pedido #${issueOrderId.slice(-6)}: ${ISSUE_LABELS[issueType] || issueType}`,
+          data: {
+            orderId: issueOrderId,
+            screen: "BusinessOrders",
+            type: "order_issue",
+          },
         });
       }
     } catch (err) {
       console.error("Error notifying business of issue:", err);
     }
 
-    res.json({ success: true, message: "Problema reportado" });
+    res.json({
+      success: true,
+      message: "Problema reportado. Nuestro equipo lo revisará en breve.",
+      issueId,
+      ticketId,
+    });
   } catch (error: any) {
     console.error("Report issue error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Incidencias de un pedido — visibles para quien la reportó, el negocio y admins
+router.get("/:id/issues", authenticateToken, async (req, res) => {
+  try {
+    const { orders, orderIssues, refunds } = await import(
+      "@shared/schema-mysql"
+    );
+    const { db } = await import("../db");
+
+    const orderId = req.params.id as string;
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const isAdmin =
+      req.user!.role === "admin" || req.user!.role === "super_admin";
+    if (!isAdmin && order.userId !== req.user!.id) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
+    const issues = await db
+      .select()
+      .from(orderIssues)
+      .where(eq(orderIssues.orderId, orderId))
+      .orderBy(desc(orderIssues.createdAt));
+
+    const orderRefunds = await db
+      .select()
+      .from(refunds)
+      .where(eq(refunds.orderId, orderId))
+      .orderBy(desc(refunds.createdAt));
+
+    res.json({
+      success: true,
+      issues: issues.map((i: any) => ({
+        ...i,
+        photos: i.photos ? JSON.parse(i.photos) : [],
+        affectedItems: i.affectedItems ? JSON.parse(i.affectedItems) : null,
+        // La nota interna no sale del panel admin
+        internalNote: isAdmin ? i.internalNote : undefined,
+      })),
+      refunds: orderRefunds,
+    });
+  } catch (error: any) {
+    console.error("Get order issues error:", error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -3,7 +3,7 @@ import { View, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { useToast } from "@/contexts/ToastContext";
 import { apiRequest } from "@/lib/query-client";
-import { AdminShell, AdminSection } from "@/components/admin/AdminShell.web";
+import { AdminShell, AdminSection, SECTION_ALIASES } from "@/components/admin/AdminShell.web";
 
 // Dashboard components
 import { HeroBanner } from "@/components/admin/dashboard/HeroBanner";
@@ -24,6 +24,8 @@ import { GiftCardsAdminTab } from "@/components/admin/tabs/GiftCardsAdminTab.web
 import { PremiumSubsTab } from "@/components/admin/tabs/PremiumSubsTab.web";
 import { CouponsTab } from "@/components/admin/tabs/CouponsTab.web";
 import { SupportTab } from "@/components/admin/tabs/SupportTab.web";
+import { IssuesTab } from "@/components/admin/tabs/IssuesTab.web";
+import { RefundsTab } from "@/components/admin/tabs/RefundsTab.web";
 import { SettingsTab } from "@/components/admin/tabs/SettingsTab.web";
 import { ZonesTab } from "@/components/admin/tabs/ZonesTab.web";
 import { CategoriesTab } from "@/components/admin/tabs/CategoriesTab.web";
@@ -117,7 +119,7 @@ function DashboardView({
           <AlertsPanel
             metrics={metrics}
             finance={finance}
-            onNavigate={onNavigate}
+            onNavigate={(s) => onNavigate(s as AdminSection)}
           />
           <OrderFunnel metrics={metrics} />
         </View>
@@ -154,15 +156,23 @@ function TabWrap({ children }: { children: React.ReactNode }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function AdminDashboardScreen({ route }: any) {
   const { showToast } = useToast();
-  const initialSection =
-    (route?.params?.section as AdminSection) || "dashboard";
-  const [section, setSection] = useState<AdminSection>(initialSection);
+  // Las notificaciones y enlaces antiguos usan ids que ya no existen como
+  // sección (p.ej. "AdminSupport", "proofs"): se redirigen por alias para no
+  // acabar en el dashboard en silencio.
+  const resolveSection = (raw: any): AdminSection => {
+    const id = typeof raw === "string" ? raw : "dashboard";
+    return (SECTION_ALIASES[id] as AdminSection) || id;
+  };
+  const initialSection = resolveSection(route?.params?.section);
+  const [section, setSectionState] = useState<AdminSection>(initialSection);
   const [metrics, setMetrics] = useState<any>(null);
 
-  // Reaccionar a cambios de params (navegación desde perfil)
+  const setSection = (s: AdminSection) => setSectionState(resolveSection(s));
+
+  // Reaccionar a cambios de params (navegación desde perfil o push)
   useEffect(() => {
     if (route?.params?.section) {
-      setSection(route.params.section as AdminSection);
+      setSectionState(resolveSection(route.params.section));
     }
   }, [route?.params?.section]);
 
@@ -214,6 +224,8 @@ export default function AdminDashboardScreen({ route }: any) {
         return <FinanceTab defaultTab="earnings" />;
       case "finance_payouts":
         return <FinanceTab defaultTab="payouts" />;
+      case "finance_refunds":
+        return <RefundsTab />;
       case "finance_proofs":
         return <PaymentProofsTab />;
       case "finance_giftcards":
@@ -230,9 +242,10 @@ export default function AdminDashboardScreen({ route }: any) {
         return <CouponsTab />;
 
       // ── Soporte ──
-      case "support":
       case "support_tickets":
         return <SupportTab />;
+      case "support_issues":
+        return <IssuesTab />;
       case "support_verifications":
         return <VerificationsTab />;
 

@@ -13,6 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { ComeYaColors } from "../../../constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
+import { confirm } from "@/hooks/useWebDialog";
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendiente", color: "#F59E0B" },
@@ -50,6 +51,78 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatus] = useState("all");
   const [selected, setSelected] = useState<any>(null);
+  const [actionMsg, setActionMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [acting, setActing] = useState(false);
+
+  const flashAction = (ok: boolean, t: string) => {
+    setActionMsg({ ok, text: t });
+    setTimeout(() => setActionMsg(null), 5000);
+  };
+
+  const cancelOrder = async () => {
+    if (!selected) return;
+    const ok = await confirm({
+      title: "Cancelar pedido",
+      message:
+        "Se aplicará la política de reembolso según cómo pagó el cliente (Stripe: devolución automática; manual: quedará pendiente de transferencia). ¿Continuar?",
+      confirmLabel: "Cancelar pedido",
+      variant: "danger",
+    });
+    if (!ok) return;
+    setActing(true);
+    try {
+      const res = await apiRequest("POST", `/api/admin/orders/${selected.id}/cancel`, {
+        reason: "Cancelado por administración",
+      });
+      const data = await res.json();
+      if (data.success) {
+        flashAction(true, `Pedido cancelado. ${data.refund?.message ?? "Sin devolución."}`);
+        load();
+        setSelected(null);
+      } else {
+        flashAction(false, data.error ?? "Error al cancelar");
+      }
+    } catch {
+      flashAction(false, "Error de conexión");
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const refundOrder = async () => {
+    if (!selected) return;
+    const value = (typeof window !== "undefined" ? window.prompt("Importe a devolver en € (vacío = todo lo devoluble):") : "") ?? "";
+    const euros = value.trim() === "" ? null : parseFloat(value.replace(",", "."));
+    if (euros !== null && (isNaN(euros) || euros <= 0)) {
+      flashAction(false, "Importe inválido");
+      return;
+    }
+    const ok = await confirm({
+      title: "Reembolsar pedido",
+      message: `Se devolverá ${euros === null ? "el máximo devoluble" : `${euros.toFixed(2)} €`} al cliente por el mismo medio con el que pagó. ¿Confirmar?`,
+      confirmLabel: "Devolver",
+      variant: "warning",
+    });
+    if (!ok) return;
+    setActing(true);
+    try {
+      const res = await apiRequest("POST", `/api/admin/orders/${selected.id}/refund`, {
+        amount: euros === null ? selected.total : Math.round(euros * 100),
+        reason: "Reembolso otorgado por administración",
+      });
+      const data = await res.json();
+      if (data.success) {
+        flashAction(true, data.refund?.message ?? data.message);
+        load();
+      } else {
+        flashAction(false, data.error ?? "Error al reembolsar");
+      }
+    } catch {
+      flashAction(false, "Error de conexión");
+    } finally {
+      setActing(false);
+    }
+  };
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
   const card = isDark ? "#1a1a1a" : "#fff";
@@ -114,6 +187,22 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
           <Feather name="arrow-left" size={16} color={text} />
           <Text style={[det.backTxt, { color: text }]}>Volver a pedidos</Text>
         </TouchableOpacity>
+
+        {actionMsg && (
+          <View
+            style={[
+              det.flash,
+              {
+                backgroundColor: actionMsg.ok ? "#22C55E15" : "#EF444415",
+                borderColor: actionMsg.ok ? "#22C55E" : "#EF4444",
+              },
+            ]}
+          >
+            <Text style={{ color: actionMsg.ok ? "#22C55E" : "#EF4444", fontSize: 13, fontWeight: "600" }}>
+              {actionMsg.text}
+            </Text>
+          </View>
+        )}
 
         <View
           style={[det.card, { backgroundColor: card, borderColor: border }]}
@@ -253,6 +342,44 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
               </Text>
             </View>
           </View>
+
+          {/* Acciones de administración */}
+          {selected.status !== "cancelled" && (
+            <>
+              <View style={[det.divider, { backgroundColor: border }]} />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  style={[det.btnDanger, { backgroundColor: "#EF4444", opacity: acting ? 0.6 : 1 }]}
+                  onPress={cancelOrder}
+                  disabled={acting}
+                >
+                  {acting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Feather name="x-circle" size={14} color="#fff" />
+                  )}
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                    Cancelar pedido
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[det.btnDanger, { backgroundColor: "#F59E0B", opacity: acting ? 0.6 : 1 }]}
+                  onPress={refundOrder}
+                  disabled={acting}
+                >
+                  <Feather name="rotate-ccw" size={14} color="#fff" />
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                    Reembolsar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {selected.refundStatus === "processed" && (
+                <Text style={{ color: "#22C55E", fontSize: 12, marginTop: 8, fontWeight: "600" }}>
+                  ✓ Este pedido ya tiene una devolución procesada
+                </Text>
+              )}
+            </>
+          )}
         </View>
       </ScrollView>
     );
@@ -558,4 +685,14 @@ const det = StyleSheet.create({
   },
   totalLabel: { fontSize: 13 },
   totalVal: { fontSize: 14, fontWeight: "600" },
+  flash: { borderRadius: 10, borderWidth: 1, padding: 12, marginBottom: 16 },
+  btnDanger: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 10,
+    paddingVertical: 12,
+  },
 });

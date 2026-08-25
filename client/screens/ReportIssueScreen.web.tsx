@@ -67,16 +67,22 @@ export default function ReportIssueScreen() {
         new URL(`/api/orders/${orderId}/report-issue`, getApiUrl()).toString(),
         {
           orderId,
-          reporterId: user?.id,
           issueType: selectedType,
           description: description.trim(),
           priority,
+          photos,
         },
       ),
     onSuccess: () => {
-      showToast("Problema reportado exitosamente", "success");
+      showToast(
+        "Problema reportado. Nuestro equipo lo revisará en breve.",
+        "success",
+      );
       queryClient.invalidateQueries({
         queryKey: ["/api/users", user?.id, "issues"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/orders", orderId, "issues"],
       });
       navigation.goBack();
     },
@@ -86,7 +92,7 @@ export default function ReportIssueScreen() {
   const handlePickPhoto = async () => {
     if (photos.length >= 4) return;
     const { pickAndUploadImage } = await import("@/utils/uploadImageWeb");
-    const url = await pickAndUploadImage("reports");
+    const url = await pickAndUploadImage("issues");
     if (url) setPhotos([...photos, url]);
   };
 

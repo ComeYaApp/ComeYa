@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-
-const BACKEND_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL ?? "http://localhost:5000";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApiBaseUrl } from "@/constants/api";
+import { ISSUE_LABELS } from "@shared/orderIssues";
 
 export type NotifLevel = "critical" | "high" | "medium";
 
@@ -97,7 +97,12 @@ export function useAdminNotifications() {
     const connect = async () => {
       try {
         const { io } = await import("socket.io-client");
-        socket = io(BACKEND_URL, { transports: ["websocket", "polling"] });
+        // El servidor exige un JWT verificado para unirse a la room "admins"
+        const token = await AsyncStorage.getItem("token");
+        socket = io(getApiBaseUrl(), {
+          transports: ["websocket", "polling"],
+          auth: token ? { token } : undefined,
+        });
         socketRef.current = socket;
 
         socket.on("connect", () => {
@@ -158,6 +163,17 @@ export function useAdminNotifications() {
             title: "🎫 Nuevo ticket",
             body: `${data.userName}: ${data.subject}`,
             action: { label: "Ver tickets", section: "support_tickets" },
+          });
+        });
+
+        // ⚠️ ALTO — Nueva incidencia de pedido reportada por un cliente
+        socket.on("admin_new_issue", (data: any) => {
+          add({
+            level: "high",
+            icon: "alert-circle",
+            title: "⚠️ Incidencia en un pedido",
+            body: `Pedido #${(data.orderId ?? "").slice(-6)}: ${ISSUE_LABELS[data.issueType] ?? data.issueType ?? "problema"}`,
+            action: { label: "Revisar", section: "support_issues" },
           });
         });
 

@@ -48,6 +48,7 @@ import AddressesScreen from "@/screens/AddressesScreen";
 import SavedAddressesScreen from "@/screens/SavedAddressesScreen";
 import AddAddressScreen from "@/screens/AddAddressScreen";
 import SupportChatScreen from "@/screens/SupportChatScreen";
+import TicketDetailScreen from "@/screens/TicketDetailScreen";
 import WalletScreen from "@/screens/WalletScreen";
 import ReportIssueScreen from "@/screens/ReportIssueScreen";
 import OrderConfirmationScreen from "@/screens/OrderConfirmationScreen";
@@ -150,6 +151,7 @@ export type RootStackParamList = {
   SupportChat: undefined;
   Wallet: undefined;
   ReportIssue: { orderId: string; orderNumber?: string };
+  TicketDetail: { ticketId: string };
   OrderConfirmation: { orderId: string; regretPeriodEndsAt: string };
   DigitalPaymentMethod: { orderTotal: number };
   PaymentProof: {
@@ -332,6 +334,7 @@ export default function RootStackNavigator() {
           <Stack.Screen name="AddAddress" component={AddAddressScreen} options={{ headerTitle: "Agregar dirección" }} />
           <Stack.Screen name="LocationPicker" component={LocationPickerScreen} options={{ headerTitle: "Seleccionar ubicación" }} />
           <Stack.Screen name="SupportChat" component={SupportChatScreen} options={{ headerTitle: "Soporte" }} />
+          <Stack.Screen name="TicketDetail" component={TicketDetailScreen} options={{ headerTitle: "Mi incidencia" }} />
           <Stack.Screen name="Wallet" component={WalletScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ReportIssue" component={ReportIssueScreen} options={{ headerShown: false }} />
           <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} options={{ headerShown: false }} />

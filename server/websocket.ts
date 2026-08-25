@@ -219,6 +219,19 @@ export function notifyAdminNewTicket(data: {
   });
 }
 
+export function notifyAdminNewIssue(data: {
+  issueId: string;
+  orderId: string;
+  issueType: string;
+  priority: string;
+}) {
+  if (!io) return;
+  io.to("admins").emit("admin_new_issue", {
+    ...data,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 export function notifyAdminOrderStuck(data: {
   orderId: string;
   businessName: string;

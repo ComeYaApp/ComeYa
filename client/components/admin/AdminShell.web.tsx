@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { confirm } from "@/hooks/useWebDialog";
+import { useAdminNotifications } from "@/hooks/useAdminNotifications";
 
 const PRIMARY = "#DC2626";
 
@@ -26,15 +27,44 @@ export type AdminSection =
   | "finance_accounts"
   | "finance_earnings"
   | "finance_giftcards"
+  | "finance_refunds"
   | "premiums"
   | "marketing"
   | "coupons"
   | "support"
   | "support_tickets"
+  | "support_issues"
   | "support_verifications"
   | "settings"
   | "delivery_config"
-  | "logs";
+  | "logs"
+  | "audit_logs";
+
+/**
+ * Secciones antiguas que se siguen mandando en notificaciones y enlaces:
+ * se redirigen a su equivalente actual en vez de caer al dashboard.
+ */
+export const SECTION_ALIASES: Partial<Record<string, AdminSection>> = {
+  proofs: "finance_proofs",
+  payouts: "finance_payouts",
+  earnings: "finance_earnings",
+  refunds: "finance_refunds",
+  issues: "support_issues",
+  tickets: "support_tickets",
+  verifications: "support_verifications",
+  AdminSupport: "support_issues",
+  AdminOrders: "orders_active",
+  AdminVerifications: "support_verifications",
+  AdminFinance: "finance_earnings",
+  finance: "finance_earnings",
+  support: "support_tickets",
+  orders: "orders_active",
+  businesses: "businesses_list",
+  drivers: "drivers_list",
+  users: "users",
+  marketing: "coupons",
+  audit_logs: "logs",
+};
 
 interface NavItem {
   id: AdminSection;
@@ -96,6 +126,7 @@ const NAV: NavItem[] = [
     children: [
       { id: "finance_earnings", label: "Ganancias", icon: "trending-up" },
       { id: "finance_payouts", label: "Payouts", icon: "send" },
+      { id: "finance_refunds", label: "Devoluciones", icon: "rotate-ccw" },
       { id: "finance_proofs", label: "Comprobantes", icon: "file-text" },
       { id: "finance_giftcards", label: "Gift Cards", icon: "gift" },
       { id: "premiums", label: "Suscripciones", icon: "star" },
@@ -114,7 +145,10 @@ const NAV: NavItem[] = [
     label: "Soporte",
     icon: "message-circle",
     color: "#84CC16",
-    children: [{ id: "support_tickets", label: "Tickets", icon: "inbox" }],
+    children: [
+      { id: "support_issues", label: "Incidencias", icon: "alert-circle" },
+      { id: "support_tickets", label: "Tickets", icon: "inbox" },
+    ],
   },
   {
     id: "support_verifications",
@@ -135,6 +169,82 @@ interface Props {
   onChange: (s: AdminSection) => void;
   metrics?: any;
   children: React.ReactNode;
+}
+
+// Campana de notificaciones en tiempo real (socket admins) con acciones
+// que navegan a la sección correspondiente del panel.
+function AdminBell({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
+  const { isDark } = useTheme();
+  const { notifs, unreadCount, markRead, markAllRead, clear } =
+    useAdminNotifications();
+  const [open, setOpen] = useState(false);
+
+  const border = isDark ? "#222" : "#ebebeb";
+  const text = isDark ? "#fff" : "#111";
+  const sub = isDark ? "#666" : "#aaa";
+
+  if (notifs.length === 0 && !open) return null;
+
+  return (
+    <View style={[bell.wrap, { borderBottomColor: border }]}>
+      <Pressable style={bell.row} onPress={() => setOpen((v) => !v)}>
+        <Feather name="bell" size={15} color="#EF4444" />
+        <Text style={[bell.label, { color: text }]}>Avisos</Text>
+        {unreadCount > 0 && (
+          <View style={bell.badge}>
+            <Text style={bell.badgeTxt}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+          </View>
+        )}
+        <Feather name={open ? "chevron-up" : "chevron-down"} size={13} color={sub} />
+      </Pressable>
+
+      {open && (
+        <View style={bell.panel}>
+          {notifs.length === 0 ? (
+            <Text style={{ color: sub, fontSize: 11, paddingVertical: 6 }}>
+              Sin avisos
+            </Text>
+          ) : (
+            <>
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 4 }}>
+                <TouchableOpacity onPress={markAllRead}>
+                  <Text style={{ color: "#3B82F6", fontSize: 11, fontWeight: "600" }}>
+                    Marcar leídos
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={clear}>
+                  <Text style={{ color: sub, fontSize: 11 }}>Limpiar</Text>
+                </TouchableOpacity>
+              </View>
+              {notifs.slice(0, 12).map((n) => (
+                <Pressable
+                  key={n.id}
+                  onPress={() => {
+                    markRead(n.id);
+                    if (n.action?.section) {
+                      onNavigate(n.action.section as AdminSection);
+                      setOpen(false);
+                    }
+                  }}
+                  style={[bell.item, !n.read && { backgroundColor: "#EF444408" }]}
+                >
+                  <View style={bell.itemTop}>
+                    <Feather name={n.icon as any} size={12} color="#EF4444" />
+                    <Text style={{ color: text, fontSize: 11, fontWeight: "700", flex: 1 }} numberOfLines={1}>
+                      {n.title}
+                    </Text>
+                  </View>
+                  <Text style={{ color: sub, fontSize: 10, lineHeight: 13 }} numberOfLines={2}>
+                    {n.body}
+                  </Text>
+                </Pressable>
+              ))}
+            </>
+          )}
+        </View>
+      )}
+    </View>
+  );
 }
 
 export function AdminShell({ active, onChange, metrics, children }: Props) {
@@ -168,7 +278,8 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
     finance_proofs: metrics?.pendingPayments || 0,
     finance: metrics?.pendingPayments || 0,
     support_tickets: metrics?.openTickets || 0,
-    support: metrics?.openTickets || 0,
+    support: metrics?.openIssues || metrics?.openTickets || 0,
+    support_issues: metrics?.openIssues || 0,
     drivers: metrics?.pendingVerifications || 0,
     support_verifications: metrics?.pendingVerifications || 0,
   };
@@ -221,6 +332,7 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
 
         {/* Nav */}
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <AdminBell onNavigate={onChange} />
           <Text style={[sh.groupLabel, { color: sub }]}>NAVEGACIÓN</Text>
 
           {NAV.map((item) => {
@@ -375,6 +487,7 @@ const sh = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
   sidebar: { width: 236, borderRightWidth: 1, flexDirection: "column" },
   content: { flex: 1 },
+  footer: { padding: 14, borderTopWidth: 1 },
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -473,4 +586,23 @@ const sh = StyleSheet.create({
     paddingVertical: 8,
   },
   logoutTxt: { fontSize: 13, fontWeight: "600", color: "#EF4444" },
+});
+
+const bell = StyleSheet.create({
+  wrap: { borderBottomWidth: 1, paddingHorizontal: 14, paddingVertical: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 8 },
+  label: { flex: 1, fontSize: 12, fontWeight: "700" },
+  badge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  badgeTxt: { fontSize: 9, fontWeight: "800", color: "#fff" },
+  panel: { marginTop: 6, gap: 2 },
+  item: { borderRadius: 8, padding: 6 },
+  itemTop: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
 });

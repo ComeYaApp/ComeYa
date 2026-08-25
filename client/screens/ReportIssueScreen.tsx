@@ -66,10 +66,10 @@ export default function ReportIssueScreen() {
   const reportMutation = useMutation({
     mutationFn: async (data: {
       orderId: string;
-      reporterId: string;
       issueType: string;
       description: string;
       priority: string;
+      photos: string[];
     }) => {
       return apiRequest(
         "POST",
@@ -81,9 +81,15 @@ export default function ReportIssueScreen() {
       );
     },
     onSuccess: () => {
-      showToast("Problema reportado exitosamente", "success");
+      showToast(
+        "Problema reportado. Nuestro equipo lo revisará en breve.",
+        "success",
+      );
       queryClient.invalidateQueries({
         queryKey: ["/api/users", user?.id, "issues"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/orders", orderId, "issues"],
       });
       navigation.goBack();
     },
@@ -102,7 +108,25 @@ export default function ReportIssueScreen() {
 
     if (!result.canceled && result.assets[0]) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setPhotos([...photos, result.assets[0].uri]);
+      // Subir a Cloudinary para que el admin pueda verla (URI local no sirve)
+      try {
+        const FileSystem = await import("expo-file-system/legacy");
+        const base64 = await FileSystem.readAsStringAsync(
+          result.assets[0].uri,
+          { encoding: FileSystem.EncodingType.Base64 },
+        );
+        const res = await apiRequest("POST", "/api/upload/image", {
+          image: `data:image/jpeg;base64,${base64}`,
+          folder: "issues",
+        });
+        const data = await res.json();
+        if (data.url) {
+          setPhotos([...photos, data.url]);
+          return;
+        }
+      } catch {
+        showToast("No se pudo subir la foto", "warning");
+      }
     }
   };
 
@@ -125,10 +149,10 @@ export default function ReportIssueScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     reportMutation.mutate({
       orderId,
-      reporterId: user.id,
       issueType: selectedType,
       description: description.trim(),
       priority,
+      photos,
     });
   };
 
