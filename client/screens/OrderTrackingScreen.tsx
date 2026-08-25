@@ -36,6 +36,11 @@ import { Order } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  ISSUE_LABELS,
+  ISSUE_STATUS_LABELS,
+  RESOLUTION_LABELS,
+} from "@shared/orderIssues";
 
 type OrderTrackingRouteProp = RouteProp<RootStackParamList, "OrderTracking">;
 type OrderTrackingNavigationProp = NativeStackNavigationProp<
@@ -74,6 +79,8 @@ export default function OrderTrackingScreen() {
 
   const { orderId } = route.params;
   const [order, setOrder] = useState<Order | null>(null);
+  // Incidencias que el cliente ha reportado sobre este pedido
+  const [issues, setIssues] = useState<any[]>([]);
   const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
   const [pickupInfo, setPickupInfo] = useState<any>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -105,6 +112,24 @@ export default function OrderTrackingScreen() {
     minutes: number;
     confidence: number;
   } | null>(null);
+
+  // Incidencias reportadas sobre este pedido: estado, resolución y fotos.
+  // Refresca al volver de ReportIssueScreen (focus) para ver la nueva al momento.
+  useEffect(() => {
+    if (!orderId) return;
+    const loadIssues = async () => {
+      try {
+        const response = await apiRequest("GET", `/api/orders/${orderId}/issues`);
+        const data = await response.json();
+        if (data.success) setIssues(data.issues ?? []);
+      } catch {
+        // Sin incidencias o sin permiso: no bloquea la pantalla
+      }
+    };
+    loadIssues();
+    const unsub = navigation.addListener("focus", loadIssues);
+    return unsub;
+  }, [orderId, navigation]);
 
   // Poll for ETA updates every 30 seconds (en pickup el tiempo restante
   // viene de la info de pickup, no del repartidor)
@@ -1150,6 +1175,173 @@ export default function OrderTrackingScreen() {
                 Reportar incidencia
               </ThemedText>
             </Pressable>
+
+            {issues.length > 0 && (
+              <View
+                style={[
+                  styles.issuesBox,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
+              >
+                <ThemedText type="h4" style={{ marginBottom: 10 }}>
+                  Tus incidencias reportadas
+                </ThemedText>
+                {issues.map((issue: any) => {
+                  const statusColor =
+                    issue.status === "resolved"
+                      ? ComeYaColors.success
+                      : issue.status === "rejected"
+                        ? "#9E9E9E"
+                        : issue.status === "in_review"
+                          ? ComeYaColors.warning
+                          : "#3B82F6";
+                  const photos: string[] = Array.isArray(issue.photos)
+                    ? issue.photos
+                    : [];
+                  return (
+                    <View
+                      key={issue.id}
+                      style={{
+                        borderTopWidth: 1,
+                        borderTopColor: theme.border,
+                        paddingTop: 10,
+                        marginTop: 4,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginBottom: 4,
+                          gap: 8,
+                        }}
+                      >
+                        <View
+                          style={{
+                            backgroundColor: statusColor + "20",
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            borderRadius: 10,
+                          }}
+                        >
+                          <ThemedText
+                            type="caption"
+                            style={{ color: statusColor, fontWeight: "700" }}
+                          >
+                            {ISSUE_STATUS_LABELS[issue.status] ?? issue.status}
+                          </ThemedText>
+                        </View>
+                        <ThemedText
+                          type="caption"
+                          style={{ color: theme.textSecondary, marginLeft: "auto" }}
+                        >
+                          {new Date(issue.createdAt).toLocaleDateString("es-ES")}
+                        </ThemedText>
+                      </View>
+
+                      <ThemedText type="body" style={{ fontWeight: "600" }}>
+                        {ISSUE_LABELS[issue.issueType] ?? issue.issueType}
+                      </ThemedText>
+
+                      {photos.length > 0 && (
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          style={{ marginTop: 8 }}
+                        >
+                          {photos.map((p, i) => (
+                            <Image
+                              key={i}
+                              source={{ uri: p }}
+                              style={{
+                                width: 64,
+                                height: 64,
+                                borderRadius: 8,
+                                marginRight: 6,
+                              }}
+                            />
+                          ))}
+                        </ScrollView>
+                      )}
+
+                      {issue.status === "resolved" && (
+                        <View
+                          style={{
+                            backgroundColor: ComeYaColors.success + "12",
+                            borderRadius: 10,
+                            padding: 10,
+                            marginTop: 8,
+                          }}
+                        >
+                          <ThemedText
+                            type="caption"
+                            style={{ color: ComeYaColors.success, fontWeight: "700" }}
+                          >
+                            ✓{" "}
+                            {RESOLUTION_LABELS[issue.resolutionType] ??
+                              issue.resolutionType}
+                            {issue.resolutionAmount
+                              ? ` — ${(issue.resolutionAmount / 100).toFixed(2)} € devueltos`
+                              : ""}
+                          </ThemedText>
+                          {issue.customerMessage && (
+                            <ThemedText
+                              type="caption"
+                              style={{ marginTop: 4, color: theme.textSecondary }}
+                            >
+                              {issue.customerMessage}
+                            </ThemedText>
+                          )}
+                        </View>
+                      )}
+
+                      {issue.status === "rejected" && issue.customerMessage && (
+                        <ThemedText
+                          type="caption"
+                          style={{ marginTop: 6, color: theme.textSecondary }}
+                        >
+                          {issue.customerMessage}
+                        </ThemedText>
+                      )}
+
+                      {issue.ticketId && (
+                        <Pressable
+                          onPress={() => {
+                            Haptics.impactAsync(
+                              Haptics.ImpactFeedbackStyle.Light,
+                            );
+                            navigation.navigate("TicketDetail", {
+                              ticketId: issue.ticketId,
+                            });
+                          }}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginTop: 8,
+                          }}
+                        >
+                          <Feather
+                            name="message-circle"
+                            size={14}
+                            color={ComeYaColors.primary}
+                          />
+                          <ThemedText
+                            type="caption"
+                            style={{
+                              marginLeft: 6,
+                              color: ComeYaColors.primary,
+                              fontWeight: "600",
+                            }}
+                          >
+                            Ver conversación con soporte
+                          </ThemedText>
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -1263,6 +1455,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     borderRadius: BorderRadius.lg,
     marginTop: Spacing.lg,
+  },
+  issuesBox: {
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginHorizontal: Spacing.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   reportButton: {
     flexDirection: "row",
