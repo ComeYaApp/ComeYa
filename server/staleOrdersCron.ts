@@ -181,9 +181,11 @@ export async function runOrderCleanup(): Promise<{
     checkUnacceptedOrders(),
     checkStaleOrders(),
   ]);
-  if (unaccepted || stale) {
-    retryFailedRefunds().catch(() => {});
-  }
+  // Los reembolsos fallidos se reintentan SIEMPRE, no solo cuando en esta
+  // pasada hubo cancelaciones: un 'failed' (p. ej. pedido stripe nunca
+  // cobrado que se cierra como no_charge) quedaría eternamente sin
+  // procesar si ninguna cancelación lo desbloquea.
+  retryFailedRefunds().catch(() => {});
   return { unaccepted, stale };
 }
 
