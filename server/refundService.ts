@@ -27,7 +27,6 @@ import { randomUUID } from "crypto";
 import { logger } from "./logger";
 import { sendPushToUser } from "./enhancedPushService";
 
-export type RefundMethod = "stripe" | "manual_transfer" | "cash_none";
 export type RefundType = "issue" | "cancellation" | "dispute" | "manual";
 export type LiableParty = "business" | "driver" | "platform";
 
@@ -55,30 +54,23 @@ export interface RefundResult {
 }
 
 // ── Discriminación del método de pago ─────────────────────────────────────────
-// El checkout produce: stripe_card, stripe_bizum, paypal, bizum_manual, sepa.
-// El servidor pone "cash" por defecto cuando no llega ninguno.
+// La lógica pura vive en utils/refundPolicy (testeable sin BD); aquí se
+// re-exporta para mantener los imports existentes.
+import {
+  isStripePayment,
+  isCashPayment,
+  isManualPayment,
+  resolveRefundMethod,
+  type RefundMethod,
+} from "./utils/refundPolicy";
 
-export function isStripePayment(order: {
-  paymentMethod?: string | null;
-}): boolean {
-  return (
-    typeof order.paymentMethod === "string" &&
-    order.paymentMethod.startsWith("stripe_")
-  );
-}
-
-export function isCashPayment(order: {
-  paymentMethod?: string | null;
-}): boolean {
-  return order.paymentMethod === "cash" || order.paymentMethod === "efectivo";
-}
-
-/** Pagos que el cliente hizo fuera de Stripe con comprobante (Bizum, PayPal, SEPA). */
-export function isManualPayment(order: {
-  paymentMethod?: string | null;
-}): boolean {
-  return !isStripePayment(order) && !isCashPayment(order);
-}
+export {
+  isStripePayment,
+  isCashPayment,
+  isManualPayment,
+  resolveRefundMethod,
+};
+export type { RefundMethod };
 
 export type PaymentKind = "stripe" | "cash" | "manual";
 
@@ -88,26 +80,6 @@ export function getPaymentKind(order: {
   if (isStripePayment(order)) return "stripe";
   if (isCashPayment(order)) return "cash";
   return "manual";
-}
-
-/**
- * Decide cómo se devuelve el dinero de este pedido.
- * Solo hay dos vías reales: Stripe (automática) y transferencia manual.
- */
-export function resolveRefundMethod(order: any): RefundMethod {
-  // Stripe solo si además hay un cobro real que revertir
-  if (isStripePayment(order) && order.stripePaymentIntentId) {
-    return "stripe";
-  }
-
-  // Efectivo nunca cobrado: el cliente no puso dinero, no hay nada que devolver
-  if (isCashPayment(order) && !order.cashCollected) {
-    return "cash_none";
-  }
-
-  // Bizum, SEPA, PayPal y efectivo ya cobrado: el dinero entró fuera de la
-  // plataforma, así que sale igual — el admin transfiere y sube comprobante.
-  return "manual_transfer";
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
@@ -273,6 +245,7 @@ const METHOD_COPY: Record<RefundMethod, string> = {
   manual_transfer:
     "Realizaremos la transferencia en las próximas 24-48 horas al mismo medio con el que pagaste.",
   cash_none: "No se realizó ningún cargo, por lo que no hay importe a devolver.",
+  no_charge: "El pago nunca se completó, no hay importe a devolver.",
 };
 
 async function notifyRefund(
@@ -282,12 +255,13 @@ async function notifyRefund(
   method: RefundMethod,
 ) {
   const euros = (amount / 100).toFixed(2);
-  const title =
-    method === "cash_none" ? "Pedido cancelado" : `Devolución de ${euros} €`;
-  const body =
-    method === "cash_none"
-      ? `Pedido #${orderId.slice(-6)}: ${METHOD_COPY[method]}`
-      : `Pedido #${orderId.slice(-6)}. ${METHOD_COPY[method]}`;
+  const withoutCharge = method === "cash_none" || method === "no_charge";
+  const title = withoutCharge
+    ? "Pedido cancelado"
+    : `Devolución de ${euros} €`;
+  const body = withoutCharge
+    ? `Pedido #${orderId.slice(-6)}: ${METHOD_COPY[method]}`
+    : `Pedido #${orderId.slice(-6)}. ${METHOD_COPY[method]}`;
 
   await sendPushToUser(customerId, {
     title,
@@ -314,8 +288,11 @@ export async function createRefund(req: RefundRequest): Promise<RefundResult> {
 
   const method = resolveRefundMethod(order);
 
-  // Sin cargo previo no hay devolución: se registra para dejar constancia
-  if (method === "cash_none") {
+  // Sin cargo previo no hay devolución: se registra para dejar constancia.
+  // Aplica a efectivo nunca cobrado (cash_none) y a pagos cuya ventana se
+  // abrió pero nunca se completó (no_charge) — intentar reembolsar estos
+  // por Stripe falla para siempre ("does not have a successful charge").
+  if (method === "cash_none" || method === "no_charge") {
     const noChargeId = randomUUID();
     await db.insert(refunds).values({
       id: noChargeId,
@@ -325,7 +302,7 @@ export async function createRefund(req: RefundRequest): Promise<RefundResult> {
       amount: 0,
       type: req.type,
       reason: req.reason,
-      method: "cash_none",
+      method,
       status: "completed",
       liableParty: req.liableParty,
       platformCost: 0,
@@ -335,16 +312,19 @@ export async function createRefund(req: RefundRequest): Promise<RefundResult> {
     });
 
     if (req.notifyCustomer !== false) {
-      await notifyRefund(order.userId, order.id, 0, "cash_none");
+      await notifyRefund(order.userId, order.id, 0, method);
     }
 
     return {
       success: true,
       refundId: noChargeId,
-      method: "cash_none",
+      method,
       status: "completed",
       amount: 0,
-      message: "El pedido se pagaba en efectivo y no se llegó a cobrar",
+      message:
+        method === "cash_none"
+          ? "El pedido se pagaba en efectivo y no se llegó a cobrar"
+          : "El pago nunca se completó; no hay importe que devolver",
     };
   }
 

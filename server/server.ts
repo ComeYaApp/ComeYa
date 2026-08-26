@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import path from "path";
+import fs from "fs";
 import { config } from "dotenv";
 import { validateEnv } from "./env";
 import { createServer } from "http";
@@ -127,10 +128,23 @@ app.get("/health", (req, res) => {
 
 // ─── STATIC / SPA ─────────────────────────────────────────────────────────────
 if (isProduction) {
+  const distIndex = path.join(process.cwd(), "dist", "index.html");
+  const hasFrontendBuild = fs.existsSync(distIndex);
   app.use(express.static(path.join(process.cwd(), "dist")));
   app.use((req, res, next) => {
     if (req.path.startsWith("/api") || req.path === "/health") return next();
-    res.sendFile(path.join(process.cwd(), "dist", "index.html"));
+    // En despliegues solo-backend (Render) no existe dist/: antes explotaba
+    // con ENOENT al visitar la raíz. La web vive en Vercel.
+    if (!hasFrontendBuild) {
+      return res.status(200).send(
+        `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>ComeYa API</title></head>` +
+          `<body style="font-family:system-ui;text-align:center;padding:48px">` +
+          `<h1>🛵 ComeYa API</h1><p>El backend está funcionando.</p>` +
+          `<p>La app web está en <a href="${process.env.FRONTEND_URL || "https://app.comeya.es"}">${process.env.FRONTEND_URL || "https://app.comeya.es"}</a></p>` +
+          `</body></html>`,
+      );
+    }
+    res.sendFile(distIndex);
   });
 } else {
   app.get("/", (req, res) => {

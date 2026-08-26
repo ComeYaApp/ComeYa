@@ -51,23 +51,34 @@ export function formatOrderNumber(n: number | null | undefined): string {
  * Backfill idempotente: asigna números secuenciales a los pedidos históricos
  * ordenados por fecha de creación (el más antiguo = CY000001) y alinea el
  * contador con el máximo asignado. Se ejecuta al arrancar el servidor.
+ *
+ * Nota MySQL: el MAX no puede ir como subquery dentro del SET del UPDATE
+ * (error 1093 "can't specify target table for update in FROM clause"), así
+ * que se lee primero y se pasa como parámetro.
  */
 export async function backfillOrderNumbers(): Promise<number> {
   try {
-    // 1. Asignar números a los pedidos que no tienen, por created_at
+    // 1. Leer el máximo número ya asignado (0 si no hay ninguno)
+    const [maxRows] = (await db.execute(
+      sql`SELECT COALESCE(MAX(order_number), 0) AS base FROM orders`,
+    )) as any;
+    const base = Number((maxRows as any[])[0]?.base ?? 0);
+
+    // 2. Asignar números a los pedidos que no tienen, por created_at.
+    //    La derived table se anida dos veces para forzar su materialización.
     const [res] = (await db.execute(sql`
       UPDATE orders o
       JOIN (
-        SELECT id, ROW_NUMBER() OVER (ORDER BY created_at ASC, id ASC) AS rn
-        FROM orders
-        WHERE order_number IS NULL
+        SELECT id, rn FROM (
+          SELECT id, ROW_NUMBER() OVER (ORDER BY created_at ASC, id ASC) AS rn
+          FROM orders
+          WHERE order_number IS NULL
+        ) t
       ) ranked ON ranked.id = o.id
-      SET o.order_number = ranked.rn + COALESCE((
-        SELECT MAX(order_number) FROM orders WHERE order_number IS NOT NULL
-      ), 0)
+      SET o.order_number = ranked.rn + ${base}
     `)) as any;
 
-    // 2. Alinear el contador con el máximo número asignado
+    // 3. Alinear el contador con el máximo número asignado
     await db.execute(sql`
       INSERT INTO order_number_sequence (id, next_value)
       VALUES (1, COALESCE((SELECT MAX(order_number) FROM orders), 0) + 1)
@@ -77,7 +88,9 @@ export async function backfillOrderNumbers(): Promise<number> {
 
     const affected = Number((res as any)?.affectedRows ?? 0);
     if (affected > 0) {
-      console.log(`🔢 Backfill de numeración: ${affected} pedidos numerados`);
+      console.log(
+        `🔢 Backfill de numeración: ${affected} pedidos numerados (base ${base})`,
+      );
     }
     return affected;
   } catch (error) {

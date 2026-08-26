@@ -110,29 +110,64 @@ async function checkStaleOrders(): Promise<number> {
  */
 async function retryFailedRefunds(): Promise<number> {
   try {
-    const { refunds } = await import("@shared/schema-mysql");
+    const { refunds, orders: ordersTable } = await import(
+      "@shared/schema-mysql"
+    );
     const { eq } = await import("drizzle-orm");
     const svc = await import("./refundService");
     if (typeof (svc as any).retryRefund !== "function") return 0;
 
     // Máximo 10 por pasada para no saturar la API de Stripe
     const failed = await db
-      .select({ id: refunds.id })
+      .select({ id: refunds.id, orderId: refunds.orderId })
       .from(refunds)
       .where(eq(refunds.status, "failed"))
       .limit(10);
 
-    let retried = 0;
+    let handled = 0;
     for (const r of failed) {
       try {
-        await (svc as any).retryRefund(r.id);
-        retried++;
+        const [order] = await db
+          .select({
+            paymentMethod: ordersTable.paymentMethod,
+            paidAt: ordersTable.paidAt,
+          })
+          .from(ordersTable)
+          .where(eq(ordersTable.id, r.orderId))
+          .limit(1);
+
+        // Pago Stripe cuya ventana se abrió pero nunca se cobró: no hay
+        // cargo que reembolsar. Se cierra el registro para siempre (antes
+        // se reintentaba cada 2 min y fallaba eternamente).
+        if (
+          order &&
+          String(order.paymentMethod || "").startsWith("stripe_") &&
+          !order.paidAt
+        ) {
+          await db
+            .update(refunds)
+            .set({
+              status: "completed",
+              processedAt: new Date(),
+              amount: 0,
+            })
+            .where(eq(refunds.id, r.id));
+          await db
+            .update(ordersTable)
+            .set({ refundStatus: "processed" })
+            .where(eq(ordersTable.id, r.orderId));
+          handled++;
+          continue;
+        }
+
+        await (svc as any).retryRefund(r.id, "system");
+        handled++;
       } catch {
         /* seguirá en failed para reintento manual del admin */
       }
     }
-    if (retried) console.log(`💸 Reembolsos reintentados: ${retried}`);
-    return retried;
+    if (handled) console.log(`💸 Reembolsos procesados: ${handled}`);
+    return handled;
   } catch {
     return 0;
   }
