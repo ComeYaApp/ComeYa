@@ -197,13 +197,22 @@ interface GeocodingResult {
  * @param destLng Longitud destino
  * @returns Resultado de direcciones o null si falla
  */
+export type TravelMode = "driving" | "walking";
+
 export async function getDirections(
   originLat: number,
   originLng: number,
   destLat: number,
   destLng: number,
+  mode: TravelMode = "driving",
 ): Promise<DirectionsResult | null> {
-  const cacheKey = getCacheKey("directions", { originLat, originLng, destLat, destLng });
+  const cacheKey = getCacheKey("directions", {
+    originLat,
+    originLng,
+    destLat,
+    destLng,
+    mode,
+  });
 
   // Check cache
   const cached = getFromCache<DirectionsResult>(cacheKey, TTL.directions);
@@ -226,7 +235,7 @@ export async function getDirections(
 
   if (googleAllowed && API_KEY) {
     try {
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&language=es&key=${API_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=${mode}&language=es&key=${API_KEY}`;
 
       const response = await fetch(url, {
         signal: AbortSignal.timeout(8000), // 8s timeout
@@ -264,7 +273,13 @@ export async function getDirections(
   }
 
   // Fallback: OSRM (OpenStreetMap) — rutas reales por calles sin API key
-  const osrmResult = await fetchOsrmRoute(originLat, originLng, destLat, destLng);
+  const osrmResult = await fetchOsrmRoute(
+    originLat,
+    originLng,
+    destLat,
+    destLng,
+    mode,
+  );
   if (osrmResult) {
     setCache(cacheKey, osrmResult);
     return osrmResult;
@@ -273,11 +288,14 @@ export async function getDirections(
   return null;
 }
 
-// Servidores OSRM públicos (se prueban en orden)
-const OSRM_MIRRORS = [
-  "https://router.project-osrm.org",
-  "https://routing.openstreetmap.de/routed-car",
-];
+// Servidores OSRM públicos (se prueban en orden) — coche y a pie
+const OSRM_MIRRORS: Record<TravelMode, string[]> = {
+  driving: [
+    "https://router.project-osrm.org",
+    "https://routing.openstreetmap.de/routed-car",
+  ],
+  walking: ["https://routing.openstreetmap.de/routed-foot"],
+};
 
 /**
  * Ruta real por calles usando OSRM público (gratuito, sin API key).
@@ -288,10 +306,11 @@ async function fetchOsrmRoute(
   originLng: number,
   destLat: number,
   destLng: number,
+  mode: TravelMode = "driving",
 ): Promise<DirectionsResult | null> {
-  const path = `/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline&steps=true`;
+  const path = `/route/v1/${mode}/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline&steps=true`;
 
-  for (const base of OSRM_MIRRORS) {
+  for (const base of OSRM_MIRRORS[mode] ?? OSRM_MIRRORS.driving) {
     try {
       const response = await fetch(`${base}${path}`, {
         signal: AbortSignal.timeout(8000),

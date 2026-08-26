@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -33,6 +33,7 @@ import {
   businessLabelIcon,
   asGoogleIcon,
 } from "@/utils/webMarkerSvg";
+import { displayOrderNumber, orderNumberLabel } from "@/utils/orderNumber";
 import {
   businessMarkerMeta,
   vehicleMarkerMeta,
@@ -106,6 +107,11 @@ const STATUS_LABELS: Record<
     color: "#3B82F6",
     icon: "check-circle",
   },
+  accepted: {
+    label: "Pedido aceptado",
+    color: "#3B82F6",
+    icon: "check-circle",
+  },
   preparing: {
     label: "Preparando tu pedido",
     color: "#8B5CF6",
@@ -116,10 +122,25 @@ const STATUS_LABELS: Record<
     color: "#10B981",
     icon: "check-square",
   },
+  picked_up: {
+    label: "Pedido recogido",
+    color: "#0EA5E9",
+    icon: "package-check",
+  },
   on_the_way: {
     label: "En camino 🛵",
     color: ComeYaColors.success,
     icon: "truck",
+  },
+  in_transit: {
+    label: "En camino 🛵",
+    color: ComeYaColors.success,
+    icon: "truck",
+  },
+  arriving: {
+    label: "Llegando a tu dirección 📍",
+    color: "#EC4899",
+    icon: "map-pin",
   },
   delivered: { label: "Entregado ✓", color: "#4CAF50", icon: "check-circle" },
 };
@@ -130,7 +151,19 @@ const STATUS_STEPS = [
   "preparing",
   "ready",
   "on_the_way",
+  "in_transit",
+  "arriving",
   "delivered",
+];
+
+// Estados en los que el repartidor está en movimiento y el ETA debe
+// seguir actualizándose (antes solo on_the_way: al pasar a arriving el ETA
+// quedaba congelado en "1 min" para siempre)
+const ETA_STATUSES = [
+  "picked_up",
+  "on_the_way",
+  "in_transit",
+  "arriving",
 ];
 
 export default function OrderTrackingScreen() {
@@ -152,6 +185,20 @@ export default function OrderTrackingScreen() {
     minutes: number;
     confidence: number;
   } | null>(null);
+  // Cuenta atrás de la política de aceptación (10 min) — hook incondicional
+  const [policyNow, setPolicyNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setPolicyNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const acceptanceRemainingLabelWeb = useMemo(() => {
+    if (!order?.createdAt) return "10:00";
+    const deadline = new Date(order.createdAt).getTime() + 10 * 60 * 1000;
+    const ms = Math.max(0, deadline - policyNow);
+    return `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${String(
+      Math.floor((ms % 60000) / 1000),
+    ).padStart(2, "0")}`;
+  }, [order?.createdAt, policyNow]);
   const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
   const [driverVehicle, setDriverVehicle] = useState<string | null>(null);
   const [businessLocation, setBusinessLocation] = useState<{
@@ -285,9 +332,10 @@ export default function OrderTrackingScreen() {
     return () => clearInterval(interval);
   }, [orderId]);
 
-  // Poll ETA dinámico cada 30s
+  // Poll ETA dinámico cada 30s (mientras el repartidor está en movimiento —
+  // antes solo con on_the_way: al pasar a arriving quedaba congelado)
   useEffect(() => {
-    if (!orderId || order?.status !== "on_the_way") return;
+    if (!orderId || !ETA_STATUSES.includes(order?.status ?? "")) return;
     const fetchETA = async () => {
       try {
         const response = await apiRequest(
@@ -369,7 +417,7 @@ export default function OrderTrackingScreen() {
     )
       return;
     if (
-      order.status === "on_the_way" ||
+      ETA_STATUSES.includes(order.status) ||
       order.status === "delivered" ||
       order.status === "cancelled"
     ) {
@@ -490,14 +538,14 @@ export default function OrderTrackingScreen() {
 
   // ── Posición del repartidor en vivo: WebSocket con fallback a polling ──
   const { location: socketLocation } = useDriverLocationSocket(
-    order?.status === "on_the_way" ? orderId : null,
+    ETA_STATUSES.includes(order?.status ?? "") ? orderId : null,
     { fallbackIntervalMs: 5000 },
   );
 
   // ── useEffect principal de rutas y repartidor (socket + fallback) ──
   useEffect(() => {
     if (!mapsReady || !gmap.current || !order) return;
-    if (order.status !== "on_the_way") return;
+    if (!ETA_STATUSES.includes(order.status)) return;
     if (!socketLocation?.latitude || !socketLocation?.longitude) return;
     const google = (window as any).google;
 
@@ -583,7 +631,24 @@ export default function OrderTrackingScreen() {
     }
   }, [mapsReady, order, businessLocation, socketLocation]);
 
-  const currentStep = order ? STATUS_STEPS.indexOf(order.status) : 0;
+  // Normaliza el estado a la barra de 5 pasos (pending→confirmed→preparing→
+  // ready→on_the_way). Los estados avanzados (picked_up, in_transit, arriving,
+  // delivered) cuentan como el último paso.
+  const STEP_POSITION: Record<string, number> = {
+    pending: 0,
+    confirmed: 1,
+    accepted: 1,
+    preparing: 2,
+    ready: 3,
+    picked_up: 3,
+    on_the_way: 4,
+    in_transit: 4,
+    arriving: 4,
+    delivered: 4,
+  };
+  const currentStep = order
+    ? STEP_POSITION[order.status] ?? 0
+    : 0;
   const statusInfo = STATUS_LABELS[order?.status] || {
     label: "Procesando...",
     color: "#888",
@@ -678,7 +743,7 @@ export default function OrderTrackingScreen() {
                       type="caption"
                       style={{ color: theme.textSecondary }}
                     >
-                      Pedido #{orderId?.slice(-6)}
+                      Pedido {orderId ? displayOrderNumber(order) : ""}
                     </ThemedText>
                   </View>
                   {dynamicETA ? (
@@ -714,6 +779,32 @@ export default function OrderTrackingScreen() {
                 </View>
               </View>
             )}
+
+            {/* Política de aceptación: cuenta atrás de 10 min mientras el
+                negocio no acepta (transparencia del reembolso automático) */}
+            {order &&
+              (order.status === "pending" ||
+                order.status === "payment_failed") && (
+                <View style={s.acceptanceNotice}>
+                  <Feather name="clock" size={16} color="#B45309" />
+                  <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                    <ThemedText
+                      type="small"
+                      style={{ color: "#B45309", fontWeight: "700" }}
+                    >
+                      El negocio tiene {acceptanceRemainingLabelWeb} para aceptar
+                      tu pedido
+                    </ThemedText>
+                    <ThemedText
+                      type="caption"
+                      style={{ color: "#92400E", marginTop: 2 }}
+                    >
+                      Si no lo acepta en 10 minutos, el pedido se cancela
+                      automáticamente y se te reembolsa el 100% del importe.
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
 
             {/* Estado actual */}
             <View
@@ -1170,7 +1261,7 @@ export default function OrderTrackingScreen() {
                         "ReportIssue" as never,
                         {
                           orderId: order.id,
-                          orderNumber: order.id.slice(-6),
+                          orderNumber: orderNumberLabel(order),
                         } as never,
                       );
                     }
@@ -1248,6 +1339,16 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: Spacing.xl,
   },
+  acceptanceNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  } as any,
   backBtn: {
     width: 44,
     height: 44,

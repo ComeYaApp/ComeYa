@@ -16,6 +16,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { apiRequest, apiRequestRaw } from "@/lib/query-client";
 import { useAdminOps, type OpsOrder } from "@/hooks/useAdminOps";
+import { isValidCoord } from "@/utils/directions";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { DriverPin } from "@/components/map/DriverPin";
@@ -167,7 +168,9 @@ export default function AdminMapScreen() {
       >
         {/* Negocios */}
         {showBusinesses &&
-          businesses.map((b) => {
+          businesses
+            .filter((b) => isValidCoord({ latitude: b.lat, longitude: b.lng }))
+            .map((b) => {
             const meta = businessMarkerMeta(
               b.type ?? undefined,
               b.categories ?? undefined,
@@ -221,7 +224,9 @@ export default function AdminMapScreen() {
 
         {/* Repartidores */}
         {showDrivers &&
-          drivers.map((d) => {
+          drivers
+            .filter((d) => isValidCoord({ latitude: d.lat, longitude: d.lng }))
+            .map((d) => {
             const vehicle = vehicleMarkerMeta(d.vehicleType);
             const color = d.isBlocked
               ? "#6B7280"

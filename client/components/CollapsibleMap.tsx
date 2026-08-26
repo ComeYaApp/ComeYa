@@ -62,7 +62,7 @@ interface CollapsibleMapProps {
   eta?: string;
   status?: string;
   onCallDriver?: () => void;
-  onNavigateInApp?: () => void; // navegación interna (pickup), sin apps externas
+  onNavigateInApp?: (travelMode?: "driving" | "walking") => void; // navegación interna (pickup), sin apps externas
   isPickup?: boolean; // Nuevo: indica si es pedido pickup
 }
 
@@ -141,6 +141,8 @@ export function CollapsibleMap({
 }: CollapsibleMapProps) {
   const { theme, isDark } = useTheme();
   const [mapAvailable, setMapAvailable] = useState(false);
+  // Modo de desplazamiento del cliente en recogida propia (coche o a pie)
+  const [pickupMode, setPickupMode] = useState<"driving" | "walking">("driving");
   // Ruta real por calles (Google Directions vía /api/gps/directions)
   const [routePath, setRoutePath] = useState<RouteCoordinate[]>([]);
   // Info de la ruta real (distancia y duración de Google) para la tarjeta
@@ -151,6 +153,7 @@ export function CollapsibleMap({
   const lastRouteRef = useRef<{
     origin: RouteCoordinate;
     destination: RouteCoordinate;
+    mode: "driving" | "walking";
   } | null>(null);
   const routeLoadingRef = useRef(false);
 
@@ -184,6 +187,7 @@ export function CollapsibleMap({
     const last = lastRouteRef.current;
     if (
       last &&
+      last.mode === (isPickup ? pickupMode : "driving") &&
       distanceMeters(last.origin, origin) < 150 &&
       distanceMeters(last.destination, destination) < 20
     ) {
@@ -192,9 +196,11 @@ export function CollapsibleMap({
 
     if (routeLoadingRef.current) return;
     routeLoadingRef.current = true;
-    fetchRouteDirections(origin, destination)
+    // En pickup se usa el modo elegido por el cliente (coche/a pie)
+    const routeMode: "driving" | "walking" = isPickup ? pickupMode : "driving";
+    fetchRouteDirections(origin, destination, routeMode)
       .then((result) => {
-        lastRouteRef.current = { origin, destination };
+        lastRouteRef.current = { origin, destination, mode: routeMode };
         if (result && result.coordinates.length >= 2) {
           setRoutePath(result.coordinates);
           setRouteInfo({
@@ -208,6 +214,7 @@ export function CollapsibleMap({
       });
   }, [
     isPickup,
+    pickupMode,
     deliveryPersonLocation?.latitude,
     deliveryPersonLocation?.longitude,
     businessLocation?.latitude,
@@ -522,8 +529,8 @@ export function CollapsibleMap({
                     style={{ color: theme.textSecondary }}
                     numberOfLines={1}
                   >
-                    A {routeInfo.distanceText} · {routeInfo.durationText} en
-                    coche
+                    A {routeInfo.distanceText} · {routeInfo.durationText}{" "}
+                    {pickupMode === "walking" ? "a pie" : "en coche"}
                   </ThemedText>
                 ) : (
                   <ThemedText
@@ -536,13 +543,53 @@ export function CollapsibleMap({
                       : "Abre Google Maps para llegar al local"}
                   </ThemedText>
                 )}
+                {/* Selector de modo de desplazamiento: coche o a pie */}
+                <View style={styles.pickupModeRow}>
+                  {(
+                    [
+                      ["driving", "car", "En coche"],
+                      ["walking", "map-pin", "A pie"],
+                    ] as const
+                  ).map(([mode, icon, label]) => (
+                    <Pressable
+                      key={mode}
+                      onPress={() => setPickupMode(mode)}
+                      style={[
+                        styles.pickupModeBtn,
+                        {
+                          backgroundColor:
+                            pickupMode === mode
+                              ? ComeYaColors.primary
+                              : theme.backgroundSecondary,
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name={icon as any}
+                        size={12}
+                        color={pickupMode === mode ? "#FFF" : theme.textSecondary}
+                      />
+                      <ThemedText
+                        type="caption"
+                        style={{
+                          color:
+                            pickupMode === mode ? "#FFF" : theme.textSecondary,
+                          marginLeft: 4,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {label}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
             </View>
           </View>
           <Pressable
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onNavigateInApp();
+              onNavigateInApp(pickupMode);
             }}
             style={[
               styles.navigateButton,
@@ -673,6 +720,18 @@ const styles = StyleSheet.create({
   driverInfo: {
     marginLeft: Spacing.sm,
     flex: 1,
+  },
+  pickupModeRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.xs,
+  },
+  pickupModeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 5,
+    borderRadius: BorderRadius.full,
   },
   driverBadge: {
     flexDirection: "row",

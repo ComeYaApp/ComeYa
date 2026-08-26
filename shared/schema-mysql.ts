@@ -81,6 +81,8 @@ export const orders = mysqlTable("orders", {
   id: varchar("id", { length: 255 })
     .primaryKey()
     .default(sql`(UUID())`),
+  // Número secuencial público con formato #CY000001 (trazabilidad de facturas)
+  orderNumber: int("order_number").unique(),
   userId: varchar("user_id", { length: 255 }).notNull(),
   businessId: text("business_id").notNull(),
   businessName: text("business_name").notNull(),
@@ -133,6 +135,9 @@ export const orders = mysqlTable("orders", {
   // Preferencias de sustitución (Stock Out)
   substitutionPreference: text("substitution_preference").default("refund"), // refund, call, substitute
   itemSubstitutionPreferences: text("item_substitution_preferences"), // JSON: {productId: "refund"|"call"|"substitute"}
+  substituteProductIds: text("substitute_product_ids"), // JSON: {productId: substituteProductId} elegidos por el cliente
+  // Fecha programada de entrega (pedidos programados materializados)
+  scheduledFor: timestamp("scheduled_for"),
   // Pago en efectivo
   cashPaymentAmount: int("cash_payment_amount"), // Con cuánto paga el cliente (centavos)
   cashChangeAmount: int("cash_change_amount"), // Cambio a entregar (centavos)

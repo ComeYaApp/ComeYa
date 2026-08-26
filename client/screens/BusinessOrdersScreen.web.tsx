@@ -16,6 +16,7 @@ import { ComeYaColors, Spacing, BorderRadius } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
 import { useToast } from "@/contexts/ToastContext";
+import { displayOrderNumber } from "@/utils/orderNumber";
 
 type Filter = "pending" | "active" | "all";
 
@@ -25,7 +26,10 @@ const STATUS_COLOR: Record<string, string> = {
   accepted: "#3B82F6",
   preparing: "#8B5CF6",
   ready: "#10B981",
+  picked_up: "#0EA5E9",
   on_the_way: "#22C55E",
+  in_transit: "#22C55E",
+  arriving: "#EC4899",
   delivered: "#6B7280",
   cancelled: "#EF4444",
 };
@@ -36,10 +40,16 @@ const STATUS_LABEL: Record<string, string> = {
   accepted: "Aceptado",
   preparing: "Preparando",
   ready: "Listo ✓",
+  picked_up: "Recogido",
   on_the_way: "En camino",
+  in_transit: "En tránsito",
+  arriving: "Llegando al cliente",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
+
+// Estados que cuentan como "en reparto" para filtros y etiquetas
+const IN_DELIVERY = ["picked_up", "on_the_way", "in_transit", "arriving"];
 
 const PAYMENT_LABEL: Record<string, string> = {
   bizum: "📱 Bizum",
@@ -219,18 +229,24 @@ export default function BusinessOrdersScreen() {
     }
   };
 
+  // Estados activos del negocio (incluye el tramo final del reparto que el
+  // pipeline marca como in_transit/arriving — antes quedaban fuera del filtro)
+  const ACTIVE_FOR_BUSINESS = [
+    "accepted",
+    "preparing",
+    "ready",
+    ...IN_DELIVERY,
+  ];
+
   const filteredOrders = orders.filter((o) => {
     if (filter === "pending") return o.status === "pending";
-    if (filter === "active")
-      return ["accepted", "preparing", "ready", "on_the_way"].includes(
-        o.status,
-      );
+    if (filter === "active") return ACTIVE_FOR_BUSINESS.includes(o.status);
     return true;
   });
 
   const pendingCount = orders.filter((o) => o.status === "pending").length;
   const activeCount = orders.filter((o) =>
-    ["accepted", "preparing", "ready", "on_the_way"].includes(o.status),
+    ACTIVE_FOR_BUSINESS.includes(o.status),
   ).length;
 
   return (
@@ -364,7 +380,7 @@ export default function BusinessOrdersScreen() {
                   <View style={s.orderHeader}>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.orderId, { color: text }]}>
-                        Pedido #{order.id?.slice(-6)}
+                        Pedido {displayOrderNumber(order)}
                       </Text>
                       <Text style={[s.orderTime, { color: sub }]}>
                         {new Date(order.createdAt).toLocaleTimeString("es-ES", {

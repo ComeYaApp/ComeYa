@@ -13,7 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
-import { Audio } from "expo-av";
+
 import { io, Socket } from "socket.io-client";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -29,6 +29,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { displayOrderNumber } from "@/utils/orderNumber";
 
 export default function BusinessOrdersScreen() {
   const insets = useSafeAreaInsets();
@@ -95,17 +96,24 @@ export default function BusinessOrdersScreen() {
     };
   }, [user?.id, user?.businessId]);
 
+  /**
+   * Aviso sonoro de pedido nuevo. Usa expo-haptics (nativo estable) en vez de
+   * expo-av: ese módulo está deprecado con la New Architecture y era uno de
+   * los sospechosos de los cierres inesperados en iOS. Además el MP3 venía de
+   * una URL externa, así que sin red no sonaba.
+   */
   const playNotificationSound = async () => {
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        {
-          uri: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3",
-        },
-        { shouldPlay: true },
+      const Haptics = await import("expo-haptics");
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
       );
-      await sound.playAsync();
+      // Doble vibración para que destaque sobre el ruido del local
+      setTimeout(() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+      }, 220);
     } catch (error) {
-      console.log("Could not play sound", error);
+      console.log("Could not trigger notification feedback", error);
     }
   };
 
@@ -227,9 +235,15 @@ export default function BusinessOrdersScreen() {
   const filteredOrders = orders.filter((order: any) => {
     if (filter === "pending") return order.status === "pending";
     if (filter === "active")
-      return ["accepted", "preparing", "ready", "on_the_way"].includes(
-        order.status,
-      );
+      return [
+        "accepted",
+        "preparing",
+        "ready",
+        "picked_up",
+        "on_the_way",
+        "in_transit",
+        "arriving",
+      ].includes(order.status);
     return true;
   });
 
@@ -239,7 +253,10 @@ export default function BusinessOrdersScreen() {
       accepted: "Aceptado",
       preparing: "Preparando",
       ready: "Listo ✓",
+      picked_up: "Recogido",
       on_the_way: "En camino",
+      in_transit: "En tránsito",
+      arriving: "Llegando al cliente",
       delivered: "Entregado",
       cancelled: "Cancelado",
     };
@@ -270,7 +287,7 @@ export default function BusinessOrdersScreen() {
       >
         <View style={styles.orderHeader}>
           <View style={{ flex: 1 }}>
-            <ThemedText type="h4">Pedido #{item.id.slice(-6)}</ThemedText>
+            <ThemedText type="h4">Pedido {displayOrderNumber(item)}</ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {new Date(item.createdAt).toLocaleTimeString("es-VE", {
                 hour: "2-digit",
@@ -465,7 +482,15 @@ export default function BusinessOrdersScreen() {
               Recibes: {(item.subtotal / 100).toFixed(2)} €
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {item.status === "delivered" ? "✅ Liquidado" : "⏳ Pendiente"}
+              {item.status === "delivered" || item.status === "completed"
+                ? "✅ Liquidado"
+                : ["picked_up", "on_the_way", "in_transit", "arriving"].includes(
+                      item.status,
+                    )
+                  ? "🛵 En reparto"
+                  : item.status === "cancelled"
+                    ? "— Cancelado"
+                    : "⏳ Pendiente"}
             </ThemedText>
           </View>
         </View>

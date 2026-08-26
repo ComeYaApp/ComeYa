@@ -19,17 +19,22 @@ router.get(
   authenticateToken,
   async (req: Request, res: Response) => {
     try {
-      const { originLat, originLng, destLat, destLng } = req.query;
-      
+      const { originLat, originLng, destLat, destLng, mode } = req.query;
+
       if (!originLat || !originLng || !destLat || !destLng) {
         return res.status(400).json({ error: "Missing coordinates" });
       }
+
+      // Modo de viaje: coche (default) o a pie (recogida propia del cliente)
+      const travelMode =
+        mode === "walking" || mode === "walk" ? "walking" : "driving";
 
       const result = await googleMapsService.getDirections(
         parseFloat(originLat as string),
         parseFloat(originLng as string),
         parseFloat(destLat as string),
         parseFloat(destLng as string),
+        travelMode,
       );
 
       if (!result) {

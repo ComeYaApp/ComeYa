@@ -42,6 +42,8 @@ const statusLabels: Record<string, string> = {
   picked_up: "Recogido",
   preparing: "Preparando",
   on_the_way: "En camino",
+  in_transit: "En tránsito",
+  arriving: "Llegando al cliente",
   delivered: "Esperando confirmación",
   pending: "Pendiente",
   accepted: "Aceptado",
@@ -648,6 +650,8 @@ export default function DriverMyDeliveriesScreen() {
                     handleOnTheWay(item.id);
                     break;
                   case "on_the_way":
+                  case "in_transit":
+                  case "arriving":
                     handleDelivered(item.id);
                     break;
                   default:
@@ -672,10 +676,18 @@ export default function DriverMyDeliveriesScreen() {
     );
   };
 
+  // "arriving" e "in_transit" DEBEN estar: el pipeline los usa en el tramo
+  // final de la entrega y sin ellos el pedido desaparecía de esta lista
   const activeOrders = orders.filter((o: any) =>
-    ["ready", "picked_up", "preparing", "on_the_way", "delivered"].includes(
-      o.status,
-    ),
+    [
+      "ready",
+      "picked_up",
+      "preparing",
+      "on_the_way",
+      "in_transit",
+      "arriving",
+      "delivered",
+    ].includes(o.status),
   );
   const completedOrders = orders.filter((o: any) => o.status === "completed");
 

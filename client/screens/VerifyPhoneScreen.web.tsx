@@ -53,6 +53,39 @@ export default function VerifyPhoneScreen() {
     }
   }, [countdown]);
 
+  // WebOTP (Chrome Android): recibe el código SMS automáticamente si el
+  // mensaje lleva el formato estándar "@dominio #código"
+  useEffect(() => {
+    const nav = navigator as any;
+    if (!("OTPCredential" in window) || !nav.credentials?.get) return;
+
+    const ac = new AbortController();
+    nav.credentials
+      .get({ otp: { transport: "sms" }, signal: ac.signal })
+      .then((otp: any) => {
+        if (otp?.code) {
+          const digits = otp.code.replace(/\D/g, "").slice(0, 6).split("");
+          if (digits.length === 6) {
+            setCode(digits);
+            setError("");
+          }
+        }
+      })
+      .catch(() => {});
+    return () => ac.abort();
+  }, []);
+
+  // Verificación automática en cuanto los 6 dígitos están llenos
+  // (autofill WebOTP o pegado manual)
+  const verifyRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    const fullCode = code.join("");
+    if (fullCode.length === 6 && !code.includes("") && !isLoading) {
+      verifyRef.current?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
   const handleCodeChange = (value: string, index: number) => {
     const digit = value.replace(/\D/g, "").slice(-1);
     const newCode = [...code];
@@ -110,6 +143,9 @@ export default function VerifyPhoneScreen() {
     }
   };
 
+  // El auto-submit del autofill WebOTP siempre usa la versión más reciente
+  verifyRef.current = handleVerify;
+
   const handleResend = async () => {
     if (!canResend) return;
     setIsResending(true);
@@ -159,6 +195,9 @@ export default function VerifyPhoneScreen() {
               onKeyDown={(e) => handleKeyDown(e, i)}
               maxLength={1}
               inputMode="numeric"
+              // WebOTP (Chrome/Android): el SMS llega con el origen de la app
+              // y el navegador ofrece rellenar el código automáticamente
+              {...(i === 0 ? ({ autoComplete: "one-time-code" } as any) : {})}
               style={{
                 width: isMobile ? Math.floor((screenWidth - 80) / 6) : 56,
                 height: isMobile ? Math.floor((screenWidth - 80) / 6) : 64,

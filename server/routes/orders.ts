@@ -256,8 +256,12 @@ router.post("/", authenticateToken, async (req, res) => {
 
     // Create order
     const orderId = crypto.randomUUID();
+    // Número secuencial público #CY000001 (reserva atómica)
+    const { nextOrderNumber } = await import("../orderNumberService");
+    const seqNumber = await nextOrderNumber();
     const newOrder = {
       id: orderId,
+      ...(seqNumber != null ? { orderNumber: seqNumber } : {}),
       userId: req.user!.id,
       businessId,
       businessName: businessName || business.name,
@@ -334,6 +338,18 @@ router.post("/:id/confirm", authenticateToken, async (req, res) => {
     if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
     if (order.userId !== req.user!.id && req.user!.role !== "admin")
       return res.status(403).json({ error: "No autorizado" });
+
+    // Guard: el confirm (fin del período de arrepentimiento) solo aplica en
+    // fase temprana. Sin esto, un reintento/tarde del countdown podía resetear
+    // un pedido ya en preparación o en camino de vuelta a "accepted".
+    const earlyStatuses = ["pending", "confirmed", "accepted"];
+    if (!earlyStatuses.includes(order.status)) {
+      return res.json({
+        success: true,
+        message: "El pedido ya avanzó de fase; no se requiere confirmación",
+        status: order.status,
+      });
+    }
 
     await db
       .update(orders)
@@ -679,11 +695,18 @@ router.post("/:id/mark-picked-up", authenticateToken, async (req, res) => {
       })
       .where(eq(orders.id, pickupId));
 
-    // Notificar al cliente que ya puede calificar su experiencia
+    // Notificar al cliente SIN pedir la reseña: el prompt inmediato de
+    // valoración tras el QR crasheaba la app. La invitación a valorar llega
+    // 1 hora después (notificación local programada por el cliente al
+    // recibir este push y abrir el pedido).
     await sendPushToUser(order.order.userId, {
       title: "🛍️ ¡Pedido recogido!",
-      body: `Gracias por recoger tu pedido en ${order.business?.name || order.order.businessName || "el negocio"}. ¡Califica tu experiencia!`,
-      data: { orderId: pickupId, screen: "OrderTracking" },
+      body: `Gracias por recoger tu pedido en ${order.business?.name || order.order.businessName || "el negocio"}. ¡Que lo disfrutes!`,
+      data: {
+        orderId: pickupId,
+        screen: "OrderTracking",
+        reviewDelayMs: 60 * 60 * 1000, // el cliente programa el recordatorio
+      },
     });
 
     // Liberar fondos (si aplica)

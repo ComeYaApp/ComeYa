@@ -21,6 +21,7 @@ import {
 } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { apiRequest } from "@/lib/query-client";
 import {
   pinIcon,
   circleIcon,
@@ -88,7 +89,9 @@ export default function DriverNavigationScreen() {
   const polylineRef = useRef<any>(null);
   const watchIdRef = useRef<number | null>(null);
 
-  const { destLat, destLng, destAddress } = route.params;
+  const { destLat, destLng, destAddress, travelMode } = route.params;
+  const routeTravelMode: "driving" | "walking" =
+    travelMode === "walking" ? "walking" : "driving";
 
   const [mapsReady, setMapsReady] = useState(false);
   const [driverLocation, setDriverLocation] = useState<{
@@ -133,6 +136,7 @@ export default function DriverNavigationScreen() {
       const routeResult = await fetchRouteDirections(
         { latitude: originLat, longitude: originLng },
         { latitude: destLat, longitude: destLng },
+        routeTravelMode,
       );
 
       if (routeResult) {
@@ -207,8 +211,10 @@ export default function DriverNavigationScreen() {
           { enableHighAccuracy: true, timeout: 10000 },
         );
 
-        // Seguimiento continuo: mueve el marcador y recalcula la ruta
-        // automáticamente si el repartidor se desvía >150 m de la ruta
+        // Seguimiento continuo: mueve el marcador, recalcula si se desvía y
+        // SUBE la posición al servidor (throttle 5s) para que cliente y
+        // negocio vean el movimiento en vivo durante la navegación
+        let lastPostAt = 0;
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
             const coords = {
@@ -218,6 +224,14 @@ export default function DriverNavigationScreen() {
             setDriverLocation(coords);
 
             const now = Date.now();
+            if (now - lastPostAt >= 5000) {
+              lastPostAt = now;
+              apiRequest("POST", "/api/delivery/location", {
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              }).catch(() => {});
+            }
+
             const coordsLen = routeCoordsRef.current.length;
             if (
               coordsLen > 2 &&

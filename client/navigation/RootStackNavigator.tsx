@@ -197,6 +197,7 @@ export type RootStackParamList = {
     destLat: number;
     destLng: number;
     destAddress: string;
+    travelMode?: "driving" | "walking";
   };
   RouteOptimization: undefined;
   PublicTracking: { token: string };

@@ -42,6 +42,10 @@ type Phase =
 const PHASE_BY_STATUS: Record<string, Phase> = {
   pending: "pre_accept",
   confirmed: "pre_accept",
+  // Estados de pago que dejaban el pedido "incancelable" (getPhase → null):
+  // el cron de limpieza los necesita para reembolsar y cerrar
+  payment_failed: "pre_accept",
+  paid: "pre_accept",
   accepted: "accepted",
   assigned_driver: "accepted",
   preparing: "preparing",

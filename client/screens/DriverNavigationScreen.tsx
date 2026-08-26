@@ -33,7 +33,7 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 // La API key NUNCA se expone al cliente — se usa proxy del servidor
 // El servidor tiene cache + rate limiting para ahorrar costos
 import { apiRequest } from "@/lib/query-client";
-import { decodePolyline, distanceMeters } from "@/utils/directions";
+import { decodePolyline, distanceMeters, toCoord } from "@/utils/directions";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { DriverPin } from "@/components/map/DriverPin";
@@ -58,7 +58,13 @@ export default function DriverNavigationScreen() {
   const route = useRoute<DriverNavigationRouteProp>();
   const mapRef = useRef<MapView>(null);
 
-  const { destLat, destLng, destAddress } = route.params;
+  const { destLat, destLng, destAddress, travelMode } = route.params;
+  const routeTravelMode: "driving" | "walking" =
+    travelMode === "walking" ? "walking" : "driving";
+
+  // Coordenadas del destino validadas: un NaN/null en el Marker provoca un
+  // CRASH NATIVO de react-native-maps en iOS (no una excepción de JS)
+  const destinationCoordSafe = toCoord(destLat, destLng);
 
   const [driverLocation, setDriverLocation] = useState<{
     latitude: number;
@@ -80,7 +86,7 @@ export default function DriverNavigationScreen() {
   const lastRerouteAtRef = useRef<number>(0);
   const lastSpokenStepRef = useRef<string>("");
 
-  const destinationCoord = { latitude: destLat, longitude: destLng };
+  const destinationCoord = destinationCoordSafe;
 
   const REROUTE_MIN_INTERVAL_MS = 30_000;
   const REROUTE_DEVIATION_M = 150;
@@ -121,8 +127,10 @@ export default function DriverNavigationScreen() {
       // Obtener ruta real por calles
       fetchRoute(coords.latitude, coords.longitude);
 
-      // Seguimiento continuo: mueve el marcador y recalcula la ruta
-      // automáticamente si el repartidor se desvía >150 m de la ruta
+      // Seguimiento continuo: mueve el marcador, recalcula la ruta si se
+      // desvía y SUBE la posición al servidor (throttle 5s) para que el
+      // cliente y el negocio vean el movimiento en vivo mientras navega
+      let lastPostAt = 0;
       locationSubRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
@@ -137,6 +145,14 @@ export default function DriverNavigationScreen() {
           setDriverLocation(coords);
 
           const now = Date.now();
+          if (now - lastPostAt >= 5000) {
+            lastPostAt = now;
+            apiRequest("POST", "/api/delivery/location", {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            }).catch(() => {});
+          }
+
           if (
             routeCoordsRef.current.length > 2 &&
             now - lastRerouteAtRef.current >= REROUTE_MIN_INTERVAL_MS
@@ -171,7 +187,7 @@ export default function DriverNavigationScreen() {
       // El servidor tiene cache + rate limiting para ahorrar costos
       const response = await apiRequest(
         "GET",
-        `/api/gps/directions?originLat=${originLat}&originLng=${originLng}&destLat=${destLat}&destLng=${destLng}`,
+        `/api/gps/directions?originLat=${originLat}&originLng=${originLng}&destLat=${destLat}&destLng=${destLng}&mode=${routeTravelMode}`,
       );
       const data = await response.json();
 
@@ -258,7 +274,9 @@ export default function DriverNavigationScreen() {
 
   const initialRegion = driverLocation
     ? { ...driverLocation, latitudeDelta: 0.02, longitudeDelta: 0.02 }
-    : { latitude: destLat, longitude: destLng, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+    : destinationCoordSafe
+      ? { ...destinationCoordSafe, latitudeDelta: 0.05, longitudeDelta: 0.05 }
+      : { latitude: 41.7636, longitude: -2.4677, latitudeDelta: 0.05, longitudeDelta: 0.05 };
 
   const stepsVisible = steps.length > 0;
 
@@ -290,10 +308,16 @@ export default function DriverNavigationScreen() {
           </SmartMarker>
         )}
 
-        {/* Marcador del destino */}
-        <SmartMarker coordinate={destinationCoord} anchor={{ x: 0.5, y: 1 }} trackKey="dest">
-          <MapPin icon="map-marker" color="#DC2626" size={38} />
-        </SmartMarker>
+        {/* Marcador del destino (solo con coordenadas válidas) */}
+        {destinationCoord && (
+          <SmartMarker
+            coordinate={destinationCoord}
+            anchor={{ x: 0.5, y: 1 }}
+            trackKey="dest"
+          >
+            <MapPin icon="map-marker" color="#DC2626" size={38} />
+          </SmartMarker>
+        )}
 
         {/* Polilínea de la ruta real de Google Directions */}
         {routeCoords.length > 0 && (

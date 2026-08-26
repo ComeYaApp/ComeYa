@@ -394,11 +394,17 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
                     ✓ Cuenta guardada
                   </Text>
                 )}
-                {config.manual && (
+                {config.manual ? (
                   <Text
                     style={[styles.cardSaved, { color: ComeYaColors.warning }]}
                   >
-                    📸 Requiere comprobante
+                    📸 Manual · requiere comprobante
+                  </Text>
+                ) : (
+                  <Text
+                    style={[styles.cardSaved, { color: ComeYaColors.success }]}
+                  >
+                    ⚡ Instantáneo
                   </Text>
                 )}
               </View>

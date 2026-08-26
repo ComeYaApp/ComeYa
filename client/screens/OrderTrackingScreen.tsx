@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -36,6 +36,8 @@ import { Order } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
+import { displayOrderNumber, orderNumberLabel } from "@/utils/orderNumber";
+import { toCoord } from "@/utils/directions";
 import {
   ISSUE_LABELS,
   ISSUE_STATUS_LABELS,
@@ -112,6 +114,13 @@ export default function OrderTrackingScreen() {
     minutes: number;
     confidence: number;
   } | null>(null);
+
+  // Cuenta atrás de la política de aceptación (10 min) — hook sin condiciones
+  const [policyNow, setPolicyNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setPolicyNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // Incidencias reportadas sobre este pedido: estado, resolución y fotos.
   // Refresca al volver de ReportIssueScreen (focus) para ver la nueva al momento.
@@ -190,10 +199,13 @@ export default function OrderTrackingScreen() {
         if (response.ok && !cancelled) {
           const data = await response.json();
           if (data.location) {
-            setDeliveryLocation({
-              latitude: parseFloat(data.location.latitude),
-              longitude: parseFloat(data.location.longitude),
-            });
+            // toCoord descarta NaN/0: coordenadas inválidas en el mapa
+            // provocan un crash nativo en iOS
+            const coord = toCoord(
+              data.location.latitude,
+              data.location.longitude,
+            );
+            if (coord) setDeliveryLocation(coord);
           }
         }
       } catch (error) {
@@ -271,6 +283,9 @@ export default function OrderTrackingScreen() {
     };
   }, []);
 
+  // Ref para recargar el pedido tras acciones (confirmar entrega, etc.)
+  const loadOrderRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     const loadOrder = async () => {
       try {
@@ -280,6 +295,7 @@ export default function OrderTrackingScreen() {
           const apiOrder = data.order;
           const transformedOrder: Order = {
             id: apiOrder.id,
+            orderNumber: apiOrder.orderNumber ?? undefined,
             userId: apiOrder.userId,
             businessId: apiOrder.businessId,
             businessName: apiOrder.businessName,
@@ -289,6 +305,14 @@ export default function OrderTrackingScreen() {
                 ? JSON.parse(apiOrder.items)
                 : apiOrder.items,
             status: apiOrder.status,
+            // Sin estos campos el botón de confirmar reaparecía tras la
+            // recogida y forzaba la transición a la reseña que crasheaba
+            confirmedByCustomer: (apiOrder as any).confirmedByCustomer,
+            hasReview: (apiOrder as any).hasReview,
+            substitutionPreference: (apiOrder as any).substitutionPreference,
+            itemSubstitutionPreferences: (apiOrder as any)
+              .itemSubstitutionPreferences,
+            scheduledFor: (apiOrder as any).scheduledFor,
             subtotal: apiOrder.subtotal / 100,
             productosBase: apiOrder.productosBase
               ? apiOrder.productosBase / 100
@@ -377,11 +401,42 @@ export default function OrderTrackingScreen() {
     };
 
     loadOrder();
+    loadOrderRef.current = loadOrder;
 
     // Poll for order updates every 30 seconds
     const interval = setInterval(loadOrder, 30000);
     return () => clearInterval(interval);
   }, [orderId]);
+
+  /**
+   * Programa el recordatorio de valoración 1 hora después de la entrega.
+   * Antes la reseña se abría inmediatamente al confirmar y la app se cerraba.
+   */
+  const scheduleReviewReminder = async (
+    reviewOrderId: string,
+    businessName?: string,
+  ) => {
+    if (Platform.OS === "web") return;
+    try {
+      const Notifications = await import("expo-notifications");
+      const perms = await Notifications.getPermissionsAsync();
+      if (perms.status !== "granted") return;
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "¿Cómo fue tu pedido? ⭐",
+          body: `Cuéntanos tu experiencia con ${businessName || "el negocio"}. Solo te llevará un momento.`,
+          data: { orderId: reviewOrderId, screen: "OrderTracking" },
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 60 * 60,
+        } as any,
+      });
+    } catch {
+      // sin permisos o sin soporte — el botón "Valorar pedido" sigue disponible
+    }
+  };
 
   const handleCall = (phone: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -395,8 +450,11 @@ export default function OrderTrackingScreen() {
   };
 
   /** "Cómo llegar" al local: usa la navegación interna si hay coordenadas
-   *  del negocio y, si no, abre Google Maps buscando por dirección. */
-  const handleNavigateToBusiness = () => {
+   *  del negocio y, si no, abre Google Maps buscando por dirección.
+   *  travelMode: coche o a pie (elegido en la tarjeta de recogida). */
+  const handleNavigateToBusiness = (
+    travelMode?: "driving" | "walking",
+  ) => {
     if (businessLocation) {
       navigation.navigate("DriverNavigation", {
         destLat: businessLocation.latitude,
@@ -406,13 +464,15 @@ export default function OrderTrackingScreen() {
           (order ? parseDeliveryAddress(order.deliveryAddress) : "") ||
           order?.businessName ||
           "Local",
+        travelMode,
       });
       return;
     }
     const query = businessAddressText || order?.businessName;
     if (query) {
+      const modeSuffix = travelMode === "walking" ? "&travelmode=walking" : "";
       Linking.openURL(
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`,
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}${modeSuffix}`,
       ).catch(() => {});
     }
   };
@@ -449,8 +509,12 @@ export default function OrderTrackingScreen() {
         return { min: 25, max: 40 };
       case "preparing":
         return { min: 15, max: 25 };
+      case "picked_up":
       case "on_the_way":
+      case "in_transit":
         return { min: 5, max: 15 };
+      case "arriving":
+        return { min: 1, max: 5 };
       case "delivered":
       case "cancelled":
         return null;
@@ -476,6 +540,22 @@ export default function OrderTrackingScreen() {
   const nemyCommission = order.nemyCommission
     ? order.nemyCommission
     : order.subtotal * 0.15;
+
+  // ── Política de aceptación: cuenta atrás derivada (hooks arriba) ─────────
+  const isAwaitingAcceptance =
+    order.status === "pending" || order.status === "payment_failed";
+  const acceptanceDeadline = order.createdAt
+    ? new Date(order.createdAt).getTime() + 10 * 60 * 1000
+    : null;
+  const acceptanceRemainingMs = acceptanceDeadline
+    ? Math.max(0, acceptanceDeadline - policyNow)
+    : null;
+  const acceptanceRemainingLabel =
+    acceptanceRemainingMs != null
+      ? `${String(Math.floor(acceptanceRemainingMs / 60000)).padStart(2, "0")}:${String(
+          Math.floor((acceptanceRemainingMs % 60000) / 1000),
+        ).padStart(2, "0")}`
+      : null;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -534,9 +614,15 @@ export default function OrderTrackingScreen() {
                       ? "Pedido aceptado"
                       : order.status === "preparing"
                         ? "Preparando tu pedido"
-                        : order.status === "on_the_way"
+                        : order.status === "picked_up" ||
+                            order.status === "on_the_way" ||
+                            order.status === "in_transit"
                           ? "En camino"
-                          : "Procesando"}
+                          : order.status === "arriving"
+                            ? "Llegando a tu dirección"
+                            : order.status === "ready"
+                              ? "Listo para recoger"
+                              : "Procesando"}
                 </ThemedText>
                 <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
                   {dynamicETA.minutes} min
@@ -577,6 +663,31 @@ export default function OrderTrackingScreen() {
         )}
 
         {/* Progress Bar */}
+        {/* Política de aceptación: cuenta atrás de 10 min mientras el
+            negocio no acepta (transparencia del reembolso automático) */}
+        {isAwaitingAcceptance && acceptanceRemainingLabel && (
+          <View style={styles.acceptanceNotice}>
+            <Feather name="clock" size={16} color="#B45309" />
+            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+              <ThemedText
+                type="small"
+                style={{ color: "#B45309", fontWeight: "700" }}
+              >
+                {acceptanceRemainingMs! > 0
+                  ? `El negocio tiene ${acceptanceRemainingLabel} para aceptar tu pedido`
+                  : "El plazo de aceptación ha finalizado"}
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: "#92400E", marginTop: 2 }}
+              >
+                Si no lo acepta en 10 minutos, el pedido se cancela
+                automáticamente y se te reembolsa el 100% del importe.
+              </ThemedText>
+            </View>
+          </View>
+        )}
+
         <OrderProgressBar status={order.status} orderType={orderType} />
 
         {/* Timer para Pickup */}
@@ -789,7 +900,7 @@ export default function OrderTrackingScreen() {
             <View style={styles.businessInfo}>
               <ThemedText type="h4">{order.businessName}</ThemedText>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                Pedido #{order.id.slice(-6)}
+                Pedido {displayOrderNumber(order)}
               </ThemedText>
             </View>
             {dynamicETA ? (
@@ -902,6 +1013,51 @@ export default function OrderTrackingScreen() {
           <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
             Detalles del pedido
           </ThemedText>
+
+          {/* Pedido programado: fecha pactada (facturación/seguimiento) */}
+          {order.scheduledFor && (
+            <View style={styles.acceptanceNotice}>
+              <Feather name="clock" size={15} color={ComeYaColors.primary} />
+              <ThemedText
+                type="small"
+                style={{
+                  color: ComeYaColors.primary,
+                  marginLeft: Spacing.sm,
+                  flex: 1,
+                  fontWeight: "600",
+                }}
+              >
+                🕒 Pedido programado para{" "}
+                {new Date(order.scheduledFor).toLocaleString("es-ES", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </ThemedText>
+            </View>
+          )}
+
+          {/* Constancia de la política de indisponibilidad elegida */}
+          {order.substitutionPreference &&
+            order.substitutionPreference !== "refund" && (
+              <ThemedText
+                type="caption"
+                style={{
+                  color: theme.textSecondary,
+                  marginBottom: Spacing.sm,
+                }}
+              >
+                Si algo no estaba disponible:{" "}
+                {order.substitutionPreference === "call"
+                  ? "pediste que te llamaran"
+                  : order.substitutionPreference === "substitute"
+                    ? "autorizaste sustituir por un producto similar"
+                    : order.substitutionPreference}
+              </ThemedText>
+            )}
+
           {order.items &&
           Array.isArray(order.items) &&
           order.items.length > 0 ? (
@@ -993,13 +1149,23 @@ export default function OrderTrackingScreen() {
                           Haptics.notificationAsync(
                             Haptics.NotificationFeedbackType.Success,
                           );
-                          navigation.replace("Review", {
-                            orderId: order.id,
-                            businessId: order.businessId,
-                            businessName: order.businessName,
-                            deliveryPersonId: order.deliveryPersonId,
-                            allowTip: true,
-                          });
+                          // La reseña ya NO se pide en el momento (provocaba
+                          // cierres de la app): se agradece y se programa un
+                          // recordatorio local 1 hora después
+                          scheduleReviewReminder(
+                            order.id,
+                            order.businessName,
+                          );
+                          Alert.alert(
+                            "¡Gracias! 🎉",
+                            "Entrega confirmada. En unos minutos podrás valorar tu experiencia desde este pedido o desde Mis Pedidos.",
+                            [
+                              {
+                                text: "OK",
+                                onPress: () => loadOrderRef.current?.(),
+                              },
+                            ],
+                          );
                         } else {
                           Alert.alert(
                             "Error",
@@ -1157,7 +1323,7 @@ export default function OrderTrackingScreen() {
                 } else {
                   navigation.navigate("ReportIssue", {
                     orderId: order.id,
-                    orderNumber: order.id.slice(-6),
+                    orderNumber: orderNumberLabel(order),
                   });
                 }
               }}
@@ -1352,6 +1518,16 @@ export default function OrderTrackingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  acceptanceNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
   },
   header: {
     flexDirection: "row",

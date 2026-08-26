@@ -50,11 +50,20 @@ export async function sendOrderStatusNotification(
       break;
 
     case "ready":
-      notification = {
-        title: "Tu pedido está listo 📦",
-        body: "Esperando a que un repartidor lo recoja",
-        data: { orderId, screen: "OrderTracking" },
-      };
+      // Recogida en local: el cliente ES quien va a buscar el pedido
+      if ((order as any).orderType === "pickup") {
+        notification = {
+          title: "YA PUEDES RECOGER TU PEDIDO",
+          body: `${order.businessName} te espera — muestra tu código QR al llegar`,
+          data: { orderId, screen: "OrderTracking" },
+        };
+      } else {
+        notification = {
+          title: "Tu pedido está listo 📦",
+          body: "Esperando a que un repartidor lo recoja",
+          data: { orderId, screen: "OrderTracking" },
+        };
+      }
       break;
 
     case "assigned_driver":

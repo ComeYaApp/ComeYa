@@ -18,6 +18,7 @@ import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
+import { displayOrderNumber } from "@/utils/orderNumber";
 
 const PRIMARY = "#DC2626";
 
@@ -50,7 +51,7 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<any>(null);
-  const [tab, setTab] = useState<"active" | "history">("active");
+  const [tab, setTab] = useState<"active" | "done" | "cancelled">("active");
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const { isMobile } = useResponsive();
 
@@ -135,7 +136,16 @@ export default function OrdersScreen() {
       o.status === "cancelled" ||
       (o.status === "delivered" && o.confirmedByCustomer),
   );
-  const displayOrders = tab === "active" ? activeOrders : historyOrders;
+  const doneOrders = orders.filter((o) => o.status === "delivered");
+  const cancelledOrders = orders.filter(
+    (o) => o.status === "cancelled" || o.status === "refunded",
+  );
+  const displayOrders =
+    tab === "done"
+      ? doneOrders
+      : tab === "cancelled"
+        ? cancelledOrders
+        : activeOrders;
 
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
@@ -160,7 +170,7 @@ export default function OrdersScreen() {
         >
           {/* Tabs */}
           <View style={[s.tabs, { borderBottomColor: border }]}>
-            {(["active", "history"] as const).map((t) => (
+            {(["active", "done", "cancelled"] as const).map((t) => (
               <Pressable
                 key={t}
                 onPress={() => setTab(t)}
@@ -168,8 +178,10 @@ export default function OrdersScreen() {
               >
                 <Text style={[s.tabText, { color: tab === t ? PRIMARY : sub }]}>
                   {t === "active"
-                    ? `Activos (${activeOrders.length})`
-                    : `Historial (${historyOrders.length})`}
+                    ? `Pendientes (${activeOrders.length})`
+                    : t === "done"
+                      ? `Realizados (${doneOrders.length})`
+                      : `Cancelados (${cancelledOrders.length})`}
                 </Text>
               </Pressable>
             ))}
@@ -225,7 +237,7 @@ export default function OrdersScreen() {
                         {order.businessName}
                       </Text>
                       <Text style={[s.orderMeta, { color: sub }]}>
-                        #{order.id?.slice(0, 8).toUpperCase()} ·{" "}
+                        {displayOrderNumber(order)} ·{" "}
                         {new Date(order.createdAt).toLocaleDateString("es-ES")}
                       </Text>
                       <View
@@ -310,7 +322,7 @@ export default function OrdersScreen() {
                       {selected.businessName}
                     </Text>
                     <Text style={[s.detailId, { color: sub }]}>
-                      Pedido #{selected.id?.slice(0, 8).toUpperCase()}
+                      Pedido {displayOrderNumber(selected)}
                     </Text>
                   </View>
 

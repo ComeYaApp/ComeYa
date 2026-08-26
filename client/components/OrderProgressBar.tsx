@@ -64,8 +64,10 @@ export function OrderProgressBar({
       useNativeDriver: false,
     }).start();
 
-    // Animación de pulso para el paso actual
-    Animated.loop(
+    // Animación de pulso para el paso actual. El loop DEBE detenerse en el
+    // cleanup: sin esto cada cambio de estado dejaba un loop nativo vivo
+    // (fuga de memoria progresiva en pantallas de seguimiento largas).
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.2,
@@ -78,7 +80,13 @@ export function OrderProgressBar({
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    pulseLoop.start();
+
+    return () => {
+      pulseLoop.stop();
+      pulseAnim.setValue(1);
+    };
   }, [status]);
 
   const progressWidth = progressAnim.interpolate({

@@ -1215,7 +1215,10 @@ router.put(
         "accepted",
         "preparing",
         "ready",
+        "picked_up",
         "on_the_way",
+        "in_transit",
+        "arriving",
         "delivered",
         "cancelled",
       ];

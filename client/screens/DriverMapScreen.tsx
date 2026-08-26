@@ -26,7 +26,7 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { decodePolyline } from "@/utils/directions";
+import { decodePolyline, toCoord } from "@/utils/directions";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
@@ -73,6 +73,8 @@ const STATUS_COLORS: Record<string, string> = {
   accepted: "#2196F3",
   picked_up: "#FF9800",
   on_the_way: "#4CAF50",
+  in_transit: "#4CAF50",
+  arriving: "#EC4899",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -80,6 +82,8 @@ const STATUS_LABELS: Record<string, string> = {
   accepted: "Ir a recoger",
   picked_up: "En camino al cliente",
   on_the_way: "En camino al cliente",
+  in_transit: "En camino al cliente",
+  arriving: "Llegando al cliente",
 };
 
 export default function DriverMapScreen() {
@@ -313,21 +317,16 @@ export default function DriverMapScreen() {
     }
   };
 
-  const businessCoords =
-    activeOrder?.businessLatitude && activeOrder?.businessLongitude
-      ? {
-          latitude: parseFloat(activeOrder.businessLatitude),
-          longitude: parseFloat(activeOrder.businessLongitude),
-        }
-      : null;
+  // toCoord descarta NaN/0/fuera de rango: un Marker con NaN crashea nativo
+  const businessCoords = toCoord(
+    activeOrder?.businessLatitude,
+    activeOrder?.businessLongitude,
+  );
 
-  const customerCoords =
-    activeOrder?.deliveryLatitude && activeOrder?.deliveryLongitude
-      ? {
-          latitude: parseFloat(activeOrder.deliveryLatitude),
-          longitude: parseFloat(activeOrder.deliveryLongitude),
-        }
-      : null;
+  const customerCoords = toCoord(
+    activeOrder?.deliveryLatitude,
+    activeOrder?.deliveryLongitude,
+  );
 
   const isPickingUp = activeOrder?.status === "ready" || activeOrder?.status === "accepted";
   const destination = isPickingUp ? businessCoords : customerCoords;

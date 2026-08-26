@@ -739,7 +739,8 @@ router.post(
     if (
       order.status !== "picked_up" &&
       order.status !== "on_the_way" &&
-      order.status !== "in_transit"
+      order.status !== "in_transit" &&
+      order.status !== "arriving"
     ) {
       throw new ValidationError("Order must be picked up or on the way first");
     }

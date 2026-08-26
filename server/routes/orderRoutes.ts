@@ -236,6 +236,15 @@ router.post(
         estimatedDeliveryTime,
       };
 
+      // Número secuencial público #CY000001 (reserva atómica)
+      const { nextOrderNumber, formatOrderNumber } = await import(
+        "../orderNumberService"
+      );
+      const seqNumber = await nextOrderNumber();
+      if (seqNumber != null) {
+        (orderData as any).orderNumber = seqNumber;
+      }
+
       await db.insert(orders).values(orderData);
 
       const createdOrder = await db
@@ -259,31 +268,22 @@ router.post(
         }
       }
 
-      // Notify business owner about the new order (push + websocket)
-      try {
-        const [biz] = await db
-          .select({ ownerId: businesses.ownerId })
-          .from(businesses)
-          .where(eq(businesses.id, req.body.businessId))
-          .limit(1);
-        if (biz?.ownerId) {
-          await sendPushToUser(biz.ownerId, {
-            title: "🔔 Nuevo pedido",
-            body: `Tienes un nuevo pedido de ${req.user!.name}. Revísalo y confírmalo.`,
-            data: { orderId, screen: "BusinessOrders" },
-          });
-        }
-        const { notifyNewOrder } = await import("../websocket");
-        notifyNewOrder(req.body.businessId, { id: orderId, ...orderData });
-      } catch (notifyError) {
-        console.error("Error notifying business:", notifyError);
-      }
+      // NOTA: el negocio NO se notifica aquí. El pedido acaba de crearse como
+      // "pending" y aún no hay pago: notificar ahora hacía que el negocio
+      // recibiera (y aceptara) pedidos cuyo pago se canceló después. El aviso
+      // al negocio llega cuando el pago se confirma:
+      //  - Stripe → webhook payment_intent.succeeded (webhookHandlers)
+      //  - Comprobante manual → digitalPaymentService al aprobarse
+      //  - Programados → scheduledOrdersService al materializarse
+      // Los pedidos impagos quedan limpios por el cron de 10 minutos.
 
       res.json({
         success: true,
         id: orderId,
         orderId,
         order: { id: orderId },
+        orderNumber: seqNumber,
+        orderNumberFormatted: formatOrderNumber(seqNumber),
         deliveryFee,
         estimatedDeliveryTime,
       });

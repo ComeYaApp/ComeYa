@@ -167,6 +167,15 @@ if (isTest && useDbStubs) {
       })
       .catch(() => {});
 
+    // Numeración secuencial de pedidos #CY000001: asegura tabla/columna y
+    // numera los históricos la primera vez
+    import("./orderNumberService")
+      .then(async (svc) => {
+        await svc.ensureOrderNumberSchema();
+        await svc.backfillOrderNumbers();
+      })
+      .catch((e) => console.error("orderNumberService init:", e));
+
     // Test connection on startup and run migrations
     connection
       .getConnection()
@@ -194,6 +203,17 @@ if (isTest && useDbStubs) {
           } catch (err: any) {
             console.log(`Migration note (${table}):`, err.message);
           }
+        }
+
+        // Fecha programada en el pedido (pedidos programados materializados)
+        try {
+          await conn.query(
+            `ALTER TABLE orders ADD COLUMN scheduled_for TIMESTAMP NULL DEFAULT NULL`,
+          );
+          console.log("✅ Added scheduled_for to orders");
+        } catch (err: any) {
+          if (err.code !== "ER_DUP_FIELDNAME")
+            console.log("Migration note (scheduled_for):", err.message);
         }
 
         try {

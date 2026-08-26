@@ -210,7 +210,13 @@ export function useAdminOps(pollMs = 15000) {
 
         socket.on("driver_location", (p: LiveDriverPosition) => {
           if (cancelled || !p?.driverId) return;
-          setLivePositions((prev) => ({ ...prev, [p.driverId]: p }));
+          const lat = Number(p.latitude);
+          const lng = Number(p.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          setLivePositions((prev) => ({
+            ...prev,
+            [p.driverId]: { ...p, latitude: lat, longitude: lng },
+          }));
         });
 
         // Un pedido nuevo o un cambio de estado altera los KPIs: refrescamos

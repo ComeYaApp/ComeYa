@@ -98,6 +98,17 @@ function loadGoogleMaps(): Promise<void> {
   });
 }
 
+// Número público del pedido (#CY000001); acepta un objeto order o un id
+const fmtNum = (o: any) => {
+  if (typeof o === "string") {
+    return `#${o.slice(-6)}`;
+  }
+  const n = Number(o?.orderNumber);
+  if (Number.isFinite(n) && n > 0)
+    return `#CY${String(Math.trunc(n)).padStart(6, "0")}`;
+  return `#${String(o?.id ?? "").slice(-6)}`;
+};
+
 const euro = (cents: number) =>
   new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(
     (Number(cents) || 0) / 100,
@@ -337,7 +348,7 @@ export default function AdminOpsCenterScreen() {
               <span>${stateLabel}</span><br/>
               <span>${vehicle.label}${d.vehiclePlate ? ` · ${d.vehiclePlate}` : ""}</span><br/>
               <span>⭐ ${d.rating || "-"} · ${d.totalDeliveries} entregas</span>
-              ${d.activeOrderId ? `<br/><span>📦 Pedido #${d.activeOrderId.slice(-6)}</span>` : "<br/><span>Sin pedido activo</span>"}
+              ${d.activeOrderId ? `<br/><span>📦 Pedido #${fmtNum(d.activeOrderId)}</span>` : "<br/><span>Sin pedido activo</span>"}
               ${d.phone ? `<br/><a href="tel:${d.phone}">📞 ${d.phone}</a>` : ""}
             </div>`,
           ),
@@ -356,7 +367,7 @@ export default function AdminOpsCenterScreen() {
           const m = new google.maps.Marker({
             position: { lat: o.customer.lat, lng: o.customer.lng },
             map: gmap.current,
-            title: `Pedido #${o.id.slice(-6)} · ${meta.label}`,
+            title: `Pedido ${fmtNum(o)} · ${meta.label}`,
             icon: asGoogleIcon(
               google,
               pinIcon(hasAlert ? "#DC2626" : CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
@@ -368,7 +379,7 @@ export default function AdminOpsCenterScreen() {
             openInfo(
               m,
               `<div style="padding:8px;max-width:250px;font-family:system-ui">
-                <strong>📦 Pedido #${o.id.slice(-6)}</strong><br/>
+                <strong>📦 Pedido ${fmtNum(o)}</strong><br/>
                 <span style="color:${meta.color}">● ${meta.label}</span> · ${o.minutesActive ?? "?"} min<br/>
                 <span>🏠 ${o.customer.name}</span><br/>
                 <span>${o.customer.address || ""}</span><br/>
@@ -860,7 +871,7 @@ export default function AdminOpsCenterScreen() {
                   <View style={{ flex: 1 }}>
                     <View style={s.rowBetween}>
                       <Text style={[s.orderId, { color: text }]}>
-                        #{o.id.slice(-6)}
+                        {fmtNum(o)}
                       </Text>
                       <Text style={[s.caption, { color: meta.color }]}>
                         {meta.label}
@@ -914,7 +925,7 @@ export default function AdminOpsCenterScreen() {
             <ScrollView>
               <View style={s.rowBetween}>
                 <Text style={[s.title, { color: text }]}>
-                  Pedido #{selected.id.slice(-6)}
+                  Pedido {fmtNum(selected)}
                 </Text>
                 <Pressable onPress={() => setSelected(null)} style={s.iconBtn}>
                   <Feather name="x" size={18} color={sub} />

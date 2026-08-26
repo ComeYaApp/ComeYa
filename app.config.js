@@ -86,6 +86,20 @@ export default {
           color: "#DC2626",
         },
       ],
+      // Sentry: sube sourcemaps y símbolos nativos (dSYM) en cada build para
+      // que los crashes nativos lleguen simbolizados. Requiere SENTRY_ORG,
+      // SENTRY_PROJECT y SENTRY_AUTH_TOKEN en el entorno de EAS.
+      ...(process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
+        ? [
+            [
+              "@sentry/react-native/expo",
+              {
+                organization: process.env.SENTRY_ORG,
+                project: process.env.SENTRY_PROJECT,
+              },
+            ],
+          ]
+        : []),
     ],
     experiments: {
       reactCompiler: true,
@@ -98,6 +112,7 @@ export default {
       EXPO_PUBLIC_BACKEND_URL:
         process.env.EXPO_PUBLIC_BACKEND_URL ||
         "https://comeya-backend.onrender.com",
+      EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
     },
     owner: "cazkiuz",
   },

@@ -27,16 +27,22 @@ const STATUS_META: Record<
   picked_up: { label: "Recogido", color: BLUE, icon: "package" },
   preparing: { label: "Preparando", color: AMBER, icon: "loader" },
   on_the_way: { label: "En camino", color: PURPLE, icon: "navigation" },
+  in_transit: { label: "En tránsito", color: PURPLE, icon: "navigation" },
+  arriving: { label: "Llegando al cliente", color: RED, icon: "map-pin" },
   delivered: { label: "Esperando confirm.", color: BLUE, icon: "check-circle" },
   completed: { label: "Completado", color: GREEN, icon: "check-circle" },
   cancelled: { label: "Cancelado", color: RED, icon: "x-circle" },
 };
 
+// "arriving"/"in_transit" DEBEN estar: el pipeline los usa en el tramo final
+// y sin ellos el pedido desaparecía de esta lista
 const ACTIVE_STATUSES = [
   "ready",
   "picked_up",
   "preparing",
   "on_the_way",
+  "in_transit",
+  "arriving",
   "delivered",
 ];
 const HISTORY_STATUSES = ["completed", "cancelled"];
@@ -627,7 +633,9 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                               </Text>
                             </TouchableOpacity>
                           )}
-                          {order.status === "on_the_way" && (
+                          {["on_the_way", "in_transit", "arriving"].includes(
+                            order.status,
+                          ) && (
                             <TouchableOpacity
                               onPress={() => {
                                 setPhotoOrder(order.id);

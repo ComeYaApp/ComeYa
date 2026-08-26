@@ -96,11 +96,15 @@ export type OrderStatus =
   | "in_transit"
   | "arriving"
   | "delivered"
+  | "completed"
+  | "payment_failed"
   | "cancelled"
   | "refunded";
 
 export interface Order {
   id: string;
+  /** Número secuencial público con formato #CY000001 */
+  orderNumber?: number;
   userId: string;
   businessId: string;
   businessName: string;
@@ -132,6 +136,14 @@ export interface Order {
   confirmedByCustomer?: boolean;
   confirmedByCustomerAt?: string;
   fundsReleased?: boolean;
+  /** Si el cliente ya dejó reseña (oculta el botón de valorar) */
+  hasReview?: boolean;
+  /** Preferencia de indisponibilidad: "refund" | "call" | "substitute" */
+  substitutionPreference?: string;
+  /** Preferencias por producto {productId: "refund"|"call"|"substitute"} */
+  itemSubstitutionPreferences?: Record<string, string> | string | null;
+  /** Fecha programada de entrega (pedidos programados) */
+  scheduledFor?: string | null;
 }
 
 export interface CarnivalEvent {

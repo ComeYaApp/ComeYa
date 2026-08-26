@@ -62,7 +62,11 @@ export function useDriverLocationSocket(
 
         socket.on("driver_location", (data: DriverLocationUpdate) => {
           if (cancelled) return;
-          setLocation(data);
+          // Blindaje: coordenadas no numéricas romperían los marcadores
+          const lat = Number(data?.latitude);
+          const lng = Number(data?.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          setLocation({ ...data, latitude: lat, longitude: lng });
         });
 
         socket.on("disconnect", () => {

@@ -509,7 +509,6 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
           businessId: cart.businessId,
         });
 
-        await clearCart();
         Haptics.notificationAsync(
           result.success
             ? Haptics.NotificationFeedbackType.Success
@@ -518,6 +517,10 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
         setIsLoading(false);
 
         if (result.success) {
+          // El carrito SOLO se vacía cuando el pago se completó — antes se
+          // limpiaba también al cancelar la ventana de tarjeta y el usuario
+          // lo perdía todo (pantalla "No hay productos en el carrito")
+          await clearCart();
           navigation.reset({
             index: 0,
             routes: [
@@ -525,7 +528,15 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
               { name: "OrderTracking", params: { orderId } },
             ],
           });
-        } else if (result.error !== "Pago cancelado") {
+        } else if (result.error === "Pago cancelado") {
+          // Canceló la ventana de pago: el carrito sigue intacto y el pedido
+          // huérfano se cancela en el servidor (best-effort) para que el
+          // negocio no reciba pedidos que nunca se pagaron
+          apiRequest("POST", `/api/orders/${orderId}/cancel-regret`, {})
+            .then(() => {})
+            .catch(() => {});
+          showToast("Pago cancelado — tu carrito sigue intacto", "info");
+        } else {
           showToast(result.error || "Error al procesar el pago", "error");
         }
         return;
@@ -570,14 +581,62 @@ const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
           styles.container,
           {
             backgroundColor: theme.backgroundRoot,
-            paddingTop: insets.top + Spacing.xl,
-            alignItems: "center",
-            justifyContent: "center",
+            paddingTop: insets.top + Spacing.lg,
             paddingHorizontal: Spacing.lg,
           },
         ]}
       >
-        <ThemedText type="h2">No hay productos en el carrito</ThemedText>
+        {/* Header con salida: antes esta pantalla era un fondo negro sin
+            botón atrás cuando el carrito quedaba vacío */}
+        <View style={styles.headerRow}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={[styles.backButton, { backgroundColor: theme.card }]}
+          >
+            <Feather name="arrow-left" size={22} color={theme.text} />
+          </Pressable>
+          <ThemedText type="h3">Checkout</ThemedText>
+          <View style={{ width: 44 }} />
+        </View>
+        <View
+          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+        >
+          <Feather
+            name="shopping-cart"
+            size={44}
+            color={theme.textSecondary}
+          />
+          <ThemedText
+            type="h2"
+            style={{ marginTop: Spacing.md, textAlign: "center" }}
+          >
+            No hay productos en el carrito
+          </ThemedText>
+          <ThemedText
+            type="small"
+            style={{
+              color: theme.textSecondary,
+              marginTop: Spacing.sm,
+              textAlign: "center",
+            }}
+          >
+            Explora los negocios y añade algo rico
+          </ThemedText>
+          <Pressable
+            onPress={() => navigation.reset({ routes: [{ name: "Main" }] })}
+            style={[
+              styles.placeOrderButton,
+              { backgroundColor: ComeYaColors.primary, marginTop: Spacing.lg },
+            ]}
+          >
+            <ThemedText
+              type="body"
+              style={{ color: "#FFFFFF", fontWeight: "600" }}
+            >
+              Explorar negocios
+            </ThemedText>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -1305,10 +1364,16 @@ navigation.navigate("DigitalPaymentMethod", {
                     />
                     <ThemedText
                       type="small"
+                      numberOfLines={2}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.75}
                       style={{
                         color: isSelected ? ComeYaColors.primary : theme.text,
                         marginTop: Spacing.xs,
                         fontWeight: isSelected ? "600" : "400",
+                        textAlign: "center",
+                        width: "100%",
+                        lineHeight: 16,
                       }}
                     >
                       {info.label}
@@ -1563,16 +1628,93 @@ navigation.navigate("DigitalPaymentMethod", {
           >
             {cart.businessName}
           </ThemedText>
-          {cart.items.map((item) => (
-            <View key={item.id} style={styles.summaryItem}>
-              <ThemedText type="small">
-                {item.quantity}x {item.product.name}
-              </ThemedText>
-              <ThemedText type="small">
-                {formatEuros(item.product.price * item.quantity)}
+          {cart.items.map((item) => {
+            const itemPref = showItemSubstitutions
+              ? itemSubstitutions[item.id]
+              : null;
+            const itemInfo = itemPref
+              ? getSubstitutionInfo(itemPref)
+              : null;
+            return (
+              <View key={item.id} style={styles.summaryItem}>
+                <View style={{ flex: 1, paddingRight: Spacing.sm }}>
+                  <ThemedText type="small">
+                    {item.quantity}x {item.product.name}
+                  </ThemedText>
+                  {/* Constancia de la preferencia de indisponibilidad por
+                      producto (facturación/reclamaciones) */}
+                  {itemInfo && (
+                    <ThemedText
+                      type="caption"
+                      style={{ color: theme.textSecondary, marginTop: 1 }}
+                    >
+                      Si no está disponible: {itemInfo.label}
+                    </ThemedText>
+                  )}
+                </View>
+                <ThemedText type="small">
+                  {formatEuros(item.product.price * item.quantity)}
+                </ThemedText>
+              </View>
+            );
+          })}
+
+          {/* Preferencia global de indisponibilidad en el resumen */}
+          {(() => {
+            const globalInfo = getSubstitutionInfo(globalSubstitution);
+            return (
+              <View
+                style={[
+                  styles.summarySubstitution,
+                  { borderColor: theme.border },
+                ]}
+              >
+                <Feather
+                  name={globalInfo.icon}
+                  size={14}
+                  color={theme.textSecondary}
+                />
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: theme.textSecondary,
+                    marginLeft: Spacing.xs,
+                    flex: 1,
+                  }}
+                >
+                  Si algo no está disponible: {globalInfo.label} (
+                  {globalInfo.desc})
+                </ThemedText>
+              </View>
+            );
+          })()}
+
+          {/* Pedido programado visible en el resumen */}
+          {whenMode === "scheduled" && scheduledDate && (
+            <View
+              style={[styles.summarySubstitution, { borderColor: ComeYaColors.primary + "40" }]}
+            >
+              <Feather name="clock" size={14} color={ComeYaColors.primary} />
+              <ThemedText
+                type="caption"
+                style={{
+                  color: ComeYaColors.primary,
+                  marginLeft: Spacing.xs,
+                  flex: 1,
+                  fontWeight: "600",
+                }}
+              >
+                Programado para:{" "}
+                {new Date(scheduledDate).toLocaleString("es-ES", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </ThemedText>
             </View>
-          ))}
+          )}
         </View>
       </ScrollView>
 
@@ -1682,6 +1824,11 @@ const styles = StyleSheet.create({
     height: 44,
     justifyContent: "center",
     alignItems: "flex-start",
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   scrollView: {
     flex: 1,
@@ -1797,13 +1944,17 @@ const styles = StyleSheet.create({
   // Estilos para sustituciones
   substitutionOptions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing.sm,
   },
   substitutionOption: {
     flex: 1,
+    minWidth: "28%", // en pantallas estrechas pasan a 2 por fila, sin cortar texto
+    minHeight: 84,
     alignItems: "center",
     justifyContent: "center",
-    padding: Spacing.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     borderRadius: BorderRadius.md,
     borderWidth: 2,
   },
@@ -1814,6 +1965,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     marginTop: Spacing.md,
     gap: Spacing.xs,
+  },
+  summarySubstitution: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    marginTop: Spacing.md,
   },
   itemSubstitutionList: {
     marginTop: Spacing.sm,
@@ -1857,6 +2016,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     minWidth: 100,
+  },
+  placeOrderButton: {
+    height: 50,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.md,
+    justifyContent: "center",
+    alignItems: "center",
   },
   appliedCouponBox: {
     flexDirection: "row",

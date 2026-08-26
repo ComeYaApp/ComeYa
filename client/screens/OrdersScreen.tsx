@@ -29,6 +29,7 @@ import {
 import { Order, OrderStatus } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 type OrdersScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -45,6 +46,8 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   in_transit: "En tránsito",
   arriving: "Llegando",
   delivered: "Entregado",
+  completed: "Completado",
+  payment_failed: "Pago fallido",
   cancelled: "Cancelado",
   refunded: "Reembolsado",
 };
@@ -64,6 +67,8 @@ const STATUS_VARIANTS: Record<
   in_transit: "primary",
   arriving: "primary",
   delivered: "success",
+  completed: "success",
+  payment_failed: "error",
   cancelled: "error",
   refunded: "secondary",
 };
@@ -77,6 +82,10 @@ export default function OrdersScreen() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Pestaña de filtrado: Pendientes / Realizados / Cancelados
+  const [filterTab, setFilterTab] = useState<"pending" | "done" | "cancelled">(
+    "pending",
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(
     null,
@@ -184,6 +193,28 @@ export default function OrdersScreen() {
       (o.status === "delivered" && (o as any).confirmedByCustomer),
   );
 
+  // ── Pestañas: Pendientes / Realizados / Cancelados ──
+  const completedOrders = orders.filter(
+    (o) => o.status === "delivered" || (o as any).status === "completed",
+  );
+  const cancelledOrders = orders.filter(
+    (o) => o.status === "cancelled" || o.status === "refunded",
+  );
+
+  const TABS: { key: "pending" | "done" | "cancelled"; label: string; data: Order[] }[] =
+    [
+      { key: "pending", label: `Pendientes (${activeOrders.length})`, data: activeOrders },
+      { key: "done", label: `Realizados (${completedOrders.length})`, data: completedOrders },
+      { key: "cancelled", label: `Cancelados (${cancelledOrders.length})`, data: cancelledOrders },
+    ];
+
+  const visibleOrders =
+    filterTab === "done"
+      ? completedOrders
+      : filterTab === "cancelled"
+        ? cancelledOrders
+        : activeOrders;
+
   const renderOrder = ({ item }: { item: Order }) => {
     const needsConfirm =
       item.status === "delivered" && !(item as any).confirmedByCustomer;
@@ -212,6 +243,12 @@ export default function OrdersScreen() {
           <View style={styles.orderInfo}>
             <ThemedText type="h4" numberOfLines={1}>
               {item.businessName}
+            </ThemedText>
+            <ThemedText
+              type="caption"
+              style={{ color: ComeYaColors.primary, fontWeight: "700" }}
+            >
+              {displayOrderNumber(item)}
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {formatDate(item.createdAt)}
@@ -362,19 +399,34 @@ export default function OrdersScreen() {
 
   const ListHeader = () => (
     <>
-      {activeOrders.length > 0 ? (
-        <View style={styles.sectionHeader}>
-          <ThemedText type="h3">Pedidos activos</ThemedText>
-        </View>
-      ) : null}
-      {activeOrders.map((order) => (
-        <View key={order.id}>{renderOrder({ item: order })}</View>
-      ))}
-      {pastOrders.length > 0 ? (
-        <View style={styles.sectionHeader}>
-          <ThemedText type="h3">Historial</ThemedText>
-        </View>
-      ) : null}
+      {/* Pestañas de filtrado con conteos */}
+      <View style={styles.tabRow}>
+        {TABS.map((tab) => (
+          <Pressable
+            key={tab.key}
+            onPress={() => setFilterTab(tab.key)}
+            style={[
+              styles.tabBtn,
+              {
+                backgroundColor:
+                  filterTab === tab.key
+                    ? ComeYaColors.primary
+                    : theme.backgroundSecondary,
+              },
+            ]}
+          >
+            <ThemedText
+              type="caption"
+              style={{
+                color: filterTab === tab.key ? "#FFF" : theme.textSecondary,
+                fontWeight: "700",
+              }}
+            >
+              {tab.label}
+            </ThemedText>
+          </Pressable>
+        ))}
+      </View>
     </>
   );
 
@@ -411,10 +463,26 @@ export default function OrdersScreen() {
       end={{ x: 1, y: 1 }}
     >
       <FlatList
-        data={pastOrders}
+        data={visibleOrders}
         keyExtractor={(item) => item.id}
         renderItem={renderOrder}
         ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          <ThemedText
+            type="small"
+            style={{
+              color: theme.textSecondary,
+              textAlign: "center",
+              padding: Spacing.lg,
+            }}
+          >
+            {filterTab === "pending"
+              ? "No tienes pedidos pendientes"
+              : filterTab === "done"
+                ? "Aún no tienes pedidos realizados"
+                : "No tienes pedidos cancelados"}
+          </ThemedText>
+        }
         contentContainerStyle={[
           styles.listContent,
           {
@@ -451,6 +519,19 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
+  },
+  tabRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  tabBtn: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+    flex: 1,
+    alignItems: "center",
   },
   sectionHeader: {
     marginTop: Spacing.lg,

@@ -428,7 +428,6 @@ export default function CheckoutScreen({ route }: any) {
           deliveryFee: deliveryFeeCents,
           businessId: cart.businessId,
         });
-        await clearCart();
         Haptics.notificationAsync(
           result.success
             ? Haptics.NotificationFeedbackType.Success
@@ -436,6 +435,8 @@ export default function CheckoutScreen({ route }: any) {
         );
         setIsLoading(false);
         if (result.success) {
+          // El carrito SOLO se vacía cuando el pago se completó
+          await clearCart();
           navigation.reset({
             index: 0,
             routes: [
@@ -443,7 +444,13 @@ export default function CheckoutScreen({ route }: any) {
               { name: "OrderTracking", params: { orderId } },
             ],
           });
-        } else if (result.error !== "Pago cancelado") {
+        } else if (result.error === "Pago cancelado") {
+          // Canceló el pago: carrito intacto + cancelar el pedido huérfano
+          apiRequest("POST", `/api/orders/${orderId}/cancel-regret`, {})
+            .then(() => {})
+            .catch(() => {});
+          showToast("Pago cancelado — tu carrito sigue intacto", "info");
+        } else {
           showToast(result.error || "Error al procesar el pago", "error");
         }
         return;

@@ -7,6 +7,35 @@ export interface RouteCoordinate {
   longitude: number;
 }
 
+/**
+ * Coordenada válida para react-native-maps: NaN/null/undefined en un Marker
+ * o Polyline provoca un CRASH NATIVO en iOS, no una excepción de JS.
+ */
+export function isValidCoord(
+  c: { latitude?: any; longitude?: any } | null | undefined,
+): c is RouteCoordinate {
+  if (!c) return false;
+  const lat = Number(c.latitude);
+  const lng = Number(c.longitude);
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat !== 0 &&
+    lng !== 0 &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180
+  );
+}
+
+/** Convierte a coordenada segura o devuelve null (nunca NaN). */
+export function toCoord(lat: any, lng: any): RouteCoordinate | null {
+  const la = Number(lat);
+  const ln = Number(lng);
+  return isValidCoord({ latitude: la, longitude: ln })
+    ? { latitude: la, longitude: ln }
+    : null;
+}
+
 export interface RouteStep {
   instruction: string;
   distance?: { text: string; value: number };
@@ -56,15 +85,17 @@ export function decodePolyline(
  * Obtiene la ruta real por calles entre dos puntos usando el proxy
  * /api/gps/directions (la API key de Google nunca sale del servidor).
  * Si no hay API key o falla, devuelve la línea recta como fallback.
+ * mode: "driving" (default) o "walking" (recogida a pie del cliente).
  */
 export async function fetchRouteDirections(
   origin: RouteCoordinate,
   destination: RouteCoordinate,
+  mode: "driving" | "walking" = "driving",
 ): Promise<DirectionsResult | null> {
   try {
     const response = await apiRequest(
       "GET",
-      `/api/gps/directions?originLat=${origin.latitude}&originLng=${origin.longitude}&destLat=${destination.latitude}&destLng=${destination.longitude}`,
+      `/api/gps/directions?originLat=${origin.latitude}&originLng=${origin.longitude}&destLat=${destination.latitude}&destLng=${destination.longitude}&mode=${mode}`,
     );
     const data = await response.json();
 

@@ -55,6 +55,30 @@ import {
 import { NotificationPermissionModal } from "@/components/NotificationPermissionModal";
 import { useTheme } from "@/hooks/useTheme";
 
+// ── Sentry: captura de errores JS Y crashes nativos (iOS/Android) ──────────
+// Sin DSN configurado queda inerte (no rompe la app). Para activarlo:
+//  1. Crea un proyecto React Native gratis en https://sentry.io
+//  2. Copia el DSN a EXPO_PUBLIC_SENTRY_DSN (.env y EAS secrets)
+//  3. Recompila: los crashes nativos aparecerán simbolizados en el panel
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (SENTRY_DSN) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Sentry = require("@sentry/react-native");
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      // Rastrea el rendimiento de forma moderada (10% de transacciones)
+      tracesSampleRate: 0.1,
+      // Adjunta el contexto del dispositivo y las últimas acciones
+      enableAutoSessionTracking: true,
+      attachStacktrace: true,
+      environment: __DEV__ ? "development" : "production",
+    });
+  } catch (e) {
+    console.warn("Sentry no disponible:", e);
+  }
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,

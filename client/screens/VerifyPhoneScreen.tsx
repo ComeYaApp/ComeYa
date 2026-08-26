@@ -6,6 +6,8 @@ import {
   Pressable,
   ActivityIndicator,
   Keyboard,
+  Platform,
+  AppState,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -90,6 +92,64 @@ export default function VerifyPhoneScreen({
     }
   };
 
+  // ── Autollenado del código SMS ────────────────────────────────────────────
+  // Rellena los 6 dígitos y verifica automáticamente. Lo usan tanto la
+  // sugerencia del sistema (textContentType="oneTimeCode") como la lectura
+  // del portapapeles al volver a la app (patrón estándar de Uber/Rappi).
+  const applyCode = (fullCode: string) => {
+    const digits = fullCode.replace(/\D/g, "").slice(0, 6).split("");
+    if (digits.length !== 6) return false;
+    setCode(digits);
+    setError("");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Auto-submit: el efecto de abajo detecta el código completo
+    return true;
+  };
+
+  // Verificación automática en cuanto los 6 dígitos están llenos
+  // (por autofill del SMS, portapapeles o pegado manual)
+  useEffect(() => {
+    const fullCode = code.join("");
+    if (fullCode.length === 6 && !code.includes("") && !isLoading) {
+      handleVerifyRef.current?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
+  // Ref estable a handleVerify para el auto-submit
+  const handleVerifyRef = useRef<(() => void) | null>(null);
+
+  // Lectura del portapapeles al volver a la app: si el SMS se copió (muchos
+  // clientes de SMS lo hacen), el código se detecta solo
+  const lastClipboardCode = useRef<string | null>(null);
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    const checkClipboard = async () => {
+      try {
+        const Clipboard = await import("expo-clipboard");
+        const hasString = await Clipboard.hasStringAsync();
+        if (!hasString) return;
+        const text = (await Clipboard.getStringAsync()) || "";
+        const match = text.match(/\b(\d{6})\b/);
+        if (!match) return;
+        const smsCode = match[1];
+        if (smsCode === lastClipboardCode.current) return; // ya aplicado
+        if (code.join("") === smsCode) return; // ya escrito
+        lastClipboardCode.current = smsCode;
+        applyCode(smsCode);
+      } catch {
+        // sin permiso de portapapeles — se ignora silenciosamente
+      }
+    };
+
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") checkClipboard();
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
+
   const handleVerify = async () => {
     const fullCode = code.join("");
     if (fullCode.length !== 6) {
@@ -97,7 +157,6 @@ export default function VerifyPhoneScreen({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
-
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -159,6 +218,9 @@ export default function VerifyPhoneScreen({
       setIsLoading(false);
     }
   };
+
+  // El auto-submit del autofill SMS llama siempre a la versión más reciente
+  handleVerifyRef.current = handleVerify;
 
   const handleResend = async () => {
     if (!canResend) return;
@@ -261,6 +323,11 @@ export default function VerifyPhoneScreen({
               keyboardType="number-pad"
               maxLength={1}
               selectTextOnFocus
+              // Autollenado del código SMS: iOS muestra la sugerencia del
+              // sistema sobre el teclado (un toque rellena todo); Android
+              // autocompleta con sms-otp
+              textContentType={index === 0 ? "oneTimeCode" : "none"}
+              autoComplete={index === 0 ? "sms-otp" : "off"}
               testID={`code-input-${index}`}
             />
           ))}

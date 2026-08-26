@@ -209,10 +209,18 @@ async function runOrderChecks(
 // ─── Punto de entrada único de ubicación del repartidor ──────────────────────
 export async function handleDriverLocationUpdate(
   userId: string,
-  latitude: number,
-  longitude: number,
+  rawLatitude: number,
+  rawLongitude: number,
   extra?: { heading?: number; speed?: number },
 ) {
+  // Coherción + validación: coordenadas no finitas nunca llegan a la BD ni
+  // al websocket (romperían los mapas de los clientes)
+  const latitude = Number(rawLatitude);
+  const longitude = Number(rawLongitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return { success: false, error: "Coordenadas inválidas" };
+  }
+
   // 1. Persistir ubicación
   await db
     .update(deliveryDrivers)

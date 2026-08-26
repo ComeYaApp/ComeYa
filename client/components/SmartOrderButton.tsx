@@ -66,6 +66,7 @@ const getButtonInfo = (status: string) => {
       };
     case "on_the_way":
     case "in_transit":
+    case "arriving":
       return {
         canProceed: true,
         message: "En camino al cliente",
@@ -181,6 +182,7 @@ export const SmartOrderButton: React.FC<SmartOrderButtonProps> = ({
         return "En Camino";
       case "on_the_way":
       case "in_transit":
+      case "arriving":
         return "Marcar Entregado";
       default:
         return buttonInfo.canProceed ? "Continuar" : buttonInfo.message;

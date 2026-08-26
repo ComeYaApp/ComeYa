@@ -28,7 +28,18 @@ router.get(
         .where(
           and(
             eq(orders.deliveryPersonId, req.user!.id),
-            inArray(orders.status, ["picked_up", "on_the_way", "ready"]),
+            // "arriving"/"in_transit" deben estar: el pipeline los usa al
+            // final de la entrega y el pedido desaparecía del mapa del driver
+            inArray(orders.status, [
+              "accepted",
+              "preparing",
+              "ready",
+              "assigned",
+              "picked_up",
+              "on_the_way",
+              "in_transit",
+              "arriving",
+            ]),
           ),
         )
         .limit(1);

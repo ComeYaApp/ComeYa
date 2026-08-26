@@ -121,8 +121,13 @@ export class ScheduledOrdersService {
         const deliveryFee = Number(business?.deliveryFee) || 0;
         const total = subtotal + deliveryFee;
 
+        // Número secuencial público #CY000001 (reserva atómica)
+        const { nextOrderNumber } = await import("./orderNumberService");
+        const seqNumber = await nextOrderNumber();
+
         // Crear pedido real con importes completos
         const [order] = await db.insert(orders).values({
+          ...(seqNumber != null ? { orderNumber: seqNumber } : {}),
           userId: scheduled.userId,
           businessId: scheduled.businessId,
           businessName: business?.name || "Negocio",
@@ -138,6 +143,9 @@ export class ScheduledOrdersService {
           orderType: "delivery",
           deliveryAddress: scheduled.deliveryAddress,
           notes: scheduled.notes || null,
+          // La fecha programada queda registrada en el pedido para el
+          // seguimiento del cliente y la facturación
+          scheduledFor: (scheduled as any).scheduledFor ?? null,
         });
 
         // Marcar como ejecutado
