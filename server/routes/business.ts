@@ -1353,6 +1353,7 @@ router.put(
         const { sendOrderStatusNotification, sendPushToUser } = await import(
           "../enhancedPushService"
         );
+        const { orderRef } = await import("../orderNumberService");
         await sendOrderStatusNotification(order.id, order.userId, status);
 
         // Pedidos de recogida en local: el cliente se acerca él mismo, no hay
@@ -1365,7 +1366,7 @@ router.put(
           if (order.deliveryPersonId) {
             await sendPushToUser(order.deliveryPersonId, {
               title: "👨‍🍳 Pedido en preparación",
-              body: `${order.businessName} — Pedido #${order.id.slice(-6)} listo en ${rangeText}`,
+              body: `${order.businessName} — Pedido ${orderRef(order)} listo en ${rangeText}`,
               data: { orderId: order.id, screen: "DriverActiveOrder" },
             });
           } else {
@@ -1384,7 +1385,7 @@ router.put(
           if (order.deliveryPersonId) {
             await sendPushToUser(order.deliveryPersonId, {
               title: "📦 Pedido listo para recoger",
-              body: `${order.businessName} — Pedido #${order.id.slice(-6)} listo`,
+              body: `${order.businessName} — Pedido ${orderRef(order)} listo`,
               data: { orderId: order.id, screen: "DriverActiveOrder" },
             });
           } else {
@@ -1394,7 +1395,7 @@ router.put(
             );
             await DeliveryNotificationService.broadcastToDrivers(
               "🛵 ¡Nuevo pedido disponible!",
-              `${order.businessName} — recoge el pedido #${order.id.slice(-6)}`,
+              `${order.businessName} — recoge el pedido ${orderRef(order)}`,
               { orderId: order.id, screen: "DriverAvailable" },
             );
           }
@@ -1402,7 +1403,7 @@ router.put(
         if (status === "cancelled" && order.deliveryPersonId) {
           await sendPushToUser(order.deliveryPersonId, {
             title: "❌ Pedido cancelado",
-            body: `El pedido #${order.id.slice(-6)} fue cancelado por el negocio`,
+            body: `El pedido ${orderRef(order)} fue cancelado por el negocio`,
             data: { orderId: order.id, screen: "DriverAvailable" },
           });
         }

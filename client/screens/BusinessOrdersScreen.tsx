@@ -31,6 +31,28 @@ import {
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { displayOrderNumber } from "@/utils/orderNumber";
 
+// Estado de pago (todo digital): los pedidos "pending" se ven SIEMPRE, pero
+// solo se aceptan pagados — los demás se activan solos al confirmarse el pago
+const PAYMENT_STATE_CONFIG: Record<
+  string,
+  { label: string; color: string; icon: any }
+> = {
+  paid: { label: "Pago completado", color: ComeYaColors.success, icon: "check-circle" },
+  proof_pending: { label: "Verificando pago", color: "#F59E0B", icon: "clock" },
+  awaiting_payment: { label: "Esperando pago", color: ComeYaColors.error, icon: "alert-circle" },
+  failed: { label: "Pago fallido", color: ComeYaColors.error, icon: "x-circle" },
+};
+
+function paymentBlockedAlert(state: string | undefined | null): string | null {
+  if (state === "proof_pending") {
+    return "El pago está en verificación por administración. El pedido se activará automáticamente al aprobarse el comprobante.";
+  }
+  if (state === "awaiting_payment") {
+    return "El cliente aún no ha completado el pago. El pedido se activará automáticamente al confirmarse.";
+  }
+  return null;
+}
+
 export default function BusinessOrdersScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -172,9 +194,9 @@ export default function BusinessOrdersScreen() {
         () => {},
       );
       loadOrders();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating order:", error);
-      Alert.alert("Error", "No se pudo actualizar el pedido");
+      Alert.alert("Error", error?.message || "No se pudo actualizar el pedido");
     }
   };
 
@@ -319,6 +341,45 @@ export default function BusinessOrdersScreen() {
             }
           />
         </View>
+
+        {item.paymentState &&
+          (item.status === "pending" || item.paymentState === "failed") && (
+            <View style={styles.paymentStateRow}>
+              <Feather
+                size={13}
+                name={
+                  (
+                    PAYMENT_STATE_CONFIG[item.paymentState] ||
+                    PAYMENT_STATE_CONFIG.awaiting_payment
+                  ).icon
+                }
+                color={
+                  (
+                    PAYMENT_STATE_CONFIG[item.paymentState] ||
+                    PAYMENT_STATE_CONFIG.awaiting_payment
+                  ).color
+                }
+              />
+              <ThemedText
+                type="caption"
+                style={{
+                  color: (
+                    PAYMENT_STATE_CONFIG[item.paymentState] ||
+                    PAYMENT_STATE_CONFIG.awaiting_payment
+                  ).color,
+                  marginLeft: Spacing.xs,
+                  fontWeight: "700",
+                }}
+              >
+                {
+                  (
+                    PAYMENT_STATE_CONFIG[item.paymentState] ||
+                    PAYMENT_STATE_CONFIG.awaiting_payment
+                  ).label
+                }
+              </ThemedText>
+            </View>
+          )}
 
         {item.customer ? (
           <View style={styles.customerInfo}>
@@ -557,14 +618,27 @@ export default function BusinessOrdersScreen() {
               </Pressable>
               <Pressable
                 onPress={() => {
+                  const blocked = paymentBlockedAlert(item.paymentState);
+                  if (blocked) {
+                    Alert.alert("Pago pendiente", blocked);
+                    return;
+                  }
                   console.log("Accept button pressed", item.id);
                   handleAccept(item.id, item.orderType === "pickup");
                 }}
+                disabled={
+                  !!item.paymentState && item.paymentState !== "paid"
+                }
                 style={({ pressed }) => [
                   styles.actionButton,
                   {
                     backgroundColor: ComeYaColors.primary,
-                    opacity: pressed ? 0.8 : 1,
+                    opacity:
+                      item.paymentState && item.paymentState !== "paid"
+                        ? 0.55
+                        : pressed
+                          ? 0.8
+                          : 1,
                   },
                 ]}
               >
@@ -573,7 +647,11 @@ export default function BusinessOrdersScreen() {
                   type="small"
                   style={{ color: "#FFF", marginLeft: Spacing.xs }}
                 >
-                  Aceptar
+                  {item.paymentState === "proof_pending"
+                    ? "En verificación"
+                    : item.paymentState === "awaiting_payment"
+                      ? "Esperando pago"
+                      : "Aceptar"}
                 </ThemedText>
               </Pressable>
             </>
@@ -743,8 +821,8 @@ export default function BusinessOrdersScreen() {
                     ).catch(() => {});
                     setTimeModal({ visible: false, orderId: "" });
                     loadOrders();
-                  } catch (error) {
-                    Alert.alert("Error", "No se pudo aceptar el pedido");
+                  } catch (error: any) {
+                    Alert.alert("Error", error?.message || "No se pudo aceptar el pedido");
                   }
                 }}
                 style={[
@@ -956,6 +1034,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: Spacing.xs,
+  },
+  paymentStateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: "rgba(128,128,128,0.12)",
   },
   itemsList: {
     marginTop: Spacing.sm,

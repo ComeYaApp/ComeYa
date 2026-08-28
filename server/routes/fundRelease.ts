@@ -3,6 +3,7 @@ import { Router } from "express";
 import { fundReleaseService } from "../fundReleaseService";
 import { authenticateToken } from "../authMiddleware";
 import { requireRole } from "../authMiddleware";
+import { orderRefFromId } from "../orderNumberService";
 import { createPayoutsForOrder } from "../payoutService";
 import { LoyaltyService } from "../loyaltyService";
 
@@ -149,7 +150,7 @@ router.post("/dispute", authenticateToken, async (req, res) => {
             id: ticketId,
             userId: req.user!.id,
             orderId,
-            subject: `[Disputa #${orderId.slice(-6)}] ${reason}`.slice(0, 255),
+            subject: `[Disputa ${await orderRefFromId(orderId)}] ${reason}`.slice(0, 255),
             category: "order_issue",
             priority: "high",
             status: "open",
@@ -181,7 +182,7 @@ router.post("/dispute", authenticateToken, async (req, res) => {
           for (const admin of admins) {
             await sendPushToUser(admin.id, {
               title: "⚠️ Disputa de entrega",
-              body: `Pedido #${orderId.slice(-6)}: ${reason.slice(0, 80)}`,
+              body: `Pedido ${await orderRefFromId(orderId)}: ${reason.slice(0, 80)}`,
               data: {
                 type: "order_issue",
                 issueId,

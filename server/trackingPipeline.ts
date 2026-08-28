@@ -7,6 +7,7 @@ import {
 } from "@shared/schema-mysql";
 import { eq, and, inArray } from "drizzle-orm";
 import { sendPushToUser } from "./enhancedPushService";
+import { orderRefFromId } from "./orderNumberService";
 import { getIO } from "./websocket";
 import { evaluateDriverFix } from "./utils/locationFilter";
 
@@ -92,7 +93,7 @@ async function checkProximityAlerts(
 
       await sendPushToUser(order.userId, {
         title: alert.title,
-        body: `${alert.body} · Pedido #${order.id.slice(-6)}`,
+        body: `${alert.body} · Pedido ${await orderRefFromId(order.id)}`,
         data: { orderId: order.id, screen: "OrderTracking", type: alert.type },
       }).catch(() => {});
     }
@@ -152,7 +153,7 @@ async function checkGeofenceMarkers(
 
           await sendPushToUser(biz.ownerId, {
             title: "🏪 El repartidor llegó a tu local",
-            body: `Pedido #${order.id.slice(-6)} · ${biz.name}`,
+            body: `Pedido ${await orderRefFromId(order.id)} · ${biz.name}`,
             data: { orderId: order.id, screen: "BusinessOrders", type: "driver_arrived" },
           }).catch(() => {});
         }

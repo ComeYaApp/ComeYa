@@ -26,6 +26,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logger } from "./logger";
 import { sendPushToUser } from "./enhancedPushService";
+import { orderRef, orderRefFromId } from "./orderNumberService";
 
 export type RefundType = "issue" | "cancellation" | "dispute" | "manual";
 export type LiableParty = "business" | "driver" | "platform";
@@ -256,12 +257,13 @@ async function notifyRefund(
 ) {
   const euros = (amount / 100).toFixed(2);
   const withoutCharge = method === "cash_none" || method === "no_charge";
+  const ref = await orderRefFromId(orderId);
   const title = withoutCharge
     ? "Pedido cancelado"
     : `Devolución de ${euros} €`;
   const body = withoutCharge
-    ? `Pedido #${orderId.slice(-6)}: ${METHOD_COPY[method]}`
-    : `Pedido #${orderId.slice(-6)}. ${METHOD_COPY[method]}`;
+    ? `Pedido ${ref}: ${METHOD_COPY[method]}`
+    : `Pedido ${ref}. ${METHOD_COPY[method]}`;
 
   await sendPushToUser(customerId, {
     title,
@@ -462,7 +464,7 @@ export async function createRefund(req: RefundRequest): Promise<RefundResult> {
         order.userId,
         amount,
         order.id,
-        `Devolución pedido #${order.id.slice(-6)}: ${req.reason}`,
+        `Devolución ${orderRef(order)}: ${req.reason}`,
       ).catch(() => {});
 
       if (req.notifyCustomer !== false) {
@@ -568,7 +570,7 @@ export async function markRefundPaid(
     row.customerId,
     row.amount,
     row.orderId,
-    `Devolución pedido #${row.orderId.slice(-6)} por transferencia manual`,
+    `Devolución ${await orderRefFromId(row.orderId)} por transferencia manual`,
   ).catch(() => {});
 
   await notifyRefund(row.customerId, row.orderId, row.amount, "manual_transfer");
@@ -598,7 +600,7 @@ async function notifyAdminsRefundFailed(
     for (const admin of admins) {
       await sendPushToUser(admin.id, {
         title: "⚠️ Devolución fallida",
-        body: `Pedido #${orderId.slice(-6)}: ${(amount / 100).toFixed(2)} € — ${reason}`,
+        body: `Pedido ${await orderRefFromId(orderId)}: ${(amount / 100).toFixed(2)} € — ${reason}`,
         data: {
           orderId,
           screen: "AdminDashboard",

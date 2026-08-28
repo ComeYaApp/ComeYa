@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
 import { sql } from "drizzle-orm";
+import { orderRefFromId } from "../orderNumberService";
 
 const router = express.Router();
 
@@ -670,7 +671,7 @@ router.post(
 
         await sendPushToUser(recipientUserId, {
           title: "💰 Pago recibido",
-          body: `ComeYa te ha enviado ${amountEur} vía ${methodLabel}. Pedido #${payout.orderId.slice(-6)}.`,
+          body: `ComeYa te ha enviado ${amountEur} vía ${methodLabel}. Pedido ${await orderRefFromId(payout.orderId)}.`,
           data: {
             screen:
               payout.recipientType === "business"

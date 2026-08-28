@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "./db";
 import { orders } from "@shared/schema-mysql";
 import { sendPushToUser } from "./enhancedPushService";
+import { orderRefFromId } from "./orderNumberService";
 
 // Generar código de 6 dígitos único
 function generatePickupCode(): string {
@@ -151,7 +152,7 @@ export const pickupService = {
     // Notificar al negocio
     await sendPushToUser(businessOwnerId, {
       title: "🚶 Cliente en el local",
-      body: `El cliente llegó a recoger el pedido #${orderId.slice(-6)}`,
+      body: `El cliente llegó a recoger el pedido ${await orderRefFromId(orderId)}`,
       data: { orderId, screen: "BusinessOrders" },
     });
   },

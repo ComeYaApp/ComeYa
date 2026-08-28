@@ -17,6 +17,7 @@ import { orders, payouts, users } from "@shared/schema-mysql";
 import { eq, and, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import { sendPushToUser } from "./enhancedPushService";
+import { orderRef } from "./orderNumberService";
 import {
   createRefund,
   type LiableParty,
@@ -282,7 +283,7 @@ async function notifyCancellation(
   policy: CancelPolicy,
   reason: string,
 ) {
-  const short = `#${order.id.slice(-6)}`;
+  const short = orderRef(order);
   const who =
     actorRole === "customer"
       ? "el cliente"

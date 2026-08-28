@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
 import { db } from "../db";
+import { orderRefFromId } from "../orderNumberService";
 import {
   orders,
   businesses,
@@ -112,7 +113,7 @@ router.post(
           !r.deliveryLongitude
         ) {
           return res.status(400).json({
-            error: `El pedido #${r.id.slice(-6)} no tiene coordenadas completas`,
+            error: `El pedido ${await orderRefFromId(r.id)} no tiene coordenadas completas`,
           });
         }
         pickups.push({
@@ -296,7 +297,7 @@ router.post(
         if (order.userId) {
           sendPushToUser(order.userId, {
             title: "🛵 Repartidor asignado",
-            body: `Tu pedido #${order.id.slice(-6)} está en camino al negocio`,
+            body: `Tu pedido ${await orderRefFromId(order.id)} está en camino al negocio`,
             data: { orderId: order.id, screen: "OrderTracking" },
           }).catch(() => {});
         }

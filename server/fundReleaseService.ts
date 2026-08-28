@@ -12,6 +12,7 @@ import {
 } from "@shared/schema-mysql";
 import { eq, and, lt } from "drizzle-orm";
 import { logger } from "./logger";
+import { orderRefFromId } from "./orderNumberService";
 import { sendPushToUser } from "./enhancedPushService";
 
 interface FundReleaseResult {
@@ -126,7 +127,7 @@ async function notifyAdminManualPayout(
     for (const admin of admins) {
       await sendPushToUser(admin.id, {
         title: `💸 Payout pendiente — ${label}`,
-        body: `${recipientName} debe recibir €${amountEur} por pedido #${orderId.slice(-6)}`,
+        body: `${recipientName} debe recibir €${amountEur} por pedido ${await orderRefFromId(orderId)}`,
         data: { screen: "AdminPayouts", orderId },
       }).catch(() => {});
     }
@@ -147,7 +148,7 @@ async function notifyRecipientPayout(
   const msg =
     method === "stripe"
       ? `€${amountEur} transferidos automáticamente a tu cuenta bancaria`
-      : `€${amountEur} pendientes de transferencia por el pedido #${orderId.slice(-6)}`;
+      : `€${amountEur} pendientes de transferencia por el pedido ${await orderRefFromId(orderId)}`;
 
   await sendPushToUser(userId, {
     title: method === "stripe" ? "✅ Pago recibido" : "⏳ Pago en proceso",
@@ -201,7 +202,7 @@ async function releaseFunds(order: any): Promise<void> {
         businessEarnings,
         accountId,
         order.id,
-        `Pago negocio pedido #${order.id.slice(-6)}`,
+        `Pago negocio pedido ${await orderRefFromId(order.id)}`,
       );
       if (transferId) {
         orderUpdates.businessTransferId = transferId;
@@ -297,7 +298,7 @@ async function releaseFunds(order: any): Promise<void> {
         deliveryEarnings,
         accountId,
         order.id,
-        `Pago repartidor pedido #${order.id.slice(-6)}`,
+        `Pago repartidor pedido ${await orderRefFromId(order.id)}`,
       );
       if (transferId) {
         orderUpdates.driverTransferId = transferId;

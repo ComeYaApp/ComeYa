@@ -55,18 +55,17 @@ export function clearTokenCache() {
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    // Intentar parsear como JSON para extraer mensaje amigable
+    // Extraer el mensaje amigable del JSON ({ error } o { message });
+    // si no hay JSON, usar el texto crudo. (Antes el throw caía en su
+    // propio catch y el mensaje amigable se perdía.)
+    let message = text;
     try {
       const json = JSON.parse(text);
-      const message = json.error || json.message || text;
-      throw new Error(message);
-    } catch (parseError) {
-      // Si no es JSON o ya es Error, usar el texto crudo
-      if (parseError instanceof Error && parseError.message !== text) {
-        throw new Error(text);
+      if (json && (json.error || json.message)) {
+        message = json.error || json.message;
       }
-      throw parseError;
-    }
+    } catch {}
+    throw new Error(message);
   }
 }
 

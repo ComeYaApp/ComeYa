@@ -1,6 +1,7 @@
 import express from "express";
 import { authenticateToken, requireRole } from "../authMiddleware";
 import { eq, and, inArray } from "drizzle-orm";
+import { orderRefFromId } from "../orderNumberService";
 
 const router = express.Router();
 
@@ -152,7 +153,7 @@ router.post(
       const { sendPushToUser } = await import("../enhancedPushService");
       sendPushToUser(driverId, {
         title: "🚀 Nuevo pedido asignado",
-        body: `Te han asignado el pedido #${orderId.slice(-6)}`,
+        body: `Te han asignado el pedido ${await orderRefFromId(orderId)}`,
         data: { orderId, screen: "DriverMap" },
       }).catch(() => {});
 
