@@ -109,9 +109,12 @@ export default {
     },
     privacyPolicyUrl: "https://comeya-backend.onrender.com/privacy-policy",
     extra: {
-      // projectId omitido a propósito: lo escribe `eas init` al vincular el
-      // proyecto de la ORGANIZACIÓN (el viejo pertenece a la cuenta personal
-      // y no puede validarse con la sesión de la organización)
+      // Proyecto de la ORGANIZACIÓN (cuota Free intacta). El proyecto viejo
+      // de la cuenta personal se mantiene vivo: los tokens push de las apps
+      // instaladas siguen funcionando mientras exista.
+      eas: {
+        projectId: "710ea450-6cea-4da8-8a78-891ceb00a611",
+      },
       EXPO_PUBLIC_BACKEND_URL:
         process.env.EXPO_PUBLIC_BACKEND_URL ||
         "https://comeya-backend.onrender.com",
