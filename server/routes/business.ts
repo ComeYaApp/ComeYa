@@ -553,13 +553,21 @@ router.get(
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       WHERE o.business_id = ${business.id}
-        -- Nunca pedidos impagos: payment_failed fuera; pending solo si es
-        -- efectivo (contra reembolso en el negocio que sí requiere aviso)
-        AND o.status <> 'payment_failed'
-        AND (o.status <> 'pending' OR o.payment_method IN ('cash','efectivo'))
         AND o.deleted_at IS NULL
       ORDER BY o.created_at DESC
     `)) as any;
+
+      // Estado de pago por pedido: el negocio ve TODOS sus pedidos y los
+      // "pending" digitales se distinguen con paymentState (verificando
+      // pago / esperando pago) para que nunca exista un pedido invisible
+      const { classifyPaymentState, pendingProofOrderIds } = await import(
+        "../utils/paymentState"
+      );
+      const proofIds = await pendingProofOrderIds(
+        orderRows
+          .filter((r: any) => r.status === "pending")
+          .map((r: any) => r.id),
+      );
 
       // Resolver los NOMBRES de los productos sustitutos elegidos por el
       // cliente (en el pedido solo viajan los IDs; el negocio debe poder
@@ -603,6 +611,15 @@ router.get(
           businessImage: row.business_image,
           items: row.items,
           status: row.status,
+          paymentState: classifyPaymentState(
+            {
+              id: row.id,
+              status: row.status,
+              paymentMethod: row.payment_method,
+              paidAt: row.paid_at,
+            },
+            proofIds,
+          ),
           // orderType es imprescindible en el panel: los pedidos de recogida
           // no deben avisar a repartidores ni pedir tiempo de preparación
           orderType: row.order_type || "delivery",
@@ -1295,6 +1312,20 @@ router.put(
         req.user!.role !== "super_admin"
       ) {
         return res.status(403).json({ error: "No autorizado" });
+      }
+
+      // Guardia de pago: solo se aceptan pedidos pagados. Los "pending"
+      // digitales (comprobante en verificación o cliente sin completar el
+      // pago) se activan solos al confirmarse el pago — así nunca se acepta
+      // un pedido sin dinero ni se queda el negocio esperando a ciegas.
+      if (status === "accepted" && order.status === "pending") {
+        const { paymentStateOf, acceptanceBlockedMessage } = await import(
+          "../utils/paymentState"
+        );
+        const blocked = acceptanceBlockedMessage(await paymentStateOf(order));
+        if (blocked) {
+          return res.status(400).json({ error: blocked });
+        }
       }
 
       const updates: any = { status, updatedAt: new Date() };

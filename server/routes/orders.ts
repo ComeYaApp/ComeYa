@@ -7,6 +7,7 @@ import {
 } from "../enhancedPushService";
 import { notifyNewOrder } from "../websocket";
 import { ISSUE_LABELS } from "@shared/orderIssues";
+import { orderRef, orderRefFromId } from "../orderNumberService";
 
 import { CONFIG } from "../config";
 
@@ -299,7 +300,7 @@ router.post("/", authenticateToken, async (req, res) => {
     if (business.ownerId) {
       await sendPushToUser(business.ownerId, {
         title: "🛒 Nuevo pedido recibido",
-        body: `Pedido #${orderId.slice(-6)} — €${(total / 100).toFixed(2)}`,
+        body: `Pedido ${await orderRefFromId(orderId)} — €${(total / 100).toFixed(2)}`,
         data: { orderId, screen: "BusinessOrders" },
       });
     }
@@ -504,7 +505,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
       if (o.deliveryPersonId) {
         await sendPushToUser(o.deliveryPersonId, {
           title: "📦 Pedido listo para recoger",
-          body: `${o.businessName} — Pedido #${o.id.slice(-6)} listo`,
+          body: `${o.businessName} — Pedido ${orderRef(o)} listo`,
           data: { orderId: o.id, screen: "DriverActiveOrder" },
         });
       } else if (!isPickupOrder) {
@@ -519,7 +520,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
             `${o.businessName} — Recoge en ${o.businessName || "negocio"} y gana €${((o.deliveryFee || 0) / 100).toFixed(2)}`,
             { orderId: o.id, screen: "DriverAvailable" },
           );
-          console.log(`📢 Broadcast: nuevo pedido #${o.id.slice(-6)} notificado a ${notified} drivers`);
+          console.log(`📢 Broadcast: nuevo pedido ${orderRef(o)} notificado a ${notified} drivers`);
         } catch (err) {
           console.error("Error broadcasting new order to drivers:", err);
         }
@@ -530,7 +531,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
       if (order.business?.ownerId) {
         await sendPushToUser(order.business.ownerId, {
           title: "❌ Pedido cancelado",
-          body: `Pedido #${o.id.slice(-6)} fue cancelado`,
+          body: `Pedido ${orderRef(o)} fue cancelado`,
           data: { orderId: o.id, screen: "BusinessOrders" },
         });
       }
@@ -538,7 +539,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
       if (o.deliveryPersonId) {
         await sendPushToUser(o.deliveryPersonId, {
           title: "❌ Pedido cancelado",
-          body: `El pedido #${o.id.slice(-6)} fue cancelado`,
+          body: `El pedido ${orderRef(o)} fue cancelado`,
           data: { orderId: o.id, screen: "DriverAvailable" },
         });
       }
@@ -607,7 +608,7 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
       orderId: tipOrderId,
       type: "tip",
       amount,
-      description: `Propina del cliente por pedido #${tipOrderId.slice(-6)}`,
+      description: `Propina del cliente por pedido ${await orderRefFromId(tipOrderId)}`,
       status: "completed",
     });
 
@@ -895,7 +896,7 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
 
     // Ticket que aloja la conversación con el cliente
     const ticketId = randomUUID();
-    const subject = `[Pedido #${issueOrderId.slice(-6)}] ${ISSUE_LABELS[issueType] || issueType}`.slice(
+    const subject = `[Pedido ${orderRef(order)}] ${ISSUE_LABELS[issueType] || issueType}`.slice(
       0,
       255,
     );
@@ -942,7 +943,7 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       for (const admin of admins) {
         await sendPushToUser(admin.id, {
           title: "⚠️ Incidencia reportada",
-          body: `Pedido #${issueOrderId.slice(-6)}: ${ISSUE_LABELS[issueType] || issueType}`,
+          body: `Pedido ${orderRef(order)}: ${ISSUE_LABELS[issueType] || issueType}`,
           data: {
             type: "order_issue",
             issueId,
@@ -979,7 +980,7 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       if (biz?.ownerId && biz.ownerId !== req.user!.id) {
         await sendPushToUser(biz.ownerId, {
           title: "⚠️ Incidencia en tu pedido",
-          body: `Pedido #${issueOrderId.slice(-6)}: ${ISSUE_LABELS[issueType] || issueType}`,
+          body: `Pedido ${orderRef(order)}: ${ISSUE_LABELS[issueType] || issueType}`,
           data: {
             orderId: issueOrderId,
             screen: "BusinessOrders",

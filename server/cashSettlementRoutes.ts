@@ -4,6 +4,7 @@ import { db } from "./db";
 import { orders, wallets, transactions } from "@shared/schema-mysql";
 import { eq, and } from "drizzle-orm";
 import { authenticateToken } from "./authMiddleware";
+import { orderRef } from "./orderNumberService";
 
 const router = Router();
 
@@ -164,7 +165,7 @@ router.post("/settle/:orderId", authenticateToken, async (req, res) => {
           amount: -totalDebtForOrder,
           balanceBefore: driverWallet.cashOwed,
           balanceAfter: Math.max(0, driverWallet.cashOwed - totalDebtForOrder),
-          description: `Deuda liquidada por negocio - Pedido #${order.id.slice(-6)}`,
+          description: `Deuda liquidada por negocio - Pedido ${orderRef(order)}`,
           status: "completed",
         });
       }

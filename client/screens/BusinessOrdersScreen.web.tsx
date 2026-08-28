@@ -59,6 +59,36 @@ const PAYMENT_LABEL: Record<string, string> = {
   cash: "💵 Efectivo",
 };
 
+// Estado de pago (todo digital): los pedidos "pending" se ven SIEMPRE, pero
+// solo se aceptan pagados — los demás se activan solos al confirmarse el pago
+const PAYMENT_STATE_CONFIG: Record<
+  string,
+  { label: string; color: string; icon: string }
+> = {
+  paid: { label: "Pago completado", color: "#10B981", icon: "check-circle" },
+  proof_pending: {
+    label: "Verificando pago",
+    color: "#F59E0B",
+    icon: "clock",
+  },
+  awaiting_payment: {
+    label: "Esperando pago",
+    color: "#EF4444",
+    icon: "alert-circle",
+  },
+  failed: { label: "Pago fallido", color: "#EF4444", icon: "x-circle" },
+};
+
+function paymentBlockedToast(state: string | undefined): string | null {
+  if (state === "proof_pending") {
+    return "El pago está en verificación por administración. El pedido se activará automáticamente al aprobarse el comprobante.";
+  }
+  if (state === "awaiting_payment") {
+    return "El cliente aún no ha completado el pago. El pedido se activará automáticamente al confirmarse.";
+  }
+  return null;
+}
+
 export default function BusinessOrdersScreen() {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
@@ -134,8 +164,9 @@ export default function BusinessOrdersScreen() {
         ...(extra || {}),
       });
       await loadOrders();
-    } catch {
-      showToast("No se pudo actualizar el pedido", "error");
+    } catch (err: any) {
+      // El servidor explica el motivo (p. ej. pago sin confirmar)
+      showToast(err?.message || "No se pudo actualizar el pedido", "error");
     } finally {
       setActionLoading(null);
     }
@@ -213,17 +244,22 @@ export default function BusinessOrdersScreen() {
     if (!selectedOrder) return;
     setActionLoading(selectedOrder.id + "accept");
     try {
-      await apiRequest("PATCH", `/api/orders/${selectedOrder.id}/status`, {
-        status: "accepted",
-      });
+      // Mismo endpoint que el resto de acciones: aplica la guardia de pago
+      await apiRequest(
+        "PUT",
+        `/api/business/orders/${selectedOrder.id}/status`,
+        {
+          status: "accepted",
+        },
+      );
       await apiRequest("POST", `/api/pickup/${selectedOrder.id}/update-time`, {
         estimatedMinutes: selectedTime,
       });
       setShowTimeModal(false);
       setSelectedOrder(null);
       await loadOrders();
-    } catch {
-      showToast("No se pudo aceptar el pedido", "error");
+    } catch (err: any) {
+      showToast(err?.message || "No se pudo aceptar el pedido", "error");
     } finally {
       setActionLoading(null);
     }
@@ -405,6 +441,36 @@ export default function BusinessOrdersScreen() {
                       </Text>
                     </View>
                   </View>
+
+                  {/* Estado de pago: siempre visible para saber por qué un
+                      pendiente no se puede aceptar todavía */}
+                  {order.paymentState &&
+                    (order.status === "pending" ||
+                      order.paymentState === "failed") &&
+                    (() => {
+                      const ps =
+                        PAYMENT_STATE_CONFIG[order.paymentState] ||
+                        PAYMENT_STATE_CONFIG.awaiting_payment;
+                      return (
+                        <View
+                          style={[
+                            s.paymentStateRow,
+                            { backgroundColor: ps.color + "15" },
+                          ]}
+                        >
+                          <Feather
+                            name={ps.icon as any}
+                            size={13}
+                            color={ps.color}
+                          />
+                          <Text
+                            style={[s.paymentStateText, { color: ps.color }]}
+                          >
+                            {ps.label}
+                          </Text>
+                        </View>
+                      );
+                    })()}
 
                   {/* Cliente */}
                   {order.customer && (
@@ -588,6 +654,13 @@ export default function BusinessOrdersScreen() {
                         </Pressable>
                         <Pressable
                           onPress={() => {
+                            const blocked = paymentBlockedToast(
+                              order.paymentState,
+                            );
+                            if (blocked) {
+                              showToast(blocked, "warning");
+                              return;
+                            }
                             if (order.orderType === "pickup") {
                               setSelectedOrder(order);
                               setShowTimeModal(true);
@@ -595,12 +668,20 @@ export default function BusinessOrdersScreen() {
                               updateStatus(order.id, "accepted");
                             }
                           }}
-                          disabled={!!actionLoading}
+                          disabled={
+                            !!actionLoading ||
+                            (!!order.paymentState &&
+                              order.paymentState !== "paid")
+                          }
                           style={[
                             s.actionBtn,
                             {
                               backgroundColor: ComeYaColors.primary,
                               flex: 1.5,
+                              opacity:
+                                order.paymentState && order.paymentState !== "paid"
+                                  ? 0.55
+                                  : 1,
                             },
                           ]}
                         >
@@ -612,7 +693,11 @@ export default function BusinessOrdersScreen() {
                               <Text
                                 style={[s.actionBtnText, { color: "#fff" }]}
                               >
-                                Aceptar
+                                {order.paymentState === "proof_pending"
+                                  ? "En verificación"
+                                  : order.paymentState === "awaiting_payment"
+                                    ? "Esperando pago"
+                                    : "Aceptar"}
                               </Text>
                             </>
                           )}
@@ -908,6 +993,17 @@ const s = StyleSheet.create({
   },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusText: { fontSize: 12, fontWeight: "700" },
+  paymentStateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 10,
+  },
+  paymentStateText: { fontSize: 12, fontWeight: "700" },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,5 +1,6 @@
 // Cash Settlement Service - Liquidación de Efectivo
 import { db } from "./db";
+import { orderRefFromId } from "./orderNumberService";
 import {
   wallets,
   transactions,
@@ -169,7 +170,7 @@ export class CashSettlementService {
         amount: -debtPayment,
         balanceBefore: driverWallet.cashOwed,
         balanceAfter: driverWallet.cashOwed - debtPayment,
-        description: `Descuento automático de deuda - Pedido #${orderId.slice(-6)}`,
+        description: `Descuento automático de deuda - Pedido ${await orderRefFromId(orderId)}`,
         status: "completed",
       });
 

@@ -2,20 +2,64 @@
 // 1. Pedidos "pending"/"payment_failed" SIN ACEPTACIÓN del negocio > 10 min
 //    → cancelación automática + reembolso del 100% (política de la app).
 //    Incluye los pedidos huérfanos cuyo pago se canceló en la pasarela.
+//    EXENCIONES: pedidos con comprobante manual en verificación (esperan
+//    al admin, no al negocio) y pagos Stripe confirmados cuyo webhook se
+//    perdió (se rescatan consultando el PaymentIntent).
 // 2. Pedidos aceptados/preparando/listo SIN REPARTIDOR > 30 min
 //    → cancelación (el negocio ya invirtió en la comida, margen mayor).
-// 3. Reintentos de reembolsos fallidos (refundStatus = 'failed').
+// 3. Comprobantes manuales sin verificar > 2 h → cancelación (el admin
+//    nunca llegó a revisar el pago).
+// 4. Reintentos de reembolsos fallidos (refundStatus = 'failed').
 // Las devoluciones las gestiona orderCancellationService/refundService
 // (Stripe automático, saldo en monedero o cola manual según el pago).
 import { db } from "./db";
 import { orders } from "@shared/schema-mysql";
-import { inArray, lt, and, isNull, ne } from "drizzle-orm";
+import { inArray, lt, and, isNull, ne, eq } from "drizzle-orm";
 import { cancelOrder } from "./orderCancellationService";
+import { orderRef } from "./orderNumberService";
 
 // Política: sin aceptación del negocio → 10 min (visible para el cliente)
 export const NO_ACCEPTANCE_MINUTES = 10;
 // Sin repartidor (ya aceptados por el negocio) → 30 min
 export const NO_DRIVER_MINUTES = 30;
+// Comprobante manual sin verificar → 2 h (el pedido espera al ADMIN)
+export const PROOF_PENDING_MAX_MINUTES = 120;
+
+/**
+ * Rescata pagos de Stripe confirmados cuyo webhook se perdió: consulta el
+ * PaymentIntent y, si succeeded, confirma el pedido igual que habría hecho
+ * el webhook en lugar de cancelarlo. Best-effort: si Stripe no responde,
+ * sigue el flujo de cancelación normal.
+ */
+async function rescueStripePayment(order: any): Promise<boolean> {
+  const method = String(order.paymentMethod || "");
+  const intentId = order.stripePaymentIntentId;
+  if (!method.startsWith("stripe_") || !intentId) return false;
+  if (!process.env.STRIPE_SECRET_KEY) return false;
+  try {
+    const Stripe = (await import("stripe")).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as any);
+    const intent = await stripe.paymentIntents.retrieve(intentId);
+    if (intent.status === "succeeded") {
+      const { confirmPaidOrder } = await import(
+        "./paymentConfirmationService"
+      );
+      const result = await confirmPaidOrder(order.id, intent, "reconciliation");
+      if (result.success) {
+        console.log(
+          `🔧 ${orderRef(order)} rescatado: pago Stripe confirmado sin webhook`,
+        );
+        return true;
+      }
+    }
+  } catch (error: any) {
+    console.error(
+      `rescueStripePayment ${order.id}:`,
+      error?.message ?? error,
+    );
+  }
+  return false;
+}
 
 /** Cancela pedidos que el negocio no aceptó en el plazo de la política. */
 async function checkUnacceptedOrders(): Promise<number> {
@@ -33,22 +77,32 @@ async function checkUnacceptedOrders(): Promise<number> {
     )
     .limit(50);
 
+  // Pedidos con comprobante en verificación: no los mata esta regla,
+  // esperan a que el admin revise el pago (regla propia de 2 h)
+  const { pendingProofOrderIds } = await import("./utils/paymentState");
+  const proofPending = await pendingProofOrderIds(stale.map((o: any) => o.id));
+
+  let cancelled = 0;
   for (const order of stale) {
     try {
+      if (proofPending.has(order.id)) continue;
+      if (await rescueStripePayment(order)) continue;
+
       const result = await cancelOrder(
         order.id,
         "system",
-        `El negocio no aceptó el pedido en ${NO_ACCEPTANCE_MINUTES} minutos — cancelación automática con reembolso del 100%`,
+        `Sin pago confirmado ni aceptación del negocio en ${NO_ACCEPTANCE_MINUTES} minutos — cancelación automática con reembolso del 100%`,
         { actorRole: "system" },
       );
 
       if (result.success) {
+        cancelled++;
         console.log(
-          `⏰ Pedido ${order.id} cancelado por falta de aceptación — devolución: ${result.refund?.message ?? "no aplica"}`,
+          `⏰ ${orderRef(order)} cancelado por falta de aceptación — devolución: ${result.refund?.message ?? "no aplica"}`,
         );
       } else {
         console.error(
-          `⏰ Pedido ${order.id} (sin aceptar) no se pudo cancelar: ${result.message}`,
+          `⏰ ${orderRef(order)} (sin aceptar) no se pudo cancelar: ${result.message}`,
         );
       }
     } catch (error) {
@@ -56,7 +110,61 @@ async function checkUnacceptedOrders(): Promise<number> {
     }
   }
 
-  return stale.length;
+  return cancelled;
+}
+
+/** Cancela pedidos cuyo comprobante manual lleva demasiado sin verificarse. */
+async function checkStuckPaymentProofs(): Promise<number> {
+  const cutoff = new Date(
+    Date.now() - PROOF_PENDING_MAX_MINUTES * 60 * 1000,
+  );
+  try {
+    const { paymentProofs } = await import("@shared/schema-mysql");
+    const stuckProofs = await db
+      .select({ orderId: paymentProofs.orderId })
+      .from(paymentProofs)
+      .where(
+        and(
+          eq(paymentProofs.status, "pending"),
+          lt(paymentProofs.submittedAt, cutoff),
+        ),
+      )
+      .limit(50);
+
+    const ids = stuckProofs
+      .map((p: any) => p.orderId)
+      .filter((id: any): id is string => Boolean(id));
+    if (!ids.length) return 0;
+
+    // Solo los que siguen pending (los ya verificados avanzaron de estado)
+    const stuck = await db
+      .select()
+      .from(orders)
+      .where(and(inArray(orders.id, ids), inArray(orders.status as any, ["pending"])));
+
+    let cancelled = 0;
+    for (const order of stuck) {
+      try {
+        const result = await cancelOrder(
+          order.id,
+          "system",
+          `El comprobante de pago no se verificó en ${PROOF_PENDING_MAX_MINUTES / 60} horas — cancelación automática con reembolso del 100%`,
+          { actorRole: "system" },
+        );
+        if (result.success) {
+          cancelled++;
+          console.log(
+            `⏰ ${orderRef(order)} cancelado: comprobante sin verificar`,
+          );
+        }
+      } catch (error) {
+        console.error(`Error cancelling proof-stuck order ${order.id}:`, error);
+      }
+    }
+    return cancelled;
+  } catch {
+    return 0;
+  }
 }
 
 /** Cancela pedidos aceptados que nunca consiguieron repartidor. */
@@ -176,17 +284,19 @@ async function retryFailedRefunds(): Promise<number> {
 export async function runOrderCleanup(): Promise<{
   unaccepted: number;
   stale: number;
+  proofStuck: number;
 }> {
-  const [unaccepted, stale] = await Promise.all([
+  const [unaccepted, stale, proofStuck] = await Promise.all([
     checkUnacceptedOrders(),
     checkStaleOrders(),
+    checkStuckPaymentProofs(),
   ]);
   // Los reembolsos fallidos se reintentan SIEMPRE, no solo cuando en esta
   // pasada hubo cancelaciones: un 'failed' (p. ej. pedido stripe nunca
   // cobrado que se cierra como no_charge) quedaría eternamente sin
   // procesar si ninguna cancelación lo desbloquea.
   retryFailedRefunds().catch(() => {});
-  return { unaccepted, stale };
+  return { unaccepted, stale, proofStuck };
 }
 
 let interval: ReturnType<typeof setInterval> | null = null;
@@ -198,7 +308,7 @@ export function startStaleOrdersCron() {
     return;
   }
   console.log(
-    `⏰ Stale orders cron iniciado (cada 2 min · sin aceptar: ${NO_ACCEPTANCE_MINUTES} min · sin repartidor: ${NO_DRIVER_MINUTES} min)`,
+    `⏰ Stale orders cron iniciado (cada 2 min · sin aceptar: ${NO_ACCEPTANCE_MINUTES} min · sin repartidor: ${NO_DRIVER_MINUTES} min · comprobante sin verificar: ${PROOF_PENDING_MAX_MINUTES} min)`,
   );
   runOrderCleanup().catch(console.error);
   interval = setInterval(

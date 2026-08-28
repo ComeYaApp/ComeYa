@@ -48,6 +48,38 @@ export function formatOrderNumber(n: number | null | undefined): string {
 }
 
 /**
+ * Referencia pública de un pedido para notificaciones y textos: "#CY000234".
+ * Fallback al ID corto en mayúsculas para pedidos históricos sin número
+ * (mismo criterio que displayOrderNumber del cliente).
+ */
+export function orderRef(order: {
+  orderNumber?: number | null;
+  id?: string | null;
+} | null | undefined): string {
+  const formatted = formatOrderNumber(order?.orderNumber as number | null);
+  if (formatted) return formatted;
+  const id = String(order?.id ?? "");
+  return id ? `#${id.slice(-6).toUpperCase()}` : "#—";
+}
+
+/** Igual que orderRef, resolviendo el pedido desde la BD cuando solo hay id. */
+export async function orderRefFromId(orderId: string): Promise<string> {
+  if (!orderId) return "#—";
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { eq } = await import("drizzle-orm");
+    const [row] = await db
+      .select({ orderNumber: orders.orderNumber, id: orders.id })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+    return orderRef(row ?? { id: orderId });
+  } catch {
+    return `#${String(orderId).slice(-6).toUpperCase()}`;
+  }
+}
+
+/**
  * Backfill idempotente: asigna números secuenciales a los pedidos históricos
  * ordenados por fecha de creación (el más antiguo = CY000001) y alinea el
  * contador con el máximo asignado. Se ejecuta al arrancar el servidor.

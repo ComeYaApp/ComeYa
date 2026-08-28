@@ -2,6 +2,7 @@ import { db } from "./db";
 import { orders, deliveryDrivers, proximityAlerts } from "@shared/schema-mysql";
 import { eq, and } from "drizzle-orm";
 import { sendPushToUser } from "./enhancedPushService";
+import { orderRef } from "./orderNumberService";
 
 interface Location {
   latitude: number;
@@ -103,7 +104,7 @@ export class EnhancedTrackingService {
 
           await sendPushToUser(order.userId, {
             title: alert.message,
-            body: `Pedido #${orderId.slice(-6)}`,
+            body: `Pedido ${orderRef(order)}`,
             data: { orderId, screen: "OrderTracking", type: alert.type },
           });
         }

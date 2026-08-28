@@ -13,6 +13,7 @@ import { financialService } from "./unifiedFinancialService";
 import { autoVerificationService } from "./autoVerificationService";
 import { logger } from "./logger";
 import { notifyPagoMovilStatus, sendPushToUser } from "./enhancedPushService";
+import { orderRef } from "./orderNumberService";
 import { createPayoutsForOrder } from "./payoutService";
 import { CloudinaryService } from "./cloudinaryService";
 
@@ -46,15 +47,50 @@ export class DigitalPaymentService {
   // Get active payment methods
   async getActivePaymentMethods() {
     try {
-      const methods = await db
-        .select()
-        .from(paymentMethods)
-        .where(eq(paymentMethods.isActive, true));
+      const [tableRows, receiving] = await Promise.all([
+        db
+          .select()
+          .from(paymentMethods)
+          .where(eq(paymentMethods.isActive, true)),
+        this.getReceivingAccounts(),
+      ]);
 
-      return methods;
+      // Fusión con providers canónicos ("sepa", "bizum_manual", "paypal"):
+      // el cliente deja de duplicar la Transferencia SEPA por sí solo
+      const { mergePaymentMethods } = await import("./utils/paymentMethods");
+      return mergePaymentMethods(tableRows as any, receiving);
     } catch (error: any) {
       logger.error("Error getting active payment methods:", error);
       return [];
+    }
+  }
+
+  // Cuentas receptoras de ComeYa (bizum/IBAN/PayPal) — misma fuente que
+  // GET /api/payments/info, con el mismo fallback a configuración
+  private async getReceivingAccounts(): Promise<{
+    bizum: string;
+    iban: string;
+    paypalEmail: string;
+  }> {
+    try {
+      const [rows]: any = await db.execute(
+        "SELECT provider, account_data FROM payment_receiving_accounts WHERE is_active = TRUE",
+      );
+      const out = { bizum: "", iban: "", paypalEmail: "" };
+      for (const row of rows || []) {
+        const d = row.account_data || {};
+        if (row.provider === "bizum") out.bizum = d.phone || "";
+        if (row.provider === "transferencia") out.iban = d.iban || "";
+        if (row.provider === "paypal") out.paypalEmail = d.email || "";
+      }
+      return out;
+    } catch {
+      const { CONFIG } = await import("./config");
+      return {
+        bizum: await CONFIG.bizumPhone(),
+        iban: await CONFIG.iban(),
+        paypalEmail: await CONFIG.paypalEmail(),
+      };
     }
   }
 
@@ -207,6 +243,38 @@ export class DigitalPaymentService {
         })
         .where(eq(orders.id, data.orderId));
 
+      // Aviso inmediato a administración: el negocio ya ve el pedido con
+      // el chip "Verificando pago" y el cron no lo toca mientras tanto —
+      // la revisión debe ser cuestión de minutos, no de horas
+      try {
+        const { users } = await import("@shared/schema-mysql");
+        const { inArray } = await import("drizzle-orm");
+        const admins = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.role as any, ["admin", "super_admin"]));
+        const { orderRef } = await import("./orderNumberService");
+        const { sendPushToUser } = await import("./enhancedPushService");
+        const ref = orderRef(order);
+        for (const admin of admins) {
+          await sendPushToUser(admin.id, {
+            title: "🧾 Comprobante pendiente de verificación",
+            body: `Pedido ${ref} — ${data.paymentProvider} (${(data.amount / 100).toFixed(2)} €). Verifícalo para activar el pedido.`,
+            data: { orderId: data.orderId, screen: "AdminFinance" },
+          });
+        }
+        const { notifyAdmins } = await import("./websocket");
+        notifyAdmins({
+          type: "payment_proof_pending",
+          orderId: data.orderId,
+          proofId: proof.id,
+          provider: data.paymentProvider,
+          amount: data.amount,
+        });
+      } catch (notifyError) {
+        logger.error("Failed to notify admins of payment proof", notifyError);
+      }
+
       return {
         success: true,
         proofId: proof.id,
@@ -292,7 +360,7 @@ export class DigitalPaymentService {
         if (biz?.ownerId) {
           await sendPushToUser(biz.ownerId, {
             title: "💳 Pago confirmado — ¡A preparar!",
-            body: `Pedido #${order.id.slice(-6)} pagado. Empieza la preparación.`,
+            body: `Pedido ${orderRef(order)} pagado. Empieza la preparación.`,
             data: { orderId: order.id, screen: "BusinessOrders" },
           });
         }
@@ -432,7 +500,7 @@ export class DigitalPaymentService {
           commissions.business - paypalFee,
           "order_payment",
           order.id,
-          `Pago de pedido #${order.id.slice(-6)} - PayPal (${paypalMethod?.commissionPercentage}% fee)`,
+          `Pago de pedido ${orderRef(order)} - PayPal (${paypalMethod?.commissionPercentage}% fee)`,
         );
 
         if (order.driverId) {
@@ -441,7 +509,7 @@ export class DigitalPaymentService {
             commissions.driver,
             "delivery_payment",
             order.id,
-            `Entrega de pedido #${order.id.slice(-6)}`,
+            `Entrega de pedido ${orderRef(order)}`,
           );
         }
 
@@ -463,7 +531,7 @@ export class DigitalPaymentService {
             commissions.platform + paypalFee,
             "platform_commission",
             order.id,
-            `Comisión ComeYa + PayPal fee - Pedido #${order.id.slice(-6)}`,
+            `Comisión ComeYa + PayPal fee - Pedido ${orderRef(order)}`,
           );
         }
 

@@ -31,11 +31,15 @@ router.get(
         .where(eq(orders.businessId, business.id))
         .orderBy(desc(orders.createdAt));
 
-      const pendingOrders = businessOrders.filter(
+      // Mismo criterio que GET /api/business/orders: los pedidos ocultos
+      // (deleted_at) no cuentan, o el badge del dashboard avisaría de un
+      // pendiente que no aparece en la lista
+      const visibleOrders = businessOrders.filter((o: any) => !o.deletedAt);
+      const pendingOrders = visibleOrders.filter(
         (o) => o.status === "pending",
       );
       const commissionDivisor = await CONFIG.commissionDivisor();
-      const todayOrders = businessOrders.filter((o) => {
+      const todayOrders = visibleOrders.filter((o) => {
         const today = new Date();
         const orderDate = new Date(o.createdAt);
         return orderDate.toDateString() === today.toDateString();

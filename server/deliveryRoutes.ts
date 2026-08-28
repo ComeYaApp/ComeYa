@@ -10,6 +10,7 @@ import {
   AuthorizationError,
 } from "./errors";
 import { logger } from "./logger";
+import { orderRef } from "./orderNumberService";
 import { calculateDistance } from "./utils/distance";
 import { sendOrderStatusNotification } from "./enhancedPushService";
 
@@ -619,7 +620,7 @@ router.post(
     if (order.userId) {
       await sendPushToUser(order.userId, {
         title: "🛵 Repartidor asignado",
-        body: `Un repartidor está en camino a recoger tu pedido #${orderId.slice(-6)}`,
+        body: `Un repartidor está en camino a recoger tu pedido ${orderRef(order)}`,
         data: { orderId, screen: "OrderTracking" },
       });
     }
@@ -632,7 +633,7 @@ router.post(
       if (business?.ownerId) {
         await sendPushToUser(business.ownerId, {
           title: "🛵 Repartidor asignado",
-          body: `Un repartidor aceptó el pedido #${orderId.slice(-6)} y va en camino a recogerlo`,
+          body: `Un repartidor aceptó el pedido ${orderRef(order)} y va en camino a recogerlo`,
           data: { orderId, screen: "BusinessOrders" },
         });
       }
@@ -914,7 +915,7 @@ router.post(
       if (biz?.ownerId) {
         await sendPushToUser(biz.ownerId, {
           title: "✅ Pedido entregado",
-          body: `El pedido #${orderId.slice(-6)} fue entregado al cliente`,
+          body: `El pedido ${orderRef(order)} fue entregado al cliente`,
           data: { orderId, screen: "BusinessOrders", type: "delivered" },
         });
       }

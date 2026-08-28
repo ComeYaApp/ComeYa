@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { orderRefFromId } from "./orderNumberService";
 import {
   orders,
   reviews,
@@ -160,7 +161,7 @@ export class EnhancedReviewService {
           orderId,
           type: "tip",
           amount: tipAmount,
-          description: `Propina del cliente por pedido #${String(orderId).slice(-6)}`,
+          description: `Propina del cliente por pedido ${await orderRefFromId(orderId)}`,
           status: "completed",
         } as any);
         // Notificar al repartidor

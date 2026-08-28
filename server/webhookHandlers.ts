@@ -5,6 +5,7 @@ import { db } from "./db";
 import { orders, transactions, businesses } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
+import { orderRef } from "./orderNumberService";
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -184,70 +185,17 @@ async function handlePaymentIntentSucceeded(
   );
 
   try {
-    // Verificar que el pedido existe
-    const [existingOrder] = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1);
-
-    if (!existingOrder) {
-      throw new Error(`Order not found: ${orderId}`);
-    }
-
-    // Update order status
-    await db
-      .update(orders)
-      .set({
-        status: "accepted",
-        paidAt: new Date(),
-        stripePaymentIntentId: paymentIntent.id,
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, orderId));
-
-    // Create transaction record
-    await db.insert(transactions).values({
-      id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      orderId: orderId,
-      businessId: existingOrder.businessId,
-      userId: existingOrder.userId,
-      amount: paymentIntent.amount,
-      type: "payment",
-      status: "completed",
-      stripePaymentIntentId: paymentIntent.id,
-      metadata: JSON.stringify({
-        paymentMethod: paymentIntent.payment_method,
-        currency: paymentIntent.currency,
-      }),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Notify business owner about the paid order
-    try {
-      const [biz] = await db
-        .select({ ownerId: businesses.ownerId })
-        .from(businesses)
-        .where(eq(businesses.id, existingOrder.businessId))
-        .limit(1);
-      if (biz?.ownerId) {
-        const { sendPushToUser } = await import("./enhancedPushService");
-        await sendPushToUser(biz.ownerId, {
-          title: "💳 Pago recibido — nuevo pedido",
-          body: `${existingOrder.businessName} recibió un pedido pagado. Revísalo y ponlo en preparación.`,
-          data: { orderId, screen: "BusinessOrders" },
-        });
-      }
-      const { notifyNewOrder } = await import("./websocket");
-      notifyNewOrder(existingOrder.businessId, existingOrder);
-    } catch (notifyError) {
-      logWebhookError(context, "Failed to notify business", notifyError);
+    // Confirmar pedido pagado (lógica compartida con la reconciliación del
+    // cron, que rescata pagos cuyo webhook se perdió)
+    const { confirmPaidOrder } = await import("./paymentConfirmationService");
+    const result = await confirmPaidOrder(orderId, paymentIntent, "webhook");
+    if (!result.success) {
+      throw new Error(result.message);
     }
 
     logWebhookEvent(
       context,
-      `Order ${orderId} marked as accepted and transaction recorded`,
+      `Order ${orderId} marked as accepted and transaction recorded (${result.message})`,
     );
   } catch (error: any) {
     logWebhookError(context, `Failed to update order ${orderId}`, error);
@@ -484,7 +432,7 @@ async function handleDisputeCreated(
       for (const admin of admins) {
         await sendPushToUser(admin.id, {
           title: "🚨 Chargeback abierto",
-          body: `Pedido #${order.id.slice(-6)}: el cliente ha reclamado ${(dispute.amount / 100).toFixed(2)} € a su banco. Responde en Stripe antes del plazo.`,
+          body: `Pedido ${orderRef(order)}: el cliente ha reclamado ${(dispute.amount / 100).toFixed(2)} € a su banco. Responde en Stripe antes del plazo.`,
           data: {
             orderId: order.id,
             screen: "AdminDashboard",

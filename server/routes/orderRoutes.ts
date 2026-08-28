@@ -5,6 +5,7 @@ import {
   requireApprovedDriver,
   auditAction,
 } from "../authMiddleware";
+import { orderRef } from "../orderNumberService";
 import {
   validateOrderFinancials,
   validateOrderCompletion,
@@ -548,7 +549,7 @@ router.post(
       const { sendPushToUser } = await import("../enhancedPushService");
       await sendPushToUser(driver.id, {
         title: "📦 Pedido asignado",
-        body: `Se te asignó el pedido #${orderId.slice(-6)}`,
+        body: `Se te asignó el pedido ${orderRef(order)}`,
         data: { orderId, screen: "DriverActiveOrder" },
       });
 
@@ -648,7 +649,7 @@ router.post(
         if (biz?.ownerId) {
           await sendPushToUser(biz.ownerId, {
             title: "🔔 Pedido confirmado",
-            body: `El pedido #${orderId.slice(-6)} fue confirmado por el cliente.`,
+            body: `El pedido ${orderRef(order)} fue confirmado por el cliente.`,
             data: { orderId, screen: "BusinessOrders" },
           });
         }
@@ -930,14 +931,14 @@ router.post(
       if (businessOwnerId) {
         await sendPushToUser(businessOwnerId, {
           title: "💰 Pago liberado",
-          body: `El cliente confirmó la entrega del pedido #${order.id.slice(-6)}`,
+          body: `El cliente confirmó la entrega del pedido ${orderRef(order)}`,
           data: { orderId: order.id, screen: "BusinessEarnings" },
         });
       }
       if (order.deliveryPersonId) {
         await sendPushToUser(order.deliveryPersonId, {
           title: "💰 Pago liberado",
-          body: `Pedido #${order.id.slice(-6)} confirmado. Tu pago está disponible.`,
+          body: `Pedido ${orderRef(order)} confirmado. Tu pago está disponible.`,
           data: { orderId: order.id, screen: "DriverEarnings" },
         });
       }
