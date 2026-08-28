@@ -59,8 +59,7 @@
           "EXPO_PUBLIC_NODE_ENV": "production",
           "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
         }
-      },
-      "autoIncrement": true
+      }
     }
   },
   "submit": {
