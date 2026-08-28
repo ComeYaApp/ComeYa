@@ -334,6 +334,41 @@ const effectiveDeliveryFee = finalDeliveryFee ?? 0;
 
 const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
 
+// Si el cliente cambia la dirección en el checkout, la tarifa se recotiza
+// con la MISMA fórmula del servidor (calculate-delivery): el total mostrado
+// coincide con el que recalcula el backend — fin de los importes que
+// cambiaban solos entre pantallas.
+useEffect(() => {
+  if (confirmedOrderType === "pickup" || !cart?.businessId) return;
+  const biz = business as any;
+  const addr = selectedAddress as any;
+  const bizLat = Number(biz?.latitude);
+  const bizLng = Number(biz?.longitude);
+  const addrLat = Number(addr?.latitude);
+  const addrLng = Number(addr?.longitude);
+  if (
+    !Number.isFinite(bizLat) ||
+    !Number.isFinite(bizLng) ||
+    !Number.isFinite(addrLat) ||
+    !Number.isFinite(addrLng)
+  )
+    return;
+  apiRequest("POST", "/api/orders/calculate-delivery", {
+    businessLat: bizLat,
+    businessLng: bizLng,
+    deliveryLat: addrLat,
+    deliveryLng: addrLng,
+  })
+    .then((r) => r.json())
+    .then((d) => {
+      if (d.success && Number.isFinite(Number(d.deliveryFee))) {
+        setFinalDeliveryFee(Number(d.deliveryFee) / 100);
+      }
+    })
+    .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [selectedAddress?.id, cart?.businessId, confirmedOrderType]);
+
   // Beneficios de suscripción
   useEffect(() => {
     if (!user?.id) return;
@@ -1635,6 +1670,11 @@ navigation.navigate("DigitalPaymentMethod", {
             const itemInfo = itemPref
               ? getSubstitutionInfo(itemPref)
               : null;
+            // Nombre del producto sustituto elegido para este ítem
+            const chosenSubstituteId = substituteProductIds[item.id];
+            const chosenSubstitute = chosenSubstituteId
+              ? businessProducts.find((p: any) => p.id === chosenSubstituteId)
+              : null;
             return (
               <View key={item.id} style={styles.summaryItem}>
                 <View style={{ flex: 1, paddingRight: Spacing.sm }}>
@@ -1648,7 +1688,9 @@ navigation.navigate("DigitalPaymentMethod", {
                       type="caption"
                       style={{ color: theme.textSecondary, marginTop: 1 }}
                     >
-                      Si no está disponible: {itemInfo.label}
+                      {itemInfo.label === "Sustituir" && chosenSubstitute
+                        ? `Si no está disponible: sustituir por ${chosenSubstitute.name}`
+                        : `Si no está disponible: ${itemInfo.label}`}
                     </ThemedText>
                   )}
                 </View>

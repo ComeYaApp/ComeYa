@@ -179,7 +179,7 @@ export const SmartOrderButton: React.FC<SmartOrderButtonProps> = ({
       case "ready":
         return "Recogí el Pedido";
       case "picked_up":
-        return "En Camino";
+        return "Iniciar Entrega";
       case "on_the_way":
       case "in_transit":
       case "arriving":

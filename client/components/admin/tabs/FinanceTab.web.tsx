@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   Text,
@@ -466,7 +467,7 @@ export const FinanceTab: React.FC<Props> = ({ defaultTab = "payouts" }) => {
                     </Text>
                   )}
                   <Text style={[li.sub, { color: sub }]}>
-                    Pedido #{p.orderId.slice(-6).toUpperCase()} ·{" "}
+                    Pedido {displayOrderNumber({ id: p.orderId })} ·{" "}
                     {new Date(p.createdAt).toLocaleDateString("es-ES")}
                   </Text>
                   <View style={li.hint}>
@@ -689,7 +690,7 @@ export const FinanceTab: React.FC<Props> = ({ defaultTab = "payouts" }) => {
                     {p.recipientName ?? "—"}
                   </Text>
                   <Text style={[li.sub, { color: sub }]}>
-                    Pedido #{p.orderId.slice(-6).toUpperCase()}
+                    Pedido {displayOrderNumber({ id: p.orderId })}
                   </Text>
                   {m && (
                     <View

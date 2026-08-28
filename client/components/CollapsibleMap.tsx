@@ -28,6 +28,7 @@ import {
   distanceMeters,
   RouteCoordinate,
 } from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { BusinessPin } from "@/components/map/BusinessPin";
@@ -157,26 +158,40 @@ export function CollapsibleMap({
   } | null>(null);
   const routeLoadingRef = useRef(false);
 
-  // Recalcular ruta real cuando el repartidor avanza (>150 m) o cambia el destino.
+  // Ruta real por calles según la FASE del pedido (misma lógica en los 4 roles):
+  //  - recogida (accepted/preparing/ready): repartidor → NEGOCIO
+  //  - entrega (picked_up/on_the_way/in_transit/arriving): repartidor → CLIENTE
+  //  - sin repartidor todavía: ruta prevista negocio → cliente
   // Pickup: ruta del CLIENTE a la TIENDA (va él a buscar su pedido).
-  // Delivery: ruta del repartidor (o del local) hasta el cliente.
   useEffect(() => {
-    const origin = isPickup
-      ? isValidLocation(customerLocation)
-        ? customerLocation
-        : null
-      : isValidLocation(deliveryPersonLocation)
-        ? deliveryPersonLocation
-        : isValidLocation(businessLocation)
-          ? businessLocation
-          : null;
-    const destination = isPickup
-      ? isValidLocation(businessLocation)
-        ? businessLocation
-        : null
-      : isValidLocation(customerLocation)
+    const phase = routePhaseForStatus(status);
+    let origin: Location | null = null;
+    let destination: Location | null = null;
+
+    if (isPickup) {
+      origin = isValidLocation(customerLocation) ? customerLocation : null;
+      destination = isValidLocation(businessLocation) ? businessLocation : null;
+    } else if (isValidLocation(deliveryPersonLocation) && phase !== "none") {
+      origin = deliveryPersonLocation;
+      destination =
+        phase === "to_business"
+          ? isValidLocation(businessLocation)
+            ? businessLocation
+            : null
+          : isValidLocation(customerLocation)
+            ? customerLocation
+            : null;
+    } else if (
+      phase !== "none" ||
+      ["pending", "confirmed"].includes(String(status).toLowerCase())
+    ) {
+      // Aún sin posición del repartidor: ruta prevista del local al cliente
+      origin = isValidLocation(businessLocation) ? businessLocation : null;
+      destination = isValidLocation(customerLocation)
         ? customerLocation
         : null;
+    }
+
     if (!origin || !destination) {
       setRoutePath([]);
       setRouteInfo(null);
@@ -215,6 +230,7 @@ export function CollapsibleMap({
   }, [
     isPickup,
     pickupMode,
+    status,
     deliveryPersonLocation?.latitude,
     deliveryPersonLocation?.longitude,
     businessLocation?.latitude,
@@ -279,19 +295,14 @@ export function CollapsibleMap({
     };
   };
 
-  const routeCoords =
-    routePath.length >= 2
-      ? routePath
-      : isPickup
-        ? [customerLocation, businessLocation].filter(isValidLocation)
-        : [businessLocation, deliveryPersonLocation, customerLocation].filter(
-            isValidLocation,
-          );
-  const hasAnyLocation =
-    routeCoords.length > 0 ||
-    [businessLocation, deliveryPersonLocation, customerLocation].some(
-      isValidLocation,
-    );
+  // Solo rutas reales por calles: sin geometría descargada no se dibuja NADA
+  // (nada de líneas rectas o triángulos inventados).
+  const routeCoords = routePath;
+  const hasAnyLocation = [
+    businessLocation,
+    deliveryPersonLocation,
+    customerLocation,
+  ].some(isValidLocation);
 
   return (
     <View style={styles.wrapper}>

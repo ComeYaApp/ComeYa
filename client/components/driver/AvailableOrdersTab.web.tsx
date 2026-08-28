@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   Text,
@@ -350,7 +351,7 @@ export function AvailableOrdersTab({
                         {order.businessName}
                       </Text>
                       <Text style={[s.orderId, { color: sub }]}>
-                        #{order.id.slice(0, 8).toUpperCase()} ·{" "}
+                        {displayOrderNumber(order)} ·{" "}
                         {fmtTime(order.createdAt)}
                       </Text>
                     </View>

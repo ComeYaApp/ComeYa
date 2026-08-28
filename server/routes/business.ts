@@ -343,10 +343,13 @@ router.get(
 
       const businessIds = ownerBusinesses.map((b) => b.id);
 
-      // Pedidos activos
+      // Pedidos activos con entrega real (sin impagos: pending/payment_failed
+      // no aparecen hasta haber pago; y con TODOS los estados en reparto para
+      // que el pedido no desaparezca del mapa al recogerlo)
       const [rows] = (await db.execute(sql`
       SELECT
         o.id, o.status, o.subtotal, o.delivery_fee, o.total, o.created_at,
+        o.order_number,
         o.business_id, o.delivery_address, o.payment_method,
         o.delivery_latitude  AS customer_lat,
         o.delivery_longitude AS customer_lng,
@@ -366,7 +369,8 @@ router.get(
         businessIds.map((id) => sql`${id}`),
         sql`, `,
       )})
-        AND o.status IN ('pending','accepted','preparing','ready','on_the_way')
+        AND o.status IN ('accepted','confirmed','preparing','ready','picked_up','on_the_way','in_transit','arriving')
+        AND o.deleted_at IS NULL
       ORDER BY o.created_at DESC
     `)) as any;
 
@@ -383,6 +387,7 @@ router.get(
         );
         return {
           orderId: r.id,
+          orderNumber: r.order_number ?? null,
           status: r.status,
           subtotal: r.subtotal,
           deliveryFee: r.delivery_fee,
@@ -419,12 +424,17 @@ router.get(
       // Stats rápidas
       const stats = {
         totalActive: deliveries.length,
-        pending: deliveries.filter((d: any) => d.status === "pending").length,
-        preparing: deliveries.filter((d: any) =>
-          ["accepted", "preparing"].includes(d.status),
+        pending: deliveries.filter((d: any) =>
+          ["accepted", "confirmed"].includes(d.status),
         ).length,
-        onTheWay: deliveries.filter((d: any) => d.status === "on_the_way")
-          .length,
+        preparing: deliveries.filter((d: any) =>
+          ["preparing", "ready"].includes(d.status),
+        ).length,
+        onTheWay: deliveries.filter((d: any) =>
+          ["picked_up", "on_the_way", "in_transit", "arriving"].includes(
+            d.status,
+          ),
+        ).length,
         avgMinutes: deliveries.length
           ? Math.round(
               deliveries.reduce((s: number, d: any) => s + d.minutesActive, 0) /
@@ -543,8 +553,36 @@ router.get(
       FROM orders o
       LEFT JOIN users u ON o.user_id = u.id
       WHERE o.business_id = ${business.id}
+        -- Nunca pedidos impagos: payment_failed fuera; pending solo si es
+        -- efectivo (contra reembolso en el negocio que sí requiere aviso)
+        AND o.status <> 'payment_failed'
+        AND (o.status <> 'pending' OR o.payment_method IN ('cash','efectivo'))
+        AND o.deleted_at IS NULL
       ORDER BY o.created_at DESC
     `)) as any;
+
+      // Resolver los NOMBRES de los productos sustitutos elegidos por el
+      // cliente (en el pedido solo viajan los IDs; el negocio debe poder
+      // ver qué servir en caso de falta de stock)
+      const substituteIds = new Set<string>();
+      for (const row of orderRows) {
+        try {
+          const ids = JSON.parse(row.substitute_product_ids || "[]");
+          (Array.isArray(ids) ? ids : []).forEach((id: string) =>
+            substituteIds.add(String(id)),
+          );
+        } catch {}
+      }
+      const productNames = new Map<string, string>();
+      if (substituteIds.size) {
+        const { products } = await import("@shared/schema-mysql");
+        const idList = [...substituteIds];
+        const [prodRows] = (await db.execute(sql`
+          SELECT id, name FROM products
+          WHERE id IN (${sql.join(idList.map((id) => sql`${id}`), sql`, `)})
+        `)) as any;
+        (prodRows || []).forEach((p: any) => productNames.set(p.id, p.name));
+      }
 
       const formattedOrders = orderRows.map((row: any) => {
         let addressObj = null;
@@ -558,6 +596,7 @@ router.get(
 
         return {
           id: row.id,
+          orderNumber: row.order_number ?? null,
           userId: row.user_id,
           businessId: row.business_id,
           businessName: row.business_name,
@@ -574,6 +613,12 @@ router.get(
           deliveryAddress: row.delivery_address,
           notes: row.notes,
           createdAt: row.created_at,
+          // Sustitución: preferencia global, preferencias por ítem, IDs de
+          // sustitutos y sus NOMBRES resueltos (para la UI del negocio)
+          substitutionPreference: row.substitution_preference ?? null,
+          itemSubstitutionPreferences: row.item_substitution_preferences ?? null,
+          substituteProductIds: row.substitute_product_ids ?? null,
+          substituteProductNames: Object.fromEntries(productNames),
           customer: row.customer_name
             ? {
                 name: row.customer_name,

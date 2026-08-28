@@ -16,11 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { API_CONFIG } from "../constants/config";
 
-const formatEuros = (cents: number | null | undefined): string =>
-  `${((cents ?? 0) / 100).toLocaleString("es-ES", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })} €`;
+import { formatCurrency as formatEuros } from "@/utils/currency";
 
 interface WalletData {
   balance: number;

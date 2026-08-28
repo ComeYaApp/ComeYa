@@ -247,6 +247,18 @@ if (isTest && useDbStubs) {
             console.log("Migration note:", err.message);
         }
 
+        // Ocultación de pedidos por el admin (soft delete): desaparecen de
+        // las listas de los 4 roles pero se conservan para auditoría
+        try {
+          await conn.query(
+            `ALTER TABLE orders ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL`,
+          );
+          console.log("✅ Added deleted_at to orders");
+        } catch (err: any) {
+          if (err.code !== "ER_DUP_FIELDNAME")
+            console.log("Migration note (deleted_at):", err.message);
+        }
+
         // Reviews: calificación del repartidor (fallaba el stats del driver y
         // el INSERT de reseñas con "Unknown column 'delivery_person_rating'")
         try {

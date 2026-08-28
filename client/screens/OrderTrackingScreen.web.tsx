@@ -26,6 +26,8 @@ import {
   fetchRouteDirections,
   distanceMeters,
 } from "@/utils/directions";
+import { animateMarkerTo } from "@/utils/smoothMarker";
+import { printInvoiceWeb } from "@/utils/invoice";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   pinIcon,
@@ -554,10 +556,11 @@ export default function OrderTrackingScreen() {
       lng: socketLocation.longitude,
     };
 
-    // Crear o mover marcador del repartidor con su vehículo
+    // Crear o mover marcador del repartidor con su vehículo (movimiento
+    // fluido: interpola entre fixes del websocket en vez de saltar)
     const vehicle = vehicleMarkerMeta(driverVehicle);
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setPosition(driverPos);
+      animateMarkerTo(driverMarkerRef.current, driverPos);
       driverMarkerRef.current.setIcon(
         asGoogleIcon(google, driverIcon(vehicle.icon)),
       );
@@ -955,6 +958,34 @@ export default function OrderTrackingScreen() {
                             : "Pago digital"}
                   </ThemedText>
                 </View>
+
+                {/* Factura descargable (PDF) */}
+                {["delivered", "completed", "cancelled", "refunded"].includes(
+                  order.status,
+                ) && (
+                  <Pressable
+                    onPress={() => printInvoiceWeb(order)}
+                    style={[
+                      s.invoiceButton,
+                      {
+                        borderColor: theme.border,
+                        backgroundColor: theme.backgroundSecondary,
+                      },
+                    ]}
+                  >
+                    <Feather name="file-text" size={15} color={PRIMARY} />
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color: PRIMARY,
+                        fontWeight: "600",
+                        marginLeft: 6,
+                      }}
+                    >
+                      Descargar factura (PDF)
+                    </ThemedText>
+                  </Pressable>
+                )}
               </View>
             )}
 
@@ -1402,6 +1433,15 @@ const s = StyleSheet.create({
   },
   totalSection: { borderTopWidth: 1.5 },
   paymentRow: { flexDirection: "row", alignItems: "center" },
+  invoiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    marginTop: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
 
   driverCard: {
     borderRadius: BorderRadius.xl,

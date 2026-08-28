@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useCart } from "@/contexts/CartContext";
+import { formatEuros } from "@/utils/currency";
 import {
   Spacing,
   BorderRadius,
@@ -69,7 +70,7 @@ export function CartButton({ onPress, bottomOffset = 0 }: CartButtonProps) {
         </ThemedText>
       </View>
       <ThemedText type="h4" style={styles.text}>
-        ${subtotal.toFixed(2)}
+        {formatEuros(subtotal)}
       </ThemedText>
     </AnimatedPressable>
   );

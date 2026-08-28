@@ -28,6 +28,9 @@ router.get(
       // Modo de viaje: coche (default) o a pie (recogida propia del cliente)
       const travelMode =
         mode === "walking" || mode === "walk" ? "walking" : "driving";
+      // provider=osrm: mapas con muchas rutas simultáneas (bulk del admin)
+      // van directos a OSRM (gratis) para no quemar la cuota de Google
+      const preferOsrm = req.query.provider === "osrm";
 
       const result = await googleMapsService.getDirections(
         parseFloat(originLat as string),
@@ -35,6 +38,7 @@ router.get(
         parseFloat(destLat as string),
         parseFloat(destLng as string),
         travelMode,
+        { preferOsrm },
       );
 
       if (!result) {

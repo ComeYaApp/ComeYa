@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -115,7 +116,7 @@ export default function QRScannerScreen() {
       if (result.success) {
         Alert.alert(
           "✅ Pedido Completado",
-          `El pedido #${orderId.slice(-6)} ha sido marcado como entregado.`,
+          `El pedido ${displayOrderNumber({ id: orderId })} ha sido marcado como entregado.`,
           [{ text: "OK", onPress: () => navigation.goBack() }],
         );
       } else {

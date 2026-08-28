@@ -218,19 +218,19 @@ export class EnhancedTrackingService {
       }
     }
 
-    // Fallback: velocidad promedio de 30 km/h en ciudad
+    // Fallback: velocidad promedio de 25 km/h en ciudad (la misma que usa
+    // el estimador de tarifas — antes había 25 y 30 según el servicio y el
+    // ETA "saltaba" al cambiar de método)
     if (etaMinutes == null) {
-      const avgSpeed = 30;
+      const avgSpeed = 25;
       etaMinutes = Math.ceil((distance / avgSpeed) * 60);
     }
 
-    // Agregar tiempo de preparación si aún está en el negocio
-    let totalETA = etaMinutes;
-    if (order.status === "preparing") {
-      totalETA += 15; // 15 min de preparación
-    } else if (order.status === "accepted") {
-      totalETA += 20; // 20 min de preparación + recogida
-    }
+    // El ETA devuelto es SOLO el tiempo de TRAYECTO del repartidor, sin
+    // sumar +15/+20 min de golpe según el estado (antes el número saltaba
+    // de 5 a 25 al pasar de estado). La preparación del negocio se muestra
+    // aparte en el cliente ("El negocio prepara tu pedido").
+    const totalETA = Math.max(1, etaMinutes);
 
     const etaDate = new Date(Date.now() + totalETA * 60 * 1000);
 

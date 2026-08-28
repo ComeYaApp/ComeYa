@@ -1,4 +1,5 @@
 import React from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   Text,
@@ -87,7 +88,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({
         >
           <View style={styles.orderHeader}>
             <Text style={[styles.orderId, { color: theme.text }]}>
-              #{order.id.slice(0, 8)}
+              {displayOrderNumber(order)}
             </Text>
             <View
               style={[

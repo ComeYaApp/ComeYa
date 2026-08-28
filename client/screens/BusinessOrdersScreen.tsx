@@ -352,7 +352,7 @@ export default function BusinessOrdersScreen() {
           {Array.isArray(items) &&
             items.map((orderItem: any, index: number) => (
               <View key={index} style={styles.item}>
-                <ThemedText type="body">
+                <ThemedText type="body" style={{ flex: 1 }}>
                   {orderItem.quantity}x{" "}
                   {orderItem.name || orderItem.product?.name || "Producto"}
                 </ThemedText>
@@ -362,6 +362,35 @@ export default function BusinessOrdersScreen() {
                     (orderItem.price || orderItem.product?.price || 0) / 100
                   ).toFixed(2)}
                 </ThemedText>
+                {/* Nota del cliente por producto (sin gluten, bien hecho…) */}
+                {orderItem.note ? (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "flex-start",
+                      marginTop: 4,
+                      width: "100%",
+                    }}
+                  >
+                    <Feather
+                      name="edit-2"
+                      size={12}
+                      color={ComeYaColors.warning}
+                      style={{ marginTop: 2 }}
+                    />
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color: ComeYaColors.warning,
+                        marginLeft: 6,
+                        flex: 1,
+                        fontWeight: "500",
+                      }}
+                    >
+                      Nota: {orderItem.note}
+                    </ThemedText>
+                  </View>
+                ) : null}
               </View>
             ))}
         </View>
@@ -413,16 +442,23 @@ export default function BusinessOrdersScreen() {
                     : item.substituteProductIds;
                 const entries = Object.entries(substituteIds);
                 if (entries.length > 0) {
+                  const names = item.substituteProductNames || {};
                   return (
                     <View style={{ marginTop: Spacing.xs }}>
                       <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
                         Productos sustitutos elegidos:
                       </ThemedText>
-                      {entries.map(([originalId, substituteId]: [string, unknown]) => (
-                        <ThemedText key={originalId} type="caption" style={{ color: theme.textSecondary }}>
-                          • Producto ID: {originalId.slice(-6)} → Sustituto ID: {String(substituteId).slice(-6)}
-                        </ThemedText>
-                      ))}
+                      {entries.map(([originalId, substituteId]: [string, unknown]) => {
+                        const name = names[String(substituteId)];
+                        return (
+                          <ThemedText key={originalId} type="caption" style={{ color: theme.textSecondary }}>
+                            • Sustituir por:{" "}
+                            <ThemedText type="caption" style={{ fontWeight: "600", color: theme.text }}>
+                              {name || `Producto ${String(substituteId).slice(-6)}`}
+                            </ThemedText>
+                          </ThemedText>
+                        );
+                      })}
                     </View>
                   );
                 }

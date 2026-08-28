@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { formatEuros } from "@/utils/currency";
 import { Colors } from "../constants/Colors";
 
 const { width } = Dimensions.get("window");
@@ -179,7 +180,7 @@ export default function FinTechScreen() {
 
     Alert.alert(
       "Confirmar Transferencia",
-      `¿Enviar $${amount} a ${transferPhone}?`,
+      `¿Enviar {formatEuros(amount)} a ${transferPhone}?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -218,7 +219,7 @@ export default function FinTechScreen() {
 
     Alert.alert(
       "Solicitar Préstamo",
-      `¿Solicitar préstamo de $${loan.amount.toLocaleString()} con pago mensual de $${loan.monthlyPayment}?`,
+      `¿Solicitar préstamo de {formatEuros(loan.amount)} con pago mensual de {formatEuros(loan.monthlyPayment)}?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -248,7 +249,7 @@ export default function FinTechScreen() {
 
   const handleInvestment = (investment: InvestmentOption, amount: number) => {
     if (amount < investment.minAmount) {
-      Alert.alert("Error", `Monto mínimo: $${investment.minAmount}`);
+      Alert.alert("Error", `Monto mínimo: {formatEuros(investment.minAmount)}`);
       return;
     }
 
@@ -259,7 +260,7 @@ export default function FinTechScreen() {
 
     Alert.alert(
       "Confirmar Inversión",
-      `¿Invertir $${amount} en ${investment.name}?`,
+      `¿Invertir {formatEuros(amount)} en ${investment.name}?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -362,8 +363,7 @@ export default function FinTechScreen() {
           />
         </View>
         <Text style={styles.creditLabel}>
-          Excelente - Crédito disponible: $
-          {walletData.availableCredit.toLocaleString()}
+          Excelente - Crédito disponible: {formatEuros(walletData.availableCredit)}
         </Text>
       </View>
 
@@ -405,8 +405,7 @@ export default function FinTechScreen() {
                 },
               ]}
             >
-              {transaction.amount > 0 ? "+" : ""}$
-              {Math.abs(transaction.amount).toFixed(2)}
+              {(transaction.amount > 0 ? "+" : "") + formatEuros(Math.abs(transaction.amount))}
             </Text>
           </View>
         ))}

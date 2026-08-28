@@ -172,7 +172,7 @@ export function useAdminNotifications() {
             level: "high",
             icon: "alert-circle",
             title: "⚠️ Incidencia en un pedido",
-            body: `Pedido #${(data.orderId ?? "").slice(-6)}: ${ISSUE_LABELS[data.issueType] ?? data.issueType ?? "problema"}`,
+            body: `Pedido ${data.orderNumber ? `#CY${String(data.orderNumber).padStart(6,"0")}` : `#${(data.orderId ?? "").slice(-6).toUpperCase()}`}: ${ISSUE_LABELS[data.issueType] ?? data.issueType ?? "problema"}`,
             action: { label: "Revisar", section: "support_issues" },
           });
         });

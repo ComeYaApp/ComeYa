@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -480,7 +481,7 @@ export default function DriverEarningsScreen() {
                   <ThemedText type="body" numberOfLines={1}>
                     {isWithdrawal
                       ? "Retiro de saldo"
-                      : `Pedido #${payout.orderId.slice(-6)}`}
+                      : `Pedido ${displayOrderNumber({ id: payout.orderId })}`}
                   </ThemedText>
                   <ThemedText
                     type="caption"

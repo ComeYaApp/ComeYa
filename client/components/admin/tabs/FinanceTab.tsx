@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   Text,
@@ -258,7 +259,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
           )}
           <Text style={[s.sub, { color: theme.textSecondary }]}>
             {selected.isWithdrawal ? "Retiro" : "Pedido"} #
-            {selected.orderId.slice(0, 8)} ·{" "}
+            {displayOrderNumber({ id: selected.orderId })} ·{" "}
             {new Date(selected.createdAt).toLocaleDateString("es-ES")}
           </Text>
         </View>
@@ -643,7 +644,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                 )}
                 <Text style={[s.sub, { color: theme.textSecondary }]}>
                   {payout.isWithdrawal ? "Retiro" : "Pedido"} #
-                  {payout.orderId.slice(0, 8)} ·{" "}
+                  {displayOrderNumber({ id: payout.orderId })} ·{" "}
                   {new Date(payout.createdAt).toLocaleDateString("es-ES")}
                 </Text>
                 <View style={s.tapHint}>
@@ -724,7 +725,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                 )}
                 <Text style={[s.sub, { color: theme.textSecondary }]}>
                   {payout.isWithdrawal ? "Retiro" : "Pedido"} #
-                  {payout.orderId.slice(0, 8)} · Creado:{" "}
+                  {displayOrderNumber({ id: payout.orderId })} · Creado:{" "}
                   {new Date(payout.createdAt).toLocaleDateString("es-ES")}
                 </Text>
                 {payout.method && (

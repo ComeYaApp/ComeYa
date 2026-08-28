@@ -20,7 +20,7 @@ async function fetchActiveOrders(limit = 80) {
 
   const [rows] = (await db.execute(sql`
     SELECT
-      o.id, o.status, o.total, o.subtotal, o.delivery_fee, o.payment_method,
+      o.id, o.order_number, o.status, o.total, o.subtotal, o.delivery_fee, o.payment_method,
       o.order_type, o.created_at, o.assigned_at, o.estimated_delivery,
       o.business_response_at, o.driver_picked_up_at, o.driver_arrived_at,
       o.delivery_address,
@@ -43,6 +43,7 @@ async function fetchActiveOrders(limit = 80) {
     LEFT JOIN users du ON dd.user_id = du.id
     WHERE o.status IN (${statusList})
       AND o.business_id IS NOT NULL
+      AND o.deleted_at IS NULL
     ORDER BY o.created_at DESC
     LIMIT ${limit}
   `)) as any;

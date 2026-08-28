@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import { View, StyleSheet, Alert, Pressable } from "react-native";
 import { CameraView, Camera } from "expo-camera";
 import { useNavigation } from "@react-navigation/native";
@@ -79,7 +80,7 @@ export default function QRScannerScreen() {
       if (result.success) {
         Alert.alert(
           "✅ Pedido Completado",
-          `El pedido #${orderId.slice(-6)} ha sido marcado como entregado.`,
+          `El pedido ${displayOrderNumber({ id: orderId })} ha sido marcado como entregado.`,
           [
             {
               text: "OK",

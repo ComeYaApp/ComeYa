@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { formatCurrency as centralFormatCurrency } from "@/utils/currency";
 import {
   View,
   Text,
@@ -226,12 +227,8 @@ export default function LoyaltyProgramScreen() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-VE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount / 100);
-  };
+  const formatCurrency = (amount: number) =>
+    centralFormatCurrency(amount);
 
   const renderOverview = () => (
     <ScrollView>

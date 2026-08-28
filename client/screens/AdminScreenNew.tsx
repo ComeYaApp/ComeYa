@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -999,7 +1000,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                         type="h2"
                         style={{ marginBottom: 5, color: theme.text }}
                       >
-                        #{selectedOrder.id.slice(0, 8)}
+                        {displayOrderNumber(selectedOrder)}
                       </ThemedText>
                       <ThemedText
                         style={{ color: theme.textSecondary, marginBottom: 3 }}
@@ -2560,7 +2561,7 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
                   type="h2"
                   style={{ marginBottom: 10, color: theme.text }}
                 >
-                  #{selectedOrder.id.slice(0, 8)}
+                  {displayOrderNumber(selectedOrder)}
                 </ThemedText>
                 <ThemedText
                   style={{ marginBottom: 5, color: theme.textSecondary }}

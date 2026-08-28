@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   Text,
@@ -122,11 +123,16 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
     setActionId(orderId);
     try {
       let endpoint = "";
+      let method: "POST" | "PUT" = "POST";
       let body: any = {};
       if (status === "picked_up") {
+        // Paso 1: recoger el pedido en el local → picked_up
         endpoint = `/api/orders/${orderId}/pickup`;
       } else if (status === "on_the_way") {
-        endpoint = `/api/orders/${orderId}/pickup`;
+        // Paso 2: iniciar la entrega → on_the_way
+        endpoint = `/api/delivery/orders/${orderId}/status`;
+        method = "PUT";
+        body = { status: "on_the_way" };
       } else if (status === "delivered") {
         endpoint = `/api/orders/${orderId}/complete-delivery`;
         body = {
@@ -139,7 +145,7 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
         endpoint = `/api/delivery/orders/${orderId}/status`;
         body = { status };
       }
-      const res = await apiRequest("POST", endpoint, body);
+      const res = await apiRequest(method as any, endpoint, body);
       const data = await res.json();
       if (data.success || res.ok) {
         setOrders((prev) =>
@@ -149,7 +155,9 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
           true,
           status === "delivered"
             ? "¡Entrega confirmada! Esperando confirmación del cliente."
-            : "Estado actualizado",
+            : status === "picked_up"
+              ? "Pedido recogido — inicia la entrega cuando salgas del local"
+              : "Estado actualizado",
         );
       } else {
         flash(false, data.error ?? "Error al actualizar estado");
@@ -410,7 +418,7 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                       </Text>
                     </View>
                     <Text style={[s.orderId, { color: sub }]}>
-                      #{order.id.slice(0, 8).toUpperCase()}
+                      {displayOrderNumber(order)}
                     </Text>
                   </View>
 

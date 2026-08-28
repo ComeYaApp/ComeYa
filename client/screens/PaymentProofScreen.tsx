@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -103,7 +104,7 @@ export default function PaymentProofScreen() {
   const amountEur = (amount / 100).toFixed(2);
   const shortId = subscriptionId
     ? subscriptionId.slice(-6).toUpperCase()
-    : orderId.slice(-6).toUpperCase();
+    : displayOrderNumber({ id: orderId }).replace("#", "");
 
   const [paymentInfo, setPaymentInfo] = useState({
     bizum: "600 000 000",

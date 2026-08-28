@@ -205,6 +205,7 @@ export async function getDirections(
   destLat: number,
   destLng: number,
   mode: TravelMode = "driving",
+  opts?: { preferOsrm?: boolean },
 ): Promise<DirectionsResult | null> {
   const cacheKey = getCacheKey("directions", {
     originLat,
@@ -227,9 +228,14 @@ export async function getDirections(
     return null;
   }
 
+  // preferOsrm: mapas con MUCHAS rutas a la vez (p. ej. el bulk del centro
+  // de operaciones admin) van directos a OSRM (gratis, rutas reales por
+  // calles) y reservan la cuota de Google para los mapas de usuario final.
+  const preferOsrm = opts?.preferOsrm === true;
+
   // Límite diario: si se alcanza, NO llamar a Google (OSRM sigue disponible)
-  const googleAllowed = checkDailyLimit("directions");
-  if (!googleAllowed) {
+  const googleAllowed = !preferOsrm && checkDailyLimit("directions");
+  if (!googleAllowed && !preferOsrm) {
     console.warn(`⚠️ [GoogleMaps] Directions: límite diario alcanzado — OSRM solamente`);
   }
 

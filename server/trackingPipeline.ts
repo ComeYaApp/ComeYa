@@ -8,6 +8,7 @@ import {
 import { eq, and, inArray } from "drizzle-orm";
 import { sendPushToUser } from "./enhancedPushService";
 import { getIO } from "./websocket";
+import { evaluateDriverFix } from "./utils/locationFilter";
 
 // ─── Configuración ────────────────────────────────────────────────────────────
 const CHECK_INTERVAL_MS = 30_000; // checks caros (proximity/ETA/geofence) por pedido
@@ -207,19 +208,28 @@ async function runOrderChecks(
 }
 
 // ─── Punto de entrada único de ubicación del repartidor ──────────────────────
+// Estado para el filtro anti-teletransporte (precisión, saltos imposibles y
+// fixes fuera de orden que hacían "teletransportar" el marcador)
+const driverFixStates = new Map<string, import("./utils/locationFilter").DriverFixState>();
+
 export async function handleDriverLocationUpdate(
   userId: string,
   rawLatitude: number,
   rawLongitude: number,
-  extra?: { heading?: number; speed?: number },
+  extra?: { heading?: number; speed?: number; accuracy?: number; timestamp?: number },
 ) {
-  // Coherción + validación: coordenadas no finitas nunca llegan a la BD ni
-  // al websocket (romperían los mapas de los clientes)
+  // Filtro anti-salto: coordenadas no finitas, precisión baja, fixes
+  // desordenados (cola offline) y saltos a velocidad imposible nunca llegan
+  // ni a la BD ni al websocket (romperían los mapas de los clientes)
+  const verdict = evaluateDriverFix(driverFixStates, userId, rawLatitude, rawLongitude, {
+    accuracy: extra?.accuracy,
+    timestamp: extra?.timestamp,
+  });
+  if (!verdict.accept) {
+    return { success: false, error: `Posición descartada (${verdict.reason})` };
+  }
   const latitude = Number(rawLatitude);
   const longitude = Number(rawLongitude);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return { success: false, error: "Coordenadas inválidas" };
-  }
 
   // 1. Persistir ubicación
   await db

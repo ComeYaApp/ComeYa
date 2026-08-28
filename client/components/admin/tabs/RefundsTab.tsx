@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   ActivityIndicator,
@@ -170,7 +171,7 @@ export function RefundsTab({ theme, showToast }: TabProps) {
             {fmt(selected.amount)}
           </ThemedText>
           {[
-            { icon: "package", label: "Pedido", value: `#${selected.orderId.slice(-6).toUpperCase()}` },
+            { icon: "package", label: "Pedido", value: `${displayOrderNumber({ id: selected.orderId })}` },
             { icon: "user", label: "Cliente", value: selected.customerName },
             { icon: "credit-card", label: "Método", value: REFUND_METHOD_LABELS[selected.method] ?? selected.method },
             { icon: "tag", label: "Tipo", value: TYPE_LABELS[selected.type] ?? selected.type },

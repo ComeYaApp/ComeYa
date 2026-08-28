@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -164,28 +165,40 @@ export default function DriverMyDeliveriesScreen() {
     setRefreshing(false);
   };
 
-  // Flujo unificado: ready/accepted → on_the_way (pickup) → delivered (complete-delivery)
+  // Flujo en DOS pasos: ready → picked_up (recoger) → on_the_way (iniciar
+  // entrega) → delivered (foto + entregar)
   const updateStatus = async (orderId: string, targetStatus: string) => {
     console.log("updateStatus called:", orderId, targetStatus);
     const previousOrders = orders;
     setActionOrderId(orderId);
-    
+
     // Optimistic update: mostrar el estado intermedio correcto
-    const optimisticStatus = targetStatus === "on_the_way" ? "on_the_way" : "delivered";
+    const optimisticStatus =
+      targetStatus === "picked_up"
+        ? "picked_up"
+        : targetStatus === "on_the_way"
+          ? "on_the_way"
+          : "delivered";
     setOrders((prev: any[]) =>
       prev.map((order) =>
         order.id === orderId ? { ...order, status: optimisticStatus } : order,
       ),
     );
-    
+
     try {
       let endpoint;
-      const method = "POST";
+      let method: "POST" | "PUT" = "POST";
+      let body: any = {};
 
-      // Flujo unificado: solo dos transiciones para el driver
-      if (targetStatus === "on_the_way") {
-        // Recoger pedido: ready/accepted/preparing → on_the_way
+      if (targetStatus === "picked_up") {
+        // Paso 1: recoger el pedido en el local → picked_up
         endpoint = `/api/orders/${orderId}/pickup`;
+      } else if (targetStatus === "on_the_way") {
+        // Paso 2: iniciar la entrega → on_the_way (el mapa del repartidor
+        // cambia de destino automáticamente: local → cliente)
+        endpoint = `/api/delivery/orders/${orderId}/status`;
+        method = "PUT";
+        body = { status: "on_the_way" };
       } else if (targetStatus === "delivered") {
         // Entregar pedido: on_the_way → delivered
         endpoint = `/api/orders/${orderId}/complete-delivery`;
@@ -194,7 +207,7 @@ export default function DriverMyDeliveriesScreen() {
       }
 
       console.log("Using endpoint:", method, endpoint);
-      await apiRequest(method as any, endpoint, {});
+      await apiRequest(method as any, endpoint, body);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       loadOrders();
@@ -212,7 +225,7 @@ export default function DriverMyDeliveriesScreen() {
 
   const confirmPickup = () => {
     if (pickupOrderId) {
-      updateStatus(pickupOrderId, "on_the_way");
+      updateStatus(pickupOrderId, "picked_up");
     }
     setShowPickupModal(false);
     setPickupOrderId(null);
@@ -521,7 +534,7 @@ export default function DriverMyDeliveriesScreen() {
           <View>
             <ThemedText type="h4">{item.businessName}</ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Pedido #{item.id.slice(-8)}
+              Pedido {displayOrderNumber(item)}
             </ThemedText>
           </View>
           <Badge
@@ -750,7 +763,7 @@ export default function DriverMyDeliveriesScreen() {
           <View>
             <ThemedText type="h4">{item.businessName}</ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Pedido #{item.id.slice(-8)}
+              Pedido {displayOrderNumber(item)}
             </ThemedText>
           </View>
           <Badge text="Entregado" variant="success" />

@@ -437,10 +437,23 @@ export default function BusinessOrdersScreen() {
                     {Array.isArray(items) &&
                       items.map((item: any, i: number) => (
                         <View key={i} style={s.itemRow}>
-                          <Text style={[s.itemName, { color: text }]}>
-                            {item.quantity}x{" "}
-                            {item.name || item.product?.name || "Producto"}
-                          </Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[s.itemName, { color: text }]}>
+                              {item.quantity}x{" "}
+                              {item.name || item.product?.name || "Producto"}
+                            </Text>
+                            {/* Nota del cliente por producto (sin gluten…) */}
+                            {item.note ? (
+                              <Text
+                                style={[
+                                  s.itemNote,
+                                  { color: ComeYaColors.warning },
+                                ]}
+                              >
+                                ✏️ Nota: {item.note}
+                              </Text>
+                            ) : null}
+                          </View>
                           <Text style={[s.itemPrice, { color: sub }]}>
                             €
                             {(
@@ -450,6 +463,69 @@ export default function BusinessOrdersScreen() {
                         </View>
                       ))}
                   </View>
+
+                  {/* Sustitución: preferencia y producto sustituto con nombre */}
+                  {(order.substitutionPreference ||
+                    order.substituteProductIds ||
+                    order.itemSubstitutionPreferences) && (
+                    <View
+                      style={{
+                        marginTop: 8,
+                        padding: 10,
+                        backgroundColor: "#F59E0B15",
+                        borderLeftWidth: 3,
+                        borderLeftColor: "#F59E0B",
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "700",
+                          color: "#B45309",
+                        }}
+                      >
+                        ⚠️ Si algo no está disponible:
+                      </Text>
+                      {order.substitutionPreference && (
+                        <Text style={[s.itemNote, { color: "#92400E" }]}>
+                          • Preferencia general:{" "}
+                          {order.substitutionPreference === "refund"
+                            ? "💵 Reembolsar"
+                            : order.substitutionPreference === "call"
+                              ? "📞 Llamar al cliente"
+                              : "🔄 Sustituir por producto similar"}
+                        </Text>
+                      )}
+                      {order.substituteProductIds &&
+                        (() => {
+                          try {
+                            const map =
+                              typeof order.substituteProductIds === "string"
+                                ? JSON.parse(order.substituteProductIds)
+                                : order.substituteProductIds;
+                            const names =
+                              order.substituteProductNames || {};
+                            return Object.entries(map).map(
+                              ([origId, subId]: [string, any]) => (
+                                <Text
+                                  key={origId}
+                                  style={[s.itemNote, { color: "#92400E" }]}
+                                >
+                                  • Sustituir por:{" "}
+                                  <b>
+                                    {names[String(subId)] ||
+                                      `Producto ${String(subId).slice(-6)}`}
+                                  </b>
+                                </Text>
+                              ),
+                            );
+                          } catch {
+                            return null;
+                          }
+                        })()}
+                    </View>
+                  )}
 
                   {/* Footer */}
                   <View style={s.orderFooter}>
@@ -851,6 +927,7 @@ const s = StyleSheet.create({
     paddingVertical: 3,
   },
   itemName: { fontSize: 14 },
+  itemNote: { fontSize: 12, marginTop: 2, fontWeight: "500" },
   itemPrice: { fontSize: 13 },
   orderFooter: {
     flexDirection: "row",

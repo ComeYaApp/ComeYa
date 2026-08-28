@@ -37,6 +37,7 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayOrderNumber, orderNumberLabel } from "@/utils/orderNumber";
+import { printInvoiceNative } from "@/utils/invoice";
 import { toCoord } from "@/utils/directions";
 import {
   ISSUE_LABELS,
@@ -153,9 +154,14 @@ export default function OrderTrackingScreen() {
         );
         const data = await response.json();
         if (data.success && data.eta) {
-          setDynamicETA({
-            minutes: data.eta.minutes,
-            confidence: data.eta.confidence,
+          // Histéresis: no parpadear el número con cada poll — solo se
+          // actualiza si cambia ≥1 minuto
+          setDynamicETA((prev) => {
+            const next = Math.round(Number(data.eta.minutes) || 0);
+            if (!prev || Math.abs(prev.minutes - next) >= 1) {
+              return { minutes: next, confidence: data.eta.confidence };
+            }
+            return prev;
           });
         }
       } catch (error) {
@@ -1063,9 +1069,9 @@ export default function OrderTrackingScreen() {
           order.items.length > 0 ? (
             order.items.map((item, index) => {
               const itemName = item.product?.name || item.name || "Producto";
-              let itemPrice = item.product?.price || item.price || 0;
-              // Si el precio parece estar en centavos (mayor a 1000), dividir por 100
-              if (itemPrice > 1000) itemPrice = itemPrice / 100;
+              // Los precios de los ítems viajan en CÉNTIMOS (misma unidad que
+              // en el panel del negocio) — sin heurísticas de "si >1000…"
+              const itemPrice = (item.product?.price || item.price || 0) / 100;
               const itemQty = item.quantity || 1;
               return (
                 <View key={item.id || `item-${index}`} style={styles.itemRow}>
@@ -1122,6 +1128,39 @@ export default function OrderTrackingScreen() {
                           : "Tarjeta"}
             </ThemedText>
           </View>
+
+          {/* Factura descargable (PDF) */}
+          {["delivered", "completed", "cancelled", "refunded"].includes(
+            order.status,
+          ) && (
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                printInvoiceNative(order).then((ok) => {
+                  if (!ok)
+                    Alert.alert(
+                      "Factura",
+                      "No se pudo generar la factura. Inténtalo de nuevo.",
+                    );
+                });
+              }}
+              style={[
+                styles.invoiceButton,
+                {
+                  borderColor: theme.border,
+                  backgroundColor: theme.backgroundSecondary,
+                },
+              ]}
+            >
+              <Feather name="file-text" size={15} color={ComeYaColors.primary} />
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.primary, fontWeight: "600", marginLeft: 6 }}
+              >
+                Descargar factura (PDF)
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
 
         {order.status === "delivered" &&
@@ -1244,11 +1283,15 @@ export default function OrderTrackingScreen() {
               <Pressable
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  // allowTip: la propina al repartidor se ofrece SOLO tras la
+                  // entrega confirmada (como en la web) — antes nunca salía
+                  // la pregunta en la app nativa
                   navigation.replace("Review", {
                     orderId: order.id,
                     businessId: order.businessId,
                     businessName: order.businessName,
                     deliveryPersonId: order.deliveryPersonId,
+                    allowTip: true,
                   });
                 }}
                 style={[
@@ -1622,6 +1665,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: Spacing.md,
+  },
+  invoiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   confirmButton: {
     flexDirection: "row",

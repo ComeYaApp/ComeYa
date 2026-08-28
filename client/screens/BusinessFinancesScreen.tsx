@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -367,7 +368,7 @@ export default function BusinessFinancesScreen() {
                       <ThemedText type="body" style={{ fontWeight: "600" }}>
                         {isWithdrawal
                           ? "Retiro de saldo"
-                          : `Pedido #${payout.orderId.slice(-6)}`}
+                          : `Pedido ${displayOrderNumber({ id: payout.orderId })}`}
                       </ThemedText>
                       <ThemedText
                         type="caption"
@@ -456,7 +457,7 @@ export default function BusinessFinancesScreen() {
               <View style={styles.transactionHeader}>
                 <View style={{ flex: 1 }}>
                   <ThemedText type="body" style={{ fontWeight: "600" }}>
-                    Pedido #{transaction.orderId.slice(-6)}
+                    Pedido {displayOrderNumber({ id: transaction.orderId })}
                   </ThemedText>
                   <ThemedText
                     type="caption"

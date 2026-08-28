@@ -84,18 +84,22 @@ export function decodePolyline(
 /**
  * Obtiene la ruta real por calles entre dos puntos usando el proxy
  * /api/gps/directions (la API key de Google nunca sale del servidor).
- * Si no hay API key o falla, devuelve la línea recta como fallback.
+ * Si no hay ruta real (Google+OSRM caídos) devuelve coordinates vacías y
+ * fallback: true — NUNCA una línea recta.
  * mode: "driving" (default) o "walking" (recogida a pie del cliente).
  */
 export async function fetchRouteDirections(
   origin: RouteCoordinate,
   destination: RouteCoordinate,
   mode: "driving" | "walking" = "driving",
+  opts?: { provider?: "google" | "osrm" },
 ): Promise<DirectionsResult | null> {
   try {
+    const providerParam =
+      opts?.provider === "osrm" ? "&provider=osrm" : "";
     const response = await apiRequest(
       "GET",
-      `/api/gps/directions?originLat=${origin.latitude}&originLng=${origin.longitude}&destLat=${destination.latitude}&destLng=${destination.longitude}&mode=${mode}`,
+      `/api/gps/directions?originLat=${origin.latitude}&originLng=${origin.longitude}&destLat=${destination.latitude}&destLng=${destination.longitude}&mode=${mode}${providerParam}`,
     );
     const data = await response.json();
 
@@ -111,9 +115,12 @@ export async function fetchRouteDirections(
       };
     }
 
-    // Fallback del servidor: sin polyline, línea recta con ETA estimada
+    // Fallback del servidor (Google y OSRM caídos): SIN geometría — nunca
+    // una línea recta. Se conservan distancia/ETA estimadas para los
+    // textos, pero coordinates va vacía: quien pinta solo dibuja rutas
+    // reales (>= 2 puntos decodificados del polyline).
     return {
-      coordinates: [origin, destination],
+      coordinates: [],
       distanceText: data.distance?.text,
       durationText: data.duration?.text,
       steps: [],

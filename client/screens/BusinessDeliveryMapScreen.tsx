@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -21,6 +22,7 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
@@ -39,17 +41,22 @@ const STATUS_CONFIG: Record<
   accepted: { label: "Aceptado", color: "#3B82F6", icon: "check" },
   preparing: { label: "Preparando", color: "#8B5CF6", icon: "package" },
   ready: { label: "Listo", color: "#10B981", icon: "check-circle" },
+  picked_up: { label: "Recogido", color: "#F97316", icon: "shopping-bag" },
   on_the_way: { label: "En camino", color: "#DC2626", icon: "truck" },
+  in_transit: { label: "En camino", color: "#DC2626", icon: "truck" },
+  arriving: { label: "Llegando", color: "#DC2626", icon: "map-pin" },
 };
 
 interface Delivery {
   orderId: string;
+  orderNumber?: number | null;
   status: string;
   subtotal: number;
   deliveryFee: number;
   total: number;
   paymentMethod: string;
   minutesActive: number;
+  businessId?: string | null;
   businessName: string;
   customer: {
     name: string;
@@ -97,9 +104,9 @@ export default function BusinessDeliveryMapScreen() {
   const [realRoutes, setRealRoutes] = useState<
     Record<string, { latitude: number; longitude: number }[]>
   >({});
-  const lastRoutePointRef = useRef<Record<string, { lat: number; lng: number }>>(
-    {},
-  );
+  const lastRoutePointRef = useRef<
+    Record<string, { lat: number; lng: number; phase?: string }>
+  >({});
   const [selected, setSelected] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -152,33 +159,46 @@ export default function BusinessDeliveryMapScreen() {
     return () => clearInterval(interval);
   }, [fetchDeliveries]);
 
-  // Rutas reales por calles para pedidos en camino (proxy con threshold
-  // de 100 m para proteger la cuota de Google)
+  // Rutas reales por calles para pedidos con repartidor, según la FASE:
+  // recogida → repartidor→NEGOCIO; entrega (picked_up+) → repartidor→CLIENTE.
+  // Umbral de 100 m para proteger la cuota de Google.
   useEffect(() => {
+    const bizById = new Map(
+      businessLocations.map((b) => [b.id, b] as const),
+    );
     deliveries.forEach((d) => {
-      if (
-        d.status !== "on_the_way" ||
-        !d.driver?.lat ||
-        !d.driver?.lng ||
-        !d.customer.lat ||
-        !d.customer.lng
-      )
-        return;
+      if (!d.driver?.lat || !d.driver?.lng) return;
+      const phase = routePhaseForStatus(d.status);
+      if (phase === "none") return;
+
+      let dest: { latitude: number; longitude: number } | null = null;
+      if (phase === "to_business") {
+        const biz = d.businessId ? bizById.get(d.businessId) : undefined;
+        if (biz?.lat && biz?.lng) {
+          dest = { latitude: biz.lat, longitude: biz.lng };
+        }
+      } else if (d.customer.lat && d.customer.lng) {
+        dest = { latitude: d.customer.lat, longitude: d.customer.lng };
+      }
+      if (!dest) return;
+
       const last = lastRoutePointRef.current[d.orderId];
       const moved =
         !last ||
         distanceMeters(
           { latitude: last.lat, longitude: last.lng },
           { latitude: d.driver.lat, longitude: d.driver.lng },
-        ) > 100;
+        ) > 100 ||
+        last.phase !== phase;
       if (!moved) return;
       lastRoutePointRef.current[d.orderId] = {
         lat: d.driver.lat,
         lng: d.driver.lng,
-      };
+        phase,
+      } as any;
       fetchRouteDirections(
         { latitude: d.driver.lat, longitude: d.driver.lng },
-        { latitude: d.customer.lat, longitude: d.customer.lng },
+        dest,
       )
         .then((route) => {
           if (route && route.coordinates.length >= 2) {
@@ -190,7 +210,7 @@ export default function BusinessDeliveryMapScreen() {
         })
         .catch(() => {});
     });
-  }, [deliveries]);
+  }, [deliveries, businessLocations]);
 
   // Focus on selected delivery
   const focusDelivery = useCallback((d: Delivery) => {
@@ -336,28 +356,16 @@ export default function BusinessDeliveryMapScreen() {
             return null;
           })}
 
-          {/* Route lines - separate iteration */}
+          {/* Route lines — SOLO rutas reales por calles (sin líneas rectas) */}
           {deliveries.map((d) => {
             const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
+            const real = realRoutes[d.orderId];
 
-            if (
-              d.driver?.lat &&
-              d.driver?.lng &&
-              d.customer.lat &&
-              d.customer.lng
-            ) {
-              const real = realRoutes[d.orderId];
+            if (d.driver?.lat && d.driver?.lng && real && real.length >= 2) {
               return (
                 <Polyline
                   key={`line_${d.orderId}`}
-                  coordinates={
-                    real && real.length >= 2
-                      ? real
-                      : [
-                          { latitude: d.driver.lat, longitude: d.driver.lng },
-                          { latitude: d.customer.lat, longitude: d.customer.lng },
-                        ]
-                  }
+                  coordinates={real}
                   strokeColor={cfg.color}
                   strokeWidth={3}
                 />
@@ -472,7 +480,7 @@ export default function BusinessDeliveryMapScreen() {
                         type="small"
                         style={{ color: text, fontWeight: "700" }}
                       >
-                        #{d.orderId.slice(-6).toUpperCase()}
+                        {displayOrderNumber(d)}
                       </ThemedText>
                       <View
                         style={[

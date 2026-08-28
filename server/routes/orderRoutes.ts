@@ -298,7 +298,7 @@ router.get("/", authenticateToken, async (req, res) => {
   try {
     const { orders, reviews } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const { eq, inArray } = await import("drizzle-orm");
+    const { eq, inArray, isNull, and } = await import("drizzle-orm");
 
     let userOrders;
 
@@ -308,7 +308,10 @@ router.get("/", authenticateToken, async (req, res) => {
       userOrders = await db
         .select()
         .from(orders)
-        .where(eq(orders.userId, req.user!.id));
+        .where(
+          // Pedidos ocultados por el admin: fuera de la lista del cliente
+          and(eq(orders.userId, req.user!.id), isNull(orders.deletedAt)),
+        );
       // Filtrar en memoria para incluir solo estados activos
       userOrders = userOrders.filter((o: { status: string }) =>
         ["pending", "accepted", "preparing", "ready", "on_the_way"].includes(
@@ -319,7 +322,9 @@ router.get("/", authenticateToken, async (req, res) => {
       userOrders = await db
         .select()
         .from(orders)
-        .where(eq(orders.userId, req.user!.id));
+        .where(
+          and(eq(orders.userId, req.user!.id), isNull(orders.deletedAt)),
+        );
     }
 
     // Marcar si cada pedido ya fue valorado (para mostrar "Pedido valorado"
@@ -972,24 +977,33 @@ router.post(
           .json({ error: "Este pedido no está asignado a ti" });
       }
 
-      // Cambiar estado a on_the_way y registrar timestamp
+      // Paso 1 del flujo de entrega: "Pedido recogido" (picked_up).
+      // El paso 2 ("Iniciar entrega" → on_the_way) lo hace el repartidor
+      // al salir del local vía PUT /api/delivery/orders/:id/status — antes
+      // este endpoint saltaba directo a on_the_way y el botón "entregar"
+      // aparecía antes de tiempo en el mapa del repartidor.
       await db
         .update(orders)
         .set({
-          status: "on_the_way",
+          status: "picked_up",
           driverPickedUpAt: new Date(),
         })
         .where(eq(orders.id, orderId));
 
-      // Notificar al cliente que el repartidor recogió y va en camino
+      // Notificar al cliente que el repartidor recogió el pedido (push nativo
+      // + websocket para usuarios web, que no reciben push)
       await sendOrderStatusNotification(orderId, order.userId, "picked_up");
+      try {
+        const { notifyOrderStatusChange } = await import("../websocket");
+        notifyOrderStatusChange(orderId, "picked_up");
+      } catch {}
 
       res.json({
         success: true,
-        message: "Pedido recogido. Ahora en camino al cliente.",
+        message: "Pedido recogido. Inicia la entrega cuando salgas del local.",
         order: {
           id: order.id,
-          status: "on_the_way",
+          status: "picked_up",
           driverPickedUpAt: new Date(),
         },
       });

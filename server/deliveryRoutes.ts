@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "./db";
 import { deliveryDrivers, users, orders, wallets, businesses } from "@shared/schema-mysql";
-import { eq, and, or, inArray, sql } from "drizzle-orm";
+import { eq, and, or, inArray, sql, isNull } from "drizzle-orm";
 import { authenticateToken, requireApprovedDriver } from "./authMiddleware";
 import {
   asyncHandler,
@@ -139,16 +139,20 @@ router.post(
   requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, accuracy, timestamp } = req.body;
 
     if (!latitude || !longitude) {
       throw new ValidationError("Latitude and longitude required");
     }
 
     // Pipeline unificado: persiste ubicación, emite websocket y ejecuta
-    // checks throttled (proximidad, ETA, arriving, geofences)
+    // checks throttled (proximidad, ETA, arriving, geofences).
+    // accuracy/timestamp alimentan el filtro anti-teletransporte.
     const { handleDriverLocationUpdate } = await import("./trackingPipeline");
-    await handleDriverLocationUpdate(userId, latitude, longitude);
+    await handleDriverLocationUpdate(userId, latitude, longitude, {
+      accuracy: Number(accuracy) || undefined,
+      timestamp: Number(timestamp) || undefined,
+    });
 
     res.json({ success: true });
   }),
@@ -427,7 +431,8 @@ router.get(
       .where(
         and(
           eq(orders.status, "ready"),
-          isNullOp(orders.deliveryPersonId),
+          isNull(orders.deliveryPersonId),
+          isNull(orders.deletedAt),
           neOp(orders.orderType, "pickup"),
         ),
       )
@@ -460,7 +465,9 @@ router.get(
       .from(orders)
       .leftJoin(users, eq(users.id, orders.userId))
       .leftJoin(businesses, eq(businesses.id, orders.businessId))
-      .where(eq(orders.deliveryPersonId, userId))
+      .where(
+        and(eq(orders.deliveryPersonId, userId), isNull(orders.deletedAt)),
+      )
       .orderBy(sql`created_at DESC`)
       .limit(50);
 
@@ -517,6 +524,7 @@ router.get(
     const availableOrders = await db
       .select({
         id: orders.id,
+        orderNumber: orders.orderNumber,
         businessId: orders.businessId,
         businessName: orders.businessName,
         businessImage: orders.businessImage,
@@ -541,6 +549,7 @@ router.get(
         and(
           eq(orders.status, "ready"),
           isNull(orders.deliveryPersonId),
+          isNull(orders.deletedAt),
           ne(orders.orderType, "pickup"),
         ),
       )
@@ -698,12 +707,36 @@ router.put(
       throw new AuthorizationError("Not your order");
     }
 
-    await db.update(orders).set({ status }).where(eq(orders.id, orderId));
+    // Transiciones válidas del repartidor: el estado debe avanzar, nunca
+    // retroceder. picked_up → on_the_way es el paso 2 de la recogida
+    // (el paso 1 lo hace POST /api/orders/:id/pickup).
+    const allowed: Record<string, string[]> = {
+      on_the_way: ["picked_up", "preparing", "ready"],
+      in_transit: ["on_the_way", "picked_up"],
+      arriving: ["in_transit", "on_the_way"],
+    };
+    const prev = String(status);
+    if (allowed[prev] && !allowed[prev].includes(order.status)) {
+      throw new ValidationError(
+        `No se puede pasar de ${order.status} a ${prev}`,
+      );
+    }
 
-    logger.delivery(`Order status updated to ${status}`, {
+    await db.update(orders).set({ status: prev }).where(eq(orders.id, orderId));
+
+    logger.delivery(`Order status updated to ${prev}`, {
       orderId,
       driverId: userId,
     });
+
+    // Avisar al cliente del avance (push nativo + websocket para web)
+    if (prev === "on_the_way") {
+      await sendOrderStatusNotification(orderId, order.userId, "on_the_way");
+      try {
+        const { notifyOrderStatusChange } = await import("../websocket");
+        notifyOrderStatusChange(orderId, "on_the_way");
+      } catch {}
+    }
 
     res.json({ success: true });
   }),

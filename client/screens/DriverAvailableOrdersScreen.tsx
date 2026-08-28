@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -332,7 +333,7 @@ export default function DriverAvailableOrdersScreen() {
           <View>
             <ThemedText type="h4">{item.businessName}</ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Pedido #{item.id.slice(-6)}
+              Pedido {displayOrderNumber(item)}
             </ThemedText>
           </View>
           <Badge text="Listo" variant="success" />

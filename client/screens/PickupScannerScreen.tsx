@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import { View, StyleSheet, Alert, Pressable, TextInput } from "react-native";
 import { CameraView, Camera } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

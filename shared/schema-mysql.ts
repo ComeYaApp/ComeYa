@@ -138,6 +138,8 @@ export const orders = mysqlTable("orders", {
   substituteProductIds: text("substitute_product_ids"), // JSON: {productId: substituteProductId} elegidos por el cliente
   // Fecha programada de entrega (pedidos programados materializados)
   scheduledFor: timestamp("scheduled_for"),
+  // Ocultación por el admin (soft delete): fuera de las listas, conservado
+  deletedAt: timestamp("deleted_at"),
   // Pago en efectivo
   cashPaymentAmount: int("cash_payment_amount"), // Con cuánto paga el cliente (centavos)
   cashChangeAmount: int("cash_change_amount"), // Cambio a entregar (centavos)

@@ -130,4 +130,54 @@ router.post("/:id/refund", async (req, res) => {
   }
 });
 
+// POST /api/admin/orders/:id/hide — ocultar un pedido cancelado/cerrado de
+// TODAS las listas (soft delete: se conserva en BD para auditoría).
+// Solo tiene sentido para pedidos finalizados (cancelled/refunded/completed).
+router.post("/:id/hide", async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, req.params.id))
+      .limit(1);
+
+    if (!order) return res.status(404).json({ success: false, error: "Pedido no encontrado" });
+
+    if (!["cancelled", "refunded", "completed", "delivered", "payment_failed"].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: "Solo se pueden ocultar pedidos cancelados, reembolsados o finalizados",
+      });
+    }
+
+    await db.update(orders).set({ deletedAt: new Date() }).where(eq(orders.id, req.params.id));
+    res.json({ success: true, message: "Pedido ocultado de las listas" });
+  } catch (error: any) {
+    console.error("Admin hide order error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/admin/orders/:id/unhide — volver a mostrar un pedido ocultado
+router.post("/:id/unhide", async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+
+    await db
+      .update(orders)
+      .set({ deletedAt: null })
+      .where(eq(orders.id, req.params.id));
+    res.json({ success: true, message: "Pedido visible de nuevo" });
+  } catch (error: any) {
+    console.error("Admin unhide order error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

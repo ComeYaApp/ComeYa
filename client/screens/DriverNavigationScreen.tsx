@@ -138,6 +138,10 @@ export default function DriverNavigationScreen() {
           distanceInterval: 20,
         },
         (l) => {
+          // Fix impreciso (túnel, batería ahorrada): no mover el marcador
+          if (typeof l.coords.accuracy === "number" && l.coords.accuracy > 50) {
+            return;
+          }
           const coords = {
             latitude: l.coords.latitude,
             longitude: l.coords.longitude,
@@ -150,6 +154,8 @@ export default function DriverNavigationScreen() {
             apiRequest("POST", "/api/delivery/location", {
               latitude: coords.latitude,
               longitude: coords.longitude,
+              accuracy: l.coords.accuracy ?? undefined,
+              timestamp: l.timestamp ?? now,
             }).catch(() => {});
           }
 

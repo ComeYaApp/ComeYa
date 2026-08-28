@@ -102,27 +102,28 @@ class OfflineGPSService {
     }
 
     this.processingQueue = true;
-    console.log(
-      `🔄 Processing ${this.locationQueue.length} queued locations...`,
-    );
 
+    // Solo se envía la ÚLTIMA posición encolada: reproducir el camino
+    // andado al reconectar hace que el marcador RETROCEDA en los mapas
+    // (además el servidor descarta fixes desordenados por timestamp).
     const batch = [...this.locationQueue];
+    const last = batch[batch.length - 1];
     const failed: QueuedLocation[] = [];
 
-    for (const location of batch) {
+    if (last) {
       try {
         await apiRequest("POST", "/api/delivery/location", {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          timestamp: location.timestamp,
-          orderId: location.orderId,
+          latitude: last.latitude,
+          longitude: last.longitude,
+          timestamp: last.timestamp,
+          orderId: last.orderId,
         });
         console.log(
-          `✅ Synced location from ${new Date(location.timestamp).toLocaleTimeString()}`,
+          `✅ Synced latest location from ${new Date(last.timestamp).toLocaleTimeString()} (${batch.length - 1} antiguas descartadas)`,
         );
       } catch (error) {
         console.error("Failed to sync location:", error);
-        failed.push(location);
+        failed.push(last);
       }
     }
 

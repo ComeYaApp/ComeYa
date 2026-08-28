@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   Text,
@@ -338,7 +339,7 @@ export function IssuesTab() {
           {/* Contexto del pedido */}
           <View style={[dt.divider, { backgroundColor: border }]} />
           {[
-            { icon: "package", label: "Pedido", value: `#${detail.order?.id?.slice(-8).toUpperCase()}` },
+            { icon: "package", label: "Pedido", value: `${displayOrderNumber(detail.order)}` },
             { icon: "user", label: "Cliente", value: detail.customer?.name },
             { icon: "phone", label: "Teléfono", value: detail.customer?.phone },
             { icon: "briefcase", label: "Negocio", value: detail.order?.businessName },
@@ -684,7 +685,7 @@ export function IssuesTab() {
                   <Text style={[li.amount, { color: PRIMARY }]}>{fmt(issue.orderTotal)}</Text>
                 </View>
                 <Text style={[li.title, { color: text }]} numberOfLines={1}>
-                  {issue.issueLabel} — #{issue.orderId?.slice(-6).toUpperCase()}
+                  {issue.issueLabel} — {displayOrderNumber({ id: issue.orderId })}
                 </Text>
                 <Text style={[li.desc, { color: sub }]} numberOfLines={2}>
                   {issue.description}

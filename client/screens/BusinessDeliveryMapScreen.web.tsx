@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -19,6 +20,8 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
+import { animateMarkerTo } from "@/utils/smoothMarker";
 import {
   pinIcon,
   driverIcon,
@@ -36,17 +39,22 @@ const STATUS_CONFIG: Record<
   accepted: { label: "Aceptado", color: "#3B82F6", icon: "check" },
   preparing: { label: "Preparando", color: "#8B5CF6", icon: "package" },
   ready: { label: "Listo", color: "#10B981", icon: "check-circle" },
+  picked_up: { label: "Recogido", color: "#F97316", icon: "shopping-bag" },
   on_the_way: { label: "En camino", color: "#DC2626", icon: "truck" },
+  in_transit: { label: "En camino", color: "#DC2626", icon: "truck" },
+  arriving: { label: "Llegando", color: "#DC2626", icon: "map-pin" },
 };
 
 interface Delivery {
   orderId: string;
+  orderNumber?: number | null;
   status: string;
   subtotal: number;
   deliveryFee: number;
   total: number;
   paymentMethod: string;
   minutesActive: number;
+  businessId?: string | null;
   businessName: string;
   customer: {
     name: string;
@@ -116,16 +124,28 @@ export default function BusinessDeliveryMapScreen() {
   const markers = useRef<Record<string, any>>({});
   const lines = useRef<Record<string, any>>({});
   const routeCache = useRef<
-    Record<string, { point: { lat: number; lng: number }; coords: { lat: number; lng: number }[] }>
+    Record<string, { point: { lat: number; lng: number }; phase?: string; coords: { lat: number; lng: number }[] }>
   >({});
 
   const [mapsReady, setMapsReady] = useState(false);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [businessLocs, setBusinessLocs] = useState<
+    { id: string; lat: number; lng: number }[]
+  >([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [selected, setSelected] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const businessLocById = useCallback(
+    (id?: string | null) => {
+      if (!id) return null;
+      const b = businessLocs.find((x) => x.id === id);
+      return b ? { lat: b.lat, lng: b.lng } : null;
+    },
+    [businessLocs],
+  );
 
   // ── Cargar Google Maps ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -157,6 +177,17 @@ export default function BusinessDeliveryMapScreen() {
         setDeliveries(data.deliveries || []);
         setStats(data.stats || null);
         setLastUpdated(new Date());
+        if (Array.isArray(data.businesses)) {
+          setBusinessLocs(
+            data.businesses
+              .filter((b: any) => b.latitude && b.longitude)
+              .map((b: any) => ({
+                id: b.id,
+                lat: parseFloat(b.latitude),
+                lng: parseFloat(b.longitude),
+              })),
+          );
+        }
       }
     } catch (e) {
       console.error("Error fetching deliveries:", e);
@@ -171,108 +202,148 @@ export default function BusinessDeliveryMapScreen() {
     return () => clearInterval(interval);
   }, [fetchDeliveries]);
 
-  // ── Renderizar markers en el mapa ───────────────────────────────────────────
+  // ── Renderizar markers en el mapa (persistentes: se ANIMAN al moverse) ─────
   useEffect(() => {
     if (!mapsReady || !gmap.current) return;
     const google = (window as any).google;
 
-    // Limpiar markers y líneas anteriores
-    Object.values(markers.current).forEach((m: any) => m.setMap(null));
-    Object.values(lines.current).forEach((l: any) => l.setMap(null));
-    markers.current = {};
-    lines.current = {};
+    // Marcadores persistentes: si ya existen se animan hacia la nueva
+    // posición (movimiento fluido); si no, se crean. Se eliminan los de
+    // pedidos que ya no están activos.
+    const validKeys = new Set<string>();
+    deliveries.forEach((d) => {
+      validKeys.add(`driver_${d.orderId}`);
+      validKeys.add(`customer_${d.orderId}`);
+    });
+    Object.entries(markers.current).forEach(([k, m]) => {
+      if (!validKeys.has(k)) {
+        (m as any).setMap(null);
+        delete markers.current[k];
+      }
+    });
+    Object.entries(lines.current).forEach(([k, l]) => {
+      if (!k.startsWith("line_")) return;
+      const orderId = k.slice(5);
+      if (!deliveries.some((d) => d.orderId === orderId)) {
+        (l as any).setMap(null);
+        delete lines.current[k];
+      }
+    });
 
     deliveries.forEach((d) => {
       const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
       const color = cfg.color;
 
-      // Marker repartidor — su vehículo
+      // Marker repartidor — su vehículo (animado entre polls)
       if (d.driver?.lat && d.driver?.lng) {
         const vehicle = vehicleMarkerMeta(d.driver.vehicleType);
-        const driverMarker = new google.maps.Marker({
-          position: { lat: d.driver.lat, lng: d.driver.lng },
-          map: gmap.current,
-          icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
-          title: `Repartidor: ${d.driver.name}`,
-          zIndex: 20,
-        });
-        driverMarker.addListener("click", () => setSelected(d));
-        markers.current[`driver_${d.orderId}`] = driverMarker;
+        const key = `driver_${d.orderId}`;
+        const pos = { lat: d.driver.lat, lng: d.driver.lng };
+        let driverMarker = markers.current[key];
+        if (driverMarker) {
+          animateMarkerTo(driverMarker, pos, 14000);
+        } else {
+          driverMarker = new google.maps.Marker({
+            position: pos,
+            map: gmap.current,
+            icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
+            title: `Repartidor: ${d.driver.name}`,
+            zIndex: 20,
+          });
+          driverMarker.addListener("click", () => setSelected(d));
+          markers.current[key] = driverMarker;
+        }
+      } else if (markers.current[`driver_${d.orderId}`]) {
+        markers.current[`driver_${d.orderId}`].setMap(null);
+        delete markers.current[`driver_${d.orderId}`];
       }
 
       // Marker cliente — casa con color de estado
       if (d.customer.lat && d.customer.lng) {
-        const customerMarker = new google.maps.Marker({
-          position: { lat: d.customer.lat, lng: d.customer.lng },
-          map: gmap.current,
-          icon: asGoogleIcon(google, pinIcon(color, CUSTOMER_MARKER.icon)),
-          title: `Cliente: ${d.customer.name}`,
-          zIndex: 10,
-        });
-        customerMarker.addListener("click", () => setSelected(d));
-        markers.current[`customer_${d.orderId}`] = customerMarker;
+        const key = `customer_${d.orderId}`;
+        const pos = { lat: d.customer.lat, lng: d.customer.lng };
+        if (!markers.current[key]) {
+          const customerMarker = new google.maps.Marker({
+            position: pos,
+            map: gmap.current,
+            icon: asGoogleIcon(google, pinIcon(color, CUSTOMER_MARKER.icon)),
+            title: `Cliente: ${d.customer.name}`,
+            zIndex: 10,
+          });
+          customerMarker.addListener("click", () => setSelected(d));
+          markers.current[key] = customerMarker;
+        }
       }
 
-      // Línea repartidor → cliente (ruta real vía proxy para pedidos en
-      // camino; línea recta para el resto — protege la cuota de Google)
-      if (d.driver?.lat && d.driver?.lng && d.customer.lat && d.customer.lng) {
-        const drawLine = (path: { lat: number; lng: number }[]) => {
-          if (lines.current[`line_${d.orderId}`]) {
-            lines.current[`line_${d.orderId}`].setMap(null);
-          }
-          lines.current[`line_${d.orderId}`] = new google.maps.Polyline({
-            path,
-            geodesic: true,
-            strokeColor: color,
-            strokeOpacity: 0.6,
-            strokeWeight: 2,
-            map: gmap.current,
-          });
-        };
+      // Línea del repartidor según la FASE del pedido (misma lógica que los
+      // demás mapas): recogida → repartidor→NEGOCIO; entrega → repartidor→CLIENTE.
+      // SOLO rutas reales por calles — sin geometría no se dibuja línea.
+      if (d.driver?.lat && d.driver?.lng) {
+        const phase = routePhaseForStatus(d.status);
+        const dest =
+          phase === "to_business"
+            ? businessLocById(d.businessId)
+            : phase === "to_customer" && d.customer.lat && d.customer.lng
+              ? { lat: d.customer.lat, lng: d.customer.lng }
+              : null;
 
-        const driverPoint = { lat: d.driver.lat, lng: d.driver.lng };
-        const cached = routeCache.current[d.orderId];
-        const needsFetch =
-          d.status === "on_the_way" &&
-          (!cached ||
+        if (dest) {
+          const drawLine = (path: { lat: number; lng: number }[]) => {
+            if (lines.current[`line_${d.orderId}`]) {
+              lines.current[`line_${d.orderId}`].setMap(null);
+            }
+            lines.current[`line_${d.orderId}`] = new google.maps.Polyline({
+              path,
+              geodesic: true,
+              strokeColor: color,
+              strokeOpacity: 0.6,
+              strokeWeight: 2,
+              map: gmap.current,
+            });
+          };
+
+          const driverPoint = { lat: d.driver.lat, lng: d.driver.lng };
+          const cached = routeCache.current[d.orderId];
+          const needsFetch =
+            !cached ||
+            cached.phase !== phase ||
             distanceMeters(
               { latitude: cached.point.lat, longitude: cached.point.lng },
               { latitude: driverPoint.lat, longitude: driverPoint.lng },
-            ) > 100);
+            ) > 100;
 
-        if (needsFetch) {
-          drawLine([
-            driverPoint,
-            { lat: d.customer.lat, lng: d.customer.lng },
-          ]);
-          fetchRouteDirections(
-            { latitude: driverPoint.lat, longitude: driverPoint.lng },
-            { latitude: d.customer.lat, longitude: d.customer.lng },
-          )
-            .then((route) => {
-              if (route && route.coordinates.length >= 2) {
-                routeCache.current[d.orderId] = {
-                  point: driverPoint,
-                  coords: route.coordinates.map((c) => ({
-                    lat: c.latitude,
-                    lng: c.longitude,
-                  })),
-                };
-                drawLine(routeCache.current[d.orderId].coords);
-              }
-            })
-            .catch(() => {});
-        } else if (cached?.coords?.length) {
-          drawLine(cached.coords);
-        } else {
-          drawLine([
-            driverPoint,
-            { lat: d.customer.lat, lng: d.customer.lng },
-          ]);
+          if (needsFetch) {
+            fetchRouteDirections(
+              { latitude: driverPoint.lat, longitude: driverPoint.lng },
+              { latitude: dest.lat, longitude: dest.lng },
+            )
+              .then((route) => {
+                if (route && route.coordinates.length >= 2) {
+                  routeCache.current[d.orderId] = {
+                    point: driverPoint,
+                    phase,
+                    coords: route.coordinates.map((c) => ({
+                      lat: c.latitude,
+                      lng: c.longitude,
+                    })),
+                  };
+                  if (gmap.current) {
+                    drawLine(routeCache.current[d.orderId].coords);
+                  }
+                }
+              })
+              .catch(() => {});
+          } else if (cached?.coords?.length) {
+            drawLine(cached.coords);
+          }
+        } else if (lines.current[`line_${d.orderId}`]) {
+          // Sin destino de ruta (sin fase válida): fuera la línea
+          lines.current[`line_${d.orderId}`].setMap(null);
+          delete lines.current[`line_${d.orderId}`];
         }
       }
     });
-  }, [mapsReady, deliveries]);
+  }, [mapsReady, deliveries, businessLocs, businessLocById]);
 
   // ── Centrar mapa en entrega seleccionada ────────────────────────────────────
   const focusDelivery = useCallback((d: Delivery) => {
@@ -447,7 +518,7 @@ export default function BusinessDeliveryMapScreen() {
                           type="small"
                           style={{ color: text, fontWeight: "700" }}
                         >
-                          #{d.orderId.slice(-6).toUpperCase()}
+                          {displayOrderNumber(d)}
                         </ThemedText>
                         <View
                           style={[
@@ -629,7 +700,7 @@ export default function BusinessDeliveryMapScreen() {
               }}
             >
               <ThemedText type="h4" style={{ color: text }}>
-                Pedido #{selected.orderId.slice(-6).toUpperCase()}
+                Pedido {displayOrderNumber(selected)}
               </ThemedText>
               <Pressable onPress={() => setSelected(null)}>
                 <Feather name="x" size={20} color={sub} />

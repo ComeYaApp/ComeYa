@@ -14,6 +14,8 @@ import { ComeYaColors } from "../../../constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 import { confirm } from "@/hooks/useWebDialog";
+import { printInvoiceWeb } from "@/utils/invoice";
+import { displayOrderNumber } from "@/utils/orderNumber";
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendiente", color: "#F59E0B" },
@@ -209,7 +211,7 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
         >
           <View style={det.row}>
             <Text style={[det.orderId, { color: text }]}>
-              #{selected.id?.slice(-8).toUpperCase()}
+              {displayOrderNumber(selected)}
             </Text>
             <View style={[det.pill, { backgroundColor: meta.color + "20" }]}>
               <Text style={[det.pillTxt, { color: meta.color }]}>
@@ -380,6 +382,76 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
               )}
             </>
           )}
+
+          {/* Factura descargable + foto de entrega + ocultar (finalizados) */}
+          <View style={[det.divider, { backgroundColor: border }]} />
+
+          {selected.deliveryProofPhoto ? (
+            <View style={{ marginBottom: 14 }}>
+              <Text style={[det.sectionTitle, { color: sub }]}>
+                FOTO DE ENTREGA
+              </Text>
+              <a
+                href={selected.deliveryProofPhoto}
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: "block", marginTop: 6 }}
+              >
+                <img
+                  src={selected.deliveryProofPhoto}
+                  alt="Prueba de entrega"
+                  style={{
+                    width: "100%",
+                    maxWidth: 280,
+                    borderRadius: 10,
+                    border: `1px solid ${border}`,
+                  }}
+                />
+              </a>
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              style={[det.btnDanger, { backgroundColor: "#7C3AED", opacity: acting ? 0.6 : 1 }]}
+              onPress={() => printInvoiceWeb(selected)}
+            >
+              <Feather name="file-text" size={14} color="#fff" />
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                Factura PDF
+              </Text>
+            </TouchableOpacity>
+
+            {["cancelled", "refunded", "completed", "delivered", "payment_failed"].includes(
+              selected.status,
+            ) && (
+              <TouchableOpacity
+                style={[det.btnDanger, { backgroundColor: "#6B7280", opacity: acting ? 0.6 : 1 }]}
+                onPress={async () => {
+                  try {
+                    const res = await apiRequest(
+                      "POST",
+                      `/api/admin/orders/${selected.id}/hide`,
+                      {},
+                    );
+                    const data = await res.json();
+                    setActionMsg({
+                      ok: data.success,
+                      text: data.message ?? "Error",
+                    });
+                    if (data.success) setSelected(null);
+                  } catch {
+                    setActionMsg({ ok: false, text: "Error de conexión" });
+                  }
+                }}
+              >
+                <Feather name="eye-off" size={14} color="#fff" />
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+                  Ocultar pedido
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </ScrollView>
     );

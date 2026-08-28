@@ -26,7 +26,8 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { decodePolyline, toCoord } from "@/utils/directions";
+import { decodePolyline, toCoord, distanceMeters } from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { BusinessPin as BusinessBubblePin } from "@/components/map/BusinessPin";
@@ -169,24 +170,53 @@ export default function DriverMapScreen() {
     }
   }, [driverLocation]);
 
-  // Cargar ruta real desde el servidor
+  // Cargar ruta real desde el servidor.
+  // Umbral anti-quema de cuota: solo se re-pide si el repartidor se movió
+  // >150 m desde el último fetch o cambió el destino (fase del pedido).
+  const lastRouteFetchRef = useRef<{
+    origin: { latitude: number; longitude: number };
+    destKey: string;
+  } | null>(null);
+  const routeLoadingRef = useRef(false);
+
   const loadRouteFromServer = useCallback(async () => {
     if (!driverLocation || !activeOrder) return;
 
-    const isPickingUp = ["accepted", "preparing", "ready"].includes(
-      activeOrder.status,
-    );
-    const destLat = isPickingUp ? activeOrder.businessLatitude : activeOrder.deliveryLatitude;
-    const destLng = isPickingUp ? activeOrder.businessLongitude : activeOrder.deliveryLongitude;
+    const phase = routePhaseForStatus(activeOrder.status);
+    const destLat =
+      phase === "to_business"
+        ? activeOrder.businessLatitude
+        : activeOrder.deliveryLatitude;
+    const destLng =
+      phase === "to_business"
+        ? activeOrder.businessLongitude
+        : activeOrder.deliveryLongitude;
 
     if (!destLat || !destLng) return;
+    const dest = {
+      latitude: parseFloat(String(destLat)),
+      longitude: parseFloat(String(destLng)),
+    };
+    if (!Number.isFinite(dest.latitude) || !Number.isFinite(dest.longitude))
+      return;
+
+    const destKey = `${dest.latitude.toFixed(3)},${dest.longitude.toFixed(3)}`;
+    const last = lastRouteFetchRef.current;
+    if (last) {
+      const moved =
+        distanceMeters(last.origin, driverLocation) < 150 &&
+        last.destKey === destKey;
+      if (moved && routeCoords.length >= 2) return; // ruta aún válida
+    }
+    if (routeLoadingRef.current) return;
+    routeLoadingRef.current = true;
 
     setRouteLoading(true);
     try {
       // Usar el endpoint GPS compartido (ya desplegado en Render)
       const res = await apiRequest(
         "GET",
-        `/api/gps/directions?originLat=${driverLocation.latitude}&originLng=${driverLocation.longitude}&destLat=${destLat}&destLng=${destLng}`,
+        `/api/gps/directions?originLat=${driverLocation.latitude}&originLng=${driverLocation.longitude}&destLat=${dest.latitude}&destLng=${dest.longitude}`,
       );
       const data = await res.json();
 
@@ -194,20 +224,20 @@ export default function DriverMapScreen() {
         // Decodificar polyline manualmente
         const decoded = decodePolyline(data.polyline);
         if (decoded.length > 0) {
+          lastRouteFetchRef.current = {
+            origin: driverLocation,
+            destKey,
+          };
           setRouteCoords(decoded);
         }
-      } else if (data.success && data.fallback) {
-        // Fallback: línea recta
-        setRouteCoords([
-          { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-          { latitude: parseFloat(destLat), longitude: parseFloat(destLng) },
-        ]);
       }
+      // Sin geometría real → SIN línea (nada de líneas rectas inventadas)
     } catch {
-      // Silencioso — el polyline por defecto usa línea recta entre marcadores
+      // Silencioso — el mapa muestra marcadores sin ruta
     }
     setRouteLoading(false);
-  }, [driverLocation, activeOrder]);
+    routeLoadingRef.current = false;
+  }, [driverLocation, activeOrder, routeCoords.length]);
 
   // GPS en tiempo real
   useEffect(() => {
@@ -237,6 +267,10 @@ export default function DriverMapScreen() {
           distanceInterval: 10,
         },
         (l) => {
+          // Fix impreciso: no mover el marcador ni subirlo al servidor
+          if (typeof l.coords.accuracy === "number" && l.coords.accuracy > 50) {
+            return;
+          }
           const coords = {
             latitude: l.coords.latitude,
             longitude: l.coords.longitude,
@@ -247,6 +281,8 @@ export default function DriverMapScreen() {
             deliveryPersonId: user?.id,
             latitude: l.coords.latitude.toString(),
             longitude: l.coords.longitude.toString(),
+            accuracy: l.coords.accuracy ?? undefined,
+            timestamp: l.timestamp ?? Date.now(),
             isOnline: true,
           }).catch(() => {});
         },

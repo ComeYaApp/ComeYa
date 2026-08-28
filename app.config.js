@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "ComeYa",
     slug: "cy-soria",
-    version: "1.0.14",
+    version: "1.0.15",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",

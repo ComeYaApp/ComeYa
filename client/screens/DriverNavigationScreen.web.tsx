@@ -21,6 +21,7 @@ import {
 } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { animateMarkerTo } from "@/utils/smoothMarker";
 import { apiRequest } from "@/lib/query-client";
 import {
   pinIcon,
@@ -217,6 +218,12 @@ export default function DriverNavigationScreen() {
         let lastPostAt = 0;
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
+            // Fix impreciso: no mover el marcador ni subirlo al servidor
+            if (
+              typeof pos.coords.accuracy === "number" &&
+              pos.coords.accuracy > 50
+            )
+              return;
             const coords = {
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
@@ -229,6 +236,8 @@ export default function DriverNavigationScreen() {
               apiRequest("POST", "/api/delivery/location", {
                 latitude: coords.latitude,
                 longitude: coords.longitude,
+                accuracy: pos.coords.accuracy ?? undefined,
+                timestamp: pos.timestamp ?? now,
               }).catch(() => {});
             }
 
@@ -298,16 +307,16 @@ export default function DriverNavigationScreen() {
     });
   }, [mapsReady]);
 
-  // Actualizar marcador del driver
+  // Actualizar marcador del driver (movimiento fluido entre fixes)
   useEffect(() => {
     if (!gmap.current || !driverLocation) return;
     const google = (window as any).google;
     if (!google) return;
 
-    const position = new google.maps.LatLng(driverLocation.latitude, driverLocation.longitude);
+    const position = { lat: driverLocation.latitude, lng: driverLocation.longitude };
 
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setPosition(position);
+      animateMarkerTo(driverMarkerRef.current, position, 900);
     } else {
       driverMarkerRef.current = new google.maps.Marker({
         position,

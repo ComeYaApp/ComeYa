@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { formatCurrency as centralFormatCurrency } from "@/utils/currency";
 import {
   View,
   Text,
@@ -290,12 +291,8 @@ export default function EnhancedWalletScreen() {
     Alert.alert("Solicitar Dinero", "Funcionalidad en desarrollo");
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("es-VE", {
-      style: "currency",
-      currency: "EUR",
-    }).format(amount / 100);
-  };
+  const formatCurrency = (amount: number) =>
+    centralFormatCurrency(amount);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("es-VE", {

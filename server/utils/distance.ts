@@ -1,4 +1,4 @@
-import { getSettingValue } from "../systemSettingsService";
+
 
 /**
  * Calcula la distancia entre dos coordenadas GPS usando la fórmula de Haversine
@@ -78,6 +78,7 @@ export async function isInCoverageArea(
   // Soria, España — centro configurable en el futuro
   const CENTER_LAT = 41.7636;
   const CENTER_LNG = -2.4677;
+  const { getSettingValue } = await import("../systemSettingsService");
   const maxRadius = await getSettingValue("max_delivery_radius_km", 10);
 
   const distance = calculateDistance(

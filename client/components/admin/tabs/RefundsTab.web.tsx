@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   Text,
@@ -119,7 +120,7 @@ export function RefundsTab() {
   const markPaid = async (refund: RefundRow) => {
     const ok = await confirm({
       title: "Marcar como pagada",
-      message: `Confirma que has transferido ${fmt(refund.amount)} al cliente del pedido #${refund.orderId.slice(-6)}. Deja una nota con la referencia de la transferencia.`,
+      message: `Confirma que has transferido ${fmt(refund.amount)} al cliente del pedido ${displayOrderNumber({ id: refund.orderId })}. Deja una nota con la referencia de la transferencia.`,
       confirmLabel: "Ya está pagada",
       variant: "info",
     });
@@ -202,7 +203,7 @@ export function RefundsTab() {
           </View>
 
           {[
-            { icon: "package", label: "Pedido", value: `#${selected.orderId.slice(-8).toUpperCase()}` },
+            { icon: "package", label: "Pedido", value: `${displayOrderNumber({ id: selected.orderId })}` },
             { icon: "user", label: "Cliente", value: selected.customerName },
             { icon: "phone", label: "Teléfono", value: selected.customerPhone },
             { icon: me.icon as any, label: "Método", value: me.label },

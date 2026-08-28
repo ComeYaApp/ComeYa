@@ -18,6 +18,8 @@ import {
   type OpsDriver,
 } from "@/hooks/useAdminOps";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
+import { animateMarkerTo } from "@/utils/smoothMarker";
 import { clusterPoints, clusterSvg } from "@/utils/webClustering";
 import {
   pinIcon,
@@ -114,18 +116,34 @@ const euro = (cents: number) =>
     (Number(cents) || 0) / 100,
   );
 
+const stateLabelOf = (d: any) =>
+  d.isBlocked
+    ? "⛔ Bloqueado"
+    : d.staleGps
+      ? `⚠️ GPS sin señal (${d.lastUpdateMinutes ?? "?"} min)`
+      : d.isOnline
+        ? "✅ Conectado"
+        : "⚪ Desconectado";
+
 export default function AdminOpsCenterScreen() {
   const { theme, isDark } = useTheme();
   const mapRef = useRef<HTMLDivElement>(null);
   const gmap = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const linesRef = useRef<any[]>([]);
+  // Repartidores: marcadores persistentes (animados, no se recrean)
+  const driverMarkersRef = useRef<Record<string, any>>({});
+  // Fetches de ruta en vuelo (evita duplicar peticiones del mismo pedido)
+  const routeFetchingRef = useRef<Set<string>>(new Set());
   const heatLayerRef = useRef<any>(null);
   const trafficLayerRef = useRef<any>(null);
   const zoneShapesRef = useRef<any[]>([]);
   const infoWindowRef = useRef<any>(null);
   const routeCacheRef = useRef<
-    Record<string, { point: { lat: number; lng: number }; coords: any[] }>
+    Record<
+      string,
+      { point: { lat: number; lng: number }; phase?: string; coords: any[] }
+    >
   >({});
 
   const [mapsReady, setMapsReady] = useState(false);
@@ -315,8 +333,10 @@ export default function AdminOpsCenterScreen() {
       });
     }
 
-    // Repartidores
+    // Repartidores — marcadores PERSISTENTES y animados: no se recrean en
+    // cada refresco, se deslizan hacia cada nueva posición (WS cada ~2 s)
     if (layers.drivers) {
+      const validIds = new Set<string>();
       drivers.forEach((d) => {
         const vehicle = vehicleMarkerMeta(d.vehicleType);
         const color = d.isBlocked
@@ -326,35 +346,50 @@ export default function AdminOpsCenterScreen() {
             : d.isOnline
               ? "#10B981"
               : "#9CA3AF";
-        const m = new google.maps.Marker({
-          position: { lat: d.lat, lng: d.lng },
-          map: gmap.current,
-          title: `${d.name} · ${d.isOnline ? "conectado" : "desconectado"}`,
-          icon: asGoogleIcon(google, driverIcon(vehicle.icon, color)),
-          zIndex: 200,
-        });
-        const stateLabel = d.isBlocked
-          ? "⛔ Bloqueado"
-          : d.staleGps
-            ? `⚠️ GPS sin señal (${d.lastUpdateMinutes ?? "?"} min)`
-            : d.isOnline
-              ? "✅ Conectado"
-              : "⚪ Desconectado";
-        m.addListener("click", () =>
-          openInfo(
-            m,
-            `<div style="padding:8px;max-width:240px;font-family:system-ui">
-              <strong>🛵 ${d.name}</strong><br/>
-              <span>${stateLabel}</span><br/>
-              <span>${vehicle.label}${d.vehiclePlate ? ` · ${d.vehiclePlate}` : ""}</span><br/>
-              <span>⭐ ${d.rating || "-"} · ${d.totalDeliveries} entregas</span>
-              ${d.activeOrderId ? `<br/><span>📦 Pedido #${fmtNum(d.activeOrderId)}</span>` : "<br/><span>Sin pedido activo</span>"}
-              ${d.phone ? `<br/><a href="tel:${d.phone}">📞 ${d.phone}</a>` : ""}
-            </div>`,
-          ),
-        );
-        markersRef.current.push(m);
+        validIds.add(d.id);
+        const pos = { lat: d.lat, lng: d.lng };
+        let m = driverMarkersRef.current[d.id];
+        if (m) {
+          animateMarkerTo(m, pos);
+          m.setTitle(`${d.name} · ${d.isOnline ? "conectado" : "desconectado"}`);
+          m.setIcon(asGoogleIcon(google, driverIcon(vehicle.icon, color)));
+        } else {
+          m = new google.maps.Marker({
+            position: pos,
+            map: gmap.current,
+            title: `${d.name} · ${d.isOnline ? "conectado" : "desconectado"}`,
+            icon: asGoogleIcon(google, driverIcon(vehicle.icon, color)),
+            zIndex: 200,
+          });
+          const driver = d;
+          m.addListener("click", () =>
+            openInfo(
+              m,
+              `<div style="padding:8px;max-width:240px;font-family:system-ui">
+                <strong>🛵 ${driver.name}</strong><br/>
+                <span>${stateLabelOf(driver)}</span><br/>
+                <span>${vehicleMarkerMeta(driver.vehicleType).label}${driver.vehiclePlate ? ` · ${driver.vehiclePlate}` : ""}</span><br/>
+                <span>⭐ ${driver.rating || "-"} · ${driver.totalDeliveries} entregas</span>
+                ${driver.activeOrderId ? `<br/><span>📦 Pedido ${fmtNum(driver.activeOrderId)}</span>` : "<br/><span>Sin pedido activo</span>"}
+                ${driver.phone ? `<br/><a href="tel:${driver.phone}">📞 ${driver.phone}</a>` : ""}
+              </div>`,
+            ),
+          );
+          driverMarkersRef.current[d.id] = m;
+        }
       });
+      // Repartidores que desaparecieron: fuera del mapa
+      Object.keys(driverMarkersRef.current).forEach((id) => {
+        if (!validIds.has(id)) {
+          driverMarkersRef.current[id].setMap(null);
+          delete driverMarkersRef.current[id];
+        }
+      });
+    } else {
+      Object.values(driverMarkersRef.current).forEach((m: any) =>
+        m.setMap(null),
+      );
+      driverMarkersRef.current = {};
     }
 
     // Pedidos: negocio origen + destino cliente + rutas
@@ -392,16 +427,15 @@ export default function AdminOpsCenterScreen() {
           markersRef.current.push(m);
         }
 
-        // Rutas reales de las dos etapas (recogida y entrega)
+        // Rutas reales por calles de la etapa actual (recogida o entrega).
+        // SOLO geometría real: mientras carga o si falla, no se dibuja nada.
         if (layers.routes && o.driver?.lat != null && o.driver?.lng != null) {
-          const isPickupLeg = ["assigned_driver", "ready", "accepted", "preparing"].includes(
-            o.status,
-          );
+          const leg = routePhaseForStatus(o.status);
           let dest: { lat: number; lng: number } | null = null;
-          if (isPickupLeg && o.business) {
+          if (leg === "to_business" && o.business) {
             dest = { lat: o.business.lat, lng: o.business.lng };
           } else if (
-            !isPickupLeg &&
+            leg === "to_customer" &&
             o.customer.lat != null &&
             o.customer.lng != null
           ) {
@@ -413,11 +447,13 @@ export default function AdminOpsCenterScreen() {
             const cached = routeCacheRef.current[o.id];
             const moved =
               !cached ||
+              cached.phase !== leg ||
               distanceMeters(
                 { latitude: cached.point.lat, longitude: cached.point.lng },
                 { latitude: origin.lat, longitude: origin.lng },
               ) > 120;
 
+            const legColor = leg === "to_business" ? "#F59E0B" : "#10B981";
             const draw = (path: any[], color: string) => {
               const line = new google.maps.Polyline({
                 path,
@@ -430,20 +466,23 @@ export default function AdminOpsCenterScreen() {
               linesRef.current.push(line);
             };
 
-            const legColor = isPickupLeg ? "#F59E0B" : "#10B981";
             if (cached?.coords?.length && !moved) {
               draw(cached.coords, legColor);
-            } else {
-              draw([origin, dest], legColor);
-              routeCacheRef.current[o.id] = { point: origin, coords: [] };
+            } else if (!routeFetchingRef.current.has(o.id)) {
+              routeFetchingRef.current.add(o.id);
+              // Bulk del admin por OSRM (gratis, rutas reales por calles):
+              // la cuota de Google queda para los mapas de usuario final
               fetchRouteDirections(
                 { latitude: origin.lat, longitude: origin.lng },
                 { latitude: dest.lat, longitude: dest.lng },
+                "driving",
+                { provider: "osrm" },
               )
                 .then((route) => {
                   if (route && route.coordinates.length >= 2) {
                     routeCacheRef.current[o.id] = {
                       point: origin,
+                      phase: leg,
                       coords: route.coordinates.map((c) => ({
                         lat: c.latitude,
                         lng: c.longitude,
@@ -451,7 +490,8 @@ export default function AdminOpsCenterScreen() {
                     };
                   }
                 })
-                .catch(() => {});
+                .catch(() => {})
+                .finally(() => routeFetchingRef.current.delete(o.id));
             }
           }
         }

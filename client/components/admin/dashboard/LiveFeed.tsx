@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import { View, Text, StyleSheet, ScrollView, Animated } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
@@ -111,7 +112,7 @@ export function LiveFeed() {
               <View style={{ flex: 1 }}>
                 <View style={lf.topRow}>
                   <Text style={[lf.orderId, { color: text }]}>
-                    #{(o.id ?? "").toString().slice(-6).toUpperCase()}
+                    {displayOrderNumber(o)}
                   </Text>
                   <View
                     style={[

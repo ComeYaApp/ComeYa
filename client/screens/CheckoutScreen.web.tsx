@@ -83,6 +83,18 @@ export default function CheckoutScreen({ route }: any) {
     Record<string, SubstitutionOption>
   >({});
   const [showItemSubstitutions, setShowItemSubstitutions] = useState(false);
+  // Tarifa cotizada por el servidor (misma fórmula que el backend)
+  const [quotedDeliveryFee, setQuotedDeliveryFee] = useState<number | null>(
+    null,
+  );
+  // Sustituto concreto por producto: originalId → substituteId (igual que nativo)
+  const [showSubstitutePicker, setShowSubstitutePicker] = useState<
+    string | null
+  >(null);
+  const [substituteProductIds, setSubstituteProductIds] = useState<
+    Record<string, string>
+  >({});
+  const [businessProducts, setBusinessProducts] = useState<any[]>([]);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -93,6 +105,41 @@ export default function CheckoutScreen({ route }: any) {
   const [addressPickerVisible, setAddressPickerVisible] = useState(false);
   const [tip, setTip] = useState(0);
   const { isMobile } = useResponsive();
+
+  // Cargar productos del negocio al abrir el selector de sustituto
+  useEffect(() => {
+    if (
+      showSubstitutePicker === null ||
+      businessProducts.length > 0 ||
+      !cart?.businessId
+    )
+      return;
+    apiRequest("GET", `/api/businesses/${cart.businessId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.business?.products)) {
+          setBusinessProducts(
+            data.business.products.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              image: p.image || "",
+              price: p.price,
+              available:
+                p.isAvailable === true ||
+                p.isAvailable === 1 ||
+                p.is_available === true ||
+                p.is_available === 1,
+            })),
+          );
+        }
+      })
+      .catch(() => {});
+  }, [showSubstitutePicker, businessProducts.length, cart?.businessId]);
+
+  const substituteName = (id: string): string | null => {
+    const p = businessProducts.find((x) => x.id === id);
+    return p?.name ?? null;
+  };
 
   // Siempre usar el precio que calculó el carrito, o el deliveryFee del negocio
   const deliveryFee =
@@ -105,6 +152,46 @@ export default function CheckoutScreen({ route }: any) {
             : 2.5);
   const total =
     subtotal + deliveryFee - couponDiscount - subDiscount + tip;
+
+  // Recotizar la tarifa con la MISMA fórmula del servidor cuando cambia la
+  // dirección o el negocio: el total mostrado coincide con el del backend
+  // (fin de los importes que cambiaban solos entre pantallas).
+  useEffect(() => {
+    if (orderTypeLocal === "pickup" || !cart?.businessId) return;
+    const biz = business as any;
+    const addr = selectedAddress as any;
+    const bizLat = Number(biz?.latitude);
+    const bizLng = Number(biz?.longitude);
+    const addrLat = Number(addr?.latitude);
+    const addrLng = Number(addr?.longitude);
+    if (
+      !Number.isFinite(bizLat) ||
+      !Number.isFinite(bizLng) ||
+      !Number.isFinite(addrLat) ||
+      !Number.isFinite(addrLng)
+    )
+      return;
+    apiRequest("POST", "/api/orders/calculate-delivery", {
+      businessLat: bizLat,
+      businessLng: bizLng,
+      deliveryLat: addrLat,
+      deliveryLng: addrLng,
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Number.isFinite(Number(d.deliveryFee))) {
+          setQuotedDeliveryFee(Number(d.deliveryFee) / 100);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAddress?.id, cart?.businessId, orderTypeLocal]);
+
+  // Tarifa efectiva: la cotizada del servidor (si existe) manda
+  const effectiveDeliveryFee =
+    quotedDeliveryFee != null ? quotedDeliveryFee : deliveryFee;
+  const totalShown =
+    subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
 
   // Cargar beneficios de suscripcion cuando cambia el subtotal o deliveryFee
   useEffect(() => {
@@ -364,7 +451,7 @@ export default function CheckoutScreen({ route }: any) {
       const subtotalCents = Math.round(subtotal * 100);
       const baseSubtotalCents = Math.round(subtotalCents / 1.15);
       const commissionCents = subtotalCents - baseSubtotalCents;
-      const deliveryFeeCents = Math.round(deliveryFee * 100);
+      const deliveryFeeCents = Math.round(effectiveDeliveryFee * 100);
       const discountCents = appliedCoupon
         ? Math.round(couponDiscount * 100)
         : 0;
@@ -397,6 +484,10 @@ export default function CheckoutScreen({ route }: any) {
         itemSubstitutionPreferences:
           Object.keys(finalItemSubstitutions).length > 0
             ? JSON.stringify(finalItemSubstitutions)
+            : null,
+        substituteProductIds:
+          Object.keys(substituteProductIds).length > 0
+            ? JSON.stringify(substituteProductIds)
             : null,
         couponCode: appliedCoupon ? couponCode.toUpperCase() : null,
         couponDiscount: discountCents || null,
@@ -753,7 +844,7 @@ export default function CheckoutScreen({ route }: any) {
                       navigation.navigate("DigitalPaymentMethod", {
                         orderTotal: total,
                         orderType: orderTypeLocal,
-                        calculatedDeliveryFee: Math.round(deliveryFee * 100),
+                        calculatedDeliveryFee: Math.round(effectiveDeliveryFee * 100),
                       } as any);
                     }}
                     style={styles.changeButton}
@@ -952,54 +1043,112 @@ export default function CheckoutScreen({ route }: any) {
 
                 {showItemSubstitutions && cart && (
                   <View style={{ marginTop: 16 }}>
-                    {cart.items.map((item) => (
-                      <View key={item.id} style={styles.itemSubRow}>
-                        <ThemedText
-                          type="small"
-                          style={{ flex: 1 }}
-                          numberOfLines={1}
-                        >
-                          {item.product.name}
-                        </ThemedText>
-                        <View style={{ flexDirection: "row", gap: 8 }}>
-                          {(
-                            [
-                              "refund",
-                              "call",
-                              "substitute",
-                            ] as SubstitutionOption[]
-                          ).map((option) => {
-                            const currentOption =
-                              itemSubstitutions[item.id] || globalSubstitution;
-                            const isSelected = currentOption === option;
-                            const info = getSubstitutionInfo(option);
-                            return (
-                              <Pressable
-                                key={option}
-                                onPress={() => {
-                                  Haptics.selectionAsync();
-                                  setItemSubstitutions({
-                                    ...itemSubstitutions,
-                                    [item.id]: option,
-                                  });
-                                }}
-                                style={[
-                                  styles.itemSubButton,
-                                  isSelected && { backgroundColor: PRIMARY },
-                                ]}
-                              >
-                                <Feather
-                                  name={info.icon}
-                                  size={14}
-                                  color={isSelected ? "#FFF" : "#6B7280"}
-                                />
-                              </Pressable>
-                            );
-                          })}
+                    {cart.items.map((item) => {
+                      const effective =
+                        itemSubstitutions[item.id] || globalSubstitution;
+                      const chosenId = substituteProductIds[item.id];
+                      return (
+                        <View key={item.id} style={styles.itemSubRow}>
+                          <ThemedText
+                            type="small"
+                            style={{ flex: 1 }}
+                            numberOfLines={1}
+                          >
+                            {item.product.name}
+                          </ThemedText>
+                          <View style={{ flexDirection: "row", gap: 8 }}>
+                            {(
+                              [
+                                "refund",
+                                "call",
+                                "substitute",
+                              ] as SubstitutionOption[]
+                            ).map((option) => {
+                              const currentOption =
+                                itemSubstitutions[item.id] || globalSubstitution;
+                              const isSelected = currentOption === option;
+                              const info = getSubstitutionInfo(option);
+                              return (
+                                <Pressable
+                                  key={option}
+                                  onPress={() => {
+                                    Haptics.selectionAsync();
+                                    setItemSubstitutions({
+                                      ...itemSubstitutions,
+                                      [item.id]: option,
+                                    });
+                                  }}
+                                  style={[
+                                    styles.itemSubButton,
+                                    isSelected && { backgroundColor: PRIMARY },
+                                  ]}
+                                >
+                                  <Feather
+                                    name={info.icon}
+                                    size={14}
+                                    color={isSelected ? "#FFF" : "#6B7280"}
+                                  />
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                          {/* Elegir el producto sustituto concreto */}
+                          {effective === "substitute" && (
+                            <Pressable
+                              onPress={() => {
+                                Haptics.selectionAsync();
+                                setShowSubstitutePicker(item.id);
+                              }}
+                              style={{
+                                width: "100%",
+                                marginTop: 8,
+                                paddingVertical: 8,
+                                paddingHorizontal: 10,
+                                borderRadius: 8,
+                                backgroundColor: PRIMARY + "12",
+                                borderWidth: 1,
+                                borderColor: PRIMARY + "40",
+                              }}
+                            >
+                              <ThemedText type="small" style={{ color: PRIMARY }}>
+                                {chosenId && substituteName(chosenId)
+                                  ? `🔄 Sustituir por: ${substituteName(chosenId)}`
+                                  : "🔄 Elegir producto sustituto…"}
+                              </ThemedText>
+                            </Pressable>
+                          )}
                         </View>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
+                )}
+
+                {/* Botón global de sustituto cuando la preferencia es "sustituir" */}
+                {!showItemSubstitutions && globalSubstitution === "substitute" && (
+                  <Pressable
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setShowSubstitutePicker("__global__");
+                    }}
+                    style={{
+                      marginTop: 12,
+                      paddingVertical: 8,
+                      paddingHorizontal: 10,
+                      borderRadius: 8,
+                      backgroundColor: PRIMARY + "12",
+                      borderWidth: 1,
+                      borderColor: PRIMARY + "40",
+                    }}
+                  >
+                    <ThemedText type="small" style={{ color: PRIMARY }}>
+                      {substituteProductIds["__global__"] &&
+                      substituteName(substituteProductIds["__global__"])
+                        ? `🔄 Sustituir por: ${substituteName(
+                            substituteProductIds["__global__"],
+                          )}`
+                        : "🔄 Elegir producto sustituto…"}
+                    </ThemedText>
+                  </Pressable>
                 )}
               </View>
 
@@ -1063,7 +1212,7 @@ export default function CheckoutScreen({ route }: any) {
                       Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
                     </ThemedText>
                     <ThemedText type="body">
-                      {deliveryFee.toFixed(2)} €
+                      {effectiveDeliveryFee.toFixed(2)} €
                     </ThemedText>
                   </View>
                 )}
@@ -1115,7 +1264,7 @@ export default function CheckoutScreen({ route }: any) {
                 <View style={[styles.summaryRow, styles.totalRow]}>
                   <ThemedText type="h3">Total</ThemedText>
                   <ThemedText type="h2" style={{ color: PRIMARY }}>
-                    {total.toFixed(2)} €
+                    {totalShown.toFixed(2)} €
                   </ThemedText>
                 </View>
               </View>
@@ -1228,6 +1377,93 @@ export default function CheckoutScreen({ route }: any) {
                 </ThemedText>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal selector de producto sustituto */}
+      <Modal
+        visible={showSubstitutePicker !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSubstitutePicker(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setShowSubstitutePicker(null)}
+          />
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <ThemedText type="h4">Elige producto sustituto</ThemedText>
+              <Pressable onPress={() => setShowSubstitutePicker(null)}>
+                <Feather name="x" size={20} color="#1F2937" />
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 380 }}>
+              {businessProducts.length === 0 ? (
+                <ThemedText
+                  type="body"
+                  style={{
+                    color: "#6B7280",
+                    textAlign: "center",
+                    padding: 24,
+                  }}
+                >
+                  Cargando productos del negocio...
+                </ThemedText>
+              ) : (
+                businessProducts
+                  .filter(
+                    (p: any) =>
+                      p.id !==
+                        (showSubstitutePicker === "__global__"
+                          ? ""
+                          : showSubstitutePicker || "") &&
+                      p.available !== false,
+                  )
+                  .map((product: any) => {
+                    const pickerKey = showSubstitutePicker || "";
+                    const isSelected =
+                      substituteProductIds[pickerKey] === product.id;
+                    return (
+                      <Pressable
+                        key={product.id}
+                        onPress={() => {
+                          const key = pickerKey;
+                          setSubstituteProductIds({
+                            ...substituteProductIds,
+                            [key]: product.id,
+                          });
+                          setShowSubstitutePicker(null);
+                        }}
+                        style={[
+                          styles.modalAddress,
+                          isSelected && { borderColor: PRIMARY },
+                        ]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <ThemedText
+                            type="body"
+                            style={{ fontWeight: "600" }}
+                          >
+                            {product.name}
+                          </ThemedText>
+                          <ThemedText type="small" style={{ color: "#6B7280" }}>
+                            €
+                            {typeof product.price === "number"
+                              ? (product.price / 100).toFixed(2)
+                              : "—"}
+                          </ThemedText>
+                        </View>
+                        {isSelected && (
+                          <Feather name="check-circle" size={18} color={PRIMARY} />
+                        )}
+                      </Pressable>
+                    );
+                  })
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>

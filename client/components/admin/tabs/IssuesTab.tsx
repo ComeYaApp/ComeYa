@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   ActivityIndicator,
@@ -343,7 +344,7 @@ export function IssuesTab({ theme, showToast }: TabProps) {
                 }}
               >
                 {[
-                  { icon: "package", label: "Pedido", value: `#${detail.order?.id?.slice(-6).toUpperCase()}` },
+                  { icon: "package", label: "Pedido", value: `${displayOrderNumber(detail.order)}` },
                   { icon: "user", label: "Cliente", value: detail.customer?.name },
                   { icon: "phone", label: "Teléfono", value: detail.customer?.phone },
                   { icon: "briefcase", label: "Negocio", value: detail.order?.businessName },
@@ -961,7 +962,7 @@ export function IssuesTab({ theme, showToast }: TabProps) {
                 </ThemedText>
               </View>
               <ThemedText type="body" style={{ fontWeight: "700" }} numberOfLines={1}>
-                {issue.issueLabel} — #{issue.orderId?.slice(-6).toUpperCase()}
+                {issue.issueLabel} — {displayOrderNumber({ id: issue.orderId })}
               </ThemedText>
               <ThemedText
                 type="caption"

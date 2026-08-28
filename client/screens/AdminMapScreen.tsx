@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,14 @@ import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { apiRequest, apiRequestRaw } from "@/lib/query-client";
 import { useAdminOps, type OpsOrder } from "@/hooks/useAdminOps";
-import { isValidCoord } from "@/utils/directions";
+import {
+  isValidCoord,
+  fetchRouteDirections,
+  distanceMeters,
+  type RouteCoordinate,
+} from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { DriverPin } from "@/components/map/DriverPin";
@@ -64,6 +71,13 @@ export default function AdminMapScreen() {
   const [selected, setSelected] = useState<OpsOrder | null>(null);
   const [nearby, setNearby] = useState<any[] | null>(null);
   const [assigning, setAssigning] = useState(false);
+  // Ruta REAL por calles del pedido seleccionado (nunca línea recta)
+  const [selectedRoute, setSelectedRoute] = useState<RouteCoordinate[]>([]);
+  const lastSelRouteRef = useRef<{
+    origin: RouteCoordinate;
+    destKey: string;
+  } | null>(null);
+  const selRouteLoadingRef = useRef(false);
 
   const {
     kpis,
@@ -86,8 +100,73 @@ export default function AdminMapScreen() {
   const showDrivers = filter === "all" || filter === "drivers";
   const showBusinesses = filter === "all" || filter === "businesses";
 
+  // Ruta real por calles del pedido seleccionado: se pide al proxy (caché
+  // 30 min + OSRM) solo cuando cambia el destino o el repartidor se movió
+  // >150 m. Nunca se dibuja una línea recta de inventario.
+  useEffect(() => {
+    if (!selected?.driver) {
+      setSelectedRoute([]);
+      lastSelRouteRef.current = null;
+      return;
+    }
+    const phase = routePhaseForStatus(selected.status);
+    const origin = {
+      latitude: selected.driver.lat,
+      longitude: selected.driver.lng,
+    };
+    const dest =
+      phase === "to_business" && selected.business
+        ? { latitude: selected.business.lat, longitude: selected.business.lng }
+        : phase === "to_customer" &&
+            selected.customer.lat != null &&
+            selected.customer.lng != null
+          ? {
+              latitude: selected.customer.lat,
+              longitude: selected.customer.lng,
+            }
+          : null;
+
+    if (
+      !dest ||
+      !isValidCoord(origin) ||
+      !isValidCoord(dest as any) ||
+      selRouteLoadingRef.current
+    ) {
+      if (!dest) setSelectedRoute([]);
+      return;
+    }
+
+    const destKey = `${dest.latitude.toFixed(3)},${dest.longitude.toFixed(3)}`;
+    const last = lastSelRouteRef.current;
+    if (
+      last &&
+      last.destKey === destKey &&
+      distanceMeters(last.origin, origin) < 150 &&
+      selectedRoute.length >= 2
+    ) {
+      return; // aún válida
+    }
+
+    selRouteLoadingRef.current = true;
+    fetchRouteDirections(origin, dest as any)
+      .then((r) => {
+        if (r && r.coordinates.length >= 2) {
+          lastSelRouteRef.current = { origin, destKey };
+          setSelectedRoute(r.coordinates);
+        } else {
+          setSelectedRoute([]);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        selRouteLoadingRef.current = false;
+      });
+  }, [selected, selectedRoute.length]);
+
   const focusOrder = useCallback((o: OpsOrder) => {
     setSelected(o);
+    setSelectedRoute([]);
+    lastSelRouteRef.current = null;
     setNearby(null);
     const coords: { latitude: number; longitude: number }[] = [];
     if (o.business) {
@@ -207,7 +286,7 @@ export default function AdminMapScreen() {
                   latitude: o.customer.lat,
                   longitude: o.customer.lng,
                 }}
-                title={`#${o.id.slice(-6)} · ${meta.label}`}
+                title={`${displayOrderNumber(o)} · ${meta.label}`}
                 description={`${o.customer.name} · ${euro(o.total)} · ${o.minutesActive ?? "?"} min`}
                 anchor={{ x: 0.5, y: 1 }}
                 onPress={() => focusOrder(o)}
@@ -261,40 +340,18 @@ export default function AdminMapScreen() {
             );
           })}
 
-        {/* Ruta del pedido seleccionado (etapa actual) */}
+        {/* Ruta REAL por calles del pedido seleccionado (etapa actual).
+            Sin geometría no se dibuja nada — nunca líneas rectas. */}
         {(() => {
           const dlat = selected?.driver?.lat;
           const dlng = selected?.driver?.lng;
           if (!selected || dlat == null || dlng == null) return null;
+          if (selectedRoute.length < 2) return null;
 
-          const isPickup = [
-            "assigned_driver",
-            "ready",
-            "accepted",
-            "preparing",
-          ].includes(selected.status);
-
-          let dest: { latitude: number; longitude: number } | null = null;
-          if (isPickup && selected.business) {
-            dest = {
-              latitude: selected.business.lat,
-              longitude: selected.business.lng,
-            };
-          } else if (
-            !isPickup &&
-            selected.customer.lat != null &&
-            selected.customer.lng != null
-          ) {
-            dest = {
-              latitude: selected.customer.lat,
-              longitude: selected.customer.lng,
-            };
-          }
-          if (!dest) return null;
-
+          const isPickup = routePhaseForStatus(selected.status) === "to_business";
           return (
             <Polyline
-              coordinates={[{ latitude: dlat, longitude: dlng }, dest]}
+              coordinates={selectedRoute}
               strokeColor={isPickup ? "#F59E0B" : "#10B981"}
               strokeWidth={4}
             />
@@ -423,7 +480,7 @@ export default function AdminMapScreen() {
           <ScrollView>
             <View style={s.rowBetween}>
               <Text style={[s.title, { color: theme.text }]}>
-                #{selected.id.slice(-6)}
+                {displayOrderNumber(selected)}
               </Text>
               <TouchableOpacity onPress={() => setSelected(null)} style={s.iconBtn}>
                 <Feather name="x" size={18} color={theme.textSecondary} />

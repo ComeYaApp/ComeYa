@@ -21,6 +21,8 @@ import {
   distanceMeters,
   RouteCoordinate,
 } from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
+import { animateMarkerTo } from "@/utils/smoothMarker";
 import {
   pinIcon,
   driverIcon,
@@ -172,37 +174,60 @@ export function CollapsibleMap({
   const [mapError, setMapError] = useState(false);
   // Ruta real por calles (Google Directions vía /api/gps/directions)
   const [routePath, setRoutePath] = useState<RouteCoordinate[]>([]);
+  // Modo de desplazamiento del cliente en recogida propia (coche o a pie)
+  const [pickupMode, setPickupMode] = useState<"driving" | "walking">("driving");
   const lastRouteRef = useRef<{
     origin: RouteCoordinate;
     destination: RouteCoordinate;
   } | null>(null);
   const routeLoadingRef = useRef(false);
+  // Marcador del repartidor persistente (animado entre fixes del websocket)
+  const driverMarkerRef = useRef<any>(null);
 
   const statusInfo = isPickup
     ? (STATUS_LABELS_PICKUP[status] ?? STATUS_LABELS_PICKUP.preparing)
     : (STATUS_LABELS[status] ?? STATUS_LABELS.preparing);
   const hasDriver = !isPickup && (!!deliveryPersonLocation || !!driverName);
 
-  // Recalcular ruta real cuando el repartidor avanza (>150 m) o cambia el
-  // destino. Recogida: cliente → restaurante. Delivery: repartidor → casa.
+  // Ruta real por calles según la FASE del pedido (misma lógica que el
+  // mapa nativo y los demás roles):
+  //  - recogida (accepted/preparing/ready): repartidor → NEGOCIO
+  //  - entrega (picked_up/on_the_way/in_transit/arriving): repartidor → CLIENTE
+  //  - sin repartidor todavía: ruta prevista negocio → cliente
+  // Pickup: ruta del CLIENTE a la TIENDA (va él a buscar su pedido).
   useEffect(() => {
     const driver =
       !isPickup && isValidLocation(deliveryPersonLocation)
         ? deliveryPersonLocation
         : null;
-    const destination = isPickup
-      ? isValidLocation(businessLocation)
-        ? businessLocation
-        : null
-      : isValidLocation(customerLocation)
+    const phase = routePhaseForStatus(status);
+    let origin: Location | null = null;
+    let destination: Location | null = null;
+
+    if (isPickup) {
+      origin = isValidLocation(customerLocation) ? customerLocation : null;
+      destination = isValidLocation(businessLocation) ? businessLocation : null;
+    } else if (driver && phase !== "none") {
+      origin = driver;
+      destination =
+        phase === "to_business"
+          ? isValidLocation(businessLocation)
+            ? businessLocation
+            : null
+          : isValidLocation(customerLocation)
+            ? customerLocation
+            : null;
+    } else if (
+      phase !== "none" ||
+      ["pending", "confirmed"].includes(String(status).toLowerCase())
+    ) {
+      // Aún sin posición del repartidor: ruta prevista del local al cliente
+      origin = isValidLocation(businessLocation) ? businessLocation : null;
+      destination = isValidLocation(customerLocation)
         ? customerLocation
         : null;
-    const origin = isPickup
-      ? isValidLocation(customerLocation)
-        ? customerLocation
-        : null
-      : (driver ??
-        (isValidLocation(businessLocation) ? businessLocation : null));
+    }
+
     if (!origin || !destination) {
       setRoutePath([]);
       lastRouteRef.current = null;
@@ -220,11 +245,13 @@ export function CollapsibleMap({
 
     if (routeLoadingRef.current) return;
     routeLoadingRef.current = true;
-    fetchRouteDirections(origin, destination)
+    fetchRouteDirections(origin, destination, isPickup ? pickupMode : "driving")
       .then((result) => {
         lastRouteRef.current = { origin, destination };
         if (result && result.coordinates.length >= 2) {
           setRoutePath(result.coordinates);
+        } else {
+          setRoutePath([]);
         }
       })
       .finally(() => {
@@ -232,6 +259,8 @@ export function CollapsibleMap({
       });
   }, [
     isPickup,
+    pickupMode,
+    status,
     deliveryPersonLocation?.latitude,
     deliveryPersonLocation?.longitude,
     businessLocation?.latitude,
@@ -240,15 +269,14 @@ export function CollapsibleMap({
     customerLocation?.longitude,
   ]);
 
-  const routeCoords =
-    routePath.length >= 2
-      ? routePath
-      : isPickup
-        ? [customerLocation, businessLocation].filter(isValidLocation)
-        : [businessLocation, deliveryPersonLocation, customerLocation].filter(
-            isValidLocation,
-          );
-  const hasAnyLocation = routeCoords.length > 0;
+  // Solo rutas reales por calles: sin geometría descargada no se dibuja
+  // NADA (nada de líneas rectas o triángulos inventados).
+  const routeCoords = routePath;
+  const hasAnyLocation = [
+    businessLocation,
+    deliveryPersonLocation,
+    customerLocation,
+  ].some(isValidLocation);
 
   // Cargar Google Maps
   useEffect(() => {
@@ -291,17 +319,22 @@ export function CollapsibleMap({
         // Limpiar markers
         markersRef.current.forEach((m) => m.setMap(null));
         markersRef.current = [];
+        if (driverMarkerRef.current) {
+          driverMarkerRef.current.setMap(null);
+          driverMarkerRef.current = null;
+        }
       }
     };
   }, [mapsReady]);
 
   // Actualizar markers y polyline
+  const fitSignatureRef = useRef<string>("");
   useEffect(() => {
     if (!gmap.current) return;
     const google = (window as any).google;
     if (!google) return;
 
-    // Limpiar markers anteriores
+    // Limpiar markers anteriores (el del repartidor es persistente y animado)
     markersRef.current.forEach((m) => m?.setMap(null));
     markersRef.current = [];
     if (polylineRef.current) {
@@ -332,18 +365,29 @@ export function CollapsibleMap({
       bounds.extend(marker.getPosition()!);
     }
 
-    // Repartidor — círculo con su vehículo
+    // Repartidor — círculo con su vehículo (persistente: se DESLIZA entre
+    // fixes del websocket en vez de saltar/recrearse)
     if (!isPickup && isValidLocation(deliveryPersonLocation)) {
       const vehicle = vehicleMarkerMeta(driverVehicle);
-      const marker = new google.maps.Marker({
-        position: { lat: deliveryPersonLocation!.latitude, lng: deliveryPersonLocation!.longitude },
-        map: gmap.current,
-        title: driverName || "Repartidor",
-        icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
-        animation: google.maps.Animation.DROP,
-      });
-      markersRef.current.push(marker);
-      bounds.extend(marker.getPosition()!);
+      const pos = {
+        lat: deliveryPersonLocation!.latitude,
+        lng: deliveryPersonLocation!.longitude,
+      };
+      if (driverMarkerRef.current) {
+        animateMarkerTo(driverMarkerRef.current, pos);
+      } else {
+        driverMarkerRef.current = new google.maps.Marker({
+          position: pos,
+          map: gmap.current,
+          title: driverName || "Repartidor",
+          icon: asGoogleIcon(google, driverIcon(vehicle.icon)),
+          animation: google.maps.Animation.DROP,
+        });
+      }
+      bounds.extend(driverMarkerRef.current.getPosition()!);
+    } else if (driverMarkerRef.current) {
+      driverMarkerRef.current.setMap(null);
+      driverMarkerRef.current = null;
     }
 
     // Cliente — casa azul
@@ -362,7 +406,7 @@ export function CollapsibleMap({
       bounds.extend(marker.getPosition()!);
     }
 
-    // Ruta entre puntos
+    // Ruta entre puntos (solo geometría real)
     const coords = routeCoords;
     if (coords.length >= 2) {
       polylineRef.current = new google.maps.Polyline({
@@ -375,12 +419,26 @@ export function CollapsibleMap({
       });
     }
 
-    // Ajustar mapa
-    if (!bounds.isEmpty()) {
-      gmap.current.fitBounds(bounds, 40);
-    } else if (isValidLocation(customerLocation)) {
-      gmap.current.setCenter({ lat: customerLocation!.latitude, lng: customerLocation!.longitude });
-      gmap.current.setZoom(15);
+    // Ajustar cámara SOLO cuando cambia el conjunto de puntos visibles o la
+    // ruta — no con cada movimiento del repartidor (mareo de cámara)
+    const signature = [
+      isPickup ? "pickup" : "del",
+      isValidLocation(businessLocation) ? "biz" : "",
+      isValidLocation(customerLocation) ? "cust" : "",
+      !isPickup && isValidLocation(deliveryPersonLocation) ? "drv" : "",
+      coords.length >= 2 ? "route" : "noroute",
+    ].join("|");
+    if (signature !== fitSignatureRef.current) {
+      fitSignatureRef.current = signature;
+      if (!bounds.isEmpty()) {
+        gmap.current.fitBounds(bounds, 40);
+      } else if (isValidLocation(customerLocation)) {
+        gmap.current.setCenter({
+          lat: customerLocation!.latitude,
+          lng: customerLocation!.longitude,
+        });
+        gmap.current.setZoom(15);
+      }
     }
   }, [
     businessLocation,
@@ -388,6 +446,7 @@ export function CollapsibleMap({
     customerLocation,
     routeCoords,
     driverName,
+    driverVehicle,
     isPickup,
   ]);
 

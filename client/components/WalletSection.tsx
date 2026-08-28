@@ -9,6 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../contexts/AuthContext";
 import { API_CONFIG } from "../constants/config";
+import { formatCurrency } from "@/utils/currency";
 
 interface WalletData {
   balance: number;
@@ -86,7 +87,7 @@ export default function WalletSection({
           <Text style={styles.compactTitle}>Mi Wallet</Text>
         </View>
         <Text style={[styles.compactAmount, { color: getBalanceColor() }]}>
-          ${wallet ? (wallet.availableForWithdrawal / 100).toFixed(2) : "0.00"}
+          {formatCurrency(wallet?.availableForWithdrawal ?? 0)}
         </Text>
         <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
       </TouchableOpacity>
@@ -113,14 +114,14 @@ export default function WalletSection({
         >
           <Text style={styles.balanceLabel}>Saldo Disponible</Text>
           <Text style={[styles.balanceAmount, { color: getBalanceColor() }]}>
-            ${(wallet.availableForWithdrawal / 100).toFixed(2)} €
+            {formatCurrency(wallet.availableForWithdrawal)}
           </Text>
 
           {wallet.cashOwed > 0 && (
             <View style={styles.warningBanner}>
               <Ionicons name="warning-outline" size={14} color="#F59E0B" />
               <Text style={styles.warningText}>
-                Efectivo pendiente: ${(wallet.cashOwed / 100).toFixed(2)}
+                Efectivo pendiente: {formatCurrency(wallet.cashOwed)}
               </Text>
             </View>
           )}
@@ -129,19 +130,19 @@ export default function WalletSection({
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Ganado</Text>
               <Text style={styles.statValue}>
-                ${(wallet.totalEarned / 100).toFixed(0)}
+                {formatCurrency(wallet.totalEarned, 0)}
               </Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Retirado</Text>
               <Text style={styles.statValue}>
-                ${(wallet.totalWithdrawn / 100).toFixed(0)}
+                {formatCurrency(wallet.totalWithdrawn, 0)}
               </Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Pendiente</Text>
               <Text style={styles.statValue}>
-                ${(wallet.pendingBalance / 100).toFixed(0)}
+                {formatCurrency(wallet.pendingBalance, 0)}
               </Text>
             </View>
           </View>

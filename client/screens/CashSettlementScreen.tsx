@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
   StyleSheet,
@@ -103,7 +104,7 @@ export default function CashSettlementScreen() {
       >
         <View style={styles.orderHeader}>
           <View style={{ flex: 1 }}>
-            <ThemedText type="h4">Pedido #{item.id.slice(-6)}</ThemedText>
+            <ThemedText type="h4">Pedido {displayOrderNumber(item)}</ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary }}>
               {new Date(item.deliveredAt).toLocaleDateString("es-VE")} -{" "}
               {new Date(item.deliveredAt).toLocaleTimeString("es-VE", {

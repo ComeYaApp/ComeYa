@@ -94,8 +94,26 @@ export async function sendOrderStatusNotification(
         const driverName = driver?.name?.split(" ")[0] || "Tu repartidor";
         const eta = order.estimatedDeliveryTime || 15;
         notification = {
-          title: `${driverName} va en camino 🚗`,
+          title: `${driverName} recogió tu pedido 📦`,
           body: `Llega en ${eta} min`,
+          data: { orderId, screen: "OrderTracking" },
+        };
+      }
+      break;
+
+    case "on_the_way":
+    case "in_transit":
+      if (order.deliveryPersonId) {
+        const [driver] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, order.deliveryPersonId))
+          .limit(1);
+
+        const driverName = driver?.name?.split(" ")[0] || "Tu repartidor";
+        notification = {
+          title: `${driverName} va en camino 🚗`,
+          body: "Tu pedido está de camino a tu puerta",
           data: { orderId, screen: "OrderTracking" },
         };
       }

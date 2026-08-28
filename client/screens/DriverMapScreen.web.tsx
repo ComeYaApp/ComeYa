@@ -17,6 +17,8 @@ import {
   fetchRouteDirections,
   distanceMeters,
 } from "@/utils/directions";
+import { routePhaseForStatus } from "@/utils/routePhase";
+import { animateMarkerTo } from "@/utils/smoothMarker";
 import {
   pinIcon,
   driverIcon,
@@ -121,7 +123,8 @@ export default function DriverMapScreen({
 
   // ── Dibujar ruta real por calles entre dos puntos ─────────────────────────
   // Vía el proxy del servidor (Google Directions con fallback OSRM). Solo se
-  // re-pide si el origen se movió >100 m; sin geometría, línea discontinua.
+  // re-pide si el origen se movió >100 m; SIN geometría real NO se dibuja
+  // ninguna línea (nada de líneas rectas o discontinuas inventadas).
   const routeCoordsRef = useRef<{ lat: number; lng: number }[] | null>(null);
   const lastRouteFromRef = useRef<{ lat: number; lng: number } | null>(null);
   const drawRoute = useCallback(
@@ -159,37 +162,28 @@ export default function DriverMapScreen({
         }
       }
 
-      const hasRealRoute = !!routeCoordsRef.current;
       if (routeLine.current) routeLine.current.setMap(null);
-      routeLine.current = new google.maps.Polyline({
-        path: hasRealRoute ? routeCoordsRef.current! : [from, to],
-        geodesic: true,
-        strokeColor: ComeYaColors.primary,
-        strokeOpacity: hasRealRoute ? 0.9 : 0,
-        strokeWeight: 4,
-        ...(hasRealRoute
-          ? {}
-          : {
-              icons: [
-                {
-                  icon: {
-                    path: "M 0,-1 0,1",
-                    strokeOpacity: 0.7,
-                    scale: 3,
-                  },
-                  offset: "0",
-                  repeat: "16px",
-                },
-              ],
-            }),
-        map: gmap.current,
-      });
-      if (!hasRealRoute) calcEta(from.lat, from.lng, to.lat, to.lng);
+      if (routeCoordsRef.current) {
+        routeLine.current = new google.maps.Polyline({
+          path: routeCoordsRef.current,
+          geodesic: true,
+          strokeColor: ComeYaColors.primary,
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+          map: gmap.current,
+        });
+      } else {
+        routeLine.current = null;
+        calcEta(from.lat, from.lng, to.lat, to.lng);
+      }
     },
     [],
   );
 
   // ── Inicializar mapa ────────────────────────────────────────────────────────
+  const userLocationRef = useRef<{ lat: number; lng: number } | null>(null);
+  const destRef = useRef<{ lat: number; lng: number } | null>(null);
+
   useEffect(() => {
     if (!mapsReady || !mapRef.current || gmap.current) return;
     const google = (window as any).google;
@@ -207,12 +201,20 @@ export default function DriverMapScreen({
     let lastPostAt = 0;
     watchId.current = navigator.geolocation?.watchPosition(
       (pos) => {
+        // Fix impreciso: no mover el marcador ni subirlo al servidor
+        if (
+          typeof pos.coords.accuracy === "number" &&
+          pos.coords.accuracy > 50
+        )
+          return;
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
+        userLocationRef.current = loc;
         gmap.current?.panTo(loc);
 
         if (driverMk.current) {
-          driverMk.current.setPosition(loc);
+          // Movimiento fluido entre fixes
+          animateMarkerTo(driverMk.current, loc, 900);
         } else {
           driverMk.current = new google.maps.Marker({
             position: loc,
@@ -237,72 +239,117 @@ export default function DriverMapScreen({
           apiRequest("POST", "/api/delivery/location", {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy ?? undefined,
+            timestamp: pos.timestamp ?? now,
           }).catch(() => {});
         }
 
         // Redibujar ruta si hay destino
-        if (destMk.current) {
-          const dest = destMk.current.getPosition();
-          drawRoute(google, loc, { lat: dest.lat(), lng: dest.lng() });
+        if (destRef.current) {
+          drawRoute(google, loc, destRef.current);
         }
       },
       undefined,
       { enableHighAccuracy: true, maximumAge: 5000 },
     ) as unknown as number;
 
-    // ── Cargar pedido activo ──
+    return () => {
+      if (watchId.current !== null)
+        navigator.geolocation?.clearWatch(watchId.current);
+    };
+  }, [mapsReady, driverVehicle, drawRoute]);
+
+  // ── Cargar/actualizar pedido activo (30s: el destino cambia al recoger) ───
+  const activeOrderRef = useRef<any>(null);
+  const loadActiveOrder = useCallback(() => {
+    if (!mapsReady || !gmap.current) return;
+    const google = (window as any).google;
     apiRequest("GET", "/api/delivery/active-order")
       .then((r) => r.json())
       .then((data) => {
         const order = data.order;
-        if (!order) return;
+        if (!order) {
+          setActiveOrder(null);
+          if (destMk.current) {
+            destMk.current.setMap(null);
+            destMk.current = null;
+          }
+          destRef.current = null;
+          return;
+        }
+        const prevPhase = activeOrderRef.current
+          ? routePhaseForStatus(activeOrderRef.current.status)
+          : null;
+        const phase = routePhaseForStatus(order.status);
+        const phaseChanged = prevPhase !== phase;
         setActiveOrder(order);
+        activeOrderRef.current = order;
 
-        const lat = destLat
-          ? parseFloat(destLat)
-          : parseFloat(order.deliveryLatitude ?? "0");
-        const lng = destLng
-          ? parseFloat(destLng)
-          : parseFloat(order.deliveryLongitude ?? "0");
+        // Destino por FASE (props explícitas tienen prioridad):
+        // recogida → NEGOCIO · entrega → CLIENTE
+        const propLat = destLat ? parseFloat(destLat) : NaN;
+        const propLng = destLng ? parseFloat(destLng) : NaN;
+        const hasProps = Number.isFinite(propLat) && propLat !== 0;
+        const lat = hasProps
+          ? propLat
+          : phase === "to_business"
+            ? parseFloat(order.businessLatitude ?? "0")
+            : parseFloat(order.deliveryLatitude ?? "0");
+        const lng = hasProps
+          ? propLng
+          : phase === "to_business"
+            ? parseFloat(order.businessLongitude ?? "0")
+            : parseFloat(order.deliveryLongitude ?? "0");
         if (!lat || !lng) return;
 
         const destPos = { lat, lng };
+        destRef.current = destPos;
+        if (phaseChanged) {
+          // Fase nueva → geometría nueva
+          routeCoordsRef.current = null;
+          lastRouteFromRef.current = null;
+        }
 
-        // Marker destino — casa azul
-        if (destMk.current) destMk.current.setMap(null);
-        destMk.current = new google.maps.Marker({
-          position: destPos,
-          map: gmap.current,
-          title: "Destino de entrega",
-          icon: asGoogleIcon(
-            google,
-            pinIcon(CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
-          ),
-        });
+        const toBusiness = phase === "to_business";
+        const title = toBusiness ? "Recogida en el local" : "Destino de entrega";
+        if (destMk.current) {
+          destMk.current.setPosition(destPos);
+          destMk.current.setTitle(title);
+        } else {
+          destMk.current = new google.maps.Marker({
+            position: destPos,
+            map: gmap.current,
+            title,
+            icon: asGoogleIcon(
+              google,
+              pinIcon(CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
+            ),
+          });
+        }
 
         gmap.current?.panTo(destPos);
         gmap.current?.setZoom(15);
 
         // Dibujar ruta si ya tenemos ubicación del driver
-        if (userLocation) drawRoute(google, userLocation, destPos);
+        if (userLocationRef.current) {
+          drawRoute(google, userLocationRef.current, destPos);
+        }
       })
       .catch(() => {});
+  }, [mapsReady, destLat, destLng, drawRoute]);
 
-    return () => {
-      if (watchId.current !== null)
-        navigator.geolocation?.clearWatch(watchId.current);
-    };
-  }, [mapsReady, orderId, destLat, destLng]);
+  useEffect(() => {
+    loadActiveOrder();
+    const t = setInterval(loadActiveOrder, 30000);
+    return () => clearInterval(t);
+  }, [loadActiveOrder]);
 
   const openGoogleMaps = () => {
-    if (!activeOrder) return;
-    const lat = destLat ?? activeOrder.deliveryLatitude;
-    const lng = destLng ?? activeOrder.deliveryLongitude;
-    if (lat && lng)
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-        "_blank",
-      );
+    if (!destRef.current) return;
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${destRef.current.lat},${destRef.current.lng}`,
+      "_blank",
+    );
   };
 
   const centerOnMe = () => {
