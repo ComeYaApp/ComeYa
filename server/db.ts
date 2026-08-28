@@ -176,149 +176,166 @@ if (isTest && useDbStubs) {
       })
       .catch((e) => console.error("orderNumberService init:", e));
 
-    // Test connection on startup and run migrations
+    // Test connection on startup and run migrations (idempotentes)
     connection
       .getConnection()
       .then(async (conn) => {
         console.log("✅ Database connected successfully");
-
-        try {
-          await conn.query(
-            `ALTER TABLE businesses ADD COLUMN custom_commission INT DEFAULT NULL`,
-          );
-          console.log("Added custom_commission to businesses");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note:", err.message);
-        }
-
-        // proximity_alerts / delivery_proofs: las tablas antiguas se crearon
-        // sin default en el id y los INSERT fallaban con ER_NO_DEFAULT_FOR_FIELD
-        for (const table of ["proximity_alerts", "delivery_proofs"]) {
-          try {
-            await conn.query(
-              `ALTER TABLE ${table} MODIFY id VARCHAR(255) NOT NULL DEFAULT (UUID())`,
-            );
-            console.log(`✅ ${table} id default UUID asegurado`);
-          } catch (err: any) {
-            console.log(`Migration note (${table}):`, err.message);
-          }
-        }
-
-        // Fecha programada en el pedido (pedidos programados materializados)
-        try {
-          await conn.query(
-            `ALTER TABLE orders ADD COLUMN scheduled_for TIMESTAMP NULL DEFAULT NULL`,
-          );
-          console.log("✅ Added scheduled_for to orders");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note (scheduled_for):", err.message);
-        }
-
-        try {
-          await conn.query(
-            `ALTER TABLE users ADD COLUMN profile_image TEXT DEFAULT NULL`,
-          );
-          console.log("Added profile_image to users");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note:", err.message);
-        }
-
-        try {
-          await conn.query(
-            `ALTER TABLE users ADD COLUMN bank_account TEXT DEFAULT NULL`,
-          );
-          console.log("Added bank_account to users");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note:", err.message);
-        }
-
-        // Chat messages: columna para almacenar historial de chat cliente↔repartidor
-        try {
-          await conn.query(
-            `ALTER TABLE orders ADD COLUMN chat_messages TEXT DEFAULT NULL`,
-          );
-          console.log("✅ Added chat_messages to orders");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note:", err.message);
-        }
-
-        // Ocultación de pedidos por el admin (soft delete): desaparecen de
-        // las listas de los 4 roles pero se conservan para auditoría
-        try {
-          await conn.query(
-            `ALTER TABLE orders ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL`,
-          );
-          console.log("✅ Added deleted_at to orders");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note (deleted_at):", err.message);
-        }
-
-        // Reviews: calificación del repartidor (fallaba el stats del driver y
-        // el INSERT de reseñas con "Unknown column 'delivery_person_rating'")
-        try {
-          await conn.query(
-            `ALTER TABLE reviews ADD COLUMN delivery_person_rating INT DEFAULT NULL`,
-          );
-          console.log("✅ Added delivery_person_rating to reviews");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note:", err.message);
-        }
-
-        // Reviews: propina al repartidor en céntimos
-        try {
-          await conn.query(
-            `ALTER TABLE reviews ADD COLUMN tip_amount INT DEFAULT NULL`,
-          );
-          console.log("✅ Added tip_amount to reviews");
-        } catch (err: any) {
-          if (err.code !== "ER_DUP_FIELDNAME")
-            console.log("Migration note:", err.message);
-        }
-
-        // Reviews: columnas de valoración (comida/envío/empaque) por si la
-        // tabla de producción se creó con el esquema antiguo
-        for (const col of ["food_rating", "delivery_rating", "packaging_rating"]) {
-          try {
-            await conn.query(
-              `ALTER TABLE reviews ADD COLUMN ${col} INT DEFAULT NULL`,
-            );
-            console.log(`✅ Added ${col} to reviews`);
-          } catch (err: any) {
-            if (err.code !== "ER_DUP_FIELDNAME")
-              console.log("Migration note:", err.message);
-          }
-        }
-
-        // Reviews: columnas que escribe el INSERT de reseñas — sin ellas el
-        // envío fallaba siempre ("No se pudo enviar la reseña")
-        for (const [col, ddl] of [
-          ["delivery_person_id", "VARCHAR(255) DEFAULT NULL"],
-          ["photos", "TEXT DEFAULT NULL"],
-          ["tags", "TEXT DEFAULT NULL"],
-        ] as const) {
-          try {
-            await conn.query(
-              `ALTER TABLE reviews ADD COLUMN ${col} ${ddl}`,
-            );
-            console.log(`✅ Added ${col} to reviews`);
-          } catch (err: any) {
-            if (err.code !== "ER_DUP_FIELDNAME")
-              console.log("Migration note:", err.message);
-          }
-        }
-
         conn.release();
+        // Migraciones: también aquí para scripts/entry points alternativos.
+        // server.ts las AWAITA explícitamente antes de arrancar los crons.
+        runStartupMigrations().catch((err) =>
+          console.error("Migration error:", err.message),
+        );
       })
       .catch((err) => {
         console.error("❌ Database connection failed:", err.message);
       });
+  }
+}
+
+/**
+ * Migraciones idempotentes de arranque. server.ts las espera ANTES de
+ * lanzar los crons y los jobs de fondo: sin esta espera, las queries con
+ * columnas nuevas (p. ej. orders.deleted_at) fallaban con "Unknown column"
+ * durante el primer segundo del deploy (carrera de arranque).
+ */
+export async function runStartupMigrations(): Promise<void> {
+  const conn = await connection.getConnection();
+  try {
+    try {
+      await conn.query(
+        `ALTER TABLE businesses ADD COLUMN custom_commission INT DEFAULT NULL`,
+      );
+      console.log("Added custom_commission to businesses");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note:", err.message);
+    }
+
+    // proximity_alerts / delivery_proofs: las tablas antiguas se crearon
+    // sin default en el id y los INSERT fallaban con ER_NO_DEFAULT_FOR_FIELD
+    for (const table of ["proximity_alerts", "delivery_proofs"]) {
+      try {
+        await conn.query(
+          `ALTER TABLE ${table} MODIFY id VARCHAR(255) NOT NULL DEFAULT (UUID())`,
+        );
+        console.log(`✅ ${table} id default UUID asegurado`);
+      } catch (err: any) {
+        console.log(`Migration note (${table}):`, err.message);
+      }
+    }
+
+    // Fecha programada en el pedido (pedidos programados materializados)
+    try {
+      await conn.query(
+        `ALTER TABLE orders ADD COLUMN scheduled_for TIMESTAMP NULL DEFAULT NULL`,
+      );
+      console.log("✅ Added scheduled_for to orders");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (scheduled_for):", err.message);
+    }
+
+    try {
+      await conn.query(
+        `ALTER TABLE users ADD COLUMN profile_image TEXT DEFAULT NULL`,
+      );
+      console.log("Added profile_image to users");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note:", err.message);
+    }
+
+    try {
+      await conn.query(
+        `ALTER TABLE users ADD COLUMN bank_account TEXT DEFAULT NULL`,
+      );
+      console.log("Added bank_account to users");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note:", err.message);
+    }
+
+    // Chat messages: columna para almacenar historial de chat cliente↔repartidor
+    try {
+      await conn.query(
+        `ALTER TABLE orders ADD COLUMN chat_messages TEXT DEFAULT NULL`,
+      );
+      console.log("✅ Added chat_messages to orders");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note:", err.message);
+    }
+
+    // Ocultación de pedidos por el admin (soft delete): desaparecen de
+    // las listas de los 4 roles pero se conservan para auditoría
+    try {
+      await conn.query(
+        `ALTER TABLE orders ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL`,
+      );
+      console.log("✅ Added deleted_at to orders");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (deleted_at):", err.message);
+    }
+
+    // Reviews: calificación del repartidor (fallaba el stats del driver y
+    // el INSERT de reseñas con "Unknown column 'delivery_person_rating'")
+    try {
+      await conn.query(
+        `ALTER TABLE reviews ADD COLUMN delivery_person_rating INT DEFAULT NULL`,
+      );
+      console.log("✅ Added delivery_person_rating to reviews");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note:", err.message);
+    }
+
+    // Reviews: propina al repartidor en céntimos
+    try {
+      await conn.query(
+        `ALTER TABLE reviews ADD COLUMN tip_amount INT DEFAULT NULL`,
+      );
+      console.log("✅ Added tip_amount to reviews");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note:", err.message);
+    }
+
+    // Reviews: columnas de valoración (comida/envío/empaque) por si la
+    // tabla de producción se creó con el esquema antiguo
+    for (const col of ["food_rating", "delivery_rating", "packaging_rating"]) {
+      try {
+        await conn.query(
+          `ALTER TABLE reviews ADD COLUMN ${col} INT DEFAULT NULL`,
+        );
+        console.log(`✅ Added ${col} to reviews`);
+      } catch (err: any) {
+        if (err.code !== "ER_DUP_FIELDNAME")
+          console.log("Migration note:", err.message);
+      }
+    }
+
+    // Reviews: columnas que escribe el INSERT de reseñas — sin ellas el
+    // envío fallaba siempre ("No se pudo enviar la reseña")
+    for (const [col, ddl] of [
+      ["delivery_person_id", "VARCHAR(255) DEFAULT NULL"],
+      ["photos", "TEXT DEFAULT NULL"],
+      ["tags", "TEXT DEFAULT NULL"],
+    ] as const) {
+      try {
+        await conn.query(
+          `ALTER TABLE reviews ADD COLUMN ${col} ${ddl}`,
+        );
+        console.log(`✅ Added ${col} to reviews`);
+      } catch (err: any) {
+        if (err.code !== "ER_DUP_FIELDNAME")
+          console.log("Migration note:", err.message);
+      }
+    }
+  } finally {
+    conn.release();
   }
 }
 

@@ -188,24 +188,32 @@ const server = httpServer.listen(PORT, () => {
       "⚠️  Pago Móvil no configurado - agrega MOUZO_PAGO_MOVIL_PHONE en .env",
     );
 
-  import("./businessHoursCron")
-    .then(({ startBusinessHoursCron }) => startBusinessHoursCron())
-    .catch(console.error);
-  import("./weeklySettlementCron")
-    .then(({ WeeklySettlementCron }) => WeeklySettlementCron.start())
-    .catch(console.error);
-  import("./autoConfirmDeliveryCron")
-    .then(({ startAutoConfirmCron }) => startAutoConfirmCron())
-    .catch(console.error);
-  import("./pickupNotificationCron")
-    .then(({ startPickupNotificationCron }) => startPickupNotificationCron())
-    .catch(console.error);
-  import("./staleOrdersCron")
-    .then(({ startStaleOrdersCron }) => startStaleOrdersCron())
-    .catch(console.error);
-  // Jobs en segundo plano: liberación de fondos, pedidos programados,
-  // desbloqueo de repartidores, limpieza de strikes, etc.
-  import("./backgroundJobs")
-    .then(({ startBackgroundJobs }) => startBackgroundJobs())
-    .catch(console.error);
+  // Migraciones de arranque ANTES que los crons: sin esta espera, las
+  // queries con columnas nuevas (orders.deleted_at…) fallaban con
+  // "Unknown column" durante el primer segundo del deploy
+  import("./db")
+    .then(({ runStartupMigrations }) => runStartupMigrations())
+    .then(() => {
+      import("./businessHoursCron")
+        .then(({ startBusinessHoursCron }) => startBusinessHoursCron())
+        .catch(console.error);
+      import("./weeklySettlementCron")
+        .then(({ WeeklySettlementCron }) => WeeklySettlementCron.start())
+        .catch(console.error);
+      import("./autoConfirmDeliveryCron")
+        .then(({ startAutoConfirmCron }) => startAutoConfirmCron())
+        .catch(console.error);
+      import("./pickupNotificationCron")
+        .then(({ startPickupNotificationCron }) => startPickupNotificationCron())
+        .catch(console.error);
+      import("./staleOrdersCron")
+        .then(({ startStaleOrdersCron }) => startStaleOrdersCron())
+        .catch(console.error);
+      // Jobs en segundo plano: liberación de fondos, pedidos programados,
+      // desbloqueo de repartidores, limpieza de strikes, etc.
+      import("./backgroundJobs")
+        .then(({ startBackgroundJobs }) => startBackgroundJobs())
+        .catch(console.error);
+    })
+    .catch((err) => console.error("Startup migrations error:", err.message));
 });
