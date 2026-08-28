@@ -10,7 +10,7 @@ if (!process.env.DATABASE_URL) {
   dotenv.config();
 }
 
-console.log("🚀 MOUZO Background Jobs Runner");
+console.log("🚀 ComeYa Background Jobs Runner");
 console.log(`📅 Started at: ${new Date().toISOString()}`);
 console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 

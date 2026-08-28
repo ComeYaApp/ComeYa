@@ -85,7 +85,6 @@ export type Theme = typeof theme;
 // Export individual objects for easier imports
 export const ComeYaColors = theme.colors;
 export const RabbitFoodColors = theme.colors; // Legacy alias
-export const MouzoColors = theme.colors; // Legacy alias
 export const Spacing = theme.spacing;
 export const BorderRadius = theme.borderRadius;
 export const Typography = theme.typography;

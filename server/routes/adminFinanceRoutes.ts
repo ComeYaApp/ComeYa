@@ -85,8 +85,8 @@ router.get(
         },
         breakdown: {
           productMarkup: totalEarnings,
-          deliveryCommission: 0, // MOUZO no cobra comisión de delivery
-          businessCommission: 0, // MOUZO no cobra comisión a negocios
+          deliveryCommission: 0, // ComeYa no cobra comisión de delivery
+          businessCommission: 0, // ComeYa no cobra comisión a negocios
           penalties: penalties,
           couponsApplied: -couponsApplied,
           netTotal: totalEarnings + penalties - couponsApplied,

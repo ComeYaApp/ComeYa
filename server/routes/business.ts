@@ -569,6 +569,27 @@ router.get(
           .map((r: any) => r.id),
       );
 
+      // Autorrescate al abrir la lista: un pedido Stripe pagado cuyo
+      // webhook se perdió se confirma aquí mismo (fire-and-forget); en el
+      // siguiente refresco (polling de 15 s) ya aparece como Aceptado.
+      for (const row of orderRows) {
+        if (
+          row.status === "pending" &&
+          String(row.payment_method || "").startsWith("stripe_") &&
+          row.stripe_payment_intent_id &&
+          !proofIds.has(row.id)
+        ) {
+          const { rescueStripePayment } = await import(
+            "../paymentConfirmationService"
+          );
+          rescueStripePayment({
+            id: row.id,
+            paymentMethod: row.payment_method,
+            stripePaymentIntentId: row.stripe_payment_intent_id,
+          }).catch(() => {});
+        }
+      }
+
       // Resolver los NOMBRES de los productos sustitutos elegidos por el
       // cliente (en el pedido solo viajan los IDs; el negocio debe poder
       // ver qué servir en caso de falta de stock)

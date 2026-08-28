@@ -1,4 +1,4 @@
-// Pending Orders Monitor for MOUZO
+// Pending Orders Monitor for ComeYa
 // Automatically calls businesses after 3 minutes of unaccepted orders
 import { db } from "./db";
 import { orders, businesses } from "@shared/schema-mysql";

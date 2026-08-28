@@ -50,7 +50,7 @@ router.post(
         );
 
         await client.messages.create({
-          body: `Tu código de verificación MOUZO es: ${code}`,
+          body: `Tu código de verificación ComeYa es: ${code}`,
           from: process.env.TWILIO_PHONE_NUMBER,
           to: phone,
         });

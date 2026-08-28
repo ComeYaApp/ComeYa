@@ -1,4 +1,4 @@
-// Development utility for MOUZO app
+// Development utility for ComeYa app
 // This helps create test data and handle missing orders gracefully
 
 export const DEV_UTILS = {

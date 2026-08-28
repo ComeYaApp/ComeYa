@@ -84,7 +84,7 @@ export class UnifiedFinancialService {
     }
   }
 
-  // Calculate commissions - Modelo: 100% producto al negocio, 15% del producto a MOUZO, 100% delivery fee al driver
+  // Calculate commissions - Modelo: 100% producto al negocio, 15% del producto a ComeYa, 100% delivery fee al driver
   async calculateCommissions(
     totalAmount: number,
     deliveryFee: number = 0,
@@ -106,7 +106,7 @@ export class UnifiedFinancialService {
         ? productosBase
         : safeTotal - safeDeliveryFee;
 
-    // Si el total ya incluye comisión MOUZO, removerla para aislar el producto
+    // Si el total ya incluye comisión ComeYa, removerla para aislar el producto
     if (!productosBase || productosBase <= 0) {
       const baseWithoutDelivery = safeTotal - safeDeliveryFee;
       productBase =
@@ -440,7 +440,7 @@ export class UnifiedFinancialService {
     const wallet = await this.getWallet(userId);
     methods.push({
       id: "wallet",
-      name: "Billetera MOUZO",
+      name: "Billetera ComeYa",
       icon: "wallet-outline",
       available: wallet.balance > 0,
       balance: wallet.balance,

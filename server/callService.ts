@@ -279,7 +279,7 @@ export async function testCall(phoneNumber: string): Promise<CallResult> {
       from: fromNumber,
       twiml: `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="es-VE">Esta es una llamada de prueba del sistema MOUZO. Todo funciona correctamente.</Say>
+  <Say voice="alice" language="es-VE">Esta es una llamada de prueba del sistema ComeYa. Todo funciona correctamente.</Say>
 </Response>`,
     });
 

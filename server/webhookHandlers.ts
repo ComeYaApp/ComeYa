@@ -7,7 +7,25 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { orderRef } from "./orderNumberService";
 
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const ENV_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+
+/**
+ * Secreto para verificar la firma de Stripe. Prioridad: BD (app_settings),
+ * donde el registro automático del webhook guarda el secreto vigente al
+ * crear el endpoint; si no hay fila, el de la variable de entorno.
+ */
+async function getWebhookSecret(): Promise<string | null> {
+  try {
+    const { sql } = await import("drizzle-orm");
+    const [rows]: any = await db.execute(
+      sql`SELECT value FROM app_settings WHERE \`key\` = 'stripe_webhook_secret' LIMIT 1`,
+    );
+    if (rows?.[0]?.value) return String(rows[0].value);
+  } catch (err) {
+    console.error("getWebhookSecret: error leyendo app_settings:", err);
+  }
+  return ENV_WEBHOOK_SECRET || null;
+}
 
 interface WebhookContext {
   eventId: string;
@@ -48,7 +66,8 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     return res.status(400).json({ error: "Missing signature" });
   }
 
-  if (!WEBHOOK_SECRET) {
+  const webhookSecret = await getWebhookSecret();
+  if (!webhookSecret) {
     console.error("STRIPE_WEBHOOK_SECRET not configured");
     return res.status(500).json({ error: "Webhook not configured" });
   }
@@ -65,7 +84,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
         : typeof req.body === "string"
           ? Buffer.from(req.body)
           : Buffer.from(JSON.stringify(req.body));
-    event = stripe.webhooks.constructEvent(rawBody, sig, WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
     console.error("Webhook signature verification failed:", err.message);
     return res.status(400).json({ error: "Invalid signature" });

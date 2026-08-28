@@ -59,7 +59,7 @@ export class FinancialAuditService {
       const invalidOrders: string[] = [];
 
       for (const order of allOrders) {
-        // Nueva lógica: total = costo producto + 15% comisión MOUZO + costo delivery
+        // Nueva lógica: total = costo producto + 15% comisión ComeYa + costo delivery
         const nemyCommission = Math.round(order.subtotal * 0.15);
         const expectedTotal =
           order.subtotal + nemyCommission + order.deliveryFee;

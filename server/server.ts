@@ -149,7 +149,7 @@ if (isProduction) {
 } else {
   app.get("/", (req, res) => {
     res.json({
-      message: "MOUZO API Server",
+      message: "ComeYa API Server",
       frontend: process.env.FRONTEND_URL || "http://localhost:8081",
     });
   });
@@ -183,9 +183,12 @@ const server = httpServer.listen(PORT, () => {
 
   if (!process.env.TWILIO_ACCOUNT_SID)
     console.warn("⚠️  Twilio not configured");
-  if (!process.env.MOUZO_PAGO_MOVIL_PHONE)
+  if (
+    !process.env.PAGO_MOVIL_PHONE &&
+    !process.env.RABBIT_FOOD_PAGO_MOVIL_PHONE
+  )
     console.warn(
-      "⚠️  Pago Móvil no configurado - agrega MOUZO_PAGO_MOVIL_PHONE en .env",
+      "⚠️  Pago Móvil no configurado (usa payment_receiving_accounts en BD)",
     );
 
   // Migraciones de arranque ANTES que los crons: sin esta espera, las
@@ -208,6 +211,11 @@ const server = httpServer.listen(PORT, () => {
         .catch(console.error);
       import("./staleOrdersCron")
         .then(({ startStaleOrdersCron }) => startStaleOrdersCron())
+        .catch(console.error);
+      // Webhook de pagos de Stripe: se asegura de que el endpoint exista,
+      // esté activo y su secreto de firma guardado en app_settings
+      import("./stripeWebhookRegistration")
+        .then(({ ensureStripeWebhook }) => ensureStripeWebhook())
         .catch(console.error);
       // Jobs en segundo plano: liberación de fondos, pedidos programados,
       // desbloqueo de repartidores, limpieza de strikes, etc.

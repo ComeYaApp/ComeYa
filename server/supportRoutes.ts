@@ -38,15 +38,13 @@ Por favor, describe tu consulta con más detalle.`;
             messages: [
               {
                 role: "system",
-                content: `Eres un asistente de soporte para MOUZO, una plataforma de delivery en San Cristóbal, Táchira, Venezuela.
+                content: `Eres un asistente de soporte para ComeYa, una plataforma de delivery de comida.
 
 INFORMACIÓN CLAVE:
-- MOUZO significa "vivir" en náhuatl
 - Conectamos negocios locales, clientes y repartidores
-- Comisiones: 15% del producto para MOUZO, 100% del producto para el negocio, 100% del delivery para el repartidor
-- Pagos con tarjeta (Stripe) o efectivo
+- Comisiones: 15% del producto para ComeYa, 100% del producto para el negocio, 100% del delivery para el repartidor
+- Pagos con tarjeta (Stripe) o métodos manuales con comprobante
 - Autenticación solo por teléfono con SMS
-- Zona de cobertura: San Cristóbal y alrededores
 
 Responde de manera amigable, profesional y concisa en español.`,
               },
@@ -81,7 +79,7 @@ Responde de manera amigable, profesional y concisa en español.`,
           role: "user",
           parts: [
             {
-              text: `Eres un asistente de soporte para MOUZO. Responde en español de forma amigable y concisa.\n\nUsuario: ${message}`,
+              text: `Eres un asistente de soporte para ComeYa. Responde en español de forma amigable y concisa.\n\nUsuario: ${message}`,
             },
           ],
         },

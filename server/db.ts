@@ -31,6 +31,9 @@ function createConnectionConfig() {
       enableKeepAlive: true,
       keepAliveInitialDelay: 10000,
       charset: "utf8mb4",
+      // Forzar UTC: sin esto mysql2 usa la zona horaria local de la sesión
+      // y los timestamp se desplazaban horas respecto al reloj real
+      timezone: "Z",
     };
 
     // Handle SSL configuration
@@ -77,6 +80,7 @@ function createConnectionConfig() {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    timezone: "Z",
   };
 
   const fallbackCharset = process.env.DB_CHARSET || "utf8mb4";
@@ -333,6 +337,20 @@ export async function runStartupMigrations(): Promise<void> {
         if (err.code !== "ER_DUP_FIELDNAME")
           console.log("Migration note:", err.message);
       }
+    }
+
+    // Ajustes de la app: el registro automático del webhook de Stripe
+    // guarda aquí su secreto para verificar firmas en cada deploy
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS app_settings (
+          \`key\` VARCHAR(191) NOT NULL PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )`,
+      );
+    } catch (err: any) {
+      console.log("Migration note (app_settings):", err.message);
     }
   } finally {
     conn.release();

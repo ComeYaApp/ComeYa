@@ -1,4 +1,4 @@
-// Intelligent Driver Assignment System for MOUZO - Production Ready
+// Intelligent Driver Assignment System for ComeYa - Production Ready
 import { db } from "./db";
 import {
   orders,
