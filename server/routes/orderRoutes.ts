@@ -112,16 +112,25 @@ router.post(
 
       // Resolver coordenadas de entrega: el checkout las envía; si no vienen,
       // usar las de la dirección guardada o geocodificar (con caché y límites).
-      const toCoord = (v: any): string | null => {
-        const n = Number(v);
-        return Number.isFinite(n) ? String(n) : null;
-      };
-      let deliveryLatitude = toCoord(
-        req.body.deliveryLatitude ?? req.body.deliveryLat,
-      );
-      let deliveryLongitude = toCoord(
+      // Validación estricta: rangos válidos y nunca (0,0) — una coordenada
+      // basura rompe la ruta por calles del pedido
+      let deliveryLatitude: string | null = null;
+      let deliveryLongitude: string | null = null;
+      const rawLat = Number(req.body.deliveryLatitude ?? req.body.deliveryLat);
+      const rawLng = Number(
         req.body.deliveryLongitude ?? req.body.deliveryLng,
       );
+      if (
+        Number.isFinite(rawLat) &&
+        Number.isFinite(rawLng) &&
+        rawLat !== 0 &&
+        rawLng !== 0 &&
+        Math.abs(rawLat) <= 90 &&
+        Math.abs(rawLng) <= 180
+      ) {
+        deliveryLatitude = String(rawLat);
+        deliveryLongitude = String(rawLng);
+      }
 
       if (!deliveryLatitude || !deliveryLongitude) {
         if (req.body.deliveryAddressId) {
@@ -771,8 +780,10 @@ router.post(
             orderId,
             driverId: req.user!.id,
             photoUrl,
-            latitude: driverLat ? String(driverLat) : "0",
-            longitude: driverLng ? String(driverLng) : "0",
+            // Nunca "0,0": una coordenada basura rompe el mapa de pruebas de
+            // entrega. Si el repartidor no envió GPS, se guarda null.
+            latitude: driverLat ? String(driverLat) : null,
+            longitude: driverLng ? String(driverLng) : null,
             timestamp: new Date(),
           });
           await db
@@ -995,7 +1006,7 @@ router.post(
       await sendOrderStatusNotification(orderId, order.userId, "picked_up");
       try {
         const { notifyOrderStatusChange } = await import("../websocket");
-        notifyOrderStatusChange(orderId, "picked_up");
+        notifyOrderStatusChange(order.userId, orderId, "picked_up");
       } catch {}
 
       res.json({

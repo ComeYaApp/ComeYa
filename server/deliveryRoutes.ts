@@ -11,6 +11,7 @@ import {
 } from "./errors";
 import { logger } from "./logger";
 import { calculateDistance } from "./utils/distance";
+import { sendOrderStatusNotification } from "./enhancedPushService";
 
 const router = Router();
 const DELIVERY_RADIUS_KM = 0.2; // 200 metros
@@ -733,8 +734,8 @@ router.put(
     if (prev === "on_the_way") {
       await sendOrderStatusNotification(orderId, order.userId, "on_the_way");
       try {
-        const { notifyOrderStatusChange } = await import("../websocket");
-        notifyOrderStatusChange(orderId, "on_the_way");
+        const { notifyOrderStatusChange } = await import("./websocket");
+        notifyOrderStatusChange(order.userId, orderId, "on_the_way");
       } catch {}
     }
 

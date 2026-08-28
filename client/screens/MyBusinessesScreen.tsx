@@ -274,8 +274,11 @@ export default function MyBusinessesScreen() {
       address: business.address || "",
       phone: business.phone || "",
       image: business.image || "",
-      latitude: null,
-      longitude: null,
+      // Conservar las coordenadas actuales: editar otros datos NO debe
+      // borrar la ubicación del negocio del mapa
+      latitude: business.latitude != null ? Number(business.latitude) : null,
+      longitude:
+        business.longitude != null ? Number(business.longitude) : null,
     });
     setShowEditModal(true);
   };

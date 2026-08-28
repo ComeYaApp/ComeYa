@@ -181,13 +181,19 @@ export default function AddAddressScreen() {
   const [street, setStreet] = useState(existingAddress?.street || "");
   const [city, setCity] = useState(existingAddress?.city || "Soria");
   const [zipCode, setZipCode] = useState(existingAddress?.zipCode || "");
-  const [coordinates, setCoordinates] = useState({
+  // Sin pin colocado = sin coordenadas: el guardado se bloquea con un aviso.
+  // (Antes se usaba el centro de Soria en silencio y las direcciones web
+  // apuntaban al centro de la ciudad aunque la calle fuera otra.)
+  const [coordinates, setCoordinates] = useState<{
+    lat: number | null;
+    lng: number | null;
+  }>({
     lat: existingAddress?.latitude
       ? parseFloat(existingAddress.latitude)
-      : SORIA.lat,
+      : null,
     lng: existingAddress?.longitude
       ? parseFloat(existingAddress.longitude)
-      : SORIA.lng,
+      : null,
   });
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -294,36 +300,67 @@ export default function AddAddressScreen() {
     if (!mapsReady || !mapRef.current || gmap.current) return;
     const google = (window as any).google;
 
+    const hasCoords =
+      coordinates.lat !== null &&
+      coordinates.lng !== null &&
+      Number.isFinite(coordinates.lat) &&
+      Number.isFinite(coordinates.lng);
+
     gmap.current = new google.maps.Map(mapRef.current, {
-      center: coordinates,
-      zoom: 16,
+      center: hasCoords
+        ? { lat: coordinates.lat!, lng: coordinates.lng! }
+        : SORIA,
+      zoom: hasCoords ? 16 : 13,
       disableDefaultUI: true,
       zoomControl: true,
       gestureHandling: "greedy",
     });
 
-    markerRef.current = new google.maps.Marker({
-      position: coordinates,
-      map: gmap.current,
-      draggable: true,
-      icon: {
-        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
-        scaledSize: new google.maps.Size(40, 48),
-        anchor: new google.maps.Point(20, 48),
-      },
-    });
+    // Sin coordenadas previas no se coloca pin: el usuario debe elegir un
+    // punto (clic en el mapa, sugerencia de Places o botón "Mi ubicación")
+    if (hasCoords) {
+      markerRef.current = new google.maps.Marker({
+        position: { lat: coordinates.lat!, lng: coordinates.lng! },
+        map: gmap.current,
+        draggable: true,
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
+          scaledSize: new google.maps.Size(40, 48),
+          anchor: new google.maps.Point(20, 48),
+        },
+      });
 
-    markerRef.current.addListener("dragend", (e: any) => {
-      const lat = e.latLng.lat(),
-        lng = e.latLng.lng();
-      setCoordinates({ lat, lng });
-      reverseGeocode(lat, lng);
-    });
+      markerRef.current.addListener("dragend", (e: any) => {
+        const lat = e.latLng.lat(),
+          lng = e.latLng.lng();
+        setCoordinates({ lat, lng });
+        reverseGeocode(lat, lng);
+      });
+    }
 
     gmap.current.addListener("click", (e: any) => {
       const lat = e.latLng.lat(),
         lng = e.latLng.lng();
-      markerRef.current.setPosition(e.latLng);
+      if (!markerRef.current) {
+        markerRef.current = new google.maps.Marker({
+          position: e.latLng,
+          map: gmap.current,
+          draggable: true,
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
+            scaledSize: new google.maps.Size(40, 48),
+            anchor: new google.maps.Point(20, 48),
+          },
+        });
+        markerRef.current.addListener("dragend", (e: any) => {
+          const lat = e.latLng.lat(),
+            lng = e.latLng.lng();
+          setCoordinates({ lat, lng });
+          reverseGeocode(lat, lng);
+        });
+      } else {
+        markerRef.current.setPosition(e.latLng);
+      }
       setCoordinates({ lat, lng });
       reverseGeocode(lat, lng);
     });
@@ -395,6 +432,17 @@ export default function AddAddressScreen() {
     setError(null);
     if (!label.trim() || !street.trim()) {
       setError("Completa la etiqueta y la calle");
+      return;
+    }
+    if (
+      coordinates.lat === null ||
+      coordinates.lng === null ||
+      !Number.isFinite(coordinates.lat) ||
+      !Number.isFinite(coordinates.lng)
+    ) {
+      setError(
+        "Mueve el pin en el mapa o elige la dirección de las sugerencias para poder guardar.",
+      );
       return;
     }
     if (!user?.id || user.id === "undefined") {
@@ -766,10 +814,21 @@ export default function AddAddressScreen() {
 
         {/* Coords */}
         <View style={s.coordsBadge}>
-          <Feather name="check-circle" size={13} color="#059669" />
-          <Text style={{ color: "#059669", fontSize: 12, marginLeft: 6 }}>
-            Ubicación: {coordinates.lat.toFixed(5)},{" "}
-            {coordinates.lng.toFixed(5)}
+          <Feather
+            name={coordinates.lat !== null ? "check-circle" : "info"}
+            size={13}
+            color={coordinates.lat !== null ? "#059669" : "#F59E0B"}
+          />
+          <Text
+            style={{
+              color: coordinates.lat !== null ? "#059669" : "#B45309",
+              fontSize: 12,
+              marginLeft: 6,
+            }}
+          >
+            {coordinates.lat !== null && coordinates.lng !== null
+              ? `Ubicación: ${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)}`
+              : "Elige el punto en el mapa (clic) o usa 'Mi ubicación'"}
           </Text>
         </View>
 

@@ -13,6 +13,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { getApiUrl } from "@/lib/query-client";
+import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { animateMarkerTo } from "@/utils/smoothMarker";
 import { pinIcon, circleIcon, asGoogleIcon } from "@/utils/webMarkerSvg";
 
 const SORIA = { lat: 41.7636, lng: -2.4677 };
@@ -131,7 +133,11 @@ export default function PublicTrackingScreen() {
     ? { lat: driverLocation.latitude, lng: driverLocation.longitude }
     : null;
 
-  // Pins y línea
+  // Pins y ruta REAL por calles (el seguimiento público antes dibujaba
+  // siempre una línea recta y nunca pedía la ruta)
+  const routeCoordsRef = useRef<{ lat: number; lng: number }[] | null>(null);
+  const lastRoutePointRef = useRef<{ lat: number; lng: number } | null>(null);
+
   useEffect(() => {
     if (!gmap.current) return;
     const google = (window as any).google;
@@ -146,7 +152,7 @@ export default function PublicTrackingScreen() {
     }
     if (driverCoord) {
       if (driverMarkerRef.current) {
-        driverMarkerRef.current.setPosition(driverCoord);
+        animateMarkerTo(driverMarkerRef.current, driverCoord);
       } else {
         driverMarkerRef.current = new google.maps.Marker({
           position: driverCoord,
@@ -159,20 +165,61 @@ export default function PublicTrackingScreen() {
           zIndex: 10,
         });
       }
+
       if (customerCoord) {
-        if (lineRef.current) lineRef.current.setMap(null);
-        lineRef.current = new google.maps.Polyline({
-          path: [driverCoord, customerCoord],
-          geodesic: true,
-          strokeColor: "#10B981",
-          strokeOpacity: 0.9,
-          strokeWeight: 4,
-          map: gmap.current,
-        });
-        const bounds = new google.maps.LatLngBounds();
-        bounds.extend(driverCoord);
-        bounds.extend(customerCoord);
-        gmap.current.fitBounds(bounds, 60);
+        // Pedir ruta real (proxy con caché) solo si el repartidor se movió
+        // >100 m desde la última petición; sin geometría no se dibuja nada
+        const last = lastRoutePointRef.current;
+        const moved =
+          !last ||
+          distanceMeters(
+            { latitude: last.lat, longitude: last.lng },
+            { latitude: driverCoord.lat, longitude: driverCoord.lng },
+          ) > 100;
+
+        const draw = () => {
+          if (lineRef.current) lineRef.current.setMap(null);
+          lineRef.current = null;
+          if (routeCoordsRef.current) {
+            lineRef.current = new google.maps.Polyline({
+              path: routeCoordsRef.current,
+              geodesic: true,
+              strokeColor: "#10B981",
+              strokeOpacity: 0.9,
+              strokeWeight: 4,
+              map: gmap.current,
+            });
+          }
+          const bounds = new google.maps.LatLngBounds();
+          bounds.extend(driverCoord);
+          bounds.extend(customerCoord);
+          gmap.current.fitBounds(bounds, 60);
+        };
+
+        if (moved) {
+          lastRoutePointRef.current = driverCoord;
+          fetchRouteDirections(
+            { latitude: driverCoord.lat, longitude: driverCoord.lng },
+            { latitude: customerCoord.lat, longitude: customerCoord.lng },
+          )
+            .then((route) => {
+              if (route && route.coordinates.length >= 2) {
+                routeCoordsRef.current = route.coordinates.map((c) => ({
+                  lat: c.latitude,
+                  lng: c.longitude,
+                }));
+              } else {
+                routeCoordsRef.current = null;
+              }
+              draw();
+            })
+            .catch(() => {
+              routeCoordsRef.current = null;
+              draw();
+            });
+        } else {
+          draw();
+        }
       }
     }
   }, [driverLocation, customerCoord?.lat, customerCoord?.lng]);

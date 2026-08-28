@@ -77,7 +77,7 @@ export async function geocodeMissingCoordinatesJob() {
     }
 
     // 2) Direcciones de clientes sin coordenadas
-    const addrMissing = await db.select().from(addresses).limit(20);
+    const addrMissing = await db.select().from(addresses).limit(30);
     const addrToFix = addrMissing.filter(
       (a: any) =>
         !a.latitude || !a.longitude || a.latitude === "" || a.longitude === "",
@@ -94,6 +94,34 @@ export async function geocodeMissingCoordinatesJob() {
         addrFixed++;
       }
     }
+
+    // 2b) Saneo de coordenadas "fantasma": direcciones guardadas con el
+    // centro de Soria por defecto (41.7636, -2.4677) cuando el usuario no
+    // movió el pin en el formulario web. Solo si la calle no es la Plaza
+    // Mayor y la geocodificación tiene éxito — nunca se borran coordenadas.
+    const SORIA_CENTER = { lat: 41.7636, lng: -2.4677 };
+    const addrRows = await db.select().from(addresses).limit(60);
+    const addrCenter = addrRows.filter(
+      (a: any) =>
+        a.latitude &&
+        a.longitude &&
+        Math.abs(Number(a.latitude) - SORIA_CENTER.lat) < 0.0001 &&
+        Math.abs(Number(a.longitude) - SORIA_CENTER.lng) < 0.0001 &&
+        !/plaza\s+mayor/i.test(a.street || ""),
+    );
+
+    let addrCenterFixed = 0;
+    for (const a of addrCenter) {
+      const geo = await geocodeAddress(`${a.street}, ${a.city || "Soria"}`);
+      if (geo) {
+        await db
+          .update(addresses)
+          .set({ latitude: String(geo.lat), longitude: String(geo.lng) })
+          .where(eq(addresses.id, a.id));
+        addrCenterFixed++;
+      }
+    }
+    addrFixed += addrCenterFixed;
 
     // 3) Pedidos antiguos sin coordenadas de entrega (los nuevos ya las
     // guardan al crearse). Solo entregas activas/recientes con dirección.

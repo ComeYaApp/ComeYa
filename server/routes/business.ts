@@ -1484,6 +1484,16 @@ router.post(
         }
       }
 
+      // Un negocio sin ubicación es INVISIBLE para los repartidores y sin
+      // ruta de recogida: se bloquea el alta con un mensaje claro
+      if (!newBusiness.latitude || !newBusiness.longitude) {
+        await db.delete(businesses).where(eq(businesses.id, newBusiness.id));
+        return res.status(400).json({
+          error:
+            "No hemos podido ubicar el negocio en el mapa. Revisa la dirección o elige el punto en el mapa para poder darlo de alta.",
+        });
+      }
+
       // Notificar a los administradores que hay un negocio pendiente de aprobación
       try {
         const { users } = await import("@shared/schema-mysql");
@@ -1652,6 +1662,16 @@ router.post(
             /* geocoding falla silenciosamente */
           }
         }
+      }
+
+      // Un negocio sin ubicación es INVISIBLE para los repartidores y sin
+      // ruta de recogida: se bloquea el alta con un mensaje claro
+      if (!newBusiness.latitude || !newBusiness.longitude) {
+        await db.delete(businesses).where(eq(businesses.id, newBusiness.id));
+        return res.status(400).json({
+          error:
+            "No hemos podido ubicar el negocio en el mapa. Revisa la dirección o elige el punto en el mapa para poder darlo de alta.",
+        });
       }
 
       res.json({ success: true, business: newBusiness });
@@ -1853,6 +1873,7 @@ router.put(
       const { businesses } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
       const { CloudinaryService } = await import("../cloudinaryService");
+      const { isValidLatLng } = await import("../utils/coordinates");
 
       const [business] = await db
         .select()
@@ -1880,8 +1901,6 @@ router.put(
         "deliveryTime",
         "deliveryFee",
         "minOrder",
-        "latitude",
-        "longitude",
       ];
       const updates: any = {};
       for (const field of allowed) {
@@ -1913,13 +1932,51 @@ router.put(
         }
       }
 
+      // Coordenadas aparte: NUNCA se borran al editar (antes, editar el
+      // teléfono sin tocar el mapa dejaba el negocio sin ubicación) y solo
+      // se aceptan valores válidos (rangos, nunca 0,0)
+      let newLat: string | null = null;
+      let newLng: string | null = null;
+      if (
+        req.body.latitude !== undefined ||
+        req.body.longitude !== undefined
+      ) {
+        const la = Number(req.body.latitude);
+        const ln = Number(req.body.longitude);
+        const valid = isValidLatLng(la, ln);
+        if (
+          req.body.latitude !== null &&
+          req.body.longitude !== null &&
+          !valid
+        ) {
+          return res.status(400).json({ error: "Coordenadas inválidas" });
+        }
+        if (valid) {
+          newLat = String(la);
+          newLng = String(ln);
+        }
+      }
+
       await db
         .update(businesses)
         .set(updates)
         .where(eq(businesses.id, req.params.id));
 
+      if (newLat && newLng) {
+        await db
+          .update(businesses)
+          .set({ latitude: newLat, longitude: newLng })
+          .where(eq(businesses.id, req.params.id));
+      }
+
       // Si cambió la dirección y NO se enviaron coordenadas, geocodificar
-      if (req.body.address && req.body.address !== business.address && !req.body.latitude && !req.body.longitude) {
+      // (si falla, se conservan las antiguas — nunca se deja sin ubicación)
+      if (
+        req.body.address &&
+        req.body.address !== business.address &&
+        !newLat &&
+        !newLng
+      ) {
         // Intentar cache primero
         const cached = getCachedGeocode(`${req.body.address}, Soria, España`);
         if (cached) {

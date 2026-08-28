@@ -398,19 +398,25 @@ export default function BusinessMapScreen() {
                 lat: c.latitude,
                 lng: c.longitude,
               }));
+            } else {
+              driverRouteCoordsRef.current = null;
             }
             if (routeLineRef.current) {
               routeLineRef.current.setMap(null);
               routeLineRef.current = null;
             }
-            routeLineRef.current = new google.maps.Polyline({
-              path: driverRouteCoordsRef.current || [driverPos, destPos],
-              geodesic: true,
-              strokeColor: "#10B981",
-              strokeOpacity: 0.9,
-              strokeWeight: 5,
-              map: gmap.current,
-            });
+            // SOLO geometría real por calles — sin ruta no se dibuja nada
+            // (nada de líneas rectas inventadas)
+            if (driverRouteCoordsRef.current) {
+              routeLineRef.current = new google.maps.Polyline({
+                path: driverRouteCoordsRef.current,
+                geodesic: true,
+                strokeColor: "#10B981",
+                strokeOpacity: 0.9,
+                strokeWeight: 5,
+                map: gmap.current,
+              });
+            }
           })
           .catch(() => {});
       }

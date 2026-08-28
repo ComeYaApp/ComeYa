@@ -448,7 +448,8 @@ export default function OrderTrackingScreen() {
     };
 
     // Ruta real por calles vía el proxy del servidor (caché + rate limit;
-    // la cuota de Directions nunca se gasta desde el navegador)
+    // la cuota de Directions nunca se gasta desde el navegador).
+    // Sin geometría real NO se dibuja nada — nunca una línea recta.
     (async () => {
       let coords: { lat: number; lng: number }[] | null = null;
       try {
@@ -466,12 +467,12 @@ export default function OrderTrackingScreen() {
           }));
         }
       } catch {
-        // sin ruta — se usará línea recta
+        // sin ruta — no se dibuja nada
       }
 
-      if (!cancelled) {
+      if (!cancelled && coords) {
         routeLineRef.current = new google.maps.Polyline({
-          path: coords || [businessLocation, clientPos],
+          path: coords,
           geodesic: true,
           strokeColor: "#DC2626",
           strokeOpacity: 0.85,

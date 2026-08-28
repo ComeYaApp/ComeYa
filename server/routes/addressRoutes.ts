@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../db";
+import { isValidLatLng } from "../utils/coordinates";
 import { addresses } from "@shared/schema-mysql";
 import { eq, and } from "drizzle-orm";
 import { authenticateToken } from "../authMiddleware";
@@ -60,15 +61,31 @@ router.post("/", authenticateToken, async (req, res) => {
         .where(eq(addresses.userId, userId));
     }
 
-    // Si llegan sin coordenadas, geocodificar para no guardar dirección "ciega"
-    let finalLat = latitude ? String(latitude) : null;
-    let finalLng = longitude ? String(longitude) : null;
+    // Coordenadas: validadas (rangos, nunca 0,0) y con geocodificación de
+    // respaldo — una dirección sin punto en el mapa deja al pedido sin ruta
+    let finalLat: string | null =
+      latitude !== undefined && latitude !== null && latitude !== ""
+        ? String(latitude)
+        : null;
+    let finalLng: string | null =
+      longitude !== undefined && longitude !== null && longitude !== ""
+        ? String(longitude)
+        : null;
+    if (finalLat && finalLng && !isValidLatLng(finalLat, finalLng)) {
+      return res.status(400).json({ error: "Coordenadas inválidas" });
+    }
     if (!finalLat || !finalLng) {
       const geo = await geocodeAddress(street, city || "");
       if (geo) {
         finalLat = geo.lat;
         finalLng = geo.lng;
       }
+    }
+    if (!finalLat || !finalLng) {
+      return res.status(400).json({
+        error:
+          "No hemos podido ubicar la dirección en el mapa. Elige el punto en el mapa o revisa la dirección.",
+      });
     }
 
     const id = crypto.randomUUID();

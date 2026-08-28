@@ -469,7 +469,11 @@ router.put("/profile", authenticateToken, async (req, res) => {
       .set(updates)
       .where(eq(users.id, req.user!.id as string));
 
-    // Sincronizar con tabla addresses si se envió dirección
+    // Sincronizar con tabla addresses si se envió dirección.
+    // Una dirección sin coordenadas deja al pedido SIN ruta real: al crear
+    // la fila desde el perfil (texto libre) se geocodifica aquí; si no se
+    // puede ubicar, NO se crea (se añadirá bien desde el formulario de
+    // direcciones, que exige el punto en el mapa).
     if (address) {
       const { addresses } = await import("@shared/schema-mysql");
       const existing = await db
@@ -480,21 +484,53 @@ router.put("/profile", authenticateToken, async (req, res) => {
       const defaultAddr =
         existing.find((a: { isDefault: boolean }) => a.isDefault) ||
         existing[0];
+
       if (defaultAddr) {
+        // Actualizar la dirección existente; si tenía coordenadas, intentar
+        // re-geocodificar el texto nuevo (si falla, conservar las antiguas)
+        let lat: string | null = defaultAddr.latitude;
+        let lng: string | null = defaultAddr.longitude;
+        try {
+          const { geocodeAddress: geocodeAddressFn } = await import("../geocodeService");
+          const coords = await geocodeAddressFn(address);
+          if (coords) {
+            lat = String(coords.lat);
+            lng = String(coords.lng);
+          }
+        } catch {}
         await db
           .update(addresses)
-          .set({ street: address })
+          .set({ street: address, latitude: lat, longitude: lng })
           .where(eq(addresses.id, defaultAddr.id as string));
       } else {
-        await db.insert(addresses).values({
-          id: crypto.randomUUID(),
-          userId: req.user!.id,
-          label: "Casa",
-          street: address,
-          city: "Soria",
-          state: "Castilla y León",
-          isDefault: true,
-        });
+        // Sin fila previa: solo se crea si se puede ubicar en el mapa
+        let lat: string | null = null;
+        let lng: string | null = null;
+        try {
+          const { geocodeAddress: geocodeAddressFn } = await import("../geocodeService");
+          const coords = await geocodeAddressFn(address);
+          if (coords) {
+            lat = String(coords.lat);
+            lng = String(coords.lng);
+          }
+        } catch {}
+        if (lat && lng) {
+          await db.insert(addresses).values({
+            id: crypto.randomUUID(),
+            userId: req.user!.id,
+            label: "Casa",
+            street: address,
+            city: "Soria",
+            state: "Castilla y León",
+            isDefault: true,
+            latitude: lat,
+            longitude: lng,
+          });
+        } else {
+          console.warn(
+            `📍 Perfil: dirección no ubicable, no se crea la fila de dirección (user ${req.user!.id})`,
+          );
+        }
       }
     }
 
@@ -599,6 +635,7 @@ const postAddress = async (req: any, res: any) => {
   try {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { isValidLatLng } = await import("../utils/coordinates");
     const userId = req.params.id || req.user!.id;
     if (!userId || userId === "undefined" || userId === "null") {
       return res.status(400).json({ error: "Usuario no autenticado" });
@@ -626,6 +663,38 @@ const postAddress = async (req: any, res: any) => {
     if (!label || !street)
       return res.status(400).json({ error: "label y street son requeridos" });
 
+    // Coordenadas: validadas (rangos, nunca 0,0) y con geocodificación de
+    // respaldo — una dirección sin punto en el mapa deja al pedido sin ruta
+    let finalLat: string | null =
+      latitude !== undefined && latitude !== null && latitude !== ""
+        ? String(latitude)
+        : null;
+    let finalLng: string | null =
+      longitude !== undefined && longitude !== null && longitude !== ""
+        ? String(longitude)
+        : null;
+    if (finalLat && finalLng && !isValidLatLng(finalLat, finalLng)) {
+      return res.status(400).json({ error: "Coordenadas inválidas" });
+    }
+    if (!finalLat || !finalLng) {
+      try {
+        const { geocodeAddress: geocodeAddressFn } = await import("../geocodeService");
+        const coords = await geocodeAddressFn(
+          `${street}, ${city || "Soria"}`,
+        );
+        if (coords) {
+          finalLat = String(coords.lat);
+          finalLng = String(coords.lng);
+        }
+      } catch {}
+    }
+    if (!finalLat || !finalLng) {
+      return res.status(400).json({
+        error:
+          "No hemos podido ubicar la dirección en el mapa. Elige el punto en el mapa o revisa la dirección.",
+      });
+    }
+
     // Si isDefault, quitar default de las demás
     if (isDefault) {
       await db
@@ -643,8 +712,8 @@ const postAddress = async (req: any, res: any) => {
       city: city || "Soria",
       state: state || "Castilla y León",
       zipCode: zipCode || null,
-      latitude: latitude ? String(latitude) : null,
-      longitude: longitude ? String(longitude) : null,
+      latitude: finalLat,
+      longitude: finalLng,
       isDefault: isDefault || false,
     });
 
@@ -667,6 +736,7 @@ router.put("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
   try {
     const { addresses } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { isValidLatLng } = await import("../utils/coordinates");
     const role = req.user!.role;
     const [existing] = await db
       .select()
@@ -704,6 +774,31 @@ router.put("/:id/addresses/:addressId", authenticateToken, async (req, res) => {
     if (latitude !== undefined) updates.latitude = String(latitude);
     if (longitude !== undefined) updates.longitude = String(longitude);
     if (isDefault !== undefined) updates.isDefault = isDefault;
+
+    // Coordenadas siempre válidas (rangos, nunca 0,0) — si vienen inválidas
+    // se rechaza; si faltan y cambió la calle, se geocodifica como respaldo
+    if (updates.latitude || updates.longitude) {
+      if (!isValidLatLng(updates.latitude, updates.longitude)) {
+        return res.status(400).json({ error: "Coordenadas inválidas" });
+      }
+    } else if (updates.street) {
+      try {
+        const { geocodeAddress: geocodeAddressFn } = await import("../geocodeService");
+        const coords = await geocodeAddressFn(
+          `${updates.street}, ${updates.city || existing.city || "Soria"}`,
+        );
+        if (coords) {
+          updates.latitude = String(coords.lat);
+          updates.longitude = String(coords.lng);
+        }
+      } catch {}
+      // Sin coordenadas tras geocodificar: se conservan las anteriores
+      if (!updates.latitude || !updates.longitude) {
+        delete updates.latitude;
+        delete updates.longitude;
+      }
+    }
+
     await db
       .update(addresses)
       .set(updates)

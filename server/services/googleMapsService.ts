@@ -38,11 +38,14 @@ const TTL = {
 const rateCounters = new Map<string, { count: number; resetAt: number }>();
 
 const RATE_LIMITS: Record<string, { maxRequests: number; windowMs: number }> = {
-  directions: { maxRequests: 40, windowMs: 60 * 1000 },     // 40 req/min (Google: 50 req/s con billing)
+  directions: { maxRequests: Number(process.env.GOOGLE_DIRECTIONS_RATE_LIMIT || 120), windowMs: 60 * 1000 }, // 120 req/min
   geocoding: { maxRequests: 40, windowMs: 60 * 1000 },      // 40 req/min
   distanceMatrix: { maxRequests: 20, windowMs: 60 * 1000 }, // 20 req/min
   places: { maxRequests: 20, windowMs: 60 * 1000 },         // 20 req/min
-  all: { maxRequests: 100, windowMs: 60 * 1000 },           // Global: 100 req/min total
+  // OSRM es GRATIS: su contador es propio y NUNCA queda bloqueado por los
+  // límites de Google (antes el límite de directions lo cortaba también)
+  osrm: { maxRequests: 90, windowMs: 60 * 1000 },           // 90 req/min
+  all: { maxRequests: 150, windowMs: 60 * 1000 },           // Global: 150 req/min total
 };
 
 // ─── Límites diarios (protección del saldo de Google Cloud) ──────────────
@@ -52,7 +55,7 @@ const dailyCounters = new Map<string, { count: number; day: string }>();
 
 const DAILY_LIMITS: Record<string, number> = {
   geocoding: Number(process.env.GOOGLE_GEOCODE_DAILY_LIMIT || 500),
-  directions: Number(process.env.GOOGLE_DIRECTIONS_DAILY_LIMIT || 2000),
+  directions: Number(process.env.GOOGLE_DIRECTIONS_DAILY_LIMIT || 5000),
   matrix: Number(process.env.GOOGLE_MATRIX_DAILY_LIMIT || 1000),
   places: Number(process.env.GOOGLE_PLACES_DAILY_LIMIT || 500),
 };
@@ -199,6 +202,120 @@ interface GeocodingResult {
  */
 export type TravelMode = "driving" | "walking";
 
+// ─── Caché de rutas persistente en BD ─────────────────────────────────────
+// Los mismos recorridos (negocio ↔ direcciones de clientes) se repiten cada
+// día: guardarlos en BD evita volver a pagar a Google por el mismo camino.
+let routeCacheReady = false;
+
+async function ensureRouteCacheTable() {
+  if (routeCacheReady) return;
+  try {
+    const { db } = await import("../db");
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS route_cache (
+        cache_key VARCHAR(255) PRIMARY KEY,
+        polyline TEXT NOT NULL,
+        distance_text VARCHAR(64) DEFAULT NULL,
+        distance_value INT DEFAULT NULL,
+        duration_text VARCHAR(64) DEFAULT NULL,
+        duration_value INT DEFAULT NULL,
+        steps_json LONGTEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_route_cache_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    routeCacheReady = true;
+  } catch (err) {
+    console.error("❌ [GoogleMaps] route_cache no disponible:", err);
+  }
+}
+
+/** Clave de caché: coordenadas redondeadas a 3 decimales (~111 m) + modo. */
+export function routeCacheKey(
+  originLat: number,
+  originLng: number,
+  destLat: number,
+  destLng: number,
+  mode: TravelMode,
+): string {
+  const r = (n: number) => Math.round(n * 1000) / 1000;
+  return `route:${r(originLat)},${r(originLng)}→${r(destLat)},${r(destLng)}:${mode}`;
+}
+
+/** Lee una ruta cacheada de la BD (y la sube a la caché en memoria). */
+async function getRouteFromDb(
+  cacheKey: string,
+  mode: TravelMode,
+): Promise<DirectionsResult | null> {
+  if (!routeCacheReady) return null;
+  try {
+    const { db } = await import("../db");
+    const { sql } = await import("drizzle-orm");
+    const [rows]: any = await db.execute(
+      sql`SELECT polyline, distance_text, distance_value, duration_text, duration_value, steps_json
+          FROM route_cache WHERE cache_key = ${cacheKey} LIMIT 1`,
+    );
+    const row = rows?.[0];
+    if (!row?.polyline) return null;
+    let steps: any[] = [];
+    try {
+      steps = row.steps_json ? JSON.parse(row.steps_json) : [];
+    } catch {}
+    const result: DirectionsResult = {
+      polyline: row.polyline,
+      distance: { text: row.distance_text, value: row.distance_value },
+      duration: { text: row.duration_text, value: row.duration_value },
+      steps,
+      startLocation: null as any,
+      endLocation: null as any,
+    };
+    // Subir a memoria para los próximos hits
+    const memKey = getCacheKey("directions", {
+      originLat: Number(cacheKey.split(":")[1]?.split(",")[0]),
+      originLng: Number(cacheKey.split(":")[1]?.split(",")[1]?.split("→")[0]),
+      destLat: Number(cacheKey.split(":")[2]?.split(",")[0]?.split("→")[1]),
+      destLng: Number(cacheKey.split(":")[2]?.split(",")[1]?.split(":")[0]),
+      mode,
+    });
+    setCache(memKey, result);
+    return result;
+  } catch (err) {
+    console.error("❌ [GoogleMaps] Error leyendo route_cache:", err);
+    return null;
+  }
+}
+
+/** Guarda una ruta real en la BD para no volver a pedirla. */
+async function saveRouteToDb(
+  cacheKey: string,
+  result: DirectionsResult,
+): Promise<void> {
+  if (!routeCacheReady) return;
+  try {
+    const { db } = await import("../db");
+    const { sql } = await import("drizzle-orm");
+    await db.execute(sql`
+      INSERT INTO route_cache (cache_key, polyline, distance_text, distance_value, duration_text, duration_value, steps_json)
+      VALUES (${cacheKey}, ${result.polyline}, ${result.distance?.text ?? null},
+              ${result.distance?.value ?? null}, ${result.duration?.text ?? null},
+              ${result.duration?.value ?? null}, ${JSON.stringify(result.steps || [])})
+      ON DUPLICATE KEY UPDATE created_at = CURRENT_TIMESTAMP
+    `);
+    routeCacheHitsDb++;
+  } catch (err) {
+    console.error("❌ [GoogleMaps] Error guardando route_cache:", err);
+  }
+}
+
+// Contadores de salud del sistema de rutas (visibles en maps-stats del admin)
+export const routeStats = {
+  dbHits: 0,
+  failed: 0,
+  rateLimited: 0,
+  dailyLimited: 0,
+};
+let routeCacheHitsDb = 0;
+
 export async function getDirections(
   originLat: number,
   originLng: number,
@@ -207,7 +324,7 @@ export async function getDirections(
   mode: TravelMode = "driving",
   opts?: { preferOsrm?: boolean },
 ): Promise<DirectionsResult | null> {
-  const cacheKey = getCacheKey("directions", {
+  const memKey = getCacheKey("directions", {
     originLat,
     originLng,
     destLat,
@@ -215,17 +332,22 @@ export async function getDirections(
     mode,
   });
 
-  // Check cache
-  const cached = getFromCache<DirectionsResult>(cacheKey, TTL.directions);
+  // 1) Caché en memoria
+  const cached = getFromCache<DirectionsResult>(memKey, TTL.directions);
   if (cached) {
     console.log(`🗺️ [GoogleMaps Cache HIT] Directions`);
     return cached;
   }
 
-  // Check rate limit (compartido Google+OSRM para proteger costos)
-  if (!checkRateLimit("directions")) {
-    console.warn(`⚠️ [GoogleMaps Rate Limit] Directions — usando fallback`);
-    return null;
+  // 2) Caché persistente en BD (sobrevive reinicios y días)
+  await ensureRouteCacheTable();
+  const dbKey = routeCacheKey(originLat, originLng, destLat, destLng, mode);
+  const fromDb = await getRouteFromDb(dbKey, mode);
+  if (fromDb) {
+    routeCacheHitsDb++;
+    routeStats.dbHits++;
+    console.log(`🗺️ [RouteCache BD HIT] ${dbKey}`);
+    return fromDb;
   }
 
   // preferOsrm: mapas con MUCHAS rutas a la vez (p. ej. el bulk del centro
@@ -233,65 +355,87 @@ export async function getDirections(
   // calles) y reservan la cuota de Google para los mapas de usuario final.
   const preferOsrm = opts?.preferOsrm === true;
 
-  // Límite diario: si se alcanza, NO llamar a Google (OSRM sigue disponible)
-  const googleAllowed = !preferOsrm && checkDailyLimit("directions");
-  if (!googleAllowed && !preferOsrm) {
-    console.warn(`⚠️ [GoogleMaps] Directions: límite diario alcanzado — OSRM solamente`);
-  }
+  // 3) Google (con sus límites) — OSRM tiene contador propio y NO se ve
+  // afectado por los límites de Google
+  let result: DirectionsResult | null = null;
+  if (!preferOsrm && API_KEY && checkRateLimit("directions")) {
+    if (checkDailyLimit("directions")) {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=${mode}&language=es&key=${API_KEY}`;
+        const response = await fetch(url, {
+          signal: AbortSignal.timeout(8000), // 8s timeout
+        });
+        const data = await response.json();
 
-  if (googleAllowed && API_KEY) {
-    try {
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=${mode}&language=es&key=${API_KEY}`;
+        if (data.status === "OK" && data.routes?.length) {
+          const route = data.routes[0];
+          const leg = route.legs[0];
 
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(8000), // 8s timeout
-      });
-      const data = await response.json();
+          result = {
+            polyline: route.overview_polyline?.points || "",
+            distance: leg.distance,
+            duration: leg.duration,
+            steps: (leg.steps || []).map((s: any) => ({
+              instruction:
+                s.html_instructions
+                  ?.replace(/<[^>]*>/g, "")
+                  .trim() || "",
+              distance: s.distance,
+              duration: s.duration,
+            })),
+            startLocation: leg.start_location,
+            endLocation: leg.end_location,
+          };
 
-      if (data.status === "OK" && data.routes?.length) {
-        const route = data.routes[0];
-        const leg = route.legs[0];
-
-        const result: DirectionsResult = {
-          polyline: route.overview_polyline?.points || "",
-          distance: leg.distance,
-          duration: leg.duration,
-          steps: (leg.steps || []).map((s: any) => ({
-            instruction: s.html_instructions?.replace(/<[^>]*>/g, "").trim() || "",
-            distance: s.distance,
-            duration: s.duration,
-          })),
-          startLocation: leg.start_location,
-          endLocation: leg.end_location,
-        };
-
-        setCache(cacheKey, result);
-        console.log(`🗺️ [GoogleMaps API] Directions fetched & cached`);
-        return result;
+          setCache(memKey, result);
+          await saveRouteToDb(dbKey, result);
+          console.log(`🗺️ [GoogleMaps API] Directions fetched & cached`);
+          return result;
+        }
+        console.warn(
+          `⚠️ [GoogleMaps] Directions error: ${data.status} — ${data.error_message || ""} (probando OSRM)`,
+        );
+      } catch (error: any) {
+        console.error(
+          `❌ [GoogleMaps] Directions fetch error:`,
+          error.message,
+          "(probando OSRM)",
+        );
       }
-
-      console.warn(`⚠️ [GoogleMaps] Directions error: ${data.status} — ${data.error_message || ""} (probando OSRM)`);
-    } catch (error: any) {
-      console.error(`❌ [GoogleMaps] Directions fetch error:`, error.message, "(probando OSRM)");
+    } else {
+      routeStats.dailyLimited++;
+      console.warn(
+        `⚠️ [GoogleMaps] Directions: límite diario alcanzado — OSRM solamente`,
+      );
     }
+  } else if (!preferOsrm) {
+    routeStats.rateLimited++;
+    console.warn(`⚠️ [GoogleMaps Rate Limit] Directions — usando OSRM`);
   } else {
-    console.warn("⚠️ [GoogleMaps] No API key configured — usando OSRM");
+    console.log("🗺️ [GoogleMaps] preferOsrm — OSRM directo");
   }
 
-  // Fallback: OSRM (OpenStreetMap) — rutas reales por calles sin API key
-  const osrmResult = await fetchOsrmRoute(
-    originLat,
-    originLng,
-    destLat,
-    destLng,
-    mode,
-  );
-  if (osrmResult) {
-    setCache(cacheKey, osrmResult);
-    return osrmResult;
+  // 4) OSRM (gratis, rutas reales por calles): contador propio, reintentos
+  // y fallback walking→driving
+  if (result == null && checkRateLimit("osrm")) {
+    result = await fetchOsrmRoute(
+      originLat,
+      originLng,
+      destLat,
+      destLng,
+      mode,
+    );
+    if (result) {
+      setCache(memKey, result);
+      await saveRouteToDb(dbKey, result);
+    }
   }
 
-  return null;
+  if (result == null) {
+    routeStats.failed++;
+    console.warn(`⚠️ [GoogleMaps] Sin ruta real para ${dbKey}`);
+  }
+  return result;
 }
 
 // Servidores OSRM públicos (se prueban en orden) — coche y a pie
@@ -305,6 +449,9 @@ const OSRM_MIRRORS: Record<TravelMode, string[]> = {
 
 /**
  * Ruta real por calles usando OSRM público (gratuito, sin API key).
+ * Cada espejo se intenta 2 veces (los servidores demo caen a menudo);
+ * si el modo walking falla en todos, se intenta el perfil de coche como
+ * último recurso (mejor una ruta por calles de coche que nada).
  * Devuelve el mismo formato que Google Directions o null si falla.
  */
 async function fetchOsrmRoute(
@@ -314,63 +461,86 @@ async function fetchOsrmRoute(
   destLng: number,
   mode: TravelMode = "driving",
 ): Promise<DirectionsResult | null> {
-  const path = `/route/v1/${mode}/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline&steps=true`;
+  const attempt = async (base: string, profile: TravelMode) => {
+    const path = `/route/v1/${profile}/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline&steps=true`;
+    const response = await fetch(`${base}${path}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "ComeYa-Delivery-App/1.0" },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const route = data?.routes?.[0];
+    if (!route?.geometry) return null;
 
-  for (const base of OSRM_MIRRORS[mode] ?? OSRM_MIRRORS.driving) {
-    try {
-      const response = await fetch(`${base}${path}`, {
-        signal: AbortSignal.timeout(8000),
-        headers: { "User-Agent": "ComeYa-Delivery-App/1.0" },
-      });
-      if (!response.ok) continue;
-      const data = await response.json();
-      const route = data?.routes?.[0];
-      if (!route?.geometry) continue;
+    const leg = route.legs?.[0];
+    const distanceMeters = Math.round(route.distance || leg?.distance || 0);
+    const durationSeconds = Math.round(route.duration || leg?.duration || 0);
 
-      const leg = route.legs?.[0];
-      const distanceMeters = Math.round(route.distance || leg?.distance || 0);
-      const durationSeconds = Math.round(route.duration || leg?.duration || 0);
-
-      // Generar instrucciones básicas a partir de los nombres de las calles
-      const steps = (leg?.steps || [])
-        .filter((s: any) => s.name || s.maneuver?.type === "arrive")
-        .slice(0, 25)
-        .map((s: any) => ({
-          instruction:
-            s.maneuver?.type === "arrive"
-              ? "Llega a tu destino"
-              : `${maneuverEs(s.maneuver?.type, s.maneuver?.modifier)} ${s.name || ""}`.trim(),
-          distance: {
-            text: formatMeters(s.distance),
-            value: Math.round(s.distance || 0),
-          },
-          duration: {
-            text: formatSeconds(s.duration),
-            value: Math.round(s.duration || 0),
-          },
-        }));
-
-      const result: DirectionsResult = {
-        polyline: route.geometry,
+    // Generar instrucciones básicas a partir de los nombres de las calles
+    const steps = (leg?.steps || [])
+      .filter((s: any) => s.name || s.maneuver?.type === "arrive")
+      .slice(0, 25)
+      .map((s: any) => ({
+        instruction:
+          s.maneuver?.type === "arrive"
+            ? "Llega a tu destino"
+            : `${maneuverEs(s.maneuver?.type, s.maneuver?.modifier)} ${s.name || ""}`.trim(),
         distance: {
-          text: distanceMeters >= 1000
-            ? `${(distanceMeters / 1000).toFixed(1)} km`
-            : `${distanceMeters} m`,
-          value: distanceMeters,
+          text: formatMeters(s.distance),
+          value: Math.round(s.distance || 0),
         },
         duration: {
-          text: `${Math.max(1, Math.round(durationSeconds / 60))} min`,
-          value: durationSeconds,
+          text: formatSeconds(s.duration),
+          value: Math.round(s.duration || 0),
         },
-        steps,
-        startLocation: { lat: originLat, lng: originLng },
-        endLocation: { lat: destLat, lng: destLng },
-      };
+      }));
 
-      console.log(`🗺️ [OSRM] Directions fetched (${base})`);
-      return result;
-    } catch {
-      // probar el siguiente mirror
+    return {
+      polyline: route.geometry,
+      distance: {
+        text:
+          distanceMeters >= 1000
+            ? `${(distanceMeters / 1000).toFixed(1)} km`
+            : `${distanceMeters} m`,
+        value: distanceMeters,
+      },
+      duration: {
+        text: `${Math.max(1, Math.round(durationSeconds / 60))} min`,
+        value: durationSeconds,
+      },
+      steps,
+      startLocation: { lat: originLat, lng: originLng },
+      endLocation: { lat: destLat, lng: destLng },
+    } as DirectionsResult;
+  };
+
+  const mirrors = OSRM_MIRRORS[mode] ?? OSRM_MIRRORS.driving;
+  for (const base of mirrors) {
+    for (let attemptN = 0; attemptN < 2; attemptN++) {
+      try {
+        const result = await attempt(base, mode);
+        if (result) {
+          console.log(`🗺️ [OSRM] Directions fetched (${base}, intento ${attemptN + 1})`);
+          return result;
+        }
+      } catch {
+        // reintentar el mismo espejo y luego pasar al siguiente
+      }
+      if (attemptN === 0) await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+
+  // Último recurso: perfil de coche para modo walking (rutas por calles
+  // válidas aunque no sean peatonales) — mejor que no dibujar nada
+  if (mode === "walking") {
+    for (const base of OSRM_MIRRORS.driving) {
+      try {
+        const result = await attempt(base, "driving");
+        if (result) {
+          console.log(`🗺️ [OSRM] Walking fallback → driving (${base})`);
+          return result;
+        }
+      } catch {}
     }
   }
 
@@ -471,16 +641,27 @@ export async function geocodeAddress(address: string): Promise<GeocodingResult |
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
     const data = await response.json();
 
-    if (data.status !== "OK" || !data.results?.length) {
-      return null;
-    }
+  if (data.status !== "OK" || !data.results?.length) {
+    return null;
+  }
 
-    const result: GeocodingResult = {
-      lat: data.results[0].geometry.location.lat,
-      lng: data.results[0].geometry.location.lng,
-      formattedAddress: data.results[0].formatted_address,
-      placeId: data.results[0].place_id,
-    };
+  // Calidad: un resultado "partial_match" (Google no encontró la calle y
+  // devolvió la ciudad o una calle homónima de otra zona) es PEOR que nada:
+  // guarda coordenadas del centro de Soria que dibujan rutas a un punto
+  // equivocado. Se devuelve null y NO se cachea — el sistema lo intentará
+  // de nuevo con otra formulación de la dirección.
+  const first = data.results[0];
+  if (first.partial_match === true) {
+    console.warn(`⚠️ [GoogleMaps] Geocoding parcial (${normalized}) — descartado`);
+    return null;
+  }
+
+  const result: GeocodingResult = {
+    lat: first.geometry.location.lat,
+    lng: first.geometry.location.lng,
+    formattedAddress: first.formatted_address,
+    placeId: first.place_id,
+  };
 
     setCache(cacheKey, result);
 

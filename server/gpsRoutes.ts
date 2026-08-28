@@ -9,7 +9,8 @@ import {
 } from "../shared/schema-mysql";
 import { eq, and, sql } from "drizzle-orm";
 import { authenticateToken, requireRole } from "./authMiddleware";
-import { googleMapsService } from "./services/googleMapsService";
+import { isValidLatLng } from "./utils/coordinates";
+import { googleMapsService, routeStats } from "./services/googleMapsService";
 
 const router = Router();
 
@@ -23,6 +24,30 @@ router.get(
 
       if (!originLat || !originLng || !destLat || !destLng) {
         return res.status(400).json({ error: "Missing coordinates" });
+      }
+
+      // Validación de entrada: coordenadas basura (0,0, fuera de rango, NaN)
+      // fallarían en Google Y OSRM y dejarían el mapa sin ruta — se rechazan
+      // con 400 en vez de gastar llamadas
+      const oLat = Number(originLat);
+      const oLng = Number(originLng);
+      const dLat = Number(destLat);
+      const dLng = Number(destLng);
+      if (
+        !Number.isFinite(oLat) ||
+        !Number.isFinite(oLng) ||
+        !Number.isFinite(dLat) ||
+        !Number.isFinite(dLng) ||
+        oLat === 0 ||
+        oLng === 0 ||
+        dLat === 0 ||
+        dLng === 0 ||
+        Math.abs(oLat) > 90 ||
+        Math.abs(oLng) > 180 ||
+        Math.abs(dLat) > 90 ||
+        Math.abs(dLng) > 180
+      ) {
+        return res.status(400).json({ error: "Coordenadas inválidas" });
       }
 
       // Modo de viaje: coche (default) o a pie (recogida propia del cliente)
@@ -135,7 +160,45 @@ router.get(
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req: Request, res: Response) => {
-    res.json({ success: true, ...googleMapsService.getUsageStats() });
+    try {
+      const stats = googleMapsService.getUsageStats();
+      // Salud del sistema de rutas: el admin ve al momento si algo falla
+      // (rutas sin geometría, límites alcanzados) y cuántos pedidos quedan
+      // pendientes de ubicar
+      let pendingNoCoords = { orders: 0, businesses: 0, addresses: 0 };
+      try {
+        const { db } = await import("./db");
+        const { sql } = await import("drizzle-orm");
+        const [ord]: any = await db.execute(sql`
+          SELECT COUNT(*) AS c FROM orders
+          WHERE (delivery_latitude IS NULL OR delivery_longitude IS NULL
+                 OR delivery_latitude = '' OR delivery_longitude = '')
+            AND status NOT IN ('delivered','cancelled','refunded')
+            AND order_type <> 'pickup'
+        `);
+        const [biz]: any = await db.execute(sql`
+          SELECT COUNT(*) AS c FROM businesses
+          WHERE latitude IS NULL OR longitude IS NULL OR latitude = '' OR longitude = ''
+        `);
+        const [addr]: any = await db.execute(sql`
+          SELECT COUNT(*) AS c FROM addresses
+          WHERE latitude IS NULL OR longitude IS NULL OR latitude = '' OR longitude = ''
+        `);
+        pendingNoCoords = {
+          orders: Number(ord?.[0]?.c) || 0,
+          businesses: Number(biz?.[0]?.c) || 0,
+          addresses: Number(addr?.[0]?.c) || 0,
+        };
+      } catch {}
+      res.json({
+        success: true,
+        ...stats,
+        routes: routeStats,
+        pendingNoCoords,
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   },
 );
 

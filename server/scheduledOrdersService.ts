@@ -143,6 +143,11 @@ export class ScheduledOrdersService {
           orderType: "delivery",
           deliveryAddress: scheduled.deliveryAddress,
           notes: scheduled.notes || null,
+          // LAS COORDENADAS se copian del pedido programado: antes el pedido
+          // materializado nacía SIEMPRE sin ellas y no tenía ruta real hasta
+          // que un job lo arreglaba (hasta 30 min después)
+          deliveryLatitude: scheduled.deliveryLatitude || null,
+          deliveryLongitude: scheduled.deliveryLongitude || null,
           // La fecha programada queda registrada en el pedido para el
           // seguimiento del cliente y la facturación
           scheduledFor: (scheduled as any).scheduledFor ?? null,
