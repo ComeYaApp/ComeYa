@@ -3004,13 +3004,14 @@ async function sendPushNotification(pushToken, payload) {
           } else {
             console.error(`Push error status=${status}:`, JSON.stringify(result?.data?.details ?? {}));
           }
+        } else {
+          console.log(`\u{1F4F1} Push entregado a Expo: ${payload.title}`);
         }
       } catch {
       }
     } else {
-      console.error(`Expo push HTTP ${response.status}`);
+      console.error(`Expo push HTTP ${response.status}: ${payload.title}`);
     }
-    console.log(`\u{1F4F1} Push notification sent: ${payload.title}`);
   } catch (error) {
     console.error("Error sending push notification:", error);
   }
@@ -3043,7 +3044,12 @@ function parseNotificationPreferences(raw) {
 }
 async function sendPushToUser(userId, payload) {
   const [user] = await db.select().from(users).where((0, import_drizzle_orm5.eq)(users.id, userId)).limit(1);
-  if (!user?.pushToken) return;
+  if (!user?.pushToken) {
+    console.warn(
+      `\u{1F4F5} Push omitido: sin token registrado para ${user?.email || user?.name || userId} (${userId}) \u2014 ${payload.title}`
+    );
+    return;
+  }
   if (payload.category === "promotions" || payload.category === "news") {
     const prefs = parseNotificationPreferences(user.notificationPreferences);
     if (!prefs[payload.category]) return;

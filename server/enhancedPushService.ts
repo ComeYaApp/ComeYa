@@ -201,15 +201,16 @@ export async function sendPushNotification(
           } else {
             console.error(`Push error status=${status}:`, JSON.stringify(result?.data?.details ?? {}));
           }
+        } else {
+          // Solo aquí el envío quedó confirmado por Expo
+          console.log(`📱 Push entregado a Expo: ${payload.title}`);
         }
       } catch {
         // respuesta no-JSON de Expo, ignorar
       }
     } else {
-      console.error(`Expo push HTTP ${response.status}`);
+      console.error(`Expo push HTTP ${response.status}: ${payload.title}`);
     }
-
-    console.log(`📱 Push notification sent: ${payload.title}`);
   } catch (error) {
     console.error("Error sending push notification:", error);
   }
@@ -285,7 +286,14 @@ export async function sendPushToUser(
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (!user?.pushToken) return;
+  if (!user?.pushToken) {
+    // Antes era un retorno silencioso: imposible saber por qué no llegaba
+    // el push. El token se registra solo al abrir la app (AuthContext).
+    console.warn(
+      `📵 Push omitido: sin token registrado para ${user?.email || user?.name || userId} (${userId}) — ${payload.title}`,
+    );
+    return;
+  }
 
   // Respetar preferencias del usuario para categorías no operativas
   if (payload.category === "promotions" || payload.category === "news") {
