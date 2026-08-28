@@ -572,15 +572,8 @@ router.get(
       // Resolver los NOMBRES de los productos sustitutos elegidos por el
       // cliente (en el pedido solo viajan los IDs; el negocio debe poder
       // ver qué servir en caso de falta de stock)
-      const substituteIds = new Set<string>();
-      for (const row of orderRows) {
-        try {
-          const ids = JSON.parse(row.substitute_product_ids || "[]");
-          (Array.isArray(ids) ? ids : []).forEach((id: string) =>
-            substituteIds.add(String(id)),
-          );
-        } catch {}
-      }
+      const { collectSubstituteIds } = await import("../utils/substitution");
+      const substituteIds = new Set<string>(collectSubstituteIds(orderRows));
       const productNames = new Map<string, string>();
       if (substituteIds.size) {
         const { products } = await import("@shared/schema-mysql");
@@ -1318,11 +1311,20 @@ router.put(
       // digitales (comprobante en verificación o cliente sin completar el
       // pago) se activan solos al confirmarse el pago — así nunca se acepta
       // un pedido sin dinero ni se queda el negocio esperando a ciegas.
+      // Excepción: si el pago Stripe SÍ se completó pero el webhook se
+      // perdió, se rescata aquí mismo y la aceptación continúa.
       if (status === "accepted" && order.status === "pending") {
         const { paymentStateOf, acceptanceBlockedMessage } = await import(
           "../utils/paymentState"
         );
-        const blocked = acceptanceBlockedMessage(await paymentStateOf(order));
+        let paymentState = await paymentStateOf(order);
+        if (paymentState === "awaiting_payment") {
+          const { rescueStripePayment } = await import(
+            "../paymentConfirmationService"
+          );
+          if (await rescueStripePayment(order)) paymentState = "paid";
+        }
+        const blocked = acceptanceBlockedMessage(paymentState);
         if (blocked) {
           return res.status(400).json({ error: blocked });
         }

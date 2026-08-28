@@ -133,6 +133,7 @@ router.post("/", authenticateToken, async (req, res) => {
       total: clientTotal,
       substitutionPreference,
       itemSubstitutionPreferences,
+      substituteProductIds,
       cashPaymentAmount,
       cashChangeAmount,
       couponCode,
@@ -282,6 +283,7 @@ router.post("/", authenticateToken, async (req, res) => {
       notes: notes || null,
       substitutionPreference: substitutionPreference || "refund",
       itemSubstitutionPreferences: itemSubstitutionPreferences || null,
+      substituteProductIds: substituteProductIds || null,
       cashPaymentAmount: cashPaymentAmount || null,
       cashChangeAmount: cashChangeAmount || null,
       businessEarnings: businessEarnings,
@@ -484,6 +486,28 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
 
     if (!canUpdate) {
       return res.status(403).json({ error: "No autorizado" });
+    }
+
+    // Guardia de pago (misma política que PUT /api/business/orders/:id/status):
+    // no se acepta un pedido pendiente cuyo pago no está confirmado, salvo
+    // rescate de un pago Stripe confirmado cuyo webhook se perdió. La app
+    // nativa acepta las recogidas por esta ruta; sin esta guardia una
+    // recogida sin pagar se podía aceptar.
+    if (status === "accepted" && order.order.status === "pending") {
+      const { paymentStateOf, acceptanceBlockedMessage } = await import(
+        "../utils/paymentState"
+      );
+      let paymentState = await paymentStateOf(order.order);
+      if (paymentState === "awaiting_payment") {
+        const { rescueStripePayment } = await import(
+          "../paymentConfirmationService"
+        );
+        if (await rescueStripePayment(order.order)) paymentState = "paid";
+      }
+      const blocked = acceptanceBlockedMessage(paymentState);
+      if (blocked) {
+        return res.status(400).json({ error: blocked });
+      }
     }
 
     await db

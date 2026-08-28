@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken } from "../authMiddleware";
+import { authenticateToken, requireRole } from "../authMiddleware";
 import { eq } from "drizzle-orm";
 import { getStripe } from "../stripeClient";
 
@@ -234,82 +234,63 @@ router.get("/proofs/pending", authenticateToken, async (req, res) => {
 });
 
 // POST /api/payments/proofs/:proofId/approve — aprobar comprobante (admin)
-router.post("/proofs/:proofId/approve", authenticateToken, async (req, res) => {
-  try {
-    const { db } = await import("../db");
-    const { orders, paymentProofs } = await import("../../shared/schema-mysql");
-    const { sql: drizzleSql } = await import("drizzle-orm");
-    const { proofId } = req.params;
-
-    const [proof] = await db
-      .select()
-      .from(paymentProofs)
-      .where(drizzleSql`id = ${proofId}`)
-      .limit(1);
-    if (!proof)
-      return res.status(404).json({ error: "Comprobante no encontrado" });
-
-    await db.execute(
-      drizzleSql`UPDATE payment_proofs SET status = 'approved', verified_by = ${req.user!.id}, verified_at = NOW() WHERE id = ${proofId}`,
-    );
-    await db
-      .update(orders)
-      .set({ status: "confirmed", paidAt: new Date(), updatedAt: new Date() })
-      .where(eq(orders.id, proof.orderId));
-
-    // Notificar al cliente
+// Delega en digitalPaymentService.verifyPaymentProof: en una transacción
+// marca el comprobante approved y el pedido "accepted" + paidAt (NUNCA el
+// estado "confirmed", que no existe en las pestañas del negocio), avisa al
+// cliente Y al negocio (push + websocket) y no permite procesar dos veces.
+router.post(
+  "/proofs/:proofId/approve",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
     try {
-      const { sendPushToUser } = await import("../enhancedPushService");
-      await sendPushToUser(proof.userId, {
-        title: "✅ Pago confirmado",
-        body: "Tu comprobante fue verificado. Tu pedido está confirmado.",
-        data: { orderId: proof.orderId, screen: "OrderTracking" },
-      });
-    } catch {}
-
-    res.json({ success: true, message: "Comprobante aprobado" });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+      const { digitalPaymentService } = await import(
+        "../digitalPaymentService"
+      );
+      const result = await digitalPaymentService.verifyPaymentProof(
+        String(req.params.proofId),
+        req.user!.id,
+        true,
+      );
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+      res.json({ success: true, message: "Comprobante aprobado" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // POST /api/payments/proofs/:proofId/reject — rechazar comprobante (admin)
-router.post("/proofs/:proofId/reject", authenticateToken, async (req, res) => {
-  try {
-    const { db } = await import("../db");
-    const { paymentProofs } = await import("../../shared/schema-mysql");
-    const { sql: drizzleSql } = await import("drizzle-orm");
-    const { proofId } = req.params;
-    const { reason } = req.body;
-
-    const [proof] = await db
-      .select()
-      .from(paymentProofs)
-      .where(drizzleSql`id = ${proofId}`)
-      .limit(1);
-    if (!proof)
-      return res.status(404).json({ error: "Comprobante no encontrado" });
-
-    await db.execute(
-      drizzleSql`UPDATE payment_proofs SET status = 'rejected', verified_by = ${req.user!.id}, verified_at = NOW(), verification_notes = ${reason || "Rechazado por admin"} WHERE id = ${proofId}`,
-    );
-
-    // Notificar al cliente
+// Delega en verifyPaymentProof: comprobante rejected + pedido
+// payment_failed (el cron lo cancela con la política de reembolso) y aviso
+// al cliente con el motivo.
+router.post(
+  "/proofs/:proofId/reject",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
     try {
-      const { sendPushToUser } = await import("../enhancedPushService");
-      await sendPushToUser(proof.userId, {
-        title: "❌ Comprobante rechazado",
-        body:
-          reason || "Tu comprobante no pudo ser verificado. Contacta soporte.",
-        data: { orderId: proof.orderId, screen: "OrderTracking" },
-      });
-    } catch {}
-
-    res.json({ success: true, message: "Comprobante rechazado" });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+      const { reason } = req.body;
+      const { digitalPaymentService } = await import(
+        "../digitalPaymentService"
+      );
+      const result = await digitalPaymentService.verifyPaymentProof(
+        String(req.params.proofId),
+        req.user!.id,
+        false,
+        reason || "Rechazado por administración",
+      );
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+      res.json({ success: true, message: "Comprobante rechazado" });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
 
 // POST /api/payments/analyze-proof — analizar comprobante con OCR/Gemini
 router.post("/analyze-proof", authenticateToken, async (req, res) => {

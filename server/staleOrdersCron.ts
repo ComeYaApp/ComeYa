@@ -26,39 +26,15 @@ export const NO_DRIVER_MINUTES = 30;
 export const PROOF_PENDING_MAX_MINUTES = 120;
 
 /**
- * Rescata pagos de Stripe confirmados cuyo webhook se perdió: consulta el
- * PaymentIntent y, si succeeded, confirma el pedido igual que habría hecho
- * el webhook en lugar de cancelarlo. Best-effort: si Stripe no responde,
- * sigue el flujo de cancelación normal.
+ * Rescata pagos de Stripe confirmados cuyo webhook se perdió (ver
+ * paymentConfirmationService.rescueStripePayment, compartido con la
+ * guardia de aceptación del negocio).
  */
 async function rescueStripePayment(order: any): Promise<boolean> {
-  const method = String(order.paymentMethod || "");
-  const intentId = order.stripePaymentIntentId;
-  if (!method.startsWith("stripe_") || !intentId) return false;
-  if (!process.env.STRIPE_SECRET_KEY) return false;
-  try {
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as any);
-    const intent = await stripe.paymentIntents.retrieve(intentId);
-    if (intent.status === "succeeded") {
-      const { confirmPaidOrder } = await import(
-        "./paymentConfirmationService"
-      );
-      const result = await confirmPaidOrder(order.id, intent, "reconciliation");
-      if (result.success) {
-        console.log(
-          `🔧 ${orderRef(order)} rescatado: pago Stripe confirmado sin webhook`,
-        );
-        return true;
-      }
-    }
-  } catch (error: any) {
-    console.error(
-      `rescueStripePayment ${order.id}:`,
-      error?.message ?? error,
-    );
-  }
-  return false;
+  const { rescueStripePayment: rescue } = await import(
+    "./paymentConfirmationService"
+  );
+  return rescue(order);
 }
 
 /** Cancela pedidos que el negocio no aceptó en el plazo de la política. */

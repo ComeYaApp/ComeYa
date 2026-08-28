@@ -114,3 +114,39 @@ export async function confirmPaidOrder(
 
   return { success: true, message: "confirmed" };
 }
+
+/**
+ * Rescata pagos de Stripe confirmados cuyo webhook se perdió: consulta el
+ * PaymentIntent y, si succeeded, confirma el pedido igual que habría hecho
+ * el webhook. Lo usan el cron de limpieza (antes de cancelar) y la guardia
+ * de aceptación del negocio (el propio botón Aceptar rescata el pedido).
+ * Best-effort: si Stripe no responde, devuelve false y el flujo sigue su
+ * curso normal.
+ */
+export async function rescueStripePayment(order: any): Promise<boolean> {
+  const method = String(order?.paymentMethod || "");
+  const intentId = order?.stripePaymentIntentId;
+  if (!method.startsWith("stripe_") || !intentId) return false;
+  if (!process.env.STRIPE_SECRET_KEY) return false;
+  try {
+    const Stripe = (await import("stripe")).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as any);
+    const intent = await stripe.paymentIntents.retrieve(intentId);
+    if (intent.status === "succeeded") {
+      const result = await confirmPaidOrder(order.id, intent, "reconciliation");
+      if (result.success) {
+        const { orderRef } = await import("./orderNumberService");
+        console.log(
+          `🔧 ${orderRef(order)} rescatado: pago Stripe confirmado sin webhook`,
+        );
+        return true;
+      }
+    }
+  } catch (error: any) {
+    console.error(
+      `rescueStripePayment ${order?.id}:`,
+      error?.message ?? error,
+    );
+  }
+  return false;
+}

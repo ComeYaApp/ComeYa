@@ -365,6 +365,14 @@ export class DigitalPaymentService {
           });
         }
 
+        // Websocket: la app del negocio escucha "payment_verified" y
+        // refresca al instante — el pedido aprobado salta de Pendientes a
+        // Activos sin esperar el polling de 15 s
+        try {
+          const { notifyPaymentVerified } = await import("./websocket");
+          notifyPaymentVerified(order.businessId, order.id);
+        } catch {}
+
         return {
           success: true,
           message: "Pago verificado y pedido activado",
