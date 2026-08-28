@@ -532,43 +532,200 @@ export default function BusinessOrdersScreen() {
                     ]}
                   >
                     {Array.isArray(items) &&
-                      items.map((item: any, i: number) => (
-                        <View key={i} style={s.itemRow}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[s.itemName, { color: text }]}>
-                              {item.quantity}x{" "}
-                              {item.name || item.product?.name || "Producto"}
-                            </Text>
-                            {/* Nota del cliente por producto (sin gluten…) */}
-                            {item.note ? (
-                              <Text
-                                style={[
-                                  s.itemNote,
-                                  { color: ComeYaColors.warning },
-                                ]}
-                              >
-                                ✏️ Nota: {item.note}
+                      items.map((orderItem: any, i: number) => {
+                        // Sustitución POR PRODUCTO: cada item es sustituible
+                        // por separado (mapa por product.id, por id de carrito o global)
+                        let subMap: Record<string, string> = {};
+                        try {
+                          subMap =
+                            typeof order.substituteProductIds === "string"
+                              ? JSON.parse(order.substituteProductIds)
+                              : order.substituteProductIds || {};
+                        } catch {}
+                        const subDetails = order.substituteProducts || {};
+                        const subNames = order.substituteProductNames || {};
+                        const subs = Array.isArray(order.substitutions)
+                          ? order.substitutions
+                          : [];
+                        const productId = orderItem.product?.id;
+                        const substituteId =
+                          (productId && subMap[productId]) ||
+                          subMap[orderItem.id] ||
+                          subMap["__global__"] ||
+                          null;
+                        const det = substituteId
+                          ? subDetails[String(substituteId)] || {}
+                          : {};
+                        const subName =
+                          det.name ||
+                          subNames[String(substituteId)] ||
+                          (substituteId
+                            ? "Producto " + String(substituteId).slice(-6)
+                            : "");
+                        // Unidades: product.price en EUROS (carrito crudo) o
+                        // price suelto en céntimos (formato reescrito)
+                        const unitEuros =
+                          orderItem.product?.price != null
+                            ? Number(orderItem.product.price)
+                            : orderItem.price != null
+                              ? Number(orderItem.price) / 100
+                              : 0;
+                        const subUnitEuros =
+                          det.price != null ? Number(det.price) / 100 : null;
+                        const qty = Math.max(1, Number(orderItem.quantity) || 1);
+                        const deltaTotal =
+                          subUnitEuros != null
+                            ? Math.round((subUnitEuros - unitEuros) * 100) * qty
+                            : null;
+                        const state = productId
+                          ? subs.find((s: any) => s.itemProductId === productId)
+                          : null;
+                        const applied =
+                          state?.status === "applied" ||
+                          state?.status === "approved";
+                        const pendingState = state?.status === "proposed";
+                        const closedOrder = [
+                          "delivered",
+                          "cancelled",
+                          "payment_failed",
+                        ].includes(order.status);
+                        return (
+                          <View key={i}>
+                            <View style={s.itemRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={[s.itemName, { color: text }]}>
+                                  {qty}x{" "}
+                                  {orderItem.name ||
+                                    orderItem.product?.name ||
+                                    "Producto"}
+                                </Text>
+                                {orderItem.note ? (
+                                  <Text
+                                    style={[
+                                      s.itemNote,
+                                      { color: ComeYaColors.warning },
+                                    ]}
+                                  >
+                                    ✏️ {orderItem.note}
+                                  </Text>
+                                ) : null}
+                              </View>
+                              <Text style={[s.itemPrice, { color: sub }]}>
+                                €{unitEuros.toFixed(2)}
                               </Text>
+                            </View>
+                            {substituteId ? (
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  marginTop: 4,
+                                  marginBottom: 4,
+                                  padding: 6,
+                                  backgroundColor: "rgba(128,128,128,0.08)",
+                                  borderRadius: 8,
+                                }}
+                              >
+                                {det.image ? (
+                                  <img
+                                    src={det.image}
+                                    alt={subName}
+                                    style={{
+                                      width: 36,
+                                      height: 36,
+                                      borderRadius: 6,
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                ) : (
+                                  <View
+                                    style={{
+                                      width: 36,
+                                      height: 36,
+                                      borderRadius: 6,
+                                      backgroundColor: "rgba(128,128,128,0.2)",
+                                    }}
+                                  />
+                                )}
+                                <View style={{ flex: 1, marginLeft: 8 }}>
+                                  <Text
+                                    style={[s.itemNote, { color: "#92400E" }]}
+                                  >
+                                    Sustituir por <b>{subName}</b>
+                                  </Text>
+                                  <Text
+                                    style={{
+                                      fontSize: 12,
+                                      fontWeight: "700",
+                                      color:
+                                        deltaTotal != null && deltaTotal < 0
+                                          ? "#10B981"
+                                          : deltaTotal != null && deltaTotal > 0
+                                            ? "#EF4444"
+                                            : "#92400E",
+                                    }}
+                                  >
+                                    {deltaTotal != null
+                                      ? deltaTotal < 0
+                                        ? "−" +
+                                          (Math.abs(deltaTotal) / 100).toFixed(2) +
+                                          " € a devolver"
+                                        : deltaTotal > 0
+                                          ? "+" +
+                                            (deltaTotal / 100).toFixed(2) +
+                                            " € a cobrar"
+                                          : "mismo precio"
+                                      : ""}
+                                    {applied ? " · ✅ Aplicada" : ""}
+                                    {pendingState
+                                      ? " · ⏳ Esperando aprobación"
+                                      : ""}
+                                    {state?.status === "rejected"
+                                      ? " · ❌ Rechazada"
+                                      : ""}
+                                  </Text>
+                                </View>
+                                {!applied && !pendingState && !closedOrder && (
+                                  <Pressable
+                                    onPress={() =>
+                                      applySubstitution(
+                                        order.id,
+                                        productId || orderItem.id,
+                                        String(substituteId),
+                                      )
+                                    }
+                                    style={[
+                                      {
+                                        backgroundColor: ComeYaColors.primary,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 6,
+                                        borderRadius: 6,
+                                      },
+                                    ]}
+                                  >
+                                    <Text
+                                      style={{
+                                        color: "#fff",
+                                        fontSize: 12,
+                                        fontWeight: "700",
+                                      }}
+                                    >
+                                      Sustituir
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
                             ) : null}
                           </View>
-                          <Text style={[s.itemPrice, { color: sub }]}>
-                            €
-                            {(
-                              (item.price || item.product?.price || 0) / 100
-                            ).toFixed(2)}
-                          </Text>
-                        </View>
-                      ))}
+                        );
+                      })}
                   </View>
 
-                  {/* Sustitución: preferencia y producto sustituto con nombre */}
-                  {(order.substitutionPreference ||
-                    order.substituteProductIds ||
-                    order.itemSubstitutionPreferences) && (
+                  {order.substitutionPreference ? (
                     <View
                       style={{
-                        marginTop: 8,
-                        padding: 10,
+                        marginTop: 6,
+                        padding: 8,
                         backgroundColor: "#F59E0B15",
                         borderLeftWidth: 3,
                         borderLeftColor: "#F59E0B",
@@ -582,167 +739,15 @@ export default function BusinessOrdersScreen() {
                           color: "#B45309",
                         }}
                       >
-                        ⚠️ Si algo no está disponible:
+                        ⚠️ Si algo no está disponible:{" "}
+                        {order.substitutionPreference === "refund"
+                          ? "💵 Reembolsar"
+                          : order.substitutionPreference === "call"
+                            ? "📞 Llamar al cliente"
+                            : "🔄 Sustituir"}
                       </Text>
-                      {order.substitutionPreference && (
-                        <Text style={[s.itemNote, { color: "#92400E" }]}>
-                          • Preferencia general:{" "}
-                          {order.substitutionPreference === "refund"
-                            ? "💵 Reembolsar"
-                            : order.substitutionPreference === "call"
-                              ? "📞 Llamar al cliente"
-                              : "🔄 Sustituir por producto similar"}
-                        </Text>
-                      )}
-                      {order.substituteProductIds &&
-                        (() => {
-                          try {
-                            const map =
-                              typeof order.substituteProductIds === "string"
-                                ? JSON.parse(order.substituteProductIds)
-                                : order.substituteProductIds;
-                            const names = order.substituteProductNames || {};
-                            const details = order.substituteProducts || {};
-                            const subs = Array.isArray(order.substitutions)
-                              ? order.substitutions
-                              : [];
-                            let parsedItems: any[] = [];
-                            try {
-                              parsedItems = Array.isArray(order.items)
-                                ? order.items
-                                : JSON.parse(order.items || "[]");
-                            } catch {}
-                            const closedOrder = [
-                              "delivered",
-                              "cancelled",
-                              "payment_failed",
-                            ].includes(order.status);
-                            return Object.entries(map).map(
-                              ([origId, subId]: [string, any]) => {
-                                const sid = String(subId);
-                                const det = details[sid] || {};
-                                const name =
-                                  det.name || names[sid] || `Producto ${sid.slice(-6)}`;
-                                const subPrice = det.price ?? null;
-                                const origItem = parsedItems.find(
-                                  (it: any) => it.product?.id === origId,
-                                );
-                                const origPriceCents = origItem
-                                  ? Math.round(
-                                      Number(origItem.product?.price ?? 0) * 100,
-                                    )
-                                  : null;
-                                const delta =
-                                  subPrice != null && origPriceCents != null
-                                    ? subPrice - origPriceCents
-                                    : null;
-                                const state = subs.find(
-                                  (x: any) => x.itemProductId === origId,
-                                );
-                                const applied =
-                                  state?.status === "applied" ||
-                                  state?.status === "approved";
-                                const pendingState = state?.status === "proposed";
-                                return (
-                                  <View
-                                    key={origId}
-                                    style={{
-                                      flexDirection: "row",
-                                      alignItems: "center",
-                                      marginTop: 6,
-                                      padding: 6,
-                                      backgroundColor: "rgba(128,128,128,0.08)",
-                                      borderRadius: 8,
-                                    }}
-                                  >
-                                    {det.image ? (
-                                      <img
-                                        src={det.image}
-                                        alt={name}
-                                        style={{
-                                          width: 44,
-                                          height: 44,
-                                          borderRadius: 6,
-                                          objectFit: "cover",
-                                        }}
-                                      />
-                                    ) : (
-                                      <View
-                                        style={{
-                                          width: 44,
-                                          height: 44,
-                                          borderRadius: 6,
-                                          backgroundColor: "rgba(128,128,128,0.2)",
-                                        }}
-                                      />
-                                    )}
-                                    <View style={{ flex: 1, marginLeft: 8 }}>
-                                      <Text style={[s.itemNote, { color: "#92400E" }]}>
-                                        Sustituir por: <b>{name}</b>
-                                      </Text>
-                                      {delta != null && (
-                                        <Text
-                                          style={{
-                                            fontSize: 12,
-                                            fontWeight: "700",
-                                            color:
-                                              delta < 0
-                                                ? "#10B981"
-                                                : delta > 0
-                                                  ? "#EF4444"
-                                                  : "#92400E",
-                                          }}
-                                        >
-                                          {delta < 0
-                                            ? `−${(Math.abs(delta) / 100).toFixed(2)} € a devolver`
-                                            : delta > 0
-                                              ? `+${(delta / 100).toFixed(2)} € a cobrar`
-                                              : "mismo precio"}
-                                          {applied ? " · ✅ Aplicada" : ""}
-                                          {pendingState
-                                            ? " · ⏳ Esperando aprobación"
-                                            : ""}
-                                          {state?.status === "rejected"
-                                            ? " · ❌ Rechazada"
-                                            : ""}
-                                        </Text>
-                                      )}
-                                    </View>
-                                    {!applied && !pendingState && !closedOrder && (
-                                      <Pressable
-                                        onPress={() =>
-                                          applySubstitution(order.id, origId, sid)
-                                        }
-                                        style={[
-                                          {
-                                            backgroundColor: ComeYaColors.primary,
-                                            paddingHorizontal: 10,
-                                            paddingVertical: 6,
-                                            borderRadius: 6,
-                                          },
-                                        ]}
-                                      >
-                                        <Text
-                                          style={{
-                                            color: "#fff",
-                                            fontSize: 12,
-                                            fontWeight: "700",
-                                          }}
-                                        >
-                                          Aplicar
-                                        </Text>
-                                      </Pressable>
-                                    )}
-                                  </View>
-                                );
-                              },
-                            );
-                          } catch {
-                            return null;
-                          }
-                        })()}
                     </View>
-                  )}
+                  ) : null}
 
                   {/* Footer */}
                   <View style={s.orderFooter}>

@@ -468,257 +468,233 @@ export default function BusinessOrdersScreen() {
 
         <View style={styles.itemsList}>
           {Array.isArray(items) &&
-            items.map((orderItem: any, index: number) => (
-              <View key={index} style={styles.item}>
-                <ThemedText type="body" style={{ flex: 1 }}>
-                  {orderItem.quantity}x{" "}
-                  {orderItem.name || orderItem.product?.name || "Producto"}
-                </ThemedText>
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  €
-                  {(
-                    (orderItem.price || orderItem.product?.price || 0) / 100
-                  ).toFixed(2)}
-                </ThemedText>
-                {/* Nota del cliente por producto (sin gluten, bien hecho…) */}
-                {orderItem.note ? (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "flex-start",
-                      marginTop: 4,
-                      width: "100%",
-                    }}
-                  >
-                    <Feather
-                      name="edit-2"
-                      size={12}
-                      color={ComeYaColors.warning}
-                      style={{ marginTop: 2 }}
-                    />
-                    <ThemedText
-                      type="caption"
-                      style={{
-                        color: ComeYaColors.warning,
-                        marginLeft: 6,
-                        flex: 1,
-                        fontWeight: "500",
-                      }}
-                    >
-                      Nota: {orderItem.note}
-                    </ThemedText>
-                  </View>
-                ) : null}
-              </View>
-            ))}
-        </View>
-
-        {/* Mostrar preferencias de sustitución si existen */}
-        {(item.substitutionPreference ||
-          item.itemSubstitutionPreferences ||
-          item.substituteProductIds) && (
-          <View
-            style={{
-              marginTop: Spacing.md,
-              padding: Spacing.md,
-              backgroundColor: ComeYaColors.warning + "15",
-              borderRadius: BorderRadius.md,
-              borderLeftWidth: 3,
-              borderLeftColor: ComeYaColors.warning,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: Spacing.xs }}>
-              <Feather name="alert-triangle" size={14} color={ComeYaColors.warning} />
-              <ThemedText
-                type="small"
-                style={{
-                  color: ComeYaColors.warning,
-                  fontWeight: "600",
-                  marginLeft: Spacing.xs,
-                }}
-              >
-                Si algo no está disponible:
-              </ThemedText>
-            </View>
-            {item.substitutionPreference && (
-              <ThemedText type="small" style={{ color: theme.text, marginTop: 2 }}>
-                • Preferencia general:{" "}
-                <ThemedText type="small" style={{ fontWeight: "600" }}>
-                  {item.substitutionPreference === "refund"
-                    ? "💵 Reembolsar"
-                    : item.substitutionPreference === "call"
-                      ? "📞 Llamar al cliente"
-                      : "🔄 Sustituir por producto similar"}
-                </ThemedText>
-              </ThemedText>
-            )}
-            {item.substituteProductIds && (() => {
+            items.map((orderItem: any, index: number) => {
+              // Sustitución POR PRODUCTO: cada item del pedido es sustituible
+              // por separado (mapa por product.id, por id de carrito o global)
+              let subMap: Record<string, string> = {};
               try {
-                const substituteIds =
+                subMap =
                   typeof item.substituteProductIds === "string"
                     ? JSON.parse(item.substituteProductIds)
-                    : item.substituteProductIds;
-                const entries = Object.entries(substituteIds);
-                if (entries.length > 0) {
-                  const details = item.substituteProducts || {};
-                  const names = item.substituteProductNames || {};
-                  const subs = Array.isArray(item.substitutions)
-                    ? item.substitutions
-                    : [];
-                  const orderItems = Array.isArray(items) ? items : [];
-                  return (
-                    <View style={{ marginTop: Spacing.xs }}>
-                      <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
-                        Productos sustitutos elegidos:
+                    : item.substituteProductIds || {};
+              } catch {}
+              const subDetails = item.substituteProducts || {};
+              const subNames = item.substituteProductNames || {};
+              const subs = Array.isArray(item.substitutions)
+                ? item.substitutions
+                : [];
+              const productId = orderItem.product?.id;
+              const substituteId =
+                (productId && subMap[productId]) ||
+                subMap[orderItem.id] ||
+                subMap["__global__"] ||
+                null;
+              const det = substituteId
+                ? subDetails[String(substituteId)] || {}
+                : {};
+              const subName =
+                det.name ||
+                subNames[String(substituteId)] ||
+                (substituteId
+                  ? "Producto " + String(substituteId).slice(-6)
+                  : "");
+              // Unidades: el pedido puede traer product.price en EUROS
+              // (carrito crudo) o price suelto en céntimos (reescrito)
+              const unitEuros =
+                orderItem.product?.price != null
+                  ? Number(orderItem.product.price)
+                  : orderItem.price != null
+                    ? Number(orderItem.price) / 100
+                    : 0;
+              const subUnitEuros =
+                det.price != null ? Number(det.price) / 100 : null;
+              const qty = Math.max(1, Number(orderItem.quantity) || 1);
+              const deltaTotal =
+                subUnitEuros != null
+                  ? Math.round((subUnitEuros - unitEuros) * 100) * qty
+                  : null;
+              const state = productId
+                ? subs.find((s: any) => s.itemProductId === productId)
+                : null;
+              const applied =
+                state?.status === "applied" || state?.status === "approved";
+              const pendingState = state?.status === "proposed";
+              const closedOrder = ["delivered", "cancelled", "payment_failed"].includes(
+                item.status,
+              );
+              return (
+                <View key={index}>
+                  <View style={styles.item}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText type="body">
+                        {qty}x{" "}
+                        {orderItem.name || orderItem.product?.name || "Producto"}
                       </ThemedText>
-                      {entries.map(([originalId, substituteId]: [string, unknown]) => {
-                        const sid = String(substituteId);
-                        const det = details[sid] || {};
-                        const name = det.name || names[sid] || `Producto ${sid.slice(-6)}`;
-                        const subPrice = det.price ?? null; // centavos
-                        const origItem = orderItems.find(
-                          (it: any) => it.product?.id === originalId,
-                        );
-                        const origPriceCents = origItem
-                          ? Math.round(Number(origItem.product?.price ?? 0) * 100)
-                          : null;
-                        const delta =
-                          subPrice != null && origPriceCents != null
-                            ? subPrice - origPriceCents
-                            : null;
-                        const state = subs.find(
-                          (s: any) => s.itemProductId === originalId,
-                        );
-                        const applied =
-                          state?.status === "applied" || state?.status === "approved";
-                        const pendingState = state?.status === "proposed";
-                        const closedOrder = ["delivered", "cancelled", "payment_failed"].includes(item.status);
-                        return (
-                          <View
-                            key={originalId}
-                            style={{
-                              flexDirection: "row",
-                              alignItems: "center",
-                              marginTop: Spacing.xs,
-                              padding: Spacing.xs,
-                              backgroundColor: theme.backgroundSecondary,
-                              borderRadius: BorderRadius.sm,
-                            }}
-                          >
-                            {det.image ? (
-                              <Image
-                                source={{ uri: det.image }}
-                                style={{ width: 44, height: 44, borderRadius: 6 }}
-                              />
-                            ) : (
-                              <View style={{ width: 44, height: 44, borderRadius: 6, backgroundColor: "rgba(128,128,128,0.2)", alignItems: "center", justifyContent: "center" }}>
-                                <Feather name="package" size={18} color={theme.textSecondary} />
-                              </View>
-                            )}
-                            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
-                              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                                Sustituir por
-                              </ThemedText>
-                              <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
-                                {name}
-                              </ThemedText>
-                              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-                                {delta != null && (
-                                  <ThemedText
-                                    type="caption"
-                                    style={{
-                                      color: delta < 0 ? ComeYaColors.success : delta > 0 ? ComeYaColors.error : theme.textSecondary,
-                                      fontWeight: "700",
-                                    }}
-                                  >
-                                    {delta < 0
-                                      ? `−${(Math.abs(delta) / 100).toFixed(2)} € a devolver`
-                                      : delta > 0
-                                        ? `+${(delta / 100).toFixed(2)} € a cobrar`
-                                        : "mismo precio"}
-                                  </ThemedText>
-                                )}
-                                {applied && (
-                                  <ThemedText type="caption" style={{ color: ComeYaColors.success, fontWeight: "700", marginLeft: 6 }}>
-                                    ✅ Aplicada
-                                  </ThemedText>
-                                )}
-                                {pendingState && (
-                                  <ThemedText type="caption" style={{ color: ComeYaColors.warning, fontWeight: "700", marginLeft: 6 }}>
-                                    ⏳ Esperando aprobación
-                                  </ThemedText>
-                                )}
-                                {state?.status === "rejected" && (
-                                  <ThemedText type="caption" style={{ color: ComeYaColors.error, fontWeight: "700", marginLeft: 6 }}>
-                                    ❌ Rechazada
-                                  </ThemedText>
-                                )}
-                              </View>
-                            </View>
-                            {!applied && !pendingState && !closedOrder && (
-                              <Pressable
-                                onPress={() =>
-                                  handleApplySubstitution(item, originalId, sid, delta)
-                                }
-                                style={({ pressed }) => [
-                                  {
-                                    backgroundColor: ComeYaColors.primary,
-                                    paddingHorizontal: Spacing.sm,
-                                    paddingVertical: 6,
-                                    borderRadius: BorderRadius.sm,
-                                    opacity: pressed ? 0.8 : 1,
-                                  },
-                                ]}
-                              >
-                                <ThemedText type="caption" style={{ color: "#FFF", fontWeight: "600" }}>
-                                  Aplicar
-                                </ThemedText>
-                              </Pressable>
-                            )}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  );
-                }
-              } catch {
-                return null;
-              }
-              return null;
-            })()}
-            {item.itemSubstitutionPreferences && (() => {
-              try {
-                const itemPrefs =
-                  typeof item.itemSubstitutionPreferences === "string"
-                    ? JSON.parse(item.itemSubstitutionPreferences)
-                    : item.itemSubstitutionPreferences;
-                const prefs = Object.entries(itemPrefs);
-                if (prefs.length > 0) {
-                  return (
-                    <View style={{ marginTop: Spacing.xs }}>
-                      <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
-                        Preferencias por producto:
-                      </ThemedText>
-                      {prefs.map(([itemId, pref]: [string, unknown]) => (
-                        <ThemedText key={itemId} type="caption" style={{ color: theme.textSecondary }}>
-                          • {String(itemId).slice(-6)}:{" "}
-                          {String(pref) === "refund"
-                            ? "Reembolsar"
-                            : String(pref) === "call"
-                              ? "Llamar"
-                              : "Sustituir"}
+                      {orderItem.note ? (
+                        <ThemedText
+                          type="caption"
+                          style={{ color: ComeYaColors.warning, marginTop: 2 }}
+                        >
+                          ✏️ {orderItem.note}
                         </ThemedText>
-                      ))}
+                      ) : null}
                     </View>
-                  );
-                }
-              } catch {
-                return null;
-              }
-              return null;
-            })()}
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary, marginLeft: Spacing.xs }}
+                    >
+                      €{unitEuros.toFixed(2)}
+                    </ThemedText>
+                  </View>
+                  {substituteId ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginTop: 4,
+                        marginBottom: 4,
+                        padding: Spacing.xs,
+                        backgroundColor: theme.backgroundSecondary,
+                        borderRadius: BorderRadius.sm,
+                      }}
+                    >
+                      {det.image ? (
+                        <Image
+                          source={{ uri: det.image }}
+                          style={{ width: 36, height: 36, borderRadius: 6 }}
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 6,
+                            backgroundColor: "rgba(128,128,128,0.2)",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Feather name="package" size={16} color={theme.textSecondary} />
+                        </View>
+                      )}
+                      <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                          Sustituir por{" "}
+                          <ThemedText
+                            type="caption"
+                            style={{ fontWeight: "600", color: theme.text }}
+                          >
+                            {subName}
+                          </ThemedText>
+                        </ThemedText>
+                        <View
+                          style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}
+                        >
+                          {deltaTotal != null && (
+                            <ThemedText
+                              type="caption"
+                              style={{
+                                color:
+                                  deltaTotal < 0
+                                    ? ComeYaColors.success
+                                    : deltaTotal > 0
+                                      ? ComeYaColors.error
+                                      : theme.textSecondary,
+                                fontWeight: "700",
+                              }}
+                            >
+                              {deltaTotal < 0
+                                ? "−" + (Math.abs(deltaTotal) / 100).toFixed(2) + " € a devolver"
+                                : deltaTotal > 0
+                                  ? "+" + (deltaTotal / 100).toFixed(2) + " € a cobrar"
+                                  : "mismo precio"}
+                            </ThemedText>
+                          )}
+                          {applied && (
+                            <ThemedText
+                              type="caption"
+                              style={{ color: ComeYaColors.success, fontWeight: "700", marginLeft: 6 }}
+                            >
+                              ✅ Aplicada
+                            </ThemedText>
+                          )}
+                          {pendingState && (
+                            <ThemedText
+                              type="caption"
+                              style={{ color: ComeYaColors.warning, fontWeight: "700", marginLeft: 6 }}
+                            >
+                              ⏳ Esperando aprobación
+                            </ThemedText>
+                          )}
+                          {state?.status === "rejected" && (
+                            <ThemedText
+                              type="caption"
+                              style={{ color: ComeYaColors.error, fontWeight: "700", marginLeft: 6 }}
+                            >
+                              ❌ Rechazada
+                            </ThemedText>
+                          )}
+                        </View>
+                      </View>
+                      {!applied && !pendingState && !closedOrder && (
+                        <Pressable
+                          onPress={() =>
+                            handleApplySubstitution(
+                              item,
+                              productId || orderItem.id,
+                              String(substituteId),
+                              deltaTotal,
+                            )
+                          }
+                          style={({ pressed }) => [
+                            {
+                              backgroundColor: ComeYaColors.primary,
+                              paddingHorizontal: Spacing.sm,
+                              paddingVertical: 6,
+                              borderRadius: BorderRadius.sm,
+                              opacity: pressed ? 0.8 : 1,
+                            },
+                          ]}
+                        >
+                          <ThemedText type="caption" style={{ color: "#FFF", fontWeight: "600" }}>
+                            Sustituir
+                          </ThemedText>
+                        </Pressable>
+                      )}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+        </View>
+
+        {item.substitutionPreference ? (
+          <View
+            style={{
+              marginTop: Spacing.xs,
+              padding: Spacing.sm,
+              backgroundColor: ComeYaColors.warning + "15",
+              borderRadius: BorderRadius.sm,
+              borderLeftWidth: 3,
+              borderLeftColor: ComeYaColors.warning,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Feather name="alert-triangle" size={13} color={ComeYaColors.warning} />
+            <ThemedText
+              type="caption"
+              style={{ color: ComeYaColors.warning, fontWeight: "600", marginLeft: Spacing.xs }}
+            >
+              Si algo no está disponible:{" "}
+              {item.substitutionPreference === "refund"
+                ? "💵 Reembolsar"
+                : item.substitutionPreference === "call"
+                  ? "📞 Llamar al cliente"
+                  : "🔄 Sustituir"}
+            </ThemedText>
           </View>
-        )}
+        ) : null}
 
         <View style={styles.orderFooter}>
           <View>

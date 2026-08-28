@@ -1261,9 +1261,12 @@ export default function OrderTrackingScreen() {
           order.items.length > 0 ? (
             order.items.map((item, index) => {
               const itemName = item.product?.name || item.name || "Producto";
-              // Los precios de los ítems viajan en CÉNTIMOS (misma unidad que
-              // en el panel del negocio) — sin heurísticas de "si >1000…"
-              const itemPrice = (item.product?.price || item.price || 0) / 100;
+              // El pedido guarda DOS formatos: product.price en EUROS
+              // (carrito crudo) o price suelto en CÉNTIMOS (reescrito)
+              const itemPrice =
+                item.product?.price != null
+                  ? Number(item.product.price)
+                  : (item.price || 0) / 100;
               const itemQty = item.quantity || 1;
               return (
                 <View key={item.id || `item-${index}`} style={styles.itemRow}>

@@ -92,6 +92,12 @@ export default function CartScreen() {
   // Calcular delivery fee REAL basado en distancia
   React.useEffect(() => {
     const calculateFee = async () => {
+      // La API devuelve snake_case: delivery_fee. Sin dirección todavía se
+      // usa la tarifa base del negocio (si existe) — nunca un 3 € falso.
+      const baseFee =
+        business?.delivery_fee != null
+          ? Number(business.delivery_fee) / 100
+          : null;
       if (
         !selectedAddress ||
         !business ||
@@ -100,7 +106,7 @@ export default function CartScreen() {
         !business.latitude ||
         !business.longitude
       ) {
-        setCalculatedDeliveryFee((business?.deliveryFee || 300) / 100);
+        setCalculatedDeliveryFee(baseFee);
         return;
       }
 
@@ -120,11 +126,11 @@ export default function CartScreen() {
         if (data.success) {
           setCalculatedDeliveryFee(data.deliveryFee / 100);
         } else {
-          setCalculatedDeliveryFee((business.deliveryFee || 300) / 100);
+          setCalculatedDeliveryFee(baseFee);
         }
       } catch (error) {
         console.error("Error calculating delivery fee:", error);
-        setCalculatedDeliveryFee((business?.deliveryFee || 300) / 100);
+        setCalculatedDeliveryFee(baseFee);
       }
     };
     calculateFee();
@@ -137,13 +143,16 @@ export default function CartScreen() {
   const deliveryFee =
     orderType === "pickup"
       ? 0
-      : (calculatedDeliveryFee ??
-        (businessData?.deliveryFee ? businessData.deliveryFee / 100 : 3));
-  const minimumOrder = business?.minimumOrder || 0;
+      : calculatedDeliveryFee ??
+        (businessData?.delivery_fee != null
+          ? Number(businessData.delivery_fee) / 100
+          : null);
+  const minimumOrder =
+    business?.minimum_order ?? business?.minimumOrder ?? 0;
 
   // Los precios de los productos YA incluyen la comisión del 15%
   // No aplicar comisión adicional aquí
-  const total = subtotal + deliveryFee;
+  const total = subtotal + (deliveryFee ?? 0);
   const canProceed = subtotal >= minimumOrder;
 
   const handleCheckout = () => {
@@ -160,7 +169,7 @@ export default function CartScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate("Checkout", {
-      calculatedDeliveryFee: deliveryFee,
+      calculatedDeliveryFee: deliveryFee ?? 0,
       orderType,
     } as any);
   };
@@ -425,7 +434,9 @@ export default function CartScreen() {
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío
             </ThemedText>
-            <ThemedText type="body">{formatEuros(deliveryFee)}</ThemedText>
+            <ThemedText type="body">
+              {deliveryFee == null ? "Calculando…" : formatEuros(deliveryFee)}
+            </ThemedText>
           </View>
         )}
         {orderType === "pickup" && (

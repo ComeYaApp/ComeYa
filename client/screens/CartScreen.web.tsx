@@ -97,13 +97,19 @@ export default function CartScreen() {
   }, [selectedAddress, businessData, orderType]);
 
   const cartItems = cart?.items || [];
+  // Productos por peso: el precio es por unidad de peso (unitAmount),
+  // igual que en el contexto y en la app nativa
+  const itemLineTotal = (i: any) =>
+    i.product.isWeightBased && i.unitAmount
+      ? i.product.price * i.unitAmount * i.quantity
+      : i.product.price * i.quantity;
   const subtotal = cartItems.reduce(
-    (s: number, i: any) => s + i.product.price * i.quantity,
+    (s: number, i: any) => s + itemLineTotal(i),
     0,
   );
   const deliveryFee = orderType === "pickup" ? 0 : calculatedDeliveryFee;
   const total = subtotal + deliveryFee;
-  const minimumOrder = businessData?.minimumOrder || 0;
+  const minimumOrder = businessData?.minimum_order || businessData?.minimumOrder || 0;
   const canProceed = subtotal >= minimumOrder;
 
   return (
@@ -175,7 +181,8 @@ export default function CartScreen() {
                       {item.product.name}
                     </Text>
                     <Text style={[s.itemPrice, { color: PRIMARY }]}>
-                      {item.product.price.toFixed(2)} € / ud.
+                      {item.product.price.toFixed(2)} €
+                      {item.product.isWeightBased ? " / kg" : " / ud."}
                     </Text>
                   </View>
                   <View style={s.qtyRow}>
@@ -200,7 +207,7 @@ export default function CartScreen() {
                     </Pressable>
                   </View>
                   <Text style={[s.itemTotal, { color: text }]}>
-                    {(item.product.price * item.quantity).toFixed(2)} €
+                    {itemLineTotal(item).toFixed(2)} €
                   </Text>
                 </View>
               ))}
@@ -298,7 +305,7 @@ export default function CartScreen() {
                     {item.quantity}x {item.product.name}
                   </Text>
                   <Text style={[s.summaryValue, { color: text }]}>
-                    {(item.product.price * item.quantity).toFixed(2)} €
+                    {itemLineTotal(item).toFixed(2)} €
                   </Text>
                 </View>
               ))}

@@ -1393,7 +1393,8 @@ export const substitutions = mysqlTable("substitutions", {
   substituteName: text("substitute_name"),
   substituteImage: text("substitute_image"),
   substitutePrice: int("substitute_price"), // centavos
-  priceDelta: int("price_delta").default(0), // centavos; negativo = reembolso
+  priceDelta: int("price_delta").default(0), // centavos; delta TOTAL (unitario x cantidad)
+  quantity: int("quantity").default(1),
   status: varchar("status", { length: 20 }).notNull().default("proposed"), // proposed | approved | rejected | applied
   proposedBy: varchar("proposed_by", { length: 255 }),
   stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),

@@ -23,7 +23,7 @@ import {
   businesses,
   transactions,
 } from "@shared/schema-mysql";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { sendPushToUser } from "./enhancedPushService";
 import { orderRef } from "./orderNumberService";
@@ -63,10 +63,20 @@ function parseItems(order: any): ParsedItem[] {
   }
 }
 
-/** Precio del producto original en céntimos (en el pedido viaja en euros). */
+/**
+ * Precio unitario del item en céntimos. Los pedidos guardan DOS formatos
+ * según la ruta que los creó: orderRoutes conserva el carrito crudo
+ * (product.price en EUROS); orders.ts reescribe los items (price suelto en
+ * CÉNTIMOS). Se detecta la forma para no multiplicar por 100 dos veces.
+ */
 function itemPriceCents(item: ParsedItem): number {
-  const price = item?.product?.price ?? item?.price ?? 0;
-  return Math.round(Number(price) * 100);
+  if (item?.product?.price != null) {
+    return Math.round(Number(item.product.price) * 100);
+  }
+  if (item?.price != null) {
+    return Math.round(Number(item.price));
+  }
+  return 0;
 }
 
 function parseSubstituteMap(order: any): Record<string, string> {
@@ -219,14 +229,27 @@ export async function proposeSubstitution(
   }
 
   const items = parseItems(order);
-  const item = items.find(
+  const map = parseSubstituteMap(order);
+  // Acepta el id real del producto (product.id), el id de carrito (item.id,
+  // clave que usa el checkout web) o productId (formato reescrito). Si llega
+  // una CLAVE del mapa de sustitutos se resuelve contra su item.
+  let item: ParsedItem | undefined = items.find(
     (it: ParsedItem) =>
-      it.product?.id === itemProductId || it.id === itemProductId,
+      it.product?.id === itemProductId ||
+      it.id === itemProductId ||
+      it.productId === itemProductId,
   );
+  if (!item && map[itemProductId]) {
+    item = items.find((it: ParsedItem) => it.id === itemProductId);
+    if (!item && itemProductId === "__global__" && items.length === 1) {
+      item = items[0];
+    }
+  }
   if (!item) {
     return {
       success: false,
-      message: "Producto del pedido no encontrado",
+      message:
+        "Producto del pedido no encontrado. Aplica la sustitución desde el producto concreto de la lista.",
     };
   }
 
@@ -241,13 +264,37 @@ export async function proposeSubstitution(
 
   const originalPrice = itemPriceCents(item);
   const substitutePrice = Number(substitute.price) || 0;
-  const delta = substitutePrice - originalPrice;
+  const quantity = Math.max(1, Number(item.quantity) || 1);
+  // El delta financiero es por UNIDAD x cantidad: con 2x de un producto la
+  // devolución/cobro debe ser el doble, no el delta unitario.
+  const unitDelta = substitutePrice - originalPrice;
+  const delta = unitDelta * quantity;
 
-  const map = parseSubstituteMap(order);
+  // Idempotencia: una sola sustitución activa por producto del pedido —
+  // aplicar dos veces sumaría el delta dos veces al total
+  const [existing] = await db
+    .select({ id: substitutions.id })
+    .from(substitutions)
+    .where(
+      and(
+        eq(substitutions.orderId, order.id),
+        eq(substitutions.itemProductId, itemProductId),
+        inArray(substitutions.status, ["proposed", "approved", "applied"]),
+      ),
+    )
+    .limit(1);
+  if (existing) {
+    return {
+      success: false,
+      message: "Ya existe una sustitución para este producto",
+    };
+  }
+
   const preAuthorized =
     map[itemProductId] === substituteProductId ||
     map["__global__"] === substituteProductId ||
-    map[item.product?.id || ""] === substituteProductId;
+    map[item.product?.id || ""] === substituteProductId ||
+    map[item.id || ""] === substituteProductId;
 
   const subId = randomUUID();
   await db.insert(substitutions).values({
@@ -261,6 +308,7 @@ export async function proposeSubstitution(
     substituteImage: substitute.image || null,
     substitutePrice,
     priceDelta: delta,
+    quantity,
     status: "proposed",
     proposedBy,
   });
@@ -276,6 +324,7 @@ export async function proposeSubstitution(
     substituteImage: substitute.image || null,
     substitutePrice,
     priceDelta: delta,
+    quantity,
     status: "proposed",
   };
 

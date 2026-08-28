@@ -368,6 +368,7 @@ export async function runStartupMigrations(): Promise<void> {
           substitute_image TEXT,
           substitute_price INT,
           price_delta INT DEFAULT 0,
+          quantity INT DEFAULT 1,
           status VARCHAR(20) NOT NULL DEFAULT 'proposed',
           proposed_by VARCHAR(255),
           stripe_payment_intent_id VARCHAR(255),
@@ -380,6 +381,16 @@ export async function runStartupMigrations(): Promise<void> {
       );
     } catch (err: any) {
       console.log("Migration note (substitutions):", err.message);
+    }
+
+    // quantity para el delta total (tablas creadas antes de esta columna)
+    try {
+      await conn.query(
+        `ALTER TABLE substitutions ADD COLUMN quantity INT DEFAULT 1`,
+      );
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (substitutions.quantity):", err.message);
     }
   } finally {
     conn.release();

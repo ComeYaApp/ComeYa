@@ -1480,7 +1480,8 @@ var init_schema_mysql = __esm({
       substitutePrice: (0, import_mysql_core.int)("substitute_price"),
       // centavos
       priceDelta: (0, import_mysql_core.int)("price_delta").default(0),
-      // centavos; negativo = reembolso
+      // centavos; delta TOTAL (unitario x cantidad)
+      quantity: (0, import_mysql_core.int)("quantity").default(1),
       status: (0, import_mysql_core.varchar)("status", { length: 20 }).notNull().default("proposed"),
       // proposed | approved | rejected | applied
       proposedBy: (0, import_mysql_core.varchar)("proposed_by", { length: 255 }),
@@ -2105,6 +2106,7 @@ async function runStartupMigrations() {
           substitute_image TEXT,
           substitute_price INT,
           price_delta INT DEFAULT 0,
+          quantity INT DEFAULT 1,
           status VARCHAR(20) NOT NULL DEFAULT 'proposed',
           proposed_by VARCHAR(255),
           stripe_payment_intent_id VARCHAR(255),
@@ -2117,6 +2119,14 @@ async function runStartupMigrations() {
       );
     } catch (err) {
       console.log("Migration note (substitutions):", err.message);
+    }
+    try {
+      await conn.query(
+        `ALTER TABLE substitutions ADD COLUMN quantity INT DEFAULT 1`
+      );
+    } catch (err) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (substitutions.quantity):", err.message);
     }
   } finally {
     conn.release();
@@ -3326,11 +3336,11 @@ async function pendingProofOrderIds(orderIds) {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { paymentProofs: paymentProofs2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-    const { and: and47, eq: eq79, inArray: inArray11 } = await import("drizzle-orm");
+    const { and: and47, eq: eq79, inArray: inArray12 } = await import("drizzle-orm");
     const rows = await db2.select({ orderId: paymentProofs2.orderId }).from(paymentProofs2).where(
       and47(
         eq79(paymentProofs2.status, "pending"),
-        inArray11(paymentProofs2.orderId, orderIds)
+        inArray12(paymentProofs2.orderId, orderIds)
       )
     );
     return new Set(rows.map((r) => r.orderId).filter(Boolean));
@@ -4457,8 +4467,13 @@ function parseItems(order) {
   }
 }
 function itemPriceCents(item) {
-  const price = item?.product?.price ?? item?.price ?? 0;
-  return Math.round(Number(price) * 100);
+  if (item?.product?.price != null) {
+    return Math.round(Number(item.product.price) * 100);
+  }
+  if (item?.price != null) {
+    return Math.round(Number(item.price));
+  }
+  return 0;
 }
 function parseSubstituteMap(order) {
   try {
@@ -4561,13 +4576,20 @@ async function proposeSubstitution(order, itemProductId, substituteProductId, pr
     };
   }
   const items = parseItems(order);
-  const item = items.find(
-    (it) => it.product?.id === itemProductId || it.id === itemProductId
+  const map = parseSubstituteMap(order);
+  let item = items.find(
+    (it) => it.product?.id === itemProductId || it.id === itemProductId || it.productId === itemProductId
   );
+  if (!item && map[itemProductId]) {
+    item = items.find((it) => it.id === itemProductId);
+    if (!item && itemProductId === "__global__" && items.length === 1) {
+      item = items[0];
+    }
+  }
   if (!item) {
     return {
       success: false,
-      message: "Producto del pedido no encontrado"
+      message: "Producto del pedido no encontrado. Aplica la sustituci\xF3n desde el producto concreto de la lista."
     };
   }
   const [substitute] = await db.select().from(products).where((0, import_drizzle_orm13.eq)(products.id, substituteProductId)).limit(1);
@@ -4576,9 +4598,23 @@ async function proposeSubstitution(order, itemProductId, substituteProductId, pr
   }
   const originalPrice = itemPriceCents(item);
   const substitutePrice = Number(substitute.price) || 0;
-  const delta = substitutePrice - originalPrice;
-  const map = parseSubstituteMap(order);
-  const preAuthorized = map[itemProductId] === substituteProductId || map["__global__"] === substituteProductId || map[item.product?.id || ""] === substituteProductId;
+  const quantity = Math.max(1, Number(item.quantity) || 1);
+  const unitDelta = substitutePrice - originalPrice;
+  const delta = unitDelta * quantity;
+  const [existing] = await db.select({ id: substitutions.id }).from(substitutions).where(
+    (0, import_drizzle_orm13.and)(
+      (0, import_drizzle_orm13.eq)(substitutions.orderId, order.id),
+      (0, import_drizzle_orm13.eq)(substitutions.itemProductId, itemProductId),
+      (0, import_drizzle_orm13.inArray)(substitutions.status, ["proposed", "approved", "applied"])
+    )
+  ).limit(1);
+  if (existing) {
+    return {
+      success: false,
+      message: "Ya existe una sustituci\xF3n para este producto"
+    };
+  }
+  const preAuthorized = map[itemProductId] === substituteProductId || map["__global__"] === substituteProductId || map[item.product?.id || ""] === substituteProductId || map[item.id || ""] === substituteProductId;
   const subId = (0, import_crypto3.randomUUID)();
   await db.insert(substitutions).values({
     id: subId,
@@ -4591,6 +4627,7 @@ async function proposeSubstitution(order, itemProductId, substituteProductId, pr
     substituteImage: substitute.image || null,
     substitutePrice,
     priceDelta: delta,
+    quantity,
     status: "proposed",
     proposedBy
   });
@@ -4605,6 +4642,7 @@ async function proposeSubstitution(order, itemProductId, substituteProductId, pr
     substituteImage: substitute.image || null,
     substitutePrice,
     priceDelta: delta,
+    quantity,
     status: "proposed"
   };
   if (preAuthorized && delta <= 0) {
@@ -8666,8 +8704,8 @@ var init_digitalPaymentService = __esm({
           }).where((0, import_drizzle_orm28.eq)(orders.id, data.orderId));
           try {
             const { users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-            const { inArray: inArray11 } = await import("drizzle-orm");
-            const admins = await db.select({ id: users5.id }).from(users5).where(inArray11(users5.role, ["admin", "super_admin"]));
+            const { inArray: inArray12 } = await import("drizzle-orm");
+            const admins = await db.select({ id: users5.id }).from(users5).where(inArray12(users5.role, ["admin", "super_admin"]));
             const { orderRef: orderRef2 } = await Promise.resolve().then(() => (init_orderNumberService(), orderNumberService_exports));
             const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
             const ref = orderRef2(order);
@@ -9231,9 +9269,9 @@ async function handleDisputeCreated(dispute, context) {
   if (order) {
     try {
       const { users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-      const { inArray: inArray11 } = await import("drizzle-orm");
+      const { inArray: inArray12 } = await import("drizzle-orm");
       const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
-      const admins = await db.select({ id: users5.id }).from(users5).where(inArray11(users5.role, ["admin", "super_admin"]));
+      const admins = await db.select({ id: users5.id }).from(users5).where(inArray12(users5.role, ["admin", "super_admin"]));
       for (const admin of admins) {
         await sendPushToUser2(admin.id, {
           title: "\u{1F6A8} Chargeback abierto",
@@ -14105,7 +14143,7 @@ router2.get(
     try {
       const { businesses: businesses3, orders: orders2, users: users5, deliveryDrivers: deliveryDrivers3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql23, inArray: inArray11 } = await import("drizzle-orm");
+      const { sql: sql23, inArray: inArray12 } = await import("drizzle-orm");
       const ownerBusinesses = await db2.select({
         id: businesses3.id,
         name: businesses3.name,
@@ -14223,10 +14261,10 @@ router2.get(
     try {
       const { businesses: businesses3, orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { inArray: inArray11 } = await import("drizzle-orm");
+      const { inArray: inArray12 } = await import("drizzle-orm");
       const ownerBusinesses = await db2.select().from(businesses3).where((0, import_drizzle_orm14.eq)(businesses3.ownerId, req.user.id));
       const businessIds = ownerBusinesses.map((b) => b.id);
-      const allOrders = businessIds.length > 0 ? await db2.select().from(orders2).where(inArray11(orders2.businessId, businessIds)) : [];
+      const allOrders = businessIds.length > 0 ? await db2.select().from(orders2).where(inArray12(orders2.businessId, businessIds)) : [];
       const result = ownerBusinesses.map((business) => {
         const bOrders = allOrders.filter((o) => o.businessId === business.id);
         const deliveredOrders = bOrders.filter((o) => o.status === "delivered");
@@ -14317,9 +14355,9 @@ router2.get(
       if (orderRows.length) {
         try {
           const { substitutions: substitutions2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-          const { inArray: inArray11 } = await import("drizzle-orm");
+          const { inArray: inArray12 } = await import("drizzle-orm");
           const subRows = await db2.select().from(substitutions2).where(
-            inArray11(
+            inArray12(
               substitutions2.orderId,
               orderRows.map((r) => r.id)
             )
@@ -14424,7 +14462,7 @@ router2.get(
       const { businessId } = req.query;
       const { businesses: businesses3, payouts: payouts2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { eq: eq79, inArray: inArray11, or: or8, desc: desc19 } = await import("drizzle-orm");
+      const { eq: eq79, inArray: inArray12, or: or8, desc: desc19 } = await import("drizzle-orm");
       const ownerBusinesses = await db2.select({ id: businesses3.id }).from(businesses3).where(
         businessId ? (0, import_drizzle_orm14.and)(
           eq79(businesses3.id, businessId),
@@ -14437,7 +14475,7 @@ router2.get(
       const businessIds = ownerBusinesses.map((b) => b.id);
       const businessPayouts = await db2.select().from(payouts2).where(
         or8(
-          inArray11(payouts2.recipientId, businessIds),
+          inArray12(payouts2.recipientId, businessIds),
           // retiros del dueño (recipientId = id del usuario)
           eq79(payouts2.recipientId, req.user.id)
         )
@@ -15051,9 +15089,9 @@ router2.post(
       }
       try {
         const { users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
-        const { inArray: inArray11 } = await import("drizzle-orm");
+        const { inArray: inArray12 } = await import("drizzle-orm");
         const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
-        const admins = await db2.select({ id: users5.id }).from(users5).where(inArray11(users5.role, ["admin", "super_admin"]));
+        const admins = await db2.select({ id: users5.id }).from(users5).where(inArray12(users5.role, ["admin", "super_admin"]));
         for (const admin of admins) {
           await sendPushToUser2(admin.id, {
             title: "\u{1F3EA} Negocio pendiente de aprobaci\xF3n",
@@ -16165,7 +16203,7 @@ router3.get("/", authenticateToken, async (req, res) => {
   try {
     const { orders: orders2, reviews: reviews2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { eq: eq79, inArray: inArray11, isNull: isNull9, and: and47 } = await import("drizzle-orm");
+    const { eq: eq79, inArray: inArray12, isNull: isNull9, and: and47 } = await import("drizzle-orm");
     let userOrders;
     if (req.query.status === "active") {
       userOrders = await db2.select().from(orders2).where(
@@ -16185,7 +16223,7 @@ router3.get("/", authenticateToken, async (req, res) => {
     const reviewedOrderIds = /* @__PURE__ */ new Set();
     if (userOrders.length > 0) {
       const revs = await db2.select({ orderId: reviews2.orderId }).from(reviews2).where(
-        inArray11(
+        inArray12(
           reviews2.orderId,
           userOrders.map((o) => o.id)
         )
@@ -18607,7 +18645,7 @@ router8.get(
     try {
       const { orders: orders2, businesses: businesses3, users: users5 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { eq: eq79, desc: desc19, inArray: inArray11 } = await import("drizzle-orm");
+      const { eq: eq79, desc: desc19, inArray: inArray12 } = await import("drizzle-orm");
       const allOrders = await db2.select().from(orders2).orderBy(desc19(orders2.createdAt)).limit(500);
       const businessIds = [
         ...new Set(allOrders.map((o) => o.businessId).filter(Boolean))
@@ -18615,8 +18653,8 @@ router8.get(
       const userIds = [
         ...new Set(allOrders.map((o) => o.userId).filter(Boolean))
       ];
-      const businessRows = businessIds.length ? await db2.select({ id: businesses3.id, name: businesses3.name }).from(businesses3).where(inArray11(businesses3.id, businessIds)) : [];
-      const userRows = userIds.length ? await db2.select({ id: users5.id, name: users5.name, phone: users5.phone }).from(users5).where(inArray11(users5.id, userIds)) : [];
+      const businessRows = businessIds.length ? await db2.select({ id: businesses3.id, name: businesses3.name }).from(businesses3).where(inArray12(businesses3.id, businessIds)) : [];
+      const userRows = userIds.length ? await db2.select({ id: users5.id, name: users5.name, phone: users5.phone }).from(users5).where(inArray12(users5.id, userIds)) : [];
       const businessMap = new Map(businessRows.map((b) => [b.id, b.name]));
       const userMap = new Map(userRows.map((u) => [u.id, u]));
       const enrichedOrders = allOrders.map((order) => ({
@@ -19197,9 +19235,9 @@ router8.get(
     try {
       const { users: users5, deliveryDrivers: deliveryDrivers3, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { inArray: inArray11, eq: eq79 } = await import("drizzle-orm");
+      const { inArray: inArray12, eq: eq79 } = await import("drizzle-orm");
       const pending = await db2.select().from(users5).where(
-        inArray11(users5.role, ["delivery_driver", "business_owner"])
+        inArray12(users5.role, ["delivery_driver", "business_owner"])
       );
       const enriched = await Promise.all(
         pending.map(async (user) => {
@@ -20186,8 +20224,8 @@ router9.get(
     try {
       const { payouts: payouts2, users: users5, businesses: businesses3, orders: orders2 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { inArray: inArray11, eq: eq79, desc: desc19 } = await import("drizzle-orm");
-      const paid = await db2.select().from(payouts2).where(inArray11(payouts2.status, ["paid", "stripe_auto"])).orderBy(desc19(payouts2.paidAt));
+      const { inArray: inArray12, eq: eq79, desc: desc19 } = await import("drizzle-orm");
+      const paid = await db2.select().from(payouts2).where(inArray12(payouts2.status, ["paid", "stripe_auto"])).orderBy(desc19(payouts2.paidAt));
       console.log(`[Finance] Found ${paid.length} paid payouts`);
       const enriched = await Promise.all(
         paid.map(async (p) => {
@@ -21254,7 +21292,7 @@ router14.get("/payouts", authenticateToken, async (req, res) => {
   try {
     const { payouts: payouts2, businesses: businesses3 } = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { eq: eq79, inArray: inArray11, or: or8, desc: desc19 } = await import("drizzle-orm");
+    const { eq: eq79, inArray: inArray12, or: or8, desc: desc19 } = await import("drizzle-orm");
     const userId = req.user.id;
     const isBusinessOwner = req.user.role === "business_owner" || req.user.role === "business";
     let rows = [];
@@ -21264,7 +21302,7 @@ router14.get("/payouts", authenticateToken, async (req, res) => {
       if (businessIds.length > 0) {
         rows = await db2.select().from(payouts2).where(
           or8(
-            inArray11(payouts2.recipientId, businessIds),
+            inArray12(payouts2.recipientId, businessIds),
             eq79(payouts2.recipientId, userId)
           )
         ).orderBy(desc19(payouts2.createdAt));
@@ -22023,7 +22061,7 @@ router20.get("/pending", authenticateToken, async (req, res) => {
       return res.json({ success: true, orders: [], total: 0 });
     }
     const businessIds = ownerBusinesses.map((b) => b.id);
-    const { inArray: inArray11, sql: sql23 } = await import("drizzle-orm");
+    const { inArray: inArray12, sql: sql23 } = await import("drizzle-orm");
     const allOrders = await db.select().from(orders);
     const pendingOrders = allOrders.filter(
       (o) => businessIds.includes(o.businessId) && o.paymentMethod === "cash" && o.status === "delivered" && o.cashSettled === false
@@ -24056,7 +24094,7 @@ router28.post("/dispute", authenticateToken, async (req, res) => {
       const schema = await Promise.resolve().then(() => (init_schema_mysql(), schema_mysql_exports));
       const { orderIssues: orderIssues2, supportTickets: supportTickets2, ticketMessages: ticketMessages2, users: users5, orders: orders2 } = schema;
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { eq: eq79, inArray: inArray11 } = await import("drizzle-orm");
+      const { eq: eq79, inArray: inArray12 } = await import("drizzle-orm");
       const { sendPushToUser: sendPushToUser2 } = await Promise.resolve().then(() => (init_enhancedPushService(), enhancedPushService_exports));
       const [order] = await db2.select().from(orders2).where(eq79(orders2.id, orderId)).limit(1);
       if (order) {
@@ -24090,7 +24128,7 @@ router28.post("/dispute", authenticateToken, async (req, res) => {
             status: "open",
             priority: "high"
           });
-          const admins = await db2.select({ id: users5.id }).from(users5).where(inArray11(users5.role, ["admin", "super_admin"]));
+          const admins = await db2.select({ id: users5.id }).from(users5).where(inArray12(users5.role, ["admin", "super_admin"]));
           for (const admin of admins) {
             await sendPushToUser2(admin.id, {
               title: "\u26A0\uFE0F Disputa de entrega",
@@ -28338,8 +28376,8 @@ router49.get("/mine", authenticateToken, async (req, res) => {
     const ownerBusinesses = await db.select({ id: bTable.id }).from(bTable).where((0, import_drizzle_orm73.eq)(bTable.ownerId, req.user.id));
     const ids = ownerBusinesses.map((b) => b.id);
     if (!ids.length) return res.json({ success: true, requests: [] });
-    const { inArray: inArray11 } = await import("drizzle-orm");
-    const list = await db.select().from(deliveryRequests).where(inArray11(deliveryRequests.businessId, ids)).orderBy((0, import_drizzle_orm73.desc)(deliveryRequests.createdAt)).limit(50);
+    const { inArray: inArray12 } = await import("drizzle-orm");
+    const list = await db.select().from(deliveryRequests).where(inArray12(deliveryRequests.businessId, ids)).orderBy((0, import_drizzle_orm73.desc)(deliveryRequests.createdAt)).limit(50);
     res.json({ success: true, requests: list });
   } catch (error) {
     res.status(500).json({ error: error.message });
