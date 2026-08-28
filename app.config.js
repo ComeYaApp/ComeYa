@@ -14,6 +14,9 @@ export default {
         ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
+      // Versionado local: App Store Connect ya tiene el build 10; cada
+      // build nuevo debe incrementar este número a mano (11, 12, 13…)
+      buildNumber: "11",
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
@@ -114,6 +117,5 @@ export default {
         "https://comeya-backend.onrender.com",
       EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
     },
-    owner: "cazkiuz",
   },
 };
