@@ -187,6 +187,20 @@ async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
   context: WebhookContext,
 ) {
+  // Pago de la DIFERENCIA de una sustitución: no es el pago del pedido,
+  // solo aplica la sustitución pendiente (el pedido ya estaba confirmado)
+  if (paymentIntent.metadata?.isDelta === "true") {
+    const { applyDeltaPaymentFromWebhook } = await import(
+      "./substitutionService"
+    );
+    const deltaResult = await applyDeltaPaymentFromWebhook(paymentIntent);
+    logWebhookEvent(
+      context,
+      `Substitution delta payment: ${deltaResult.message}`,
+    );
+    return;
+  }
+
   const orderId = paymentIntent.metadata?.orderId;
 
   if (!orderId) {

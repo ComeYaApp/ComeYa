@@ -596,14 +596,51 @@ router.get(
       const { collectSubstituteIds } = await import("../utils/substitution");
       const substituteIds = new Set<string>(collectSubstituteIds(orderRows));
       const productNames = new Map<string, string>();
+      // Detalle completo del sustituto (nombre, imagen, precio) para que el
+      // panel del negocio muestre miniatura y diferencia de precio
+      const productDetails = new Map<
+        string,
+        { name: string; image: string | null; price: number | null }
+      >();
       if (substituteIds.size) {
         const { products } = await import("@shared/schema-mysql");
         const idList = [...substituteIds];
         const [prodRows] = (await db.execute(sql`
-          SELECT id, name FROM products
+          SELECT id, name, image, price FROM products
           WHERE id IN (${sql.join(idList.map((id) => sql`${id}`), sql`, `)})
         `)) as any;
-        (prodRows || []).forEach((p: any) => productNames.set(p.id, p.name));
+        (prodRows || []).forEach((p: any) => {
+          productNames.set(p.id, p.name);
+          productDetails.set(p.id, {
+            name: p.name,
+            image: p.image || null,
+            price: p.price ?? null,
+          });
+        });
+      }
+
+      // Sustituciones (propuestas/aplicadas/rechazadas) de los pedidos de
+      // esta lista, en una sola consulta
+      const subsByOrder = new Map<string, any[]>();
+      if (orderRows.length) {
+        try {
+          const { substitutions } = await import("@shared/schema-mysql");
+          const { inArray } = await import("drizzle-orm");
+          const subRows: any = await db
+            .select()
+            .from(substitutions)
+            .where(
+              inArray(
+                substitutions.orderId,
+                orderRows.map((r: any) => r.id),
+              ),
+            )
+            .limit(200);
+          for (const s of subRows) {
+            if (!subsByOrder.has(s.orderId)) subsByOrder.set(s.orderId, []);
+            subsByOrder.get(s.orderId)!.push(s);
+          }
+        } catch {}
       }
 
       const formattedOrders = orderRows.map((row: any) => {
@@ -650,6 +687,8 @@ router.get(
           itemSubstitutionPreferences: row.item_substitution_preferences ?? null,
           substituteProductIds: row.substitute_product_ids ?? null,
           substituteProductNames: Object.fromEntries(productNames),
+          substituteProducts: Object.fromEntries(productDetails),
+          substitutions: subsByOrder.get(row.id) || [],
           customer: row.customer_name
             ? {
                 name: row.customer_name,
@@ -1435,6 +1474,68 @@ router.put(
       res.json({ success: true, message: "Estado actualizado" });
     } catch (error: any) {
       console.error("Update order status error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// POST /api/business/orders/:orderId/substitutions — aplicar/proponer
+// sustitución de un producto (la pre-autorizada en el checkout se aplica
+// al momento si es más barata o igual; más cara queda propuesta al cliente)
+router.post(
+  "/orders/:orderId/substitutions",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { db } = await import("../db");
+      const { orders, businesses } = await import("@shared/schema-mysql");
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, req.params.orderId as string))
+        .limit(1);
+      if (!order) {
+        return res.status(404).json({ error: "Pedido no encontrado" });
+      }
+
+      const [business] = await db
+        .select()
+        .from(businesses)
+        .where(
+          and(
+            eq(businesses.id, order.businessId),
+            eq(businesses.ownerId, req.user!.id),
+          ),
+        )
+        .limit(1);
+      if (
+        !business &&
+        req.user!.role !== "admin" &&
+        req.user!.role !== "super_admin"
+      ) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const { itemProductId, substituteProductId } = req.body || {};
+      if (!itemProductId || !substituteProductId) {
+        return res.status(400).json({
+          error: "itemProductId y substituteProductId son obligatorios",
+        });
+      }
+
+      const { proposeSubstitution } = await import("../substitutionService");
+      const result = await proposeSubstitution(
+        order,
+        String(itemProductId),
+        String(substituteProductId),
+        req.user!.id,
+      );
+      if (!result.success) {
+        return res.status(400).json({ error: result.message });
+      }
+      res.json(result);
+    } catch (error: any) {
+      console.error("Propose substitution error:", error);
       res.status(500).json({ error: error.message });
     }
   },

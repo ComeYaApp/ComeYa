@@ -352,6 +352,35 @@ export async function runStartupMigrations(): Promise<void> {
     } catch (err: any) {
       console.log("Migration note (app_settings):", err.message);
     }
+
+    // Sustituciones de productos (propuesta del negocio, decisión del
+    // cliente, ajuste de precio con reembolso o cargo del delta)
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS substitutions (
+          id VARCHAR(255) NOT NULL PRIMARY KEY,
+          order_id VARCHAR(255) NOT NULL,
+          item_product_id VARCHAR(255) NOT NULL,
+          item_name TEXT,
+          original_price INT,
+          substitute_product_id VARCHAR(255) NOT NULL,
+          substitute_name TEXT,
+          substitute_image TEXT,
+          substitute_price INT,
+          price_delta INT DEFAULT 0,
+          status VARCHAR(20) NOT NULL DEFAULT 'proposed',
+          proposed_by VARCHAR(255),
+          stripe_payment_intent_id VARCHAR(255),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          decided_at TIMESTAMP NULL,
+          applied_at TIMESTAMP NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_substitutions_order (order_id)
+        )`,
+      );
+    } catch (err: any) {
+      console.log("Migration note (substitutions):", err.message);
+    }
   } finally {
     conn.release();
   }

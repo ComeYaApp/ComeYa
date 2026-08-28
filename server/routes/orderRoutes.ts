@@ -466,6 +466,16 @@ router.get("/:id", authenticateToken, async (req, res) => {
       /* la tabla podría no existir aún */
     }
 
+    // Sustituciones del pedido (propuestas por el negocio): el cliente
+    // aprueba/rechaza desde la pantalla de seguimiento
+    let substitutions: any[] = [];
+    try {
+      const { listSubstitutions } = await import("../substitutionService");
+      substitutions = await listSubstitutions(orderId);
+    } catch {
+      /* la tabla podría no existir aún */
+    }
+
     // Return order with driver info included
     res.json({
       success: true,
@@ -475,8 +485,98 @@ router.get("/:id", authenticateToken, async (req, res) => {
         businessType: businessInfo?.type ?? null,
         businessCategories: businessInfo?.categories ?? null,
         hasReview,
+        substitutions,
       },
     });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/orders/:id/substitutions/:subId/approve — cliente aprueba la
+// sustitución (paga la diferencia con el Payment Sheet si es más cara)
+router.post("/:id/substitutions/:subId/approve", authenticateToken, async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, req.params.id as string))
+      .limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const { decideSubstitution } = await import("../substitutionService");
+    const result = await decideSubstitution(
+      order,
+      req.params.subId as string,
+      true,
+      req.user!.id,
+    );
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/orders/:id/substitutions/:subId/reject — cliente rechaza
+router.post("/:id/substitutions/:subId/reject", authenticateToken, async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, req.params.id as string))
+      .limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const { decideSubstitution } = await import("../substitutionService");
+    const result = await decideSubstitution(
+      order,
+      req.params.subId as string,
+      false,
+      req.user!.id,
+    );
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/orders/:id/substitutions/:subId/confirm-payment — el cliente
+// pagó la diferencia con el Payment Sheet; se verifica en Stripe y se aplica
+router.post("/:id/substitutions/:subId/confirm-payment", authenticateToken, async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, req.params.id as string))
+      .limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const { confirmDeltaPayment } = await import("../substitutionService");
+    const result = await confirmDeltaPayment(
+      order,
+      req.params.subId as string,
+      String(req.body?.paymentIntentId || ""),
+      req.user!.id,
+    );
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+    res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

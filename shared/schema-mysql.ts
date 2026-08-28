@@ -1378,6 +1378,33 @@ export type BusinessCategory = typeof businessCategories.$inferSelect;
 
 // Ajustes de la app (secretos operativos que el código guarda él mismo,
 // p. ej. el secreto del webhook de Stripe registrado en el arranque)
+// Sustituciones de productos: propuesta del negocio cuando falta stock,
+// decisión del cliente y ajuste de precio (delta negativo = reembolso,
+// positivo = cargo aprobado por el cliente)
+export const substitutions = mysqlTable("substitutions", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  orderId: varchar("order_id", { length: 255 }).notNull(),
+  itemProductId: varchar("item_product_id", { length: 255 }).notNull(),
+  itemName: text("item_name"),
+  originalPrice: int("original_price"), // centavos
+  substituteProductId: varchar("substitute_product_id", { length: 255 }).notNull(),
+  substituteName: text("substitute_name"),
+  substituteImage: text("substitute_image"),
+  substitutePrice: int("substitute_price"), // centavos
+  priceDelta: int("price_delta").default(0), // centavos; negativo = reembolso
+  status: varchar("status", { length: 20 }).notNull().default("proposed"), // proposed | approved | rejected | applied
+  proposedBy: varchar("proposed_by", { length: 255 }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  decidedAt: timestamp("decided_at"),
+  appliedAt: timestamp("applied_at"),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
+});
+
 export const appSettings = mysqlTable("app_settings", {
   key: varchar("key", { length: 191 }).primaryKey(),
   value: text("value").notNull(),

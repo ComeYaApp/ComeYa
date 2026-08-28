@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
   Modal,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -232,6 +233,62 @@ export default function BusinessOrdersScreen() {
         setConfirmModal({ ...confirmModal, visible: false });
       },
     });
+  };
+
+  const handleApplySubstitution = (
+    order: any,
+    itemProductId: string,
+    substituteId: string,
+    delta: number | null,
+  ) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    const deltaMsg =
+      delta == null
+        ? ""
+        : delta < 0
+          ? ` Se devolverán ${(Math.abs(delta) / 100).toFixed(2)} € al cliente.`
+          : delta > 0
+            ? ` El cliente deberá aprobar y pagar +${(delta / 100).toFixed(2)} €.`
+            : " Mismo precio.";
+    Alert.alert(
+      "Aplicar sustitución",
+      `¿Servir el producto sustituto en lugar del original?${deltaMsg}`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Aplicar",
+          onPress: async () => {
+            try {
+              const res = await apiRequest(
+                "POST",
+                `/api/business/orders/${order.id}/substitutions`,
+                { itemProductId, substituteProductId: substituteId },
+              );
+              const data = await res.json();
+              if (data.applied) {
+                Alert.alert(
+                  "Sustitución aplicada",
+                  data.refunded
+                    ? `La diferencia de ${(data.refunded / 100).toFixed(2)} € se devuelve al cliente por su método de pago.`
+                    : "Sustitución aplicada (mismo precio).",
+                );
+              } else if (data.proposed) {
+                Alert.alert(
+                  "Propuesta enviada",
+                  "El cliente debe aprobar la sustitución y pagar la diferencia.",
+                );
+              }
+              loadOrders();
+            } catch (err: any) {
+              Alert.alert(
+                "Error",
+                err?.message || "No se pudo aplicar la sustitución",
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleStartPreparing = (orderId: string, isPickup = false) => {
@@ -503,21 +560,122 @@ export default function BusinessOrdersScreen() {
                     : item.substituteProductIds;
                 const entries = Object.entries(substituteIds);
                 if (entries.length > 0) {
+                  const details = item.substituteProducts || {};
                   const names = item.substituteProductNames || {};
+                  const subs = Array.isArray(item.substitutions)
+                    ? item.substitutions
+                    : [];
+                  const orderItems = Array.isArray(items) ? items : [];
                   return (
                     <View style={{ marginTop: Spacing.xs }}>
                       <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
                         Productos sustitutos elegidos:
                       </ThemedText>
                       {entries.map(([originalId, substituteId]: [string, unknown]) => {
-                        const name = names[String(substituteId)];
+                        const sid = String(substituteId);
+                        const det = details[sid] || {};
+                        const name = det.name || names[sid] || `Producto ${sid.slice(-6)}`;
+                        const subPrice = det.price ?? null; // centavos
+                        const origItem = orderItems.find(
+                          (it: any) => it.product?.id === originalId,
+                        );
+                        const origPriceCents = origItem
+                          ? Math.round(Number(origItem.product?.price ?? 0) * 100)
+                          : null;
+                        const delta =
+                          subPrice != null && origPriceCents != null
+                            ? subPrice - origPriceCents
+                            : null;
+                        const state = subs.find(
+                          (s: any) => s.itemProductId === originalId,
+                        );
+                        const applied =
+                          state?.status === "applied" || state?.status === "approved";
+                        const pendingState = state?.status === "proposed";
+                        const closedOrder = ["delivered", "cancelled", "payment_failed"].includes(item.status);
                         return (
-                          <ThemedText key={originalId} type="caption" style={{ color: theme.textSecondary }}>
-                            • Sustituir por:{" "}
-                            <ThemedText type="caption" style={{ fontWeight: "600", color: theme.text }}>
-                              {name || `Producto ${String(substituteId).slice(-6)}`}
-                            </ThemedText>
-                          </ThemedText>
+                          <View
+                            key={originalId}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              marginTop: Spacing.xs,
+                              padding: Spacing.xs,
+                              backgroundColor: theme.backgroundSecondary,
+                              borderRadius: BorderRadius.sm,
+                            }}
+                          >
+                            {det.image ? (
+                              <Image
+                                source={{ uri: det.image }}
+                                style={{ width: 44, height: 44, borderRadius: 6 }}
+                              />
+                            ) : (
+                              <View style={{ width: 44, height: 44, borderRadius: 6, backgroundColor: "rgba(128,128,128,0.2)", alignItems: "center", justifyContent: "center" }}>
+                                <Feather name="package" size={18} color={theme.textSecondary} />
+                              </View>
+                            )}
+                            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                                Sustituir por
+                              </ThemedText>
+                              <ThemedText type="small" style={{ fontWeight: "600", color: theme.text }}>
+                                {name}
+                              </ThemedText>
+                              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
+                                {delta != null && (
+                                  <ThemedText
+                                    type="caption"
+                                    style={{
+                                      color: delta < 0 ? ComeYaColors.success : delta > 0 ? ComeYaColors.error : theme.textSecondary,
+                                      fontWeight: "700",
+                                    }}
+                                  >
+                                    {delta < 0
+                                      ? `−${(Math.abs(delta) / 100).toFixed(2)} € a devolver`
+                                      : delta > 0
+                                        ? `+${(delta / 100).toFixed(2)} € a cobrar`
+                                        : "mismo precio"}
+                                  </ThemedText>
+                                )}
+                                {applied && (
+                                  <ThemedText type="caption" style={{ color: ComeYaColors.success, fontWeight: "700", marginLeft: 6 }}>
+                                    ✅ Aplicada
+                                  </ThemedText>
+                                )}
+                                {pendingState && (
+                                  <ThemedText type="caption" style={{ color: ComeYaColors.warning, fontWeight: "700", marginLeft: 6 }}>
+                                    ⏳ Esperando aprobación
+                                  </ThemedText>
+                                )}
+                                {state?.status === "rejected" && (
+                                  <ThemedText type="caption" style={{ color: ComeYaColors.error, fontWeight: "700", marginLeft: 6 }}>
+                                    ❌ Rechazada
+                                  </ThemedText>
+                                )}
+                              </View>
+                            </View>
+                            {!applied && !pendingState && !closedOrder && (
+                              <Pressable
+                                onPress={() =>
+                                  handleApplySubstitution(item, originalId, sid, delta)
+                                }
+                                style={({ pressed }) => [
+                                  {
+                                    backgroundColor: ComeYaColors.primary,
+                                    paddingHorizontal: Spacing.sm,
+                                    paddingVertical: 6,
+                                    borderRadius: BorderRadius.sm,
+                                    opacity: pressed ? 0.8 : 1,
+                                  },
+                                ]}
+                              >
+                                <ThemedText type="caption" style={{ color: "#FFF", fontWeight: "600" }}>
+                                  Aplicar
+                                </ThemedText>
+                              </Pressable>
+                            )}
+                          </View>
                         );
                       })}
                     </View>

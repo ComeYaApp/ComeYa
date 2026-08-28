@@ -28,7 +28,12 @@ import { logger } from "./logger";
 import { sendPushToUser } from "./enhancedPushService";
 import { orderRef, orderRefFromId } from "./orderNumberService";
 
-export type RefundType = "issue" | "cancellation" | "dispute" | "manual";
+export type RefundType =
+  | "issue"
+  | "cancellation"
+  | "dispute"
+  | "manual"
+  | "substitution";
 export type LiableParty = "business" | "driver" | "platform";
 
 export interface RefundRequest {

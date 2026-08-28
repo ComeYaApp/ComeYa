@@ -172,6 +172,37 @@ export default function BusinessOrdersScreen() {
     }
   };
 
+  const applySubstitution = async (
+    orderId: string,
+    itemProductId: string,
+    substituteProductId: string,
+  ) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/business/orders/${orderId}/substitutions`,
+        { itemProductId, substituteProductId },
+      );
+      const data = await res.json();
+      if (data.applied) {
+        showToast(
+          data.refunded
+            ? `Sustitución aplicada — devolución de ${(data.refunded / 100).toFixed(2)} € al cliente`
+            : "Sustitución aplicada (mismo precio)",
+          "success",
+        );
+      } else if (data.proposed) {
+        showToast(
+          "Propuesta enviada al cliente (debe aprobar la diferencia)",
+          "info",
+        );
+      }
+      await loadOrders();
+    } catch (err: any) {
+      showToast(err?.message || "No se pudo aplicar la sustitución", "error");
+    }
+  };
+
   const confirmPickupWithCode = async () => {
     if (!pickupCodeOrder) return;
     const code = pickupCodeInput.trim();
@@ -570,21 +601,141 @@ export default function BusinessOrdersScreen() {
                               typeof order.substituteProductIds === "string"
                                 ? JSON.parse(order.substituteProductIds)
                                 : order.substituteProductIds;
-                            const names =
-                              order.substituteProductNames || {};
+                            const names = order.substituteProductNames || {};
+                            const details = order.substituteProducts || {};
+                            const subs = Array.isArray(order.substitutions)
+                              ? order.substitutions
+                              : [];
+                            let parsedItems: any[] = [];
+                            try {
+                              parsedItems = Array.isArray(order.items)
+                                ? order.items
+                                : JSON.parse(order.items || "[]");
+                            } catch {}
+                            const closedOrder = [
+                              "delivered",
+                              "cancelled",
+                              "payment_failed",
+                            ].includes(order.status);
                             return Object.entries(map).map(
-                              ([origId, subId]: [string, any]) => (
-                                <Text
-                                  key={origId}
-                                  style={[s.itemNote, { color: "#92400E" }]}
-                                >
-                                  • Sustituir por:{" "}
-                                  <b>
-                                    {names[String(subId)] ||
-                                      `Producto ${String(subId).slice(-6)}`}
-                                  </b>
-                                </Text>
-                              ),
+                              ([origId, subId]: [string, any]) => {
+                                const sid = String(subId);
+                                const det = details[sid] || {};
+                                const name =
+                                  det.name || names[sid] || `Producto ${sid.slice(-6)}`;
+                                const subPrice = det.price ?? null;
+                                const origItem = parsedItems.find(
+                                  (it: any) => it.product?.id === origId,
+                                );
+                                const origPriceCents = origItem
+                                  ? Math.round(
+                                      Number(origItem.product?.price ?? 0) * 100,
+                                    )
+                                  : null;
+                                const delta =
+                                  subPrice != null && origPriceCents != null
+                                    ? subPrice - origPriceCents
+                                    : null;
+                                const state = subs.find(
+                                  (x: any) => x.itemProductId === origId,
+                                );
+                                const applied =
+                                  state?.status === "applied" ||
+                                  state?.status === "approved";
+                                const pendingState = state?.status === "proposed";
+                                return (
+                                  <View
+                                    key={origId}
+                                    style={{
+                                      flexDirection: "row",
+                                      alignItems: "center",
+                                      marginTop: 6,
+                                      padding: 6,
+                                      backgroundColor: "rgba(128,128,128,0.08)",
+                                      borderRadius: 8,
+                                    }}
+                                  >
+                                    {det.image ? (
+                                      <img
+                                        src={det.image}
+                                        alt={name}
+                                        style={{
+                                          width: 44,
+                                          height: 44,
+                                          borderRadius: 6,
+                                          objectFit: "cover",
+                                        }}
+                                      />
+                                    ) : (
+                                      <View
+                                        style={{
+                                          width: 44,
+                                          height: 44,
+                                          borderRadius: 6,
+                                          backgroundColor: "rgba(128,128,128,0.2)",
+                                        }}
+                                      />
+                                    )}
+                                    <View style={{ flex: 1, marginLeft: 8 }}>
+                                      <Text style={[s.itemNote, { color: "#92400E" }]}>
+                                        Sustituir por: <b>{name}</b>
+                                      </Text>
+                                      {delta != null && (
+                                        <Text
+                                          style={{
+                                            fontSize: 12,
+                                            fontWeight: "700",
+                                            color:
+                                              delta < 0
+                                                ? "#10B981"
+                                                : delta > 0
+                                                  ? "#EF4444"
+                                                  : "#92400E",
+                                          }}
+                                        >
+                                          {delta < 0
+                                            ? `−${(Math.abs(delta) / 100).toFixed(2)} € a devolver`
+                                            : delta > 0
+                                              ? `+${(delta / 100).toFixed(2)} € a cobrar`
+                                              : "mismo precio"}
+                                          {applied ? " · ✅ Aplicada" : ""}
+                                          {pendingState
+                                            ? " · ⏳ Esperando aprobación"
+                                            : ""}
+                                          {state?.status === "rejected"
+                                            ? " · ❌ Rechazada"
+                                            : ""}
+                                        </Text>
+                                      )}
+                                    </View>
+                                    {!applied && !pendingState && !closedOrder && (
+                                      <Pressable
+                                        onPress={() =>
+                                          applySubstitution(order.id, origId, sid)
+                                        }
+                                        style={[
+                                          {
+                                            backgroundColor: ComeYaColors.primary,
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 6,
+                                            borderRadius: 6,
+                                          },
+                                        ]}
+                                      >
+                                        <Text
+                                          style={{
+                                            color: "#fff",
+                                            fontSize: 12,
+                                            fontWeight: "700",
+                                          }}
+                                        >
+                                          Aplicar
+                                        </Text>
+                                      </Pressable>
+                                    )}
+                                  </View>
+                                );
+                              },
                             );
                           } catch {
                             return null;
