@@ -166,6 +166,9 @@ export const orders = mysqlTable("orders", {
   driverTransferId: text("driver_transfer_id"), // ID de transfer a repartidor
   // Asignación de repartidor
   assignedAt: timestamp("assigned_at"), // Cuando se asignó el repartidor
+  // Cancelación por el repartidor (libera el pedido o lo cancela tras recoger)
+  driverCancelReason: text("driver_cancel_reason"), // Motivo en texto legible
+  driverCancelledAt: timestamp("driver_cancelled_at"), // Cuándo canceló
   driverPickedUpAt: timestamp("driver_picked_up_at"), // Cuando repartidor recogió el pedido
   driverArrivedAt: timestamp("driver_arrived_at"), // Cuando repartidor llegó con el cliente
   // Liquidación de efectivo (para pedidos cash)
@@ -250,6 +253,31 @@ export const businesses = mysqlTable("businesses", {
   customCommission: int("custom_commission"), // null = usa global, numero = % especifico para este negocio
   totalOrdersCompleted: int("total_orders_completed").default(0),
   totalRevenueGenerated: int("total_revenue_generated").default(0), // en centavos
+  // Modo reservas / sin reparto: los negocios pueden estar en la plataforma
+  // solo con reservas (deliveryEnabled=false oculta el carrito al cliente)
+  reservationsEnabled: boolean("reservations_enabled").notNull().default(false),
+  deliveryEnabled: boolean("delivery_enabled").notNull().default(true),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
+});
+
+// Reservas de mesa (negocios sin delivery o con servicio de reservas)
+export const reservations = mysqlTable("reservations", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  businessId: varchar("business_id", { length: 255 }).notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  time: varchar("time", { length: 5 }).notNull(), // HH:mm
+  partySize: int("party_size").notNull().default(2),
+  customerName: varchar("customer_name", { length: 255 }),
+  customerPhone: varchar("customer_phone", { length: 50 }),
+  notes: text("notes"),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, confirmed, rejected, cancelled
+  businessNote: text("business_note"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
   ),

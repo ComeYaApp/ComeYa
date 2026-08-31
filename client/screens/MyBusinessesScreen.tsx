@@ -88,6 +88,8 @@ export default function MyBusinessesScreen() {
     image: string;
     latitude: number | null;
     longitude: number | null;
+    reservationsEnabled: boolean;
+    deliveryEnabled: boolean;
   }>({
     name: "",
     description: "",
@@ -97,6 +99,8 @@ export default function MyBusinessesScreen() {
     image: "",
     latitude: null,
     longitude: null,
+    reservationsEnabled: false,
+    deliveryEnabled: true,
   });
 
   useEffect(() => {
@@ -197,6 +201,8 @@ export default function MyBusinessesScreen() {
         image: "",
         latitude: null,
         longitude: null,
+        reservationsEnabled: false,
+        deliveryEnabled: true,
       });
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo crear el negocio");
@@ -242,6 +248,8 @@ export default function MyBusinessesScreen() {
         image: newBusiness.image,
         latitude: newBusiness.latitude,
         longitude: newBusiness.longitude,
+        reservationsEnabled: newBusiness.reservationsEnabled,
+        deliveryEnabled: newBusiness.deliveryEnabled,
       });
       await loadBusinesses();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -256,6 +264,8 @@ export default function MyBusinessesScreen() {
         image: "",
         latitude: null,
         longitude: null,
+        reservationsEnabled: false,
+        deliveryEnabled: true,
       });
       Alert.alert("Éxito", "Negocio actualizado correctamente");
     } catch (error: any) {
@@ -279,6 +289,15 @@ export default function MyBusinessesScreen() {
       latitude: business.latitude != null ? Number(business.latitude) : null,
       longitude:
         business.longitude != null ? Number(business.longitude) : null,
+      reservationsEnabled:
+        (business as any).reservationsEnabled === true ||
+        (business as any).reservationsEnabled === 1,
+      deliveryEnabled:
+        (business as any).deliveryEnabled === undefined ||
+        (business as any).deliveryEnabled === null
+          ? true
+          : (business as any).deliveryEnabled === true ||
+            (business as any).deliveryEnabled === 1,
     });
     setShowEditModal(true);
   };
@@ -508,6 +527,32 @@ export default function MyBusinessesScreen() {
       fontSize: 14,
       marginLeft: Spacing.xs,
       color: theme.theme.text,
+    },
+    toggleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: theme.theme.border,
+      marginBottom: Spacing.sm,
+    },
+    toggleLabel: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: theme.theme.text,
+    },
+    toggleHint: {
+      fontSize: 12,
+      color: theme.theme.textSecondary,
+      marginTop: 2,
+    },
+    togglePill: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.xs,
+      borderRadius: BorderRadius.full,
+      marginLeft: Spacing.sm,
     },
     imagePickerButton: {
       backgroundColor: theme.theme.background,
@@ -1088,6 +1133,84 @@ export default function MyBusinessesScreen() {
                 </Pressable>
               ))}
             </View>
+
+            <ThemedText style={styles.inputLabel}>Servicios del negocio</ThemedText>
+            <Pressable
+              style={styles.toggleRow}
+              onPress={() =>
+                setNewBusiness((prev) => ({
+                  ...prev,
+                  reservationsEnabled: !prev.reservationsEnabled,
+                }))
+              }
+            >
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.toggleLabel}>📅 Acepta reservas</ThemedText>
+                <ThemedText style={styles.toggleHint}>
+                  Los clientes podrán reservar mesa desde tu ficha.
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.togglePill,
+                  {
+                    backgroundColor: newBusiness.reservationsEnabled
+                      ? ComeYaColors.success
+                      : theme.theme.backgroundSecondary,
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    color: newBusiness.reservationsEnabled
+                      ? "#FFF"
+                      : theme.theme.textSecondary,
+                    fontWeight: "700",
+                    fontSize: 12,
+                  }}
+                >
+                  {newBusiness.reservationsEnabled ? "SÍ" : "NO"}
+                </ThemedText>
+              </View>
+            </Pressable>
+            <Pressable
+              style={styles.toggleRow}
+              onPress={() =>
+                setNewBusiness((prev) => ({
+                  ...prev,
+                  deliveryEnabled: !prev.deliveryEnabled,
+                }))
+              }
+            >
+              <View style={{ flex: 1 }}>
+                <ThemedText style={styles.toggleLabel}>🛵 Reparto a domicilio</ThemedText>
+                <ThemedText style={styles.toggleHint}>
+                  Desactívalo si solo quieres reservas (sin carrito ni pedidos).
+                </ThemedText>
+              </View>
+              <View
+                style={[
+                  styles.togglePill,
+                  {
+                    backgroundColor: newBusiness.deliveryEnabled
+                      ? ComeYaColors.success
+                      : theme.theme.backgroundSecondary,
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    color: newBusiness.deliveryEnabled
+                      ? "#FFF"
+                      : theme.theme.textSecondary,
+                    fontWeight: "700",
+                    fontSize: 12,
+                  }}
+                >
+                  {newBusiness.deliveryEnabled ? "SÍ" : "NO"}
+                </ThemedText>
+              </View>
+            </Pressable>
 
             <ThemedText style={styles.inputLabel}>Dirección</ThemedText>
             <BusinessAddressMapPicker

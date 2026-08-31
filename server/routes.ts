@@ -66,6 +66,7 @@ import businessCategoriesRoutes from "./routes/businessCategories";
 import deliveryVerificationRoutes from "./routes/deliveryVerification";
 import appConfigRoutes from "./routes/appConfig";
 import driverRoutes from "./routes/driverRoutes";
+import reservationsRoutes from "./reservationsRoutes";
 import { gpsLimiter, geocodingLimiter } from "./rateLimiters";
 
 const router = express.Router();
@@ -366,5 +367,6 @@ router.use("/admin", adminOpsRoutes);
 router.use("/business-categories", businessCategoriesRoutes);
 router.use("/map", mapDataRoutes);
 router.use("/app-config", appConfigRoutes);
+router.use("/reservations", reservationsRoutes);
 
 export default router;

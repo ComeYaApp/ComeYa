@@ -111,6 +111,22 @@ router.post(
         }
       }
 
+      // Negocios "solo reservas" (sin reparto): no se crean pedidos a
+      // domicilio. La recogida en local (pickup) sigue permitida.
+      {
+        const [biz] = await db
+          .select()
+          .from(businesses)
+          .where(eq(businesses.id, req.body.businessId))
+          .limit(1);
+        if (biz && biz.deliveryEnabled === false && req.body.orderType !== "pickup") {
+          return res.status(400).json({
+            error:
+              "Este negocio no hace reparto a domicilio: reserva una mesa desde su ficha.",
+          });
+        }
+      }
+
       // Resolver coordenadas de entrega: el checkout las envía; si no vienen,
       // usar las de la dirección guardada o geocodificar (con caché y límites).
       // Validación estricta: rangos válidos y nunca (0,0) — una coordenada
@@ -581,6 +597,60 @@ router.post("/:id/substitutions/:subId/confirm-payment", authenticateToken, asyn
     const result = await confirmDeltaPayment(
       order,
       req.params.subId as string,
+      String(req.body?.paymentIntentId || ""),
+      req.user!.id,
+    );
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/orders/:id/substitutions/approve-batch — el cliente acepta TODAS
+// las diferencias positivas pendientes de una vez (un solo pago por el total)
+router.post("/:id/substitutions/approve-batch", authenticateToken, async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, req.params.id as string))
+      .limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const { approveAllPositiveDeltas } = await import("../substitutionService");
+    const result = await approveAllPositiveDeltas(order, req.user!.id);
+    if (!result.success) {
+      return res.status(400).json({ error: result.message });
+    }
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/orders/:id/substitutions/confirm-batch-payment — verifica el
+// PaymentIntent agrupado y aplica todas las sustituciones asociadas
+router.post("/:id/substitutions/confirm-batch-payment", authenticateToken, async (req, res) => {
+  try {
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, req.params.id as string))
+      .limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const { confirmBatchDeltaPayment } = await import("../substitutionService");
+    const result = await confirmBatchDeltaPayment(
+      order,
       String(req.body?.paymentIntentId || ""),
       req.user!.id,
     );

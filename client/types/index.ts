@@ -54,6 +54,8 @@ export interface Business {
   distance?: number;
   latitude?: number;
   longitude?: number;
+  reservationsEnabled?: boolean;
+  deliveryEnabled?: boolean;
 }
 
 export interface Product {

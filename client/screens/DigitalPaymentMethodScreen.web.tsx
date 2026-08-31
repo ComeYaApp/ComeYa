@@ -62,12 +62,6 @@ const METHOD_CONFIG: Record<
     subtitle: "Transferencia manual con comprobante",
     manual: true,
   },
-  sepa: {
-    icon: "credit-card",
-    color: "#1A56DB",
-    subtitle: "Transferencia bancaria SEPA",
-    manual: true,
-  },
   paypal: {
     icon: "dollar-sign",
     color: "#003087",
@@ -127,17 +121,7 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
           instructions: `Envía al ${receivingInfo.bizum}`,
         });
       }
-      if (receivingInfo.iban && !prev.find((m) => m.provider === "sepa")) {
-        manual.push({
-          id: "sp",
-          name: "sepa",
-          provider: "sepa",
-          displayName: "Transferencia SEPA",
-          isActive: true,
-          requiresManualVerification: true,
-          instructions: `IBAN: ${receivingInfo.iban}`,
-        });
-      }
+      // Transferencia SEPA eliminada como método de pago del cliente
       if (
         receivingInfo.paypalEmail &&
         !prev.find((m) => m.provider === "paypal")
@@ -259,23 +243,11 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const handleContinue = () => {
     if (!selected) return;
 
-    // Para métodos manuales (bizum, sepa, paypal), ir a PaymentProof para subir comprobante
-    if (selected.requiresManualVerification) {
-      const amount = orderTotal * 100; // convert to cents
-      const shortId = Date.now().toString(36).toUpperCase();
-      (navigation as any).navigate("PaymentProof", {
-        orderId: shortId,
-        amount,
-        paymentMethod: selected.provider.includes("sepa")
-          ? "sepa"
-          : selected.provider.includes("paypal")
-            ? "paypal"
-            : "bizum",
-      });
-      return;
-    }
-
-    // Para Stripe (tarjeta/bizum instantáneo), ir a Checkout
+    // Volver al Checkout con el método elegido (manual o Stripe). El pedido
+    // se crea al pulsar "Confirmar pedido" y desde ahí se navega al
+    // comprobante con el orderId REAL. Antes, los métodos manuales
+    // inventaban un id (Date.now) y el servidor respondía
+    // "Pedido no encontrado" al subir el comprobante.
     (navigation as any).navigate("Checkout", {
       selectedPaymentMethod: selected,
       orderType,
@@ -521,7 +493,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: PRIMARY,
-    height: 56,
+    minHeight: 56,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderRadius: 16,
     marginTop: 24,
     ...Platform.select({

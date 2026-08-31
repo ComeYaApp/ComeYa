@@ -47,7 +47,6 @@ type PaymentMethod =
   | "stripe_bizum"
   | "paypal"
   | "bizum_manual"
-  | "sepa"
   | "binance";
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<
@@ -577,7 +576,7 @@ useEffect(() => {
         return;
       }
 
-      // Métodos manuales (Bizum manual, SEPA, PayPal) — navegar a subir comprobante
+      // Métodos manuales (Bizum manual, PayPal) — navegar a subir comprobante
       await clearCart();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setIsLoading(false);
@@ -592,11 +591,7 @@ useEffect(() => {
               orderId,
               amount: totalAmount,
               paymentMethod:
-                paymentMethod === "bizum_manual"
-                  ? "bizum"
-                  : paymentMethod === "sepa"
-                    ? "sepa"
-                    : "paypal",
+                paymentMethod === "bizum_manual" ? "bizum" : "paypal",
             },
           },
         ],

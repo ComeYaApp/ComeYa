@@ -95,6 +95,13 @@ export function WebLayout({
             <Feather name="list" size={15} color={sub} />
             <Text style={[s.sideItemText, { color: text }]}>Pedidos</Text>
           </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate("BusinessReservations" as any)}
+            style={s.sideItem}
+          >
+            <Feather name="calendar" size={15} color={sub} />
+            <Text style={[s.sideItemText, { color: text }]}>Reservas</Text>
+          </Pressable>
         </>
       )}
 

@@ -990,7 +990,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
         {tab === "tips" && (
           <>
             <Text style={[s.cardTitle, { color: theme.text, marginBottom: 12 }]}>
-              Propinas por pago manual (Bizum/SEPA/PayPal)
+              Propinas por pago manual (Bizum/PayPal)
             </Text>
             <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 12 }]}>
               El cliente declaró la propina y adjuntó un comprobante. Verifica

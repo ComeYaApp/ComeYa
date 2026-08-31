@@ -43,32 +43,6 @@ const PROVIDERS = [
     ],
   },
   {
-    key: "transferencia",
-    label: "Transferencia SEPA",
-    color: "#1A56DB",
-    icon: "credit-card" as const,
-    fields: [
-      {
-        key: "iban",
-        label: "IBAN",
-        placeholder: "ES00 0000 0000 0000 0000 0000",
-        keyboard: "default" as const,
-      },
-      {
-        key: "titular",
-        label: "Titular",
-        placeholder: "ComeYa SL",
-        keyboard: "default" as const,
-      },
-      {
-        key: "banco",
-        label: "Nombre del banco",
-        placeholder: "Banco Santander",
-        keyboard: "default" as const,
-      },
-    ],
-  },
-  {
     key: "paypal",
     label: "PayPal",
     color: "#003087",

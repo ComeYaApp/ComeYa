@@ -60,12 +60,6 @@ const METHOD_CONFIG: Record<
     subtitle: "Transferencia manual con comprobante",
     manual: true,
   },
-  sepa: {
-    icon: "credit-card",
-    color: "#1A56DB",
-    subtitle: "Transferencia bancaria SEPA",
-    manual: true,
-  },
   paypal: {
     icon: "dollar-sign",
     color: "#003087",
@@ -126,18 +120,8 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
           instructions: `Envía al ${receivingInfo.bizum}`,
         });
       }
-      // Transferencia SEPA (si el admin configuró un IBAN)
-      if (receivingInfo.iban && !prev.find((m) => m.provider === "sepa")) {
-        manual.push({
-          id: "sp",
-          name: "sepa",
-          provider: "sepa",
-          displayName: "Transferencia SEPA",
-          isActive: true,
-          requiresManualVerification: true,
-          instructions: `IBAN: ${receivingInfo.iban}`,
-        });
-      }
+      // Transferencia SEPA eliminada como método de pago del cliente (solo
+      // quedan Bizum manual y PayPal para pagos con comprobante)
       // PayPal manual (si el admin configuró un email)
       if (
         receivingInfo.paypalEmail &&
@@ -263,23 +247,11 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
   const handleContinue = () => {
     if (!selected) return;
 
-    // Para métodos manuales (bizum, sepa, paypal), ir a PaymentProof para subir comprobante
-    if (selected.requiresManualVerification) {
-      const amount = orderTotal * 100; // convert to cents
-      const shortId = Date.now().toString(36).toUpperCase();
-      (navigation as any).navigate("PaymentProof", {
-        orderId: shortId,
-        amount,
-        paymentMethod: selected.provider.includes("sepa")
-          ? "sepa"
-          : selected.provider.includes("paypal")
-            ? "paypal"
-            : "bizum",
-      });
-      return;
-    }
-
-    // Para Stripe (tarjeta/bizum instantáneo), ir a Checkout
+    // Volver al Checkout con el método elegido (manual o Stripe). El pedido
+    // se crea al pulsar "Confirmar pedido" y desde ahí se navega al
+    // comprobante con el orderId REAL. Antes, los métodos manuales
+    // inventaban un id (Date.now) y el servidor respondía
+    // "Pedido no encontrado" al subir el comprobante.
     (navigation as any).navigate("Checkout", {
       selectedPaymentMethod: selected,
       orderType,
@@ -333,7 +305,11 @@ export default function DigitalPaymentMethodScreen({ route }: Props) {
           <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>
             Total a pagar
           </Text>
-          <Text style={[styles.totalAmount, { color: ComeYaColors.primary }]}>
+          <Text
+            style={[styles.totalAmount, { color: ComeYaColors.primary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {orderTotal.toFixed(2)} €
           </Text>
         </View>

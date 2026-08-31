@@ -65,6 +65,7 @@ interface Order {
   createdAt: string;
   deliveredAt?: string;
   confirmedByCustomer?: boolean;
+  driverCancelReason?: string;
   pendingCashTip?: {
     amountCents: number;
     declaredBy: "customer" | "driver";
@@ -88,6 +89,14 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
   // Photo upload state (web: file input)
   const [photoOrder, setPhotoOrder] = useState<string | null>(null);
   const [photoB64, setPhotoB64] = useState<string | null>(null);
+  // Cancelar pedido con motivo (libera antes de recoger / cancela después)
+  const [cancelOrder, setCancelOrder] = useState<string | null>(null);
+  const [cancelMode, setCancelMode] = useState<"released" | "cancelled">(
+    "released",
+  );
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
+  const [cancelNote, setCancelNote] = useState("");
+  const [cancelling, setCancelling] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const intervalRef = useRef<any>(null);
 
@@ -235,6 +244,39 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
       load();
     } catch {
       flash(false, "Error de conexión");
+    }
+  };
+
+  // Cancelar pedido aceptado: antes de recoger se libera a la bolsa;
+  // después de recoger se cancela con reembolso al cliente
+  const submitDriverCancel = async () => {
+    if (!cancelOrder || !cancelReason) return;
+    setCancelling(true);
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/delivery/orders/${cancelOrder}/cancel`,
+        { reason: cancelReason, note: cancelNote },
+      );
+      const data = await res.json();
+      if (data.success) {
+        flash(
+          true,
+          data.mode === "released"
+            ? "Pedido liberado — disponible para otros repartidores"
+            : "Pedido cancelado — se reembolsará al cliente",
+        );
+      } else {
+        flash(false, data.error || data.message || "No se pudo cancelar");
+      }
+      setCancelOrder(null);
+      setCancelReason(null);
+      setCancelNote("");
+      load();
+    } catch {
+      flash(false, "Error de conexión");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -470,6 +512,12 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                         ? ` · Entregado ${fmtDate(order.deliveredAt)}`
                         : ""}
                     </Text>
+                    {order.status === "cancelled" &&
+                      order.driverCancelReason && (
+                        <Text style={[s.dateRow, { color: RED }]}>
+                          ⚠️ Cancelado por ti — {order.driverCancelReason}
+                        </Text>
+                      )}
                   </View>
 
                   {/* Items */}
@@ -737,6 +785,40 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                                 </Text>
                               </View>
                             )}
+                          {[
+                            "ready",
+                            "picked_up",
+                            "on_the_way",
+                            "in_transit",
+                            "arriving",
+                          ].includes(order.status) && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setCancelOrder(order.id);
+                                setCancelMode(
+                                  ["picked_up", "on_the_way", "in_transit", "arriving"].includes(
+                                    order.status,
+                                  )
+                                    ? "cancelled"
+                                    : "released",
+                                );
+                                setCancelReason(null);
+                                setCancelNote("");
+                              }}
+                              style={[
+                                s.actionBtn,
+                                {
+                                  backgroundColor: RED + "10",
+                                  borderColor: RED + "30",
+                                },
+                              ]}
+                            >
+                              <Feather name="x-circle" size={13} color={RED} />
+                              <Text style={[s.actionBtnTxt, { color: RED }]}>
+                                Cancelar pedido
+                              </Text>
+                            </TouchableOpacity>
+                          )}
                         </>
                       )}
                     </View>
@@ -803,6 +885,120 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                           </View>
                         </View>
                       )}
+
+                    {/* Cancelar pedido: motivo + nota (libera o cancela) */}
+                    {cancelOrder === order.id && (
+                      <View
+                        style={{
+                          marginTop: 10,
+                          backgroundColor: RED + "0a",
+                          borderWidth: 1,
+                          borderColor: RED + "40",
+                          borderRadius: 10,
+                          padding: 12,
+                          gap: 8,
+                        }}
+                      >
+                        <Text
+                          style={{ color: RED, fontWeight: "700", fontSize: 13 }}
+                        >
+                          ⚠️{" "}
+                          {cancelMode === "released"
+                            ? "El pedido volverá a estar disponible para otros repartidores."
+                            : "Ya recogiste el pedido: se cancelará y se reembolsará al cliente."}
+                        </Text>
+                        <View
+                          style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}
+                        >
+                          {[
+                            { id: "vehicle_breakdown", label: "🔧 Avería del vehículo" },
+                            { id: "traffic", label: "🚦 Mucho tráfico" },
+                            { id: "personal_issue", label: "🙋 Problema personal" },
+                            { id: "other", label: "📝 Otro motivo" },
+                          ].map((opt) => (
+                            <TouchableOpacity
+                              key={opt.id}
+                              onPress={() => setCancelReason(opt.id)}
+                              style={{
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                borderRadius: 999,
+                                borderWidth: 1,
+                                borderColor:
+                                  cancelReason === opt.id ? RED : border,
+                                backgroundColor:
+                                  cancelReason === opt.id ? RED + "15" : "transparent",
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: "600",
+                                  color: cancelReason === opt.id ? RED : text,
+                                }}
+                              >
+                                {opt.label}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <TextInput
+                          style={[
+                            s.searchInput,
+                            {
+                              color: text,
+                              borderWidth: 1,
+                              borderColor: border,
+                              borderRadius: 8,
+                              paddingHorizontal: 10,
+                              paddingVertical: 8,
+                              fontSize: 13,
+                            },
+                          ]}
+                          placeholder="Nota opcional (máx. 120 caracteres)"
+                          placeholderTextColor={sub}
+                          value={cancelNote}
+                          maxLength={120}
+                          onChangeText={setCancelNote}
+                        />
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                          <TouchableOpacity
+                            onPress={submitDriverCancel}
+                            disabled={!cancelReason || cancelling}
+                            style={[
+                              s.actionBtn,
+                              {
+                                backgroundColor: RED,
+                                opacity: !cancelReason || cancelling ? 0.6 : 1,
+                              },
+                            ]}
+                          >
+                            {cancelling ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : null}
+                            <Text style={[s.actionBtnTxt, { color: "#fff" }]}>
+                              {cancelling
+                                ? "Procesando..."
+                                : cancelMode === "released"
+                                  ? "Sí, liberar el pedido"
+                                  : "Sí, cancelar y reembolsar"}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setCancelOrder(null);
+                              setCancelReason(null);
+                              setCancelNote("");
+                            }}
+                            style={[s.actionBtn, { backgroundColor: chipBg }]}
+                          >
+                            <Text style={[s.actionBtnTxt, { color: text }]}>
+                              Volver
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 </View>
               );

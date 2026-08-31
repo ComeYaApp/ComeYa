@@ -551,8 +551,74 @@ export default function OrderTrackingScreen() {
       : null;
 
   // ── Sustituciones propuestas por el negocio ──────────────────────────
-  const pendingSubstitution =
-    substitutions.find((s: any) => s.status === "proposed") || null;
+  // "proposed" (recién propuesta) y "approved" (cliente aceptó pero el
+  // pago de la diferencia aún no se confirmó) siguen pendientes en la UI
+  const pendingSubstitutions =
+    substitutions.filter(
+      (s: any) => s.status === "proposed" || s.status === "approved",
+    ) || [];
+  const pendingPositive = pendingSubstitutions.filter(
+    (s: any) => Number(s.priceDelta) > 0,
+  );
+  const batchPositiveTotal = pendingPositive.reduce(
+    (sum: number, s: any) => sum + Number(s.priceDelta),
+    0,
+  );
+
+  // Varias sustituciones más caras: un solo pago por la diferencia total
+  const handleBatchSubstitutionApprove = async () => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/orders/${orderId}/substitutions/approve-batch`,
+        {},
+      );
+      const data = await res.json();
+      if (data.needsPayment && data.clientSecret) {
+        try {
+          const StripeModule = await import("@stripe/stripe-react-native");
+          const { error: initError } = await StripeModule.initPaymentSheet({
+            merchantDisplayName: "ComeYa",
+            paymentIntentClientSecret: data.clientSecret,
+            allowsDelayedPaymentMethods: false,
+            appearance: { colors: { primary: "#FF6B35" } },
+          });
+          if (initError) {
+            Alert.alert("Pago", initError.message);
+            return;
+          }
+          const { error: presentError } =
+            await StripeModule.presentPaymentSheet();
+          if (presentError) {
+            if (presentError.code !== "Canceled") {
+              Alert.alert("Pago", presentError.message);
+            }
+            return;
+          }
+          const confirmRes = await apiRequest(
+            "POST",
+            `/api/orders/${orderId}/substitutions/confirm-batch-payment`,
+            { paymentIntentId: data.paymentIntentId },
+          );
+          const confirmData = await confirmRes.json();
+          if (confirmData.applied) {
+            Alert.alert(
+              "Sustituciones aplicadas",
+              "Diferencia pagada y sustituciones aplicadas.",
+            );
+          }
+        } catch (err: any) {
+          Alert.alert(
+            "Pago",
+            err?.message || "No se pudo completar el pago de la diferencia",
+          );
+        }
+      }
+      loadOrderRef.current?.();
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "No se pudo procesar la sustitución");
+    }
+  };
 
   // Propina en efectivo declarada por el repartidor: el cliente la valida
   // (doble confirmación obligatoria para que quede registrada)
@@ -703,9 +769,10 @@ export default function OrderTrackingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Sustitución propuesta por el negocio: aprobar (pagando la
-            diferencia si es más cara) o rechazar */}
-        {pendingSubstitution && (
+        {/* Sustituciones propuestas por el negocio: aprobar (pagando la
+            diferencia si es más cara; varios productos = un solo pago por
+            el total) o rechazar */}
+        {pendingSubstitutions.length > 0 && (
           <View
             style={[
               styles.statusCard,
@@ -718,105 +785,124 @@ export default function OrderTrackingScreen() {
             ]}
           >
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              {pendingSubstitution.substituteImage ? (
-                <Image
-                  source={{ uri: pendingSubstitution.substituteImage }}
-                  style={{ width: 48, height: 48, borderRadius: 8 }}
-                  contentFit="cover"
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 8,
-                    backgroundColor: "rgba(128,128,128,0.2)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Feather name="package" size={20} color={theme.textSecondary} />
-                </View>
-              )}
+              <Feather
+                name="refresh-cw"
+                size={20}
+                color={ComeYaColors.primary}
+              />
               <View style={{ flex: 1, marginLeft: Spacing.sm }}>
                 <ThemedText
                   type="small"
                   style={{ fontWeight: "700", color: theme.text }}
                 >
-                  🔄 El negocio propone una sustitución
-                </ThemedText>
-                <ThemedText
-                  type="caption"
-                  style={{ color: theme.textSecondary, marginTop: 2 }}
-                >
-                  {pendingSubstitution.itemName} →{" "}
-                  {pendingSubstitution.substituteName}
-                </ThemedText>
-                <ThemedText
-                  type="caption"
-                  style={{
-                    fontWeight: "700",
-                    marginTop: 2,
-                    color:
-                      Number(pendingSubstitution.priceDelta) < 0
-                        ? ComeYaColors.success
-                        : Number(pendingSubstitution.priceDelta) > 0
-                          ? ComeYaColors.error
-                          : theme.textSecondary,
-                  }}
-                >
-                  {Number(pendingSubstitution.priceDelta) < 0
-                    ? `Te devolvemos ${(Math.abs(Number(pendingSubstitution.priceDelta)) / 100).toFixed(2)} €`
-                    : Number(pendingSubstitution.priceDelta) > 0
-                      ? `Diferencia a pagar: +${(Number(pendingSubstitution.priceDelta) / 100).toFixed(2)} €`
-                      : "Mismo precio"}
+                  🔄 El negocio propone{" "}
+                  {pendingSubstitutions.length > 1
+                    ? `${pendingSubstitutions.length} sustituciones`
+                    : "una sustitución"}
                 </ThemedText>
               </View>
             </View>
-            <View style={{ flexDirection: "row", marginTop: Spacing.sm }}>
-              <Pressable
-                onPress={() =>
-                  handleSubstitutionDecision(pendingSubstitution, false)
-                }
-                style={({ pressed }) => [
-                  {
-                    flex: 1,
-                    paddingVertical: 10,
-                    borderRadius: BorderRadius.md,
-                    backgroundColor: theme.backgroundSecondary,
-                    alignItems: "center",
-                    marginRight: Spacing.xs,
-                    opacity: pressed ? 0.8 : 1,
-                  },
-                ]}
+
+            {pendingSubstitutions.map((sub: any) => (
+              <View
+                key={sub.id}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: Spacing.sm,
+                }}
               >
-                <ThemedText type="small" style={{ color: ComeYaColors.error, fontWeight: "600" }}>
-                  Rechazar
-                </ThemedText>
-              </Pressable>
+                <View style={{ flex: 1 }}>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    {sub.itemName} → {sub.substituteName}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      fontWeight: "700",
+                      marginTop: 2,
+                      color:
+                        Number(sub.priceDelta) < 0
+                          ? ComeYaColors.success
+                          : Number(sub.priceDelta) > 0
+                            ? ComeYaColors.error
+                            : theme.textSecondary,
+                    }}
+                  >
+                    {Number(sub.priceDelta) < 0
+                      ? `Te devolvemos ${(Math.abs(Number(sub.priceDelta)) / 100).toFixed(2)} €`
+                      : Number(sub.priceDelta) > 0
+                        ? `+${(Number(sub.priceDelta) / 100).toFixed(2)} €`
+                        : "Mismo precio"}
+                  </ThemedText>
+                </View>
+                <View style={{ flexDirection: "row", marginLeft: Spacing.xs }}>
+                  {Number(sub.priceDelta) <= 0 && (
+                    <Pressable
+                      onPress={() => handleSubstitutionDecision(sub, true)}
+                      style={{
+                        paddingHorizontal: Spacing.md,
+                        paddingVertical: 6,
+                        borderRadius: BorderRadius.md,
+                        backgroundColor: ComeYaColors.success,
+                        marginRight: Spacing.xs,
+                      }}
+                    >
+                      <ThemedText
+                        type="small"
+                        style={{ color: "#FFF", fontWeight: "600" }}
+                      >
+                        Aprobar
+                      </ThemedText>
+                    </Pressable>
+                  )}
+                  <Pressable
+                    onPress={() => handleSubstitutionDecision(sub, false)}
+                    style={{
+                      paddingHorizontal: Spacing.md,
+                      paddingVertical: 6,
+                      borderRadius: BorderRadius.md,
+                      backgroundColor: theme.backgroundSecondary,
+                    }}
+                  >
+                    <ThemedText
+                      type="small"
+                      style={{ color: ComeYaColors.error, fontWeight: "600" }}
+                    >
+                      Rechazar
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+
+            {pendingPositive.length > 0 && (
               <Pressable
-                onPress={() =>
-                  handleSubstitutionDecision(pendingSubstitution, true)
-                }
+                onPress={handleBatchSubstitutionApprove}
                 style={({ pressed }) => [
                   {
-                    flex: 1,
                     paddingVertical: 10,
                     borderRadius: BorderRadius.md,
                     backgroundColor: ComeYaColors.primary,
                     alignItems: "center",
-                    marginLeft: Spacing.xs,
+                    marginTop: Spacing.md,
                     opacity: pressed ? 0.8 : 1,
                   },
                 ]}
               >
-                <ThemedText type="small" style={{ color: "#FFF", fontWeight: "600" }}>
-                  {Number(pendingSubstitution.priceDelta) > 0
-                    ? "Aprobar y pagar"
-                    : "Aprobar"}
+                <ThemedText
+                  type="small"
+                  style={{ color: "#FFF", fontWeight: "600" }}
+                >
+                  {pendingPositive.length > 1
+                    ? `Aceptar y pagar la diferencia (+${(batchPositiveTotal / 100).toFixed(2)} €)`
+                    : "Aprobar y pagar"}
                 </ThemedText>
               </Pressable>
-            </View>
+            )}
           </View>
         )}
 

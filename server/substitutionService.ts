@@ -49,6 +49,7 @@ interface SubstitutionResult {
   clientSecret?: string;
   paymentIntentId?: string;
   substitution?: any;
+  substitutionIds?: string[];
 }
 
 const TERMINAL_STATUSES = ["delivered", "cancelled", "payment_failed"];
@@ -109,6 +110,220 @@ export async function listSubstitutions(orderId: string): Promise<any[]> {
       .orderBy(desc(substitutions.createdAt));
   } catch {
     return [];
+  }
+}
+
+/**
+ * Sustituciones con diferencia positiva sin resolver que BLOQUEAN la
+ * preparación del pedido: propuestas/aprobadas sin pagar y rechazadas por
+ * el cliente (el negocio debe proponer otro producto o cancelar antes de
+ * poder marcar "preparando"/"listo"). Así nunca se cocina un pedido cuyo
+ * recargo el cliente no ha aceptado.
+ */
+export async function getBlockingSubstitutions(orderId: string): Promise<any[]> {
+  try {
+    const rows = await db
+      .select()
+      .from(substitutions)
+      .where(
+        and(
+          eq(substitutions.orderId, orderId),
+          inArray(substitutions.status, ["proposed", "approved", "rejected"]),
+        ),
+      );
+    return rows.filter((s: any) => (Number(s.priceDelta) || 0) > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * El cliente aprueba TODAS las diferencias positivas pendientes de una vez:
+ * crea UN SOLO PaymentIntent por la suma (varios productos = un total),
+ * como en el flujo del checkout.
+ */
+export async function approveAllPositiveDeltas(
+  order: any,
+  userId: string,
+): Promise<SubstitutionResult> {
+  if (order.userId !== userId) {
+    return { success: false, message: "No autorizado" };
+  }
+  const pending = await db
+    .select()
+    .from(substitutions)
+    .where(
+      and(
+        eq(substitutions.orderId, order.id),
+        inArray(substitutions.status, ["proposed", "approved"]),
+      ),
+    );
+  const positive = pending.filter((s: any) => (Number(s.priceDelta) || 0) > 0);
+  if (positive.length === 0) {
+    return { success: false, message: "No hay diferencias pendientes de pago" };
+  }
+  const totalDelta = positive.reduce(
+    (sum: number, s: any) => sum + Number(s.priceDelta),
+    0,
+  );
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return { success: false, message: "Stripe no configurado" };
+  }
+  try {
+    const Stripe = (await import("stripe")).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const intent = await stripe.paymentIntents.create({
+      amount: totalDelta,
+      currency: "eur",
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        orderId: order.id,
+        substitutionIds: JSON.stringify(positive.map((s: any) => s.id)),
+        isDelta: "true",
+        batch: "true",
+      },
+    });
+    for (const s of positive) {
+      await db
+        .update(substitutions)
+        .set({
+          stripePaymentIntentId: intent.id,
+          status: "approved",
+          updatedAt: new Date(),
+        })
+        .where(eq(substitutions.id, s.id));
+    }
+    return {
+      success: true,
+      message: "Diferencia total pendiente de pago",
+      needsPayment: true,
+      delta: totalDelta,
+      clientSecret: intent.client_secret || undefined,
+      paymentIntentId: intent.id,
+      substitutionIds: positive.map((s: any) => s.id),
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `No se pudo iniciar el pago de la diferencia: ${err.message}`,
+    };
+  }
+}
+
+/**
+ * Confirma el pago AGRUPADO de varias diferencias positivas (un único
+ * PaymentIntent por el total) y aplica todas las sustituciones asociadas.
+ */
+export async function confirmBatchDeltaPayment(
+  order: any,
+  paymentIntentId: string,
+  userId: string,
+): Promise<SubstitutionResult> {
+  if (order.userId !== userId) {
+    return { success: false, message: "No autorizado" };
+  }
+  try {
+    const Stripe = (await import("stripe")).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (intent.status !== "succeeded") {
+      return {
+        success: false,
+        message: "El pago de la diferencia aún no se ha completado",
+      };
+    }
+    let subIds: string[] = [];
+    try {
+      subIds = JSON.parse(intent.metadata?.substitutionIds || "[]");
+    } catch {
+      subIds = [];
+    }
+    if (!subIds.length) {
+      return { success: false, message: "Metadata de sustituciones incompleta" };
+    }
+    const subs = await db
+      .select()
+      .from(substitutions)
+      .where(
+        and(
+          eq(substitutions.orderId, order.id),
+          inArray(substitutions.id, subIds),
+        ),
+      );
+
+    let appliedCount = 0;
+    // applySubstitution recalcula el total desde el objeto order recibido:
+    // se actualiza en memoria tras cada aplicación para no pisar los deltas
+    // de las sustituciones anteriores.
+    let current = { ...order };
+    for (const sub of subs) {
+      if (sub.status === "applied") continue;
+
+      // Registro del cobro extra (dedup por substitutionId en metadata)
+      const [existingTxs] = await db
+        .select({ metadata: transactions.metadata })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.orderId, order.id),
+            eq(transactions.type, "payment"),
+          ),
+        )
+        .limit(100);
+      const already = existingTxs.some((tx: any) => {
+        try {
+          return JSON.parse(tx.metadata || "{}").substitutionId === sub.id;
+        } catch {
+          return false;
+        }
+      });
+      if (!already) {
+        await db.insert(transactions).values({
+          id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          orderId: order.id,
+          businessId: order.businessId,
+          userId: order.userId,
+          amount: Number(sub.priceDelta) || 0,
+          type: "payment",
+          status: "completed",
+          metadata: JSON.stringify({
+            paymentIntentId: intent.id,
+            substitutionId: sub.id,
+            kind: "substitution_delta",
+            batch: true,
+          }),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      const res = await applySubstitution(current, sub);
+      if (res.success) {
+        appliedCount++;
+        const delta = Number(sub.priceDelta) || 0;
+        current = {
+          ...current,
+          subtotal: Math.max(0, (current.subtotal || 0) + delta),
+          total: Math.max(0, (current.total || 0) + delta),
+          productosBase: Math.max(0, (current.productosBase || 0) + delta),
+          businessEarnings:
+            (current.businessEarnings ?? current.subtotal ?? 0) + delta,
+        };
+      }
+    }
+    return {
+      success: appliedCount > 0,
+      message:
+        appliedCount > 0
+          ? `Se aplicaron ${appliedCount} sustituciones`
+          : "No quedaban sustituciones pendientes",
+      applied: appliedCount > 0,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `Error verificando el pago: ${err.message}`,
+    };
   }
 }
 
@@ -515,8 +730,9 @@ export async function applyDeltaPaymentFromWebhook(
   paymentIntent: any,
 ): Promise<{ success: boolean; message: string }> {
   const subId = paymentIntent.metadata?.substitutionId;
+  const subIdsRaw = paymentIntent.metadata?.substitutionIds;
   const orderId = paymentIntent.metadata?.orderId;
-  if (!subId || !orderId) {
+  if ((!subId && !subIdsRaw) || !orderId) {
     return { success: false, message: "Metadata de sustitución incompleta" };
   }
   const [order] = await db
@@ -525,6 +741,15 @@ export async function applyDeltaPaymentFromWebhook(
     .where(eq(orders.id, orderId))
     .limit(1);
   if (!order) return { success: false, message: "Order not found" };
+  // Pago agrupado de varias sustituciones (un solo PaymentIntent por el total)
+  if (subIdsRaw) {
+    const result = await confirmBatchDeltaPayment(
+      order,
+      paymentIntent.id,
+      order.userId,
+    );
+    return result;
+  }
   const result = await confirmDeltaPayment(
     order,
     subId,

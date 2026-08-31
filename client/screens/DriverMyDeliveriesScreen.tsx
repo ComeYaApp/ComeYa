@@ -9,6 +9,7 @@ import {
   Alert,
   Modal,
   Linking,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -67,6 +68,14 @@ export default function DriverMyDeliveriesScreen() {
   const [onTheWayOrderId, setOnTheWayOrderId] = useState<string | null>(null);
   const [showCashTipModal, setShowCashTipModal] = useState(false);
   const [cashTipOrderId, setCashTipOrderId] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+  const [cancelMode, setCancelMode] = useState<"released" | "cancelled">(
+    "released",
+  );
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
+  const [cancelNote, setCancelNote] = useState("");
+  const [cancelling, setCancelling] = useState(false);
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [proximityError, setProximityError] = useState<{
     distanceMeters: number;
@@ -864,6 +873,32 @@ export default function DriverMyDeliveriesScreen() {
             }}
             showStatusInfo={true}
           />
+          {["ready", "assigned", "picked_up", "on_the_way", "in_transit", "arriving"].includes(
+            item.status,
+          ) && (
+            <Pressable
+              onPress={() => {
+                setCancelOrderId(item.id);
+                setCancelMode(
+                  POST_PICKUP_STATUSES.includes(item.status)
+                    ? "cancelled"
+                    : "released",
+                );
+                setCancelReason(null);
+                setCancelNote("");
+                setShowCancelModal(true);
+              }}
+              style={styles.cancelButton}
+            >
+              <Feather name="x-circle" size={14} color={ComeYaColors.error} />
+              <ThemedText
+                type="small"
+                style={{ color: ComeYaColors.error, marginLeft: 4 }}
+              >
+                Cancelar pedido
+              </ThemedText>
+            </Pressable>
+          )}
         </View>
       </View>
     );
@@ -885,6 +920,47 @@ export default function DriverMyDeliveriesScreen() {
       o.status === "completed" ||
       (o.status === "delivered" && o.confirmedByCustomer),
   );
+  // Cancelados por el propio repartidor (motivo registrado en el servidor)
+  const cancelledOrders = orders.filter(
+    (o: any) => o.status === "cancelled" && o.driverCancelReason,
+  );
+
+  // Cancelar un pedido aceptado con motivo: antes de recoger se libera a la
+  // bolsa; después de recoger se cancela con reembolso al cliente
+  const submitDriverCancel = async () => {
+    if (!cancelOrderId || !cancelReason) return;
+    setCancelling(true);
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/delivery/orders/${cancelOrderId}/cancel`,
+        { reason: cancelReason, note: cancelNote },
+      );
+      const data = await res.json();
+      setShowCancelModal(false);
+      setCancelOrderId(null);
+      setCancelReason(null);
+      setCancelNote("");
+      if (data.success) {
+        Alert.alert(
+          data.mode === "released" ? "Pedido liberado" : "Pedido cancelado",
+          data.message,
+        );
+      } else {
+        Alert.alert(
+          "No se pudo cancelar",
+          data.error || data.message || "Inténtalo de nuevo",
+        );
+      }
+      loadOrders();
+    } catch {
+      Alert.alert("Error", "No se pudo cancelar el pedido. Inténtalo de nuevo.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const POST_PICKUP_STATUSES = ["picked_up", "on_the_way", "in_transit", "arriving"];
 
   const renderLogisticsSection = () => {
     const activeLogistics = logistics.filter(
@@ -1277,6 +1353,43 @@ export default function DriverMyDeliveriesScreen() {
             ))}
           </>
         )}
+
+        {cancelledOrders.length > 0 && (
+          <>
+            <ThemedText
+              type="h4"
+              style={{ marginTop: Spacing.xl, marginBottom: Spacing.md }}
+            >
+              Canceladas por ti ({cancelledOrders.length})
+            </ThemedText>
+            {cancelledOrders.map((item: any) => (
+              <View
+                key={item.id}
+                style={[
+                  styles.orderCard,
+                  { backgroundColor: theme.card },
+                  Shadows.sm,
+                ]}
+              >
+                <View style={styles.orderHeader}>
+                  <ThemedText type="body" style={{ fontWeight: "600", flex: 1 }}>
+                    {item.businessName || "Pedido"}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: ComeYaColors.error }}>
+                    Cancelado
+                  </ThemedText>
+                </View>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary }}
+                >
+                  Pedido {displayOrderNumber(item)} —{" "}
+                  {item.driverCancelReason || "Motivo no registrado"}
+                </ThemedText>
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
 
       <ConfirmModal
@@ -1414,6 +1527,126 @@ export default function DriverMyDeliveriesScreen() {
           </Animated.View>
         </View>
       </Modal>
+
+      {/* Cancelar pedido con motivo (libera antes de recoger / cancela después) */}
+      <Modal visible={showCancelModal} transparent animationType="fade">
+        <View style={styles.successOverlay}>
+          <Animated.View
+            entering={ZoomIn.springify()}
+            style={[styles.successCard, { backgroundColor: theme.card }]}
+          >
+            <ThemedText type="h3" style={{ textAlign: "center" }}>
+              ⚠️ Cancelar pedido
+            </ThemedText>
+            <ThemedText
+              type="small"
+              style={{
+                color: theme.textSecondary,
+                textAlign: "center",
+                marginTop: Spacing.sm,
+              }}
+            >
+              {cancelMode === "released"
+                ? "Si cancelas antes de recoger, el pedido volverá a estar disponible para otro repartidor. El cliente y el negocio verán el motivo."
+                : "Ya recogiste el pedido: si cancelas, el pedido se cerrará y se reembolsará al cliente. El cliente y el negocio verán el motivo."}
+            </ThemedText>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: Spacing.sm,
+                justifyContent: "center",
+                marginTop: Spacing.lg,
+              }}
+            >
+              {[
+                { id: "vehicle_breakdown", label: "🔧 Avería del vehículo" },
+                { id: "traffic", label: "🚦 Mucho tráfico" },
+                { id: "personal_issue", label: "🙋 Problema personal" },
+                { id: "other", label: "📝 Otro motivo" },
+              ].map((opt) => (
+                <Pressable
+                  key={opt.id}
+                  onPress={() => setCancelReason(opt.id)}
+                  style={{
+                    paddingHorizontal: Spacing.lg,
+                    paddingVertical: Spacing.sm,
+                    borderRadius: BorderRadius.full,
+                    borderWidth: 2,
+                    borderColor:
+                      cancelReason === opt.id
+                        ? ComeYaColors.error
+                        : theme.border,
+                    backgroundColor:
+                      cancelReason === opt.id
+                        ? "rgba(239,68,68,0.08)"
+                        : "transparent",
+                  }}
+                >
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color:
+                        cancelReason === opt.id
+                          ? ComeYaColors.error
+                          : theme.text,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {opt.label}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              value={cancelNote}
+              onChangeText={setCancelNote}
+              placeholder="Nota opcional (máx. 120 caracteres)"
+              placeholderTextColor={theme.textSecondary}
+              maxLength={120}
+              style={[
+                styles.cancelNoteInput,
+                { color: theme.text, borderColor: theme.border },
+              ]}
+            />
+            <Pressable
+              onPress={submitDriverCancel}
+              disabled={!cancelReason || cancelling}
+              style={[
+                styles.cancelConfirmButton,
+                {
+                  backgroundColor: ComeYaColors.error,
+                  opacity: !cancelReason || cancelling ? 0.6 : 1,
+                },
+              ]}
+            >
+              <ThemedText
+                type="body"
+                style={{ color: "#FFF", fontWeight: "700" }}
+              >
+                {cancelling
+                  ? "Procesando..."
+                  : cancelMode === "released"
+                    ? "Sí, liberar el pedido"
+                    : "Sí, cancelar y reembolsar"}
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setShowCancelModal(false);
+                setCancelOrderId(null);
+                setCancelReason(null);
+                setCancelNote("");
+              }}
+              style={{ marginTop: Spacing.md, alignSelf: "center" }}
+            >
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Volver sin cancelar
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -1482,6 +1715,30 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.md,
+  },
+  cancelButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: ComeYaColors.error,
+  },
+  cancelNoteInput: {
+    marginTop: Spacing.lg,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 14,
+  },
+  cancelConfirmButton: {
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
   },
   actions: {
     marginTop: Spacing.sm,

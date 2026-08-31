@@ -45,23 +45,6 @@ const METHOD_CONFIG: Record<
       { label: "Titular", key: "titular", copyable: false },
     ],
   },
-  sepa: {
-    title: "Transferencia SEPA",
-    icon: "credit-card",
-    color: "#003087",
-    instructions: [
-      "Accede a tu banca online",
-      "Realiza una transferencia al IBAN indicado",
-      "Usa el número de pedido como concepto",
-      "Las transferencias pueden tardar 1-2 días hábiles",
-      "Sube el justificante",
-    ],
-    fields: [
-      { label: "IBAN", key: "iban", copyable: true },
-      { label: "Titular", key: "titular", copyable: true },
-      { label: "Banco", key: "banco", copyable: false },
-    ],
-  },
   paypal: {
     title: "Pago con PayPal",
     icon: "dollar-sign",
@@ -310,7 +293,9 @@ export default function PaymentProofScreen() {
             {/* Importe */}
             <View style={[s.amountCard, { backgroundColor: cfg.color }]}>
               <Text style={s.amountLabel}>Importe a transferir</Text>
-              <Text style={s.amountValue}>{amountEur} €</Text>
+              <Text style={s.amountValue} numberOfLines={1}>
+                {amountEur} €
+              </Text>
               <View style={s.orderBadge}>
                 <Text style={[s.orderBadgeText, { color: cfg.color }]}>
                   Pedido #{shortId}
@@ -575,9 +560,9 @@ const s = StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: "center" },
   headerTitle: { fontSize: 18, fontWeight: "700" },
   layout: { flex: 1, flexDirection: "row" },
-  leftCol: { flex: 1, borderRightWidth: 1 },
+  leftCol: { flex: 1, borderRightWidth: 1, minWidth: 0 },
   leftContent: { padding: 28, paddingBottom: 60 },
-  rightCol: { width: 420 },
+  rightCol: { flex: 0, width: 420, maxWidth: "38%", minWidth: 300 },
   rightContent: { padding: 28, paddingBottom: 60 },
   amountCard: {
     borderRadius: 16,
@@ -590,7 +575,12 @@ const s = StyleSheet.create({
     fontSize: 13,
     marginBottom: 6,
   },
-  amountValue: { color: "#fff", fontSize: 48, fontWeight: "800" },
+  amountValue: {
+    color: "#fff",
+    fontSize: 48,
+    fontWeight: "800",
+    maxWidth: "100%",
+  },
   orderBadge: {
     backgroundColor: "#fff",
     paddingHorizontal: 14,

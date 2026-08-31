@@ -46,14 +46,6 @@ const PAYMENT_METHODS = [
     sub: "Transferencia + subir comprobante",
     instant: false,
   },
-  {
-    id: "sepa",
-    icon: "credit-card",
-    color: "#1A56DB",
-    label: "Transferencia SEPA",
-    sub: "IBAN — transferencia + subir comprobante",
-    instant: false,
-  },
 ];
 
 export default function SubscriptionScreen() {
@@ -92,7 +84,7 @@ export default function SubscriptionScreen() {
         {
           orderId: subscriptionId,
           amount,
-          paymentMethod: methodId === "sepa" ? "sepa" : "bizum",
+          paymentMethod: "bizum",
           subscriptionId,
         } as never,
       );

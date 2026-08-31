@@ -163,6 +163,19 @@ export function notifyPaymentVerified(businessId: string, orderId: string) {
   io.to(`business:${businessId}`).emit("payment_verified", { orderId });
 }
 
+export function notifyNewReservation(businessId: string, reservation: any) {
+  if (!io) return;
+  io.to(`business:${businessId}`).emit("new_reservation", reservation);
+}
+
+export function notifyReservationStatusChange(
+  userId: string,
+  reservation: any,
+) {
+  if (!io) return;
+  io.to(`user:${userId}`).emit("reservation_status_changed", reservation);
+}
+
 // ── Admin-specific events ─────────────────────────────────────────────────────
 
 export function notifyAdminFraud(data: {

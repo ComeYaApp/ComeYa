@@ -217,6 +217,52 @@ export async function runStartupMigrations(): Promise<void> {
         console.log("Migration note:", err.message);
     }
 
+    // Reservas / sin reparto: flag de reservas y de entrega a domicilio
+    try {
+      await conn.query(
+        `ALTER TABLE businesses ADD COLUMN reservations_enabled BOOLEAN NOT NULL DEFAULT FALSE`,
+      );
+      console.log("✅ Added reservations_enabled to businesses");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (reservations_enabled):", err.message);
+    }
+    try {
+      await conn.query(
+        `ALTER TABLE businesses ADD COLUMN delivery_enabled BOOLEAN NOT NULL DEFAULT TRUE`,
+      );
+      console.log("✅ Added delivery_enabled to businesses");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (delivery_enabled):", err.message);
+    }
+
+    // Reservas de mesa (negocios con servicio de reservas)
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS reservations (
+          id VARCHAR(255) NOT NULL PRIMARY KEY,
+          business_id VARCHAR(255) NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          \`date\` VARCHAR(10) NOT NULL,
+          \`time\` VARCHAR(5) NOT NULL,
+          party_size INT NOT NULL DEFAULT 2,
+          customer_name VARCHAR(255),
+          customer_phone VARCHAR(50),
+          notes TEXT,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending',
+          business_note TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_reservations_business (business_id, \`date\`),
+          INDEX idx_reservations_user (user_id)
+        )`,
+      );
+      console.log("✅ reservations table ready");
+    } catch (err: any) {
+      console.log("Migration note (reservations):", err.message);
+    }
+
     // proximity_alerts / delivery_proofs: las tablas antiguas se crearon
     // sin default en el id y los INSERT fallaban con ER_NO_DEFAULT_FOR_FIELD
     for (const table of ["proximity_alerts", "delivery_proofs"]) {
@@ -282,6 +328,27 @@ export async function runStartupMigrations(): Promise<void> {
     } catch (err: any) {
       if (err.code !== "ER_DUP_FIELDNAME")
         console.log("Migration note (deleted_at):", err.message);
+    }
+
+    // Cancelación por el repartidor: motivo + fecha (libera el pedido a la
+    // bolsa antes de recoger, o cancela con reembolso después de recoger)
+    try {
+      await conn.query(
+        `ALTER TABLE orders ADD COLUMN driver_cancel_reason TEXT DEFAULT NULL`,
+      );
+      console.log("✅ Added driver_cancel_reason to orders");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (driver_cancel_reason):", err.message);
+    }
+    try {
+      await conn.query(
+        `ALTER TABLE orders ADD COLUMN driver_cancelled_at DATETIME NULL DEFAULT NULL`,
+      );
+      console.log("✅ Added driver_cancelled_at to orders");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (driver_cancelled_at):", err.message);
     }
 
     // Reviews: calificación del repartidor (fallaba el stats del driver y

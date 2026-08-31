@@ -128,9 +128,46 @@ function parseTimeToMinutes(timeValue?: string): number | null {
 }
 
 export class BusinessHoursService {
-  // Check if business should be open based on current time
-  static async isBusinessOpen(businessId: string): Promise<boolean> {
+  // ¿Está abierto el negocio en una fecha/hora concreta? (para reservas).
+  // dateStr: YYYY-MM-DD, timeStr: HH:mm. Sin horario configurado → abierto.
+  static async isOpenAt(
+    businessId: string,
+    dateStr: string,
+    timeStr: string,
+  ): Promise<boolean> {
     const [business] = await db
+      .select()
+      .from(businesses)
+      .where(eq(businesses.id, businessId))
+      .limit(1);
+
+    if (!business || !business.openingHours) return true;
+
+    try {
+      const hours = JSON.parse(business.openingHours);
+      const dayOfWeek = new Date(`${dateStr}T12:00:00`).getDay();
+      const schedule = resolveTodaySchedule(hours, dayOfWeek);
+      if (!schedule || isDayClosed(schedule)) return false;
+
+      const openValue = schedule.openTime || schedule.open;
+      const closeValue = schedule.closeTime || schedule.close;
+      const openMin = parseTimeToMinutes(openValue);
+      const closeMin = parseTimeToMinutes(closeValue);
+      const reqMin = parseTimeToMinutes(timeStr);
+      if (openMin === null || closeMin === null || reqMin === null) return true;
+
+      // Horario nocturno (ej. 22:00 - 02:00)
+      if (closeMin < openMin) {
+        return reqMin >= openMin || reqMin <= closeMin;
+      }
+      return reqMin >= openMin && reqMin <= closeMin;
+    } catch {
+      return true;
+    }
+  }
+
+  // Check if business should be open based on current time
+  static async isBusinessOpen(businessId: string): Promise<boolean> {    const [business] = await db
       .select()
       .from(businesses)
       .where(eq(businesses.id, businessId))

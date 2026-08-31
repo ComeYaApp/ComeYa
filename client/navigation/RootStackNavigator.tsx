@@ -35,6 +35,8 @@ import BusinessCategoriesScreen from "@/screens/BusinessCategoriesScreen";
 import MyBusinessesScreen from "@/screens/MyBusinessesScreen";
 import BusinessStripeSetupScreen from "@/screens/BusinessStripeSetupScreen";
 import EditProfileScreen from "@/screens/EditProfileScreen";
+import MyReservationsScreen from "@/screens/MyReservationsScreen";
+import BusinessReservationsScreen from "@/screens/BusinessReservationsScreen";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -139,6 +141,8 @@ export type RootStackParamList = {
   Subscriptions: undefined;
   GiftCards: undefined;
   ScheduledOrders: undefined;
+  MyReservations: undefined;
+  BusinessReservations: undefined;
   NotificationPreferences: undefined;
   Referral: undefined;
   Addresses: undefined;
@@ -324,6 +328,8 @@ export default function RootStackNavigator() {
           <Stack.Screen name="Subscriptions" component={SubscriptionScreen} options={{ headerShown: false }} />
           <Stack.Screen name="GiftCards" component={GiftCardsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ScheduledOrders" component={ScheduledOrdersScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="MyReservations" component={MyReservationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="BusinessReservations" component={BusinessReservationsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ headerTitle: "Notificaciones" }} />
           <Stack.Screen name="Referral" component={ReferralScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerTitle: "Editar perfil" }} />

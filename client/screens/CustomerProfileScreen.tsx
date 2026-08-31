@@ -239,6 +239,11 @@ export default function CustomerProfileScreen() {
         label: "Pedidos programados",
         onPress: () => navigation.navigate("ScheduledOrders" as any),
       },
+      {
+        icon: "calendar",
+        label: "Mis reservas",
+        onPress: () => navigation.navigate("MyReservations" as any),
+      },
     ];
 
     return (

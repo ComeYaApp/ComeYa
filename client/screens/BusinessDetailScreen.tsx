@@ -6,6 +6,9 @@ import {
   Pressable,
   Linking,
   Platform,
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
@@ -55,6 +58,74 @@ export default function BusinessDetailScreen() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showContactOptions, setShowContactOptions] = useState(false);
+  // ── Reserva de mesa ───────────────────────────────────────────────
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [reserveDate, setReserveDate] = useState<string | null>(null);
+  const [reserveTime, setReserveTime] = useState<string | null>(null);
+  const [reserveParty, setReserveParty] = useState(2);
+  const [reserveName, setReserveName] = useState("");
+  const [reservePhone, setReservePhone] = useState("");
+  const [reserveNotes, setReserveNotes] = useState("");
+  const [reserveSubmitting, setReserveSubmitting] = useState(false);
+
+  const reserveDates = useMemo(() => {
+    const out: { label: string; value: string }[] = [];
+    const now = new Date();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const label =
+        i === 0
+          ? "Hoy"
+          : i === 1
+            ? "Mañana"
+            : d.toLocaleDateString("es-ES", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              });
+      out.push({ label, value });
+    }
+    return out;
+  }, []);
+
+  const RESERVE_TIMES = [
+    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+    "20:00", "20:30", "21:00", "21:30", "22:00", "22:30",
+  ];
+
+  const submitReservation = async () => {
+    if (!reserveDate || !reserveTime) {
+      Alert.alert("Reserva", "Elige fecha y hora.");
+      return;
+    }
+    setReserveSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/reservations", {
+        businessId,
+        date: reserveDate,
+        time: reserveTime,
+        partySize: reserveParty,
+        customerName: reserveName,
+        customerPhone: reservePhone,
+        notes: reserveNotes,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowReserveModal(false);
+        Alert.alert(
+          "Reserva enviada 📅",
+          "El negocio la confirmará en breve. Puedes verla en tu perfil → Mis reservas.",
+        );
+      } else {
+        Alert.alert("No se pudo reservar", data.error || "Inténtalo de nuevo");
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo enviar la reserva");
+    } finally {
+      setReserveSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -113,6 +184,15 @@ export default function BusinessDetailScreen() {
               ? data.business.categories.split(",")
               : [],
             featured: data.business.isFeatured || false,
+            reservationsEnabled:
+              data.business.reservationsEnabled === true ||
+              data.business.reservationsEnabled === 1,
+            deliveryEnabled:
+              data.business.deliveryEnabled === undefined ||
+              data.business.deliveryEnabled === null
+                ? true
+                : data.business.deliveryEnabled === true ||
+                  data.business.deliveryEnabled === 1,
           };
 
           const adaptedProducts: Product[] = (data.business.products || []).map(
@@ -297,7 +377,57 @@ export default function BusinessDetailScreen() {
                   Min. {formatEuros(business.minimumOrder)}
                 </ThemedText>
               </View>
+              {business.deliveryEnabled === false && (
+                <View
+                  style={[
+                    styles.dineInBadge,
+                    { backgroundColor: "rgba(245,158,11,0.12)" },
+                  ]}
+                >
+                  <Feather name="coffee" size={14} color="#B45309" />
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: "#B45309",
+                      marginLeft: Spacing.xs,
+                      fontWeight: "600",
+                    }}
+                  >
+                    Solo reservas — sin reparto a domicilio
+                  </ThemedText>
+                </View>
+              )}
               <View style={styles.contactRow}>
+                {business.reservationsEnabled && (
+                  <Pressable
+                    onPress={() => {
+                      setReserveDate(null);
+                      setReserveTime(null);
+                      setReserveParty(2);
+                      setReserveName(user?.name || "");
+                      setReservePhone(user?.phone || "");
+                      setReserveNotes("");
+                      setShowReserveModal(true);
+                    }}
+                    style={[
+                      styles.contactButton,
+                      styles.reserveButton,
+                      { backgroundColor: ComeYaColors.primary },
+                    ]}
+                  >
+                    <Feather name="calendar" size={18} color="#FFFFFF" />
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color: "#FFFFFF",
+                        marginLeft: Spacing.xs,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Reservar mesa
+                    </ThemedText>
+                  </Pressable>
+                )}
                 <Pressable
                   onPress={() =>
                     setShowContactOptions(!showContactOptions)
@@ -305,23 +435,27 @@ export default function BusinessDetailScreen() {
                   style={[
                     styles.contactButton,
                     styles.reserveButton,
-                    { backgroundColor: ComeYaColors.primary },
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      marginLeft:
+                        business.reservationsEnabled ? Spacing.xs : 0,
+                    },
                   ]}
                 >
                   <Feather
-                    name={showContactOptions ? "chevron-up" : "calendar"}
+                    name={showContactOptions ? "chevron-up" : "phone"}
                     size={18}
-                    color="#FFFFFF"
+                    color={ComeYaColors.primary}
                   />
                   <ThemedText
                     type="small"
                     style={{
-                      color: "#FFFFFF",
+                      color: ComeYaColors.primary,
                       marginLeft: Spacing.xs,
                       fontWeight: "600",
                     }}
                   >
-                    RESERVAR / CONSULTAR
+                    {showContactOptions ? "OCULTAR" : "RESERVAR / CONSULTAR"}
                   </ThemedText>
                 </Pressable>
               </View>
@@ -469,16 +603,212 @@ export default function BusinessDetailScreen() {
         ) : null}
       </ScrollView>
 
-      <CartButton
-        onPress={() => {
-          if (!user) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            navigation.navigate("Login" as never);
-          } else {
-            navigation.navigate("Cart");
-          }
-        }}
-      />
+      {business && business.deliveryEnabled !== false && (
+        <CartButton
+          onPress={() => {
+            if (!user) {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              navigation.navigate("Login" as never);
+            } else {
+              navigation.navigate("Cart");
+            }
+          }}
+        />
+      )}
+
+      {/* Modal de reserva de mesa */}
+      <Modal
+        visible={showReserveModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowReserveModal(false)}
+      >
+        <View style={styles.reserveOverlay}>
+          <View style={[styles.reserveModal, { backgroundColor: theme.card }]}>
+            <View style={styles.reserveHeader}>
+              <ThemedText type="h3">Reservar mesa</ThemedText>
+              <Pressable onPress={() => setShowReserveModal(false)}>
+                <Feather name="x" size={22} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <ThemedText
+                type="small"
+                style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}
+              >
+                Fecha (próximos 14 días)
+              </ThemedText>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: Spacing.xs }}
+              >
+                {reserveDates.map((d) => (
+                  <Pressable
+                    key={d.value}
+                    onPress={() => setReserveDate(d.value)}
+                    style={[
+                      styles.reserveDateChip,
+                      {
+                        borderColor:
+                          reserveDate === d.value
+                            ? ComeYaColors.primary
+                            : theme.border,
+                        backgroundColor:
+                          reserveDate === d.value
+                            ? ComeYaColors.primary
+                            : "transparent",
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color:
+                          reserveDate === d.value ? "#FFF" : theme.text,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {d.label}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              <ThemedText
+                type="small"
+                style={{
+                  color: theme.textSecondary,
+                  marginTop: Spacing.md,
+                  marginBottom: Spacing.xs,
+                }}
+              >
+                Hora
+              </ThemedText>
+              <View style={styles.reserveTimeRow}>
+                {RESERVE_TIMES.map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => setReserveTime(t)}
+                    style={[
+                      styles.reserveTimeChip,
+                      {
+                        borderColor:
+                          reserveTime === t ? ComeYaColors.primary : theme.border,
+                        backgroundColor:
+                          reserveTime === t
+                            ? ComeYaColors.primary
+                            : "transparent",
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="small"
+                      style={{
+                        color: reserveTime === t ? "#FFF" : theme.text,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {t}
+                    </ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+
+              <ThemedText
+                type="small"
+                style={{
+                  color: theme.textSecondary,
+                  marginTop: Spacing.md,
+                  marginBottom: Spacing.xs,
+                }}
+              >
+                Comensales
+              </ThemedText>
+              <View style={styles.reservePartyRow}>
+                <Pressable
+                  onPress={() =>
+                    setReserveParty((p) => Math.max(1, p - 1))
+                  }
+                  style={[
+                    styles.reservePartyBtn,
+                    { backgroundColor: theme.backgroundSecondary },
+                  ]}
+                >
+                  <Feather name="minus" size={18} color={theme.text} />
+                </Pressable>
+                <ThemedText type="h4" style={{ marginHorizontal: Spacing.lg }}>
+                  {reserveParty}
+                </ThemedText>
+                <Pressable
+                  onPress={() =>
+                    setReserveParty((p) => Math.min(20, p + 1))
+                  }
+                  style={[
+                    styles.reservePartyBtn,
+                    { backgroundColor: ComeYaColors.primary },
+                  ]}
+                >
+                  <Feather name="plus" size={18} color="#FFF" />
+                </Pressable>
+              </View>
+
+              <TextInput
+                value={reserveName}
+                onChangeText={setReserveName}
+                placeholder="Tu nombre"
+                placeholderTextColor={theme.textSecondary}
+                style={[
+                  styles.reserveInput,
+                  { color: theme.text, borderColor: theme.border },
+                ]}
+              />
+              <TextInput
+                value={reservePhone}
+                onChangeText={setReservePhone}
+                placeholder="Tu teléfono (opcional)"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="phone-pad"
+                style={[
+                  styles.reserveInput,
+                  { color: theme.text, borderColor: theme.border },
+                ]}
+              />
+              <TextInput
+                value={reserveNotes}
+                onChangeText={setReserveNotes}
+                placeholder="Notas (opcional): alergias, trona, celebración..."
+                placeholderTextColor={theme.textSecondary}
+                multiline
+                style={[
+                  styles.reserveInput,
+                  styles.reserveNotesInput,
+                  { color: theme.text, borderColor: theme.border },
+                ]}
+              />
+
+              <Pressable
+                onPress={submitReservation}
+                disabled={reserveSubmitting}
+                style={[
+                  styles.reserveSubmit,
+                  {
+                    backgroundColor: ComeYaColors.primary,
+                    opacity: reserveSubmitting ? 0.6 : 1,
+                  },
+                ]}
+              >
+                <ThemedText
+                  type="body"
+                  style={{ color: "#FFF", fontWeight: "700" }}
+                >
+                  {reserveSubmitting ? "Enviando..." : "Enviar reserva"}
+                </ThemedText>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -575,6 +905,82 @@ const styles = StyleSheet.create({
   contactRow: {
     flexDirection: "row",
     gap: Spacing.md,
+    marginTop: Spacing.lg,
+  },
+  dineInBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    marginTop: Spacing.md,
+  },
+  reserveOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  reserveModal: {
+    maxHeight: "90%",
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    paddingBottom: Spacing["3xl"],
+  },
+  reserveHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  reserveDateChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    marginRight: Spacing.xs,
+  },
+  reserveTimeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+  },
+  reserveTimeChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  reservePartyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  reservePartyBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reserveInput: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 15,
+    marginTop: Spacing.sm,
+  },
+  reserveNotesInput: {
+    minHeight: 70,
+    textAlignVertical: "top",
+  },
+  reserveSubmit: {
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
     marginTop: Spacing.lg,
   },
   reserveButton: {

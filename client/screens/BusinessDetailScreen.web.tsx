@@ -34,6 +34,70 @@ export default function BusinessDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showContactOptions, setShowContactOptions] = useState(false);
+  // ── Reserva de mesa ───────────────────────────────────────────────
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [reserveDate, setReserveDate] = useState<string | null>(null);
+  const [reserveTime, setReserveTime] = useState<string | null>(null);
+  const [reserveParty, setReserveParty] = useState(2);
+  const [reserveName, setReserveName] = useState("");
+  const [reservePhone, setReservePhone] = useState("");
+  const [reserveNotes, setReserveNotes] = useState("");
+  const [reserveSubmitting, setReserveSubmitting] = useState(false);
+
+  const reserveDates = (() => {
+    const out: { label: string; value: string }[] = [];
+    const now = new Date();
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const label =
+        i === 0
+          ? "Hoy"
+          : i === 1
+            ? "Mañana"
+            : d.toLocaleDateString("es-ES", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              });
+      out.push({ label, value });
+    }
+    return out;
+  })();
+
+  const RESERVE_TIMES = [
+    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+    "20:00", "20:30", "21:00", "21:30", "22:00", "22:30",
+  ];
+
+  const submitReservation = async () => {
+    if (!reserveDate || !reserveTime) return;
+    setReserveSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/reservations", {
+        businessId,
+        date: reserveDate,
+        time: reserveTime,
+        partySize: reserveParty,
+        customerName: reserveName,
+        customerPhone: reservePhone,
+        notes: reserveNotes,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowReserveModal(false);
+        (window as any).alert(
+          "Reserva enviada 📅 El negocio la confirmará en breve. Puedes verla en tu perfil → Mis reservas.",
+        );
+      } else {
+        (window as any).alert(data.error || "No se pudo reservar");
+      }
+    } catch {
+      (window as any).alert("No se pudo enviar la reserva");
+    } finally {
+      setReserveSubmitting(false);
+    }
+  };
 
   const { isMobile } = useResponsive();
   const bg = isDark ? "#111" : "#f7f7f7";
@@ -41,6 +105,7 @@ export default function BusinessDetailScreen() {
   const text = isDark ? "#fff" : "#1a1a1a";
   const sub = isDark ? "#aaa" : "#666";
   const border = isDark ? "#333" : "#e8e8e8";
+  const inputBg = isDark ? "#222" : "#f8f8f8";
 
   const businessId = route.params?.businessId;
 
@@ -215,18 +280,51 @@ export default function BusinessDetailScreen() {
             </View>
           </View>
 
-          {/* Botón único RESERVAR / CONSULTAR */}
+          {/* Botón único RESERVAR / CONSULTAR (+ Reservar mesa si aplica) */}
           <View style={[s.reserveWrap, { backgroundColor: card, borderBottomColor: border }]}>
+            {business?.reservationsEnabled && (
+              <Pressable
+                onPress={() => {
+                  setReserveDate(null);
+                  setReserveTime(null);
+                  setReserveParty(2);
+                  setReserveName("");
+                  setReservePhone("");
+                  setReserveNotes("");
+                  setShowReserveModal(true);
+                }}
+                style={[s.reserveBtn, { backgroundColor: PRIMARY }]}
+              >
+                <Feather name="calendar" size={16} color="#fff" />
+                <Text style={s.reserveBtnTxt}>Reservar mesa</Text>
+              </Pressable>
+            )}
+            {business?.deliveryEnabled === false && (
+              <View style={s.dineInBadge}>
+                <Feather name="coffee" size={13} color="#B45309" />
+                <Text style={[s.dineInBadgeTxt, { color: "#B45309" }]}>
+                  Solo reservas — sin reparto
+                </Text>
+              </View>
+            )}
             <Pressable
               onPress={() => setShowContactOptions(!showContactOptions)}
-              style={[s.reserveBtn, { backgroundColor: PRIMARY }]}
+              style={[
+                s.reserveBtn,
+                {
+                  backgroundColor: "#F1F5F9",
+                  marginLeft: business?.reservationsEnabled ? 8 : 0,
+                },
+              ]}
             >
               <Feather
-                name={showContactOptions ? "chevron-up" : "calendar"}
+                name={showContactOptions ? "chevron-up" : "phone"}
                 size={16}
-                color="#fff"
+                color={PRIMARY}
               />
-              <Text style={s.reserveBtnTxt}>RESERVAR / CONSULTAR</Text>
+              <Text style={[s.reserveBtnTxt, { color: PRIMARY }]}>
+                {showContactOptions ? "OCULTAR" : "RESERVAR / CONSULTAR"}
+              </Text>
             </Pressable>
             {showContactOptions && (
               <View style={s.contactOptions}>
@@ -370,8 +468,9 @@ export default function BusinessDetailScreen() {
           </View>
         </ScrollView>
 
-        {/* CARRITO FLOTANTE DERECHA / BARRA INFERIOR EN MÓVIL */}
-        {!isMobile ? (
+        {/* CARRITO FLOTANTE DERECHA / BARRA INFERIOR EN MÓVIL
+            (oculto en negocios "solo reservas") */}
+        {business?.deliveryEnabled !== false && !isMobile ? (
           <View
             style={[
               s.cartPanel,
@@ -450,7 +549,7 @@ export default function BusinessDetailScreen() {
               </>
             )}
           </View>
-        ) : cartItems.length > 0 ? (
+        ) : business?.deliveryEnabled !== false && cartItems.length > 0 ? (
           <View
             style={[
               s.cartBarMobile,
@@ -471,6 +570,151 @@ export default function BusinessDetailScreen() {
             </Pressable>
           </View>
         ) : null}
+
+        {/* Modal de reserva de mesa */}
+        {showReserveModal && (
+          <View style={s.reserveOverlay}>
+            <View
+              style={[s.reserveModal, { backgroundColor: card }]}
+            >
+              <View style={s.reserveModalHeader}>
+                <Text style={[s.reserveModalTitle, { color: text }]}>
+                  Reservar mesa
+                </Text>
+                <Pressable onPress={() => setShowReserveModal(false)}>
+                  <Feather name="x" size={20} color={sub} />
+                </Pressable>
+              </View>
+              <Text style={[s.reserveLabel, { color: sub }]}>
+                Fecha (próximos 14 días)
+              </Text>
+              <View style={s.reserveChipRow}>
+                {reserveDates.map((d) => (
+                  <Pressable
+                    key={d.value}
+                    onPress={() => setReserveDate(d.value)}
+                    style={[
+                      s.reserveChip,
+                      {
+                        borderColor:
+                          reserveDate === d.value ? PRIMARY : border,
+                        backgroundColor:
+                          reserveDate === d.value ? PRIMARY : "transparent",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        s.reserveChipTxt,
+                        { color: reserveDate === d.value ? "#fff" : text },
+                      ]}
+                    >
+                      {d.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={[s.reserveLabel, { color: sub }]}>Hora</Text>
+              <View style={s.reserveChipRow}>
+                {RESERVE_TIMES.map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => setReserveTime(t)}
+                    style={[
+                      s.reserveChip,
+                      {
+                        borderColor: reserveTime === t ? PRIMARY : border,
+                        backgroundColor:
+                          reserveTime === t ? PRIMARY : "transparent",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        s.reserveChipTxt,
+                        { color: reserveTime === t ? "#fff" : text },
+                      ]}
+                    >
+                      {t}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={[s.reserveLabel, { color: sub }]}>Comensales</Text>
+              <View style={s.reservePartyRow}>
+                <Pressable
+                  onPress={() => setReserveParty((p) => Math.max(1, p - 1))}
+                  style={[s.reservePartyBtn, { backgroundColor: inputBg }]}
+                >
+                  <Feather name="minus" size={16} color={text} />
+                </Pressable>
+                <Text style={[s.reservePartyVal, { color: text }]}>
+                  {reserveParty}
+                </Text>
+                <Pressable
+                  onPress={() => setReserveParty((p) => Math.min(20, p + 1))}
+                  style={[s.reservePartyBtn, { backgroundColor: PRIMARY }]}
+                >
+                  <Feather name="plus" size={16} color="#fff" />
+                </Pressable>
+              </View>
+              <input
+                placeholder="Tu nombre"
+                value={reserveName}
+                onChange={(e: any) => setReserveName(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  marginTop: 10,
+                  borderRadius: 8,
+                  border: `1px solid ${border}`,
+                  fontSize: 14,
+                  color: text,
+                  backgroundColor: inputBg,
+                }}
+              />
+              <input
+                placeholder="Tu teléfono (opcional)"
+                value={reservePhone}
+                onChange={(e: any) => setReservePhone(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  marginTop: 10,
+                  borderRadius: 8,
+                  border: `1px solid ${border}`,
+                  fontSize: 14,
+                  color: text,
+                  backgroundColor: inputBg,
+                }}
+              />
+              <input
+                placeholder="Notas (opcional): alergias, trona, celebración..."
+                value={reserveNotes}
+                onChange={(e: any) => setReserveNotes(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  marginTop: 10,
+                  borderRadius: 8,
+                  border: `1px solid ${border}`,
+                  fontSize: 14,
+                  color: text,
+                  backgroundColor: inputBg,
+                }}
+              />
+              <Pressable
+                onPress={submitReservation}
+                disabled={reserveSubmitting}
+                style={[s.checkoutBtn, { opacity: reserveSubmitting ? 0.6 : 1 }]}
+              >
+                <Text style={s.checkoutBtnText}>
+                  {reserveSubmitting ? "Enviando..." : "Enviar reserva"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -526,6 +770,73 @@ const s = StyleSheet.create({
     cursor: "pointer" as any,
   },
   reserveBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "800" },
+  dineInBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#F59E0B15",
+    marginLeft: 8,
+  },
+  dineInBadgeTxt: { fontSize: 12, fontWeight: "700", marginLeft: 6 },
+  reserveOverlay: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 500,
+    padding: 16,
+  } as any,
+  reserveModal: {
+    width: "100%",
+    maxWidth: 520,
+    maxHeight: "85vh",
+    overflowY: "auto",
+    borderRadius: 16,
+    padding: 24,
+  } as any,
+  reserveModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  reserveModalTitle: { fontSize: 20, fontWeight: "800" },
+  reserveLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  reserveChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  reserveChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  reserveChipTxt: { fontSize: 13, fontWeight: "600" },
+  reservePartyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginTop: 8,
+  },
+  reservePartyBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reservePartyVal: { fontSize: 18, fontWeight: "800" },
   contactOptions: {
     flexDirection: "row",
     gap: 10,

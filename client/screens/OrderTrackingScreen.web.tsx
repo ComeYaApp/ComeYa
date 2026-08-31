@@ -41,8 +41,27 @@ import {
   vehicleMarkerMeta,
   CUSTOMER_MARKER,
 } from "@/utils/markerMeta";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 
 const PRIMARY = "#DC2626";
+
+let deltaStripePromise: Promise<any> | null = null;
+const getDeltaStripe = async () => {
+  if (!deltaStripePromise) {
+    try {
+      const res = await apiRequest("GET", "/api/stripe/publishable-key");
+      const data = await res.json();
+      if (data.publishableKey) deltaStripePromise = loadStripe(data.publishableKey);
+    } catch {}
+  }
+  return deltaStripePromise;
+};
 
 const DARK_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
@@ -181,6 +200,9 @@ export default function OrderTrackingScreen() {
 
   const [mapsReady, setMapsReady] = useState(false);
   const [order, setOrder] = useState<any>(null);
+  const [substitutions, setSubstitutions] = useState<any[]>([]);
+  const [deltaPayment, setDeltaPayment] = useState<any>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [eta, setEta] = useState<number | null>(null);
   const [dynamicETA, setDynamicETA] = useState<{
@@ -258,6 +280,9 @@ export default function OrderTrackingScreen() {
         }
 
         setOrder(apiOrder);
+        if (Array.isArray(apiOrder.substitutions)) {
+          setSubstitutions(apiOrder.substitutions);
+        }
 
         if (apiOrder?.estimatedDelivery) {
           setEta(
@@ -332,7 +357,94 @@ export default function OrderTrackingScreen() {
     fetchOrder();
     const interval = setInterval(fetchOrder, 15000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, reloadKey]);
+
+  // ── Sustituciones: aprobar/rechazar y pagar la diferencia (web) ───────
+  const pendingSubs = substitutions.filter(
+    (s: any) => s.status === "proposed" || s.status === "approved",
+  );
+  const pendingPositive = pendingSubs.filter(
+    (s: any) => Number(s.priceDelta) > 0,
+  );
+  const batchPositiveTotal = pendingPositive.reduce(
+    (sum: number, s: any) => sum + Number(s.priceDelta),
+    0,
+  );
+
+  const rejectWebSub = async (sub: any) => {
+    try {
+      await apiRequest(
+        "POST",
+        `/api/orders/${orderId}/substitutions/${sub.id}/reject`,
+        {},
+      );
+      setReloadKey((k) => k + 1);
+    } catch {}
+  };
+
+  const approveWebSub = async (sub: any) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/orders/${orderId}/substitutions/${sub.id}/approve`,
+        {},
+      );
+      const data = await res.json();
+      if (data.needsPayment && data.clientSecret) {
+        setDeltaPayment({
+          clientSecret: data.clientSecret,
+          amountEur: (Number(data.delta) / 100).toFixed(2),
+          mode: "single",
+          subId: sub.id,
+          paymentIntentId: data.paymentIntentId,
+        });
+      } else {
+        setReloadKey((k) => k + 1);
+      }
+    } catch {}
+  };
+
+  const startBatchPayment = async () => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/orders/${orderId}/substitutions/approve-batch`,
+        {},
+      );
+      const data = await res.json();
+      if (data.needsPayment && data.clientSecret) {
+        setDeltaPayment({
+          clientSecret: data.clientSecret,
+          amountEur: (Number(data.delta) / 100).toFixed(2),
+          mode: "batch",
+          paymentIntentId: data.paymentIntentId,
+        });
+      } else if (data.error) {
+        Alert.alert("Sustitución", data.error);
+      }
+    } catch {}
+  };
+
+  const onDeltaSuccess = async () => {
+    const p = deltaPayment;
+    setDeltaPayment(null);
+    try {
+      if (p?.mode === "batch") {
+        await apiRequest(
+          "POST",
+          `/api/orders/${orderId}/substitutions/confirm-batch-payment`,
+          { paymentIntentId: p.paymentIntentId },
+        );
+      } else if (p?.subId) {
+        await apiRequest(
+          "POST",
+          `/api/orders/${orderId}/substitutions/${p.subId}/confirm-payment`,
+          { paymentIntentId: p.paymentIntentId },
+        );
+      }
+    } catch {}
+    setReloadKey((k) => k + 1);
+  };
 
   // Poll ETA dinámico cada 30s (mientras el repartidor está en movimiento —
   // antes solo con on_the_way: al pasar a arriving quedaba congelado)
@@ -815,6 +927,96 @@ export default function OrderTrackingScreen() {
                   </View>
                 </View>
               )}
+
+            {/* Sustituciones propuestas por el negocio: aprobar (pagando la
+                diferencia; varios productos = un solo pago) o rechazar */}
+            {pendingSubs.length > 0 && (
+              <View style={s.substitutionCard}>
+                <ThemedText type="small" style={{ fontWeight: "700" }}>
+                  🔄 El negocio propone{" "}
+                  {pendingSubs.length > 1
+                    ? `${pendingSubs.length} sustituciones`
+                    : "una sustitución"}
+                </ThemedText>
+                {pendingSubs.map((sub: any) => (
+                  <View key={sub.id} style={s.substitutionRow}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText
+                        type="caption"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        {sub.itemName} → {sub.substituteName}
+                      </ThemedText>
+                      <ThemedText
+                        type="caption"
+                        style={{
+                          fontWeight: "700",
+                          color:
+                            Number(sub.priceDelta) < 0
+                              ? ComeYaColors.success
+                              : Number(sub.priceDelta) > 0
+                                ? ComeYaColors.error
+                                : theme.textSecondary,
+                        }}
+                      >
+                        {Number(sub.priceDelta) < 0
+                          ? `Te devolvemos ${(Math.abs(Number(sub.priceDelta)) / 100).toFixed(2)} €`
+                          : Number(sub.priceDelta) > 0
+                            ? `+${(Number(sub.priceDelta) / 100).toFixed(2)} €`
+                            : "Mismo precio"}
+                      </ThemedText>
+                    </View>
+                    <View style={{ flexDirection: "row" }}>
+                      {Number(sub.priceDelta) <= 0 && (
+                        <Pressable
+                          onPress={() => approveWebSub(sub)}
+                          style={[
+                            s.subMiniBtn,
+                            { backgroundColor: ComeYaColors.success },
+                          ]}
+                        >
+                          <ThemedText
+                            type="caption"
+                            style={{ color: "#FFF", fontWeight: "700" }}
+                          >
+                            Aprobar
+                          </ThemedText>
+                        </Pressable>
+                      )}
+                      <Pressable
+                        onPress={() => rejectWebSub(sub)}
+                        style={[
+                          s.subMiniBtn,
+                          { backgroundColor: theme.backgroundSecondary },
+                        ]}
+                      >
+                        <ThemedText
+                          type="caption"
+                          style={{ color: ComeYaColors.error, fontWeight: "700" }}
+                        >
+                          Rechazar
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+                {pendingPositive.length > 0 && (
+                  <Pressable
+                    onPress={startBatchPayment}
+                    style={[s.subPayBtn, { backgroundColor: PRIMARY }]}
+                  >
+                    <ThemedText
+                      type="body"
+                      style={{ color: "#FFF", fontWeight: "700" }}
+                    >
+                      {pendingPositive.length > 1
+                        ? `Aceptar y pagar la diferencia (+${(batchPositiveTotal / 100).toFixed(2)} €)`
+                        : "Aprobar y pagar"}
+                    </ThemedText>
+                  </Pressable>
+                )}
+              </View>
+            )}
 
             {/* Estado actual */}
             <View
@@ -1317,11 +1519,168 @@ export default function OrderTrackingScreen() {
               </>
             )}
           </ScrollView>
+
+          {/* Pago de la diferencia por sustitución (Payment Element) */}
+          {deltaPayment && (
+            <Elements stripe={getDeltaStripe()}>
+              <DeltaPaymentModal
+                payment={deltaPayment}
+                onSuccess={onDeltaSuccess}
+                onCancel={() => setDeltaPayment(null)}
+              />
+            </Elements>
+          )}
         </View>
       </View>
     </View>
   );
 }
+
+// Modal de pago de la diferencia por sustitución (web): tarjeta con el
+// clientSecret del PaymentIntent creado por el servidor
+function DeltaPaymentModal({ payment, onSuccess, onCancel }: any) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const { isDark } = useTheme();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePay = async () => {
+    if (!stripe || !elements || !payment?.clientSecret) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error("Card element not found");
+      const result = await stripe.confirmCardPayment(payment.clientSecret, {
+        payment_method: { card: cardElement },
+      });
+      if (result.error) {
+        setError(result.error.message || "Error al procesar el pago");
+        setSubmitting(false);
+        return;
+      }
+      if (result.paymentIntent?.status === "succeeded") {
+        onSuccess();
+      } else {
+        setError("El pago no se completó");
+        setSubmitting(false);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Error al procesar el pago");
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <View style={deltaS.overlay}>
+      <View
+        style={[
+          deltaS.modal,
+          { backgroundColor: isDark ? "#1e1e1e" : "#fff" },
+        ]}
+      >
+        <ThemedText type="h3" lightColor="#1a1a1a" darkColor="#ffffff">
+          Pagar la diferencia
+        </ThemedText>
+        <ThemedText
+          type="body"
+          style={{ marginTop: Spacing.sm }}
+          lightColor="#4B5563"
+          darkColor="#aaaaaa"
+        >
+          Importe: {payment.amountEur} €
+        </ThemedText>
+        <View
+          style={[
+            deltaS.cardWrap,
+            {
+              borderColor: isDark ? "#333" : "#e5e7eb",
+              backgroundColor: isDark ? "#2a2a2a" : "#f9fafb",
+            },
+          ]}
+        >
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize: "16px",
+                  color: isDark ? "#fff" : "#1a1a1a",
+                  "::placeholder": { color: isDark ? "#666" : "#9ca3af" },
+                },
+              },
+            }}
+          />
+        </View>
+        {error && (
+          <ThemedText
+            type="caption"
+            style={{ color: "#EF4444", marginTop: Spacing.sm }}
+          >
+            {error}
+          </ThemedText>
+        )}
+        <Pressable
+          onPress={handlePay}
+          disabled={submitting}
+          style={[deltaS.payBtn, { opacity: submitting ? 0.6 : 1 }]}
+        >
+          {submitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Feather name="lock" size={16} color="#fff" />
+          )}
+          <ThemedText
+            type="body"
+            style={{ color: "#fff", fontWeight: "700", marginLeft: Spacing.xs }}
+          >
+            {submitting ? "Procesando..." : "Pagar"}
+          </ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={onCancel}
+          style={{ marginTop: Spacing.md, alignSelf: "center" }}
+        >
+          <ThemedText type="small" style={{ color: "#6B7280" }}>
+            Cancelar
+          </ThemedText>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const deltaS = StyleSheet.create({
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  } as any,
+  modal: {
+    width: "90%",
+    maxWidth: 420,
+    borderRadius: 16,
+    padding: 24,
+  },
+  cardWrap: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: Spacing.md,
+  },
+  payBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: PRIMARY,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: Spacing.lg,
+  },
+});
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "column" },
@@ -1387,6 +1746,33 @@ const s = StyleSheet.create({
     padding: Spacing.md,
     marginBottom: Spacing.md,
   } as any,
+  substitutionCard: {
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderLeftWidth: 4,
+    borderLeftColor: ComeYaColors.primary,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  } as any,
+  substitutionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  subMiniBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
+    marginLeft: Spacing.xs,
+  },
+  subPayBtn: {
+    paddingVertical: 10,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    marginTop: Spacing.md,
+  },
   backBtn: {
     width: 44,
     height: 44,

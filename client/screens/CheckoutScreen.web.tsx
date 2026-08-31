@@ -43,7 +43,6 @@ type PaymentMethod =
   | "stripe_bizum"
   | "paypal"
   | "bizum_manual"
-  | "sepa"
   | "binance";
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<
@@ -560,11 +559,7 @@ export default function CheckoutScreen({ route }: any) {
               orderId,
               amount: totalAmount,
               paymentMethod:
-                paymentMethod === "bizum_manual"
-                  ? "bizum"
-                  : paymentMethod === "sepa"
-                    ? "sepa"
-                    : "paypal",
+                paymentMethod === "bizum_manual" ? "bizum" : "paypal",
             },
           },
         ],

@@ -59,23 +59,6 @@ const PAYMENT_INFO: Record<
       { label: "Titular", value: "ComeYa S.L.", copyable: false },
     ],
   },
-  sepa: {
-    title: "Transferencia SEPA",
-    icon: "credit-card",
-    color: "#003087",
-    instructions: [
-      "Accede a tu banca online o app bancaria",
-      "Realiza una transferencia al IBAN indicado",
-      "Usa el número de pedido como concepto/referencia",
-      "Las transferencias pueden tardar 1-2 días hábiles",
-      "Sube el justificante de la transferencia",
-    ],
-    fields: [
-      { label: "IBAN", value: "ES00 0000 0000 0000 0000 0000", copyable: true },
-      { label: "Titular", value: "ComeYa S.L.", copyable: true },
-      { label: "Banco", value: "Banco Santander", copyable: false },
-    ],
-  },
   paypal: {
     title: "Pago con PayPal",
     icon: "dollar-sign",
@@ -134,14 +117,6 @@ export default function PaymentProofScreen() {
             copyable: true,
           },
           { label: "Titular", value: paymentInfo.titular, copyable: false },
-        ],
-      },
-      sepa: {
-        ...PAYMENT_INFO.sepa,
-        fields: [
-          { label: "IBAN", value: paymentInfo.iban, copyable: true },
-          { label: "Titular", value: paymentInfo.titular, copyable: true },
-          { label: "Banco", value: paymentInfo.banco, copyable: false },
         ],
       },
       paypal: {
@@ -484,6 +459,8 @@ export default function PaymentProofScreen() {
           </ThemedText>
           <ThemedText
             style={{ color: "#fff", fontSize: 48, fontWeight: "800" }}
+            numberOfLines={1}
+            adjustsFontSizeToFit
           >
             {amountEur} €
           </ThemedText>

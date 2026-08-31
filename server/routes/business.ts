@@ -1392,6 +1392,29 @@ router.put(
         }
       }
 
+      // Bloqueo por sustituciones: si hay una diferencia positiva sin
+      // resolver (propuesta/aprobada sin pagar o rechazada por el cliente),
+      // el negocio no puede marcar "preparando"/"listo" hasta resolverla.
+      // Así nunca se cocina un pedido cuyo recargo el cliente no aceptó.
+      if (status === "preparing" || status === "ready") {
+        const { getBlockingSubstitutions } = await import(
+          "../substitutionService"
+        );
+        const blocking = await getBlockingSubstitutions(order.id);
+        if (blocking.length > 0) {
+          return res.status(400).json({
+            error:
+              "Hay una sustitución con diferencia de precio que el cliente aún no ha aceptado. Espera a que pague la diferencia, propón otro producto o cancela el pedido antes de prepararlo.",
+            blockingSubstitutions: blocking.map((s: any) => ({
+              itemName: s.itemName,
+              substituteName: s.substituteName,
+              priceDelta: s.priceDelta,
+              status: s.status,
+            })),
+          });
+        }
+      }
+
       // Rechazar pedido (negocio) = cancelación real con reembolso del 100 %
       // al cliente vía orderCancellationService. El cambio de estado a secas
       // no devolvía nada y el cliente se quedaba sin dinero; además aquí se
@@ -2079,10 +2102,20 @@ router.put(
         "deliveryTime",
         "deliveryFee",
         "minOrder",
+        "reservationsEnabled",
+        "deliveryEnabled",
       ];
       const updates: any = {};
       for (const field of allowed) {
         if (req.body[field] !== undefined) {
+          // Booleanos de reservas/reparto: normalizar a true/false
+          if (
+            field === "reservationsEnabled" ||
+            field === "deliveryEnabled"
+          ) {
+            updates[field] = !!req.body[field];
+            continue;
+          }
           if (
             field === "image" &&
             req.body[field] &&

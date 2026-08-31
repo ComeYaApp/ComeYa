@@ -163,6 +163,17 @@ router.post("/", authenticateToken, async (req, res) => {
       return res.status(404).json({ error: "Negocio no encontrado" });
     }
 
+    // Negocios "solo reservas" (sin reparto): no se pueden crear pedidos a
+    // domicilio. El cliente debe usar la reserva de mesa desde la ficha.
+    // La recogida en local (pickup) sigue permitida.
+    const rawOrderType = String(req.body.orderType || "delivery");
+    if (business.deliveryEnabled === false && rawOrderType !== "pickup") {
+      return res.status(400).json({
+        error:
+          "Este negocio no hace reparto a domicilio: reserva una mesa desde su ficha.",
+      });
+    }
+
     // Verify products exist and calculate total
     const productIds = items
       .map((item: any) => item.productId || item.product?.id)

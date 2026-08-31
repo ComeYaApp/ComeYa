@@ -36,12 +36,13 @@ export interface PaymentMethodLike {
 
 const MANUAL_LABELS: Record<string, string> = {
   bizum_manual: "Bizum (manual)",
-  sepa: "Transferencia SEPA",
+  sepa: "Transferencia SEPA", // solo para etiquetar datos históricos
   paypal: "PayPal",
 };
 
-/** Providers canónicos de los métodos manuales. */
-export const MANUAL_PROVIDERS = ["bizum_manual", "sepa", "paypal"] as const;
+/** Providers canónicos de los métodos manuales ofrecidos al cliente.
+ *  SEPA fue eliminada como método de pago de pedidos (decisión del cliente). */
+export const MANUAL_PROVIDERS = ["bizum_manual", "paypal"] as const;
 
 /** Normaliza un provider a su forma canónica manual (o null si no es manual). */
 export function canonicalizeProvider(provider: string): string | null {
@@ -102,7 +103,7 @@ export function mergePaymentMethods(
   };
 
   if (receiving?.bizum) addManual("bizum_manual", `Envía al ${receiving.bizum}`);
-  if (receiving?.iban) addManual("sepa", `IBAN: ${receiving.iban}`);
+  // SEPA eliminada: ya no se ofrece la transferencia bancaria al cliente
   if (receiving?.paypalEmail) {
     addManual("paypal", `Envía a ${receiving.paypalEmail}`);
   }

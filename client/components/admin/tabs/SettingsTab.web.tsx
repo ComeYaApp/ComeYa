@@ -114,7 +114,7 @@ const CATEGORIES: CategoryDef[] = [
     icon: "credit-card",
     color: "#06B6D4",
     description:
-      "Cuentas donde los clientes envían sus pagos manuales (Bizum, SEPA, PayPal)",
+      "Cuentas donde los clientes envían sus pagos manuales (Bizum, PayPal)",
     settings: [
       {
         key: "bizum_phone",
@@ -128,7 +128,7 @@ const CATEGORIES: CategoryDef[] = [
       {
         key: "comeya_iban",
         label: "IBAN ComeYa",
-        hint: "Cuenta bancaria SEPA para transferencias. Formato: ES00 0000 0000 0000 0000 0000.",
+        hint: "IBAN de la cuenta para pagos internos. Formato: ES00 0000 0000 0000 0000 0000. (Ya no se ofrece transferencia SEPA al cliente).",
         placeholder: "ES00 0000 0000 0000 0000 0000",
         type: "text",
         icon: "credit-card",

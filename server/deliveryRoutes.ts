@@ -747,6 +747,158 @@ router.post(
   }),
 );
 
+// Motivos de cancelación del repartidor (visibles para cliente y negocio)
+const DRIVER_CANCEL_REASONS: Record<string, string> = {
+  vehicle_breakdown: "Avería del vehículo",
+  traffic: "Mucho tráfico",
+  personal_issue: "Problema personal",
+  other: "Otro motivo",
+};
+
+// Cancelar un pedido aceptado: antes de recoger se LIBERA (vuelve a la
+// bolsa de pedidos disponibles); después de recoger se CANCELA de verdad
+// (reembolso 100% al cliente). El motivo queda registrado en el pedido.
+router.post(
+  "/orders/:orderId/cancel",
+  authenticateToken,
+  requireApprovedDriver,
+  asyncHandler(async (req, res) => {
+    const { orderId } = req.params;
+    const userId = (req as any).user.id;
+    const { reason, note } = req.body || {};
+
+    if (!reason || !DRIVER_CANCEL_REASONS[reason]) {
+      throw new ValidationError("Motivo de cancelación inválido");
+    }
+    const reasonLabel =
+      DRIVER_CANCEL_REASONS[reason] +
+      (note && String(note).trim() ? ` — ${String(note).trim().slice(0, 120)}` : "");
+
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+    if (!order) {
+      throw new NotFoundError("Order");
+    }
+    if (order.deliveryPersonId !== userId) {
+      throw new AuthorizationError("Not your order");
+    }
+
+    const PRE_PICKUP = ["ready", "assigned", "assigned_driver", "accepted", "preparing"];
+    const POST_PICKUP = ["picked_up", "on_the_way", "in_transit", "arriving"];
+    const { sendPushToUser } = await import("./enhancedPushService");
+
+    if (PRE_PICKUP.includes(order.status)) {
+      // LIBERAR: el pedido sigue vivo, sin repartidor, listo para otro
+      const nextStatus = order.status === "assigned" ? "ready" : order.status;
+      await db
+        .update(orders)
+        .set({
+          deliveryPersonId: null,
+          assignedAt: null,
+          status: nextStatus,
+          driverCancelReason: reasonLabel,
+          driverCancelledAt: new Date(),
+        })
+        .where(eq(orders.id, orderId));
+
+      if (order.userId) {
+        await sendPushToUser(order.userId, {
+          title: "🛵 Tu repartidor no podrá realizar la entrega",
+          body: `El repartidor liberó el pedido ${orderRef(order)} (${reasonLabel}). Buscaremos otro repartidor.`,
+          data: { orderId, screen: "OrderTracking" },
+        });
+        try {
+          const { notifyOrderStatusChange } = await import("./websocket");
+          notifyOrderStatusChange(order.userId, orderId, nextStatus);
+        } catch {}
+      }
+      if (order.businessId) {
+        const [biz] = await db
+          .select({ ownerId: businesses.ownerId })
+          .from(businesses)
+          .where(eq(businesses.id, order.businessId))
+          .limit(1);
+        if (biz?.ownerId) {
+          await sendPushToUser(biz.ownerId, {
+            title: "🛵 Repartidor liberó el pedido",
+            body: `El pedido ${orderRef(order)} volvió a estar disponible (${reasonLabel}). Otro repartidor podrá aceptarlo.`,
+            data: { orderId, screen: "BusinessOrders" },
+          });
+        }
+      }
+      try {
+        const { DeliveryNotificationService } = await import(
+          "./deliveryNotificationService"
+        );
+        await DeliveryNotificationService.broadcastToDrivers(
+          "📦 Pedido disponible",
+          `El pedido ${orderRef(order)} volvió a estar disponible para recoger`,
+          { screen: "DriverAvailableOrders" },
+        );
+      } catch (broadcastErr) {
+        console.error("Error broadcasting released order:", broadcastErr);
+      }
+
+      logger.delivery("Order released by driver", {
+        orderId,
+        driverId: userId,
+        reason,
+      });
+      return res.json({
+        success: true,
+        mode: "released",
+        message:
+          "Pedido liberado — volvió a estar disponible para otros repartidores",
+      });
+    }
+
+    if (POST_PICKUP.includes(order.status)) {
+      // CANCELACIÓN REAL: reembolso 100% al cliente, payouts anulados
+      const { cancelOrder } = await import("./orderCancellationService");
+      const result = await cancelOrder(
+        orderId,
+        userId,
+        `Cancelado por el repartidor: ${reasonLabel}`,
+        { actorRole: "delivery_driver" },
+      );
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      try {
+        const { notifyOrderStatusChange } = await import("./websocket");
+        notifyOrderStatusChange(order.userId, orderId, "cancelled");
+        if (order.businessId) {
+          const [biz] = await db
+            .select({ ownerId: businesses.ownerId })
+            .from(businesses)
+            .where(eq(businesses.id, order.businessId))
+            .limit(1);
+          if (biz?.ownerId) {
+            notifyOrderStatusChange(biz.ownerId, orderId, "cancelled");
+          }
+        }
+      } catch {}
+      logger.delivery("Order cancelled by driver after pickup", {
+        orderId,
+        driverId: userId,
+        reason,
+      });
+      return res.json({
+        success: true,
+        mode: "cancelled",
+        message: "Pedido cancelado — se reembolsará al cliente",
+      });
+    }
+
+    throw new ValidationError(
+      "El pedido ya no se puede cancelar en este estado",
+    );
+  }),
+);
+
 // Mark order as picked up
 router.post(
   "/pickup/:orderId",

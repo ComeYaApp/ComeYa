@@ -62,7 +62,7 @@ export default function GiftCardsScreen() {
   const [message, setMessage] = useState("");
   const [selectedDesign, setSelectedDesign] = useState("default");
   const [paymentMethod, setPaymentMethod] = useState<
-    "stripe" | "bizum_manual" | "sepa"
+    "stripe" | "bizum_manual"
   >("stripe");
 
   const [proofCardId, setProofCardId] = useState<string | null>(null);
@@ -416,12 +416,6 @@ export default function GiftCardsScreen() {
                       id: "bizum_manual",
                       label: "Bizum manual",
                       icon: "smartphone",
-                      desc: "Transfieres tú — admin activa en breve",
-                    },
-                    {
-                      id: "sepa",
-                      label: "Transferencia SEPA",
-                      icon: "send",
                       desc: "Transfieres tú — admin activa en breve",
                     },
                   ].map((m) => (

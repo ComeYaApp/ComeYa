@@ -118,6 +118,9 @@ export function BusinessCard({
         {business.featured ? (
           <Badge text="Destacado" variant="warning" style={styles.featuredBadge} />
         ) : null}
+        {business.deliveryEnabled === false ? (
+          <Badge text="Sin reparto" variant="warning" style={styles.noDeliveryBadge} />
+        ) : null}
       </View>
       <View style={[styles.content, !business.isOpen && styles.contentClosed]}>
         <View style={styles.header}>
@@ -215,6 +218,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   featuredBadge: {
+    position: "absolute",
+    top: Spacing.sm,
+    right: Spacing.sm,
+  },
+  noDeliveryBadge: {
     position: "absolute",
     top: Spacing.sm,
     right: Spacing.sm,

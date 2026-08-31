@@ -16,7 +16,7 @@ export default {
       bundleIdentifier: "com.comeya.app",
       // Versionado local: App Store Connect ya tiene el build 10; cada
       // build nuevo debe incrementar este número a mano (11, 12, 13…)
-      buildNumber: "12",
+      buildNumber: "13",
       config: {
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
@@ -45,7 +45,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
             package: "com.comeya.app",
-      versionCode: 16,
+      versionCode: 17,
       config: {
         googleMaps: {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,

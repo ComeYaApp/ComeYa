@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { id: "BusinessDashboard", label: "Dashboard", icon: "bar-chart-2" },
   { id: "BusinessOrders", label: "Pedidos", icon: "package" },
   { id: "BusinessProducts", label: "Productos", icon: "grid" },
+  { id: "BusinessReservations", label: "Reservas", icon: "calendar" },
   { id: "BusinessHours", label: "Horarios", icon: "clock" },
   { id: "BusinessStats", label: "Estadísticas", icon: "trending-up" },
 ];
