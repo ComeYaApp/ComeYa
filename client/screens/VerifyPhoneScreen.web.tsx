@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  TextInput,
   Pressable,
   ActivityIndicator,
   Text,
@@ -13,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
-import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
+import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -36,13 +35,15 @@ export default function VerifyPhoneScreen() {
   const text = isDark ? "#fff" : "#1a1a1a";
   const sub = isDark ? "#aaa" : "#666";
 
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  // UN SOLO campo de código (no 6 celdas): copiar y pegar funciona de forma
+  // nativa, igual que el autofill WebOTP de Chrome.
+  const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -64,7 +65,7 @@ export default function VerifyPhoneScreen() {
       .get({ otp: { transport: "sms" }, signal: ac.signal })
       .then((otp: any) => {
         if (otp?.code) {
-          const digits = otp.code.replace(/\D/g, "").slice(0, 6).split("");
+          const digits = String(otp.code).replace(/\D/g, "").slice(0, 6);
           if (digits.length === 6) {
             setCode(digits);
             setError("");
@@ -75,41 +76,29 @@ export default function VerifyPhoneScreen() {
     return () => ac.abort();
   }, []);
 
-  // Verificación automática en cuanto los 6 dígitos están llenos
-  // (autofill WebOTP o pegado manual)
+  // Verificación automática en cuanto los 6 dígitos están completos
+  // (autofill WebOTP, pegado manual o escritura)
   const verifyRef = useRef<(() => void) | null>(null);
   useEffect(() => {
-    const fullCode = code.join("");
-    if (fullCode.length === 6 && !code.includes("") && !isLoading) {
+    if (code.length === 6 && !isLoading) {
       verifyRef.current?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
-  const handleCodeChange = (value: string, index: number) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
-    const newCode = [...code];
-    newCode[index] = digit;
-    setCode(newCode);
+  const handleCodeChange = (value: string) => {
+    setCode(value.replace(/\D/g, "").slice(0, 6));
     setError("");
-    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
-  };
-
-  const handleKeyDown = (e: any, index: number) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
   };
 
   const handleVerify = async () => {
-    const fullCode = code.join("");
-    if (fullCode.length !== 6) {
+    if (code.length !== 6) {
       setError("Ingresa el código completo");
       return;
     }
     setIsLoading(true);
     try {
-      const verifiedUser = await verifyPhone(phone, fullCode);
+      const verifiedUser = await verifyPhone(phone, code);
       if (verifiedUser.role === "delivery_driver") {
         await AsyncStorage.setItem(PENDING_DRIVER_ONBOARDING_KEY, "1");
         navigation.reset({ index: 0, routes: [{ name: "Main" }] });
@@ -136,8 +125,8 @@ export default function VerifyPhoneScreen() {
       navigation.reset({ index: 0, routes: [{ name: "Main" }] });
     } catch (err: any) {
       setError(err.message || "Código incorrecto");
-      setCode(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
+      setCode("");
+      inputRef.current?.focus();
     } finally {
       setIsLoading(false);
     }
@@ -183,38 +172,30 @@ export default function VerifyPhoneScreen() {
           <Text style={{ fontWeight: "700", color: text }}>{phone}</Text>
         </Text>
 
-        <View style={s.codeRow}>
-          {code.map((digit, i) => (
-            <input
-              key={i}
-              ref={(el) => {
-                inputRefs.current[i] = el;
-              }}
-              value={digit}
-              onChange={(e) => handleCodeChange(e.target.value, i)}
-              onKeyDown={(e) => handleKeyDown(e, i)}
-              maxLength={1}
-              inputMode="numeric"
-              // WebOTP (Chrome/Android): el SMS llega con el origen de la app
-              // y el navegador ofrece rellenar el código automáticamente
-              {...(i === 0 ? ({ autoComplete: "one-time-code" } as any) : {})}
-              style={{
-                width: isMobile ? Math.floor((screenWidth - 80) / 6) : 56,
-                height: isMobile ? Math.floor((screenWidth - 80) / 6) : 64,
-                borderRadius: 12,
-                border: `2px solid ${error ? ComeYaColors.error : digit ? ComeYaColors.primary : border}`,
-                backgroundColor: card,
-                color: text,
-                fontSize: isMobile ? 20 : 28,
-                fontWeight: "700",
-                textAlign: "center",
-                outline: "none",
-                transition: "border-color 0.2s",
-                flexShrink: 0,
-              }}
-            />
-          ))}
-        </View>
+        <input
+          ref={inputRef}
+          value={code}
+          onChange={(e) => handleCodeChange(e.target.value)}
+          maxLength={6}
+          inputMode="numeric"
+          autoFocus
+          placeholder="••••••"
+          autoComplete="one-time-code"
+          style={{
+            width: isMobile ? "100%" : 300,
+            height: 64,
+            borderRadius: 12,
+            border: `2px solid ${error ? ComeYaColors.error : code ? ComeYaColors.primary : border}`,
+            backgroundColor: card,
+            color: text,
+            fontSize: isMobile ? 24 : 30,
+            fontWeight: "700",
+            textAlign: "center",
+            letterSpacing: isMobile ? 12 : 18,
+            outline: "none",
+            transition: "border-color 0.2s",
+          }}
+        />
 
         {error ? (
           <Text style={[s.error, { color: ComeYaColors.error }]}>{error}</Text>
@@ -222,14 +203,12 @@ export default function VerifyPhoneScreen() {
 
         <Pressable
           onPress={handleVerify}
-          disabled={
-            isLoading || code.some((d) => !d) || code.join("").length !== 6
-          }
+          disabled={isLoading || code.length !== 6}
           style={[
             s.btn,
             {
               backgroundColor: ComeYaColors.primary,
-              opacity: isLoading || code.some((d) => !d) ? 0.5 : 1,
+              opacity: isLoading || code.length !== 6 ? 0.5 : 1,
             },
           ]}
         >
@@ -299,20 +278,13 @@ const s = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 32,
   },
-  codeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 16,
-    justifyContent: "center",
-    width: "100%" as any,
-  },
-  error: { fontSize: 13, marginBottom: 12, textAlign: "center" },
+  error: { fontSize: 13, marginTop: 12, marginBottom: 4, textAlign: "center" },
   btn: {
     width: "100%",
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 16,
   },
   btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   resendRow: { flexDirection: "row", alignItems: "center", marginTop: 20 },

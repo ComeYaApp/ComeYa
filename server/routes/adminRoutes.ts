@@ -174,6 +174,8 @@ router.get(
           'pending','accepted','preparing','ready',
           'assigned_driver','picked_up','on_the_way','in_transit','arriving'
         )
+          AND o.deleted_at IS NULL
+          AND o.created_at > NOW() - INTERVAL 24 HOUR
         ORDER BY o.created_at DESC
         LIMIT 200
       `)) as any;

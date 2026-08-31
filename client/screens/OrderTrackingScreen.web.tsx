@@ -653,7 +653,13 @@ export default function OrderTrackingScreen() {
   const currentStep = order
     ? STEP_POSITION[order.status] ?? 0
     : 0;
-  const statusInfo = STATUS_LABELS[order?.status] || {
+  const statusInfo =
+    order?.status === "pending" && order?.paidAt
+      ? {
+          ...STATUS_LABELS.pending,
+          label: "Pago recibido — esperando aceptación",
+        }
+      : STATUS_LABELS[order?.status] || {
     label: "Procesando...",
     color: "#888",
     icon: "clock",
@@ -787,7 +793,7 @@ export default function OrderTrackingScreen() {
             {/* Política de aceptación: cuenta atrás de 10 min mientras el
                 negocio no acepta (transparencia del reembolso automático) */}
             {order &&
-              (order.status === "pending" ||
+              ((order.status === "pending" && !!order.paidAt) ||
                 order.status === "payment_failed") && (
                 <View style={s.acceptanceNotice}>
                   <Feather name="clock" size={16} color="#B45309" />

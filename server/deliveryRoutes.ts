@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "./db";
-import { deliveryDrivers, users, orders, wallets, businesses } from "@shared/schema-mysql";
-import { eq, and, or, inArray, sql, isNull } from "drizzle-orm";
+import { deliveryDrivers, users, orders, wallets, businesses, transactions } from "@shared/schema-mysql";
+import { eq, and, or, inArray, sql, isNull, gte } from "drizzle-orm";
 import { authenticateToken, requireApprovedDriver } from "./authMiddleware";
 import {
   asyncHandler,
@@ -230,6 +230,14 @@ router.get(
           weekEarnings: 0,
           monthEarnings: 0,
           totalEarnings: 0,
+          tipsToday: 0,
+          tipsWeek: 0,
+          tipsMonth: 0,
+          tipsTotal: 0,
+          cashTipsToday: 0,
+          cashTipsWeek: 0,
+          cashTipsMonth: 0,
+          cashTipsTotal: 0,
           balance: 0,
           avgDeliveryTime: 0,
           cashOwed: 0,
@@ -314,6 +322,53 @@ router.get(
           }, 0) / completedOrders.length
         : 0;
 
+    // Propinas COMPLETADAS: tarjeta/manual (abonadas a wallet) y efectivo
+    // (doble confirmación; no toca la wallet pero cuenta como ganancia)
+    const tipTxs = await db
+      .select()
+      .from(transactions)
+      .where(
+        and(eq(transactions.type, "tip"), eq(transactions.userId, userId)),
+      );
+    const tipMeta = (t: any) => {
+      try {
+        return JSON.parse(t.metadata || "{}");
+      } catch {
+        return {};
+      }
+    };
+    const sumTipsSince = (since: Date, cashOnly: boolean) =>
+      tipTxs
+        .filter(
+          (t: any) =>
+            t.status === "completed" &&
+            t.createdAt &&
+            new Date(t.createdAt) >= since &&
+            (cashOnly ? tipMeta(t).tipMethod === "cash" : true),
+        )
+        .reduce((sum: any, t: any) => sum + t.amount, 0);
+    const tipsToday = sumTipsSince(todayStart, false);
+    const tipsWeek = sumTipsSince(weekStart, false);
+    const tipsMonth = sumTipsSince(monthStart, false);
+    const tipsTotal = tipTxs
+      .filter((t: any) => t.status === "completed")
+      .reduce((sum: any, t: any) => sum + t.amount, 0);
+    const cashTipsToday = sumTipsSince(todayStart, true);
+    const cashTipsWeek = sumTipsSince(weekStart, true);
+    const cashTipsMonth = sumTipsSince(monthStart, true);
+    const cashTipsTotal = tipTxs
+      .filter(
+        (t: any) =>
+          t.status === "completed" && tipMeta(t).tipMethod === "cash",
+      )
+      .reduce((sum: any, t: any) => sum + t.amount, 0);
+    const tipByOrder: Record<string, number> = {};
+    for (const t of tipTxs) {
+      if (t.status === "completed" && t.orderId) {
+        tipByOrder[t.orderId] = (tipByOrder[t.orderId] || 0) + t.amount;
+      }
+    }
+
     // Obtener resumen de efectivo
     const { cashSettlementService } = await import("./cashSettlementService");
     const cashSummary = await cashSettlementService.getDriverDebt(userId);
@@ -334,6 +389,15 @@ router.get(
         weekEarnings,
         monthEarnings,
         totalEarnings,
+        // Propinas (solo completadas): total y desglose plataforma/efectivo
+        tipsToday,
+        tipsWeek,
+        tipsMonth,
+        tipsTotal,
+        cashTipsToday,
+        cashTipsWeek,
+        cashTipsMonth,
+        cashTipsTotal,
         balance: wallet?.balance || 0,
         avgDeliveryTime: Math.round(avgTimeMinutes),
         // Info de efectivo
@@ -348,6 +412,7 @@ router.get(
           businessName: o.businessName,
           deliveryFee: o.deliveryFee || 0,
           deliveryEarnings: o.deliveryEarnings || o.deliveryFee || 0,
+          tipAmount: tipByOrder[o.id] || 0,
           deliveredAt: o.deliveredAt,
           createdAt: o.createdAt,
           paymentMethod: o.paymentMethod,
@@ -473,15 +538,49 @@ router.get(
       .orderBy(sql`created_at DESC`)
       .limit(50);
 
+    const orderRows = rows.map((r: any) => ({
+      ...r.order,
+      customerPhone: r.customerPhone,
+      customerName: r.customerName,
+      businessLatitude: r.businessLatitude,
+      businessLongitude: r.businessLongitude,
+      businessAddress: r.businessAddress,
+    }));
+
+    // Propinas en efectivo pendientes: el repartidor debe confirmarlas
+    // (doble confirmación) desde la tarjeta del pedido entregado
+    const orderIds = orderRows.map((o: any) => o.id);
+    const pendingCashTips: Record<string, any> = {};
+    if (orderIds.length) {
+      const tipTxs = await db
+        .select()
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.type, "tip"),
+            eq(transactions.status, "pending"),
+            inArray(transactions.orderId as any, orderIds),
+          ),
+        )
+        .limit(100);
+      for (const tx of tipTxs) {
+        try {
+          const meta = JSON.parse(tx.metadata || "{}");
+          if (meta.tipMethod === "cash" && tx.orderId) {
+            pendingCashTips[tx.orderId] = {
+              amountCents: tx.amount,
+              declaredBy: meta.declaredBy || "customer",
+            };
+          }
+        } catch {}
+      }
+    }
+
     res.json({
       success: true,
-      orders: rows.map((r: any) => ({
-        ...r.order,
-        customerPhone: r.customerPhone,
-        customerName: r.customerName,
-        businessLatitude: r.businessLatitude,
-        businessLongitude: r.businessLongitude,
-        businessAddress: r.businessAddress,
+      orders: orderRows.map((o: any) => ({
+        ...o,
+        pendingCashTip: pendingCashTips[o.id] || null,
       })),
     });
   }),
@@ -553,6 +652,9 @@ router.get(
           isNull(orders.deliveryPersonId),
           isNull(orders.deletedAt),
           ne(orders.orderType, "pickup"),
+          // Sin pedidos viejos colgados: los "ready" de más de 24 h los
+          // cierra el cron de limpieza (sin repartidor → cancelación)
+          gte(orders.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)),
         ),
       )
       .orderBy(desc(businesses.isFeatured), desc(orders.createdAt))

@@ -12,6 +12,7 @@ export type UploadFolder =
   | "comprobantes"
   | "reviews"
   | "delivery-proofs"
+  | "tip-proofs"
   | "issues";
 
 /**
@@ -114,6 +115,8 @@ function getEndpointForFolder(folder: UploadFolder): string {
       return "/api/upload/review-image";
     case "delivery-proofs":
       return "/api/upload/delivery-proof";
+    case "tip-proofs":
+      return "/api/upload/image";
     case "issues":
       return "/api/upload/image";
     default:

@@ -43,14 +43,17 @@ export default function VerifyPhoneScreen({
   const insets = useSafeAreaInsets();
   const phone = route.params?.phone || "";
 
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  // UN SOLO campo de código (no 6 celdas): el pegado funciona de forma
+  // nativa en iOS y Android, igual que la sugerencia SMS del sistema. Las
+  // cajas de detrás son solo decoración.
+  const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState("");
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const inputRef = useRef<TextInput | null>(null);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -61,35 +64,10 @@ export default function VerifyPhoneScreen({
     }
   }, [countdown]);
 
-  const handleCodeChange = (value: string, index: number) => {
-    if (value.length > 1) {
-      const digits = value.replace(/\D/g, "").slice(0, 6).split("");
-      const newCode = [...code];
-      digits.forEach((digit, i) => {
-        if (index + i < 6) {
-          newCode[index + i] = digit;
-        }
-      });
-      setCode(newCode);
-      const lastFilledIndex = Math.min(index + digits.length - 1, 5);
-      inputRefs.current[lastFilledIndex]?.focus();
-      return;
-    }
-
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
+  const handleChange = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 6);
+    setCode(digits);
     setError("");
-
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (key: string, index: number) => {
-    if (key === "Backspace" && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
   };
 
   // ── Autollenado del código SMS ────────────────────────────────────────────
@@ -97,7 +75,7 @@ export default function VerifyPhoneScreen({
   // sugerencia del sistema (textContentType="oneTimeCode") como la lectura
   // del portapapeles al volver a la app (patrón estándar de Uber/Rappi).
   const applyCode = (fullCode: string) => {
-    const digits = fullCode.replace(/\D/g, "").slice(0, 6).split("");
+    const digits = fullCode.replace(/\D/g, "").slice(0, 6);
     if (digits.length !== 6) return false;
     setCode(digits);
     setError("");
@@ -105,19 +83,6 @@ export default function VerifyPhoneScreen({
     // Auto-submit: el efecto de abajo detecta el código completo
     return true;
   };
-
-  // Verificación automática en cuanto los 6 dígitos están llenos
-  // (por autofill del SMS, portapapeles o pegado manual)
-  useEffect(() => {
-    const fullCode = code.join("");
-    if (fullCode.length === 6 && !code.includes("") && !isLoading) {
-      handleVerifyRef.current?.();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
-
-  // Ref estable a handleVerify para el auto-submit
-  const handleVerifyRef = useRef<(() => void) | null>(null);
 
   // Lectura del portapapeles al volver a la app: si el SMS se copió (muchos
   // clientes de SMS lo hacen), el código se detecta solo
@@ -135,7 +100,7 @@ export default function VerifyPhoneScreen({
         if (!match) return;
         const smsCode = match[1];
         if (smsCode === lastClipboardCode.current) return; // ya aplicado
-        if (code.join("") === smsCode) return; // ya escrito
+        if (code === smsCode) return; // ya escrito
         lastClipboardCode.current = smsCode;
         applyCode(smsCode);
       } catch {
@@ -151,8 +116,7 @@ export default function VerifyPhoneScreen({
   }, [code]);
 
   const handleVerify = async () => {
-    const fullCode = code.join("");
-    if (fullCode.length !== 6) {
+    if (code.length !== 6) {
       setError("Ingresa el código completo");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
@@ -161,7 +125,7 @@ export default function VerifyPhoneScreen({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const verifiedUser = await verifyPhone(phone, fullCode);
+      const verifiedUser = await verifyPhone(phone, code);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       if (verifiedUser.role === "delivery_driver") {
@@ -212,15 +176,22 @@ export default function VerifyPhoneScreen({
       } else {
         setError(rawMessage || "Error al verificar. Intenta de nuevo.");
       }
-      setCode(["", "", "", "", "", ""]);
-      inputRefs.current[0]?.focus();
+      setCode("");
+      inputRef.current?.focus();
     } finally {
       setIsLoading(false);
     }
   };
 
-  // El auto-submit del autofill SMS llama siempre a la versión más reciente
-  handleVerifyRef.current = handleVerify;
+  // Auto-submit cuando los 6 dígitos están completos (autofill SMS,
+  // portapapeles o pegado manual). Un solo efecto, sin duplicados.
+  useEffect(() => {
+    if (code.length === 6 && !isLoading) {
+      Keyboard.dismiss();
+      handleVerify();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
 
   const handleResend = async () => {
     if (!canResend) return;
@@ -241,16 +212,6 @@ export default function VerifyPhoneScreen({
       setIsResending(false);
     }
   };
-
-  // Auto-submit cuando los 6 dígitos están completos
-  // Soluciona el problema en iOS donde el teclado number-pad no tiene botón Done y tapa el botón Verificar
-  useEffect(() => {
-    const fullCode = code.join("");
-    if (fullCode.length === 6 && !isLoading) {
-      Keyboard.dismiss();
-      handleVerify();
-    }
-  }, [code]);
 
   const formatPhone = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
@@ -296,41 +257,46 @@ export default function VerifyPhoneScreen({
           </ThemedText>
         </ThemedText>
 
+        {/* Cajas decorativas + UN campo real encima (pegado nativo) */}
         <View style={styles.codeContainer}>
-          {code.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => {
-                inputRefs.current[index] = ref;
-              }}
-              style={[
-                styles.codeInput,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: error
-                    ? ComeYaColors.error
-                    : digit
-                      ? ComeYaColors.primary
-                      : theme.border,
-                  color: theme.text,
-                },
-              ]}
-              value={digit}
-              onChangeText={(value) => handleCodeChange(value, index)}
-              onKeyPress={({ nativeEvent }) =>
-                handleKeyPress(nativeEvent.key, index)
-              }
-              keyboardType="number-pad"
-              maxLength={1}
-              selectTextOnFocus
-              // Autollenado del código SMS: iOS muestra la sugerencia del
-              // sistema sobre el teclado (un toque rellena todo); Android
-              // autocompleta con sms-otp
-              textContentType={index === 0 ? "oneTimeCode" : "none"}
-              autoComplete={index === 0 ? "sms-otp" : "off"}
-              testID={`code-input-${index}`}
-            />
-          ))}
+          <View style={styles.codeBoxes}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.codeInput,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: error
+                      ? ComeYaColors.error
+                      : code[index]
+                        ? ComeYaColors.primary
+                        : theme.border,
+                  },
+                ]}
+              >
+                <ThemedText type="h3" style={{ color: theme.text }}>
+                  {code[index] || ""}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+          <TextInput
+            ref={inputRef}
+            value={code}
+            onChangeText={handleChange}
+            keyboardType="number-pad"
+            maxLength={6}
+            selectTextOnFocus
+            autoFocus
+            caretHidden
+            // Autollenado del código SMS: iOS muestra la sugerencia del
+            // sistema sobre el teclado; Android autocompleta con sms-otp
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
+            style={styles.hiddenInput}
+            testID="code-input"
+          />
         </View>
 
         {error ? (
@@ -344,9 +310,7 @@ export default function VerifyPhoneScreen({
 
         <Button
           onPress={handleVerify}
-          disabled={
-            isLoading || code.some((d) => !d) || code.join("").length !== 6
-          }
+          disabled={isLoading || code.length !== 6}
           style={styles.verifyButton}
         >
           {isLoading ? (
@@ -418,19 +382,31 @@ const styles = StyleSheet.create({
     marginBottom: Spacing["3xl"],
   },
   codeContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: Spacing.sm,
+    alignItems: "center",
     marginBottom: Spacing.md,
+  },
+  codeBoxes: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    justifyContent: "center",
   },
   codeInput: {
     width: 48,
     height: 56,
     borderRadius: BorderRadius.md,
     borderWidth: 2,
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  // El campo real es invisible y cubre las cajas: recibe el foco, el
+  // teclado numérico y — lo importante — el PEGADO y el autofill del SMS
+  hiddenInput: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
   },
   error: {
     textAlign: "center",

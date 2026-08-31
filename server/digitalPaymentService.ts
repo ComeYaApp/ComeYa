@@ -332,11 +332,11 @@ export class DigitalPaymentService {
             })
             .where(eq(paymentProofs.id, proofId));
 
-          // Update order to accepted (ready for business to prepare)
+          // El pago NO acepta el pedido: queda "pending" pagado para que el
+          // NEGOCIO lo acepte (mismo flujo que Stripe)
           await tx
             .update(orders)
             .set({
-              status: "accepted",
               paidAt: new Date(),
               updatedAt: new Date(),
             })
@@ -359,8 +359,8 @@ export class DigitalPaymentService {
           .limit(1);
         if (biz?.ownerId) {
           await sendPushToUser(biz.ownerId, {
-            title: "💳 Pago confirmado — ¡A preparar!",
-            body: `Pedido ${orderRef(order)} pagado. Empieza la preparación.`,
+            title: "💳 Pago confirmado — nuevo pedido",
+            body: `El pedido ${orderRef(order)} está pagado. Acéptalo para empezar a prepararlo.`,
             data: { orderId: order.id, screen: "BusinessOrders" },
           });
         }

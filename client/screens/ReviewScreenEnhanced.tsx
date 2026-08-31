@@ -117,6 +117,12 @@ export default function ReviewScreenEnhanced() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [wantTip, setWantTip] = useState<boolean | null>(null);
   const [tipAmount, setTipAmount] = useState(0);
+  // Canal de la propina: tarjeta (Payment Sheet), pago manual (comprobante
+  // verificado por el admin) o efectivo (doble confirmación con el repartidor)
+  const [tipMethod, setTipMethod] = useState<"stripe" | "manual" | "cash">(
+    "stripe",
+  );
+  const [tipProof, setTipProof] = useState<string | null>(null);
 
   const { data: tagsData } = useQuery({
     queryKey: ["/api/reviews/tags"],
@@ -185,29 +191,30 @@ export default function ReviewScreenEnhanced() {
         comment: comment.trim() || undefined,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         photos: photos.length > 0 ? photos : undefined,
-        // tipAmount en céntimos: el servidor abona la wallet en céntimos
+        // Propina: solo tras la entrega confirmada (allowTip). El canal lo
+        // elige el cliente: tarjeta, pago manual o efectivo.
         tipAmount: wantTip ? tipAmount * 100 : 0,
+        tipMethod: wantTip ? tipMethod : undefined,
+        tipProof:
+          wantTip && tipMethod === "manual" ? tipProof : undefined,
       });
       return response.json();
-    },
-    onSuccess: (data: any) => {
-      if (data?.success === false) {
-        showToast(data.error || "No se pudo enviar la reseña", "error");
-        return;
-      }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      queryClient.invalidateQueries({
-        queryKey: ["/api/users", user?.id, "orders"],
-      });
-      showToast("¡Gracias! Tu opinión nos ayuda a mejorar.", "success");
-      navigation.goBack();
     },
     onError: () => {
       showToast("No se pudo enviar la reseña", "error");
     },
   });
 
-  const handleSubmit = () => {
+  const finishAndClose = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    queryClient.invalidateQueries({
+      queryKey: ["/api/users", user?.id, "orders"],
+    });
+    showToast("¡Gracias! Tu opinión nos ayuda a mejorar.", "success");
+    navigation.goBack();
+  };
+
+  const handleSubmit = async () => {
     if (
       foodRating === 0 &&
       deliveryRating === 0 &&
@@ -217,7 +224,80 @@ export default function ReviewScreenEnhanced() {
       showToast("Por favor califica al menos un aspecto", "warning");
       return;
     }
-    submitReviewMutation.mutate();
+    try {
+      const data = await submitReviewMutation.mutateAsync();
+      if (data?.success === false) {
+        showToast(data.error || "No se pudo enviar la reseña", "error");
+        return;
+      }
+
+      // Propina con tarjeta: se paga el importe con el Payment Sheet (la
+      // reseña ya quedó guardada; el pago libera el abono al repartidor)
+      if (data?.needsPayment && data?.clientSecret) {
+        const StripeModule = await import("@stripe/stripe-react-native");
+        const { error: initError } = await StripeModule.initPaymentSheet({
+          merchantDisplayName: "ComeYa",
+          paymentIntentClientSecret: data.clientSecret,
+          allowsDelayedPaymentMethods: false,
+          appearance: { colors: { primary: "#FF6B35" } },
+        });
+        if (initError) {
+          showToast(initError.message || "No se pudo iniciar el pago", "error");
+          return;
+        }
+        const { error: payError } = await StripeModule.presentPaymentSheet();
+        if (payError) {
+          if (payError.code !== "Canceled") {
+            showToast(payError.message || "Pago no completado", "error");
+          }
+        } else {
+          try {
+            await apiRequest(
+              "POST",
+              `/api/reviews/${data.reviewId}/confirm-tip`,
+              { paymentIntentId: data.paymentIntentId },
+            );
+            showToast("Propina enviada al repartidor 💝", "success");
+          } catch {}
+        }
+        finishAndClose();
+        return;
+      }
+
+      // Propina manual (pendiente de verificación) o en efectivo (pendiente
+      // de confirmación del repartidor)
+      if (data?.tipPending) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        queryClient.invalidateQueries({
+          queryKey: ["/api/users", user?.id, "orders"],
+        });
+        showToast(data.message || "Propina declarada", "success");
+        navigation.goBack();
+        return;
+      }
+
+      finishAndClose();
+    } catch (error: any) {
+      showToast(error?.message || "No se pudo enviar la reseña", "error");
+    }
+  };
+
+  const pickTipProof = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      showToast("Se necesita permiso de cámara", "warning");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: false,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]?.base64) {
+      setTipProof(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   return (
@@ -532,50 +612,165 @@ export default function ReviewScreenEnhanced() {
             </View>
 
             {wantTip === true && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  gap: Spacing.sm,
-                  flexWrap: "wrap",
-                }}
-              >
-                {[1, 2, 3, 5].map((amount) => (
-                  <Pressable
-                    key={amount}
-                    onPress={() => {
-                      setTipAmount(amount);
-                      Haptics.selectionAsync();
-                    }}
-                    style={[
-                      {
-                        paddingHorizontal: Spacing.lg,
-                        paddingVertical: Spacing.sm,
-                        borderRadius: BorderRadius.full,
-                        borderWidth: 2,
-                      },
-                      tipAmount === amount
-                        ? {
-                            backgroundColor: ComeYaColors.primary,
-                            borderColor: ComeYaColors.primary,
-                          }
-                        : {
-                            backgroundColor: theme.backgroundSecondary,
-                            borderColor: theme.border,
+              <View>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: Spacing.sm,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {[1, 2, 3, 4, 5].map((amount) => (
+                    <Pressable
+                      key={amount}
+                      onPress={() => {
+                        setTipAmount(amount);
+                        Haptics.selectionAsync();
+                      }}
+                      style={[
+                        {
+                          paddingHorizontal: Spacing.lg,
+                          paddingVertical: Spacing.sm,
+                          borderRadius: BorderRadius.full,
+                          borderWidth: 2,
+                        },
+                        tipAmount === amount
+                          ? {
+                              backgroundColor: ComeYaColors.primary,
+                              borderColor: ComeYaColors.primary,
+                            }
+                          : {
+                              backgroundColor: theme.backgroundSecondary,
+                              borderColor: theme.border,
+                            },
+                      ]}
+                    >
+                      <ThemedText
+                        type="body"
+                        style={{
+                          color:
+                            tipAmount === amount ? "#FFF" : theme.text,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {amount} €
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {/* Canal de la propina */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: Spacing.sm,
+                    marginTop: Spacing.md,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {[
+                    { id: "stripe", label: "Tarjeta", icon: "credit-card" },
+                    { id: "manual", label: "Bizum/Transf.", icon: "smartphone" },
+                    { id: "cash", label: "Efectivo", icon: "dollar-sign" },
+                  ].map((opt) => {
+                    const active = tipMethod === opt.id;
+                    return (
+                      <Pressable
+                        key={opt.id}
+                        onPress={() => {
+                          setTipMethod(opt.id as any);
+                          Haptics.selectionAsync();
+                        }}
+                        style={[
+                          {
+                            flexDirection: "row",
+                            alignItems: "center",
+                            paddingHorizontal: Spacing.md,
+                            paddingVertical: Spacing.sm,
+                            borderRadius: BorderRadius.full,
+                            borderWidth: 2,
                           },
-                    ]}
+                          active
+                            ? {
+                                backgroundColor: ComeYaColors.primary,
+                                borderColor: ComeYaColors.primary,
+                              }
+                            : {
+                                backgroundColor: theme.backgroundSecondary,
+                                borderColor: theme.border,
+                              },
+                        ]}
+                      >
+                        <Feather
+                          name={opt.icon as any}
+                          size={14}
+                          color={active ? "#FFF" : theme.text}
+                        />
+                        <ThemedText
+                          type="caption"
+                          style={{
+                            color: active ? "#FFF" : theme.text,
+                            marginLeft: Spacing.xs,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {opt.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: theme.textSecondary,
+                    marginTop: Spacing.sm,
+                  }}
+                >
+                  {tipMethod === "stripe"
+                    ? "Se cobra a tu tarjeta y llega directo al repartidor."
+                    : tipMethod === "manual"
+                      ? "Envía el importe por Bizum/transferencia al número de la plataforma y adjunta el comprobante. Se abona al verificar el pago."
+                      : "Le das el efectivo al repartidor en mano. Él lo confirma en su app y queda registrado en sus ganancias."}
+                </ThemedText>
+
+                {tipMethod === "manual" && (
+                  <Pressable
+                    onPress={pickTipProof}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginTop: Spacing.sm,
+                      paddingVertical: Spacing.sm,
+                    }}
                   >
+                    {tipProof ? (
+                      <Image
+                        source={{ uri: tipProof }}
+                        style={{ width: 44, height: 44, borderRadius: 8 }}
+                      />
+                    ) : (
+                      <Feather
+                        name="camera"
+                        size={18}
+                        color={ComeYaColors.primary}
+                      />
+                    )}
                     <ThemedText
-                      type="body"
+                      type="small"
                       style={{
-                        color:
-                          tipAmount === amount ? "#FFF" : theme.text,
+                        color: ComeYaColors.primary,
+                        marginLeft: Spacing.sm,
                         fontWeight: "600",
                       }}
                     >
-                      {amount} €
+                      {tipProof
+                        ? "Cambiar comprobante"
+                        : "Adjuntar comprobante (opcional)"}
                     </ThemedText>
                   </Pressable>
-                ))}
+                )}
               </View>
             )}
 

@@ -51,17 +51,19 @@ export async function confirmPaidOrder(
     )
     .limit(1);
 
-  // Ya confirmado Y con transacción por una entrega previa: no repetir nada
-  if (existingOrder.status !== "pending" && existingOrder.paidAt && existingTx.length) {
+  // Ya confirmado Y con transacción: no repetir nada (cubre también el
+  // webhook duplicado mientras el pedido sigue esperando aceptación)
+  if (existingOrder.paidAt && existingTx.length) {
     return { success: true, message: "already-confirmed" };
   }
 
   const wasPending = existingOrder.status === "pending";
   if (wasPending) {
+    // El pago NO acepta el pedido: lo deja en "pending" pagado para que el
+    // NEGOCIO lo acepte (botón Aceptar + recuadro de 10 minutos del cliente)
     await db
       .update(orders)
       .set({
-        status: "accepted",
         paidAt: new Date(),
         stripePaymentIntentId: paymentIntent.id,
         updatedAt: new Date(),
@@ -102,7 +104,7 @@ export async function confirmPaidOrder(
       const { orderRef } = await import("./orderNumberService");
       await sendPushToUser(biz.ownerId, {
         title: "💳 Pago recibido — nuevo pedido",
-        body: `${existingOrder.businessName} recibió el pedido ${orderRef(existingOrder)}. Revísalo y ponlo en preparación.`,
+        body: `El pedido ${orderRef(existingOrder)} está pagado. Acéptalo para empezar a prepararlo.`,
         data: { orderId, screen: "BusinessOrders" },
       });
     }

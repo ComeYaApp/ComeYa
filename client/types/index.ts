@@ -135,6 +135,8 @@ export interface Order {
   notes?: string;
   confirmedByCustomer?: boolean;
   confirmedByCustomerAt?: string;
+  /** Pedido pagado (esperando aceptación del negocio) */
+  paidAt?: string | null;
   fundsReleased?: boolean;
   /** Si el cliente ya dejó reseña (oculta el botón de valorar) */
   hasReview?: boolean;

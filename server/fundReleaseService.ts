@@ -441,6 +441,43 @@ export class FundReleaseService {
 
       await releaseFunds(order);
 
+      // Avisar a repartidor y negocio: el pedido queda confirmado y el pago
+      // liberado. Sin este push el repartidor se quedaba viendo "esperando
+      // confirmación del cliente" aunque el cliente ya hubiera confirmado.
+      try {
+        if (order.deliveryPersonId) {
+          await sendPushToUser(order.deliveryPersonId, {
+            title: "💰 Pago liberado",
+            body: `El cliente confirmó la entrega del pedido ${await orderRefFromId(order.id)}. Tu pago está disponible.`,
+            data: { orderId: order.id, screen: "DriverEarnings" },
+          });
+          try {
+            const { notifyOrderStatusChange } = await import("./websocket");
+            notifyOrderStatusChange(
+              order.deliveryPersonId,
+              order.id,
+              "completed",
+            );
+          } catch {}
+        }
+        if (order.businessId) {
+          const [biz] = await db
+            .select({ ownerId: businesses.ownerId })
+            .from(businesses)
+            .where(eq(businesses.id, order.businessId))
+            .limit(1);
+          if (biz?.ownerId) {
+            await sendPushToUser(biz.ownerId, {
+              title: "💰 Pago liberado",
+              body: `El cliente confirmó la entrega del pedido ${await orderRefFromId(order.id)}`,
+              data: { orderId: order.id, screen: "BusinessEarnings" },
+            });
+          }
+        }
+      } catch (notifyErr) {
+        logger.error("Error notifying order confirmation:", notifyErr);
+      }
+
       return {
         success: true,
         message: "Entrega confirmada. Los pagos han sido procesados.",

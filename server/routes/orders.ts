@@ -576,7 +576,11 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
   }
 });
 
-// Tip — solo el cliente del pedido puede enviar propina al repartidor
+// Tip — solo el cliente del pedido puede enviar propina al repartidor.
+// SOLO tras la entrega confirmada (delivered + confirmedByCustomer). Tres
+// canales: tarjeta (PaymentIntent), pago manual (verificación del admin) y
+// efectivo (doble confirmación con el repartidor). La propina ya no se abona
+// gratis: el dinero se cobra/verifica antes de llegar a la wallet.
 router.post("/:id/tip", authenticateToken, async (req, res) => {
   try {
     if (req.user!.role !== "customer") {
@@ -585,58 +589,103 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
         .json({ error: "Solo el cliente puede enviar propinas" });
     }
 
-    const { orders, wallets, transactions } = await import(
-      "@shared/schema-mysql"
-    );
-    const { db } = await import("../db");
-    const { amount, deliveryPersonId } = req.body;
-
-    if (!amount || amount <= 0) {
+    const { amount, deliveryPersonId, tipMethod, tipProof } = req.body;
+    const amountCents = Math.round(Number(amount) || 0);
+    if (!amountCents || amountCents <= 0 || amountCents > 50000) {
       return res.status(400).json({ error: "Monto de propina inválido" });
     }
+    const method = (["stripe", "manual", "cash"] as const).includes(tipMethod)
+      ? tipMethod
+      : "stripe";
 
-    const tipOrderId = req.params.id as string;
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, tipOrderId))
-      .limit(1);
-    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
-    if (order.userId !== req.user!.id)
-      return res.status(403).json({ error: "No autorizado" });
-    if (order.status !== "delivered")
-      return res.status(400).json({ error: "El pedido debe estar entregado" });
+    const tipService = await import("../tipService");
+    const eligibility = await tipService.checkTipEligibility(
+      req.params.id as string,
+      req.user!.id,
+    );
+    if (!eligibility.ok) {
+      return res.status(400).json({ error: eligibility.error });
+    }
+    const driverId =
+      deliveryPersonId || eligibility.order.deliveryPersonId;
+    const orderId = req.params.id as string;
 
-    const driverId = deliveryPersonId || order.deliveryPersonId;
-    if (!driverId)
-      return res.status(400).json({ error: "No hay repartidor asignado" });
-
-    // Agregar propina a la wallet del repartidor
-    const [driverWallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.userId, driverId))
-      .limit(1);
-    if (driverWallet) {
-      await db
-        .update(wallets)
-        .set({
-          balance: driverWallet.balance + amount,
-          totalEarned: driverWallet.totalEarned + amount,
-        })
-        .where(eq(wallets.userId, driverId));
+    if (method === "stripe") {
+      const intent = await tipService.createStripeTipIntent({
+        orderId,
+        driverId,
+        amountCents,
+      });
+      if (!intent.success) {
+        return res
+          .status(500)
+          .json({ error: intent.error || "No se pudo crear el pago de la propina" });
+      }
+      await tipService.declareTip({
+        orderId,
+        driverId,
+        amountCents,
+        method: "stripe",
+        declaredBy: "customer",
+        paymentIntentId: intent.paymentIntentId,
+      });
+      return res.json({
+        success: true,
+        needsPayment: true,
+        clientSecret: intent.clientSecret,
+        paymentIntentId: intent.paymentIntentId,
+      });
     }
 
-    await db.insert(transactions).values({
-      userId: driverId,
-      orderId: tipOrderId,
-      type: "tip",
-      amount,
-      description: `Propina del cliente por pedido ${await orderRefFromId(tipOrderId)}`,
-      status: "completed",
-    });
+    if (method === "manual") {
+      let proofUrl: string | null = null;
+      if (tipProof) {
+        try {
+          const { CloudinaryService } = await import("../cloudinaryService");
+          proofUrl = await CloudinaryService.uploadImage(
+            String(tipProof),
+            "tip-proofs",
+            `tip-${orderId}-${Date.now()}`,
+          );
+        } catch {}
+      }
+      await tipService.declareTip({
+        orderId,
+        driverId,
+        amountCents,
+        method: "manual",
+        declaredBy: "customer",
+        proofUrl: proofUrl || undefined,
+      });
+      return res.json({
+        success: true,
+        tipPending: true,
+        message:
+          "Propina declarada por pago manual. Se abonará al repartidor cuando administración verifique el comprobante.",
+      });
+    }
 
-    res.json({ success: true, message: "Propina enviada" });
+    // cash: el repartidor debe confirmar la recepción en su app
+    await tipService.declareTip({
+      orderId,
+      driverId,
+      amountCents,
+      method: "cash",
+      declaredBy: "customer",
+    });
+    try {
+      const { sendPushToUser } = await import("../enhancedPushService");
+      await sendPushToUser(driverId, {
+        title: "💵 Propina en efectivo declarada",
+        body: `El cliente te dará ${(amountCents / 100).toFixed(2)} € en efectivo. Confírmalo en la app cuando la recibas.`,
+        data: { orderId, screen: "DriverMyDeliveries" },
+      });
+    } catch {}
+    res.json({
+      success: true,
+      tipPending: true,
+      message: "Propina en efectivo declarada. El repartidor debe confirmarla en su app.",
+    });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

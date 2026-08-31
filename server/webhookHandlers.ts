@@ -187,6 +187,14 @@ async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent,
   context: WebhookContext,
 ) {
+  // Pago de una PROPINA con tarjeta: abona la wallet del repartidor
+  if (paymentIntent.metadata?.isTip === "true") {
+    const { handleStripeTipPayment } = await import("./tipService");
+    const tipResult = await handleStripeTipPayment(paymentIntent.id);
+    logWebhookEvent(context, `Tip payment: ${tipResult.message}`);
+    return;
+  }
+
   // Pago de la DIFERENCIA de una sustitución: no es el pago del pedido,
   // solo aplica la sustitución pendiente (el pedido ya estaba confirmado)
   if (paymentIntent.metadata?.isDelta === "true") {

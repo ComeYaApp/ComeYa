@@ -14,14 +14,15 @@
 // (Stripe automático, saldo en monedero o cola manual según el pago).
 import { db } from "./db";
 import { orders } from "@shared/schema-mysql";
-import { inArray, lt, and, isNull, ne, eq } from "drizzle-orm";
+import { inArray, lt, and, isNull, ne, eq, or } from "drizzle-orm";
 import { cancelOrder } from "./orderCancellationService";
 import { orderRef } from "./orderNumberService";
 
 // Política: sin aceptación del negocio → 10 min (visible para el cliente)
 export const NO_ACCEPTANCE_MINUTES = 10;
-// Sin repartidor (ya aceptados por el negocio) → 30 min
-export const NO_DRIVER_MINUTES = 30;
+// Sin repartidor (ya aceptados por el negocio) → 2 h (antes 30 min: el
+// usuario pidió dar más margen para encontrar repartidor antes de anular)
+export const NO_DRIVER_MINUTES = 120;
 // Comprobante manual sin verificar → 2 h (el pedido espera al ADMIN)
 export const PROOF_PENDING_MAX_MINUTES = 120;
 
@@ -257,22 +258,111 @@ async function retryFailedRefunds(): Promise<number> {
   }
 }
 
+/**
+ * Cierra pickups atascados: el negocio aceptó pero nunca terminó la
+ * preparación (>2 h), o el pedido está "ready" y el cliente nunca llegó a
+ * recogerlo (>24 h). Antes estos pedidos quedaban para siempre en el mapa.
+ */
+async function checkStuckPickups(): Promise<number> {
+  const twoHoursAgo = new Date(Date.now() - 120 * 60 * 1000);
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const stuck = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.orderType, "pickup"),
+        inArray(orders.status as any, ["accepted", "preparing", "ready"]),
+        or(
+          and(
+            inArray(orders.status as any, ["accepted", "preparing"]),
+            lt(orders.createdAt, twoHoursAgo),
+          ),
+          and(
+            eq(orders.status as any, "ready"),
+            lt(orders.createdAt, dayAgo),
+          ),
+        ),
+      ),
+    )
+    .limit(50);
+
+  let cancelled = 0;
+  for (const order of stuck) {
+    try {
+      const result = await cancelOrder(
+        order.id,
+        "system",
+        order.status === "ready"
+          ? "Recogida en local sin recoger en 24 horas — cancelación automática con reembolso del 100%"
+          : "Recogida en local estancada (el negocio no terminó en 2 horas) — cancelación automática con reembolso del 100%",
+        { actorRole: "system" },
+      );
+      if (result.success) {
+        cancelled++;
+        console.log(`⏰ Pickup ${orderRef(order)} cerrado por inactividad`);
+      }
+    } catch (error) {
+      console.error(`Error closing stuck pickup ${order.id}:`, error);
+    }
+  }
+  return cancelled;
+}
+
+/**
+ * Borra pedidos fantasma: creados hace >24 h, sin pago y sin aceptación.
+ * Son intentos abandonados (el cliente nunca llegó a pagar): no tienen
+ * dinero ni contabilidad que conservar y ensucian mapas y listas.
+ */
+async function deleteUnpaidPhantoms(): Promise<number> {
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const phantoms = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(
+      and(
+        eq(orders.status as any, "pending"),
+        isNull(orders.paidAt),
+        lt(orders.createdAt, dayAgo),
+      ),
+    )
+    .limit(50);
+  if (phantoms.length) {
+    await db
+      .delete(orders)
+      .where(
+        inArray(
+          orders.id as any,
+          phantoms.map((p: any) => p.id),
+        ),
+      );
+    console.log(`🗑️ Pedidos fantasma (sin pago, >24 h) eliminados: ${phantoms.length}`);
+  }
+  return phantoms.length;
+}
+
 export async function runOrderCleanup(): Promise<{
   unaccepted: number;
   stale: number;
   proofStuck: number;
+  stuckPickups: number;
+  phantoms: number;
 }> {
-  const [unaccepted, stale, proofStuck] = await Promise.all([
-    checkUnacceptedOrders(),
-    checkStaleOrders(),
-    checkStuckPaymentProofs(),
-  ]);
+  const [unaccepted, stale, proofStuck, stuckPickups, phantoms] =
+    await Promise.all([
+      checkUnacceptedOrders(),
+      checkStaleOrders(),
+      checkStuckPaymentProofs(),
+      checkStuckPickups(),
+      deleteUnpaidPhantoms(),
+    ]);
   // Los reembolsos fallidos se reintentan SIEMPRE, no solo cuando en esta
   // pasada hubo cancelaciones: un 'failed' (p. ej. pedido stripe nunca
   // cobrado que se cierra como no_charge) quedaría eternamente sin
   // procesar si ninguna cancelación lo desbloquea.
   retryFailedRefunds().catch(() => {});
-  return { unaccepted, stale, proofStuck };
+  return { unaccepted, stale, proofStuck, stuckPickups, phantoms };
 }
 
 let interval: ReturnType<typeof setInterval> | null = null;

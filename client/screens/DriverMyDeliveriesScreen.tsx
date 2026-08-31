@@ -46,6 +46,7 @@ const statusLabels: Record<string, string> = {
   in_transit: "En tránsito",
   arriving: "Llegando al cliente",
   delivered: "Esperando confirmación",
+  completed: "Cliente confirmó la recepción",
   pending: "Pendiente",
   accepted: "Aceptado",
   cancelled: "Cancelado",
@@ -62,10 +63,15 @@ export default function DriverMyDeliveriesScreen() {
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [showPickupModal, setShowPickupModal] = useState(false);
   const [pickupOrderId, setPickupOrderId] = useState<string | null>(null);
+  const [showOnTheWayModal, setShowOnTheWayModal] = useState(false);
+  const [onTheWayOrderId, setOnTheWayOrderId] = useState<string | null>(null);
+  const [showCashTipModal, setShowCashTipModal] = useState(false);
+  const [cashTipOrderId, setCashTipOrderId] = useState<string | null>(null);
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [proximityError, setProximityError] = useState<{
     distanceMeters: number;
     maxDistanceMeters: number;
+    target: "cliente" | "negocio";
   } | null>(null);
   const [gpsError, setGpsError] = useState(false);
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
@@ -191,8 +197,16 @@ export default function DriverMyDeliveriesScreen() {
       let body: any = {};
 
       if (targetStatus === "picked_up") {
-        // Paso 1: recoger el pedido en el local → picked_up
-        endpoint = `/api/orders/${orderId}/pickup`;
+        // Paso 1: recoger el pedido en el local → picked_up. El servidor
+        // exige estar cerca del NEGOCIO (geovalla): se obtiene GPS aquí y
+        // los errores de distancia se muestran en un modal dedicado.
+        let location: { latitude: number; longitude: number } | null = null;
+        try {
+          location = await gpsService.getCurrentLocation();
+        } catch {}
+        await completePickupWithLocation(orderId, location, previousOrders);
+        setActionOrderId(null);
+        return;
       } else if (targetStatus === "on_the_way") {
         // Paso 2: iniciar la entrega → on_the_way (el mapa del repartidor
         // cambia de destino automáticamente: local → cliente)
@@ -223,6 +237,111 @@ export default function DriverMyDeliveriesScreen() {
     setShowPickupModal(true);
   };
 
+  // Recoger el pedido en el local con geovalla: el servidor exige estar a
+  // menos de 250 m del negocio. Sin GPS, confirmación explícita (web).
+  const completePickupWithLocation = async (
+    orderId: string,
+    location: { latitude: number; longitude: number } | null,
+    previousOrders: any[],
+  ) => {
+    const attemptPickup = async (confirmWithoutGps: boolean) => {
+      await apiRequest("POST", `/api/orders/${orderId}/pickup`, {
+        latitude: location?.latitude ?? null,
+        longitude: location?.longitude ?? null,
+        confirmWithoutGps,
+      });
+    };
+
+    const extractError = (raw: string) => {
+      let msg = raw;
+      try {
+        const jsonStart = raw.indexOf("{");
+        if (jsonStart !== -1) {
+          const parsed = JSON.parse(raw.slice(jsonStart));
+          msg = parsed.error || raw;
+        }
+      } catch {}
+      return msg;
+    };
+
+    try {
+      await attemptPickup(false);
+    } catch (error: any) {
+      const rawMsg = error.message || "No se pudo confirmar la recogida";
+      let distanceMeters: number | null = null;
+      let maxDistanceMeters: number | null = null;
+      try {
+        const jsonStart = rawMsg.indexOf("{");
+        if (jsonStart !== -1) {
+          const parsed = JSON.parse(rawMsg.slice(jsonStart));
+          distanceMeters = parsed.distanceMeters ?? null;
+          maxDistanceMeters = parsed.maxDistanceMeters ?? null;
+        }
+      } catch {}
+
+      if (distanceMeters !== null && maxDistanceMeters !== null) {
+        // Muy lejos del NEGOCIO: no se puede recoger sin haber llegado
+        setProximityError({
+          distanceMeters,
+          maxDistanceMeters,
+          target: "negocio",
+        });
+        setOrders(previousOrders);
+        return;
+      }
+
+      const msg = extractError(rawMsg);
+      if (msg.toLowerCase().includes("ubicación")) {
+        // Sin señal GPS: confirmación explícita y reintento sin geovalla
+        const confirmed = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            "GPS no disponible",
+            "No se pudo obtener tu ubicación. ¿Confirmar la recogida de todos modos?",
+            [
+              {
+                text: "Cancelar",
+                style: "cancel",
+                onPress: () => resolve(false),
+              },
+              { text: "Sí, recogí el pedido", onPress: () => resolve(true) },
+            ],
+          );
+        });
+        if (!confirmed) {
+          setOrders(previousOrders);
+          return;
+        }
+        try {
+          await attemptPickup(true);
+        } catch (retryError: any) {
+          setOrders(previousOrders);
+          Alert.alert(
+            "Error",
+            extractError(retryError.message || "No se pudo confirmar la recogida"),
+          );
+          return;
+        }
+      } else {
+        setOrders(previousOrders);
+        Alert.alert("Error", msg);
+        return;
+      }
+    }
+
+    // Éxito real del servidor: estado recogido + confirmación en pantalla
+    setOrders((prev: any[]) =>
+      prev.map((order) =>
+        order.id === orderId ? { ...order, status: "picked_up" } : order,
+      ),
+    );
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(
+      "Pedido recogido 📦",
+      "Inicia la entrega cuando salgas del local con el pedido correcto.",
+    );
+    loadOrders();
+  };
+
   const confirmPickup = () => {
     if (pickupOrderId) {
       updateStatus(pickupOrderId, "picked_up");
@@ -232,7 +351,64 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   const handleOnTheWay = (orderId: string) => {
-    updateStatus(orderId, "on_the_way");
+    // Aviso explícito antes de iniciar la entrega (como Uber Eats): el
+    // repartidor confirma que sale del local con el pedido correcto.
+    setOnTheWayOrderId(orderId);
+    setShowOnTheWayModal(true);
+  };
+
+  // Propina en efectivo: doble confirmación. El cliente la declara y el
+  // repartidor confirma haberla recibido, o al revés. Solo con ambas partes
+  // de acuerdo queda registrada en las ganancias (nunca toca la wallet).
+  const respondCashTip = async (orderId: string, approved: boolean) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/orders/${orderId}/cash-tip/respond`,
+        { approved },
+      );
+      const data = await res.json();
+      if (!data.success) {
+        Alert.alert("Error", data.error || "No se pudo procesar la propina");
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          approved ? "Propina registrada 💝" : "Propina rechazada",
+          approved
+            ? "La propina en efectivo quedó registrada en tus ganancias."
+            : "La propina no se registrará.",
+        );
+      }
+      loadOrders();
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "No se pudo procesar la propina");
+    }
+  };
+
+  const declareCashTip = async (amountCents: number) => {
+    if (!cashTipOrderId) return;
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/orders/${cashTipOrderId}/cash-tip/declare`,
+        { amount: amountCents },
+      );
+      const data = await res.json();
+      if (data.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          "Propina declarada",
+          data.message || "El cliente debe confirmarla en su app.",
+        );
+      } else {
+        Alert.alert("Error", data.error || "No se pudo declarar la propina");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "No se pudo declarar la propina");
+    }
+    setShowCashTipModal(false);
+    setCashTipOrderId(null);
+    loadOrders();
   };
 
   const handleDelivered = async (orderId: string) => {
@@ -402,7 +578,7 @@ export default function DriverMyDeliveriesScreen() {
         }
       } catch {}
       if (distanceMeters !== null && maxDistanceMeters !== null) {
-        setProximityError({ distanceMeters, maxDistanceMeters });
+        setProximityError({ distanceMeters, maxDistanceMeters, target: "cliente" });
       } else if (msg.toLowerCase().includes("ubicación")) {
         setGpsError(true);
       } else {
@@ -649,7 +825,11 @@ export default function DriverMyDeliveriesScreen() {
         {/* Botón inteligente usando el componente reutilizable */}
         <View style={styles.actions}>
           <SmartOrderButton
-            orderStatus={item.status}
+            orderStatus={
+              item.status === "delivered" && item.confirmedByCustomer
+                ? "completed"
+                : item.status
+            }
             userRole="delivery_driver"
             loading={actionOrderId === item.id}
             onPress={(canProceed, buttonInfo) => {
@@ -690,19 +870,21 @@ export default function DriverMyDeliveriesScreen() {
   };
 
   // "arriving" e "in_transit" DEBEN estar: el pipeline los usa en el tramo
-  // final de la entrega y sin ellos el pedido desaparecía de esta lista
-  const activeOrders = orders.filter((o: any) =>
-    [
-      "ready",
-      "picked_up",
-      "preparing",
-      "on_the_way",
-      "in_transit",
-      "arriving",
-      "delivered",
-    ].includes(o.status),
+  // final de la entrega y sin ellos el pedido desaparecía de esta lista.
+  // Los "delivered" con confirmación del cliente pasan a Completadas: antes
+  // quedaban eternamente en "esperando confirmación" porque nadie escribía
+  // el estado "completed".
+  const activeOrders = orders.filter(
+    (o: any) =>
+      ["ready", "picked_up", "preparing", "on_the_way", "in_transit", "arriving", "delivered"].includes(
+        o.status,
+      ) && !(o.status === "delivered" && o.confirmedByCustomer),
   );
-  const completedOrders = orders.filter((o: any) => o.status === "completed");
+  const completedOrders = orders.filter(
+    (o: any) =>
+      o.status === "completed" ||
+      (o.status === "delivered" && o.confirmedByCustomer),
+  );
 
   const renderLogisticsSection = () => {
     const activeLogistics = logistics.filter(
@@ -795,6 +977,82 @@ export default function DriverMyDeliveriesScreen() {
             Completado
           </ThemedText>
         </View>
+
+        {/* Propina en efectivo pendiente declarada por el cliente */}
+        {item.pendingCashTip?.declaredBy === "customer" && (
+          <View
+            style={{
+              marginTop: Spacing.sm,
+              backgroundColor: "#FFF8E1",
+              borderRadius: BorderRadius.md,
+              padding: Spacing.md,
+              borderWidth: 1,
+              borderColor: "#F59E0B",
+            }}
+          >
+            <ThemedText
+              type="small"
+              style={{ color: "#B45309", fontWeight: "600" }}
+            >
+              💵 El cliente declaró una propina de{" "}
+              {(item.pendingCashTip.amountCents / 100).toFixed(2)} € en
+              efectivo
+            </ThemedText>
+            <View
+              style={{
+                flexDirection: "row",
+                gap: Spacing.sm,
+                marginTop: Spacing.sm,
+              }}
+            >
+              <Pressable
+                onPress={() => respondCashTip(item.id, true)}
+                style={[
+                  styles.trackButton,
+                  { backgroundColor: ComeYaColors.success, flex: 1 },
+                ]}
+              >
+                <ThemedText type="small" style={{ color: "#FFF" }}>
+                  La recibí
+                </ThemedText>
+              </Pressable>
+              <Pressable
+                onPress={() => respondCashTip(item.id, false)}
+                style={[
+                  styles.trackButton,
+                  { backgroundColor: theme.backgroundSecondary, flex: 1 },
+                ]}
+              >
+                <ThemedText type="small" style={{ color: theme.text }}>
+                  No la recibí
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* Sin propina pendiente: el repartidor puede declarar una propia */}
+        {!item.pendingCashTip && (
+          <Pressable
+            onPress={() => {
+              setCashTipOrderId(item.id);
+              setShowCashTipModal(true);
+            }}
+            style={{
+              marginTop: Spacing.sm,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Feather name="dollar-sign" size={14} color={ComeYaColors.primary} />
+            <ThemedText
+              type="small"
+              style={{ color: ComeYaColors.primary, marginLeft: 4 }}
+            >
+              Registrar propina en efectivo
+            </ThemedText>
+          </Pressable>
+        )}
       </View>
     );
   };
@@ -1033,7 +1291,8 @@ export default function DriverMyDeliveriesScreen() {
       <ConfirmModal
         visible={showPickupModal}
         title="Confirmar Recogida"
-        message="¿Ya recogiste el pedido?"
+        message="Asegúrate de estar EN EL LOCAL y de tener el pedido en tus manos antes de confirmar. Solo puedes confirmar la recogida estando cerca del negocio."
+        confirmText="Sí, recogí el pedido"
         onConfirm={confirmPickup}
         onCancel={() => {
           setShowPickupModal(false);
@@ -1042,11 +1301,33 @@ export default function DriverMyDeliveriesScreen() {
       />
 
       <ConfirmModal
+        visible={showOnTheWayModal}
+        title="Iniciar Entrega"
+        message="¿Saliste del local con el pedido correcto? Verifica que llevas todos los productos antes de iniciar la entrega."
+        confirmText="Sí, iniciar entrega"
+        onConfirm={() => {
+          if (onTheWayOrderId) updateStatus(onTheWayOrderId, "on_the_way");
+          setShowOnTheWayModal(false);
+          setOnTheWayOrderId(null);
+        }}
+        onCancel={() => {
+          setShowOnTheWayModal(false);
+          setOnTheWayOrderId(null);
+        }}
+      />
+
+      <ConfirmModal
         visible={proximityError !== null}
-        title="📍 Muy lejos del cliente"
+        title={
+          proximityError?.target === "negocio"
+            ? "📍 Muy lejos del negocio"
+            : "📍 Muy lejos del cliente"
+        }
         message={
           proximityError
-            ? `Estás a ${proximityError.distanceMeters}m del cliente.\n\nDebes estar a menos de ${proximityError.maxDistanceMeters}m para marcar el pedido como entregado.`
+            ? proximityError.target === "negocio"
+              ? `Estás a ${proximityError.distanceMeters}m del negocio.\n\nDebes estar a menos de ${proximityError.maxDistanceMeters}m del local para confirmar la recogida.`
+              : `Estás a ${proximityError.distanceMeters}m del cliente.\n\nDebes estar a menos de ${proximityError.maxDistanceMeters}m para marcar el pedido como entregado.`
             : ""
         }
         confirmText="Entendido"
@@ -1066,6 +1347,73 @@ export default function DriverMyDeliveriesScreen() {
         onCancel={() => setGpsError(false)}
         variant="danger"
       />
+
+      {/* Propina en efectivo: elegir importe (el cliente la valida luego) */}
+      <Modal visible={showCashTipModal} transparent animationType="fade">
+        <View style={styles.successOverlay}>
+          <Animated.View
+            entering={ZoomIn.springify()}
+            style={[styles.successCard, { backgroundColor: theme.card }]}
+          >
+            <ThemedText type="h3" style={{ textAlign: "center" }}>
+              💵 Propina en efectivo
+            </ThemedText>
+            <ThemedText
+              type="small"
+              style={{
+                color: theme.textSecondary,
+                textAlign: "center",
+                marginTop: Spacing.sm,
+              }}
+            >
+              ¿El cliente te dio una propina en efectivo? Elige el importe y
+              él la confirmará en su app para que quede registrada en tus
+              ganancias.
+            </ThemedText>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: Spacing.sm,
+                justifyContent: "center",
+                marginTop: Spacing.lg,
+              }}
+            >
+              {[1, 2, 3, 4, 5].map((euros) => (
+                <Pressable
+                  key={euros}
+                  onPress={() => declareCashTip(euros * 100)}
+                  style={{
+                    paddingHorizontal: Spacing.lg,
+                    paddingVertical: Spacing.sm,
+                    borderRadius: BorderRadius.full,
+                    borderWidth: 2,
+                    borderColor: ComeYaColors.primary,
+                  }}
+                >
+                  <ThemedText
+                    type="body"
+                    style={{ color: ComeYaColors.primary, fontWeight: "600" }}
+                  >
+                    {euros} €
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              onPress={() => {
+                setShowCashTipModal(false);
+                setCashTipOrderId(null);
+              }}
+              style={{ marginTop: Spacing.lg, alignSelf: "center" }}
+            >
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Cancelar
+              </ThemedText>
+            </Pressable>
+          </Animated.View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }

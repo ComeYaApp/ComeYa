@@ -158,7 +158,89 @@ export async function sendOrderStatusNotification(
   }
 }
 
-// Envía un push real a un token de Expo (https://exp.host API v2)
+// ── Envío push a Expo ──────────────────────────────────────────────────────
+// La app vive ahora en el proyecto EAS de la ORGANIZACIÓN: los tokens nuevos
+// pertenecen a ese proyecto y se envían por la API nueva de Expo con token de
+// acceso (EXPO_ACCESS_TOKEN). Los tokens de builds antiguos (proyecto
+// personal) siguen vivos y se atienden con el endpoint legacy como respaldo.
+const NEW_PUSH_API = "https://api.expo.dev/v2/push/send";
+const LEGACY_PUSH_API = "https://exp.host/--/api/v2/push/send";
+
+interface PushSendResult {
+  ok: boolean;
+  status?: string;
+  reason?: string;
+  details?: Record<string, any>;
+}
+
+async function sendViaNewApi(message: any): Promise<PushSendResult> {
+  const accessToken = process.env.EXPO_ACCESS_TOKEN;
+  if (!accessToken) return { ok: false, reason: "no-access-token" };
+  try {
+    const response = await fetch(NEW_PUSH_API, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(message),
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        reason: `http-${response.status}`,
+        details: { body: await response.text().catch(() => "") },
+      };
+    }
+    const result = (await response.json()) as any;
+    const item = result?.data?.[0];
+    const status = item?.status;
+    return {
+      ok: status === "ok",
+      status,
+      reason: item?.details?.error || item?.message || undefined,
+      details: item?.details ?? {},
+    };
+  } catch (error: any) {
+    return { ok: false, reason: error?.message ?? "fetch-error" };
+  }
+}
+
+async function sendViaLegacyApi(message: any): Promise<PushSendResult> {
+  try {
+    const response = await fetch(LEGACY_PUSH_API, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        reason: `http-${response.status}`,
+        details: { body: await response.text().catch(() => "") },
+      };
+    }
+    const result = (await response.json()) as {
+      data?: { status?: string; message?: string; details?: any };
+    };
+    const status = result?.data?.status;
+    return {
+      ok: status === "ok",
+      status,
+      reason: result?.data?.details?.error || result?.data?.message || undefined,
+      details: result?.data?.details ?? {},
+    };
+  } catch (error: any) {
+    return { ok: false, reason: error?.message ?? "fetch-error" };
+  }
+}
+
+// Envía un push real a un token de Expo: API nueva (organización) con
+// respaldo automático en la legacy para los tokens del proyecto personal.
 export async function sendPushNotification(
   pushToken: string,
   payload: NotificationPayload,
@@ -172,44 +254,41 @@ export async function sendPushNotification(
       data: payload.data || {},
     };
 
-    const response = await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(message),
-    });
-
-    // Limpiar tokens muertos (app desinstalada / reinstalada)
-    if (response.ok) {
-      try {
-        const result = (await response.json()) as { data?: { status?: string; details?: any } };
-        const status = result?.data?.status;
-        if (status && status !== "ok") {
-          const reason = result?.data?.details?.error;
-          if (status === "error" && reason === "DeviceNotRegistered") {
-            await db.update(users).set({ pushToken: null }).where(eq(users.pushToken, pushToken));
-            console.log(`🗑️ Push token inválido eliminado (${reason})`);
-          } else if (reason === "InvalidCredentials") {
-            // Fallo de credenciales APNs/FCM del proyecto en Expo, no del
-            // dispositivo: borrar el token dejaría al usuario sin push para siempre
-            console.error(
-              "🚨 Push InvalidCredentials: revisa las credenciales push (Apple Push Key / FCM v1) del proyecto en expo.dev",
-              JSON.stringify(result?.data?.details ?? {}),
-            );
-          } else {
-            console.error(`Push error status=${status}:`, JSON.stringify(result?.data?.details ?? {}));
-          }
-        } else {
-          // Solo aquí el envío quedó confirmado por Expo
-          console.log(`📱 Push entregado a Expo: ${payload.title}`);
-        }
-      } catch {
-        // respuesta no-JSON de Expo, ignorar
+    let result = await sendViaNewApi(message);
+    if (!result.ok) {
+      if (result.reason !== "no-access-token") {
+        console.warn(
+          `⚠️ Push API nueva falló (${result.reason}): reintento por endpoint legacy — ${payload.title}`,
+        );
       }
+      result = await sendViaLegacyApi(message);
+    }
+
+    if (result.ok) {
+      // Solo aquí el envío quedó confirmado por Expo
+      console.log(`📱 Push entregado a Expo: ${payload.title}`);
+      return;
+    }
+
+    const reason = result.reason;
+    if (reason === "DeviceNotRegistered") {
+      await db
+        .update(users)
+        .set({ pushToken: null })
+        .where(eq(users.pushToken, pushToken));
+      console.log(`🗑️ Push token inválido eliminado (${reason})`);
+    } else if (reason === "InvalidCredentials") {
+      // Fallo de credenciales APNs/FCM del proyecto en Expo, no del
+      // dispositivo: borrar el token dejaría al usuario sin push para siempre
+      console.error(
+        "🚨 Push InvalidCredentials: revisa las credenciales push (Apple Push Key / FCM v1) del proyecto en expo.dev",
+        JSON.stringify(result.details ?? {}),
+      );
     } else {
-      console.error(`Expo push HTTP ${response.status}: ${payload.title}`);
+      console.error(
+        `Push error status=${result.status ?? "?"} reason=${reason ?? "?"}:`,
+        JSON.stringify(result.details ?? {}),
+      );
     }
   } catch (error) {
     console.error("Error sending push notification:", error);
@@ -328,7 +407,7 @@ export async function notifyDriverNewOrder(
 
   await sendPushNotification(driver.pushToken, {
     title: "Nuevo pedido disponible 📦",
-    body: `${order.businessName} - Gana $${earning}`,
+    body: `${order.businessName} - Gana ${earning} €`,
     data: { orderId, screen: "DriverAvailable" },
   });
 }

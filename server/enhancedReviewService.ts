@@ -134,47 +134,12 @@ export class EnhancedReviewService {
       await this.updateDriverRating(deliveryPersonId);
     }
 
-    // Abonar propina al repartidor (la propina va con la valoración tras la entrega)
-    if (tipAmount && tipAmount > 0 && deliveryPersonId && orderId) {
-      try {
-        const { wallets, transactions } = await import(
-          "@shared/schema-mysql"
-        );
-        const [driverWallet] = await db
-          .select()
-          .from(wallets)
-          .where(eq(wallets.userId, deliveryPersonId))
-          .limit(1);
-        if (driverWallet) {
-          await db
-            .update(wallets)
-            .set({
-              balance: driverWallet.balance + tipAmount,
-              totalEarned: driverWallet.totalEarned + tipAmount,
-            })
-            .where(eq(wallets.userId, deliveryPersonId));
-        }
-        const txId = crypto.randomUUID();
-        await db.insert(transactions).values({
-          id: txId,
-          userId: deliveryPersonId,
-          orderId,
-          type: "tip",
-          amount: tipAmount,
-          description: `Propina del cliente por pedido ${await orderRefFromId(orderId)}`,
-          status: "completed",
-        } as any);
-        // Notificar al repartidor
-        const { sendPushToUser } = await import("./enhancedPushService");
-        await sendPushToUser(deliveryPersonId, {
-          title: "💝 ¡Recibiste una propina!",
-          body: `El cliente te dejó una propina de ${(tipAmount / 100).toFixed(2)} €`,
-          data: { screen: "DriverEarnings" },
-        });
-      } catch (err) {
-        console.error("Error processing review tip:", err);
-      }
-    }
+    // La propina ya NO se abona aquí: antes se acreditaba a la wallet del
+    // repartidor sin cobrarla al cliente (fuga de dinero). El importe queda
+    // guardado en la reseña como declaración y el cobro/abono lo gestiona
+    // tipService según el canal (tarjeta → PaymentIntent + webhook; manual →
+    // verificación del admin; efectivo → doble confirmación con el repartidor).
+
 
     // Verificar achievements de resenas
     try {

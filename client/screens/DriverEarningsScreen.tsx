@@ -136,6 +136,16 @@ export default function DriverEarningsScreen() {
     total: (data?.stats?.totalEarnings || 0) / 100,
   };
 
+  // Propinas completadas (tarjeta/manual abonadas + efectivo confirmado)
+  const statsAny = data?.stats as any;
+  const tips = {
+    today: (statsAny?.tipsToday || 0) / 100,
+    week: (statsAny?.tipsWeek || 0) / 100,
+    month: (statsAny?.tipsMonth || 0) / 100,
+    total: (statsAny?.tipsTotal || 0) / 100,
+    cashTotal: (statsAny?.cashTipsTotal || 0) / 100,
+  };
+
   const stats = {
     totalDeliveries: data?.stats?.totalDeliveries || 0,
     // rating viene como 0-50 (0.0-5.0 * 10), mostrar como X.X
@@ -166,6 +176,19 @@ export default function DriverEarningsScreen() {
         return earnings.week;
       case "month":
         return earnings.month;
+      default:
+        return 0;
+    }
+  };
+
+  const getTipsForPeriod = () => {
+    switch (selectedPeriod) {
+      case "today":
+        return tips.today;
+      case "week":
+        return tips.week;
+      case "month":
+        return tips.month;
       default:
         return 0;
     }
@@ -225,6 +248,18 @@ export default function DriverEarningsScreen() {
           >
             {formatEuros(getEarningsForPeriod())}
           </ThemedText>
+
+          {getTipsForPeriod() > 0 && (
+            <View style={styles.emptyPeriodHint}>
+              <Feather name="heart" size={14} color="rgba(255,255,255,0.9)" />
+              <ThemedText
+                type="caption"
+                style={{ color: "rgba(255,255,255,0.9)", marginLeft: 6 }}
+              >
+                + {formatEuros(getTipsForPeriod())} en propinas
+              </ThemedText>
+            </View>
+          )}
 
           {getEarningsForPeriod() === 0 && earnings.total > 0 && (
             <View style={styles.emptyPeriodHint}>
@@ -312,6 +347,15 @@ export default function DriverEarningsScreen() {
               </ThemedText>
               <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
                 {formatEuros(earnings.total)}
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 2 }}
+              >
+                💝 {formatEuros(tips.total)} en propinas
+                {tips.cashTotal > 0
+                  ? ` (${formatEuros(tips.cashTotal)} en efectivo)`
+                  : ""}
               </ThemedText>
             </View>
             <View

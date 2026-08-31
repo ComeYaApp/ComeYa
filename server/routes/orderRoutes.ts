@@ -476,6 +476,16 @@ router.get("/:id", authenticateToken, async (req, res) => {
       /* la tabla podría no existir aún */
     }
 
+    // Propina en efectivo pendiente de doble confirmación (la valida la
+    // parte contraria a quien la declaró, desde el seguimiento o la app)
+    let pendingCashTip: any = null;
+    try {
+      const { getPendingCashTip } = await import("../tipService");
+      pendingCashTip = await getPendingCashTip(orderId);
+    } catch {
+      /* sin propina pendiente */
+    }
+
     // Return order with driver info included
     res.json({
       success: true,
@@ -486,6 +496,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
         businessCategories: businessInfo?.categories ?? null,
         hasReview,
         substitutions,
+        pendingCashTip,
       },
     });
   } catch (error: any) {
@@ -1042,6 +1053,14 @@ router.post(
           data: { orderId: order.id, screen: "DriverEarnings" },
         });
       }
+      // Websocket: la web del repartidor/negocio se actualiza al instante
+      try {
+        const { notifyOrderStatusChange } = await import("../websocket");
+        notifyOrderStatusChange(order.userId, order.id, "completed");
+        if (order.deliveryPersonId) {
+          notifyOrderStatusChange(order.deliveryPersonId, order.id, "completed");
+        }
+      } catch {}
     } catch (error: any) {
       console.error("Confirm receipt error:", error);
       res.status(500).json({ error: error.message });
@@ -1089,6 +1108,67 @@ router.post(
           .json({ error: "Este pedido no está asignado a ti" });
       }
 
+      // Seguridad (producción): solo se puede confirmar la recogida estando
+      // CERCA DEL NEGOCIO — no se puede "recoger" sin haber llegado al local.
+      // El repartidor web (sin GPS) confirma explícitamente y queda en log.
+      const confirmWithoutGps = req.body.confirmWithoutGps === true;
+      if (process.env.NODE_ENV === "production") {
+        const driverLat = req.body.latitude ?? req.body.lat;
+        const driverLng = req.body.longitude ?? req.body.lng;
+        const hasDriverCoords =
+          typeof driverLat === "number" && typeof driverLng === "number";
+
+        if (!hasDriverCoords) {
+          if (!confirmWithoutGps) {
+            return res
+              .status(400)
+              .json({ error: "Ubicación requerida para confirmar la recogida" });
+          }
+          console.warn(
+            `[pickup] Pedido ${orderId} recogido sin GPS (confirmación explícita del repartidor)`,
+          );
+        }
+
+        if (hasDriverCoords) {
+          const { businesses } = await import("@shared/schema-mysql");
+          const [biz] = await db
+            .select({
+              latitude: businesses.latitude,
+              longitude: businesses.longitude,
+            })
+            .from(businesses)
+            .where(eq(businesses.id, order.businessId))
+            .limit(1);
+          const bizLat =
+            biz?.latitude != null && biz.latitude !== ""
+              ? Number(biz.latitude)
+              : NaN;
+          const bizLng =
+            biz?.longitude != null && biz.longitude !== ""
+              ? Number(biz.longitude)
+              : NaN;
+
+          if (!Number.isNaN(bizLat) && !Number.isNaN(bizLng)) {
+            const { calculateDistance } = await import("../utils/distance");
+            const distanceKm = calculateDistance(
+              Number(driverLat),
+              Number(driverLng),
+              bizLat,
+              bizLng,
+            );
+            const maxDistanceMeters = 250;
+            if (distanceKm * 1000 > maxDistanceMeters) {
+              return res.status(400).json({
+                error:
+                  "Debes estar en el local para confirmar la recogida. Acércate al negocio e inténtalo de nuevo.",
+                distanceMeters: Math.round(distanceKm * 1000),
+                maxDistanceMeters,
+              });
+            }
+          }
+        }
+      }
+
       // Paso 1 del flujo de entrega: "Pedido recogido" (picked_up).
       // El paso 2 ("Iniciar entrega" → on_the_way) lo hace el repartidor
       // al salir del local vía PUT /api/delivery/orders/:id/status — antes
@@ -1125,5 +1205,134 @@ router.post(
     }
   },
 );
+
+// ── Propina en EFECTIVO ────────────────────────────────────────────────────
+// Doble confirmación obligatoria: quien la declara (cliente o repartidor) y
+// quien la confirma (la otra parte). Solo así se registra como ganancia.
+// Nunca entra en la wallet: el dinero no pasa por la plataforma.
+
+// Declaración del REPARTIDOR: el cliente la valida con una notificación.
+router.post(
+  "/:id/cash-tip/declare",
+  authenticateToken,
+  requireRole("delivery_driver"),
+  async (req, res) => {
+    try {
+      const orderId = String(req.params.id);
+      const { orders } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1);
+      if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+      if (order.deliveryPersonId !== req.user!.id)
+        return res
+          .status(403)
+          .json({ error: "Este pedido no está asignado a ti" });
+      if (order.status !== "delivered" || !order.confirmedByCustomer)
+        return res.status(400).json({
+          error: "La propina solo está disponible después de confirmar la entrega",
+        });
+
+      const amountCents = Math.round(Number(req.body.amount) || 0);
+      if (!amountCents || amountCents <= 0 || amountCents > 50000)
+        return res.status(400).json({ error: "Monto de propina inválido" });
+
+      const tipService = await import("../tipService");
+      await tipService.declareTip({
+        orderId,
+        driverId: order.deliveryPersonId,
+        amountCents,
+        method: "cash",
+        declaredBy: "driver",
+      });
+      try {
+        const { sendPushToUser } = await import("../enhancedPushService");
+        await sendPushToUser(order.userId, {
+          title: "💵 Propina en efectivo",
+          body: `El repartidor registró una propina de ${(amountCents / 100).toFixed(2)} € en efectivo. ¿Se la diste? Confírmalo en la app.`,
+          data: { orderId, screen: "OrderTracking" },
+        });
+      } catch {}
+      res.json({
+        success: true,
+        message: "Propina declarada. Esperando validación del cliente.",
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// Respuesta a una propina en efectivo pendiente: la confirma o rechaza la
+// parte CONTRARIA a quien la declaró.
+router.post("/:id/cash-tip/respond", authenticateToken, async (req, res) => {
+  try {
+    const orderId = String(req.params.id);
+    const approved = req.body.approved === true;
+    const { orders } = await import("@shared/schema-mysql");
+    const { db } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+    if (!order) return res.status(404).json({ error: "Pedido no encontrado" });
+
+    const tipService = await import("../tipService");
+    const pending = await tipService.getPendingCashTip(orderId);
+    if (!pending)
+      return res.status(400).json({
+        error: "No hay ninguna propina en efectivo pendiente en este pedido",
+      });
+
+    const isDriver = order.deliveryPersonId === req.user!.id;
+    const isCustomer = order.userId === req.user!.id;
+    const mustRespond =
+      pending.declaredBy === "customer" ? isDriver : isCustomer;
+    if (!mustRespond)
+      return res
+        .status(403)
+        .json({ error: "No te corresponde confirmar esta propina" });
+
+    const { sendPushToUser } = await import("../enhancedPushService");
+    if (approved) {
+      const result = await tipService.completeTip({ orderId, method: "cash" });
+      await sendPushToUser(
+        pending.declaredBy === "customer"
+          ? order.userId
+          : order.deliveryPersonId,
+        {
+          title: "💵 Propina en efectivo confirmada",
+          body: `La propina de ${(pending.amountCents / 100).toFixed(2)} € quedó registrada en tus ganancias.`,
+          data: {
+            orderId,
+            screen: pending.declaredBy === "customer" ? "OrderTracking" : "DriverEarnings",
+          },
+        },
+      ).catch(() => {});
+      res.json({ success: true, message: result.message });
+    } else {
+      await tipService.failTip(orderId, "cash", "rechazada por la otra parte");
+      await sendPushToUser(
+        pending.declaredBy === "customer"
+          ? order.userId
+          : order.deliveryPersonId,
+        {
+          title: "💵 Propina en efectivo rechazada",
+          body: "La otra parte no confirmó la propina en efectivo.",
+          data: { orderId, screen: "OrderTracking" },
+        },
+      ).catch(() => {});
+      res.json({ success: true, message: "Propina rechazada" });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 export default router;

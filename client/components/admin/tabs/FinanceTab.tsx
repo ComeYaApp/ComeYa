@@ -60,7 +60,9 @@ const METHOD_LABELS: Record<string, string> = {
 const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 
 export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
-  const [tab, setTab] = useState<"payouts" | "history" | "metrics">("payouts");
+  const [tab, setTab] = useState<
+    "payouts" | "history" | "metrics" | "tips" | "drivers"
+  >("payouts");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingPayouts, setPendingPayouts] = useState<Payout[]>([]);
@@ -534,26 +536,119 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
     );
   }
 
+  // ── Propinas manuales pendientes de verificación ─────────────────────────
+  const [pendingTips, setPendingTips] = useState<any[]>([]);
+  const [tipsLoading, setTipsLoading] = useState(false);
+
+  const loadPendingTips = useCallback(async () => {
+    setTipsLoading(true);
+    try {
+      const res = await apiRequest(
+        "GET",
+        "/api/admin/finance/pending-manual-tips",
+      );
+      const data = await res.json();
+      setPendingTips(data.tips || []);
+    } catch {}
+    setTipsLoading(false);
+  }, []);
+
+  const verifyTip = async (txId: string) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/finance/manual-tips/${txId}/verify`,
+        {},
+      );
+      const data = await res.json();
+      if (data.success) {
+        showToast("Propina verificada y abonada al repartidor", "success");
+        loadPendingTips();
+      } else {
+        showToast(data.error || "No se pudo verificar", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    }
+  };
+
+  const rejectTip = async (txId: string) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/finance/manual-tips/${txId}/reject`,
+        {},
+      );
+      const data = await res.json();
+      if (data.success) {
+        showToast("Propina rechazada", "info");
+        loadPendingTips();
+      } else {
+        showToast(data.error || "No se pudo rechazar", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    }
+  };
+
+  // ── Ganancias mensuales por repartidor (facturación de autónomos) ────────
+  const [monthlyMonth, setMonthlyMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [monthlyRows, setMonthlyRows] = useState<any[]>([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [monthlyError, setMonthlyError] = useState("");
+
+  const loadMonthly = useCallback(async () => {
+    setMonthlyLoading(true);
+    setMonthlyError("");
+    try {
+      const res = await apiRequest(
+        "GET",
+        `/api/admin/finance/driver-monthly-earnings?month=${monthlyMonth}`,
+      );
+      const data = await res.json();
+      if (data.success) setMonthlyRows(data.rows || []);
+      else setMonthlyError(data.error || "Error al cargar");
+    } catch {
+      setMonthlyError("Error de conexión");
+    }
+    setMonthlyLoading(false);
+  }, [monthlyMonth]);
+
+  useEffect(() => {
+    if (tab === "tips") loadPendingTips();
+    if (tab === "drivers") loadMonthly();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, monthlyMonth]);
+
   // ── Lista principal ────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
       {/* Tabs */}
       <View style={[s.tabBar, { paddingTop: insets.top }]}>
-        {(["payouts", "history", "metrics"] as const).map((t) => (
-          <TouchableOpacity
-            key={t}
-            style={[s.tabBtn, tab === t && s.tabBtnActive]}
-            onPress={() => setTab(t)}
-          >
-            <Text style={[s.tabLabel, tab === t && s.tabLabelActive]}>
-              {t === "payouts"
-                ? `Pendientes${pendingPayouts.length ? ` (${pendingPayouts.length})` : ""}`
-                : t === "history"
-                  ? `Pagados${paidPayouts.length ? ` (${paidPayouts.length})` : ""}`
-                  : "Métricas"}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {(["payouts", "history", "metrics", "tips", "drivers"] as const).map(
+          (t) => (
+            <TouchableOpacity
+              key={t}
+              style={[s.tabBtn, tab === t && s.tabBtnActive]}
+              onPress={() => setTab(t)}
+            >
+              <Text style={[s.tabLabel, tab === t && s.tabLabelActive]}>
+                {t === "payouts"
+                  ? `Pendientes${pendingPayouts.length ? ` (${pendingPayouts.length})` : ""}`
+                  : t === "history"
+                    ? `Pagados${paidPayouts.length ? ` (${paidPayouts.length})` : ""}`
+                    : t === "metrics"
+                      ? "Métricas"
+                      : t === "tips"
+                        ? `Propinas${pendingTips.length ? ` (${pendingTips.length})` : ""}`
+                        : "Repartidores"}
+              </Text>
+            </TouchableOpacity>
+          ),
+        )}
       </View>
 
       <ScrollView
@@ -890,6 +985,193 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
             </View>
           </>
         )}
+
+        {/* ── PROPINAS MANUALES PENDIENTES ── */}
+        {tab === "tips" && (
+          <>
+            <Text style={[s.cardTitle, { color: theme.text, marginBottom: 12 }]}>
+              Propinas por pago manual (Bizum/SEPA/PayPal)
+            </Text>
+            <Text style={[s.sub, { color: theme.textSecondary, marginBottom: 12 }]}>
+              El cliente declaró la propina y adjuntó un comprobante. Verifica
+              que el dinero llegó a la cuenta de la plataforma antes de
+              aprobar: al aprobar se abona a la wallet del repartidor.
+            </Text>
+            {tipsLoading ? (
+              <ActivityIndicator color={ComeYaColors.primary} />
+            ) : pendingTips.length === 0 ? (
+              <View style={s.empty}>
+                <Feather
+                  name="check-circle"
+                  size={48}
+                  color={ComeYaColors.success}
+                />
+                <Text style={[s.emptyText, { color: theme.textSecondary }]}>
+                  No hay propinas pendientes de verificación
+                </Text>
+              </View>
+            ) : (
+              pendingTips.map((tip: any) => (
+                <View key={tip.txId} style={s.card}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={[s.cardTitle, { color: theme.text, fontSize: 16 }]}
+                    >
+                      Propina {tip.orderRef ? `pedido ${tip.orderRef}` : ""}
+                    </Text>
+                    <Text
+                      style={{
+                        color: ComeYaColors.primary,
+                        fontWeight: "700",
+                        fontSize: 18,
+                      }}
+                    >
+                      {fmt(tip.amountCents)}
+                    </Text>
+                  </View>
+                  <Text style={[s.sub, { color: theme.textSecondary, marginTop: 4 }]}>
+                    {tip.businessName
+                      ? `Negocio: ${tip.businessName} · `
+                      : ""}
+                    Declarada{" "}
+                    {tip.declaredAt
+                      ? new Date(tip.declaredAt).toLocaleString("es-ES")
+                      : ""}
+                  </Text>
+                  {!!tip.proofUrl && (
+                    <Image
+                      source={{ uri: tip.proofUrl }}
+                      style={[s.proofImage, { height: 120 }]}
+                      resizeMode="contain"
+                    />
+                  )}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: 8,
+                      marginTop: 12,
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => verifyTip(tip.txId)}
+                      style={[
+                        s.actionBtn,
+                        { backgroundColor: ComeYaColors.success, flex: 1 },
+                      ]}
+                    >
+                      <Text style={[s.actionBtnText, { color: "#fff" }]}>
+                        Verificar y abonar
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => rejectTip(tip.txId)}
+                      style={[
+                        s.actionBtn,
+                        { backgroundColor: theme.backgroundSecondary, flex: 1 },
+                      ]}
+                    >
+                      <Text style={[s.actionBtnText, { color: theme.text }]}>
+                        Rechazar
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+          </>
+        )}
+
+        {/* ── GANANCIAS MENSUALES POR REPARTIDOR ── */}
+        {tab === "drivers" && (
+          <>
+            <Text style={[s.cardTitle, { color: theme.text, marginBottom: 12 }]}>
+              Ganancias mensuales por repartidor
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 12,
+              }}
+            >
+              <Feather name="calendar" size={16} color={theme.textSecondary} />
+              <TextInput
+                value={monthlyMonth}
+                onChangeText={(v) => setMonthlyMonth(v)}
+                placeholder="YYYY-MM"
+                style={[
+                  {
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    color: theme.text,
+                    backgroundColor: theme.card,
+                    minWidth: 110,
+                  },
+                ]}
+              />
+            </View>
+            {monthlyError ? (
+              <Text style={{ color: ComeYaColors.error }}>{monthlyError}</Text>
+            ) : monthlyLoading ? (
+              <ActivityIndicator color={ComeYaColors.primary} />
+            ) : monthlyRows.length === 0 ? (
+              <View style={s.empty}>
+                <Feather name="users" size={48} color={ComeYaColors.primary} />
+                <Text style={[s.emptyText, { color: theme.textSecondary }]}>
+                  Sin entregas confirmadas en este mes
+                </Text>
+              </View>
+            ) : (
+              monthlyRows.map((r: any) => (
+                <View key={r.driverId} style={s.card}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={[s.cardTitle, { color: theme.text, fontSize: 16 }]}
+                    >
+                      {r.driverName}
+                    </Text>
+                    <Text
+                      style={{
+                        color: ComeYaColors.primary,
+                        fontWeight: "700",
+                        fontSize: 18,
+                      }}
+                    >
+                      {fmt(r.totalCents)}
+                    </Text>
+                  </View>
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={[s.sub, { color: theme.textSecondary }]}>
+                      {r.deliveries} entregas · Entregas: {fmt(r.feesCents)}
+                    </Text>
+                    <Text style={[s.sub, { color: theme.textSecondary }]}>
+                      Propinas (plataforma): {fmt(r.platformTipsCents)}
+                    </Text>
+                    <Text style={[s.sub, { color: theme.textSecondary }]}>
+                      Propinas en efectivo (en mano): {fmt(r.cashTipsCents)}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -996,6 +1278,14 @@ const st = (theme: any) =>
       borderWidth: 1,
     },
     proofImage: { width: "100%", height: 200, borderRadius: 8, marginTop: 8 },
+    actionBtn: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionBtnText: { fontSize: 13, fontWeight: "700" },
     methodTag: {
       flexDirection: "row",
       alignItems: "center",

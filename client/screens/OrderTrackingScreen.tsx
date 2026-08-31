@@ -86,6 +86,12 @@ export default function OrderTrackingScreen() {
   const [issues, setIssues] = useState<any[]>([]);
   // Sustituciones propuestas por el negocio (aprobar/rechazar/pagar delta)
   const [substitutions, setSubstitutions] = useState<any[]>([]);
+  // Propina en efectivo pendiente de doble confirmación (la declara el
+  // repartidor y la valida el cliente, o viceversa)
+  const [pendingCashTip, setPendingCashTip] = useState<{
+    amountCents: number;
+    declaredBy: "customer" | "driver";
+  } | null>(null);
   const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
   const [pickupInfo, setPickupInfo] = useState<any>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -322,6 +328,7 @@ export default function OrderTrackingScreen() {
             // recogida y forzaba la transición a la reseña que crasheaba
             confirmedByCustomer: (apiOrder as any).confirmedByCustomer,
             hasReview: (apiOrder as any).hasReview,
+            paidAt: (apiOrder as any).paidAt ?? null,
             substitutionPreference: (apiOrder as any).substitutionPreference,
             itemSubstitutionPreferences: (apiOrder as any)
               .itemSubstitutionPreferences,
@@ -345,6 +352,7 @@ export default function OrderTrackingScreen() {
           };
           setOrder(transformedOrder);
           setOrderType(apiOrder.orderType || "delivery");
+          setPendingCashTip((apiOrder as any).pendingCashTip || null);
 
           // Cargar ubicación real del negocio
           if (apiOrder.businessId) {
@@ -546,6 +554,32 @@ export default function OrderTrackingScreen() {
   const pendingSubstitution =
     substitutions.find((s: any) => s.status === "proposed") || null;
 
+  // Propina en efectivo declarada por el repartidor: el cliente la valida
+  // (doble confirmación obligatoria para que quede registrada)
+  const respondCashTip = async (approved: boolean) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/orders/${orderId}/cash-tip/respond`,
+        { approved },
+      );
+      const data = await res.json();
+      if (data.success) {
+        Haptics.notificationAsync(
+          approved
+            ? Haptics.NotificationFeedbackType.Success
+            : Haptics.NotificationFeedbackType.Warning,
+        );
+        setPendingCashTip(null);
+        loadOrderRef.current?.();
+      } else {
+        Alert.alert("Error", data.error || "No se pudo procesar la propina");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "No se pudo procesar la propina");
+    }
+  };
+
   const handleSubstitutionDecision = async (sub: any, approved: boolean) => {
     try {
       const res = await apiRequest(
@@ -623,8 +657,11 @@ export default function OrderTrackingScreen() {
     : order.subtotal * 0.15;
 
   // ── Política de aceptación: cuenta atrás derivada (hooks arriba) ─────────
+  // Solo tras el PAGO: un pedido pagado espera al negocio 10 minutos. El
+  // pedido impago (pago no completado) no muestra la promesa de reembolso.
   const isAwaitingAcceptance =
-    order.status === "pending" || order.status === "payment_failed";
+    (order.status === "pending" && !!order.paidAt) ||
+    order.status === "payment_failed";
   const acceptanceDeadline = order.createdAt
     ? new Date(order.createdAt).getTime() + 10 * 60 * 1000
     : null;
@@ -807,7 +844,9 @@ export default function OrderTrackingScreen() {
                   style={{ color: theme.textSecondary }}
                 >
                   {order.status === "pending"
-                    ? "Esperando confirmación"
+                    ? order.paidAt
+                      ? "Pago recibido — esperando aceptación"
+                      : "Esperando confirmación de pago"
                     : order.status === "accepted"
                       ? "Pedido aceptado"
                       : order.status === "preparing"
@@ -1510,6 +1549,99 @@ export default function OrderTrackingScreen() {
                   Valorar pedido
                 </ThemedText>
               </Pressable>
+            )}
+          </View>
+        ) : null}
+
+        {/* Propina en efectivo pendiente: la declara el repartidor y la
+            valida el cliente, o la declaró el cliente y espera al repartidor */}
+        {order.status === "delivered" &&
+        (order as any).confirmedByCustomer &&
+        pendingCashTip &&
+        user?.role === "customer" ? (
+          <View
+            style={[
+              styles.statusCard,
+              {
+                backgroundColor: "#FFF8E1",
+                borderWidth: 1,
+                borderColor: "#F59E0B",
+              },
+              Shadows.md,
+            ]}
+          >
+            {pendingCashTip.declaredBy === "driver" ? (
+              <>
+                <ThemedText type="h4" style={{ color: "#B45309" }}>
+                  💵 ¿Diste una propina en efectivo?
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={{ color: "#92400E", marginTop: Spacing.xs }}
+                >
+                  El repartidor registró una propina de{" "}
+                  {(pendingCashTip.amountCents / 100).toFixed(2)} € en
+                  efectivo. Confírmalo para que quede en sus ganancias.
+                </ThemedText>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: Spacing.sm,
+                    marginTop: Spacing.md,
+                  }}
+                >
+                  <Pressable
+                    onPress={() => respondCashTip(true)}
+                    style={[
+                      styles.confirmButton,
+                      {
+                        backgroundColor: ComeYaColors.success,
+                        flex: 1,
+                        paddingVertical: Spacing.sm,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="small"
+                      style={{ color: "#FFF", fontWeight: "600" }}
+                    >
+                      Sí, se la di
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => respondCashTip(false)}
+                    style={[
+                      styles.confirmButton,
+                      {
+                        backgroundColor: theme.backgroundSecondary,
+                        flex: 1,
+                        paddingVertical: Spacing.sm,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.text, fontWeight: "600" }}
+                    >
+                      No
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <ThemedText type="h4" style={{ color: "#B45309" }}>
+                  💵 Propina en efectivo declarada
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={{ color: "#92400E", marginTop: Spacing.xs }}
+                >
+                  Declaraste {(pendingCashTip.amountCents / 100).toFixed(2)} €
+                  en efectivo. Quedará registrada cuando el repartidor
+                  confirme haberla recibido.
+                </ThemedText>
+              </>
             )}
           </View>
         ) : null}

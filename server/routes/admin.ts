@@ -418,7 +418,8 @@ router.get(
         "@shared/schema-mysql"
       );
       const { db } = await import("../db");
-      const { inArray } = await import("drizzle-orm");
+      const { inArray, and, isNull, gte } = await import("drizzle-orm");
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const activeOrders = await db
         .select({
           order: orders,
@@ -429,13 +430,18 @@ router.get(
         .leftJoin(businesses, eq(orders.businessId, businesses.id))
         .leftJoin(users, eq(orders.userId, users.id))
         .where(
-          inArray(orders.status, [
-            "pending",
-            "confirmed",
-            "preparing",
-            "ready",
-            "on_the_way",
-          ]),
+          and(
+            inArray(orders.status, [
+              "pending",
+              "confirmed",
+              "preparing",
+              "ready",
+              "on_the_way",
+            ]),
+            // Sin pedidos viejos colgados ni ocultados por el admin
+            isNull(orders.deletedAt),
+            gte(orders.createdAt, dayAgo),
+          ),
         )
         .orderBy(desc(orders.createdAt))
         .limit(50);

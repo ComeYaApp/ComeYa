@@ -1001,7 +1001,7 @@ export default function BusinessOrdersScreen() {
                     confirmStartPreparing(prepModal.orderId!, opt.range, opt.minutes)
                   }
                   style={[
-                    styles.timeOption,
+                    styles.rangeOption,
                     { backgroundColor: ComeYaColors.primary },
                   ]}
                 >
@@ -1234,6 +1234,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
     borderRadius: BorderRadius.md,
     borderWidth: 2,
+    alignItems: "center",
+  },
+  // Opciones del modal de preparación: a ancho completo para que el texto
+  // "5–10 min" / "10–20 min" no se corte (antes heredaban width 30%)
+  rangeOption: {
+    width: "100%",
+    paddingVertical: Spacing.xl,
+    borderRadius: BorderRadius.md,
     alignItems: "center",
   },
   modalActions: {

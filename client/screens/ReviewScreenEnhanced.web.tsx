@@ -85,6 +85,10 @@ export default function ReviewScreenEnhanced() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [wantTip, setWantTip] = useState(false);
   const [tipAmount, setTipAmount] = useState(2);
+  // En web la propina se envía por pago manual (comprobante verificado por el
+  // admin) o en efectivo (doble confirmación). La tarjeta está en la app.
+  const [tipMethod, setTipMethod] = useState<"manual" | "cash">("manual");
+  const [tipProofUrl, setTipProofUrl] = useState<string | null>(null);
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -130,6 +134,9 @@ export default function ReviewScreenEnhanced() {
           tags: selectedTags.length ? selectedTags : undefined,
           photos: photos.length ? photos : undefined,
           tipAmount: wantTip ? tipAmount * 100 : 0,
+          tipMethod: wantTip ? tipMethod : undefined,
+          tipProof:
+            wantTip && tipMethod === "manual" ? tipProofUrl : undefined,
         })
       ).json(),
     onSuccess: (data: any) => {
@@ -137,7 +144,11 @@ export default function ReviewScreenEnhanced() {
         showToast(data.error || "No se pudo enviar la reseña", "error");
         return;
       }
-      showToast("¡Gracias por tu opinión!", "success");
+      if (data?.tipPending) {
+        showToast(data.message || "Propina declarada", "success");
+      } else {
+        showToast("¡Gracias por tu opinión!", "success");
+      }
       queryClient.invalidateQueries({
         queryKey: ["/api/users", user?.id, "orders"],
       });
@@ -289,7 +300,7 @@ export default function ReviewScreenEnhanced() {
                 </Text>
               </View>
               <View style={s.tipsWrap}>
-                {[1, 2, 3, 5].map((amount) => {
+                {[1, 2, 3, 4, 5].map((amount) => {
                   const active = wantTip && tipAmount === amount;
                   return (
                     <Pressable
@@ -319,12 +330,79 @@ export default function ReviewScreenEnhanced() {
                 })}
               </View>
               {wantTip && (
-                <Pressable
-                  onPress={() => setWantTip(false)}
-                  style={s.noTipBtn}
-                >
-                  <Text style={[s.noTipText, { color: sub }]}>Sin propina</Text>
-                </Pressable>
+                <>
+                  <View style={s.tipsWrap}>
+                    {[
+                      { id: "manual", label: "Bizum/Transferencia" },
+                      { id: "cash", label: "Efectivo" },
+                    ].map((opt) => {
+                      const active = tipMethod === opt.id;
+                      return (
+                        <Pressable
+                          key={opt.id}
+                          onPress={() => setTipMethod(opt.id as any)}
+                          style={[
+                            s.tipBtn,
+                            {
+                              backgroundColor: active ? "#10B981" : cardBg,
+                              borderColor: active ? "#10B981" : border,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              s.tipBtnText,
+                              { color: active ? "#fff" : text },
+                            ]}
+                          >
+                            {opt.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Text style={[s.noTipText, { color: sub, marginTop: 8 }]}>
+                    {tipMethod === "manual"
+                      ? "Envía el importe por Bizum/transferencia al número de la plataforma y adjunta el comprobante. Se abona al repartidor cuando se verifica el pago."
+                      : "Le das el efectivo al repartidor en mano. Él lo confirma en su app y queda registrado en sus ganancias."}
+                  </Text>
+                  {tipMethod === "manual" && (
+                    <Pressable
+                      onPress={async () => {
+                        const { pickAndUploadImage } = await import(
+                          "@/utils/uploadImageWeb"
+                        );
+                        const url = await pickAndUploadImage("tip-proofs");
+                        if (url) setTipProofUrl(url);
+                      }}
+                      style={{
+                        marginTop: 8,
+                        flexDirection: "row",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Feather name="camera" size={14} color="#10B981" />
+                      <Text
+                        style={{
+                          color: "#10B981",
+                          marginLeft: 6,
+                          fontWeight: "600",
+                          fontSize: 13,
+                        }}
+                      >
+                        {tipProofUrl
+                          ? "Comprobante adjuntado ✓"
+                          : "Adjuntar comprobante (opcional)"}
+                      </Text>
+                    </Pressable>
+                  )}
+                  <Pressable
+                    onPress={() => setWantTip(false)}
+                    style={[s.noTipBtn, { marginTop: 12 }]}
+                  >
+                    <Text style={[s.noTipText, { color: sub }]}>Sin propina</Text>
+                  </Pressable>
+                </>
               )}
             </View>
           )}

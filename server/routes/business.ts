@@ -371,6 +371,8 @@ router.get(
       )})
         AND o.status IN ('accepted','confirmed','preparing','ready','picked_up','on_the_way','in_transit','arriving')
         AND o.deleted_at IS NULL
+        AND o.order_type != 'pickup'
+        AND o.created_at > NOW() - INTERVAL 24 HOUR
       ORDER BY o.created_at DESC
     `)) as any;
 
@@ -1388,6 +1390,26 @@ router.put(
         if (blocked) {
           return res.status(400).json({ error: blocked });
         }
+      }
+
+      // Rechazar pedido (negocio) = cancelación real con reembolso del 100 %
+      // al cliente vía orderCancellationService. El cambio de estado a secas
+      // no devolvía nada y el cliente se quedaba sin dinero; además aquí se
+      // anulan payouts pendientes y se notifica a todas las partes.
+      if (status === "cancelled" && req.user!.role === "business_owner") {
+        const { cancelOrder } = await import("../orderCancellationService");
+        const result = await cancelOrder(
+          order.id,
+          "business_owner",
+          "Cancelado por el negocio desde el panel",
+          { actorRole: "business_owner" },
+        );
+        if (!result.success) {
+          return res.status(400).json({
+            error: result.message || "No se pudo cancelar el pedido",
+          });
+        }
+        return res.json({ success: true, message: result.message });
       }
 
       const updates: any = { status, updatedAt: new Date() };

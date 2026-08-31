@@ -779,4 +779,247 @@ router.get(
   },
 );
 
+// ── Propinas ───────────────────────────────────────────────────────────────
+
+// GET /api/admin/finance/pending-manual-tips — propinas por pago manual
+// (bizum/sepa/paypal) declaradas por clientes y pendientes de verificación
+router.get(
+  "/pending-manual-tips",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { transactions, orders, users } = await import(
+        "@shared/schema-mysql"
+      );
+      const { db } = await import("../db");
+      const { eq, and } = await import("drizzle-orm");
+      const rows = await db
+        .select()
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.type, "tip"),
+            eq(transactions.status, "pending"),
+          ),
+        )
+        .limit(100);
+
+      const tips = [];
+      for (const tx of rows) {
+        let meta: any = {};
+        try {
+          meta = JSON.parse(tx.metadata || "{}");
+        } catch {}
+        if (meta.tipMethod !== "manual") continue;
+        const [order] = tx.orderId
+          ? await db
+              .select({
+                businessName: orders.businessName,
+                id: orders.id,
+                userId: orders.userId,
+              })
+              .from(orders)
+              .where(eq(orders.id, tx.orderId))
+              .limit(1)
+          : [];
+        const [customer] = order?.userId
+          ? await db
+              .select({ name: users.name, phone: users.phone })
+              .from(users)
+              .where(eq(users.id, order.userId))
+              .limit(1)
+          : [];
+        tips.push({
+          txId: tx.id,
+          orderId: tx.orderId,
+          amountCents: tx.amount,
+          declaredAt: tx.createdAt,
+          proofUrl: meta.proofUrl || null,
+          businessName: order?.businessName || null,
+          declaredBy: meta.declaredBy || "customer",
+          customer: customer || null,
+          orderRef: tx.orderId ? await orderRefFromId(tx.orderId) : null,
+        });
+      }
+      res.json({ success: true, tips });
+    } catch (error: any) {
+      console.error("[Finance] Pending manual tips error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
+
+// POST /api/admin/finance/manual-tips/:txId/verify — aprobar propina manual
+router.post(
+  "/manual-tips/:txId/verify",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { transactions } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+      const [tx] = await db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, req.params.txId as string))
+        .limit(1);
+      if (!tx)
+        return res
+          .status(404)
+          .json({ success: false, error: "Propina no encontrada" });
+      if (tx.status === "completed")
+        return res
+          .status(400)
+          .json({ success: false, error: "Propina ya verificada" });
+
+      const { completeTip } = await import("../tipService");
+      let meta: any = {};
+      try {
+        meta = JSON.parse(tx.metadata || "{}");
+      } catch {}
+      const result = await completeTip({
+        orderId: tx.orderId || "",
+        method: "manual",
+        driverId: tx.userId || undefined,
+        reviewId: meta.reviewId,
+      });
+      res.json({ success: result.success, message: result.message });
+    } catch (error: any) {
+      console.error("[Finance] Verify manual tip error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
+
+// POST /api/admin/finance/manual-tips/:txId/reject — rechazar propina manual
+router.post(
+  "/manual-tips/:txId/reject",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { transactions } = await import("@shared/schema-mysql");
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+      const [tx] = await db
+        .select()
+        .from(transactions)
+        .where(eq(transactions.id, req.params.txId as string))
+        .limit(1);
+      if (!tx)
+        return res
+          .status(404)
+          .json({ success: false, error: "Propina no encontrada" });
+
+      const { failTip } = await import("../tipService");
+      const result = await failTip(
+        tx.orderId || "",
+        "manual",
+        "rechazada por administración",
+      );
+      res.json({ success: result.success, message: result.message });
+    } catch (error: any) {
+      console.error("[Finance] Reject manual tip error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
+
+// GET /api/admin/finance/driver-monthly-earnings?month=YYYY-MM
+// Ganancias mensuales POR REPARTIDOR (para facturación de autónomos):
+// entregas, ganancias de pedidos, propinas plataforma (wallet) y propinas
+// en efectivo (columna separada, dinero que no pasa por la plataforma).
+router.get(
+  "/driver-monthly-earnings",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const month = String(req.query.month || "");
+      const m = /^(\d{4})-(\d{2})$/.exec(month);
+      if (!m)
+        return res.status(400).json({
+          success: false,
+          error: "Parámetro month requerido en formato YYYY-MM",
+        });
+      const year = parseInt(m[1]);
+      const monthNum = parseInt(m[2]);
+      const start = new Date(Date.UTC(year, monthNum - 1, 1));
+      const end = new Date(Date.UTC(year, monthNum, 1));
+
+      const { orders, transactions, users } = await import(
+        "@shared/schema-mysql"
+      );
+      const { db } = await import("../db");
+      const { sql: sqlOp } = await import("drizzle-orm");
+
+      // Pedidos del mes confirmados por el cliente (el pago del repartidor
+      // solo se libera con la confirmación)
+      const [orderRows] = (await db.execute(sqlOp`
+        SELECT o.delivery_person_id AS driver_id, u.name AS driver_name,
+               COUNT(*) AS deliveries,
+               COALESCE(SUM(COALESCE(o.delivery_earnings, o.delivery_fee, 0)), 0) AS fees
+        FROM orders o
+        LEFT JOIN users u ON o.delivery_person_id = u.id
+        WHERE o.delivery_person_id IS NOT NULL
+          AND o.confirmed_by_customer = 1
+          AND o.delivered_at >= ${start}
+          AND o.delivered_at < ${end}
+        GROUP BY o.delivery_person_id, u.name
+      `)) as any;
+
+      // Propinas completadas del mes por repartidor
+      const [tipRows] = (await db.execute(sqlOp`
+        SELECT t.user_id AS driver_id,
+               SUM(CASE
+                 WHEN JSON_UNQUOTE(JSON_EXTRACT(t.metadata, '$.tipMethod')) = 'cash' THEN t.amount
+                 ELSE 0
+               END) AS cash_tips,
+               SUM(CASE
+                 WHEN JSON_UNQUOTE(JSON_EXTRACT(t.metadata, '$.tipMethod')) = 'cash' THEN 0
+                 ELSE t.amount
+               END) AS platform_tips
+        FROM transactions t
+        WHERE t.type = 'tip'
+          AND t.status = 'completed'
+          AND t.created_at >= ${start}
+          AND t.created_at < ${end}
+        GROUP BY t.user_id
+      `)) as any;
+
+      const tipsByDriver: Record<string, any> = {};
+      for (const r of tipRows) {
+        tipsByDriver[r.driver_id] = {
+          cashTips: Number(r.cash_tips) || 0,
+          platformTips: Number(r.platform_tips) || 0,
+        };
+      }
+
+      const rows = orderRows.map((r: any) => {
+        const tips = tipsByDriver[r.driver_id] || {
+          cashTips: 0,
+          platformTips: 0,
+        };
+        const fees = Number(r.fees) || 0;
+        return {
+          driverId: r.driver_id,
+          driverName: r.driver_name || "Repartidor",
+          deliveries: Number(r.deliveries) || 0,
+          feesCents: fees,
+          platformTipsCents: tips.platformTips,
+          cashTipsCents: tips.cashTips,
+          totalCents: fees + tips.platformTips + tips.cashTips,
+        };
+      });
+
+      res.json({ success: true, month, rows });
+    } catch (error: any) {
+      console.error("[Finance] Driver monthly earnings error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
+
 export default router;

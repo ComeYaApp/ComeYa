@@ -392,6 +392,11 @@ export function EarningsTab({ mode }: Props) {
             value: stats?.totalDeliveries ?? 0,
             color: PURPLE,
           },
+          {
+            label: "Propinas",
+            value: fmtEur((data?.stats as any)?.tipsTotal ?? 0),
+            color: "#10B981",
+          },
         ].map((k) => (
           <View key={k.label} style={s.kpiItem}>
             <Text style={[s.kpiVal, { color: k.color }]}>{k.value}</Text>

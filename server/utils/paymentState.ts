@@ -33,6 +33,9 @@ export function classifyPaymentState(
   // Todo estado posterior a pending implica pago confirmado (webhook,
   // verificación del admin o flujo histórico de efectivo).
   if (status !== "pending") return "paid";
+  // Pedido "pending" pero YA PAGADO (webhook Stripe o comprobante aprobado):
+  // espera la ACEPTACIÓN del negocio, no el pago.
+  if (order?.paidAt) return "paid";
   const method = String(order?.paymentMethod ?? "").toLowerCase();
   if (method === "cash" || method === "efectivo") return "paid";
   if (pendingProofOrderIds.has(order.id)) return "proof_pending";
