@@ -128,10 +128,10 @@ async function main() {
     console.log(`HTTP ${legacyResult.httpStatus}`);
     console.log(JSON.stringify(legacyResult.json ?? legacyResult.text, null, 2));
 
-    const newOk = newResult.json?.data?.[0]?.status === "ok";
-    const legacyOk =
-      legacyResult.json?.data?.status === "ok" ||
-      legacyResult.json?.data?.[0]?.status === "ok";
+    const statusOf = (json: any): string | undefined =>
+      json?.data?.status ?? json?.data?.[0]?.status;
+    const newOk = statusOf(newResult.json) === "ok";
+    const legacyOk = statusOf(legacyResult.json) === "ok";
 
     console.log("\n──────────────────────────────────────────────────────");
     console.log(
