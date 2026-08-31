@@ -64,6 +64,11 @@ interface Order {
   status: string;
   createdAt: string;
   deliveredAt?: string;
+  confirmedByCustomer?: boolean;
+  pendingCashTip?: {
+    amountCents: number;
+    declaredBy: "customer" | "driver";
+  } | null;
 }
 
 interface Props {
@@ -212,11 +217,34 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
       minute: "2-digit",
     });
 
+  // Propina en efectivo: doble confirmación (el cliente la declara y el
+  // repartidor confirma haberla recibido)
+  const respondCashTip = async (orderId: string, approved: boolean) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/orders/${orderId}/cash-tip/respond`,
+        { approved },
+      );
+      const data = await res.json();
+      if (data.success) {
+        flash(true, approved ? "Propina registrada 💝" : "Propina rechazada");
+      } else {
+        flash(false, data.error || "No se pudo procesar la propina");
+      }
+      load();
+    } catch {
+      flash(false, "Error de conexión");
+    }
+  };
+
   const displayed = orders
     .filter((o) =>
       mode === "active"
-        ? ACTIVE_STATUSES.includes(o.status)
-        : HISTORY_STATUSES.includes(o.status),
+        ? ACTIVE_STATUSES.includes(o.status) &&
+          !(o.status === "delivered" && o.confirmedByCustomer)
+        : HISTORY_STATUSES.includes(o.status) ||
+            (o.status === "delivered" && o.confirmedByCustomer),
     )
     .filter(
       (o) =>
@@ -667,25 +695,114 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                               </Text>
                             </TouchableOpacity>
                           )}
-                          {order.status === "delivered" && (
-                            <View
-                              style={[
-                                s.actionBtn,
-                                {
-                                  backgroundColor: BLUE + "10",
-                                  borderColor: BLUE + "20",
-                                },
-                              ]}
-                            >
-                              <Feather name="clock" size={13} color={BLUE} />
-                              <Text style={[s.actionBtnTxt, { color: BLUE }]}>
-                                Esperando cliente
-                              </Text>
-                            </View>
-                          )}
+                          {order.status === "delivered" &&
+                            !order.confirmedByCustomer && (
+                              <View
+                                style={[
+                                  s.actionBtn,
+                                  {
+                                    backgroundColor: BLUE + "10",
+                                    borderColor: BLUE + "20",
+                                  },
+                                ]}
+                              >
+                                <Feather name="clock" size={13} color={BLUE} />
+                                <Text
+                                  style={[s.actionBtnTxt, { color: BLUE }]}
+                                >
+                                  Esperando cliente
+                                </Text>
+                              </View>
+                            )}
+                          {order.status === "delivered" &&
+                            order.confirmedByCustomer && (
+                              <View
+                                style={[
+                                  s.actionBtn,
+                                  {
+                                    backgroundColor: GREEN + "15",
+                                    borderColor: GREEN + "30",
+                                  },
+                                ]}
+                              >
+                                <Feather
+                                  name="check-circle"
+                                  size={13}
+                                  color={GREEN}
+                                />
+                                <Text
+                                  style={[s.actionBtnTxt, { color: GREEN }]}
+                                >
+                                  Cliente confirmó — pago liberado
+                                </Text>
+                              </View>
+                            )}
                         </>
                       )}
                     </View>
+
+                    {/* Propina en efectivo pendiente declarada por el cliente */}
+                    {order.status === "delivered" &&
+                      order.pendingCashTip?.declaredBy === "customer" && (
+                        <View
+                          style={{
+                            marginTop: 10,
+                            backgroundColor: "#FFF8E1",
+                            borderWidth: 1,
+                            borderColor: "#F59E0B",
+                            borderRadius: 10,
+                            padding: 12,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#B45309",
+                              fontWeight: "700",
+                              fontSize: 13,
+                            }}
+                          >
+                            💵 El cliente declaró una propina de{" "}
+                            {(order.pendingCashTip.amountCents / 100).toFixed(
+                              2,
+                            )}{" "}
+                            € en efectivo
+                          </Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              gap: 8,
+                              marginTop: 8,
+                            }}
+                          >
+                            <TouchableOpacity
+                              onPress={() => respondCashTip(order.id, true)}
+                              style={[
+                                s.actionBtn,
+                                { backgroundColor: GREEN, flex: 1 },
+                              ]}
+                            >
+                              <Text
+                                style={[s.actionBtnTxt, { color: "#fff" }]}
+                              >
+                                La recibí
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => respondCashTip(order.id, false)}
+                              style={[
+                                s.actionBtn,
+                                { backgroundColor: chipBg, flex: 1 },
+                              ]}
+                            >
+                              <Text
+                                style={[s.actionBtnTxt, { color: text }]}
+                              >
+                                No la recibí
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
                   </View>
                 </View>
               );
