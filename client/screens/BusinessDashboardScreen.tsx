@@ -758,6 +758,18 @@ export default function BusinessDashboardScreen() {
                 Horarios
               </ThemedText>
             </Pressable>
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: theme.card }]}
+              onPress={() => navigation.navigate("BusinessReservations" as any)}
+            >
+              <Feather name="calendar" size={24} color="#8B5CF6" />
+              <ThemedText
+                type="small"
+                style={{ marginTop: Spacing.xs, textAlign: "center" }}
+              >
+                Reservas
+              </ThemedText>
+            </Pressable>
           </View>
           <View style={[styles.actionsRow, { marginTop: Spacing.sm }]}>
             <Pressable
