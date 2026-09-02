@@ -10,6 +10,9 @@ export type RoutePhase = "to_business" | "to_customer" | "none";
 
 /** Estados en los que el destino del repartidor es el negocio (recogida). */
 export const BUSINESS_PHASE_STATUSES = [
+  // "assigned": estado real al asignar repartidor (driverAssignment);
+  // el seguimiento debe empezar YA, no cuando el negocio marque "preparing".
+  "assigned",
   "assigned_driver",
   "accepted",
   "confirmed",

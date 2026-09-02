@@ -18,6 +18,7 @@ import {
   type OpsDriver,
 } from "@/hooks/useAdminOps";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 import { routePhaseForStatus } from "@/utils/routePhase";
 import { animateMarkerTo } from "@/utils/smoothMarker";
 import { clusterPoints, clusterSvg } from "@/utils/webClustering";
@@ -74,31 +75,6 @@ const DARK_STYLE = [
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#000" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
 ];
-
-function loadGoogleMaps(): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps?.visualization) return resolve();
-    const existing = document.getElementById("gmap-script-ops");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      return;
-    }
-    const key = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => "");
-    const script = document.createElement("script");
-    script.id = "gmap-script-ops";
-    // visualization = heatmap; geometry = cálculos de distancia
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=visualization,geometry`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Google Maps"));
-    document.head.appendChild(script);
-  });
-}
 
 // Número público del pedido (#CY000001); acepta un objeto order o un id
 const fmtNum = (o: any) => {
@@ -182,7 +158,7 @@ export default function AdminOpsCenterScreen() {
 
   // ── Carga del mapa ──
   useEffect(() => {
-    loadGoogleMaps()
+    loadGoogleMaps(["visualization", "geometry"])
       .then(() => setMapsReady(true))
       .catch(() => {});
   }, []);

@@ -15,10 +15,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
-import {
-  calculateDistance,
-  calculateDeliveryFee,
-} from "@/utils/distance";
 
 const PRIMARY = "#DC2626";
 
@@ -66,16 +62,21 @@ export default function CartScreen() {
       .catch(() => {});
   }, [user?.id]);
 
-  // Calcular delivery fee en euros con misma lógica del checkout
+  // Calcular delivery fee con la MISMA fórmula del servidor (calculate-
+  // delivery). La API devuelve delivery_fee en céntimos (snake_case).
+  const [quotedFee, setQuotedFee] = React.useState<number | null>(null);
   const calculatedDeliveryFee = React.useMemo(() => {
     if (orderType === "pickup") return 0;
-    if (businessData?.deliveryFee) {
-      return Math.max(businessData.deliveryFee, 250) / 100;
+    if (quotedFee != null) return quotedFee;
+    if ((businessData as any)?.delivery_fee != null) {
+      return Math.max(Number((businessData as any).delivery_fee), 250) / 100;
     }
     return 2.5;
-  }, [orderType, businessData]);
+  }, [orderType, businessData, quotedFee]);
 
-  // Si hay coordenadas, calcular fee por distancia en segundo plano
+  // Cotización del servidor cuando hay coordenadas (la misma que aplicará
+  // el checkout: el importe ya NO cambia entre carrito y checkout). Antes
+  // el cálculo local se DESCARTABA y el carrito pasaba siempre 2,50 €.
   React.useEffect(() => {
     if (
       orderType !== "delivery" ||
@@ -85,13 +86,18 @@ export default function CartScreen() {
       setLoadingFee(false);
       return;
     }
-    const distance = calculateDistance(
-      businessData.latitude,
-      businessData.longitude,
-      selectedAddress.latitude,
-      selectedAddress.longitude,
-    );
-    calculateDeliveryFee(distance)
+    apiRequest("POST", "/api/orders/calculate-delivery", {
+      businessLat: businessData.latitude,
+      businessLng: businessData.longitude,
+      deliveryLat: selectedAddress.latitude,
+      deliveryLng: selectedAddress.longitude,
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Number.isFinite(Number(d.deliveryFee))) {
+          setQuotedFee(Number(d.deliveryFee) / 100);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoadingFee(false));
   }, [selectedAddress, businessData, orderType]);

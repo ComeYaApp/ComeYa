@@ -14,38 +14,14 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import {
+  loadGoogleMaps,
+  fetchMapsWebKey,
+} from "@/utils/googleMapsWeb";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 const PRIMARY = "#DC2626";
 const SORIA = { lat: 41.7636, lng: -2.4677 };
-
-function loadGoogleMaps(): Promise<string> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps?.Map) {
-      resolve("");
-      return;
-    }
-    const existing = document.getElementById("gmap-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve(""));
-      if ((window as any).google?.maps?.Map) resolve("");
-      return;
-    }
-    const key = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => "");
-    const script = document.createElement("script");
-    script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
-    script.async = true;
-    script.onload = () => resolve(key);
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
 
 function resolveProfileImageUrl(img: string): string {
   if (img.startsWith("data:image/")) return img;
@@ -209,11 +185,13 @@ export default function AddAddressScreen() {
   useEffect(() => {
     if (user?.profileImage)
       setProfileImage(resolveProfileImageUrl(user.profileImage));
-    loadGoogleMaps()
-      .then((key) => {
-        setApiKey(key);
-        setMapsReady(true);
-      })
+    Promise.all([
+      loadGoogleMaps(),
+      fetchMapsWebKey()
+        .then(setApiKey)
+        .catch(() => {}),
+    ])
+      .then(() => setMapsReady(true))
       .catch(console.error);
   }, []);
 

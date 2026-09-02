@@ -34,7 +34,6 @@ import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import {
   calculateDistance,
-  calculateDeliveryFee,
   estimateDeliveryTime,
 } from "@/utils/distance";
 import { formatEuros } from "@/utils/currency";
@@ -81,9 +80,6 @@ export default function CheckoutScreen({ route }: any) {
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [dynamicDeliveryFee, setDynamicDeliveryFee] = useState<number | null>(
-    null,
-  );
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null);
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>("stripe_card");
@@ -302,10 +298,16 @@ export default function CheckoutScreen({ route }: any) {
 
 // Calculate delivery fee once and store in state
 const [finalDeliveryFee, setFinalDeliveryFee] = useState<number | null>(null);
+// El TOTAL solo se muestra cuando la tarifa de envío y el descuento premium
+// están resueltos: antes se pintaba un precio falso (0 € / 2,50 €) que
+// cambiaba un segundo después — el "parpadeo" reportado por el cliente.
+const [feeResolved, setFeeResolved] = useState(false);
+const [subPreviewDone, setSubPreviewDone] = useState(false);
 
 useEffect(() => {
   if (confirmedOrderType === "pickup") {
     setFinalDeliveryFee(0);
+    setFeeResolved(true);
     return;
   }
 
@@ -313,20 +315,17 @@ useEffect(() => {
     // CartScreen ya pasa el delivery fee en euros, NO dividir por 100
     const fromCart = Number(route.params.calculatedDeliveryFee);
     setFinalDeliveryFee(fromCart > 100 ? fromCart / 100 : fromCart);
-  } else if (dynamicDeliveryFee !== null) {
-    setFinalDeliveryFee(dynamicDeliveryFee);
-  } else if (business?.deliveryFee) {
-    // deliveryFee puede venir en centavos (ej: 300) o en euros (ej: 3.00)
-    const rawFee = Number(business.deliveryFee);
+    setFeeResolved(true);
+  } else if ((business as any)?.delivery_fee) {
+    // La API devuelve delivery_fee en CENTAVOS (ej: 300 → 3,00 €)
+    const rawFee = Number((business as any).delivery_fee);
     setFinalDeliveryFee(rawFee > 100 ? rawFee / 100 : rawFee);
-  } else {
-    setFinalDeliveryFee(2.5); // Default fallback
+    setFeeResolved(true);
   }
 }, [
   confirmedOrderType,
   route?.params?.calculatedDeliveryFee,
-  dynamicDeliveryFee,
-  business?.deliveryFee
+  business?.id,
 ]);
 
 const effectiveDeliveryFee = finalDeliveryFee ?? 0;
@@ -350,8 +349,17 @@ useEffect(() => {
     !Number.isFinite(bizLng) ||
     !Number.isFinite(addrLat) ||
     !Number.isFinite(addrLng)
-  )
+  ) {
+    // Sin coordenadas: resolvemos con la tarifa base del negocio para no
+    // dejar el checkout bloqueado en "Calculando…"
+    if ((business as any)?.delivery_fee != null) {
+      setFinalDeliveryFee(Number((business as any).delivery_fee) / 100);
+    } else if (finalDeliveryFee == null) {
+      setFinalDeliveryFee(2.5);
+    }
+    setFeeResolved(true);
     return;
+  }
   apiRequest("POST", "/api/orders/calculate-delivery", {
     businessLat: bizLat,
     businessLng: bizLng,
@@ -362,15 +370,20 @@ useEffect(() => {
     .then((d) => {
       if (d.success && Number.isFinite(Number(d.deliveryFee))) {
         setFinalDeliveryFee(Number(d.deliveryFee) / 100);
+        setFeeResolved(true);
       }
     })
     .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [selectedAddress?.id, cart?.businessId, confirmedOrderType]);
+}, [selectedAddress?.id, cart?.businessId, confirmedOrderType, business?.id]);
 
-  // Beneficios de suscripción
+  // Beneficios de suscripción (el total no se muestra hasta que resuelve,
+  // para que el descuento Premium no cambie el importe en pantalla)
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setSubPreviewDone(true);
+      return;
+    }
     const subtotalCents = Math.round(subtotal * 100);
     const deliveryFeeCents = Math.round(effectiveDeliveryFee * 100);
     apiRequest(
@@ -386,11 +399,14 @@ useEffect(() => {
           setSubDiscount(0);
           setSubDeliveryFee(null);
         }
+        setSubPreviewDone(true);
       })
-      .catch(() => {});
+      .catch(() => setSubPreviewDone(true));
   }, [subtotal, effectiveDeliveryFee, user?.id]);
 
-  // Calcular delivery fee dinámico cuando cambia la dirección
+  // Calcular ETA estimado cuando cambia la dirección (la TARIFA la decide
+  // el servidor vía calculate-delivery; aquí ya no se pinta ningún precio
+  // local que luego cambie — ese era el parpadeo del total)
   useEffect(() => {
     if (
       business &&
@@ -398,11 +414,11 @@ useEffect(() => {
       selectedAddress.latitude &&
       selectedAddress.longitude
     ) {
-      calculateFee();
+      calculateTime();
     }
   }, [business, selectedAddress]);
 
-  const calculateFee = async () => {
+  const calculateTime = async () => {
     if (!business || !selectedAddress) return;
 
     const distance = calculateDistance(
@@ -411,9 +427,7 @@ useEffect(() => {
       selectedAddress.latitude,
       selectedAddress.longitude,
     );
-    const fee = await calculateDeliveryFee(distance);
     const time = estimateDeliveryTime(distance);
-    setDynamicDeliveryFee(fee);
     setEstimatedTime(time);
   };
 
@@ -1776,7 +1790,9 @@ navigation.navigate("DigitalPaymentMethod", {
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
             </ThemedText>
-            <ThemedText type="body">{formatEuros(finalDeliveryFee ?? 0)}</ThemedText>
+            <ThemedText type="body">
+              {feeResolved ? formatEuros(finalDeliveryFee ?? 0) : "Calculando…"}
+            </ThemedText>
           </View>
         )}
         {confirmedOrderType === "pickup" && (
@@ -1828,10 +1844,15 @@ navigation.navigate("DigitalPaymentMethod", {
         <View style={[styles.totalRow, styles.grandTotal]}>
           <ThemedText type="h3">Total</ThemedText>
           <ThemedText type="h2" style={{ color: ComeYaColors.primary }}>
-            {formatEuros(total)}
+            {feeResolved && subPreviewDone
+              ? formatEuros(total)
+              : "Calculando…"}
           </ThemedText>
         </View>
-        <Button onPress={handlePlaceOrder} disabled={isLoading}>
+        <Button
+          onPress={handlePlaceOrder}
+          disabled={isLoading || !feeResolved || !subPreviewDone}
+        >
           {isLoading ? (
             <ActivityIndicator color="#FFFFFF" size="small" />
           ) : whenMode === "scheduled" ? (

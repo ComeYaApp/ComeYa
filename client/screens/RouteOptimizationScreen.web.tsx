@@ -6,65 +6,10 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { fetchRouteDirections } from "@/utils/directions";
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 
 const SORIA = { lat: 41.7636, lng: -2.4677 };
-
-function loadGoogleMaps(): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) {
-      resolve();
-      return;
-    }
-    const existing = document.getElementById("gmap-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      return;
-    }
-    const key = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => "");
-    const script = document.createElement("script");
-    script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
-function decodePolyline(
-  encoded: string,
-): { latitude: number; longitude: number }[] {
-  const poly: { latitude: number; longitude: number }[] = [];
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-  while (index < encoded.length) {
-    let b: number;
-    let shift = 0;
-    let result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    lat += result & 1 ? ~(result >> 1) : result >> 1;
-    shift = 0;
-    result = 0;
-    do {
-      b = encoded.charCodeAt(index++) - 63;
-      result |= (b & 0x1f) << shift;
-      shift += 5;
-    } while (b >= 0x20);
-    lng += result & 1 ? ~(result >> 1) : result >> 1;
-    poly.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
-  }
-  return poly;
-}
 
 export default function RouteOptimizationScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -114,61 +59,34 @@ export default function RouteOptimizationScreen({ navigation }: any) {
           polylineRef.current = null;
         }
 
-        // Ruta real por calles (Directions API - 1 sola llamada)
-        const directionsService = new google.maps.DirectionsService();
-        directionsService.route(
-          {
-            origin: new google.maps.LatLng(driverLat, driverLng),
-            destination: new google.maps.LatLng(dest.lat, dest.lng),
-            travelMode: google.maps.TravelMode.DRIVING,
-            language: "es",
-          },
-          (response: any, status: any) => {
-            if (status === google.maps.DirectionsStatus.OK && response) {
-              const leg = response.routes[0].legs[0];
-              setDistance(leg.distance?.text || "");
-              setDuration(leg.duration?.text || "");
-
-              // Dibujar ruta en el mapa
-              polylineRef.current = new google.maps.DirectionsRenderer({
-                map: gmap.current,
-                directions: response,
-                suppressMarkers: true,
-                polylineOptions: {
-                  strokeColor: ComeYaColors.primary,
-                  strokeWeight: 4,
-                },
-              });
-
-              // Ajustar bounds
-              const bounds = new google.maps.LatLngBounds();
-              bounds.extend(new google.maps.LatLng(driverLat, driverLng));
-              bounds.extend(new google.maps.LatLng(dest.lat, dest.lng));
-              gmap.current.fitBounds(bounds, 50);
-            } else {
-              // Fallback a línea recta
-              polylineRef.current = new google.maps.Polyline({
-                path: [{ lat: driverLat, lng: driverLng }, dest],
-                geodesic: true,
-                strokeColor: ComeYaColors.primary,
-                strokeWeight: 4,
-                map: gmap.current,
-              });
-              const R = 6371;
-              const dLat = ((dest.lat - driverLat) * Math.PI) / 180;
-              const dLng = ((dest.lng - driverLng) * Math.PI) / 180;
-              const a =
-                Math.sin(dLat / 2) ** 2 +
-                Math.cos((driverLat * Math.PI) / 180) *
-                  Math.cos((dest.lat * Math.PI) / 180) *
-                  Math.sin(dLng / 2) ** 2;
-              const km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-              const mins = Math.round((km / 30) * 60);
-              setDistance(`${km.toFixed(1)} km`);
-              setDuration(`~${mins} min`);
-            }
-          },
+        // Ruta real por calles vía proxy del servidor (caché 30 min + rate
+        // limit; la cuota de Google no se quema desde el navegador)
+        const route = await fetchRouteDirections(
+          { latitude: driverLat, longitude: driverLng },
+          { latitude: dest.lat, longitude: dest.lng },
         );
+        if (route?.distanceText) setDistance(route.distanceText);
+        if (route?.durationText) setDuration(route.durationText);
+
+        // SOLO geometría real por calles — sin ruta no se dibuja nada
+        if (route && route.coordinates.length >= 2 && !route.fallback) {
+          polylineRef.current = new google.maps.Polyline({
+            path: route.coordinates.map((c) => ({
+              lat: c.latitude,
+              lng: c.longitude,
+            })),
+            geodesic: true,
+            strokeColor: ComeYaColors.primary,
+            strokeWeight: 4,
+            map: gmap.current,
+          });
+
+          // Ajustar bounds
+          const bounds = new google.maps.LatLngBounds();
+          bounds.extend(new google.maps.LatLng(driverLat, driverLng));
+          bounds.extend(new google.maps.LatLng(dest.lat, dest.lng));
+          gmap.current.fitBounds(bounds, 50);
+        }
       } catch {}
     };
 

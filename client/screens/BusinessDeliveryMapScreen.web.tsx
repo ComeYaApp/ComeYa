@@ -18,8 +18,10 @@ import {
   BorderRadius,
   Shadows,
 } from "@/constants/theme";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 import { routePhaseForStatus } from "@/utils/routePhase";
 import { animateMarkerTo } from "@/utils/smoothMarker";
 import {
@@ -85,39 +87,11 @@ interface Stats {
   pendingRevenue: number;
 }
 
-function loadGoogleMaps(): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) {
-      resolve();
-      return;
-    }
-    const existing = document.getElementById("gmap-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      return;
-    }
-    // La key se pide al backend (como el resto de mapas web) para que la
-    // restricción por referer de la key de producción sea la correcta
-    const key = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => "");
-    const script = document.createElement("script");
-    script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
 export default function BusinessDeliveryMapScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const { user } = useAuth();
 
   const mapRef = useRef<HTMLDivElement>(null);
   const gmap = useRef<any>(null);
@@ -149,7 +123,7 @@ export default function BusinessDeliveryMapScreen() {
 
   // ── Cargar Google Maps ──────────────────────────────────────────────────────
   useEffect(() => {
-    loadGoogleMaps()
+    loadGoogleMaps(["geometry"])
       .then(() => setMapsReady(true))
       .catch(console.error);
   }, []);
@@ -202,6 +176,66 @@ export default function BusinessDeliveryMapScreen() {
     return () => clearInterval(interval);
   }, [fetchDeliveries]);
 
+  // ── Repartidor EN VIVO por websocket (sala business:{id}) — antes los
+  // pines saltaban cada 15 s; ahora se mueven cada ~2 s. El polling queda
+  // como respaldo para estados/estadísticas/rutas.
+  const businessIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    businessIdsRef.current = new Set(
+      deliveries
+        .map((d) => d.businessId)
+        .filter((id): id is string => !!id),
+    );
+  }, [deliveries]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let socket: any = null;
+    (async () => {
+      try {
+        const { io } = await import("socket.io-client");
+        if (cancelled) return;
+        socket = io(getApiUrl(), {
+          transports: ["websocket", "polling"],
+          reconnection: true,
+        });
+        const joinAll = () => {
+          socket.emit("join", {
+            userId: user?.id,
+            role: "business_owner",
+            businessId: (user as any)?.businessId,
+          });
+          businessIdsRef.current.forEach((bid) =>
+            socket.emit("join", {
+              userId: user?.id,
+              role: "business_owner",
+              businessId: bid,
+            }),
+          );
+        };
+        socket.on("connect", joinAll);
+        socket.on("driver_location", (loc: any) => {
+          const lat = Number(loc?.latitude);
+          const lng = Number(loc?.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          setDeliveries((prev) =>
+            prev.map((d) =>
+              d.orderId === loc.orderId && d.driver
+                ? { ...d, driver: { ...d.driver, lat, lng } }
+                : d,
+            ),
+          );
+        });
+      } catch {
+        // sin socket → el polling de 15 s sigue funcionando
+      }
+    })();
+    return () => {
+      cancelled = true;
+      socket?.disconnect();
+    };
+  }, [user?.id, (user as any)?.businessId]);
+
   // ── Renderizar markers en el mapa (persistentes: se ANIMAN al moverse) ─────
   useEffect(() => {
     if (!mapsReady || !gmap.current) return;
@@ -234,14 +268,15 @@ export default function BusinessDeliveryMapScreen() {
       const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG.pending;
       const color = cfg.color;
 
-      // Marker repartidor — su vehículo (animado entre polls)
+      // Marker repartidor — su vehículo (animado entre updates; con el
+      // websocket en vivo el cadence es ~2 s, no los 15 s del polling)
       if (d.driver?.lat && d.driver?.lng) {
         const vehicle = vehicleMarkerMeta(d.driver.vehicleType);
         const key = `driver_${d.orderId}`;
         const pos = { lat: d.driver.lat, lng: d.driver.lng };
         let driverMarker = markers.current[key];
         if (driverMarker) {
-          animateMarkerTo(driverMarker, pos, 14000);
+          animateMarkerTo(driverMarker, pos, 1900);
         } else {
           driverMarker = new google.maps.Marker({
             position: pos,
@@ -745,12 +780,14 @@ export default function BusinessDeliveryMapScreen() {
                 )}
                 {selected.customer.lat && (
                   <Pressable
-                    onPress={() =>
-                      window.open(
-                        `https://www.google.com/maps?q=${selected.customer.lat},${selected.customer.lng}`,
-                        "_blank",
-                      )
-                    }
+                    onPress={() => {
+                      gmap.current?.panTo({
+                        lat: selected.customer.lat!,
+                        lng: selected.customer.lng!,
+                      });
+                      gmap.current?.setZoom(16);
+                      setSelected(null);
+                    }}
                     style={{
                       marginTop: 6,
                       flexDirection: "row",
@@ -807,12 +844,14 @@ export default function BusinessDeliveryMapScreen() {
                     </ThemedText>
                     {selected.driver.lat && (
                       <Pressable
-                        onPress={() =>
-                          window.open(
-                            `https://www.google.com/maps?q=${selected.driver!.lat},${selected.driver!.lng}`,
-                            "_blank",
-                          )
-                        }
+                        onPress={() => {
+                          gmap.current?.panTo({
+                            lat: selected.driver!.lat!,
+                            lng: selected.driver!.lng!,
+                          });
+                          gmap.current?.setZoom(16);
+                          setSelected(null);
+                        }}
                         style={{
                           marginTop: 6,
                           flexDirection: "row",

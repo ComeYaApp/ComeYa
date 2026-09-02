@@ -33,32 +33,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Cancelado", color: "#6B7280" },
 };
 
-function loadGoogleMaps(): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) {
-      resolve();
-      return;
-    }
-    const existing = document.getElementById("gmap-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      return;
-    }
-    const key = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => "");
-    const script = document.createElement("script");
-    script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 
 export default function PublicTrackingScreen() {
   const insets = useSafeAreaInsets();
@@ -137,6 +112,7 @@ export default function PublicTrackingScreen() {
   // siempre una línea recta y nunca pedía la ruta)
   const routeCoordsRef = useRef<{ lat: number; lng: number }[] | null>(null);
   const lastRoutePointRef = useRef<{ lat: number; lng: number } | null>(null);
+  const didFitRef = useRef(false);
 
   useEffect(() => {
     if (!gmap.current) return;
@@ -190,10 +166,15 @@ export default function PublicTrackingScreen() {
               map: gmap.current,
             });
           }
-          const bounds = new google.maps.LatLngBounds();
-          bounds.extend(driverCoord);
-          bounds.extend(customerCoord);
-          gmap.current.fitBounds(bounds, 60);
+          // fitBounds solo la primera vez: re-encuadrar en cada poll pelea
+          // contra el usuario que mueve el mapa
+          if (!didFitRef.current) {
+            didFitRef.current = true;
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(driverCoord);
+            bounds.extend(customerCoord);
+            gmap.current.fitBounds(bounds, 60);
+          }
         };
 
         if (moved) {

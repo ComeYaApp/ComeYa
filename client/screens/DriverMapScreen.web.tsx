@@ -17,6 +17,8 @@ import {
   fetchRouteDirections,
   distanceMeters,
 } from "@/utils/directions";
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
+import { gpsService } from "@/services/gpsService";
 import { routePhaseForStatus } from "@/utils/routePhase";
 import { animateMarkerTo } from "@/utils/smoothMarker";
 import {
@@ -25,33 +27,6 @@ import {
   asGoogleIcon,
 } from "@/utils/webMarkerSvg";
 import { vehicleMarkerMeta, CUSTOMER_MARKER } from "@/utils/markerMeta";
-
-function loadGoogleMaps(): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) {
-      resolve();
-      return;
-    }
-    const existing = document.getElementById("gmap-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      return;
-    }
-    const key = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => "");
-    const script = document.createElement("script");
-    script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
 
 interface Props {
   orderId?: string; // si viene, centra el mapa en esa entrega
@@ -82,6 +57,11 @@ export default function DriverMapScreen({
   } | null>(null);
   const [eta, setEta] = useState<string | null>(null);
   const [distance, setDistance] = useState<string | null>(null);
+  // Pasos turn-by-turn de la ruta activa (panel interno; nunca Google externo)
+  const [routeSteps, setRouteSteps] = useState<
+    { instruction: string; distance?: { text: string } }[]
+  >([]);
+  const [showSteps, setShowSteps] = useState(false);
   // Vehículo del repartidor (icono del mapa)
   const [driverVehicle, setDriverVehicle] = useState<string | null>(null);
   useEffect(() => {
@@ -157,8 +137,10 @@ export default function DriverMapScreen({
           }));
           if (route.distanceText) setDistance(route.distanceText);
           if (route.durationText) setEta(route.durationText);
+          setRouteSteps(route.steps ?? []);
         } else {
           routeCoordsRef.current = null;
+          setRouteSteps([]);
         }
       }
 
@@ -198,7 +180,6 @@ export default function DriverMapScreen({
     });
 
     // ── GPS del repartidor ──
-    let lastPostAt = 0;
     watchId.current = navigator.geolocation?.watchPosition(
       (pos) => {
         // Fix impreciso: no mover el marcador ni subirlo al servidor
@@ -231,18 +212,18 @@ export default function DriverMapScreen({
           });
         }
 
-        // Actualizar ubicación en servidor (throttle 5s para no saturar
-        // la BD ni el pipeline de tracking con cada fix del GPS)
-        const now = Date.now();
-        if (now - lastPostAt >= 5000) {
-          lastPostAt = now;
-          apiRequest("POST", "/api/delivery/location", {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy ?? undefined,
-            timestamp: pos.timestamp ?? now,
-          }).catch(() => {});
-        }
+        // Enviar al servidor (throttle 2 s / 10 m dentro de gpsService)
+        gpsService.postFix({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy ?? undefined,
+          heading:
+            typeof pos.coords.heading === "number" && pos.coords.heading >= 0
+              ? pos.coords.heading
+              : undefined,
+          speed: pos.coords.speed ?? undefined,
+          timestamp: pos.timestamp,
+        });
 
         // Redibujar ruta si hay destino
         if (destRef.current) {
@@ -343,14 +324,6 @@ export default function DriverMapScreen({
     const t = setInterval(loadActiveOrder, 30000);
     return () => clearInterval(t);
   }, [loadActiveOrder]);
-
-  const openGoogleMaps = () => {
-    if (!destRef.current) return;
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${destRef.current.lat},${destRef.current.lng}`,
-      "_blank",
-    );
-  };
 
   const centerOnMe = () => {
     if (userLocation) gmap.current?.panTo(userLocation);
@@ -470,18 +443,24 @@ export default function DriverMapScreen({
 
             {/* Botones de acción */}
             <View style={s.orderActions}>
-              <Pressable
-                onPress={openGoogleMaps}
-                style={[
-                  s.actionBtn,
-                  { backgroundColor: "#3B82F615", borderColor: "#3B82F630" },
-                ]}
-              >
-                <Feather name="external-link" size={14} color="#3B82F6" />
-                <Text style={[s.actionBtnTxt, { color: "#3B82F6" }]}>
-                  Abrir en Google Maps
-                </Text>
-              </Pressable>
+              {routeSteps.length > 0 && (
+                <Pressable
+                  onPress={() => setShowSteps((v) => !v)}
+                  style={[
+                    s.actionBtn,
+                    { backgroundColor: "#3B82F615", borderColor: "#3B82F630" },
+                  ]}
+                >
+                  <Feather
+                    name={showSteps ? "chevron-down" : "list"}
+                    size={14}
+                    color="#3B82F6"
+                  />
+                  <Text style={[s.actionBtnTxt, { color: "#3B82F6" }]}>
+                    {showSteps ? "Ocultar pasos" : `Ver pasos (${routeSteps.length})`}
+                  </Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={centerOnMe}
                 style={[
@@ -495,6 +474,30 @@ export default function DriverMapScreen({
                 </Text>
               </Pressable>
             </View>
+
+            {/* Pasos turn-by-turn dentro de la app */}
+            {showSteps && routeSteps.length > 0 && (
+              <View
+                style={[
+                  s.stepsPanel,
+                  { borderColor: isDark ? "#222" : "#ebebeb" },
+                ]}
+              >
+                {routeSteps.slice(0, 8).map((st, i) => (
+                  <View key={i} style={s.stepRow}>
+                    <Text style={[s.stepIdx, { color: GREEN }]}>{i + 1}</Text>
+                    <Text style={[s.stepTxt, { color: text }]} numberOfLines={2}>
+                      {st.instruction}
+                    </Text>
+                    {st.distance?.text ? (
+                      <Text style={[s.stepDist, { color: sub }]}>
+                        {st.distance.text}
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -626,6 +629,27 @@ const s = StyleSheet.create({
   orderEtaVal: { fontSize: 18, fontWeight: "900" },
   orderEtaLbl: { fontSize: 11, marginTop: 2 },
   orderActions: { flexDirection: "row", gap: 8 },
+  stepsPanel: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    paddingTop: 8,
+    gap: 6,
+    maxHeight: 180,
+    overflow: "scroll" as any,
+  },
+  stepRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  stepIdx: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#22C55E18",
+    textAlign: "center",
+    lineHeight: 18,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  stepTxt: { flex: 1, fontSize: 12 },
+  stepDist: { fontSize: 11, fontWeight: "600" },
   actionBtn: {
     flex: 1,
     flexDirection: "row",

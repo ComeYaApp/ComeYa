@@ -201,13 +201,6 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
     reader.readAsDataURL(file);
   };
 
-  const openMaps = (lat: string, lng: string) => {
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-      "_blank",
-    );
-  };
-
   const parseItems = (raw: any): any[] => {
     if (Array.isArray(raw)) return raw;
     try {
@@ -629,7 +622,7 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                     </Text>
 
                     <View style={s.footerActions}>
-                      {/* Navegar — abre mapa interno si hay coords, Google Maps como fallback */}
+                      {/* Navegar — SIEMPRE al mapa interno de la app */}
                       {hasCoords && mode === "active" && (
                         <TouchableOpacity
                           onPress={() => {
@@ -638,11 +631,6 @@ export function MyDeliveriesTab({ mode, showToast, onNavigateToMap }: Props) {
                                 order.id,
                                 order.deliveryLatitude!,
                                 order.deliveryLongitude!,
-                              );
-                            } else {
-                              window.open(
-                                `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryLatitude},${order.deliveryLongitude}`,
-                                "_blank",
                               );
                             }
                           }}

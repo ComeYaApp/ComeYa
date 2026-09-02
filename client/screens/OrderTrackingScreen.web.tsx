@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   View,
   StyleSheet,
   Pressable,
+  TouchableOpacity,
   ActivityIndicator,
   ScrollView,
   Platform,
@@ -26,6 +27,7 @@ import {
   fetchRouteDirections,
   distanceMeters,
 } from "@/utils/directions";
+import { snapToRoute, formatRemaining } from "@/utils/snapToRoute";
 import { animateMarkerTo } from "@/utils/smoothMarker";
 import { printInvoiceWeb } from "@/utils/invoice";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,32 +93,7 @@ const DARK_STYLE = [
   { featureType: "transit", stylers: [{ visibility: "off" }] },
 ];
 
-function loadGoogleMaps(): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) {
-      resolve();
-      return;
-    }
-    const existing = document.getElementById("gmap-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      return;
-    }
-    const key = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => "");
-    const script = document.createElement("script");
-    script.id = "gmap-script";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 
 const STATUS_LABELS: Record<
   string,
@@ -246,6 +223,30 @@ export default function OrderTrackingScreen() {
   const lastDriverRoutePointRef = useRef<{ lat: number; lng: number } | null>(
     null,
   );
+  // El fitBounds automático solo se hace UNA vez; luego, solo manual.
+  const didInitialFitRef = useRef(false);
+
+  /** Recentrar el mapa en el repartidor (o en la ruta completa). */
+  const handleRecenter = useCallback(() => {
+    const google = (window as any).google;
+    if (!gmap.current || !google) return;
+    const dp = driverMarkerRef.current?.getPosition();
+    const cp = customerMarkerRef.current?.getPosition();
+    if (dp && cp) {
+      const b = new google.maps.LatLngBounds();
+      b.extend(dp);
+      b.extend(cp);
+      gmap.current.fitBounds(b, {
+        top: 60,
+        right: 60,
+        bottom: 60,
+        left: 60,
+      });
+    } else if (dp) {
+      gmap.current.panTo(dp);
+      gmap.current.setZoom(15);
+    }
+  }, []);
 
   useEffect(() => {
     loadGoogleMaps()
@@ -653,14 +654,146 @@ export default function OrderTrackingScreen() {
 
   // ── Posición del repartidor en vivo: WebSocket con fallback a polling ──
   const { location: socketLocation } = useDriverLocationSocket(
-    ETA_STATUSES.includes(order?.status ?? "") ? orderId : null,
+    ETA_STATUSES.includes(order?.status ?? "") && order?.orderType !== "pickup"
+      ? orderId
+      : null,
     { fallbackIntervalMs: 5000 },
   );
+
+  // ── RECOGIDA A PIE (pickup): posición propia + ruta hacia el local ──
+  const isPickup = order?.orderType === "pickup";
+  const [pickupMode, setPickupMode] = useState<"driving" | "walking">(
+    "walking",
+  );
+  const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const [pickupRemaining, setPickupRemaining] = useState<string | null>(null);
+  const myMarkerRef = useRef<any>(null);
+  const pickupLineRef = useRef<any>(null);
+  const pickupRouteRef = useRef<{ lat: number; lng: number }[]>([]);
+  const pickupDidFitRef = useRef(false);
+  const lastPickupRouteRef = useRef<{
+    lat: number;
+    lng: number;
+    mode: string;
+  } | null>(null);
+
+  // Watch de la posición propia del cliente a pie (recogida)
+  useEffect(() => {
+    if (!isPickup) return;
+    const watchId = navigator.geolocation?.watchPosition(
+      (pos) => {
+        if (
+          typeof pos.coords.accuracy === "number" &&
+          pos.coords.accuracy > 50
+        )
+          return;
+        setMyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000 },
+    );
+    return () => {
+      if (watchId)
+        navigator.geolocation.clearWatch(watchId as unknown as number);
+    };
+  }, [isPickup]);
+
+  // Ruta cliente→local + distancia restante (estilo Glovo)
+  useEffect(() => {
+    if (!isPickup || !mapsReady || !gmap.current || !myPos || !businessLocation)
+      return;
+    const google = (window as any).google;
+
+    if (myMarkerRef.current) {
+      myMarkerRef.current.setPosition(myPos);
+    } else {
+      myMarkerRef.current = new google.maps.Marker({
+        position: myPos,
+        map: gmap.current,
+        title: "Tú",
+        icon: asGoogleIcon(google, pinIcon(PRIMARY, "user")),
+        zIndex: 120,
+      });
+    }
+
+    const last = lastPickupRouteRef.current;
+    const moved =
+      !last ||
+      distanceMeters(
+        { latitude: last.lat, longitude: last.lng },
+        { latitude: myPos.lat, longitude: myPos.lng },
+      ) > 100 ||
+      last.mode !== pickupMode;
+
+    const drawPickupLine = () => {
+      if (pickupLineRef.current) pickupLineRef.current.setMap(null);
+      if (pickupRouteRef.current.length >= 2) {
+        pickupLineRef.current = new google.maps.Polyline({
+          path: pickupRouteRef.current,
+          geodesic: true,
+          strokeColor: ComeYaColors.primary,
+          strokeOpacity: 0.9,
+          strokeWeight: 5,
+          map: gmap.current,
+        });
+      }
+      if (!pickupDidFitRef.current) {
+        pickupDidFitRef.current = true;
+        const b = new google.maps.LatLngBounds();
+        b.extend(myPos);
+        b.extend(businessLocation);
+        gmap.current.fitBounds(b, { top: 60, right: 60, bottom: 60, left: 60 });
+      }
+    };
+
+    if (moved) {
+      lastPickupRouteRef.current = {
+        lat: myPos.lat,
+        lng: myPos.lng,
+        mode: pickupMode,
+      };
+      fetchRouteDirections(
+        { latitude: myPos.lat, longitude: myPos.lng },
+        { latitude: businessLocation.lat, longitude: businessLocation.lng },
+        pickupMode,
+      )
+        .then((route) => {
+          if (route && route.coordinates.length >= 2) {
+            pickupRouteRef.current = route.coordinates.map((c) => ({
+              lat: c.latitude,
+              lng: c.longitude,
+            }));
+          }
+          drawPickupLine();
+        })
+        .catch(() => {});
+    } else {
+      drawPickupLine();
+    }
+
+    // Distancia/ETA RESTANTES sobre la ruta (snap de mi posición)
+    if (pickupRouteRef.current.length >= 2) {
+      const snap = snapToRoute(
+        { latitude: myPos.lat, longitude: myPos.lng },
+        pickupRouteRef.current.map((c) => ({
+          latitude: c.lat,
+          longitude: c.lng,
+        })),
+        40,
+      );
+      if (snap) {
+        setPickupRemaining(formatRemaining(snap.remainingMeters, pickupMode));
+      }
+    }
+  }, [isPickup, mapsReady, myPos, businessLocation, pickupMode]);
 
   // ── useEffect principal de rutas y repartidor (socket + fallback) ──
   useEffect(() => {
     if (!mapsReady || !gmap.current || !order) return;
     if (!ETA_STATUSES.includes(order.status)) return;
+    if (order.orderType === "pickup") return; // recogida: flujo propio
     if (!socketLocation?.latitude || !socketLocation?.longitude) return;
     const google = (window as any).google;
 
@@ -733,17 +866,22 @@ export default function OrderTrackingScreen() {
           .catch(() => {});
       }
 
-      // Ajustar bounds: repartidor + cliente
-      const b = new google.maps.LatLngBounds();
-      b.extend(driverPos);
-      b.extend(clientPos);
-      if (businessLocation) b.extend(businessLocation);
-      gmap.current.fitBounds(b, {
-        top: 60,
-        right: 60,
-        bottom: 60,
-        left: 60,
-      });
+      // Ajustar bounds SOLO la primera vez (o manualmente con el botón
+      // recentrar): re-ajustar en cada update pelea contra el usuario y
+      // produce mareo/teletransportes visuales.
+      if (!didInitialFitRef.current) {
+        didInitialFitRef.current = true;
+        const b = new google.maps.LatLngBounds();
+        b.extend(driverPos);
+        b.extend(clientPos);
+        if (businessLocation) b.extend(businessLocation);
+        gmap.current.fitBounds(b, {
+          top: 60,
+          right: 60,
+          bottom: 60,
+          left: 60,
+        });
+      }
     }
   }, [mapsReady, order, businessLocation, socketLocation]);
 
@@ -817,6 +955,16 @@ export default function OrderTrackingScreen() {
                 </ThemedText>
               </View>
             </View>
+          )}
+
+          {/* Botón recentrar (seguir repartidor) */}
+          {mapsReady && (
+            <TouchableOpacity
+              onPress={handleRecenter}
+              style={[s.recenterBtn, { backgroundColor: "#FFFFFF" }]}
+            >
+              <Feather name="crosshair" size={18} color={PRIMARY} />
+            </TouchableOpacity>
           )}
         </View>
 
@@ -898,6 +1046,79 @@ export default function OrderTrackingScreen() {
                       </ThemedText>
                     </View>
                   ) : null}
+                </View>
+              </View>
+            )}
+
+            {/* Card RECOGIDA (pickup): ruta propia hasta el local */}
+            {isPickup && (
+              <View style={[s.pickupCard, { backgroundColor: theme.card }]}>
+                <View style={s.pickupCardHeader}>
+                  <Feather name="shopping-bag" size={16} color={PRIMARY} />
+                  <ThemedText
+                    type="body"
+                    style={{ fontWeight: "700", marginLeft: 6, flex: 1 }}
+                  >
+                    Recoge tu pedido en el local
+                  </ThemedText>
+                </View>
+                {pickupRemaining ? (
+                  <ThemedText
+                    type="h4"
+                    style={{ color: "#10B981", marginTop: 4 }}
+                  >
+                    Te quedan {pickupRemaining}
+                  </ThemedText>
+                ) : (
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginTop: 4 }}
+                  >
+                    Activa tu ubicación para trazar la ruta hasta el local.
+                  </ThemedText>
+                )}
+                <View style={s.pickupModeRow}>
+                  {(
+                    [
+                      ["walking", "A pie"],
+                      ["driving", "En coche"],
+                    ] as const
+                  ).map(([mode, label]) => (
+                    <Pressable
+                      key={mode}
+                      onPress={() => setPickupMode(mode)}
+                      style={[
+                        s.pickupModeBtn,
+                        {
+                          backgroundColor:
+                            pickupMode === mode
+                              ? PRIMARY
+                              : theme.backgroundSecondary,
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name={
+                          (mode === "walking" ? "map-pin" : "car") as any
+                        }
+                        size={12}
+                        color={
+                          pickupMode === mode ? "#FFF" : theme.textSecondary
+                        }
+                      />
+                      <ThemedText
+                        type="caption"
+                        style={{
+                          color:
+                            pickupMode === mode ? "#FFF" : theme.textSecondary,
+                          marginLeft: 4,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {label}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
                 </View>
               </View>
             )}
@@ -1712,6 +1933,22 @@ const s = StyleSheet.create({
     justifyContent: "center",
     zIndex: 5,
   } as any,
+  recenterBtn: {
+    position: "absolute",
+    bottom: 28,
+    right: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 8,
+  } as any,
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1782,6 +2019,27 @@ const s = StyleSheet.create({
     ...Platform.select({ web: { boxShadow: "0 2px 8px rgba(0,0,0,0.1)" } }),
   },
 
+  pickupCard: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  pickupCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pickupModeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: Spacing.md,
+  },
+  pickupModeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+  },
   businessCard: {
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,

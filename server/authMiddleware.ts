@@ -83,6 +83,51 @@ export async function authenticateToken(
   }
 }
 
+/**
+ * Autentica SI hay token válido; si no lo hay, continúa SIN usuario.
+ * Para endpoints públicos que quieren contexto de usuario cuando exista
+ * (p. ej. el proxy de rutas, usado también por el link público de
+ * seguimiento sin sesión).
+ */
+export async function authenticateOptional(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  try {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+    if (token) {
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || "comeya_local_secret_key",
+      ) as any;
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, decoded.id))
+        .limit(1);
+      if (user) {
+        req.user = {
+          userId: user.id,
+          id: user.id,
+          email: user.email || undefined,
+          name: user.name,
+          phone: user.phone,
+          role: user.role,
+          phoneVerified: user.phoneVerified,
+          verificationStatus: user.verificationStatus ?? undefined,
+          isActive: user.isActive,
+        };
+      }
+    }
+    next();
+  } catch {
+    // Token inválido/caducado en un endpoint público: continuar sin usuario
+    next();
+  }
+}
+
 // Require specific role
 export function requireRole(...allowedRoles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {

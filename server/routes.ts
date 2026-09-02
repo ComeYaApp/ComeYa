@@ -79,12 +79,13 @@ const geocodePostOnly = (req: express.Request, res: express.Response, next: expr
 };
 
 // ─── Public config (keys para el frontend) ───────────────────────────────────
+// SOLO la Web Key (restringida por referrers). Nunca exponer la Backend Key
+// (sin restricción de app) al navegador.
 router.get("/config/maps-key", (_req, res) => {
   res.json({
     key:
       process.env.GOOGLE_MAPS_WEB_KEY ||
       process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY ||
-      process.env.GOOGLE_MAPS_API_KEY ||
       "",
   });
 });

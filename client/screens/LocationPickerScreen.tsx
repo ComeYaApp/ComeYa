@@ -19,12 +19,14 @@ import {
 // Conditional import for MapView - only works on native platforms
 let MapView: any = null;
 let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
 
 if (Platform.OS !== "web") {
   try {
     const maps = require("react-native-maps");
     MapView = maps.default;
     Marker = maps.Marker;
+    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
   } catch (error) {
     console.log("react-native-maps not available");
   }
@@ -146,6 +148,7 @@ export default function LocationPickerScreen() {
         <WebMapFallback location={location} />
       ) : MapView ? (
         <MapView
+          provider={PROVIDER_GOOGLE}
           style={styles.map}
           initialRegion={{
             ...AUTLAN_CENTER,

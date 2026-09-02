@@ -8,11 +8,11 @@
  * 4. Debouncing para requests repetidos
  */
 
-const API_KEY = process.env.GOOGLE_MAPS_API_KEY ||
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-  process.env.GOOGLE_MAPS_WEB_KEY ||
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_WEB_API_KEY ||
-  "";
+// SOLO la Backend Key de Google Cloud (sin restricción de app). Las claves
+// Android (SHA-1) y Web (referrers) están restringidas a su plataforma y
+// NUNCA funcionan desde el servidor: usarlas como fallback solo enmascara
+// el error y quema cuota. Si falta, caemos al fallback OSRM/línea recta.
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY || "";
 
 // ─── Cache Configuration ────────────────────────────────────────────────
 interface CacheEntry<T> {

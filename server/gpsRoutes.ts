@@ -8,16 +8,19 @@ import {
   deliveryDrivers,
 } from "../shared/schema-mysql";
 import { eq, and, sql } from "drizzle-orm";
-import { authenticateToken, requireRole } from "./authMiddleware";
+import { authenticateToken, authenticateOptional, requireRole } from "./authMiddleware";
 import { isValidLatLng } from "./utils/coordinates";
 import { googleMapsService, routeStats } from "./services/googleMapsService";
 
 const router = Router();
 
 // ─── Google Maps Directions Proxy (API key stays server-side) ───────────
+// Auth OPCIONAL: el link público de seguimiento (sin sesión) también puede
+// trazar la ruta real; el coste queda protegido por los rate limits y los
+// límites diarios del servicio.
 router.get(
   "/directions",
-  authenticateToken,
+  authenticateOptional,
   async (req: Request, res: Response) => {
     try {
       const { originLat, originLng, destLat, destLng, mode } = req.query;
@@ -550,6 +553,8 @@ router.get("/track/:token", async (req: Request, res: Response) => {
         .select({
           latitude: deliveryDrivers.currentLatitude,
           longitude: deliveryDrivers.currentLongitude,
+          heading: deliveryDrivers.currentHeading,
+          speed: deliveryDrivers.currentSpeed,
           lastUpdate: deliveryDrivers.lastLocationUpdate,
         })
         .from(deliveryDrivers)
@@ -560,6 +565,8 @@ router.get("/track/:token", async (req: Request, res: Response) => {
         driverLocation = {
           latitude: parseFloat(driver[0].latitude),
           longitude: parseFloat(driver[0].longitude),
+          heading: driver[0].heading != null ? parseFloat(driver[0].heading) : null,
+          speed: driver[0].speed != null ? parseFloat(driver[0].speed) : null,
           lastUpdate: driver[0].lastUpdate,
         };
       }

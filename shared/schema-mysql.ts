@@ -536,6 +536,10 @@ export const deliveryDrivers = mysqlTable("delivery_drivers", {
   isAvailable: boolean("is_available").notNull().default(false),
   currentLatitude: text("current_latitude"),
   currentLongitude: text("current_longitude"),
+  // Rumbo (grados 0-360) y velocidad (m/s) del último fix: alimentan la
+  // rotación del pin y la cámara de los mapas, también vía polling.
+  currentHeading: text("current_heading"),
+  currentSpeed: text("current_speed"),
   lastLocationUpdate: timestamp("last_location_update"),
   totalDeliveries: int("total_deliveries").notNull().default(0),
   rating: int("rating").default(0), // stored as 0-50 (for 0.0-5.0)

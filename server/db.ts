@@ -351,6 +351,27 @@ export async function runStartupMigrations(): Promise<void> {
         console.log("Migration note (driver_cancelled_at):", err.message);
     }
 
+    // delivery_drivers: rumbo y velocidad del último fix GPS (rotación del
+    // pin y cámara de los mapas, también en polling de negocio/público)
+    try {
+      await conn.query(
+        `ALTER TABLE delivery_drivers ADD COLUMN current_heading TEXT DEFAULT NULL`,
+      );
+      console.log("✅ Added current_heading to delivery_drivers");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (current_heading):", err.message);
+    }
+    try {
+      await conn.query(
+        `ALTER TABLE delivery_drivers ADD COLUMN current_speed TEXT DEFAULT NULL`,
+      );
+      console.log("✅ Added current_speed to delivery_drivers");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (current_speed):", err.message);
+    }
+
     // Reviews: calificación del repartidor (fallaba el stats del driver y
     // el INSERT de reseñas con "Unknown column 'delivery_person_rating'")
     try {

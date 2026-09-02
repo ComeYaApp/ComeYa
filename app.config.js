@@ -2,7 +2,7 @@ export default {
   expo: {
     name: "ComeYa",
     slug: "cy-soria",
-    version: "1.0.15",
+    version: "1.0.16",
     orientation: "portrait",
     icon: "./client/assets/nuevologoapp-padded.jpeg",
     scheme: "comeya",
@@ -14,11 +14,15 @@ export default {
         ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
-      // Versionado local: App Store Connect ya tiene el build 10; cada
+      // Versionado local: App Store Connect ya tiene el build 13; cada
       // build nuevo debe incrementar este número a mano (11, 12, 13…)
-      buildNumber: "13",
+      buildNumber: "14",
       config: {
-        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+        // ComeYa iOS Key (Maps SDK for iOS, restringida por bundle). Fallback
+        // a la genérica solo para no romper builds sin la variable.
+        googleMapsApiKey:
+          process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY ||
+          process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
@@ -45,10 +49,14 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
             package: "com.comeya.app",
-      versionCode: 20,
+      versionCode: 21,
       config: {
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+          // ComeYa Android Key (paquete + SHA-1). Coincide con la clave ya
+          // presente en AndroidManifest.xml para que un prebuild no la pise.
+          apiKey:
+            process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY ||
+            process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
         },
       },
       permissions: [

@@ -146,9 +146,15 @@ export default function CheckoutScreen({ route }: any) {
       ? 0
       : route?.params?.calculatedDeliveryFee != null
         ? route.params.calculatedDeliveryFee
-        : (business?.deliveryFee
-            ? Math.max(business.deliveryFee, 250) / 100
-            : 2.5);
+        : (business as any)?.delivery_fee != null
+          ? Math.max(Number((business as any).delivery_fee), 250) / 100
+          : 2.5;
+  // El TOTAL solo se pinta cuando la tarifa y el descuento Premium están
+  // resueltos: antes se mostraba 2,50 € fijo y cambiaba un segundo después
+  // (el parpadeo reportado por el cliente).
+  const [subPreviewDone, setSubPreviewDone] = useState(false);
+  const feeResolved =
+    orderTypeLocal === "pickup" || quotedDeliveryFee != null;
   const total =
     subtotal + deliveryFee - couponDiscount - subDiscount + tip;
 
@@ -168,8 +174,16 @@ export default function CheckoutScreen({ route }: any) {
       !Number.isFinite(bizLng) ||
       !Number.isFinite(addrLat) ||
       !Number.isFinite(addrLng)
-    )
+    ) {
+      // Sin coordenadas: resolvemos con la tarifa base del negocio para no
+      // dejar el checkout bloqueado
+      setQuotedDeliveryFee(
+        (business as any)?.delivery_fee != null
+          ? Number((business as any).delivery_fee) / 100
+          : 2.5,
+      );
       return;
+    }
     apiRequest("POST", "/api/orders/calculate-delivery", {
       businessLat: bizLat,
       businessLng: bizLng,
@@ -182,9 +196,15 @@ export default function CheckoutScreen({ route }: any) {
           setQuotedDeliveryFee(Number(d.deliveryFee) / 100);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setQuotedDeliveryFee(
+          (business as any)?.delivery_fee != null
+            ? Number((business as any).delivery_fee) / 100
+            : 2.5,
+        );
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAddress?.id, cart?.businessId, orderTypeLocal]);
+  }, [selectedAddress?.id, cart?.businessId, orderTypeLocal, business?.id]);
 
   // Tarifa efectiva: la cotizada del servidor (si existe) manda
   const effectiveDeliveryFee =
@@ -194,7 +214,10 @@ export default function CheckoutScreen({ route }: any) {
 
   // Cargar beneficios de suscripcion cuando cambia el subtotal o deliveryFee
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setSubPreviewDone(true);
+      return;
+    }
     const subtotalCents = Math.round(subtotal * 100);
     const deliveryFeeCents = Math.round(deliveryFee * 100);
     apiRequest(
@@ -212,8 +235,9 @@ export default function CheckoutScreen({ route }: any) {
           setSubDeliveryFee(null);
           setSubBenefits([]);
         }
+        setSubPreviewDone(true);
       })
-      .catch(() => {});
+      .catch(() => setSubPreviewDone(true));
   }, [subtotal, deliveryFee, user?.id]);
 
   useEffect(() => {
@@ -839,7 +863,10 @@ export default function CheckoutScreen({ route }: any) {
                       navigation.navigate("DigitalPaymentMethod", {
                         orderTotal: total,
                         orderType: orderTypeLocal,
-                        calculatedDeliveryFee: Math.round(effectiveDeliveryFee * 100),
+                        // En EUROS: Checkout lo consume como euros al volver
+                        // (antes se pasaba en céntimos y el precio se
+                        // multiplicaba por 100 al regresar)
+                        calculatedDeliveryFee: effectiveDeliveryFee,
                       } as any);
                     }}
                     style={styles.changeButton}
@@ -1207,7 +1234,9 @@ export default function CheckoutScreen({ route }: any) {
                       Envío {estimatedTime ? `(~${estimatedTime} min)` : ""}
                     </ThemedText>
                     <ThemedText type="body">
-                      {effectiveDeliveryFee.toFixed(2)} €
+                      {feeResolved
+                        ? `${effectiveDeliveryFee.toFixed(2)} €`
+                        : "Calculando…"}
                     </ThemedText>
                   </View>
                 )}
@@ -1259,7 +1288,9 @@ export default function CheckoutScreen({ route }: any) {
                 <View style={[styles.summaryRow, styles.totalRow]}>
                   <ThemedText type="h3">Total</ThemedText>
                   <ThemedText type="h2" style={{ color: PRIMARY }}>
-                    {totalShown.toFixed(2)} €
+                    {feeResolved && subPreviewDone
+                      ? `${totalShown.toFixed(2)} €`
+                      : "Calculando…"}
                   </ThemedText>
                 </View>
               </View>
@@ -1267,8 +1298,13 @@ export default function CheckoutScreen({ route }: any) {
               {/* Confirm Button */}
               <Pressable
                 onPress={handlePlaceOrder}
-                disabled={isLoading}
-                style={[styles.confirmButton, isLoading && { opacity: 0.6 }]}
+                disabled={isLoading || !feeResolved || !subPreviewDone}
+                style={[
+                  styles.confirmButton,
+                  (isLoading || !feeResolved || !subPreviewDone) && {
+                    opacity: 0.6,
+                  },
+                ]}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#FFF" size="small" />

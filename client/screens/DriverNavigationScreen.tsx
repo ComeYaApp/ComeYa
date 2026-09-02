@@ -34,6 +34,8 @@ type NavProp = NativeStackNavigationProp<RootStackParamList>;
 // El servidor tiene cache + rate limiting para ahorrar costos
 import { apiRequest } from "@/lib/query-client";
 import { decodePolyline, distanceMeters, toCoord } from "@/utils/directions";
+import { snapToRoute } from "@/utils/snapToRoute";
+import { gpsService } from "@/services/gpsService";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { DriverPin } from "@/components/map/DriverPin";
@@ -81,6 +83,16 @@ export default function DriverNavigationScreen() {
   const [loading, setLoading] = useState(true);
   const [routeLoading, setRouteLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  /** Rumbo actual (grados) para la flecha del pin y la rotación del mapa. */
+  const [headingDeg, setHeadingDeg] = useState<number | undefined>(undefined);
+  /** La cámara sigue al conductor (se desactiva al arrastrar el mapa). */
+  const [follow, setFollow] = useState(true);
+  const followRef = useRef(true);
+  const headingRef = useRef<number | null>(null);
+  const lastDisplayRef = useRef<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const routeCoordsRef = useRef<{ latitude: number; longitude: number }[]>([]);
   const lastRerouteAtRef = useRef<number>(0);
@@ -105,6 +117,66 @@ export default function DriverNavigationScreen() {
       .catch(() => {});
   }, [steps, voiceEnabled]);
 
+  // Rumbo efectivo: el del GPS si viene; si no, se calcula del movimiento
+  // entre fixes (rumbo de desplazamiento) y se conserva el último válido.
+  const resolveHeading = (
+    rawHeading: number | null | undefined,
+    coords: { latitude: number; longitude: number },
+  ): number | null => {
+    if (typeof rawHeading === "number" && rawHeading >= 0) {
+      return rawHeading;
+    }
+    const prev = lastDisplayRef.current;
+    if (prev) {
+      const moved = distanceMeters(prev, coords);
+      if (moved >= 3) {
+        // Rumbo de desplazamiento (grados desde el norte)
+        const dLng = ((coords.longitude - prev.longitude) * Math.PI) / 180;
+        const lat1 = (prev.latitude * Math.PI) / 180;
+        const lat2 = (coords.latitude * Math.PI) / 180;
+        const y = Math.sin(dLng) * Math.cos(lat2);
+        const x =
+          Math.cos(lat1) * Math.sin(lat2) -
+          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+      }
+    }
+    return headingRef.current;
+  };
+
+  /** Aplica un fix GPS: snap a la ruta, rumbo, cámara que sigue (Uber 3D). */
+  const applyFix = (
+    coords: { latitude: number; longitude: number },
+    rawHeading?: number | null,
+  ) => {
+    // Snap-to-route: el pin se desliza POR la calle aunque el GPS derive
+    const snap = snapToRoute(coords, routeCoordsRef.current, 30);
+    const display = snap?.snapped ? snap.coordinate : coords;
+
+    setDriverLocation(display);
+    lastDisplayRef.current = display;
+
+    const h = resolveHeading(rawHeading, coords);
+    headingRef.current = h;
+    setHeadingDeg(h ?? undefined);
+
+    // Cámara que sigue con rotación por rumbo e inclinación 3D (estilo
+    // Uber/Glovo). Solo mientras "follow" esté activo (el arrastre del
+    // mapa lo desactiva; el botón crosshair lo reactiva).
+    if (followRef.current) {
+      const camera: any = {
+        center: {
+          latitude: display.latitude,
+          longitude: display.longitude,
+        },
+        pitch: 45,
+        zoom: 17,
+      };
+      if (h !== null) camera.heading = h;
+      mapRef.current?.animateCamera(camera, { duration: 700 });
+    }
+  };
+
   // Inicializar GPS y obtener ruta (1 sola llamada a Directions API)
   useEffect(() => {
     const start = async () => {
@@ -115,27 +187,26 @@ export default function DriverNavigationScreen() {
       }
 
       const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+        accuracy: Location.Accuracy.BestForNavigation,
       });
-      const coords = {
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-      };
-      setDriverLocation(coords);
+      applyFix(
+        { latitude: loc.coords.latitude, longitude: loc.coords.longitude },
+        loc.coords.heading,
+      );
       setLoading(false);
 
       // Obtener ruta real por calles
-      fetchRoute(coords.latitude, coords.longitude);
+      fetchRoute(loc.coords.latitude, loc.coords.longitude);
 
-      // Seguimiento continuo: mueve el marcador, recalcula la ruta si se
-      // desvía y SUBE la posición al servidor (throttle 5s) para que el
-      // cliente y el negocio vean el movimiento en vivo mientras navega
-      let lastPostAt = 0;
+      // Seguimiento continuo (nivel Uber/Glovo): 1 fix/s o cada 5 m CON
+      // rumbo. El envío al servidor lo centraliza gpsService.postFix
+      // (throttle 2 s / 10 m) → el cliente y el negocio ven el movimiento
+      // en vivo mientras navegas.
       locationSubRef.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.Balanced,
-          timeInterval: 5000,
-          distanceInterval: 20,
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000,
+          distanceInterval: 5,
         },
         (l) => {
           // Fix impreciso (túnel, batería ahorrada): no mover el marcador
@@ -146,19 +217,21 @@ export default function DriverNavigationScreen() {
             latitude: l.coords.latitude,
             longitude: l.coords.longitude,
           };
-          setDriverLocation(coords);
+          applyFix(coords, l.coords.heading);
+
+          gpsService.postFix({
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: l.coords.accuracy ?? undefined,
+            heading:
+              typeof l.coords.heading === "number" && l.coords.heading >= 0
+                ? l.coords.heading
+                : undefined,
+            speed: l.coords.speed ?? undefined,
+            timestamp: l.timestamp,
+          });
 
           const now = Date.now();
-          if (now - lastPostAt >= 5000) {
-            lastPostAt = now;
-            apiRequest("POST", "/api/delivery/location", {
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-              accuracy: l.coords.accuracy ?? undefined,
-              timestamp: l.timestamp ?? now,
-            }).catch(() => {});
-          }
-
           if (
             routeCoordsRef.current.length > 2 &&
             now - lastRerouteAtRef.current >= REROUTE_MIN_INTERVAL_MS
@@ -184,6 +257,7 @@ export default function DriverNavigationScreen() {
         .then((Speech) => Speech.stop())
         .catch(() => {});
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchRoute = async (originLat: number, originLng: number) => {
@@ -223,22 +297,13 @@ export default function DriverNavigationScreen() {
           );
         }
       } else if (data.success && data.fallback) {
-        // Fallback: ruta en línea recta con distancia estimada
-        const coords = [
-          { latitude: originLat, longitude: originLng },
-          { latitude: destLat, longitude: destLng },
-        ];
-        routeCoordsRef.current = coords;
-        setRouteCoords(coords);
+        // Google y OSRM caídos: SIN geometría — nunca una línea recta. Se
+        // conservan distancia/ETA estimadas para los textos.
+        routeCoordsRef.current = [];
+        setRouteCoords([]);
         setTotalDistance(data.distance?.text || "");
         setTotalDuration(data.duration?.text || "");
         setSteps([]);
-        if (mapRef.current) {
-          mapRef.current.fitToCoordinates(coords, {
-            edgePadding: { top: 100, right: 50, bottom: 310, left: 50 },
-            animated: true,
-          });
-        }
       }
     } catch (err) {
       console.error("Error fetching directions:", err);
@@ -247,16 +312,20 @@ export default function DriverNavigationScreen() {
   };
 
   const handleRecenter = () => {
-    if (mapRef.current && driverLocation) {
-      mapRef.current.animateToRegion(
-        {
-          ...driverLocation,
-          latitudeDelta: 0.012,
-          longitudeDelta: 0.012,
-        },
-        400,
-      );
-    }
+    if (!driverLocation) return;
+    // Reactivar el seguimiento con cámara 3D orientada al rumbo
+    followRef.current = true;
+    setFollow(true);
+    const camera: any = {
+      center: {
+        latitude: driverLocation.latitude,
+        longitude: driverLocation.longitude,
+      },
+      pitch: 45,
+      zoom: 17,
+    };
+    if (headingRef.current !== null) camera.heading = headingRef.current;
+    mapRef.current?.animateCamera(camera, { duration: 500 });
   };
 
   const handleRefreshRoute = () => {
@@ -297,6 +366,13 @@ export default function DriverNavigationScreen() {
         showsUserLocation={false}
         showsMyLocationButton={false}
         showsTraffic={true}
+        onPanDrag={() => {
+          // El usuario arrastra el mapa → dejar de seguir (como Uber)
+          if (followRef.current) {
+            followRef.current = false;
+            setFollow(false);
+          }
+        }}
       >
         {/* Marcador de posición actual (repartidor o cliente navegando) */}
         {driverLocation && (
@@ -310,6 +386,7 @@ export default function DriverNavigationScreen() {
               color={ComeYaColors.primary}
               size={38}
               showBadge={false}
+              heading={headingDeg}
             />
           </SmartMarker>
         )}
@@ -445,7 +522,11 @@ export default function DriverNavigationScreen() {
           Shadows.md,
         ]}
       >
-        <Feather name="crosshair" size={20} color={ComeYaColors.primary} />
+        <Feather
+          name={follow ? "crosshair" : "navigation-2"}
+          size={20}
+          color={follow ? ComeYaColors.primary : theme.textSecondary}
+        />
       </Pressable>
 
       {/* Panel inferior: instrucciones giro a giro */}

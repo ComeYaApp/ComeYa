@@ -15,18 +15,21 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors, Shadows } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 
 // ---------------------------------------------------------------------------
 // Mapa nativo (solo plataformas nativas)
 // ---------------------------------------------------------------------------
 let MapView: any = null;
 let Marker: any = null;
+let PROVIDER_GOOGLE: any = null;
 
 if (Platform.OS !== "web") {
   try {
     const maps = require("react-native-maps");
     MapView = maps.default;
     Marker = maps.Marker;
+    PROVIDER_GOOGLE = maps.PROVIDER_GOOGLE;
   } catch {
     // react-native-maps no está disponible (ej. web)
   }
@@ -224,9 +227,93 @@ export function BusinessAddressMapPicker({
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Toque en el mapa para reposicionar el pin (solo nativo)
-  // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Mapa WEB real (Google Maps JS con el cargador compartido). Sustituye al
+// antiguo placeholder estático: clic o arrastre del pin para ubicar el
+// negocio, igual que en la app.
+// ---------------------------------------------------------------------------
+const WebMap = ({
+  lat,
+  lng,
+  onPick,
+}: {
+  lat: number | null;
+  lng: number | null;
+  onPick: (e: any) => void;
+}) => {
+  const divRef = useRef<HTMLDivElement>(null);
+  const gmapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadGoogleMaps()
+      .then(() => {
+        if (cancelled || !divRef.current || gmapRef.current) return;
+        const google = (window as any).google;
+        const center =
+          lat && lng ? { lat, lng } : { lat: 41.7639, lng: -2.4645 };
+        gmapRef.current = new google.maps.Map(divRef.current, {
+          center,
+          zoom: 16,
+          disableDefaultUI: true,
+          zoomControl: true,
+          gestureHandling: "greedy",
+        });
+        gmapRef.current.addListener("click", (e: any) => {
+          if (e.latLng)
+            onPick({
+              nativeEvent: {
+                coordinate: {
+                  latitude: e.latLng.lat(),
+                  longitude: e.latLng.lng(),
+                },
+              },
+            });
+        });
+        setReady(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !gmapRef.current || !lat || !lng) return;
+    const google = (window as any).google;
+    const pos = { lat, lng };
+    if (markerRef.current) {
+      markerRef.current.setPosition(pos);
+    } else {
+      markerRef.current = new google.maps.Marker({
+        position: pos,
+        map: gmapRef.current,
+        draggable: true,
+        title: "Tu negocio",
+      });
+      markerRef.current.addListener("dragend", (e: any) => {
+        if (e.latLng)
+          onPick({
+            nativeEvent: {
+              coordinate: {
+                latitude: e.latLng.lat(),
+                longitude: e.latLng.lng(),
+              },
+            },
+          });
+      });
+    }
+  }, [ready, lat, lng, onPick]);
+
+  return <div ref={divRef} style={{ width: "100%", height: "100%" }} />;
+};
+
+// ---------------------------------------------------------------------------
+// Toque en el mapa para reposicionar el pin (nativo)
+// ---------------------------------------------------------------------------
   const handleMapPress = useCallback(
     async (event: any) => {
       const coords = event.nativeEvent.coordinate;
@@ -277,12 +364,8 @@ export function BusinessAddressMapPicker({
   const renderMap = () => {
     if (Platform.OS === "web") {
       return (
-        <View style={[styles.mapPlaceholder, { backgroundColor: theme.backgroundSecondary }]}>
-          <Feather name="map" size={32} color={theme.textSecondary} />
-          <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center", marginTop: Spacing.sm }}>
-            El mapa interactivo no está disponible en la versión web.{'\n'}
-            Usa la búsqueda o el botón GPS para establecer la ubicación.
-          </ThemedText>
+        <View style={styles.map}>
+          <WebMap lat={latitude} lng={longitude} onPick={handleMapPress} />
         </View>
       );
     }
@@ -298,6 +381,7 @@ export function BusinessAddressMapPicker({
     return (
       <MapView
         ref={mapRef}
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={mapRegion}
         onPress={handleMapPress}

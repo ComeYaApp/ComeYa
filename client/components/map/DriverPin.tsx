@@ -15,6 +15,9 @@ interface DriverPinProps {
   pulse?: boolean;
   /** Mostrar el mini-badge del vehículo (por defecto sí) */
   showBadge?: boolean;
+  /** Rumbo en grados (0-360): dibuja una flecha direccional que rota
+   *  alrededor del círculo, estilo Uber/Glovo. La foto NO rota. */
+  heading?: number;
 }
 
 /**
@@ -29,6 +32,7 @@ export function DriverPin({
   label,
   pulse = true,
   showBadge = true,
+  heading,
 }: DriverPinProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -52,6 +56,9 @@ export function DriverPin({
     return () => loop.stop();
   }, [pulse, pulseAnim]);
 
+  const hasHeading =
+    typeof heading === "number" && Number.isFinite(heading) && heading >= 0;
+
   return (
     <View style={styles.wrap}>
       <View style={{ width: size + 14, height: size + 14, alignItems: "center", justifyContent: "center" }}>
@@ -68,6 +75,19 @@ export function DriverPin({
               },
             ]}
           />
+        )}
+        {/* Flecha direccional (rumbo): rota alrededor del círculo */}
+        {hasHeading && (
+          <View style={[styles.headingLayer, { width: size + 14, height: size + 14 }]}>
+            <View style={{ transform: [{ rotate: `${heading}deg` }] }}>
+              <View
+                style={[
+                  styles.nose,
+                  { borderBottomColor: color },
+                ]}
+              />
+            </View>
+          </View>
         )}
         <View
           style={[
@@ -140,6 +160,22 @@ const styles = StyleSheet.create({
     position: "absolute",
     borderWidth: 2,
     opacity: 0.45,
+  },
+  headingLayer: {
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  nose: {
+    // Triángulo apuntando hacia arriba (0° = norte); el rotate del padre
+    // lo orienta según el rumbo del movimiento.
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 8,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
   },
   circle: {
     justifyContent: "center",

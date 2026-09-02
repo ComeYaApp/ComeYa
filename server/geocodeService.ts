@@ -11,14 +11,10 @@ import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 import { googleMapsService } from "./services/googleMapsService";
 
-/** Clave de servidor de Google Maps: GOOGLE_MAPS_API_KEY primero (la de
- *  servidor); la EXPO_PUBLIC (SDK Android) solo como último recurso. */
+/** Clave de servidor de Google Maps: SOLO la Backend Key. La Android
+ *  (restringida por SHA-1) no funciona desde el servidor. */
 export function getMapsServerKey(): string {
-  return (
-    process.env.GOOGLE_MAPS_API_KEY ||
-    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-    ""
-  );
+  return process.env.GOOGLE_MAPS_API_KEY || "";
 }
 
 export interface GeocodeResult {

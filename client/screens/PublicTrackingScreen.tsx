@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -10,12 +10,18 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, ComeYaColors } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { getApiUrl } from "@/lib/query-client";
+import { SmartMarker } from "@/components/map/SmartMarker";
+import { MapPin } from "@/components/map/MapPin";
+import { DriverPin } from "@/components/map/DriverPin";
+import { decodePolyline } from "@/utils/directions";
+import { snapToRoute } from "@/utils/snapToRoute";
+import { CUSTOMER_MARKER, vehicleMarkerMeta } from "@/utils/markerMeta";
 
 type PublicTrackingRouteProp = RouteProp<
   RootStackParamList,
@@ -48,6 +54,11 @@ export default function PublicTrackingScreen() {
   const [order, setOrder] = useState<any>(null);
   const [driverLocation, setDriverLocation] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  // Ruta REAL por calles (proxy del servidor; funciona sin sesión)
+  const [routeCoords, setRouteCoords] = useState<
+    { latitude: number; longitude: number }[]
+  >([]);
+  const lastRouteFetchRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const fetchTracking = useCallback(async () => {
     try {
@@ -64,6 +75,38 @@ export default function PublicTrackingScreen() {
       setError("No se pudo conectar con el servidor");
     }
   }, [token]);
+
+  // Ruta real repartidor → cliente (solo si se movió >100 m o es la primera)
+  useEffect(() => {
+    if (!driverLocation) return;
+    const oLat = order?.deliveryLatitude;
+    const oLng = order?.deliveryLongitude;
+    if (!oLat || !oLng) return;
+    const custLat = parseFloat(oLat);
+    const custLng = parseFloat(oLng);
+    if (!Number.isFinite(custLat) || !Number.isFinite(custLng)) return;
+    const last = lastRouteFetchRef.current;
+    const moved =
+      !last ||
+      Math.abs(last.lat - driverLocation.latitude) > 0.001 ||
+      Math.abs(last.lng - driverLocation.longitude) > 0.001;
+    if (!moved) return;
+    lastRouteFetchRef.current = {
+      lat: driverLocation.latitude,
+      lng: driverLocation.longitude,
+    };
+    fetch(
+      `${getApiUrl()}/api/gps/directions?originLat=${driverLocation.latitude}&originLng=${driverLocation.longitude}&destLat=${custLat}&destLng=${custLng}&mode=driving`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.polyline) {
+          setRouteCoords(decodePolyline(data.polyline));
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driverLocation, order?.deliveryLatitude, order?.deliveryLongitude]);
 
   useEffect(() => {
     fetchTracking();
@@ -83,12 +126,26 @@ export default function PublicTrackingScreen() {
         }
       : null;
 
-  const driverCoord = driverLocation
+  const driverRaw = driverLocation
     ? {
-        latitude: driverLocation.latitude,
-        longitude: driverLocation.longitude,
+        latitude: Number(driverLocation.latitude),
+        longitude: Number(driverLocation.longitude),
       }
     : null;
+  const driverCoord =
+    driverRaw && Number.isFinite(driverRaw.latitude) && Number.isFinite(driverRaw.longitude)
+      ? driverRaw
+      : null;
+
+  // Snap-to-route del repartidor: el pin se desliza POR la calle aunque el
+  // GPS derive; fuera de la ruta (>30 m) se muestra el fix crudo.
+  const driverDisplay =
+    driverCoord && routeCoords.length >= 2
+      ? (() => {
+          const snap = snapToRoute(driverCoord, routeCoords, 30);
+          return snap?.snapped ? snap.coordinate : driverCoord;
+        })()
+      : driverCoord;
 
   return (
     <View
@@ -134,20 +191,42 @@ export default function PublicTrackingScreen() {
               }}
             >
               {customerCoord && (
-                <Marker coordinate={customerCoord} title="Entrega" pinColor="#2563EB" />
+                <SmartMarker
+                  coordinate={customerCoord}
+                  title="Entrega"
+                  anchor={{ x: 0.5, y: 1 }}
+                  trackKey="customer"
+                >
+                  <MapPin
+                    icon={CUSTOMER_MARKER.icon}
+                    color={CUSTOMER_MARKER.color}
+                  />
+                </SmartMarker>
               )}
-              {driverCoord && (
-                <Marker
-                  coordinate={driverCoord}
+              {driverDisplay && (
+                <SmartMarker
+                  coordinate={driverDisplay}
                   title="Repartidor"
-                  pinColor="#10B981"
-                />
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  trackKey="driver"
+                >
+                  <DriverPin
+                    vehicleIcon={vehicleMarkerMeta(undefined).icon}
+                    label="Repartidor"
+                    heading={
+                      typeof driverLocation?.heading === "number"
+                        ? driverLocation.heading
+                        : undefined
+                    }
+                  />
+                </SmartMarker>
               )}
-              {driverCoord && customerCoord && (
+              {/* SOLO ruta real por calles — nunca una línea recta */}
+              {routeCoords.length >= 2 && (
                 <Polyline
-                  coordinates={[driverCoord, customerCoord]}
+                  coordinates={routeCoords}
                   strokeColor="#10B981"
-                  strokeWidth={3}
+                  strokeWidth={4}
                 />
               )}
             </MapView>

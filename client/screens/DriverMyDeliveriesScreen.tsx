@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { displayOrderNumber } from "@/utils/orderNumber";
+import { geocodeAddressProxy } from "@/utils/directions";
 import {
   View,
   StyleSheet,
@@ -673,12 +674,13 @@ export default function DriverMyDeliveriesScreen() {
   /** Navega al destino del pedido según su estado:
    *  - Aceptado/preparando/listo → ir al LOCAL a recoger (coords del negocio)
    *  - Recogido/en camino → ir a la dirección de ENTREGA del cliente
-   *  Si faltan coordenadas, abre Google Maps buscando por dirección. */
-  const showNavigationOptions = (order: any) => {
+   *  Si faltan coordenadas, se geocodifica la dirección vía servidor —
+   *  la navegación es SIEMPRE interna (DriverNavigation). */
+  const showNavigationOptions = async (order: any) => {
     const goingToBusiness = ["accepted", "preparing", "ready"].includes(
       order.status,
     );
-    const { lat, lng } = goingToBusiness
+    let { lat, lng } = goingToBusiness
       ? getBusinessCoordinates(order)
       : getOrderCoordinates(order);
     const address = goingToBusiness
@@ -687,16 +689,19 @@ export default function DriverMyDeliveriesScreen() {
 
     if (lat === null || lng === null) {
       if (address) {
-        Linking.openURL(
-          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`,
-        ).catch(() => {});
+        const coord = await geocodeAddressProxy(address);
+        if (coord) {
+          lat = coord.latitude;
+          lng = coord.longitude;
+        }
+      }
+      if (lat === null || lng === null) {
+        Alert.alert(
+          "Sin datos de navegación",
+          "Este pedido no tiene coordenadas ni dirección localizables. Contacta con el negocio.",
+        );
         return;
       }
-      Alert.alert(
-        "Sin datos de navegación",
-        "Este pedido no tiene coordenadas ni dirección guardadas. Contacta con el negocio.",
-      );
-      return;
     }
 
     navigation.navigate("DriverNavigation", {

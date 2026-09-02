@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -38,6 +38,8 @@ import {
   vehicleMarkerMeta,
   CUSTOMER_MARKER,
 } from "@/utils/markerMeta";
+import { mapStyleForTheme } from "@/utils/mapStyle";
+import { snapToRoute, formatRemaining } from "@/utils/snapToRoute";
 
 interface Location {
   latitude: number;
@@ -65,6 +67,8 @@ interface CollapsibleMapProps {
   onCallDriver?: () => void;
   onNavigateInApp?: (travelMode?: "driving" | "walking") => void; // navegación interna (pickup), sin apps externas
   isPickup?: boolean; // Nuevo: indica si es pedido pickup
+  /** Rumbo del repartidor (grados 0-360) para rotar su pin. */
+  driverHeading?: number;
 }
 
 const { width } = Dimensions.get("window");
@@ -139,9 +143,11 @@ export function CollapsibleMap({
   onCallDriver,
   onNavigateInApp,
   isPickup = false,
+  driverHeading,
 }: CollapsibleMapProps) {
   const { theme, isDark } = useTheme();
   const [mapAvailable, setMapAvailable] = useState(false);
+  const mapRef = useRef<any>(null);
   // Modo de desplazamiento del cliente en recogida propia (coche o a pie)
   const [pickupMode, setPickupMode] = useState<"driving" | "walking">("driving");
   // Ruta real por calles (Google Directions vía /api/gps/directions)
@@ -298,6 +304,57 @@ export function CollapsibleMap({
   // Solo rutas reales por calles: sin geometría descargada no se dibuja NADA
   // (nada de líneas rectas o triángulos inventados).
   const routeCoords = routePath;
+
+  // Snap-to-route del repartidor: el pin se desliza POR la calle aunque el
+  // GPS derive (túneles, cañones de edificios, GPS urbano). Si el fix se
+  // aleja >30 m de la ruta se muestra crudo — nunca se inventa posición.
+  const driverDisplay =
+    deliveryPersonLocation && isValidLocation(deliveryPersonLocation)
+      ? (() => {
+          const snap =
+            routeCoords.length >= 2
+              ? snapToRoute(deliveryPersonLocation, routeCoords, 30)
+              : null;
+          return snap?.snapped ? snap.coordinate : deliveryPersonLocation;
+        })()
+      : null;
+
+  // Recentrar: en delivery sigue al REPARTIDOR; en pickup centra al cliente
+  const handleRecenter = () => {
+    const target: any = !isPickup ? driverDisplay : customerLocation;
+    const t = isValidLocation(target)
+      ? target
+      : isValidLocation(businessLocation)
+        ? businessLocation
+        : null;
+    if (t && mapRef.current?.animateToRegion) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: t.latitude,
+          longitude: t.longitude,
+          latitudeDelta: 0.008,
+          longitudeDelta: 0.008,
+        },
+        400,
+      );
+    }
+  };
+
+  // Recogida A PIE: distancia/ETA RESTANTES sobre la ruta peatonal según la
+  // posición real del cliente (se actualiza al caminar, estilo Glovo).
+  const remainingText = useMemo(() => {
+    if (
+      !isPickup ||
+      pickupMode !== "walking" ||
+      !customerLocation ||
+      !isValidLocation(customerLocation) ||
+      routeCoords.length < 2
+    )
+      return null;
+    const snap = snapToRoute(customerLocation, routeCoords, 40);
+    if (!snap) return null;
+    return formatRemaining(snap.remainingMeters, "walking");
+  }, [isPickup, pickupMode, customerLocation, routeCoords]);
   const hasAnyLocation = [
     businessLocation,
     deliveryPersonLocation,
@@ -310,6 +367,8 @@ export function CollapsibleMap({
       <View style={styles.mapContainer}>
         {mapAvailable && hasAnyLocation ? (
           <MapView
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
             style={styles.map}
             initialRegion={getInitialRegion()}
             showsUserLocation={false}
@@ -317,7 +376,7 @@ export function CollapsibleMap({
             showsCompass={false}
             showsTraffic={false}
             mapType="standard"
-            customMapStyle={isDark ? darkMapStyle : []}
+            customMapStyle={mapStyleForTheme(isDark)}
           >
             {/* Business marker — burbuja con icono del tipo de negocio */}
             {isValidLocation(businessLocation) && (
@@ -336,9 +395,9 @@ export function CollapsibleMap({
             )}
 
             {/* Driver marker — foto/vehículo con anillo pulsante (SOLO DELIVERY) */}
-            {!isPickup && isValidLocation(deliveryPersonLocation) && (
+            {!isPickup && driverDisplay && (
               <SmartMarker
-                coordinate={deliveryPersonLocation}
+                coordinate={driverDisplay}
                 title={driverName || "Repartidor"}
                 anchor={{ x: 0.5, y: 0.5 }}
                 trackKey={`drv-${driverVehicle ?? ""}-${driverPhoto ?? ""}`}
@@ -347,6 +406,7 @@ export function CollapsibleMap({
                   vehicleIcon={vehicleMarkerMeta(driverVehicle).icon}
                   photo={driverPhoto}
                   label={eta}
+                  heading={driverHeading}
                 />
               </SmartMarker>
             )}
@@ -434,6 +494,18 @@ export function CollapsibleMap({
             </ThemedText>
           </View>
         )}
+
+        {/* Botón seguir/recentrar — bottom right del mapa */}
+        <Pressable
+          onPress={handleRecenter}
+          style={[styles.recenterBtn, { backgroundColor: theme.card }]}
+        >
+          <Feather
+            name="crosshair"
+            size={17}
+            color={ComeYaColors.primary}
+          />
+        </Pressable>
       </View>
 
       {/* Driver card — bottom overlay (SOLO DELIVERY) */}
@@ -534,7 +606,15 @@ export function CollapsibleMap({
                 <ThemedText type="h4" numberOfLines={1}>
                   {businessName || "Recogida en el local"}
                 </ThemedText>
-                {routeInfo?.distanceText && routeInfo?.durationText ? (
+                {remainingText ? (
+                  <ThemedText
+                    type="caption"
+                    style={{ color: "#10B981", fontWeight: "700" }}
+                    numberOfLines={1}
+                  >
+                    Te quedan {remainingText}
+                  </ThemedText>
+                ) : routeInfo?.distanceText && routeInfo?.durationText ? (
                   <ThemedText
                     type="caption"
                     style={{ color: theme.textSecondary }}
@@ -551,7 +631,7 @@ export function CollapsibleMap({
                   >
                     {isValidLocation(businessLocation)
                       ? "Sigue la ruta hasta el local"
-                      : "Abre Google Maps para llegar al local"}
+                      : "Trazando la ruta hasta el local…"}
                   </ThemedText>
                 )}
                 {/* Selector de modo de desplazamiento: coche o a pie */}
@@ -626,29 +706,6 @@ export function CollapsibleMap({
   );
 }
 
-const darkMapStyle = [
-  { elementType: "geometry", stylers: [{ color: "#212121" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#212121" }] },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#373737" }],
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#3c3c3c" }],
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#000000" }],
-  },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-];
-
 const styles = StyleSheet.create({
   wrapper: {
     marginBottom: Spacing.lg,
@@ -662,6 +719,17 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+  },
+  recenterBtn: {
+    position: "absolute",
+    right: Spacing.md,
+    bottom: Spacing.md,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: "center",
+    alignItems: "center",
+    ...Shadows.sm,
   },
   mapFallback: {
     flex: 1,

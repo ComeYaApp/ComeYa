@@ -27,6 +27,7 @@ import {
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { decodePolyline, toCoord, distanceMeters } from "@/utils/directions";
+import { gpsService } from "@/services/gpsService";
 import { routePhaseForStatus } from "@/utils/routePhase";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
@@ -239,7 +240,8 @@ export default function DriverMapScreen() {
     routeLoadingRef.current = false;
   }, [driverLocation, activeOrder, routeCoords.length]);
 
-  // GPS en tiempo real
+  // GPS en tiempo real (nivel Uber/Glovo: 1 fix/s con rumbo; envío al
+  // servidor centralizado en gpsService.postFix con throttle 2 s / 10 m)
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
 
@@ -252,7 +254,7 @@ export default function DriverMapScreen() {
       }
 
       const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+        accuracy: Location.Accuracy.BestForNavigation,
       });
       setDriverLocation({
         latitude: loc.coords.latitude,
@@ -262,9 +264,9 @@ export default function DriverMapScreen() {
 
       sub = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 5000,
-          distanceInterval: 10,
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000,
+          distanceInterval: 5,
         },
         (l) => {
           // Fix impreciso: no mover el marcador ni subirlo al servidor
@@ -276,15 +278,18 @@ export default function DriverMapScreen() {
             longitude: l.coords.longitude,
           };
           setDriverLocation(coords);
-          // Enviar ubicación al servidor
-          apiRequest("POST", "/api/delivery/location", {
-            deliveryPersonId: user?.id,
-            latitude: l.coords.latitude.toString(),
-            longitude: l.coords.longitude.toString(),
+          // Enviar ubicación al servidor (throttle interno)
+          gpsService.postFix({
+            latitude: l.coords.latitude,
+            longitude: l.coords.longitude,
             accuracy: l.coords.accuracy ?? undefined,
-            timestamp: l.timestamp ?? Date.now(),
-            isOnline: true,
-          }).catch(() => {});
+            heading:
+              typeof l.coords.heading === "number" && l.coords.heading >= 0
+                ? l.coords.heading
+                : undefined,
+            speed: l.coords.speed ?? undefined,
+            timestamp: l.timestamp,
+          });
         },
       );
     };
@@ -298,6 +303,7 @@ export default function DriverMapScreen() {
       sub?.remove();
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cargar negocios cuando tengamos ubicación

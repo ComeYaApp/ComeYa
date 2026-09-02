@@ -38,7 +38,7 @@ import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { displayOrderNumber, orderNumberLabel } from "@/utils/orderNumber";
 import { printInvoiceNative } from "@/utils/invoice";
-import { toCoord } from "@/utils/directions";
+import { toCoord, geocodeAddressProxy } from "@/utils/directions";
 import {
   ISSUE_LABELS,
   ISSUE_STATUS_LABELS,
@@ -104,6 +104,10 @@ export default function OrderTrackingScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  /** Rumbo del repartidor (grados) para rotar el pin del mapa. */
+  const [driverHeading, setDriverHeading] = useState<number | undefined>(
+    undefined,
+  );
   const [businessLocation, setBusinessLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -198,6 +202,7 @@ export default function OrderTrackingScreen() {
       latitude: socketLocation.latitude,
       longitude: socketLocation.longitude,
     });
+    setDriverHeading(socketLocation.heading ?? undefined);
   }, [socketLocation]);
 
   // Fetch inicial inmediato (hasta que conecte el socket)
@@ -220,6 +225,8 @@ export default function OrderTrackingScreen() {
               data.location.longitude,
             );
             if (coord) setDeliveryLocation(coord);
+            const h = Number(data.location.heading);
+            if (Number.isFinite(h) && h >= 0) setDriverHeading(h);
           }
         }
       } catch (error) {
@@ -470,10 +477,11 @@ export default function OrderTrackingScreen() {
     Linking.openURL(`https://wa.me/${cleanPhone}`);
   };
 
-  /** "Cómo llegar" al local: usa la navegación interna si hay coordenadas
-   *  del negocio y, si no, abre Google Maps buscando por dirección.
+  /** "Cómo llegar" al local: navegación turn-by-turn INTERNA siempre. Si no
+   *  hay coordenadas del negocio, se geocodifica su dirección vía servidor
+   *  (caché 24h) — nunca se abre Google Maps externo.
    *  travelMode: coche o a pie (elegido en la tarjeta de recogida). */
-  const handleNavigateToBusiness = (
+  const handleNavigateToBusiness = async (
     travelMode?: "driving" | "walking",
   ) => {
     if (businessLocation) {
@@ -491,10 +499,20 @@ export default function OrderTrackingScreen() {
     }
     const query = businessAddressText || order?.businessName;
     if (query) {
-      const modeSuffix = travelMode === "walking" ? "&travelmode=walking" : "";
-      Linking.openURL(
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}${modeSuffix}`,
-      ).catch(() => {});
+      const coord = await geocodeAddressProxy(query);
+      if (coord) {
+        navigation.navigate("DriverNavigation", {
+          destLat: coord.latitude,
+          destLng: coord.longitude,
+          destAddress: query,
+          travelMode,
+        });
+        return;
+      }
+      Alert.alert(
+        "No pudimos localizar el local",
+        "Reinténtalo en unos segundos.",
+      );
     }
   };
 
@@ -1257,6 +1275,7 @@ export default function OrderTrackingScreen() {
           <CollapsibleMap
             businessLocation={businessLocation || undefined}
             deliveryPersonLocation={deliveryLocation || undefined}
+            driverHeading={driverHeading}
             customerLocation={userLocation || undefined}
             businessName={order.businessName}
             businessType={businessType || undefined}

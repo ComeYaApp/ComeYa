@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -20,7 +21,8 @@ import {
   BorderRadius,
   Shadows,
 } from "@/constants/theme";
-import { apiRequest } from "@/lib/query-client";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
 import { fetchRouteDirections, distanceMeters } from "@/utils/directions";
 import { routePhaseForStatus } from "@/utils/routePhase";
 import { SmartMarker } from "@/components/map/SmartMarker";
@@ -96,6 +98,7 @@ export default function BusinessDeliveryMapScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const { user } = useAuth();
   const mapRef = useRef<MapView>(null);
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -158,6 +161,71 @@ export default function BusinessDeliveryMapScreen() {
     const interval = setInterval(fetchDeliveries, 15000);
     return () => clearInterval(interval);
   }, [fetchDeliveries]);
+
+  // ── Repartidor EN VIVO por websocket ── La sala business:{id} ya recibe
+  // driver_location cada 2 s desde el servidor; antes los pines se movían
+  // a saltos de 15 s (polling). El polling queda como respaldo para
+  // estados/estadísticas/rutas.
+  const businessIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    businessIdsRef.current = new Set(
+      deliveries
+        .map((d) => d.businessId)
+        .filter((id): id is string => !!id),
+    );
+  }, [deliveries]);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    let cancelled = false;
+    let socket: any = null;
+    (async () => {
+      try {
+        const { io } = await import("socket.io-client");
+        if (cancelled) return;
+        socket = io(getApiUrl(), {
+          transports: ["websocket", "polling"],
+          reconnection: true,
+        });
+        const joinAll = () => {
+          socket.emit("join", {
+            userId: user?.id,
+            role: "business_owner",
+            businessId: (user as any)?.businessId,
+          });
+          businessIdsRef.current.forEach((bid) =>
+            socket.emit("join", {
+              userId: user?.id,
+              role: "business_owner",
+              businessId: bid,
+            }),
+          );
+        };
+        socket.on("connect", joinAll);
+        socket.on("driver_location", (loc: any) => {
+          const lat = Number(loc?.latitude);
+          const lng = Number(loc?.longitude);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          setDeliveries((prev) =>
+            prev.map((d) =>
+              d.orderId === loc.orderId && d.driver
+                ? {
+                    ...d,
+                    driver: { ...d.driver, lat, lng },
+                  }
+                : d,
+            ),
+          );
+        });
+      } catch {
+        // sin socket → el polling de 15 s sigue funcionando
+      }
+    })();
+    return () => {
+      cancelled = true;
+      socket?.disconnect();
+    };
+  }, [user?.id, (user as any)?.businessId]);
 
   // Rutas reales por calles para pedidos con repartidor, según la FASE:
   // recogida → repartidor→NEGOCIO; entrega (picked_up+) → repartidor→CLIENTE.

@@ -107,12 +107,17 @@ export function useDriverLocationSocket(
         );
         if (res.ok) {
           const data = await res.json();
-          if (!cancelled && data?.latitude != null && data?.longitude != null) {
+          // El endpoint devuelve { location: {...} }
+          const loc = data?.location ?? data;
+          if (!cancelled && loc?.latitude != null && loc?.longitude != null) {
             setLocation({
               orderId,
-              latitude: parseFloat(data.latitude),
-              longitude: parseFloat(data.longitude),
-              lastUpdate: data.lastUpdate,
+              latitude: parseFloat(loc.latitude),
+              longitude: parseFloat(loc.longitude),
+              heading:
+                loc.heading != null ? parseFloat(loc.heading) : undefined,
+              speed: loc.speed != null ? parseFloat(loc.speed) : undefined,
+              lastUpdate: loc.lastUpdate,
             });
           }
         }

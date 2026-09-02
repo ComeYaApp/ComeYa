@@ -232,12 +232,21 @@ export async function handleDriverLocationUpdate(
   const latitude = Number(rawLatitude);
   const longitude = Number(rawLongitude);
 
-  // 1. Persistir ubicación
+  // 1. Persistir ubicación (heading/speed para polling de negocio y link
+  //    público de seguimiento, que no pasan por websocket)
   await db
     .update(deliveryDrivers)
     .set({
       currentLatitude: latitude.toString(),
       currentLongitude: longitude.toString(),
+      currentHeading:
+        extra?.heading != null && Number.isFinite(extra.heading)
+          ? extra.heading.toString()
+          : null,
+      currentSpeed:
+        extra?.speed != null && Number.isFinite(extra.speed)
+          ? extra.speed.toString()
+          : null,
       lastLocationUpdate: new Date(),
     })
     .where(eq(deliveryDrivers.userId, userId));
@@ -250,6 +259,11 @@ export async function handleDriverLocationUpdate(
       and(
         eq(orders.deliveryPersonId, userId),
         inArray(orders.status, [
+          // "assigned"/"assigned_driver": ya hay repartidor asignado — el
+          // cliente debe ver el movimiento desde la asignación, no desde
+          // que el negocio marque "preparing".
+          "assigned",
+          "assigned_driver",
           "accepted",
           "preparing",
           "ready",

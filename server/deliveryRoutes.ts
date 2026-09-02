@@ -141,7 +141,8 @@ router.post(
   requireApprovedDriver,
   asyncHandler(async (req, res) => {
     const userId = (req as any).user.id;
-    const { latitude, longitude, accuracy, timestamp } = req.body;
+    const { latitude, longitude, accuracy, timestamp, heading, speed } =
+      req.body;
 
     if (!latitude || !longitude) {
       throw new ValidationError("Latitude and longitude required");
@@ -149,11 +150,14 @@ router.post(
 
     // Pipeline unificado: persiste ubicación, emite websocket y ejecuta
     // checks throttled (proximidad, ETA, arriving, geofences).
-    // accuracy/timestamp alimentan el filtro anti-teletransporte.
+    // accuracy/timestamp alimentan el filtro anti-teletransporte;
+    // heading/speed alimentan la rotación del pin y la cámara del mapa.
     const { handleDriverLocationUpdate } = await import("./trackingPipeline");
     await handleDriverLocationUpdate(userId, latitude, longitude, {
       accuracy: Number(accuracy) || undefined,
       timestamp: Number(timestamp) || undefined,
+      heading: Number(heading) || undefined,
+      speed: Number(speed) || undefined,
     });
 
     res.json({ success: true });
@@ -1235,6 +1239,8 @@ router.get(
       location: {
         latitude: driver.currentLatitude,
         longitude: driver.currentLongitude,
+        heading: driver.currentHeading,
+        speed: driver.currentSpeed,
         lastUpdate: driver.lastLocationUpdate,
         vehicleType: driver.vehicleType,
         photo: driverUser?.profilePicture || null,

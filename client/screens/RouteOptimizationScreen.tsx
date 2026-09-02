@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { Colors } from "../constants/Colors";
 import { useAuth } from "../contexts/AuthContext";
-import MapView, { Polyline } from "react-native-maps";
+import MapView, { Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { DriverPin } from "@/components/map/DriverPin";
 import { NumberPin } from "@/components/map/NumberPin";
@@ -341,6 +341,7 @@ export default function RouteOptimizationScreen({ navigation }: any) {
 
           <View style={styles.mapContainer}>
             <MapView
+              provider={PROVIDER_GOOGLE}
               style={styles.map}
               initialRegion={{
                 latitude: optimizedRoute.nodes[0]?.lat ?? 41.7636,

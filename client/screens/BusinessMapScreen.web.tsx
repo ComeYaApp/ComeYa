@@ -31,10 +31,10 @@ import {
 } from "@/utils/markerMeta";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useAuth } from "@/contexts/AuthContext";
+import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const GOOGLE_MAPS_API_KEY = "";
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 
 interface BusinessPin {
@@ -81,34 +81,6 @@ const CATEGORIES = [
   { key: "pharmacy", label: "Farmacia", icon: "plus-circle" },
 ];
 
-// Inyectar Google Maps script una sola vez
-function loadGoogleMaps(): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    if ((window as any).google?.maps) {
-      resolve();
-      return;
-    }
-    const existing = document.getElementById("gmap-script");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      return;
-    }
-    const script = document.createElement("script");
-    script.id = "gmap-script";
-    const k = await fetch(
-      (process.env.EXPO_PUBLIC_BACKEND_URL || "") + "/api/config/maps-key",
-    )
-      .then((r) => r.json())
-      .then((d) => d.key)
-      .catch(() => GOOGLE_MAPS_API_KEY);
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${k}&libraries=geometry`;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
-
 export default function BusinessMapScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
@@ -144,7 +116,7 @@ export default function BusinessMapScreen() {
 
   // Cargar Google Maps
   useEffect(() => {
-    loadGoogleMaps()
+    loadGoogleMaps(["geometry"])
       .then(() => setMapsReady(true))
       .catch(() => console.error("Error cargando Google Maps"));
   }, []);
@@ -510,12 +482,86 @@ export default function BusinessMapScreen() {
     gmap.current?.setZoom(15);
   }, [userLocation]);
 
-  const handleDirections = useCallback((b: BusinessPin) => {
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}`,
-      "_blank",
-    );
+  // "Cómo llegar" SIN salir de la app: dibuja la ruta real por calles desde
+  // tu posición hasta el negocio en el propio mapa + panel con pasos.
+  const myRouteLineRef = useRef<any>(null);
+  const [directions, setDirections] = useState<{
+    business: BusinessPin;
+    distanceText?: string;
+    durationText?: string;
+    steps: { instruction: string; distance?: { text: string } }[];
+    noRoute: boolean;
+  } | null>(null);
+
+  const clearDirections = useCallback(() => {
+    if (myRouteLineRef.current) {
+      myRouteLineRef.current.setMap(null);
+      myRouteLineRef.current = null;
+    }
+    setDirections(null);
   }, []);
+
+  const handleDirections = useCallback(
+    async (b: BusinessPin) => {
+      const google = (window as any).google;
+      const dest = { latitude: b.latitude, longitude: b.longitude };
+      const from = userLocation
+        ? { latitude: userLocation.lat, longitude: userLocation.lng }
+        : null;
+
+      if (myRouteLineRef.current) {
+        myRouteLineRef.current.setMap(null);
+        myRouteLineRef.current = null;
+      }
+
+      if (!from) {
+        setDirections({
+          business: b,
+          steps: [],
+          noRoute: true,
+        });
+        gmap.current?.panTo({ lat: b.latitude, lng: b.longitude });
+        gmap.current?.setZoom(15);
+        return;
+      }
+
+      const route = await fetchRouteDirections(from, dest);
+      if (route && route.coordinates.length >= 2) {
+        myRouteLineRef.current = new google.maps.Polyline({
+          path: route.coordinates.map((c) => ({
+            lat: c.latitude,
+            lng: c.longitude,
+          })),
+          geodesic: true,
+          strokeColor: ComeYaColors.primary,
+          strokeOpacity: 0.9,
+          strokeWeight: 5,
+          map: gmap.current,
+        });
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend({ lat: from.latitude, lng: from.longitude });
+        bounds.extend({ lat: b.latitude, lng: b.longitude });
+        gmap.current?.fitBounds(bounds, {
+          top: 80,
+          right: 80,
+          bottom: 260,
+          left: 80,
+        });
+        setDirections({
+          business: b,
+          distanceText: route.distanceText,
+          durationText: route.durationText,
+          steps: route.steps ?? [],
+          noRoute: false,
+        });
+      } else {
+        setDirections({ business: b, steps: [], noRoute: true });
+        gmap.current?.panTo({ lat: b.latitude, lng: b.longitude });
+        gmap.current?.setZoom(15);
+      }
+    },
+    [userLocation],
+  );
 
   const visibleCount =
     categoryFilter === "all"
@@ -625,6 +671,94 @@ export default function BusinessMapScreen() {
           </ThemedText>
         </View>
       </View>
+
+      {/* Panel "Cómo llegar" — ruta dibujada en el propio mapa */}
+      {directions && (
+        <View
+          style={[
+            s.dirPanel,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              bottom: insets.bottom + (selected ? 210 : 24),
+            },
+            Shadows.md,
+          ]}
+        >
+          <View style={s.dirHeader}>
+            <Feather name="corner-down-right" size={15} color={ComeYaColors.primary} />
+            <ThemedText
+              type="body"
+              style={{ fontWeight: "700", flex: 1, marginLeft: 6 }}
+              numberOfLines={1}
+            >
+              A {directions.business.name}
+            </ThemedText>
+            <Pressable onPress={clearDirections} style={s.dirClose}>
+              <Feather name="x" size={16} color={theme.textSecondary} />
+            </Pressable>
+          </View>
+          {directions.noRoute ? (
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary, marginTop: 4 }}
+            >
+              {userLocation
+                ? "No pudimos trazar la ruta ahora mismo. Reintenta en unos segundos."
+                : "Activa tu ubicación para trazar la ruta desde donde estás."}
+            </ThemedText>
+          ) : (
+            <>
+              {(directions.distanceText || directions.durationText) && (
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: theme.textSecondary,
+                    marginTop: 2,
+                    fontWeight: "600",
+                  }}
+                >
+                  {[
+                    directions.durationText,
+                    directions.distanceText,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </ThemedText>
+              )}
+              {directions.steps.length > 0 && (
+                <View style={s.dirSteps}>
+                  {directions.steps.slice(0, 5).map((st, i) => (
+                    <View key={i} style={s.dirStepRow}>
+                      <ThemedText
+                        type="caption"
+                        style={{ color: ComeYaColors.primary, width: 16 }}
+                      >
+                        {i + 1}
+                      </ThemedText>
+                      <ThemedText
+                        type="caption"
+                        style={{ flex: 1 }}
+                        numberOfLines={1}
+                      >
+                        {st.instruction}
+                      </ThemedText>
+                      {st.distance?.text ? (
+                        <ThemedText
+                          type="caption"
+                          style={{ color: theme.textSecondary }}
+                        >
+                          {st.distance.text}
+                        </ThemedText>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      )}
 
       {/* Card negocio seleccionado */}
       {selected && (
@@ -1004,6 +1138,23 @@ const s = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  // Panel "Cómo llegar" (ruta + pasos dentro de la app)
+  dirPanel: {
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    borderWidth: 1,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.md,
+    zIndex: 30,
+  },
+  dirHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  dirClose: { padding: 4 },
+  dirSteps: { marginTop: Spacing.sm, gap: 4 },
+  dirStepRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   legend: {
     position: "absolute",
     right: Spacing.lg,

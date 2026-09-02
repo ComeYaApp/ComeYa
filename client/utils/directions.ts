@@ -132,6 +132,22 @@ export async function fetchRouteDirections(
   }
 }
 
+/** Geocodifica una dirección vía proxy del servidor (caché 24h; requiere
+ *  sesión). Devuelve null si no se puede resolver — nunca abre mapas externos. */
+export async function geocodeAddressProxy(
+  address: string,
+): Promise<RouteCoordinate | null> {
+  if (!address || address.trim().length < 3) return null;
+  try {
+    const res = await apiRequest("POST", "/api/gps/geocode", { address });
+    const data = await res.json();
+    if (!data?.success) return null;
+    return toCoord(data.lat, data.lng);
+  } catch {
+    return null;
+  }
+}
+
 /** Distancia en metros entre dos coordenadas (para decidir cuándo refrescar ruta). */
 export function distanceMeters(
   a: RouteCoordinate,

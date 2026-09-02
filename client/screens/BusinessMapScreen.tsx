@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
-  Linking,
   Platform,
   Dimensions,
   Image as RNImage,
@@ -42,6 +41,7 @@ import {
   vehicleMarkerMeta,
   CUSTOMER_MARKER,
 } from "@/utils/markerMeta";
+import { mapStyleForTheme } from "@/utils/mapStyle";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -101,6 +101,7 @@ export default function BusinessMapScreen() {
   const [MapView, setMapView] = useState<any>(null);
   const [Marker, setMarker] = useState<any>(null);
   const [Polyline, setPolyline] = useState<any>(null);
+  const [ProviderGoogle, setProviderGoogle] = useState<any>(null);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   // Rutas reales por calles por pedido (decodificadas del servidor)
   const [orderRoutes, setOrderRoutes] = useState<
@@ -136,6 +137,7 @@ export default function BusinessMapScreen() {
         setMarker(() => mod.Marker);
         setPolyline(() => mod.Polyline);
         setCircle(() => mod.Circle);
+        setProviderGoogle(() => mod.PROVIDER_GOOGLE);
       });
     }
   }, []);
@@ -373,14 +375,15 @@ export default function BusinessMapScreen() {
     );
   }, []);
 
+  // "Cómo llegar" SIEMPRE dentro de la app: navegación turn-by-turn propia
+  // (DriverNavigation sirve también al cliente, como en la recogida a pie).
   const handleDirections = useCallback((business: BusinessPin) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const url = Platform.select({
-      ios: `maps://app?daddr=${business.latitude},${business.longitude}`,
-      android: `google.navigation:q=${business.latitude},${business.longitude}`,
-      default: `https://www.google.com/maps/dir/?api=1&destination=${business.latitude},${business.longitude}`,
+    navigation.navigate("DriverNavigation", {
+      destLat: business.latitude,
+      destLng: business.longitude,
+      destAddress: business.name || "Negocio",
     });
-    Linking.openURL(url!);
   }, []);
 
   const handleCenterUser = useCallback(() => {
@@ -442,11 +445,13 @@ export default function BusinessMapScreen() {
       {/* Mapa */}
       <MapView
         ref={mapRef}
+        provider={ProviderGoogle}
         style={StyleSheet.absoluteFillObject}
         initialRegion={DEFAULT_REGION}
         showsUserLocation
         showsMyLocationButton={false}
         userInterfaceStyle={isDark ? "dark" : "light"}
+        customMapStyle={mapStyleForTheme(isDark)}
       >
         {/* Radio de cobertura */}
         {Circle && userLocation && (
