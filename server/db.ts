@@ -480,6 +480,35 @@ export async function runStartupMigrations(): Promise<void> {
       if (err.code !== "ER_DUP_FIELDNAME")
         console.log("Migration note (substitutions.quantity):", err.message);
     }
+
+    // ── Push MULTI-DISPOSITIVO ───────────────────────────────────────────
+    // users.push_token solo guarda UN token por usuario (el último teléfono
+    // en abrir la app "robaba" las notificaciones al resto). push_tokens
+    // guarda TODOS los tokens del usuario: cada dispositivo registra el
+    // suyo y el envío va a todos los activos.
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS push_tokens (
+          id VARCHAR(255) NOT NULL DEFAULT (UUID()) PRIMARY KEY,
+          user_id VARCHAR(255) NOT NULL,
+          token VARCHAR(255) NOT NULL,
+          platform VARCHAR(20) DEFAULT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_push_token (token),
+          KEY idx_push_tokens_user (user_id)
+        )`,
+      );
+      // Primer arranque tras el deploy: copiar el token único histórico de
+      // cada usuario (INSERT IGNORE: si ya existe la fila, se conserva)
+      await conn.query(
+        `INSERT IGNORE INTO push_tokens (user_id, token)
+         SELECT id, push_token FROM users WHERE push_token IS NOT NULL AND push_token != ''`,
+      );
+      console.log("✅ push_tokens table ready");
+    } catch (err: any) {
+      console.log("Migration note (push_tokens):", err.message);
+    }
   } finally {
     conn.release();
   }

@@ -61,19 +61,47 @@ router.get("/:id/issues", authenticateToken, async (req, res) => {
   }
 });
 
-// PUT /api/users/push-token — registrar Expo push token
+// PUT /api/users/push-token — registrar Expo push token (multi-dispositivo)
 router.put("/push-token", authenticateToken, async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, platform } = req.body;
     if (!token || !token.startsWith("ExponentPushToken[")) {
       return res.status(400).json({ error: "Token inválido" });
     }
-    const { users } = await import("@shared/schema-mysql");
+    const { users, pushTokens } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const userId = req.user!.id as string;
+    const now = new Date();
+
+    // Compatibilidad/legacy: la columna única sigue guardando el último
     await db
       .update(users)
-      .set({ pushToken: token, updatedAt: new Date() })
-      .where(eq(users.id, req.user!.id as string));
+      .set({ pushToken: token, updatedAt: now })
+      .where(eq(users.id, userId));
+
+    // MULTI-DISPOSITIVO: upsert POR TOKEN — cada teléfono conserva su fila.
+    // Si el mismo token vuelve a registrarse (otra apertura, otro usuario
+    // en el mismo teléfono) se REASIGNA al usuario actual, no se duplica.
+    const [existing] = await db
+      .select({ id: pushTokens.id })
+      .from(pushTokens)
+      .where(eq(pushTokens.token, token))
+      .limit(1);
+    if (existing) {
+      await db
+        .update(pushTokens)
+        .set({ userId, platform: platform || null, updatedAt: now })
+        .where(eq(pushTokens.token, token));
+    } else {
+      await db.insert(pushTokens).values({
+        userId,
+        token,
+        platform:
+          typeof platform === "string" && platform.length <= 20
+            ? platform
+            : null,
+      } as any);
+    }
     res.json({ success: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

@@ -148,6 +148,17 @@ export function CollapsibleMap({
   const { theme, isDark } = useTheme();
   const [mapAvailable, setMapAvailable] = useState(false);
   const mapRef = useRef<any>(null);
+  // Rumbo efectivo del repartidor: si el WS deja de mandarlo (repartidor
+  // parado), se conserva el último — la flecha se queda quieta, no se borra
+  const [latchedHeading, setLatchedHeading] = useState<number | undefined>(
+    driverHeading,
+  );
+  useEffect(() => {
+    if (typeof driverHeading === "number" && Number.isFinite(driverHeading)) {
+      setLatchedHeading(driverHeading);
+    }
+  }, [driverHeading]);
+  const effectiveHeading = latchedHeading;
   // Modo de desplazamiento del cliente en recogida propia (coche o a pie)
   const [pickupMode, setPickupMode] = useState<"driving" | "walking">("driving");
   // Ruta real por calles (Google Directions vía /api/gps/directions)
@@ -400,13 +411,16 @@ export function CollapsibleMap({
                 coordinate={driverDisplay}
                 title={driverName || "Repartidor"}
                 anchor={{ x: 0.5, y: 0.5 }}
-                trackKey={`drv-${driverVehicle ?? ""}-${driverPhoto ?? ""}`}
+                // El heading va en el trackKey (redondeado a 3°): si no, la
+                // vista del marcador queda congelada en Android y la flecha
+                // "no gira nunca"
+                trackKey={`drv-${driverVehicle ?? ""}-${driverPhoto ?? ""}-${effectiveHeading != null ? Math.round(effectiveHeading / 3) : "no"}`}
               >
                 <DriverPin
                   vehicleIcon={vehicleMarkerMeta(driverVehicle).icon}
                   photo={driverPhoto}
                   label={eta}
-                  heading={driverHeading}
+                  heading={effectiveHeading}
                 />
               </SmartMarker>
             )}

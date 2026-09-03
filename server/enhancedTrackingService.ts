@@ -12,6 +12,10 @@ interface Location {
 // Caché corta de ETA por pedido (el cliente hace polling cada 30s)
 const ETA_CACHE_TTL_MS = 60_000;
 const etaCache = new Map<string, { at: number; minutes: number }>();
+// Último ETA publicado por pedido: amortiguador anti-picos (un ETA no puede
+// subir de golpe +2 min/+20% — el salto 15→25 era de aquí, al alternar entre
+// ruta real y estimación por línea recta)
+const lastEtaByOrder = new Map<string, number>();
 
 export class EnhancedTrackingService {
   // Calcular distancia entre dos puntos (Haversine)
@@ -198,7 +202,10 @@ export class EnhancedTrackingService {
       ["picked_up", "on_the_way", "in_transit", "arriving"].includes(
         order.status,
       ) &&
-      distance > 1
+      // A partir de 300 m la ruta real por calles es la que manda (antes el
+      // umbral era 1 km y al bajar de ahí el ETA saltaba a la estimación
+      // por línea recta a 25 km/h)
+      distance > 0.3
     ) {
       try {
         const { googleMapsService } = await import(
@@ -231,7 +238,22 @@ export class EnhancedTrackingService {
     // sumar +15/+20 min de golpe según el estado (antes el número saltaba
     // de 5 a 25 al pasar de estado). La preparación del negocio se muestra
     // aparte en el cliente ("El negocio prepara tu pedido").
-    const totalETA = Math.max(1, etaMinutes);
+    let totalETA = Math.max(1, etaMinutes);
+
+    // Amortiguador anti-picos: frente al último valor publicado, el ETA
+    // puede subir como mucho +2 min o +20 % (el tráfico real lo sube poco a
+    // poco; lo que se elimina es el salto seco por cambiar de método de
+    // cálculo). Nunca baja en falso: si mejora, se publica la mejora.
+    const lastEta = lastEtaByOrder.get(orderId);
+    if (lastEta != null) {
+      const maxRise = Math.max(2, Math.round(lastEta * 0.2));
+      totalETA = Math.min(totalETA, lastEta + maxRise);
+    }
+    lastEtaByOrder.set(orderId, totalETA);
+    if (["delivered", "completed", "cancelled"].includes(order.status)) {
+      lastEtaByOrder.delete(orderId);
+      etaCache.delete(etaCacheKey);
+    }
 
     const etaDate = new Date(Date.now() + totalETA * 60 * 1000);
 

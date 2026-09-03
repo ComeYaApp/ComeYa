@@ -208,7 +208,9 @@ export default function PublicTrackingScreen() {
                   coordinate={driverDisplay}
                   title="Repartidor"
                   anchor={{ x: 0.5, y: 0.5 }}
-                  trackKey="driver"
+                  // Heading en el trackKey (a 3°): la vista del marcador se
+                  // congela en Android y la flecha no giraría si no cambiara
+                  trackKey={`driver-${typeof driverLocation?.heading === "number" && Number.isFinite(driverLocation.heading) ? Math.round(driverLocation.heading / 3) : "no"}`}
                 >
                   <DriverPin
                     vehicleIcon={vehicleMarkerMeta(undefined).icon}

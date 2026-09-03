@@ -234,6 +234,11 @@ router.get(
           weekEarnings: 0,
           monthEarnings: 0,
           totalEarnings: 0,
+          todayPendingEarnings: 0,
+          weekPendingEarnings: 0,
+          monthPendingEarnings: 0,
+          totalPendingEarnings: 0,
+          pendingDeliveriesCount: 0,
           tipsToday: 0,
           tipsWeek: 0,
           tipsMonth: 0,
@@ -257,9 +262,13 @@ router.get(
       .where(eq(wallets.userId, userId))
       .limit(1);
 
-    // Incluir tanto "delivered" como "completed" (confirmados por el cliente)
+    // Pedidos ENTREGADOS: "delivered" (puede faltar la confirmación del
+    // cliente) y "completed". El pago del repartidor se LIBERA cuando el
+    // cliente confirma la recepción (confirm-receipt → confirmedByCustomer):
+    // "ganado de verdad" solo lo confirmado; lo demás es pendiente y la UI
+    // no debe pintarlo como cobrado.
     const { or: orOp } = await import("drizzle-orm");
-    const completedOrders = await db
+    const deliveredOrders = await db
       .select()
       .from(orders)
       .where(
@@ -268,6 +277,15 @@ router.get(
           orOp(eq(orders.status, "delivered"), eq(orders.status, "completed")),
         ),
       );
+
+    const isConfirmed = (o: any) =>
+      o.confirmedByCustomer === true ||
+      o.status === "completed" ||
+      o.fundsReleased === true;
+    const confirmedOrders = deliveredOrders.filter(isConfirmed);
+    const pendingConfirmationOrders = deliveredOrders.filter(
+      (o) => !isConfirmed(o),
+    );
 
     const now = new Date();
     const todayStart = new Date(now);
@@ -279,43 +297,33 @@ router.get(
     monthStart.setDate(now.getDate() - 30);
     monthStart.setHours(0, 0, 0, 0);
 
-    const todayOrders = completedOrders.filter((o) => {
-      if (!o.deliveredAt) return false;
-      const deliveredDate = new Date(o.deliveredAt);
-      return deliveredDate >= todayStart;
-    });
-    const weekOrders = completedOrders.filter((o) => {
-      if (!o.deliveredAt) return false;
-      const deliveredDate = new Date(o.deliveredAt);
-      return deliveredDate >= weekStart;
-    });
-    const monthOrders = completedOrders.filter((o) => {
-      if (!o.deliveredAt) return false;
-      const deliveredDate = new Date(o.deliveredAt);
-      return deliveredDate >= monthStart;
-    });
+    const filterSince = (list: any[], since: Date) =>
+      list.filter((o) => {
+        if (!o.deliveredAt) return false;
+        return new Date(o.deliveredAt) >= since;
+      });
+    const todayOrders = filterSince(confirmedOrders, todayStart);
+    const weekOrders = filterSince(confirmedOrders, weekStart);
+    const monthOrders = filterSince(confirmedOrders, monthStart);
 
-    // Driver gana 100% del deliveryFee
-    const todayEarnings = todayOrders.reduce(
-      (sum, o) => sum + (o.deliveryFee || 0),
-      0,
-    );
-    const weekEarnings = weekOrders.reduce(
-      (sum, o) => sum + (o.deliveryFee || 0),
-      0,
-    );
-    const monthEarnings = monthOrders.reduce(
-      (sum, o) => sum + (o.deliveryFee || 0),
-      0,
-    );
-    const totalEarnings = completedOrders.reduce(
-      (sum, o) => sum + (o.deliveryFee || 0),
-      0,
-    );
+    const sumFees = (list: any[]) =>
+      list.reduce((sum, o) => sum + (o.deliveryFee || 0), 0);
+
+    // Driver gana 100% del deliveryFee — SOLO de los confirmados
+    const todayEarnings = sumFees(todayOrders);
+    const weekEarnings = sumFees(weekOrders);
+    const monthEarnings = sumFees(monthOrders);
+    const totalEarnings = sumFees(confirmedOrders);
+
+    // Entregados sin confirmar (el cliente aún no valida la recepción)
+    const todayPending = sumFees(filterSince(pendingConfirmationOrders, todayStart));
+    const weekPending = sumFees(filterSince(pendingConfirmationOrders, weekStart));
+    const monthPending = sumFees(filterSince(pendingConfirmationOrders, monthStart));
+    const totalPending = sumFees(pendingConfirmationOrders);
 
     const avgTimeMinutes =
-      completedOrders.length > 0
-        ? completedOrders.reduce((sum, order) => {
+      deliveredOrders.length > 0
+        ? deliveredOrders.reduce((sum, order) => {
             if (order.deliveredAt && order.createdAt) {
               const diff =
                 new Date(order.deliveredAt).getTime() -
@@ -323,7 +331,7 @@ router.get(
               return sum + Math.floor(diff / 60000);
             }
             return sum;
-          }, 0) / completedOrders.length
+          }, 0) / deliveredOrders.length
         : 0;
 
     // Propinas COMPLETADAS: tarjeta/manual (abonadas a wallet) y efectivo
@@ -385,7 +393,7 @@ router.get(
     res.json({
       success: true,
       stats: {
-        totalDeliveries: completedOrders.length,
+        totalDeliveries: deliveredOrders.length,
         rating: driver.rating,
         totalRatings: driver.totalRatings,
         completionRate: 100,
@@ -393,6 +401,12 @@ router.get(
         weekEarnings,
         monthEarnings,
         totalEarnings,
+        // Entregas sin confirmar del cliente (el pago NO está liberado aún)
+        todayPendingEarnings: todayPending,
+        weekPendingEarnings: weekPending,
+        monthPendingEarnings: monthPending,
+        totalPendingEarnings: totalPending,
+        pendingDeliveriesCount: pendingConfirmationOrders.length,
         // Propinas (solo completadas): total y desglose plataforma/efectivo
         tipsToday,
         tipsWeek,
@@ -410,7 +424,7 @@ router.get(
         pendingCashOrders: cashSummary.pendingOrders || [],
       },
       // Historial de entregas para mostrar en pantalla
-      deliveries: completedOrders
+      deliveries: deliveredOrders
         .map((o) => ({
           id: o.id,
           businessName: o.businessName,
@@ -420,6 +434,9 @@ router.get(
           deliveredAt: o.deliveredAt,
           createdAt: o.createdAt,
           paymentMethod: o.paymentMethod,
+          status: o.status,
+          // false → el cliente aún no confirmó: pendiente, no cobrado
+          confirmed: isConfirmed(o),
         }))
         .sort(
           (a, b) =>

@@ -47,6 +47,8 @@ interface StatsData {
     createdAt: string;
     paymentMethod: string;
     status: string;
+    /** true → el cliente confirmó la recepción (pago liberado) */
+    confirmed?: boolean;
   }[];
 }
 
@@ -100,6 +102,16 @@ export function EarningsTab({ mode }: Props) {
     total: (data?.stats?.totalEarnings ?? 0) / 100,
   };
 
+  // Entregado pero el cliente aún no confirma → el pago NO está liberado
+  const statsAny = data?.stats as any;
+  const pending = {
+    today: (statsAny?.todayPendingEarnings ?? 0) / 100,
+    week: (statsAny?.weekPendingEarnings ?? 0) / 100,
+    month: (statsAny?.monthPendingEarnings ?? 0) / 100,
+    total: (statsAny?.totalPendingEarnings ?? 0) / 100,
+  };
+  const currentPending = pending[period];
+
   const currentEarning = earnings[period];
   const stats = data?.stats;
   const deliveries = data?.deliveries ?? [];
@@ -115,7 +127,8 @@ export function EarningsTab({ mode }: Props) {
         const dlDate = new Date(dl.deliveredAt ?? dl.createdAt);
         return (
           dlDate.toDateString() === d.toDateString() &&
-          dl.status === "completed"
+          // Solo lo confirmado por el cliente cuenta como ganado
+          (dl.confirmed === true || dl.status === "completed")
         );
       });
       const total =
@@ -211,6 +224,38 @@ export function EarningsTab({ mode }: Props) {
               ))}
             </View>
           </View>
+
+          {/* ── Pendiente de confirmación del cliente ── */}
+          {currentPending > 0 && (
+            <View
+              style={[
+                s.pendingCard,
+                { backgroundColor: card, borderColor: AMBER + "55" },
+              ]}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Feather name="clock" size={16} color={AMBER} />
+                <Text
+                  style={{
+                    flex: 1,
+                    marginLeft: 8,
+                    fontSize: 13,
+                    fontWeight: "700",
+                    color: AMBER,
+                  }}
+                >
+                  Pendiente de confirmación del cliente
+                </Text>
+              </View>
+              <Text style={{ fontSize: 22, fontWeight: "900", color: AMBER, marginTop: 6 }}>
+                {formatEuros(currentPending)}
+              </Text>
+              <Text style={{ fontSize: 11, color: sub, marginTop: 4 }}>
+                Se libera automáticamente cuando el cliente confirme la
+                recepción.
+              </Text>
+            </View>
+          )}
 
           {/* ── Stats grid ── */}
           <View style={s.statsGrid}>
@@ -460,11 +505,25 @@ export function EarningsTab({ mode }: Props) {
                   </Text>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
-                  <Text style={[s.historyEarning, { color: GREEN }]}>
+                  <Text
+                    style={[
+                      s.historyEarning,
+                      { color: dl.confirmed === false ? AMBER : GREEN },
+                    ]}
+                  >
                     {formatEuros(earning)}
                   </Text>
-                  <Text style={[s.historyMethod, { color: sub }]}>
-                    {dl.paymentMethod === "cash" ? "Efectivo" : "Digital"}
+                  <Text
+                    style={[
+                      s.historyMethod,
+                      { color: dl.confirmed === false ? AMBER : sub },
+                    ]}
+                  >
+                    {dl.confirmed === false
+                      ? "Pendiente de confirmar"
+                      : dl.paymentMethod === "cash"
+                        ? "Efectivo"
+                        : "Digital"}
                   </Text>
                 </View>
               </View>
@@ -598,4 +657,10 @@ const s = StyleSheet.create({
   historyDate: { fontSize: 11, marginTop: 2 },
   historyEarning: { fontSize: 15, fontWeight: "800" },
   historyMethod: { fontSize: 10, marginTop: 2 },
+  pendingCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    padding: 14,
+  },
 });

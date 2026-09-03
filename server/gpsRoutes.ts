@@ -280,7 +280,13 @@ router.post(
         `🔔 Proximity alert: ${type} for order ${orderId} (${distance}m from ${destinationType})`,
       );
 
-      // Save proximity alert
+      // Guardar la alerta (la usa el panel de mapas del admin para el
+      // historial de proximidad). El PUSH al cliente NO se manda desde aquí:
+      // los avisos de llegada los emiten las alertas deduplicadas de ETA
+      // (eta_5min/eta_2min) con la ETA real de la ruta — antes este endpoint
+      // enviaba "Llega en aproximadamente X minuto(s)" con su propia fórmula
+      // (distancia/200) y duplicaba notificaciones con números que no
+      // cuadraban con el resto.
       await db.insert(proximityAlerts).values({
         orderId,
         driverId: userId,
@@ -289,25 +295,6 @@ router.post(
         destinationType,
         notificationSent: true,
       });
-
-      // Notificar al cliente cuando el repartidor está llegando
-      try {
-        const { sendPushToUser } = await import("./enhancedPushService");
-        const [order] = await db
-          .select({ userId: orders.userId })
-          .from(orders)
-          .where(eq(orders.id, orderId))
-          .limit(1);
-        if (order?.userId && distance <= 300) {
-          await sendPushToUser(order.userId, {
-            title: "🛵 Tu repartidor está cerca",
-            body: `Llega en aproximadamente ${Math.max(1, Math.round(distance / 200))} minuto(s)`,
-            data: { orderId, screen: "OrderTracking" },
-          });
-        }
-      } catch (err) {
-        console.error("Error sending proximity push:", err);
-      }
 
       res.json({ success: true });
     } catch (error) {

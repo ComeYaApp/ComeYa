@@ -29,33 +29,50 @@ const POST_MIN_DISTANCE_M = 10;
 // Fixes más imprecisos que esto se descartan (ruido del GPS).
 const MAX_ACCURACY_M = 50;
 
+/**
+ * El rumbo solo se envía/pinta en MOVIMIENTO real (≥1,5 m/s): parado, el
+ * course del GPS es ruido (semáforos, rotondas, deriva) y los mapas del
+ * cliente verían el pin girando sin razón. Si el dispositivo no reporta
+ * velocidad (speed null), se acepta el rumbo que dé el GPS.
+ */
+export function headingInMotion(
+  heading: number | null | undefined,
+  speed: number | null | undefined,
+): boolean {
+  return (
+    typeof heading === "number" &&
+    heading >= 0 &&
+    (typeof speed !== "number" || speed >= 1.5)
+  );
+}
+
 /** Convierte un fix de expo-location al formato interno. */
 function toFix(loc: Location.LocationObject): GPSLocation {
+  const heading = loc.coords.heading;
   return {
     latitude: loc.coords.latitude,
     longitude: loc.coords.longitude,
     timestamp: loc.timestamp,
     accuracy: loc.coords.accuracy ?? undefined,
     speed: loc.coords.speed ?? undefined,
-    heading:
-      typeof loc.coords.heading === "number" && loc.coords.heading >= 0
-        ? loc.coords.heading
-        : undefined,
+    heading: headingInMotion(heading, loc.coords.speed)
+      ? heading ?? undefined
+      : undefined,
   };
 }
 
 /** Convierte un fix de la geolocation API web al formato interno. */
 function webFix(pos: GeolocationPosition): GPSLocation {
+  const heading = pos.coords.heading;
   return {
     latitude: pos.coords.latitude,
     longitude: pos.coords.longitude,
     timestamp: pos.timestamp,
     accuracy: pos.coords.accuracy ?? undefined,
     speed: pos.coords.speed ?? undefined,
-    heading:
-      typeof pos.coords.heading === "number" && pos.coords.heading >= 0
-        ? pos.coords.heading
-        : undefined,
+    heading: headingInMotion(heading, pos.coords.speed)
+      ? heading ?? undefined
+      : undefined,
   };
 }
 

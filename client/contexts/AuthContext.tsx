@@ -111,7 +111,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== "granted") return;
       const { data: token } = await Notifications.getExpoPushTokenAsync();
-      await apiRequest("PUT", "/api/users/push-token", { token });
+      // platform: diagnóstico multi-dispositivo (un usuario, varios teléfonos)
+      await apiRequest("PUT", "/api/users/push-token", {
+        token,
+        platform: Platform.OS,
+      });
     } catch (error) {
       // No bloquear el login/apertura, pero dejar rastro: sin token no hay push
       console.warn("No se pudo registrar el push token:", error);

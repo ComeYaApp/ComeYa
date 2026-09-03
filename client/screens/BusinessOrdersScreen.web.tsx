@@ -247,23 +247,30 @@ export default function BusinessOrdersScreen() {
       updateStatus(orderId, "preparing");
       return;
     }
-    // Selector simple de tiempo estimado (aviso anticipado a repartidores)
+    // Selector simple de tiempo estimado (aviso anticipado a repartidores).
+    // Las mismas opciones granulares que la app nativa: 10/15/20/25/30/40.
     if (typeof window !== "undefined" && (window as any).confirm) {
+      const options = [
+        { k: "1", label: "10 min", minutes: 10 },
+        { k: "2", label: "15 min", minutes: 15 },
+        { k: "3", label: "20 min", minutes: 20 },
+        { k: "4", label: "25 min", minutes: 25 },
+        { k: "5", label: "30 min", minutes: 30 },
+        { k: "6", label: "40 min", minutes: 40 },
+      ];
       const choice = (window as any).prompt(
-        "Tiempo estimado de preparación:\n1) 5-10 min\n2) 10-20 min\n3) PEDIDO LISTO",
-        "1",
+        `Tiempo estimado de preparación:\n${options
+          .map((o) => `${o.k}) ${o.label}`)
+          .join("\n")}\n7) PEDIDO LISTO`,
+        "2",
       );
-      if (choice === "1") {
+      const opt = options.find((o) => o.k === choice);
+      if (opt) {
         updateStatus(orderId, "preparing", {
-          estimatedPrepMinutes: 8,
-          estimatedPrepRange: "5-10 min",
+          estimatedPrepMinutes: opt.minutes,
+          estimatedPrepRange: opt.label,
         });
-      } else if (choice === "2") {
-        updateStatus(orderId, "preparing", {
-          estimatedPrepMinutes: 15,
-          estimatedPrepRange: "10-20 min",
-        });
-      } else if (choice === "3") {
+      } else if (choice === "7") {
         updateStatus(orderId, "ready");
       }
     } else {

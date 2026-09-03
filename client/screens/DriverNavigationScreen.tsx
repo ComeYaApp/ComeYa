@@ -53,6 +53,33 @@ function distanceToRouteMeters(
   return min;
 }
 
+/** Rumbo (grados desde el norte) del vector from → to. */
+function bearingBetween(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+): number {
+  const dLng = ((to.longitude - from.longitude) * Math.PI) / 180;
+  const lat1 = (from.latitude * Math.PI) / 180;
+  const lat2 = (to.latitude * Math.PI) / 180;
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+/** Diferencia angular mínima (−180…180) entre dos rumbos. */
+function angleDeltaDeg(a: number, b: number): number {
+  return ((b - a + 540) % 360) - 180;
+}
+
+// El rumbo solo se actualiza en MOVIMIENTO real (≥1,5 m/s ≈ 5,4 km/h):
+// parado o a paso de humano el course del GPS es ruido (semáforos, rotondas).
+const MIN_SPEED_MS = 1.5;
+// Suavizado angular: el rumbo gira el 35% hacia el nuevo en cada fix
+// (arco corto) — sin barridos bruscos ni saltos de aguja.
+const HEADING_SMOOTH = 0.35;
+
 export default function DriverNavigationScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -83,8 +110,6 @@ export default function DriverNavigationScreen() {
   const [loading, setLoading] = useState(true);
   const [routeLoading, setRouteLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  /** Rumbo actual (grados) para la flecha del pin y la rotación del mapa. */
-  const [headingDeg, setHeadingDeg] = useState<number | undefined>(undefined);
   /** La cámara sigue al conductor (se desactiva al arrastrar el mapa). */
   const [follow, setFollow] = useState(true);
   const followRef = useRef(true);
@@ -93,6 +118,32 @@ export default function DriverNavigationScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  // Fix CRUDO anterior (con timestamp). NUNCA se usa el punto snapeado como
+  // "posición previa": el vector snap→GPS es el offset perpendicular a la
+  // calle y ponía la flecha DE LADO (bug de la prueba en auto).
+  const prevRawRef = useRef<{
+    latitude: number;
+    longitude: number;
+    at: number;
+  } | null>(null);
+  // Última animación de cámara (throttle: la animación de 1 s debe poder
+  // terminar antes de lanzar la siguiente — antes se relanzaba cada fix y
+  // nunca asentaba: tirones y "no se centra").
+  const lastCameraRef = useRef<{
+    latitude: number;
+    longitude: number;
+    heading: number | null;
+    at: number;
+  } | null>(null);
+  // Reactivación automática del follow 6 s después de soltar el mapa (Uber).
+  const recenterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ventana en la que la cámara de navegación no compite con el
+  // fitToCoordinates de la ruta inicial (visión global breve al entrar).
+  const suppressCameraUntilRef = useRef(0);
+  const routeLoadedOnceRef = useRef(false);
+  // Progreso sobre la ruta (metros): base del snap progresivo (evita
+  // proyectar al carril paralelo o a un tramo ya pasado).
+  const progressRef = useRef<number | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
   const routeCoordsRef = useRef<{ latitude: number; longitude: number }[]>([]);
   const lastRerouteAtRef = useRef<number>(0);
@@ -117,63 +168,110 @@ export default function DriverNavigationScreen() {
       .catch(() => {});
   }, [steps, voiceEnabled]);
 
-  // Rumbo efectivo: el del GPS si viene; si no, se calcula del movimiento
-  // entre fixes (rumbo de desplazamiento) y se conserva el último válido.
+  // Rumbo efectivo (grados desde el norte, suavizado). El heading del GPS
+  // solo se acepta en movimiento (≥1,5 m/s); si no viene, se calcula el
+  // rumbo de desplazamiento entre fixes CRUDOS consecutivos. Parado o sin
+  // datos: se conserva el último rumbo (como Google Maps).
   const resolveHeading = (
     rawHeading: number | null | undefined,
     coords: { latitude: number; longitude: number },
+    speedMs?: number,
+    fixAt: number = Date.now(),
   ): number | null => {
-    if (typeof rawHeading === "number" && rawHeading >= 0) {
-      return rawHeading;
-    }
-    const prev = lastDisplayRef.current;
-    if (prev) {
-      const moved = distanceMeters(prev, coords);
-      if (moved >= 3) {
-        // Rumbo de desplazamiento (grados desde el norte)
-        const dLng = ((coords.longitude - prev.longitude) * Math.PI) / 180;
-        const lat1 = (prev.latitude * Math.PI) / 180;
-        const lat2 = (coords.latitude * Math.PI) / 180;
-        const y = Math.sin(dLng) * Math.cos(lat2);
-        const x =
-          Math.cos(lat1) * Math.sin(lat2) -
-          Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-        return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+    let candidate: number | null = null;
+    const prevRaw = prevRawRef.current;
+    const dtS = prevRaw ? Math.max(0, (fixAt - prevRaw.at) / 1000) : 0;
+
+    if (
+      typeof rawHeading === "number" &&
+      rawHeading >= 0 &&
+      // Solo con movimiento real; si el dispositivo no reporta velocidad,
+      // se confía en el heading que dé el GPS (como en gpsService)
+      (typeof speedMs !== "number" || speedMs >= MIN_SPEED_MS)
+    ) {
+      candidate = rawHeading;
+    } else if (prevRaw && dtS > 0 && dtS <= 10) {
+      // Desplazamiento real fix crudo → fix crudo (con la velocidad media
+      // implícita como filtro anti-deriva GPS)
+      const moved = distanceMeters(prevRaw, coords);
+      if (moved >= 4 && moved / dtS >= MIN_SPEED_MS) {
+        candidate = bearingBetween(prevRaw, coords);
       }
     }
-    return headingRef.current;
+
+    if (candidate === null) return headingRef.current;
+
+    const last = headingRef.current;
+    if (last === null) return candidate;
+    // Suavizado de arco corto: gira una fracción hacia el nuevo rumbo
+    return (last + angleDeltaDeg(last, candidate) * HEADING_SMOOTH + 360) % 360;
   };
 
   /** Aplica un fix GPS: snap a la ruta, rumbo, cámara que sigue (Uber 3D). */
   const applyFix = (
     coords: { latitude: number; longitude: number },
     rawHeading?: number | null,
+    speedMs?: number,
+    fixAtMs?: number,
   ) => {
-    // Snap-to-route: el pin se desliza POR la calle aunque el GPS derive
-    const snap = snapToRoute(coords, routeCoordsRef.current, 30);
+    const fixAt = fixAtMs ?? Date.now();
+    // Snap-to-route progresivo: el pin se desliza POR la calle aunque el GPS
+    // derive, sin saltar al carril paralelo ni retroceder de tramo
+    const snap = snapToRoute(
+      coords,
+      routeCoordsRef.current,
+      30,
+      progressRef.current ?? undefined,
+    );
     const display = snap?.snapped ? snap.coordinate : coords;
+    if (snap) progressRef.current = snap.progressMeters;
+
+    // El rumbo se resuelve ANTES de actualizar prevRawRef (el fix previo
+    // debe ser el anterior, no el actual — otro bug de la flecha de lado)
+    const h = resolveHeading(rawHeading, coords, speedMs, fixAt);
+    headingRef.current = h;
+    prevRawRef.current = {
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      at: fixAt,
+    };
 
     setDriverLocation(display);
     lastDisplayRef.current = display;
 
-    const h = resolveHeading(rawHeading, coords);
-    headingRef.current = h;
-    setHeadingDeg(h ?? undefined);
-
-    // Cámara que sigue con rotación por rumbo e inclinación 3D (estilo
-    // Uber/Glovo). Solo mientras "follow" esté activo (el arrastre del
-    // mapa lo desactiva; el botón crosshair lo reactiva).
+    // Cámara que sigue (Uber 3D): el mapa rota para que ARRIBA sea la
+    // dirección de marcha; la flecha del pin apunta siempre arriba (sin
+    // doble rotación). Con throttle para no relanzar la animación cada fix.
     if (followRef.current) {
-      const camera: any = {
-        center: {
+      const now = Date.now();
+      const lastCam = lastCameraRef.current;
+      const movedM = lastCam ? distanceMeters(lastCam, display) : Infinity;
+      const headingDelta =
+        lastCam && h !== null && lastCam.heading !== null
+          ? Math.abs(angleDeltaDeg(lastCam.heading, h))
+          : Infinity;
+      const due = !lastCam || now - lastCam.at >= 2000;
+      if (
+        now >= suppressCameraUntilRef.current &&
+        (movedM >= 8 || headingDelta >= 8 || due)
+      ) {
+        const camera: any = {
+          center: {
+            latitude: display.latitude,
+            longitude: display.longitude,
+          },
+          pitch: 45,
+          zoom: 17,
+        };
+        if (h !== null) camera.heading = h;
+        mapRef.current?.animateCamera(camera, { duration: 1000 });
+        lastCameraRef.current = {
           latitude: display.latitude,
           longitude: display.longitude,
-        },
-        pitch: 45,
-        zoom: 17,
-      };
-      if (h !== null) camera.heading = h;
-      mapRef.current?.animateCamera(camera, { duration: 700 });
+          heading: h,
+          at: now,
+        };
+      }
     }
   };
 
@@ -192,6 +290,8 @@ export default function DriverNavigationScreen() {
       applyFix(
         { latitude: loc.coords.latitude, longitude: loc.coords.longitude },
         loc.coords.heading,
+        loc.coords.speed ?? undefined,
+        loc.timestamp,
       );
       setLoading(false);
 
@@ -217,15 +317,22 @@ export default function DriverNavigationScreen() {
             latitude: l.coords.latitude,
             longitude: l.coords.longitude,
           };
-          applyFix(coords, l.coords.heading);
+          applyFix(
+            coords,
+            l.coords.heading,
+            l.coords.speed ?? undefined,
+            l.timestamp,
+          );
 
           gpsService.postFix({
             latitude: coords.latitude,
             longitude: coords.longitude,
             accuracy: l.coords.accuracy ?? undefined,
+            // Rumbo SUAVIZADO de la navegación (no el crudo del GPS, que
+            // hace temblar el pin del cliente), solo con movimiento real
             heading:
-              typeof l.coords.heading === "number" && l.coords.heading >= 0
-                ? l.coords.heading
+              (typeof l.coords.speed !== "number" || l.coords.speed >= 1.5)
+                ? headingRef.current ?? undefined
                 : undefined,
             speed: l.coords.speed ?? undefined,
             timestamp: l.timestamp,
@@ -253,6 +360,10 @@ export default function DriverNavigationScreen() {
 
     return () => {
       locationSubRef.current?.remove();
+      if (recenterTimerRef.current) {
+        clearTimeout(recenterTimerRef.current);
+        recenterTimerRef.current = null;
+      }
       import("expo-speech")
         .then((Speech) => Speech.stop())
         .catch(() => {});
@@ -286,15 +397,28 @@ export default function DriverNavigationScreen() {
           })),
         );
 
-        // Ajustar mapa para mostrar la ruta completa
+        // Ajustar mapa a la ruta completa: solo la PRIMERA vez (visión
+        // global breve al entrar) o con el follow desactivado. Durante el
+        // seguimiento la cámara de navegación manda — fitToCoordinates en
+        // cada reroute peleaba con ella y producía saltos de zoom.
         if (mapRef.current && decoded.length > 0) {
-          mapRef.current.fitToCoordinates(
-            [{ latitude: originLat, longitude: originLng }, ...decoded],
-            {
-              edgePadding: { top: 100, right: 50, bottom: 310, left: 50 },
-              animated: true,
-            },
-          );
+          const isFirstRoute = !routeLoadedOnceRef.current;
+          if (isFirstRoute || !followRef.current) {
+            mapRef.current.fitToCoordinates(
+              [{ latitude: originLat, longitude: originLng }, ...decoded],
+              {
+                edgePadding: { top: 100, right: 50, bottom: 310, left: 50 },
+                animated: true,
+              },
+            );
+            if (isFirstRoute) {
+              routeLoadedOnceRef.current = true;
+              // Dejar ver la ruta completa ~3,5 s antes de que la cámara de
+              // navegación enganche al conductor
+              suppressCameraUntilRef.current = Date.now() + 3500;
+              lastCameraRef.current = null;
+            }
+          }
         }
       } else if (data.success && data.fallback) {
         // Google y OSRM caídos: SIN geometría — nunca una línea recta. Se
@@ -311,22 +435,30 @@ export default function DriverNavigationScreen() {
     setRouteLoading(false);
   };
 
-  const handleRecenter = () => {
-    if (!driverLocation) return;
-    // Reactivar el seguimiento con cámara 3D orientada al rumbo
+  /** Reactiva el seguimiento y orienta la cámara (3D, rumbo arriba). */
+  const reenableFollow = () => {
+    if (recenterTimerRef.current) {
+      clearTimeout(recenterTimerRef.current);
+      recenterTimerRef.current = null;
+    }
     followRef.current = true;
     setFollow(true);
-    const camera: any = {
-      center: {
-        latitude: driverLocation.latitude,
-        longitude: driverLocation.longitude,
-      },
-      pitch: 45,
-      zoom: 17,
-    };
-    if (headingRef.current !== null) camera.heading = headingRef.current;
-    mapRef.current?.animateCamera(camera, { duration: 500 });
+    suppressCameraUntilRef.current = 0;
+    // Forzar la próxima animación aunque la última fuera reciente
+    lastCameraRef.current = null;
+    const loc = lastDisplayRef.current;
+    if (loc) {
+      const camera: any = {
+        center: { latitude: loc.latitude, longitude: loc.longitude },
+        pitch: 45,
+        zoom: 17,
+      };
+      if (headingRef.current !== null) camera.heading = headingRef.current;
+      mapRef.current?.animateCamera(camera, { duration: 500 });
+    }
   };
+
+  const handleRecenter = reenableFollow;
 
   const handleRefreshRoute = () => {
     if (driverLocation) {
@@ -367,11 +499,20 @@ export default function DriverNavigationScreen() {
         showsMyLocationButton={false}
         showsTraffic={true}
         onPanDrag={() => {
-          // El usuario arrastra el mapa → dejar de seguir (como Uber)
+          // El usuario arrastra el mapa → dejar de seguir (como Uber)…
           if (followRef.current) {
             followRef.current = false;
             setFollow(false);
           }
+          // …pero con reactivación automática 6 s después del último gesto:
+          // un bache o roce en auto ya no deja la cámara muerta para siempre
+          if (recenterTimerRef.current) {
+            clearTimeout(recenterTimerRef.current);
+          }
+          recenterTimerRef.current = setTimeout(() => {
+            recenterTimerRef.current = null;
+            if (!followRef.current) reenableFollow();
+          }, 6000);
         }}
       >
         {/* Marcador de posición actual (repartidor o cliente navegando) */}
@@ -386,7 +527,10 @@ export default function DriverNavigationScreen() {
               color={ComeYaColors.primary}
               size={38}
               showBadge={false}
-              heading={headingDeg}
+              // Sin rotación propia: la cámara follow rota el mapa para que
+              // ARRIBA sea la dirección de marcha (rotar además el pin era
+              // la doble rotación que dejaba la flecha DE LADO)
+              heading={0}
             />
           </SmartMarker>
         )}

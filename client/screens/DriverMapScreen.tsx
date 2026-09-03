@@ -283,8 +283,12 @@ export default function DriverMapScreen() {
             latitude: l.coords.latitude,
             longitude: l.coords.longitude,
             accuracy: l.coords.accuracy ?? undefined,
+            // Rumbo solo en movimiento real: parado el course del GPS es
+            // ruido y los mapas del cliente verían el pin girando sin razón
             heading:
-              typeof l.coords.heading === "number" && l.coords.heading >= 0
+              typeof l.coords.heading === "number" &&
+              l.coords.heading >= 0 &&
+              (l.coords.speed ?? 0) >= 1.5
                 ? l.coords.heading
                 : undefined,
             speed: l.coords.speed ?? undefined,

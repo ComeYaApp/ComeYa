@@ -45,6 +45,8 @@ interface EarningsData {
     deliveredAt: string | null;
     createdAt: string;
     paymentMethod: string;
+    /** true → el cliente confirmó la recepción (pago liberado) */
+    confirmed?: boolean;
   }[];
 }
 
@@ -129,6 +131,9 @@ export default function DriverEarningsScreen() {
 
   const handleRefresh = () => refetch();
 
+  // Propinas completadas (tarjeta/manual abonadas + efectivo confirmado)
+  const statsAny = data?.stats as any;
+
   const earnings = {
     today: (data?.stats?.todayEarnings || 0) / 100,
     week: (data?.stats?.weekEarnings || 0) / 100,
@@ -136,8 +141,15 @@ export default function DriverEarningsScreen() {
     total: (data?.stats?.totalEarnings || 0) / 100,
   };
 
-  // Propinas completadas (tarjeta/manual abonadas + efectivo confirmado)
-  const statsAny = data?.stats as any;
+  // Entregado pero el cliente aún no confirma → el pago NO está liberado
+  const pending = {
+    today: (statsAny?.todayPendingEarnings || 0) / 100,
+    week: (statsAny?.weekPendingEarnings || 0) / 100,
+    month: (statsAny?.monthPendingEarnings || 0) / 100,
+    total: (statsAny?.totalPendingEarnings || 0) / 100,
+    count: statsAny?.pendingDeliveriesCount || 0,
+  };
+
   const tips = {
     today: (statsAny?.tipsToday || 0) / 100,
     week: (statsAny?.tipsWeek || 0) / 100,
@@ -189,6 +201,19 @@ export default function DriverEarningsScreen() {
         return tips.week;
       case "month":
         return tips.month;
+      default:
+        return 0;
+    }
+  };
+
+  const getPendingForPeriod = () => {
+    switch (selectedPeriod) {
+      case "today":
+        return pending.today;
+      case "week":
+        return pending.week;
+      case "month":
+        return pending.month;
       default:
         return 0;
     }
@@ -308,6 +333,42 @@ export default function DriverEarningsScreen() {
           </View>
         </Animated.View>
 
+        {/* Pendiente de confirmación del cliente (el pago NO está liberado) */}
+        {getPendingForPeriod() > 0 && (
+          <View
+            style={[
+              styles.pendingCard,
+              { backgroundColor: theme.card },
+              Shadows.md,
+            ]}
+          >
+            <View style={styles.pendingHeader}>
+              <View
+                style={[
+                  styles.pendingIcon,
+                  { backgroundColor: "#F59E0B" + "20" },
+                ]}
+              >
+                <Feather name="clock" size={18} color="#F59E0B" />
+              </View>
+              <ThemedText
+                type="body"
+                style={{ color: "#92400E", fontWeight: "600", marginLeft: 10, flex: 1 }}
+              >
+                Pendiente de confirmación del cliente
+              </ThemedText>
+            </View>
+            <ThemedText type="h3" style={{ color: "#F59E0B", marginTop: 8 }}>
+              {formatEuros(getPendingForPeriod())}
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 4 }}>
+              {pending.count > 0
+                ? `${pending.count} entrega${pending.count === 1 ? "" : "s"} marcada${pending.count === 1 ? "" : "s"} como entregada. El pago se libera automáticamente cuando el cliente confirme la recepción.`
+                : "Se libera automáticamente cuando el cliente confirme la recepción."}
+            </ThemedText>
+          </View>
+        )}
+
         {/* Info Card - Stripe Automatic Payments */}
         <View
           style={[
@@ -357,6 +418,14 @@ export default function DriverEarningsScreen() {
                   ? ` (${formatEuros(tips.cashTotal)} en efectivo)`
                   : ""}
               </ThemedText>
+              {pending.total > 0 && (
+                <ThemedText
+                  type="caption"
+                  style={{ color: "#D97706", marginTop: 2 }}
+                >
+                  ⏳ {formatEuros(pending.total)} pendiente de confirmar
+                </ThemedText>
+              )}
             </View>
             <View
               style={[
@@ -453,7 +522,12 @@ export default function DriverEarningsScreen() {
               <View style={{ alignItems: "flex-end" }}>
                 <ThemedText
                   type="body"
-                  style={{ color: ComeYaColors.success, fontWeight: "600" }}
+                  style={{
+                    color: delivery.confirmed
+                      ? ComeYaColors.success
+                      : "#D97706",
+                    fontWeight: "600",
+                  }}
                 >
                   {formatEuros(
                     (delivery.deliveryEarnings || delivery.deliveryFee) / 100,
@@ -461,9 +535,17 @@ export default function DriverEarningsScreen() {
                 </ThemedText>
                 <ThemedText
                   type="caption"
-                  style={{ color: theme.textSecondary }}
+                  style={{
+                    color: delivery.confirmed
+                      ? theme.textSecondary
+                      : "#D97706",
+                  }}
                 >
-                  {delivery.paymentMethod === "cash" ? "Efectivo" : "Digital"}
+                  {delivery.confirmed
+                    ? delivery.paymentMethod === "cash"
+                      ? "Efectivo"
+                      : "Digital"
+                    : "Pendiente de confirmar"}
                 </ThemedText>
               </View>
             </Animated.View>
@@ -682,5 +764,23 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
     marginBottom: Spacing.md,
+  },
+  pendingCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: "#F59E0B",
+  },
+  pendingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pendingIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

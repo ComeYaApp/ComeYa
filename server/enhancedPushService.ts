@@ -1,11 +1,37 @@
 import { db } from "./db";
-import { users, orders, deliveryDrivers } from "@shared/schema-mysql";
+import { users, orders, deliveryDrivers, pushTokens } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
 
 interface NotificationPayload {
   title: string;
   body: string;
   data?: Record<string, any>;
+}
+
+/** Máximo de dispositivos por usuario al enviar (protección anti-bucle). */
+const MAX_TOKENS_PER_USER = 10;
+
+/**
+ * Tokens push activos de un usuario: TODOS los de la tabla multi-dispositivo
+ * push_tokens; si la tabla aún está vacía (primer arranque tras el deploy,
+ * migración no ejecutada) cae al token histórico de users.push_token.
+ */
+async function getUserPushTokens(userId: string): Promise<string[]> {
+  const rows = await db
+    .select({ token: pushTokens.token })
+    .from(pushTokens)
+    .where(eq(pushTokens.userId, userId))
+    .limit(MAX_TOKENS_PER_USER);
+  const tokens = rows.map((r: { token: string }) => r.token);
+  if (tokens.length > 0) return tokens;
+
+  const [user] = await db
+    .select({ pushToken: users.pushToken })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (user?.pushToken) return [user.pushToken];
+  return [];
 }
 
 export async function sendOrderStatusNotification(
@@ -21,22 +47,18 @@ export async function sendOrderStatusNotification(
 
   if (!order) return;
 
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-
-  if (!user || !user.pushToken) return;
-
   let notification: NotificationPayload | null = null;
 
   switch (newStatus) {
     case "accepted":
       notification = {
         title: "¡Pedido aceptado! 🎉",
-        // estimatedPrepMinutes es la columna real del schema (minutos estimados)
-        body: `${order.businessName} aceptó tu pedido - Listo en ${(order as any).estimatedPrepMinutes || 25} min`,
+        // estimatedPrepMinutes es la columna real del schema. Solo se dice
+        // "Listo en X min" si el negocio indicó el tiempo — antes el fallback
+        // fijo 25 inventaba un número que no cuadraba con el resto.
+        body: (order as any).estimatedPrepMinutes
+          ? `${order.businessName} aceptó tu pedido - Listo en ${(order as any).estimatedPrepMinutes} min`
+          : `${order.businessName} aceptó tu pedido — en breve empiezan a prepararlo`,
         data: { orderId, screen: "OrderTracking" },
       };
       break;
@@ -92,10 +114,31 @@ export async function sendOrderStatusNotification(
           .limit(1);
 
         const driverName = driver?.name?.split(" ")[0] || "Tu repartidor";
-        const eta = order.estimatedDeliveryTime || 15;
+        // ETA REAL de la ruta (la misma que recalcula el tracking con
+        // Directions API cada fix, caché 60 s — normalmente ya está
+        // calculada y no cuesta una llamada extra). Si no hay dato, el
+        // mensaje NO inventa minutos (antes: fallback fijo de 15).
+        let etaText = "";
+        try {
+          const { EnhancedTrackingService } = await import(
+            "./enhancedTrackingService"
+          );
+          const res = await EnhancedTrackingService.calculateDynamicETA(
+            orderId,
+          );
+          const minutes = res?.eta?.minutes;
+          if (typeof minutes === "number" && minutes > 0) {
+            const capped = Math.max(1, Math.min(45, Math.round(minutes)));
+            etaText = `Llega en aproximadamente ${capped} min`;
+          }
+        } catch (e) {
+          console.warn("ETA picked_up no disponible:", e);
+        }
         notification = {
           title: `${driverName} recogió tu pedido 📦`,
-          body: `Llega en ${eta} min`,
+          body:
+            etaText ||
+            `${driverName} recogió tu pedido — va de camino a tu puerta`,
           data: { orderId, screen: "OrderTracking" },
         };
       }
@@ -129,8 +172,10 @@ export async function sendOrderStatusNotification(
 
         const driverName = driver?.name?.split(" ")[0] || "Tu repartidor";
         notification = {
-          title: `${driverName} está cerca ⚡`,
-          body: "Llega en 2 minutos",
+          title: `${driverName} está llegando ⚡`,
+          // Sin minutos hardcodeados: los avisos de 5 y 2 minutos los dan
+          // las alertas deduplicadas (eta_5min/eta_2min) con la ETA real
+          body: "Ya casi está en tu puerta",
           data: { orderId, screen: "OrderTracking" },
         };
       }
@@ -154,7 +199,7 @@ export async function sendOrderStatusNotification(
   }
 
   if (notification) {
-    await sendPushNotification(user.pushToken, notification);
+    await sendPushToUser(userId, notification);
   }
 }
 
@@ -272,6 +317,13 @@ export async function sendPushNotification(
 
     const reason = result.reason;
     if (reason === "DeviceNotRegistered") {
+      // El dispositivo desinstaló la app o su token expiró: quitar SOLO ese
+      // token (multi-dispositivo: los demás teléfonos del usuario siguen
+      // recibiendo) y limpiar la columna legacy si era la que apuntaba ahí
+      await db
+        .delete(pushTokens)
+        .where(eq(pushTokens.token, pushToken))
+        .catch(() => {});
       await db
         .update(users)
         .set({ pushToken: null })
@@ -301,13 +353,6 @@ export async function notifyPagoMovilStatus(
   orderId: string,
   reason?: string,
 ): Promise<void> {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  if (!user || !user.pushToken) return;
-
   const notification =
     status === "verified"
       ? {
@@ -323,7 +368,7 @@ export async function notifyPagoMovilStatus(
           data: { orderId, screen: "PaymentProofUpload" },
         };
 
-  await sendPushNotification(user.pushToken, notification);
+  await sendPushToUser(userId, notification);
 }
 
 const DEFAULT_NOTIFICATION_PREFERENCES = {
@@ -365,7 +410,9 @@ export async function sendPushToUser(
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  if (!user?.pushToken) {
+
+  const tokens = await getUserPushTokens(userId);
+  if (!tokens.length) {
     // Antes era un retorno silencioso: imposible saber por qué no llegaba
     // el push. El token se registra solo al abrir la app (AuthContext).
     console.warn(
@@ -376,11 +423,24 @@ export async function sendPushToUser(
 
   // Respetar preferencias del usuario para categorías no operativas
   if (payload.category === "promotions" || payload.category === "news") {
-    const prefs = parseNotificationPreferences(user.notificationPreferences);
+    const prefs = parseNotificationPreferences(user?.notificationPreferences);
     if (!prefs[payload.category]) return;
   }
 
-  await sendPushNotification(user.pushToken, payload);
+  // Enviar a TODOS los dispositivos del usuario (multi-dispositivo: la
+  // cuenta puede estar en varios teléfonos). Si un token falla con
+  // DeviceNotRegistered, se limpia en sendPushNotification sin afectar al
+  // resto de envíos.
+  const sent = new Set<string>();
+  for (const token of tokens) {
+    if (sent.has(token)) continue;
+    sent.add(token);
+    try {
+      await sendPushNotification(token, payload);
+    } catch (e) {
+      console.warn("Push a un dispositivo falló (continuando):", e);
+    }
+  }
 }
 
 export async function notifyDriverNewOrder(
@@ -393,7 +453,7 @@ export async function notifyDriverNewOrder(
     .where(eq(users.id, driverId))
     .limit(1);
 
-  if (!driver || !driver.pushToken) return;
+  if (!driver) return;
 
   const [order] = await db
     .select()
@@ -405,7 +465,7 @@ export async function notifyDriverNewOrder(
 
   const earning = Math.round((order.total * 0.15) / 100);
 
-  await sendPushNotification(driver.pushToken, {
+  await sendPushToUser(driverId, {
     title: "Nuevo pedido disponible 📦",
     body: `${order.businessName} - Gana ${earning} €`,
     data: { orderId, screen: "DriverAvailable" },

@@ -39,11 +39,18 @@ export interface SnapResult {
 /**
  * Proyecta `point` sobre `route` (polilínea de coordenadas). Devuelve null
  * si la ruta no tiene al menos 2 puntos.
+ *
+ * `nearProgressM` (opcional): progreso ya recorrido en metros. Si se indica,
+ * se busca PRIMERO entre los segmentos cercanos a ese progreso (±80 m atrás /
+ * 120 m adelante): en calzadas partidas o tramos paralelos evita proyectar
+ * al carril de al lado o "retroceder" a un tramo ya pasado. Si ahí no hay
+ * proyección válida, se repite la búsqueda global (comportamiento antiguo).
  */
 export function snapToRoute(
   point: RouteCoordinate,
   route: RouteCoordinate[],
   maxSnapMeters = 30,
+  nearProgressM?: number,
 ): SnapResult | null {
   if (!route || route.length < 2) return null;
   if (
@@ -64,30 +71,60 @@ export function snapToRoute(
   }
   const total = cum[pts.length - 1];
 
-  // Proyección sobre cada segmento; nos quedamos con la más cercana
-  let bestDist = Infinity;
-  let bestSeg = 0;
-  let bestT = 0;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const A = pts[i];
-    const B = pts[i + 1];
-    const abx = B.x - A.x;
-    const aby = B.y - A.y;
-    const len2 = abx * abx + aby * aby;
-    let t = 0;
-    if (len2 > 0) {
-      t = ((P.x - A.x) * abx + (P.y - A.y) * aby) / len2;
-      t = Math.max(0, Math.min(1, t));
+  // Proyección sobre los segmentos de un rango de índices; devuelve el mejor
+  const scanSegments = (
+    fromIdx: number,
+    toIdx: number,
+  ): { dist: number; seg: number; t: number } => {
+    let bestDist = Infinity;
+    let bestSeg = 0;
+    let bestT = 0;
+    for (let i = Math.max(0, fromIdx); i <= Math.min(pts.length - 2, toIdx); i++) {
+      const A = pts[i];
+      const B = pts[i + 1];
+      const abx = B.x - A.x;
+      const aby = B.y - A.y;
+      const len2 = abx * abx + aby * aby;
+      let t = 0;
+      if (len2 > 0) {
+        t = ((P.x - A.x) * abx + (P.y - A.y) * aby) / len2;
+        t = Math.max(0, Math.min(1, t));
+      }
+      const dx = P.x - (A.x + t * abx);
+      const dy = P.y - (A.y + t * aby);
+      const d = Math.hypot(dx, dy);
+      if (d < bestDist) {
+        bestDist = d;
+        bestSeg = i;
+        bestT = t;
+      }
     }
-    const dx = P.x - (A.x + t * abx);
-    const dy = P.y - (A.y + t * aby);
-    const d = Math.hypot(dx, dy);
-    if (d < bestDist) {
-      bestDist = d;
-      bestSeg = i;
-      bestT = t;
+    return { dist: bestDist, seg: bestSeg, t: bestT };
+  };
+
+  // 1) Ventana de progreso (anti carril-paralelo / anti retroceso)
+  let best = scanSegments(0, pts.length - 2);
+  if (typeof nearProgressM === "number" && Number.isFinite(nearProgressM)) {
+    const w0 = nearProgressM - 80;
+    const w1 = nearProgressM + 120;
+    let fromIdx = pts.length - 2;
+    let toIdx = 0;
+    let any = false;
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (cum[i + 1] >= w0 && cum[i] <= w1) {
+        if (!any || i < fromIdx) fromIdx = i;
+        if (!any || i > toIdx) toIdx = i;
+        any = true;
+      }
+    }
+    if (any) {
+      const local = scanSegments(fromIdx, toIdx);
+      if (local.dist <= maxSnapMeters) best = local;
     }
   }
+  const bestDist = best.dist;
+  const bestSeg = best.seg;
+  const bestT = best.t;
 
   const A = pts[bestSeg];
   const B = pts[bestSeg + 1];

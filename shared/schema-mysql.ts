@@ -600,6 +600,20 @@ export const refreshTokens = mysqlTable("refresh_tokens", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Push tokens MULTI-DISPOSITIVO: un usuario puede tener la app en varios
+// teléfonos; cada uno registra su token aquí. users.push_token (columna
+// única) queda como compatibilidad/legacy.
+export const pushTokens = mysqlTable("push_tokens", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  platform: varchar("platform", { length: 20 }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Scheduled Orders - Pedidos programados
 export const scheduledOrders = mysqlTable("scheduled_orders", {
   id: varchar("id", { length: 255 })

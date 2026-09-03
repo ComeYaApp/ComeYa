@@ -1179,15 +1179,15 @@ export default function DriverMyDeliveriesScreen() {
                   +{completedOrder.earnings.toFixed(2)} €
                 </ThemedText>
                 <ThemedText type="small" style={{ color: "#388E3C" }}>
-                  ganados
+                  tarifa del envío
                 </ThemedText>
               </View>
               <ThemedText
                 type="caption"
                 style={{ color: "#666", textAlign: "center", marginBottom: 24 }}
               >
-                El cliente recibirá una notificación para confirmar la
-                recepción.
+                Entrega registrada. Tu pago se libera cuando el cliente
+                confirme la recepción.
               </ThemedText>
               <Pressable
                 onPress={() => setCompletedOrder(null)}

@@ -5,7 +5,7 @@ import {
   proximityAlerts,
   businesses,
 } from "@shared/schema-mysql";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { sendPushToUser } from "./enhancedPushService";
 import { orderRefFromId } from "./orderNumberService";
 import { getIO } from "./websocket";
@@ -19,6 +19,7 @@ const ARRIVED_RADIUS_M = 200; // radio del cliente para marcar llegada
 
 const lastCheckAt = new Map<string, number>();
 const lastEmitAt = new Map<string, number>();
+const lastHeadingByDriver = new Map<string, number>();
 
 // ─── Utilidades ──────────────────────────────────────────────────────────────
 export function haversineMeters(
@@ -239,14 +240,18 @@ export async function handleDriverLocationUpdate(
     .set({
       currentLatitude: latitude.toString(),
       currentLongitude: longitude.toString(),
+      // Si el fix llega sin heading (p.ej. repartidor PARADO: la app ya no
+      // lo envía para no pintar rumbo ruidoso), se CONSERVA el último: el
+      // cliente ve la flecha quieta apuntando a la última dirección, no sin
+      // flecha. El heading cambia cuando el repartidor vuelve a moverse.
       currentHeading:
         extra?.heading != null && Number.isFinite(extra.heading)
           ? extra.heading.toString()
-          : null,
+          : sql`current_heading`,
       currentSpeed:
         extra?.speed != null && Number.isFinite(extra.speed)
           ? extra.speed.toString()
-          : null,
+          : sql`current_speed`,
       lastLocationUpdate: new Date(),
     })
     .where(eq(deliveryDrivers.userId, userId));
@@ -282,6 +287,12 @@ export async function handleDriverLocationUpdate(
     const lastEmit = lastEmitAt.get(order.id) ?? 0;
     if (now - lastEmit >= EMIT_INTERVAL_MS) {
       lastEmitAt.set(order.id, now);
+      // Último heading VÁLIDO por repartidor: si el fix llega sin rumbo
+      // (parado), se emite el último conocido para que la flecha del pin
+      // no desaparezca en los mapas del cliente/negocio.
+      if (extra?.heading != null && Number.isFinite(extra.heading)) {
+        lastHeadingByDriver.set(userId, extra.heading);
+      }
       const payload = {
         orderId: order.id,
         driverId: userId,
@@ -289,7 +300,7 @@ export async function handleDriverLocationUpdate(
         status: order.status,
         latitude,
         longitude,
-        heading: extra?.heading ?? null,
+        heading: extra?.heading ?? lastHeadingByDriver.get(userId) ?? null,
         speed: extra?.speed ?? null,
         lastUpdate: new Date().toISOString(),
       };

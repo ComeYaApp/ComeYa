@@ -991,22 +991,22 @@ export default function BusinessOrdersScreen() {
             </ThemedText>
 
             <View style={styles.timeGrid}>
-              {[
-                { label: "5–10 min", range: "5-10 min", minutes: 8 },
-                { label: "10–20 min", range: "10-20 min", minutes: 15 },
-              ].map((opt) => (
+              {/* Rejilla granular 10/15/20/25/30/40 como en el modal de
+                  aceptación — antes eran 2 rangos fijos ("5-10"/"10-20") y el
+                  negocio perdió la precisión del aviso al repartidor */}
+              {[10, 15, 20, 25, 30, 40].map((time) => (
                 <Pressable
-                  key={opt.range}
+                  key={time}
                   onPress={() =>
-                    confirmStartPreparing(prepModal.orderId!, opt.range, opt.minutes)
+                    confirmStartPreparing(prepModal.orderId!, `${time} min`, time)
                   }
                   style={[
-                    styles.rangeOption,
+                    styles.timeOption,
                     { backgroundColor: ComeYaColors.primary },
                   ]}
                 >
                   <ThemedText type="h4" style={{ color: "#FFF" }}>
-                    {opt.label}
+                    {time} min
                   </ThemedText>
                 </Pressable>
               ))}
