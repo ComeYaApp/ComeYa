@@ -542,7 +542,7 @@ export default function DriverNavigationScreen() {
             anchor={{ x: 0.5, y: 1 }}
             trackKey="dest"
           >
-            <MapPin icon="map-marker" color="#DC2626" size={38} />
+            <MapPin icon="map-marker" color="#E60000" size={38} />
           </SmartMarker>
         )}
 

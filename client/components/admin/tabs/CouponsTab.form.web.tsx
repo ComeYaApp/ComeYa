@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import { apiRequest } from "@/lib/query-client";
 import { Coupon } from "./CouponsTab.web";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const PINK = "#EC4899";
 
 const EMPTY = {

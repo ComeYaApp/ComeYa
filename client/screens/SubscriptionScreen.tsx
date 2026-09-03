@@ -447,7 +447,7 @@ export default function SubscriptionScreen() {
             const p = plansData[planKey];
             if (currentPlan === planKey && isActive) return null;
             const cycle = p.billingCycle === "weekly" ? "semana" : "mes";
-            const color = (p.color || "#DC2626").replace("#", "");
+            const color = (p.color || "#E60000").replace("#", "");
             // Beneficios priorizando la lista real de la BD; el texto de
             // description es solo respaldo (se separa por saltos de línea)
             const benefitsText: string[] =

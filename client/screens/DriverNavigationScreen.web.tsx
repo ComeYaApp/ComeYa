@@ -279,7 +279,7 @@ export default function DriverNavigationScreen() {
       position: destinationCoord,
       map: gmap.current,
       title: destAddress || "Destino",
-      icon: asGoogleIcon(google, pinIcon("#DC2626", "map-marker")),
+      icon: asGoogleIcon(google, pinIcon("#E60000", "map-marker")),
       animation: google.maps.Animation.DROP,
     });
   }, [mapsReady]);

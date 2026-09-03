@@ -21,7 +21,7 @@ import { useResponsive } from "@/hooks/useResponsive";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, "BusinessDetail">;
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export default function BusinessDetailScreen() {
   const navigation = useNavigation<Nav>();

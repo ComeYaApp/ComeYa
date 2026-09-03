@@ -1,9 +1,9 @@
 // Dark Mode Theme for ComeYa App
 export const darkTheme = {
   colors: {
-    primary: "#FF6B35",
-    primaryDark: "#E55A25",
-    primaryLight: "#FF8C5A",
+    primary: "#E60000",
+    primaryDark: "#B00000",
+    primaryLight: "#FF1A1A",
     secondary: "#E0E0E0",
     background: "#121212",
     backgroundSecondary: "#1E1E1E",
@@ -31,4 +31,3 @@ export const darkTheme = {
 
 export type DarkTheme = typeof darkTheme;
 export const ComeYaDarkColors = darkTheme.colors;
-export const ComeYaDarkColors = darkTheme.colors; // Legacy alias

@@ -23,7 +23,7 @@ import {
  Shadows,
 } from "@/constants/theme";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 type Tab = "upcoming" | "history";
 

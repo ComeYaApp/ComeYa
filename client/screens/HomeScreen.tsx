@@ -22,6 +22,7 @@ import {
 } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
+import { ComeyaIcon, ComeyaIconName } from "@/components/icons/comeya/ComeyaIcon";
 import { LinearGradient } from "expo-linear-gradient";
 import { Image } from "expo-image";
 import Animated, {
@@ -44,6 +45,7 @@ import { BusinessCardSkeleton } from "@/components/SkeletonLoader";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
+import { useToast } from "@/contexts/ToastContext";
 import {
   Spacing,
   BorderRadius,
@@ -67,13 +69,17 @@ const GRID_PADDING = Spacing.lg * 2;
 const GRID_GAP = Spacing.sm;
 // GRID_CARD_WIDTH se calcula dinámicamente en el componente
 
-const filters = [
-  { id: "rapido", name: "Rapido", icon: "zap" },
-  { id: "economico", name: "Economico", icon: "dollar-sign" },
-  { id: "popular", name: "Popular", icon: "star" },
-  { id: "open", name: "Abierto ahora", icon: "clock" },
+const filters: { id: string; name: string; icon: ComeyaIconName }[] = [
+  { id: "rapido", name: "Rapido", icon: "rayo" },
+  { id: "economico", name: "Economico", icon: "dolar" },
+  { id: "popular", name: "Popular", icon: "estrella" },
+  { id: "open", name: "Abierto ahora", icon: "reloj" },
 ];
-const favoriteFilter = { id: "favorites", name: "Favoritos", icon: "heart" };
+const favoriteFilter = {
+  id: "favorites",
+  name: "Favoritos",
+  icon: "corazon" as ComeyaIconName,
+};
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -104,6 +110,10 @@ export default function HomeScreen() {
   const [sortMode, setSortMode] = useState<"distance" | "rating" | "time">(
     "distance",
   );
+  const [favoriteBusinessIds, setFavoriteBusinessIds] = useState<
+    Set<string | number>
+  >(new Set());
+  const { showToast } = useToast();
 
   // Funcionalidades reales de la app (sin mock data)
   const realFeatures: Array<{
@@ -111,13 +121,13 @@ export default function HomeScreen() {
     title: string;
     subtitle: string;
     gradient: [string, string, string];
-    icon: string;
+    icon: ComeyaIconName;
     screen: keyof RootStackParamList;
   }> = [
-    { id: "vip", title: "Hazte VIP", subtitle: "Envío gratis + 10% dto.", gradient: ["#FFD700", "#FFA000", "#FF8F00"], icon: "award", screen: "Subscriptions" },
-    { id: "gift", title: "Tarjeta Regalo", subtitle: "El mejor detalle", gradient: ["#E91E63", "#C2185B", "#AD1457"], icon: "gift", screen: "GiftCards" },
-    { id: "points", title: "Tus Puntos", subtitle: "Gana recompensas", gradient: ["#9C27B0", "#7B1FA2", "#6A1B9A"], icon: "zap", screen: "Gamification" },
-    { id: "referral", title: "Invita y Gana", subtitle: "Puntos por cada amigo", gradient: ["#00BCD4", "#0097A7", "#00838F"], icon: "share-2", screen: "Referral" },
+    { id: "vip", title: "Hazte VIP", subtitle: "Envío gratis + 10% dto.", gradient: ["#FFC107", "#FB8C00", "#F4511E"], icon: "medalla", screen: "Subscriptions" },
+    { id: "gift", title: "Tarjeta Regalo", subtitle: "El mejor detalle", gradient: ["#EC407A", "#D81B60", "#AD1457"], icon: "regalo", screen: "GiftCards" },
+    { id: "points", title: "Tus Puntos", subtitle: "Gana recompensas", gradient: ["#AB47BC", "#8E24AA", "#6A1B9A"], icon: "estrella", screen: "Gamification" },
+    { id: "referral", title: "Invita y Gana", subtitle: "Puntos por cada amigo", gradient: ["#29B6F6", "#0288D1", "#01579B"], icon: "corazon", screen: "Referral" },
   ];
 
   // Obtener ubicación del usuario
@@ -141,35 +151,39 @@ export default function HomeScreen() {
     return () => { isMounted = false; };
   }, []);
 
-  // Mapa de iconos y colores - clave = primera categoria del negocio
+  // Mapa de iconos de marca por categoría - clave = primera categoria del negocio
   const CATEGORY_STYLE: Record<
     string,
-    { icon: string; color: string; label: string }
+    { icon: ComeyaIconName; label: string }
   > = {
-    pizza: { icon: "circle", color: "#E91E63", label: "Pizzas" },
-    burger: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
-    burgers: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
-    sushi: { icon: "wind", color: "#00BCD4", label: "Sushi" },
-    pollo: { icon: "feather", color: "#FF9800", label: "Pollo" },
-    mariscos: { icon: "anchor", color: "#2196F3", label: "Mariscos" },
-    tacos: { icon: "sun", color: "#FF5722", label: "Mexicana" },
-    mexicana: { icon: "sun", color: "#FF5722", label: "Mexicana" },
-    mercado: { icon: "shopping-bag", color: "#4CAF50", label: "Mercado" },
-    carniceria: { icon: "shopping-bag", color: "#795548", label: "Carniceria" },
+    pizza: { icon: "pizza", label: "Pizzas" },
+    burger: { icon: "hamburguesa", label: "Hamburguesas" },
+    burgers: { icon: "hamburguesa", label: "Hamburguesas" },
+    hamburguesas: { icon: "hamburguesa", label: "Hamburguesas" },
+    sushi: { icon: "sushi", label: "Sushi" },
+    pollo: { icon: "pollo", label: "Pollo" },
+    mariscos: { icon: "paella", label: "Mariscos" },
+    paella: { icon: "paella", label: "Paella" },
+    tacos: { icon: "taco", label: "Mexicana" },
+    mexicana: { icon: "taco", label: "Mexicana" },
+    ensaladas: { icon: "ensalada", label: "Ensaladas" },
+    ramen: { icon: "ramen", label: "Ramen" },
+    asiatica: { icon: "ramen", label: "Asiática" },
+    postres: { icon: "postre", label: "Postres" },
+    mercado: { icon: "mercado", label: "Mercado" },
+    carniceria: { icon: "pollo", label: "Carnicería" },
   };
 
   // Genera categorias unicas usando SOLO la primera categoria de cada negocio
   const dynamicCategories = React.useMemo(() => {
     const seen = new Set<string>();
-    const cats: { id: string; icon: string; color: string; label: string }[] =
-      [];
+    const cats: { id: string; icon: ComeyaIconName; label: string }[] = [];
     businesses.forEach((b) => {
       const firstCat = b.categories[0]?.toLowerCase().trim();
       if (!firstCat || seen.has(firstCat)) return;
       seen.add(firstCat);
       const style = CATEGORY_STYLE[firstCat] || {
-        icon: "tag",
-        color: ComeYaColors.primary,
+        icon: "lupa" as ComeyaIconName,
         label: firstCat.charAt(0).toUpperCase() + firstCat.slice(1),
       };
       cats.push({ id: firstCat, ...style });
@@ -268,6 +282,78 @@ export default function HomeScreen() {
     setIsRefreshing(false);
   };
 
+  // Favoritos de negocio (estrella en la tarjeta del restaurante)
+  const loadFavorites = useCallback(async () => {
+    if (!user?.id) {
+      setFavoriteBusinessIds(new Set());
+      return;
+    }
+    try {
+      const response = await apiRequest("GET", "/api/favorites");
+      const data = await response.json();
+      const ids: (string | number)[] = (data?.favorites?.businesses || []).map(
+        (b: any) => b.id,
+      );
+      setFavoriteBusinessIds(new Set(ids));
+    } catch {
+      /* favoritos opcionales */
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites]);
+
+  const toggleBusinessFavorite = useCallback(
+    async (businessId: string | number) => {
+      if (!user) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        showToast(
+          "Inicia sesión para guardar tus restaurantes favoritos.",
+          "warning",
+        );
+        navigation.navigate("Login" as never);
+        return;
+      }
+      const isFav = favoriteBusinessIds.has(businessId);
+      setFavoriteBusinessIds((prev) => {
+        const next = new Set(prev);
+        if (isFav) {
+          next.delete(businessId);
+        } else {
+          next.add(businessId);
+        }
+        return next;
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      try {
+        if (isFav) {
+          await apiRequest(
+            "DELETE",
+            `/api/favorites/business/${businessId}`,
+          );
+        } else {
+          await apiRequest("POST", "/api/favorites", {
+            itemType: "business",
+            itemId: businessId,
+          });
+        }
+      } catch {
+        // revertir si la llamada falla
+        setFavoriteBusinessIds((prev) => {
+          const next = new Set(prev);
+          if (isFav) {
+            next.add(businessId);
+          } else {
+            next.delete(businessId);
+          }
+          return next;
+        });
+      }
+    },
+    [user, favoriteBusinessIds, showToast, navigation],
+  );
+
   const filterBusinesses = useCallback(
     (businessList: Business[]) => {
       let filtered = [...businessList];
@@ -307,12 +393,18 @@ export default function HomeScreen() {
             // Mostrar negocios destacados (featured)
             filtered = filtered.filter((b) => b.featured);
             break;
+          case "open":
+            filtered = filtered.filter((b) => b.isOpen);
+            break;
+          case "favorites":
+            filtered = filtered.filter((b) => favoriteBusinessIds.has(b.id));
+            break;
         }
       }
 
       return filtered;
     },
-    [searchQuery, activeCategory, activeFilter],
+    [searchQuery, activeCategory, activeFilter, favoriteBusinessIds],
   );
 
   // Calcular distancias
@@ -379,24 +471,22 @@ export default function HomeScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo Header */}
+        {/* Franja de marca */}
         <Animated.View
           entering={FadeInDown.delay(50).springify()}
-          style={styles.logoHeader}
+          style={styles.brandBand}
         >
           <Image
-            source={require("../../assets/images/icon.png")}
-            style={styles.headerLogo}
+            source={require("../../assets/images/comeya-badge.png")}
+            style={styles.brandBadge}
+            contentFit="contain"
+            pointerEvents="none"
+          />
+          <Image
+            source={require("../../assets/images/comeya-wordmark-white.png")}
+            style={styles.brandWordmark}
             contentFit="contain"
           />
-          <View style={styles.logoTextContainer}>
-            <ThemedText type="h2" style={styles.logoTitle}>
-              ComeYa
-            </ThemedText>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              Tu app de delivery en Soria
-            </ThemedText>
-          </View>
         </Animated.View>
 
         {/* Question Header */}
@@ -439,26 +529,16 @@ export default function HomeScreen() {
                   <View
                     style={[
                       styles.quickAccessIcon,
-                      {
-                        backgroundColor: isActive
-                          ? item.color
-                          : item.color + "15",
-                        borderWidth: isActive ? 2 : 0,
-                        borderColor: item.color,
-                      },
+                      isActive && styles.quickAccessIconActive,
                     ]}
                   >
-                    <Feather
-                      name={item.icon as any}
-                      size={22}
-                      color={isActive ? "#FFFFFF" : item.color}
-                    />
+                    <ComeyaIcon name={item.icon} size={30} color="#FFFFFF" />
                   </View>
                   <ThemedText
                     type="caption"
                     style={[
                       styles.quickAccessLabel,
-                      isActive && { color: item.color, fontWeight: "700" },
+                      isActive && styles.quickAccessLabelActive,
                     ]}
                   >
                     {item.label}
@@ -473,10 +553,10 @@ export default function HomeScreen() {
         <View
           style={[
             styles.searchContainer,
-            { backgroundColor: theme.backgroundSecondary },
+            { backgroundColor: theme.card, borderColor: theme.border },
           ]}
         >
-          <Feather name="search" size={20} color={theme.textSecondary} />
+          <ComeyaIcon name="lupa" size={20} color={theme.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: theme.text }]}
             placeholder="Buscar platillo o restaurante..."
@@ -565,17 +645,16 @@ export default function HomeScreen() {
               style={({ pressed }) => [
                 styles.filterChip,
                 {
-                  backgroundColor: theme.backgroundSecondary,
-                  borderWidth: 1,
-                  borderColor: "#F44336",
+                  backgroundColor: theme.card,
+                  borderColor: ComeYaColors.primary,
                   opacity: pressed ? 0.8 : 1,
                 },
               ]}
             >
-              <Feather name="x" size={14} color="#F44336" />
+              <Feather name="x" size={14} color={ComeYaColors.primary} />
               <ThemedText
                 type="small"
-                style={[styles.filterText, { color: "#F44336" }]}
+                style={[styles.filterText, { color: ComeYaColors.primary }]}
               >
                 Limpiar
               </ThemedText>
@@ -591,17 +670,25 @@ export default function HomeScreen() {
               style={({ pressed }) => [
                 styles.filterChip,
                 activeFilter === filter.id
-                  ? { backgroundColor: ComeYaColors.primary }
-                  : { backgroundColor: theme.backgroundSecondary },
+                  ? styles.filterChipActive
+                  : styles.filterChipInactive,
                 {
+                  backgroundColor:
+                    activeFilter === filter.id
+                      ? ComeYaColors.primary
+                      : theme.card,
+                  borderColor:
+                    activeFilter === filter.id
+                      ? ComeYaColors.primary
+                      : theme.border,
                   opacity: pressed ? 0.8 : 1,
                   transform: [{ scale: pressed ? 0.95 : 1 }],
                 },
               ]}
             >
-              <Feather
-                name={filter.icon as any}
-                size={14}
+              <ComeyaIcon
+                name={filter.icon}
+                size={15}
                 color={
                   activeFilter === filter.id ? "#FFFFFF" : ComeYaColors.primary
                 }
@@ -610,7 +697,10 @@ export default function HomeScreen() {
                 type="small"
                 style={[
                   styles.filterText,
-                  activeFilter === filter.id && { color: "#FFFFFF" },
+                  {
+                    color:
+                      activeFilter === filter.id ? "#FFFFFF" : theme.text,
+                  },
                 ]}
               >
                 {filter.name}
@@ -628,14 +718,45 @@ export default function HomeScreen() {
               }}
               style={({ pressed }) => [
                 styles.filterChip,
-                activeFilter === favoriteFilter.id
-                  ? { backgroundColor: "#E91E63" }
-                  : { backgroundColor: theme.backgroundSecondary },
-                { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] },
+                {
+                  backgroundColor:
+                    activeFilter === favoriteFilter.id
+                      ? ComeYaColors.primary
+                      : theme.card,
+                  borderColor:
+                    activeFilter === favoriteFilter.id
+                      ? ComeYaColors.primary
+                      : theme.border,
+                  opacity: pressed ? 0.8 : 1,
+                  transform: [{ scale: pressed ? 0.95 : 1 }],
+                },
               ]}
             >
-              <Feather name={favoriteFilter.icon as any} size={14} color={activeFilter === favoriteFilter.id ? "#FFFFFF" : "#E91E63"} />
-              <ThemedText type="small" style={[styles.filterText, activeFilter === favoriteFilter.id ? { color: "#FFFFFF" } : { color: "#E91E63" }]}>
+              <ComeyaIcon
+                name={
+                  activeFilter === favoriteFilter.id
+                    ? "corazonRelleno"
+                    : "corazon"
+                }
+                size={15}
+                color={
+                  activeFilter === favoriteFilter.id
+                    ? "#FFFFFF"
+                    : ComeYaColors.primary
+                }
+              />
+              <ThemedText
+                type="small"
+                style={[
+                  styles.filterText,
+                  {
+                    color:
+                      activeFilter === favoriteFilter.id
+                        ? "#FFFFFF"
+                        : theme.text,
+                  },
+                ]}
+              >
                 {favoriteFilter.name}
               </ThemedText>
             </Pressable>
@@ -657,7 +778,7 @@ export default function HomeScreen() {
                 >
                   <LinearGradient colors={feature.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.promoGradient}>
                     <View style={styles.promoIconContainer}>
-                      <Feather name={feature.icon as any} size={28} color="#FFFFFF" />
+                      <ComeyaIcon name={feature.icon} size={26} color="#FFFFFF" />
                     </View>
                     <View style={styles.promoTextContainer}>
                       <Text style={styles.promoTitle}>{feature.title}</Text>
@@ -674,15 +795,15 @@ export default function HomeScreen() {
         {!hasActiveFilters && userLocation && (
           <View style={styles.sortRow}>
             <Pressable onPress={() => { Haptics.selectionAsync(); setSortMode("distance"); }} style={[styles.sortChip, sortMode === "distance" && styles.sortChipActive]}>
-              <Feather name="map-pin" size={12} color={sortMode === "distance" ? "#FFFFFF" : theme.textSecondary} />
+              <ComeyaIcon name="mapa" size={12} color={sortMode === "distance" ? "#FFFFFF" : theme.textSecondary} />
               <ThemedText type="caption" style={sortMode === "distance" ? styles.sortChipTextActive : styles.sortChipText}>Más cerca</ThemedText>
             </Pressable>
             <Pressable onPress={() => { Haptics.selectionAsync(); setSortMode("rating"); }} style={[styles.sortChip, sortMode === "rating" && styles.sortChipActive]}>
-              <Feather name="star" size={12} color={sortMode === "rating" ? "#FFFFFF" : theme.textSecondary} />
+              <ComeyaIcon name="estrella" size={12} color={sortMode === "rating" ? "#FFFFFF" : theme.textSecondary} />
               <ThemedText type="caption" style={sortMode === "rating" ? styles.sortChipTextActive : styles.sortChipText}>Mejor rating</ThemedText>
             </Pressable>
             <Pressable onPress={() => { Haptics.selectionAsync(); setSortMode("time"); }} style={[styles.sortChip, sortMode === "time" && styles.sortChipActive]}>
-              <Feather name="clock" size={12} color={sortMode === "time" ? "#FFFFFF" : theme.textSecondary} />
+              <ComeyaIcon name="reloj" size={12} color={sortMode === "time" ? "#FFFFFF" : theme.textSecondary} />
               <ThemedText type="caption" style={sortMode === "time" ? styles.sortChipTextActive : styles.sortChipText}>Más rápido</ThemedText>
             </Pressable>
           </View>
@@ -916,11 +1037,24 @@ export default function HomeScreen() {
                         style={styles.gridImage}
                         contentFit="cover"
                       />
-                      {business.featured && (
-                        <View style={styles.gridFeaturedBadge}>
-                          <Feather name="star" size={10} color="#FFFFFF" />
-                        </View>
-                      )}
+                      <Pressable
+                        onPress={() => toggleBusinessFavorite(business.id)}
+                        style={({ pressed }) => [
+                          styles.gridFavButton,
+                          { opacity: pressed ? 0.85 : 1 },
+                        ]}
+                        hitSlop={6}
+                      >
+                        <ComeyaIcon
+                          name={
+                            favoriteBusinessIds.has(business.id)
+                              ? "estrellaRellena"
+                              : "estrella"
+                          }
+                          size={14}
+                          color="#FFFFFF"
+                        />
+                      </Pressable>
                       <View
                         style={[
                           styles.gridOpenBadge,
@@ -1172,22 +1306,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: Spacing.lg,
   },
-  logoHeader: {
-    flexDirection: "row",
+  brandBand: {
+    backgroundColor: ComeYaColors.primary,
+    marginHorizontal: -Spacing.lg,
+    height: 96,
+    justifyContent: "center",
     alignItems: "center",
     marginBottom: Spacing.lg,
   },
-  headerLogo: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.md,
+  brandBadge: {
+    position: "absolute",
+    left: Spacing.lg,
+    top: 16,
+    width: 64,
+    height: 64,
   },
-  logoTextContainer: {
-    marginLeft: Spacing.md,
-  },
-  logoTitle: {
-    color: ComeYaColors.primary,
-    fontWeight: "700",
+  brandWordmark: {
+    width: 216,
+    height: 74,
   },
   questionContainer: {
     marginBottom: Spacing.lg,
@@ -1204,26 +1340,36 @@ const styles = StyleSheet.create({
   },
   quickAccessItem: {
     alignItems: "center",
-    width: 70,
+    width: 76,
   },
   quickAccessIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: ComeYaColors.primary,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: Spacing.xs,
+  },
+  quickAccessIconActive: {
+    borderWidth: 3,
+    borderColor: ComeYaColors.primaryDark,
   },
   quickAccessLabel: {
     textAlign: "center",
     fontWeight: "500",
   },
+  quickAccessLabelActive: {
+    color: ComeYaColors.primary,
+    fontWeight: "700",
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.sm + 2,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
     marginBottom: Spacing.md,
   },
   searchInput: {
@@ -1247,6 +1393,15 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     gap: Spacing.xs,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  filterChipActive: {
+    backgroundColor: ComeYaColors.primary,
+    borderColor: ComeYaColors.primary,
+  },
+  filterChipInactive: {
+    backgroundColor: "transparent",
   },
   filterText: {
     fontWeight: "600",
@@ -1386,14 +1541,14 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 100,
   },
-  gridFeaturedBadge: {
+  gridFavButton: {
     position: "absolute",
     top: Spacing.xs,
     right: Spacing.xs,
     backgroundColor: ComeYaColors.primary,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
   },

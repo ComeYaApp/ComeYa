@@ -8,7 +8,7 @@ interface NumberPinProps {
 }
 
 /** Chincheta con número dentro (paradas de ruta optimizada). */
-export function NumberPin({ label, color = "#DC2626", size = 36 }: NumberPinProps) {
+export function NumberPin({ label, color = "#E60000", size = 36 }: NumberPinProps) {
   const text = String(label);
   return (
     <View style={styles.container}>

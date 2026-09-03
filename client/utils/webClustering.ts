@@ -47,7 +47,7 @@ export function clusterPoints(
 }
 
 /** Icono SVG (data URI) para un cluster con contador. */
-export function clusterSvg(count: number, color: string = "#DC2626"): string {
+export function clusterSvg(count: number, color: string = "#E60000"): string {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44">` +
     `<circle cx="22" cy="22" r="16" fill="${color}" opacity="0.92"/>` +

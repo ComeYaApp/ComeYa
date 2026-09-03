@@ -14,7 +14,7 @@ import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 interface StripeStatus {
   connected: boolean;

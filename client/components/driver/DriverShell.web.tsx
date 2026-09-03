@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { confirm } from "@/hooks/useWebDialog";
 
 const GREEN = "#16A34A";
-const ACCENT = "#DC2626";
+const ACCENT = "#E60000";
 
 export type DriverSection =
   | "available"

@@ -44,9 +44,9 @@ const STATUS_CONFIG: Record<
   preparing: { label: "Preparando", color: "#8B5CF6", icon: "package" },
   ready: { label: "Listo", color: "#10B981", icon: "check-circle" },
   picked_up: { label: "Recogido", color: "#F97316", icon: "shopping-bag" },
-  on_the_way: { label: "En camino", color: "#DC2626", icon: "truck" },
-  in_transit: { label: "En camino", color: "#DC2626", icon: "truck" },
-  arriving: { label: "Llegando", color: "#DC2626", icon: "map-pin" },
+  on_the_way: { label: "En camino", color: "#E60000", icon: "truck" },
+  in_transit: { label: "En camino", color: "#E60000", icon: "truck" },
+  arriving: { label: "Llegando", color: "#E60000", icon: "map-pin" },
 };
 
 interface Delivery {
@@ -478,7 +478,7 @@ export default function BusinessDeliveryMapScreen() {
               </ThemedText>
             </View>
             <View style={styles.statItem}>
-              <ThemedText type="h4" style={{ color: "#DC2626" }}>
+              <ThemedText type="h4" style={{ color: "#E60000" }}>
                 {stats.onTheWay}
               </ThemedText>
               <ThemedText type="caption" style={{ color: sub }}>

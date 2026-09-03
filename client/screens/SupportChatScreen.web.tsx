@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getApiUrl } from "@/lib/query-client";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 interface Message {
   id: string;

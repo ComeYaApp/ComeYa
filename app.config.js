@@ -49,7 +49,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
             package: "com.comeya.app",
-      versionCode: 22,
+      versionCode: 23,
       config: {
         googleMaps: {
           // ComeYa Android Key (paquete + SHA-1). Coincide con la clave ya

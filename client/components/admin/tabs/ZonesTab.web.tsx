@@ -13,7 +13,7 @@ import { ComeYaColors } from "../../../constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 interface Zone {
   id: string;

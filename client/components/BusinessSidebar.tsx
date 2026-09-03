@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { confirm } from "@/hooks/useWebDialog";
 import { useBusiness } from "@/contexts/BusinessContext";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const NAV_ITEMS = [
   { id: "BusinessDashboard", label: "Dashboard", icon: "bar-chart-2" },

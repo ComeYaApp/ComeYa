@@ -14,7 +14,7 @@ import { Image } from "expo-image";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const TABS = [
   { id: "all", label: "Todos", icon: "grid" },

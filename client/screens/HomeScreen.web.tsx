@@ -12,9 +12,11 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
+import { ComeyaIcon, ComeyaIconName } from "@/components/icons/comeya/ComeyaIcon";
 import { Image } from "expo-image";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
 import { useTheme } from "@/hooks/useTheme";
 import { useResponsive } from "@/hooks/useResponsive";
 import { apiRequest } from "@/lib/query-client";
@@ -22,7 +24,7 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { Business } from "@/types";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const FILTERS = [
   { id: "all", label: "Todos" },
@@ -37,18 +39,24 @@ const SORT = [
 
 const CATEGORY_STYLE: Record<
   string,
-  { icon: string; color: string; label: string }
+  { icon: ComeyaIconName; label: string }
 > = {
-  pizza: { icon: "circle", color: "#E91E63", label: "Pizzas" },
-  burger: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
-  burgers: { icon: "layers", color: "#F44336", label: "Hamburguesas" },
-  sushi: { icon: "wind", color: "#00BCD4", label: "Sushi" },
-  pollo: { icon: "feather", color: "#FF9800", label: "Pollo" },
-  mariscos: { icon: "anchor", color: "#2196F3", label: "Mariscos" },
-  tacos: { icon: "sun", color: "#FF5722", label: "Mexicana" },
-  mexicana: { icon: "sun", color: "#FF5722", label: "Mexicana" },
-  mercado: { icon: "shopping-bag", color: "#4CAF50", label: "Mercado" },
-  carniceria: { icon: "shopping-bag", color: "#795548", label: "Carnicería" },
+  pizza: { icon: "pizza", label: "Pizzas" },
+  burger: { icon: "hamburguesa", label: "Hamburguesas" },
+  burgers: { icon: "hamburguesa", label: "Hamburguesas" },
+  hamburguesas: { icon: "hamburguesa", label: "Hamburguesas" },
+  sushi: { icon: "sushi", label: "Sushi" },
+  pollo: { icon: "pollo", label: "Pollo" },
+  mariscos: { icon: "paella", label: "Mariscos" },
+  paella: { icon: "paella", label: "Paella" },
+  tacos: { icon: "taco", label: "Mexicana" },
+  mexicana: { icon: "taco", label: "Mexicana" },
+  ensaladas: { icon: "ensalada", label: "Ensaladas" },
+  ramen: { icon: "ramen", label: "Ramen" },
+  asiatica: { icon: "ramen", label: "Asiática" },
+  postres: { icon: "postre", label: "Postres" },
+  mercado: { icon: "mercado", label: "Mercado" },
+  carniceria: { icon: "pollo", label: "Carnicería" },
 };
 
 export default function HomeScreen() {
@@ -64,6 +72,10 @@ export default function HomeScreen() {
   const [sortBy, setSortBy] = useState("rating");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [favoriteBusinessIds, setFavoriteBusinessIds] = useState<
+    Set<string | number>
+  >(new Set());
+  const { showToast } = useToast();
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -105,17 +117,76 @@ export default function HomeScreen() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Favoritos de negocio (estrella en la tarjeta del restaurante)
+  useEffect(() => {
+    if (!user?.id) {
+      setFavoriteBusinessIds(new Set());
+      return;
+    }
+    apiRequest("GET", "/api/favorites")
+      .then((r) => r.json())
+      .then((data) => {
+        const ids: (string | number)[] = (
+          data?.favorites?.businesses || []
+        ).map((b: any) => b.id);
+        setFavoriteBusinessIds(new Set(ids));
+      })
+      .catch(() => {
+        /* favoritos opcionales */
+      });
+  }, [user?.id]);
+
+  const toggleBusinessFavorite = async (businessId: string | number) => {
+    if (!user) {
+      showToast(
+        "Inicia sesión para guardar tus restaurantes favoritos.",
+        "warning",
+      );
+      navigation.navigate("Login" as never);
+      return;
+    }
+    const isFav = favoriteBusinessIds.has(businessId);
+    setFavoriteBusinessIds((prev) => {
+      const next = new Set(prev);
+      if (isFav) {
+        next.delete(businessId);
+      } else {
+        next.add(businessId);
+      }
+      return next;
+    });
+    try {
+      if (isFav) {
+        await apiRequest("DELETE", `/api/favorites/business/${businessId}`);
+      } else {
+        await apiRequest("POST", "/api/favorites", {
+          itemType: "business",
+          itemId: businessId,
+        });
+      }
+    } catch {
+      setFavoriteBusinessIds((prev) => {
+        const next = new Set(prev);
+        if (isFav) {
+          next.add(businessId);
+        } else {
+          next.delete(businessId);
+        }
+        return next;
+      });
+    }
+  };
+
   const dynamicCategories = React.useMemo(() => {
     const seen = new Set<string>();
     return businesses.reduce<
-      { id: string; icon: string; color: string; label: string }[]
+      { id: string; icon: ComeyaIconName; label: string }[]
     >((acc, b) => {
       const cat = b.categories[0]?.toLowerCase().trim();
       if (!cat || seen.has(cat)) return acc;
       seen.add(cat);
       const style = CATEGORY_STYLE[cat] || {
-        icon: "tag",
-        color: PRIMARY,
+        icon: "lupa" as ComeyaIconName,
         label: cat.charAt(0).toUpperCase() + cat.slice(1),
       };
       acc.push({ id: cat, ...style });
@@ -226,10 +297,10 @@ export default function HomeScreen() {
                 activeCategory === c.id && { backgroundColor: PRIMARY + "12" },
               ]}
             >
-              <Feather
-                name={c.icon as any}
-                size={13}
-                color={activeCategory === c.id ? PRIMARY : c.color}
+              <ComeyaIcon
+                name={c.icon}
+                size={15}
+                color={activeCategory === c.id ? PRIMARY : sub}
               />
               <Text
                 style={[
@@ -334,20 +405,20 @@ export default function HomeScreen() {
               s.chip,
               {
                 backgroundColor:
-                  activeCategory === c.id ? c.color + "20" : inputBg,
-                borderColor: activeCategory === c.id ? c.color : border,
+                  activeCategory === c.id ? PRIMARY + "14" : inputBg,
+                borderColor: activeCategory === c.id ? PRIMARY : border,
               },
             ]}
           >
-            <Feather
-              name={c.icon as any}
-              size={12}
-              color={activeCategory === c.id ? c.color : sub}
+            <ComeyaIcon
+              name={c.icon}
+              size={14}
+              color={activeCategory === c.id ? PRIMARY : sub}
             />
             <Text
               style={[
                 s.chipText,
-                { color: activeCategory === c.id ? c.color : text },
+                { color: activeCategory === c.id ? PRIMARY : text },
               ]}
             >
               {c.label}
@@ -505,6 +576,23 @@ export default function HomeScreen() {
           {/* Filtros móvil */}
           {isMobile && MobileFilters}
 
+          {/* Franja de marca */}
+          {!search && typeFilter === "all" && !activeCategory && (
+            <View style={s.brandBand}>
+              <Image
+                source={require("../../assets/images/comeya-badge.png")}
+                style={s.brandBadge}
+                contentFit="contain"
+                pointerEvents="none"
+              />
+              <Image
+                source={require("../../assets/images/comeya-wordmark-white.png")}
+                style={s.brandWordmark}
+                contentFit="contain"
+              />
+            </View>
+          )}
+
           {/* Hero */}
           {!search && typeFilter === "all" && !activeCategory && (
             <View
@@ -521,7 +609,17 @@ export default function HomeScreen() {
                   Entrega en 30-45 min · Soria, España
                 </Text>
               </View>
-              {!isMobile && <Text style={s.heroEmoji}>🍔🍕🍣</Text>}
+              {!isMobile && (
+                <View style={s.heroIcons}>
+                  {(["hamburguesa", "pizza", "sushi"] as ComeyaIconName[]).map(
+                    (name) => (
+                      <View key={name} style={s.heroIconCircle}>
+                        <ComeyaIcon name={name} size={26} color="#fff" />
+                      </View>
+                    ),
+                  )}
+                </View>
+              )}
             </View>
           )}
 
@@ -550,13 +648,13 @@ export default function HomeScreen() {
           ) : (
             <View style={[s.grid, isMobile && s.gridMobile]}>
               {filtered.map((b) => (
-                <Pressable
-                  key={b.id}
-                  style={[s.card, cardStyle, { backgroundColor: card }]}
-                  onPress={() =>
-                    navigation.navigate("BusinessDetail", { businessId: b.id })
-                  }
-                >
+                <View key={b.id} style={[s.cardWrap, cardStyle]}>
+                  <Pressable
+                    style={[s.card, { backgroundColor: card }]}
+                    onPress={() =>
+                      navigation.navigate("BusinessDetail", { businessId: b.id })
+                    }
+                  >
                   <View style={s.cardImgWrap}>
                     <Image
                       source={{ uri: b.bannerImage }}
@@ -604,6 +702,24 @@ export default function HomeScreen() {
                     </View>
                   </View>
                 </Pressable>
+                {/* Favorito: fuera del Pressable de la tarjeta para que el
+                  click no navegue al detalle (en web el evento hace bubble) */}
+                <Pressable
+                  onPress={() => toggleBusinessFavorite(b.id)}
+                  style={s.cardFavButton}
+                  hitSlop={6}
+                >
+                  <ComeyaIcon
+                    name={
+                      favoriteBusinessIds.has(b.id)
+                        ? "estrellaRellena"
+                        : "estrella"
+                    }
+                    size={14}
+                    color="#fff"
+                  />
+                </Pressable>
+                </View>
               ))}
             </View>
           )}
@@ -766,6 +882,32 @@ const s = StyleSheet.create({
   // Main
   main: { flex: 1 },
   mainContent: { paddingBottom: 48 },
+  brandBand: {
+    backgroundColor: PRIMARY,
+    height: 96,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 14,
+    marginBottom: 16,
+    position: "relative" as any,
+  },
+  brandBadge: {
+    position: "absolute" as any,
+    left: 18,
+    top: 16,
+    width: 64,
+    height: 64,
+  },
+  brandWordmark: { width: 216, height: 74 },
+  heroIcons: { flexDirection: "row", gap: 10 },
+  heroIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   hero: {
     borderRadius: 14,
     flexDirection: "row",
@@ -812,6 +954,21 @@ const s = StyleSheet.create({
     borderRadius: 6,
   },
   featuredBadgeText: { fontSize: 10, fontWeight: "700", color: "#fff" },
+  cardWrap: {
+    position: "relative" as any,
+  },
+  cardFavButton: {
+    position: "absolute" as any,
+    top: 8,
+    right: 8,
+    zIndex: 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: PRIMARY,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   cardBody: {},
   cardName: { fontSize: 15, fontWeight: "700", marginBottom: 3 },
   cardDesc: { fontSize: 12, marginBottom: 8 },

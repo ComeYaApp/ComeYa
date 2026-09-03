@@ -18,7 +18,7 @@ import { formatCurrency, formatEuros } from "@/utils/currency";
 import { useBusiness } from "@/contexts/BusinessContext";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 type Period = "today" | "week" | "month" | "all";
 
 export default function BusinessDashboardScreen() {

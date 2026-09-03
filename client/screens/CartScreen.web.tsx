@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export default function CartScreen() {
   const navigation = useNavigation<any>();

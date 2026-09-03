@@ -368,7 +368,7 @@ export default function RouteOptimizationScreen({ navigation }: any) {
                 .filter((n) => n.kind !== "start")
                 .map((node, index) => {
                   const stopColor =
-                    node.kind === "pickup" ? "#F59E0B" : "#DC2626";
+                    node.kind === "pickup" ? "#F59E0B" : "#E60000";
                   return (
                     <SmartMarker
                       key={node.id}

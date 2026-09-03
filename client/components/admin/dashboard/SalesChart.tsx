@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const W = 520;
 const H = 140;
 const PAD_L = 48;

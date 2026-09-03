@@ -26,7 +26,7 @@ import { useResponsive } from "@/hooks/useResponsive";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { confirm } from "@/hooks/useWebDialog";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 function resolveProfileImageUrl(profileImage: string): string {
   if (profileImage.startsWith("data:image/")) return profileImage;

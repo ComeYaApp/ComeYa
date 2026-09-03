@@ -17,7 +17,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { apiRequest } from "@/lib/query-client";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 type Period = "today" | "week" | "month";
 
 const TX_ICON: Record<string, string> = {

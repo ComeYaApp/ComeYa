@@ -70,7 +70,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 };
 
 const PRIORITY_META: Record<string, { label: string; color: string }> = {
-  urgent: { label: "URGENTE", color: "#DC2626" },
+  urgent: { label: "URGENTE", color: "#E60000" },
   high: { label: "ALTA", color: "#EF4444" },
   medium: { label: "Media", color: "#F59E0B" },
   low: { label: "Baja", color: "#10B981" },

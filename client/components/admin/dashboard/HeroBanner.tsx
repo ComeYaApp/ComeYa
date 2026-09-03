@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 function fmt(cents: number) {
   if (cents >= 10_000_000) return `${(cents / 100 / 1_000_000).toFixed(1)} €M`;

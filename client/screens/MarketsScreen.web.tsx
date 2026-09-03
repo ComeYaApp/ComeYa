@@ -14,7 +14,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 import { WebLayout } from "@/components/WebLayout";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export default function MarketsScreen() {
   const navigation = useNavigation<any>();

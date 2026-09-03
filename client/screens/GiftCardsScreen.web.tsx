@@ -20,7 +20,7 @@ import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 import { WebLayout } from "@/components/WebLayout";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const PRESETS = [10, 25, 50, 100];
 
 const STATUS_LABELS: Record<
@@ -783,7 +783,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navItemActive: {
-    backgroundColor: "#DC262610",
+    backgroundColor: "#E6000010",
     borderRightWidth: 3,
     borderRightColor: PRIMARY,
   },

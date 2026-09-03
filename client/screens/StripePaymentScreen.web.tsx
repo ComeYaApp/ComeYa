@@ -24,7 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 let stripePromise: Promise<any> | null = null;
 const getStripePromise = async () => {

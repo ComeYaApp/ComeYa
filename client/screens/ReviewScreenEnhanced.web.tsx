@@ -19,7 +19,7 @@ import { apiRequest } from "@/lib/query-client";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { WebLayout } from "@/components/WebLayout";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 type Route = RouteProp<
   {

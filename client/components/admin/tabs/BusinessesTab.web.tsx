@@ -14,7 +14,7 @@ import { ComeYaColors } from "../../../constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const TYPE_LABEL: Record<string, string> = {
   restaurant: "Restaurante",

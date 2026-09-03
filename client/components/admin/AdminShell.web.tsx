@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { confirm } from "@/hooks/useWebDialog";
 import { useAdminNotifications } from "@/hooks/useAdminNotifications";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export type AdminSection =
   | "dashboard"

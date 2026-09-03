@@ -13,7 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const GREEN = "#84CC16";
 
 const PRIORITY_META: Record<string, { label: string; color: string }> = {

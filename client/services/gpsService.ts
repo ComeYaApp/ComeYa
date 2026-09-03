@@ -265,7 +265,7 @@ class GPSService {
             notificationTitle: "Reparto en curso",
             notificationBody:
               "ComeYa transmite tu ubicación en tiempo real durante la entrega",
-            notificationColor: "#DC2626",
+            notificationColor: "#E60000",
             killServiceOnDestroy: false,
           },
         });

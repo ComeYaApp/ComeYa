@@ -51,7 +51,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 let deltaStripePromise: Promise<any> | null = null;
 const getDeltaStripe = async () => {
@@ -587,7 +587,7 @@ export default function OrderTrackingScreen() {
         routeLineRef.current = new google.maps.Polyline({
           path: coords,
           geodesic: true,
-          strokeColor: "#DC2626",
+          strokeColor: "#E60000",
           strokeOpacity: 0.85,
           strokeWeight: 5,
           map: gmap.current,

@@ -13,7 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 // Iconos Feather disponibles para categorías
 const ICON_OPTIONS = [
@@ -50,7 +50,7 @@ const COLOR_OPTIONS = [
   "#EF4444",
   "#06B6D4",
   "#84CC16",
-  "#DC2626",
+  "#E60000",
   "#7C3AED",
   "#059669",
   "#D97706",

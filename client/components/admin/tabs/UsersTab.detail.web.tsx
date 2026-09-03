@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import { apiRequest } from "@/lib/query-client";
 import { AdminUser, ROLE_META } from "./UsersTab.web";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const ROLES = [
   { id: "customer", label: "Cliente", color: "#6B7280", icon: "user" },
@@ -29,7 +29,7 @@ const ROLES = [
     icon: "truck",
   },
   { id: "admin", label: "Admin", color: "#8B5CF6", icon: "shield" },
-  { id: "super_admin", label: "Super Admin", color: "#DC2626", icon: "star" },
+  { id: "super_admin", label: "Super Admin", color: "#E60000", icon: "star" },
 ];
 
 interface Props {

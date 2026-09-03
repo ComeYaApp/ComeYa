@@ -53,7 +53,7 @@ export default function AuthCallbackScreen() {
 
   return (
     <View style={s.root}>
-      <ActivityIndicator size="large" color="#DC2626" />
+      <ActivityIndicator size="large" color="#E60000" />
       <Text style={s.text}>Iniciando sesión...</Text>
     </View>
   );
@@ -67,5 +67,5 @@ const s = StyleSheet.create({
     backgroundColor: "#fff",
   },
   text: { marginTop: 16, fontSize: 15, color: "#666" },
-  error: { fontSize: 15, color: "#DC2626", textAlign: "center", padding: 24 },
+  error: { fontSize: 15, color: "#E60000", textAlign: "center", padding: 24 },
 });

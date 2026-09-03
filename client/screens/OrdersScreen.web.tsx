@@ -20,7 +20,7 @@ import { useResponsive } from "@/hooks/useResponsive";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { displayOrderNumber } from "@/utils/orderNumber";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const STATUS: Record<string, { label: string; color: string; icon: string }> = {
   pending: { label: "Pendiente", color: "#F59E0B", icon: "clock" },

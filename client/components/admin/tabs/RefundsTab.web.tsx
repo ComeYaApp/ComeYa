@@ -20,7 +20,7 @@ import {
   LIABLE_PARTY_LABELS,
 } from "@shared/orderIssues";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendiente", color: "#F59E0B" },

@@ -1,13 +1,11 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { View, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { Image } from "expo-image";
 
 import HomeScreen from "@/screens/HomeScreen";
-import { ThemedText } from "@/components/ThemedText";
 import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
-import { Spacing, ComeYaColors } from "@/constants/theme";
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -15,18 +13,14 @@ export type HomeStackParamList = {
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
+// Motero line-art de marca, centrado como en el mockup del home
 function HeaderTitle() {
   return (
-    <View style={styles.headerTitle}>
-      <Image
-        source={require("../../assets/images/icon.png")}
-        style={styles.headerIcon}
-        contentFit="contain"
-      />
-      <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
-        ComeYa
-      </ThemedText>
-    </View>
+    <Image
+      source={require("../../assets/images/comeya-moto-red.png")}
+      style={styles.headerMoto}
+      contentFit="contain"
+    />
   );
 }
 
@@ -40,6 +34,7 @@ export default function HomeStackNavigator() {
         component={HomeScreen}
         options={{
           headerTitle: () => <HeaderTitle />,
+          headerTitleAlign: "center",
           headerRight: () => <ThemeToggleButton />,
         }}
       />
@@ -48,19 +43,8 @@ export default function HomeStackNavigator() {
 }
 
 const styles = StyleSheet.create({
-  headerTitle: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerIcon: {
-    width: 28,
-    height: 28,
-    marginRight: Spacing.sm,
-  },
-  headerButton: {
-    width: 40,
+  headerMoto: {
+    width: 52,
     height: 40,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

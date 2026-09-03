@@ -48,8 +48,8 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   ready: { label: "Listo", color: "#10B981" },
   assigned_driver: { label: "Asignado", color: "#6366F1" },
   picked_up: { label: "Recogido", color: "#0EA5E9" },
-  on_the_way: { label: "En camino", color: "#DC2626" },
-  in_transit: { label: "En tránsito", color: "#DC2626" },
+  on_the_way: { label: "En camino", color: "#E60000" },
+  in_transit: { label: "En tránsito", color: "#E60000" },
   arriving: { label: "Llegando", color: "#EC4899" },
 };
 
@@ -294,7 +294,7 @@ export default function AdminMapScreen() {
               >
                 <MapPin
                   icon={CUSTOMER_MARKER.icon}
-                  color={hasAlert ? "#DC2626" : meta.color}
+                  color={hasAlert ? "#E60000" : meta.color}
                   size={34}
                 />
               </SmartMarker>
@@ -391,7 +391,7 @@ export default function AdminMapScreen() {
         </View>
 
         {error ? (
-          <Text style={[s.caption, { color: "#DC2626", marginTop: 4 }]}>
+          <Text style={[s.caption, { color: "#E60000", marginTop: 4 }]}>
             {error}
           </Text>
         ) : (
@@ -404,7 +404,7 @@ export default function AdminMapScreen() {
             <KpiChip
               label="Sin repartidor"
               value={kpis?.ordersWithoutDriver ?? "-"}
-              color={kpis?.ordersWithoutDriver ? "#DC2626" : "#22C55E"}
+              color={kpis?.ordersWithoutDriver ? "#E60000" : "#22C55E"}
             />
             <KpiChip
               label="Repartidores"
@@ -414,7 +414,7 @@ export default function AdminMapScreen() {
             <KpiChip
               label="Alertas"
               value={kpis?.alertCount ?? 0}
-              color={kpis?.alertCount ? "#DC2626" : "#22C55E"}
+              color={kpis?.alertCount ? "#E60000" : "#22C55E"}
             />
             <KpiChip
               label="Hoy"
@@ -499,7 +499,7 @@ export default function AdminMapScreen() {
             </View>
 
             {selected.alerts.map((a, i) => (
-              <Text key={i} style={[s.caption, { color: "#DC2626", marginTop: 4 }]}>
+              <Text key={i} style={[s.caption, { color: "#E60000", marginTop: 4 }]}>
                 ⚠️ {a.message}
               </Text>
             ))}
@@ -523,7 +523,7 @@ export default function AdminMapScreen() {
                   : "sin datos"}
               </Text>
             ) : (
-              <Text style={[s.caption, { color: "#DC2626", marginTop: 4 }]}>
+              <Text style={[s.caption, { color: "#E60000", marginTop: 4 }]}>
                 Sin repartidor asignado
               </Text>
             )}
@@ -608,7 +608,7 @@ export default function AdminMapScreen() {
       {!selected && (kpis?.alertCount ?? 0) > 0 && (
         <TouchableOpacity
           onPress={() => setFilter("alerts")}
-          style={[s.alertBanner, { backgroundColor: "#DC2626" }, Shadows.md]}
+          style={[s.alertBanner, { backgroundColor: "#E60000" }, Shadows.md]}
         >
           <Feather name="alert-triangle" size={15} color="#fff" />
           <Text style={s.alertBannerTxt}>

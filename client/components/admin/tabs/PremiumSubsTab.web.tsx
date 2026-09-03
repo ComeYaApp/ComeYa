@@ -12,7 +12,7 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const PLAN_COLORS: Record<string, string> = {
   premium: "#F59E0B",

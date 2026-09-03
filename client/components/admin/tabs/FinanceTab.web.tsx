@@ -14,7 +14,7 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export const METHOD_LABELS: Record<string, { label: string; color: string }> = {
   bizum: { label: "Bizum", color: "#00ADEF" },

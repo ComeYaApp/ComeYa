@@ -1,6 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
+import { ComeyaIcon } from "@/components/icons/comeya/ComeyaIcon";
 import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -164,7 +165,7 @@ function MobileTabNavigator() {
             options={{
               title: "Inicio",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="home" size={size} color={color} />
+                <ComeyaIcon name="inicio" size={size} color={color} />
               ),
             }}
           />
@@ -174,7 +175,7 @@ function MobileTabNavigator() {
             options={{
               title: "Mapa",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="map-pin" size={size} color={color} />
+                <ComeyaIcon name="mapa" size={size} color={color} />
               ),
             }}
           />
@@ -184,7 +185,7 @@ function MobileTabNavigator() {
             options={{
               title: "Cuenta",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="log-in" size={size} color={color} />
+                <ComeyaIcon name="perfil" size={size} color={color} />
               ),
             }}
           />
@@ -229,7 +230,7 @@ function MobileTabNavigator() {
             options={{
               title: "Perfil",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="user" size={size} color={color} />
+                <ComeyaIcon name="perfil" size={size} color={color} />
               ),
             }}
           />
@@ -243,7 +244,7 @@ function MobileTabNavigator() {
             options={{
               title: "Inicio",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="home" size={size} color={color} />
+                <ComeyaIcon name="inicio" size={size} color={color} />
               ),
             }}
           />
@@ -253,7 +254,7 @@ function MobileTabNavigator() {
             options={{
               title: "Pedidos",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="shopping-bag" size={size} color={color} />
+                <ComeyaIcon name="pedidos" size={size} color={color} />
               ),
             }}
           />
@@ -263,7 +264,7 @@ function MobileTabNavigator() {
             options={{
               title: "Mapa",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="map-pin" size={size} color={color} />
+                <ComeyaIcon name="mapa" size={size} color={color} />
               ),
             }}
           />
@@ -273,7 +274,7 @@ function MobileTabNavigator() {
             options={{
               title: "Perfil",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="user" size={size} color={color} />
+                <ComeyaIcon name="perfil" size={size} color={color} />
               ),
             }}
           />
@@ -348,7 +349,7 @@ export default function MainTabNavigator() {
             options={{
               title: "Inicio",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="home" size={size} color={color} />
+                <ComeyaIcon name="inicio" size={size} color={color} />
               ),
             }}
           />
@@ -358,7 +359,7 @@ export default function MainTabNavigator() {
             options={{
               title: "Mapa",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="map-pin" size={size} color={color} />
+                <ComeyaIcon name="mapa" size={size} color={color} />
               ),
             }}
           />
@@ -368,7 +369,7 @@ export default function MainTabNavigator() {
             options={{
               title: "Cuenta",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="log-in" size={size} color={color} />
+                <ComeyaIcon name="perfil" size={size} color={color} />
               ),
             }}
           />
@@ -403,7 +404,7 @@ export default function MainTabNavigator() {
             options={{
               title: "Perfil",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="user" size={size} color={color} />
+                <ComeyaIcon name="perfil" size={size} color={color} />
               ),
             }}
           />
@@ -418,7 +419,7 @@ export default function MainTabNavigator() {
             options={{
               title: "Inicio",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="home" size={size} color={color} />
+                <ComeyaIcon name="inicio" size={size} color={color} />
               ),
             }}
           />
@@ -428,7 +429,7 @@ export default function MainTabNavigator() {
             options={{
               title: "Pedidos",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="shopping-bag" size={size} color={color} />
+                <ComeyaIcon name="pedidos" size={size} color={color} />
               ),
             }}
           />
@@ -438,7 +439,7 @@ export default function MainTabNavigator() {
             options={{
               title: "Mapa",
               tabBarIcon: ({ color, size }) => (
-                <Feather name="map-pin" size={size} color={color} />
+                <ComeyaIcon name="mapa" size={size} color={color} />
               ),
             }}
           />
@@ -492,7 +493,7 @@ export default function MainTabNavigator() {
           options={{
             title: "Perfil",
             tabBarIcon: ({ color, size }) => (
-              <Feather name="user" size={size} color={color} />
+              <ComeyaIcon name="perfil" size={size} color={color} />
             ),
           }}
         />

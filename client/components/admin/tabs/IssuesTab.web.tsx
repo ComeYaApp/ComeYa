@@ -23,7 +23,7 @@ import {
   LIABLE_PARTY_LABELS,
 } from "@shared/orderIssues";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   open: { label: "Abierta", color: "#EF4444" },
@@ -33,7 +33,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
 };
 
 const PRIORITY_META: Record<string, { label: string; color: string }> = {
-  urgent: { label: "Urgente", color: "#DC2626" },
+  urgent: { label: "Urgente", color: "#E60000" },
   high: { label: "Alta", color: "#EF4444" },
   medium: { label: "Media", color: "#F59E0B" },
   low: { label: "Baja", color: "#10B981" },

@@ -27,7 +27,7 @@ import {
 import { loadGoogleMaps } from "@/utils/googleMapsWeb";
 
 const BIZ_ICONS: Record<string, { color: string; icon: string }> = {
-  restaurant: { color: "#DC2626", icon: "coffee" },
+  restaurant: { color: "#E60000", icon: "coffee" },
   market: { color: "#10B981", icon: "shopping-bag" },
   store: { color: "#3B82F6", icon: "shopping-cart" },
   default: { color: "#6B7280", icon: "home" },
@@ -540,7 +540,7 @@ const s = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  statBorderBlue: { borderLeftWidth: 3, borderLeftColor: "#DC2626" },
+  statBorderBlue: { borderLeftWidth: 3, borderLeftColor: "#E60000" },
   statBorderGreen: { borderLeftWidth: 3, borderLeftColor: "#10B981" },
   statBorderYellow: { borderLeftWidth: 3, borderLeftColor: "#F59E0B" },
   statEmoji: { fontSize: 24 },

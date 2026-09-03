@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/query-client";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 type Route = RouteProp<RootStackParamList, "ScheduleOrder">;
 
 const DAYS = [
@@ -466,7 +466,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navItemActive: {
-    backgroundColor: "#DC262610",
+    backgroundColor: "#E6000010",
     borderRightWidth: 3,
     borderRightColor: PRIMARY,
   },

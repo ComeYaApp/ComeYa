@@ -44,8 +44,8 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   ready: { label: "Listo", color: "#10B981" },
   assigned_driver: { label: "Repartidor asignado", color: "#6366F1" },
   picked_up: { label: "Recogido", color: "#0EA5E9" },
-  on_the_way: { label: "En camino", color: "#DC2626" },
-  in_transit: { label: "En tránsito", color: "#DC2626" },
+  on_the_way: { label: "En camino", color: "#E60000" },
+  in_transit: { label: "En tránsito", color: "#E60000" },
   arriving: { label: "Llegando", color: "#EC4899" },
   delivered: { label: "Entregado", color: "#22C55E" },
   cancelled: { label: "Cancelado", color: "#6B7280" },
@@ -381,7 +381,7 @@ export default function AdminOpsCenterScreen() {
             title: `Pedido ${fmtNum(o)} · ${meta.label}`,
             icon: asGoogleIcon(
               google,
-              pinIcon(hasAlert ? "#DC2626" : CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
+              pinIcon(hasAlert ? "#E60000" : CUSTOMER_MARKER.color, CUSTOMER_MARKER.icon),
             ),
             zIndex: hasAlert ? 300 : 80,
           });
@@ -395,7 +395,7 @@ export default function AdminOpsCenterScreen() {
                 <span>🏠 ${o.customer.name}</span><br/>
                 <span>${o.customer.address || ""}</span><br/>
                 <span>💰 ${euro(o.total)} · ${o.paymentMethod === "cash" ? "Efectivo" : "Digital"}</span>
-                ${hasAlert ? `<br/><span style="color:#DC2626">⚠️ ${o.alerts.map((a) => a.message).join(" · ")}</span>` : ""}
+                ${hasAlert ? `<br/><span style="color:#E60000">⚠️ ${o.alerts.map((a) => a.message).join(" · ")}</span>` : ""}
                 ${o.customer.phone ? `<br/><a href="tel:${o.customer.phone}">📞 ${o.customer.phone}</a>` : ""}
               </div>`,
             );
@@ -668,9 +668,9 @@ export default function AdminOpsCenterScreen() {
         </View>
 
         {error && (
-          <View style={[s.errorBar, { backgroundColor: "#DC262620" }]}>
-            <Feather name="alert-circle" size={14} color="#DC2626" />
-            <Text style={[s.caption, { color: "#DC2626", marginLeft: 6, flex: 1 }]}>
+          <View style={[s.errorBar, { backgroundColor: "#E6000020" }]}>
+            <Feather name="alert-circle" size={14} color="#E60000" />
+            <Text style={[s.caption, { color: "#E60000", marginLeft: 6, flex: 1 }]}>
               {error}
             </Text>
           </View>
@@ -708,7 +708,7 @@ export default function AdminOpsCenterScreen() {
             <Kpi
               label="Sin repartidor"
               value={kpis?.ordersWithoutDriver ?? "-"}
-              color={kpis?.ordersWithoutDriver ? "#DC2626" : "#22C55E"}
+              color={kpis?.ordersWithoutDriver ? "#E60000" : "#22C55E"}
               card={card}
               bord={bord}
               text={text}
@@ -726,7 +726,7 @@ export default function AdminOpsCenterScreen() {
             <Kpi
               label="Alertas"
               value={kpis?.alertCount ?? 0}
-              color={kpis?.alertCount ? "#DC2626" : "#22C55E"}
+              color={kpis?.alertCount ? "#E60000" : "#22C55E"}
               card={card}
               bord={bord}
               text={text}
@@ -880,7 +880,7 @@ export default function AdminOpsCenterScreen() {
                         ? ComeYaColors.primary + "12"
                         : "transparent",
                       borderLeftWidth: 3,
-                      borderLeftColor: hasAlert ? "#DC2626" : meta.color,
+                      borderLeftColor: hasAlert ? "#E60000" : meta.color,
                     },
                   ]}
                 >
@@ -905,7 +905,7 @@ export default function AdminOpsCenterScreen() {
                           s.caption,
                           {
                             color:
-                              (o.minutesActive ?? 0) > 30 ? "#DC2626" : sub,
+                              (o.minutesActive ?? 0) > 30 ? "#E60000" : sub,
                             fontWeight: "600",
                           },
                         ]}
@@ -914,7 +914,7 @@ export default function AdminOpsCenterScreen() {
                       </Text>
                     </View>
                     {hasAlert && (
-                      <Text style={[s.caption, { color: "#DC2626" }]}>
+                      <Text style={[s.caption, { color: "#E60000" }]}>
                         ⚠️ {o.alerts.map((a) => a.message).join(" · ")}
                       </Text>
                     )}
@@ -960,9 +960,9 @@ export default function AdminOpsCenterScreen() {
               </View>
 
               {selected.alerts.length > 0 && (
-                <View style={[s.alertBox, { backgroundColor: "#DC262615" }]}>
+                <View style={[s.alertBox, { backgroundColor: "#E6000015" }]}>
                   {selected.alerts.map((a, i) => (
-                    <Text key={i} style={[s.caption, { color: "#DC2626" }]}>
+                    <Text key={i} style={[s.caption, { color: "#E60000" }]}>
                       ⚠️ {a.message}
                     </Text>
                   ))}
@@ -1050,7 +1050,7 @@ export default function AdminOpsCenterScreen() {
                 </>
               ) : (
                 <>
-                  <Text style={[s.caption, { color: "#DC2626" }]}>
+                  <Text style={[s.caption, { color: "#E60000" }]}>
                     Sin repartidor asignado
                   </Text>
                   <View style={s.actionRow}>
@@ -1138,7 +1138,7 @@ export default function AdminOpsCenterScreen() {
           <LegendRow color={CUSTOMER_MARKER.color} label="Cliente" />
           <LegendRow color="#10B981" label="Repartidor conectado" />
           <LegendRow color="#F59E0B" label="GPS sin señal / recogida" />
-          <LegendRow color="#DC2626" label="Alerta" />
+          <LegendRow color="#E60000" label="Alerta" />
         </View>
       </View>
     </View>

@@ -50,7 +50,7 @@ type CheckoutScreenNavigationProp = NativeStackNavigationProp<
   "Checkout"
 >;
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export default function CheckoutScreen({ route }: any) {
   const navigation = useNavigation<CheckoutScreenNavigationProp>();
@@ -947,7 +947,7 @@ export default function CheckoutScreen({ route }: any) {
                       </ThemedText>
                     </View>
                     <Pressable onPress={handleRemoveCoupon}>
-                      <Feather name="x" size={20} color="#DC2626" />
+                      <Feather name="x" size={20} color="#E60000" />
                     </Pressable>
                   </View>
                 ) : (

@@ -13,7 +13,7 @@ import { ComeYaColors } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { Driver } from "./DriversTab.web";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const PURPLE = "#8B5CF6";
 
 interface Props {

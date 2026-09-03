@@ -15,7 +15,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 import { DriverDetail } from "./DriversTab.detail.web";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const PURPLE = "#8B5CF6";
 
 export interface Driver {

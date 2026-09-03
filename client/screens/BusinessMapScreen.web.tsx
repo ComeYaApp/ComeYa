@@ -971,7 +971,7 @@ export default function BusinessMapScreen() {
                           "_self",
                         )
                       }
-                      style={[s.driverBtn, { backgroundColor: "#DC2626" }]}
+                      style={[s.driverBtn, { backgroundColor: "#E60000" }]}
                     >
                       <Feather name="phone" size={16} color="#fff" />
                     </Pressable>

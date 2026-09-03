@@ -65,7 +65,7 @@ export function AlertsPanel({ metrics, finance, onNavigate }: Props) {
     alerts.push({
       id: "issues",
       icon: "alert-circle",
-      color: "#DC2626",
+      color: "#E60000",
       title: `${openIssues} incidencia${openIssues > 1 ? "s" : ""} de pedido pendiente${openIssues > 1 ? "s" : ""}`,
       desc: "Clientes esperando resolución (reembolso, reenvío o respuesta)",
       action: "Revisar",

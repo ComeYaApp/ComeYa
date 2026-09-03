@@ -16,7 +16,7 @@ import { apiRequest } from "@/lib/query-client";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { WebLayout } from "@/components/WebLayout";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export default function PaymentMethodsScreen() {
   const navigation = useNavigation<any>();
@@ -411,7 +411,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navItemActive: {
-    backgroundColor: "#DC262610",
+    backgroundColor: "#E6000010",
     borderRightWidth: 3,
     borderRightColor: PRIMARY,
   },

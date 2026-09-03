@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { useQueryClient } from "@tanstack/react-query";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export default function StripePaymentScreen() {
   const navigation = useNavigation<any>();

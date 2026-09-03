@@ -25,7 +25,7 @@ type Props = {
 };
 
 // Rojo para versión web
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const ROLES = [
   {
     value: "customer",

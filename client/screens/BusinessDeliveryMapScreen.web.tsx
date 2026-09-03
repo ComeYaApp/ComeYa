@@ -42,9 +42,9 @@ const STATUS_CONFIG: Record<
   preparing: { label: "Preparando", color: "#8B5CF6", icon: "package" },
   ready: { label: "Listo", color: "#10B981", icon: "check-circle" },
   picked_up: { label: "Recogido", color: "#F97316", icon: "shopping-bag" },
-  on_the_way: { label: "En camino", color: "#DC2626", icon: "truck" },
-  in_transit: { label: "En camino", color: "#DC2626", icon: "truck" },
-  arriving: { label: "Llegando", color: "#DC2626", icon: "map-pin" },
+  on_the_way: { label: "En camino", color: "#E60000", icon: "truck" },
+  in_transit: { label: "En camino", color: "#E60000", icon: "truck" },
+  arriving: { label: "Llegando", color: "#E60000", icon: "map-pin" },
 };
 
 interface Delivery {
@@ -455,7 +455,7 @@ export default function BusinessDeliveryMapScreen() {
                   color: ComeYaColors.primary,
                 },
                 { label: "Esperando", value: stats.pending, color: "#F59E0B" },
-                { label: "En camino", value: stats.onTheWay, color: "#DC2626" },
+                { label: "En camino", value: stats.onTheWay, color: "#E60000" },
                 {
                   label: "Tiempo med",
                   value: `${stats.avgMinutes}m`,
@@ -809,7 +809,7 @@ export default function BusinessDeliveryMapScreen() {
                   s.detailCard,
                   {
                     backgroundColor:
-                      (STATUS_CONFIG[selected.status]?.color || "#DC2626") +
+                      (STATUS_CONFIG[selected.status]?.color || "#E60000") +
                       "10",
                     flex: 1,
                   },
@@ -818,7 +818,7 @@ export default function BusinessDeliveryMapScreen() {
                 <ThemedText
                   type="caption"
                   style={{
-                    color: STATUS_CONFIG[selected.status]?.color || "#DC2626",
+                    color: STATUS_CONFIG[selected.status]?.color || "#E60000",
                     fontWeight: "700",
                     marginBottom: 4,
                   }}
@@ -863,7 +863,7 @@ export default function BusinessDeliveryMapScreen() {
                           name="navigation"
                           size={11}
                           color={
-                            STATUS_CONFIG[selected.status]?.color || "#DC2626"
+                            STATUS_CONFIG[selected.status]?.color || "#E60000"
                           }
                         />
                         <ThemedText
@@ -871,7 +871,7 @@ export default function BusinessDeliveryMapScreen() {
                           style={{
                             color:
                               STATUS_CONFIG[selected.status]?.color ||
-                              "#DC2626",
+                              "#E60000",
                           }}
                         >
                           Ver ubicación

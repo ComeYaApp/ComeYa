@@ -20,7 +20,7 @@ import {
 } from "@/utils/googleMapsWeb";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 
 function resolveProfileImageUrl(img: string): string {
@@ -302,7 +302,7 @@ export default function AddAddressScreen() {
         map: gmap.current,
         draggable: true,
         icon: {
-          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#E60000" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#E60000"/></svg>')}`,
           scaledSize: new google.maps.Size(40, 48),
           anchor: new google.maps.Point(20, 48),
         },
@@ -325,7 +325,7 @@ export default function AddAddressScreen() {
           map: gmap.current,
           draggable: true,
           icon: {
-            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#DC2626" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#DC2626"/></svg>')}`,
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><circle cx="20" cy="20" r="18" fill="#E60000" stroke="white" stroke-width="3"/><circle cx="20" cy="20" r="6" fill="white"/><polygon points="14,38 26,38 20,48" fill="#E60000"/></svg>')}`,
             scaledSize: new google.maps.Size(40, 48),
             anchor: new google.maps.Point(20, 48),
           },
@@ -812,8 +812,8 @@ export default function AddAddressScreen() {
 
         {error && (
           <View style={s.errorBanner}>
-            <Feather name="alert-circle" size={15} color="#DC2626" />
-            <Text style={{ color: "#DC2626", marginLeft: 8, fontSize: 14 }}>
+            <Feather name="alert-circle" size={15} color="#E60000" />
+            <Text style={{ color: "#E60000", marginLeft: 8, fontSize: 14 }}>
               {error}
             </Text>
           </View>
@@ -865,9 +865,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navItemActive: {
-    backgroundColor: "#DC262610",
+    backgroundColor: "#E6000010",
     borderRightWidth: 3,
-    borderRightColor: "#DC2626",
+    borderRightColor: "#E60000",
   },
   navItemText: { fontSize: 14, fontWeight: "600" },
   sideFooter: { borderTopWidth: 1, padding: 16 },

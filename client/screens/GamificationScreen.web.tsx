@@ -19,7 +19,7 @@ import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 import { WebLayout } from "@/components/WebLayout";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 const TIER_COLORS = {
   bronze: "#CD7F32",
@@ -540,9 +540,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navItemActive: {
-    backgroundColor: "#DC262610",
+    backgroundColor: "#E6000010",
     borderRightWidth: 3,
-    borderRightColor: "#DC2626",
+    borderRightColor: "#E60000",
   },
   navItemText: { fontSize: 14, fontWeight: "600" },
   sideFooter: { borderTopWidth: 1, padding: 16 },

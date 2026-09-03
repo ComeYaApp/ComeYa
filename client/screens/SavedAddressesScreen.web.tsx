@@ -19,7 +19,7 @@ import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { WebLayout } from "@/components/WebLayout";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 interface Address {
   id: string;
@@ -330,8 +330,8 @@ export default function SavedAddressesScreen() {
                       { backgroundColor: "#FEE2E2", borderColor: "#FCA5A5" },
                     ]}
                   >
-                    <Feather name="trash-2" size={14} color="#DC2626" />
-                    <Text style={[s.actionBtnText, { color: "#DC2626" }]}>
+                    <Feather name="trash-2" size={14} color="#E60000" />
+                    <Text style={[s.actionBtnText, { color: "#E60000" }]}>
                       Eliminar
                     </Text>
                   </Pressable>
@@ -381,9 +381,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navItemActive: {
-    backgroundColor: "#DC262610",
+    backgroundColor: "#E6000010",
     borderRightWidth: 3,
-    borderRightColor: "#DC2626",
+    borderRightColor: "#E60000",
   },
   navItemText: { fontSize: 14, fontWeight: "600" },
   sideFooter: { borderTopWidth: 1, padding: 16 },

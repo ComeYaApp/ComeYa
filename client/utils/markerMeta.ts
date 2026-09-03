@@ -86,5 +86,5 @@ export function vehicleMarkerMeta(vehicleType?: string | null): VehicleMeta {
 // ─── CLIENTE / PEDIDO ────────────────────────────────────────────────────────
 
 export const CUSTOMER_MARKER: MarkerMeta = { icon: "home", color: "#2563EB" };
-export const ORDER_MARKER: MarkerMeta = { icon: "package-variant-closed", color: "#DC2626" };
-export const DRIVER_NAVIGATING_MARKER: MarkerMeta = { icon: "navigation", color: "#DC2626" };
+export const ORDER_MARKER: MarkerMeta = { icon: "package-variant-closed", color: "#E60000" };
+export const DRIVER_NAVIGATING_MARKER: MarkerMeta = { icon: "navigation", color: "#E60000" };

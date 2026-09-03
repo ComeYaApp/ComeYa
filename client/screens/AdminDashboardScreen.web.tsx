@@ -38,7 +38,7 @@ import AdminMapPanel from "@/screens/AdminOpsCenterScreen.web";
 import DeliveryConfigPanel from "@/screens/DeliveryConfigScreen.web";
 // Note: AdminPaymentAccountsScreen.web and AdminMapScreen.web export default, used directly as panels
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 // ── Dashboard view ────────────────────────────────────────────────────────────
 function DashboardView({

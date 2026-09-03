@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
 import { formatCurrency } from "@/utils/currency";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 type Period = "today" | "week" | "month";
 
 export default function BusinessStatsScreen() {

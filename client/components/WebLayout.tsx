@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
 import { useResponsive } from "@/hooks/useResponsive";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 interface WebLayoutProps {
   children: React.ReactNode;

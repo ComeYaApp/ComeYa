@@ -19,7 +19,7 @@ import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 type Route = RouteProp<RootStackParamList, "ReportIssue">;
 
 const ISSUE_TYPES = [

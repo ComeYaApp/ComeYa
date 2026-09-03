@@ -37,9 +37,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   ready: { label: "Listo para recoger", color: "#10B981" },
   assigned: { label: "Repartidor asignado", color: "#6366F1" },
   picked_up: { label: "Pedido recogido", color: "#0EA5E9" },
-  on_the_way: { label: "Repartidor en camino", color: "#DC2626" },
-  in_transit: { label: "En camino", color: "#DC2626" },
-  arriving: { label: "Llegando", color: "#DC2626" },
+  on_the_way: { label: "Repartidor en camino", color: "#E60000" },
+  in_transit: { label: "En camino", color: "#E60000" },
+  arriving: { label: "Llegando", color: "#E60000" },
   delivered: { label: "Entregado 🎉", color: "#10B981" },
   cancelled: { label: "Cancelado", color: "#6B7280" },
 };

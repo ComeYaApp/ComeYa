@@ -72,7 +72,7 @@ export function buildInvoiceHtml(order: any): string {
   body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: #111; padding: 40px; max-width: 720px; margin: 0 auto; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .muted { color: #666; font-size: 13px; }
-  .header { display: flex; justify-content: space-between; border-bottom: 2px solid #DC2626; padding-bottom: 16px; margin-bottom: 24px; }
+  .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E60000; padding-bottom: 16px; margin-bottom: 24px; }
   .right { text-align: right; }
   table { width: 100%; border-collapse: collapse; margin: 16px 0; }
   th { text-align: left; font-size: 12px; text-transform: uppercase; color: #666; padding: 8px 4px; border-bottom: 1px solid #ddd; }

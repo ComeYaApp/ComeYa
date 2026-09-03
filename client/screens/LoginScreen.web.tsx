@@ -25,7 +25,7 @@ type Props = {
 };
 
 // Rojo para versión web
-const PRIMARY = "#DC2626"; // Rojo profesional
+const PRIMARY = "#E60000"; // Rojo profesional
 
 export default function LoginScreen({ navigation }: Props) {
   const { requestPhoneLogin, loginWithPassword } = useAuth();

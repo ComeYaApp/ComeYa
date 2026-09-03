@@ -70,7 +70,7 @@ const METHOD_CONFIG: Record<
   },
 };
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export default function DigitalPaymentMethodScreen({ route }: Props) {
   const { theme } = useTheme();

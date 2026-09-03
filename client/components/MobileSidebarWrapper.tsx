@@ -11,7 +11,7 @@ import { Feather } from "@expo/vector-icons";
 import { useResponsive } from "@/hooks/useResponsive";
 import { useTheme } from "@/hooks/useTheme";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 interface Props {
   children: React.ReactNode; // contenido del sidebar

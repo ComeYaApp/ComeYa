@@ -14,7 +14,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 import { UserDetail } from "./UsersTab.detail.web";
 
-const PRIMARY = "#DC2626";
+const PRIMARY = "#E60000";
 
 export const ROLE_META: Record<
   string,
@@ -24,7 +24,7 @@ export const ROLE_META: Record<
   business_owner: { label: "Negocio", color: "#3B82F6", icon: "briefcase" },
   delivery_driver: { label: "Repartidor", color: "#10B981", icon: "truck" },
   admin: { label: "Admin", color: "#8B5CF6", icon: "shield" },
-  super_admin: { label: "Super Admin", color: "#DC2626", icon: "star" },
+  super_admin: { label: "Super Admin", color: "#E60000", icon: "star" },
 };
 
 export interface AdminUser {

@@ -149,7 +149,7 @@ export default function App() {
         name: "Notificaciones",
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#DC2626",
+        lightColor: "#E60000",
       }).catch(() => {});
     }
   }, []);

@@ -1,6 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
+import { ComeyaIcon } from "@/components/icons/comeya/ComeyaIcon";
 import { Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -106,7 +107,7 @@ export default function MainTabNavigator() {
           options={{
             title: "Inicio",
             tabBarIcon: ({ color, size }) => (
-              <Feather name="home" size={size} color={color} />
+              <ComeyaIcon name="inicio" size={size} color={color} />
             ),
           }}
         />
@@ -120,7 +121,7 @@ export default function MainTabNavigator() {
           options={{
             title: "Pedidos",
             tabBarIcon: ({ color, size }) => (
-              <Feather name="shopping-bag" size={size} color={color} />
+              <ComeyaIcon name="pedidos" size={size} color={color} />
             ),
           }}
         />
@@ -134,7 +135,7 @@ export default function MainTabNavigator() {
           options={{
             title: "Mapa",
             tabBarIcon: ({ color, size }) => (
-              <Feather name="map-pin" size={size} color={color} />
+              <ComeyaIcon name="mapa" size={size} color={color} />
             ),
           }}
         />
@@ -203,7 +204,7 @@ export default function MainTabNavigator() {
         options={{
           title: isGuest ? "Cuenta" : "Perfil",
           tabBarIcon: ({ color, size }) => (
-            <Feather name={isGuest ? "log-in" : "user"} size={size} color={color} />
+            <ComeyaIcon name="perfil" size={size} color={color} />
           ),
         }}
       />
