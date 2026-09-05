@@ -43,11 +43,19 @@ export default function BusinessDetailScreen() {
   const [reservePhone, setReservePhone] = useState("");
   const [reserveNotes, setReserveNotes] = useState("");
   const [reserveSubmitting, setReserveSubmitting] = useState(false);
+  // Disponibilidad real por franja (aforo del negocio)
+  const [reserveSlots, setReserveSlots] = useState<any[]>([]);
+  const [reserveSlotsLoading, setReserveSlotsLoading] = useState(false);
+  const [reserveConfig, setReserveConfig] = useState<any>(null);
+  const [reserveSuccess, setReserveSuccess] = useState<any>(null);
+
+  const businessId = route.params?.businessId;
 
   const reserveDates = (() => {
     const out: { label: string; value: string }[] = [];
     const now = new Date();
-    for (let i = 0; i < 14; i++) {
+    const totalDays = reserveConfig?.advanceDays || 14;
+    for (let i = 0; i < totalDays; i++) {
       const d = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
       const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const label =
@@ -65,10 +73,27 @@ export default function BusinessDetailScreen() {
     return out;
   })();
 
-  const RESERVE_TIMES = [
-    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-    "20:00", "20:30", "21:00", "21:30", "22:00", "22:30",
-  ];
+  // Franjas reales desde el horario y el aforo del negocio
+  useEffect(() => {
+    if (!showReserveModal || !reserveDate || !businessId) return;
+    setReserveTime(null);
+    setReserveSlotsLoading(true);
+    apiRequest(
+      "GET",
+      `/api/reservations/availability?businessId=${businessId}&date=${reserveDate}&partySize=${reserveParty}`,
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setReserveSlots(data.slots || []);
+          setReserveConfig(data.config || null);
+        } else {
+          setReserveSlots([]);
+        }
+      })
+      .catch(() => setReserveSlots([]))
+      .finally(() => setReserveSlotsLoading(false));
+  }, [showReserveModal, reserveDate, reserveParty, businessId]);
 
   const submitReservation = async () => {
     if (!reserveDate || !reserveTime) return;
@@ -85,10 +110,19 @@ export default function BusinessDetailScreen() {
       });
       const data = await res.json();
       if (data.success) {
-        setShowReserveModal(false);
-        (window as any).alert(
-          "Reserva enviada 📅 El negocio la confirmará en breve. Puedes verla en tu perfil → Mis reservas.",
-        );
+        if (data.autoConfirmed && data.reservation?.code) {
+          setReserveSuccess({
+            code: data.reservation.code,
+            date: reserveDate,
+            time: reserveTime,
+            party: reserveParty,
+          });
+        } else {
+          setShowReserveModal(false);
+          (window as any).alert(
+            "Reserva enviada 📅 El negocio la confirmará en breve. Puedes verla en tu perfil → Mis reservas.",
+          );
+        }
       } else {
         (window as any).alert(data.error || "No se pudo reservar");
       }
@@ -106,8 +140,6 @@ export default function BusinessDetailScreen() {
   const sub = isDark ? "#aaa" : "#666";
   const border = isDark ? "#333" : "#e8e8e8";
   const inputBg = isDark ? "#222" : "#f8f8f8";
-
-  const businessId = route.params?.businessId;
 
   // Redirigir silenciosamente si no hay businessId
   useEffect(() => {
@@ -577,6 +609,85 @@ export default function BusinessDetailScreen() {
             <View
               style={[s.reserveModal, { backgroundColor: card }]}
             >
+              {reserveSuccess ? (
+                <View
+                  style={{
+                    alignItems: "center",
+                    paddingVertical: 32,
+                    paddingHorizontal: 24,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 84,
+                      height: 84,
+                      borderRadius: 42,
+                      backgroundColor: "rgba(16,185,129,0.12)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Feather name="check-circle" size={44} color="#10B981" />
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      fontWeight: "800",
+                      color: text,
+                      marginTop: 16,
+                    }}
+                  >
+                    ¡Mesa reservada!
+                  </Text>
+                  <Text style={{ color: sub, marginTop: 4, fontSize: 13 }}>
+                    {reserveSuccess.party} comensales ·{" "}
+                    {new Date(
+                      `${reserveSuccess.date}T12:00:00`,
+                    ).toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}{" "}
+                    · {reserveSuccess.time}
+                  </Text>
+                  <Text style={{ color: sub, marginTop: 16, fontSize: 13 }}>
+                    Muestra este código al llegar
+                  </Text>
+                  <View
+                    style={{
+                      marginTop: 8,
+                      paddingHorizontal: 32,
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      backgroundColor: inputBg,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 32,
+                        fontWeight: "800",
+                        letterSpacing: 2,
+                        color: PRIMARY,
+                      }}
+                    >
+                      {reserveSuccess.code}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => {
+                      setShowReserveModal(false);
+                      navigation.navigate("MyReservations" as any);
+                    }}
+                    style={[s.checkoutBtn, { marginTop: 20, width: "100%" }]}
+                  >
+                    <Text style={s.checkoutBtnText}>Ver mis reservas</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setShowReserveModal(false)} style={{ marginTop: 10 }}>
+                    <Text style={{ color: sub, fontSize: 13 }}>Cerrar</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <>
               <View style={s.reserveModalHeader}>
                 <Text style={[s.reserveModalTitle, { color: text }]}>
                   Reservar mesa
@@ -586,7 +697,7 @@ export default function BusinessDetailScreen() {
                 </Pressable>
               </View>
               <Text style={[s.reserveLabel, { color: sub }]}>
-                Fecha (próximos 14 días)
+                Fecha (próximos {reserveConfig?.advanceDays || 14} días)
               </Text>
               <View style={s.reserveChipRow}>
                 {reserveDates.map((d) => (
@@ -614,32 +725,65 @@ export default function BusinessDetailScreen() {
                   </Pressable>
                 ))}
               </View>
-              <Text style={[s.reserveLabel, { color: sub }]}>Hora</Text>
-              <View style={s.reserveChipRow}>
-                {RESERVE_TIMES.map((t) => (
-                  <Pressable
-                    key={t}
-                    onPress={() => setReserveTime(t)}
-                    style={[
-                      s.reserveChip,
-                      {
-                        borderColor: reserveTime === t ? PRIMARY : border,
-                        backgroundColor:
-                          reserveTime === t ? PRIMARY : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        s.reserveChipTxt,
-                        { color: reserveTime === t ? "#fff" : text },
-                      ]}
-                    >
-                      {t}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              <Text style={[s.reserveLabel, { color: sub }]}>
+                Hora {reserveConfig ? "· verde: libre · ámbar: últimas mesas" : ""}
+              </Text>
+              {reserveSlotsLoading ? (
+                <Text style={{ color: sub, fontSize: 13, paddingVertical: 10 }}>
+                  Consultando disponibilidad...
+                </Text>
+              ) : reserveSlots.length === 0 ? (
+                <Text style={{ color: sub, fontSize: 13, paddingVertical: 10 }}>
+                  No hay franjas de reserva para este día. Prueba otra fecha.
+                </Text>
+              ) : (
+                <View style={s.reserveChipRow}>
+                  {reserveSlots.map((slot: any) => {
+                    const disabled = slot.status === "full" || slot.isPast;
+                    const selected = reserveTime === slot.time;
+                    return (
+                      <Pressable
+                        key={slot.time}
+                        onPress={() => !disabled && setReserveTime(slot.time)}
+                        disabled={disabled}
+                        style={[
+                          s.reserveChip,
+                          {
+                            borderColor: selected
+                              ? PRIMARY
+                              : slot.status === "last"
+                                ? "#F59E0B"
+                                : border,
+                            backgroundColor: selected
+                              ? PRIMARY
+                              : disabled
+                                ? inputBg
+                                : "transparent",
+                            opacity: disabled ? 0.55 : 1,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            s.reserveChipTxt,
+                            {
+                              color: selected
+                                ? "#fff"
+                                : disabled
+                                  ? sub
+                                  : slot.status === "last"
+                                    ? "#B45309"
+                                    : text,
+                            },
+                          ]}
+                        >
+                          {slot.time}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
               <Text style={[s.reserveLabel, { color: sub }]}>Comensales</Text>
               <View style={s.reservePartyRow}>
                 <Pressable
@@ -652,7 +796,11 @@ export default function BusinessDetailScreen() {
                   {reserveParty}
                 </Text>
                 <Pressable
-                  onPress={() => setReserveParty((p) => Math.min(20, p + 1))}
+                  onPress={() =>
+                    setReserveParty((p) =>
+                      Math.min(reserveConfig?.maxPartySize || 20, p + 1),
+                    )
+                  }
                   style={[s.reservePartyBtn, { backgroundColor: PRIMARY }]}
                 >
                   <Feather name="plus" size={16} color="#fff" />
@@ -712,6 +860,8 @@ export default function BusinessDetailScreen() {
                   {reserveSubmitting ? "Enviando..." : "Enviar reserva"}
                 </Text>
               </Pressable>
+                </>
+              )}
             </View>
           </View>
         )}

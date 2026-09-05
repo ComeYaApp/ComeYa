@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -67,11 +67,19 @@ export default function BusinessDetailScreen() {
   const [reservePhone, setReservePhone] = useState("");
   const [reserveNotes, setReserveNotes] = useState("");
   const [reserveSubmitting, setReserveSubmitting] = useState(false);
+  const [reserveOccasion, setReserveOccasion] = useState<string | null>(null);
+  const [reserveWaitlisting, setReserveWaitlisting] = useState(false);
+  // Disponibilidad real por franja (aforo del negocio)
+  const [reserveSlots, setReserveSlots] = useState<any[]>([]);
+  const [reserveSlotsLoading, setReserveSlotsLoading] = useState(false);
+  const [reserveConfig, setReserveConfig] = useState<any>(null);
+  const [reserveSuccess, setReserveSuccess] = useState<any>(null);
 
   const reserveDates = useMemo(() => {
     const out: { label: string; value: string }[] = [];
     const now = new Date();
-    for (let i = 0; i < 14; i++) {
+    const totalDays = reserveConfig?.advanceDays || 14;
+    for (let i = 0; i < totalDays; i++) {
       const d = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
       const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       const label =
@@ -87,12 +95,32 @@ export default function BusinessDetailScreen() {
       out.push({ label, value });
     }
     return out;
-  }, []);
+  }, [reserveConfig?.advanceDays]);
 
-  const RESERVE_TIMES = [
-    "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-    "20:00", "20:30", "21:00", "21:30", "22:00", "22:30",
-  ];
+  // Franjas reales desde el horario y el aforo del negocio
+  const loadReserveSlots = useCallback(
+    async (date: string, party: number) => {
+      setReserveSlotsLoading(true);
+      try {
+        const res = await apiRequest(
+          "GET",
+          `/api/reservations/availability?businessId=${businessId}&date=${date}&partySize=${party}`,
+        );
+        const data = await res.json();
+        if (data.success) {
+          setReserveSlots(data.slots || []);
+          setReserveConfig(data.config || null);
+        } else {
+          setReserveSlots([]);
+        }
+      } catch {
+        setReserveSlots([]);
+      } finally {
+        setReserveSlotsLoading(false);
+      }
+    },
+    [businessId],
+  );
 
   const submitReservation = async () => {
     if (!reserveDate || !reserveTime) {
@@ -109,16 +137,27 @@ export default function BusinessDetailScreen() {
         customerName: reserveName,
         customerPhone: reservePhone,
         notes: reserveNotes,
+        occasion: reserveOccasion || null,
       });
       const data = await res.json();
       if (data.success) {
-        setShowReserveModal(false);
-        Alert.alert(
-          "Reserva enviada 📅",
-          "El negocio la confirmará en breve. Puedes verla en tu perfil → Mis reservas.",
-        );
+        if (data.autoConfirmed && data.reservation?.code) {
+          setReserveSuccess({
+            code: data.reservation.code,
+            date: reserveDate,
+            time: reserveTime,
+            party: reserveParty,
+          });
+        } else {
+          setShowReserveModal(false);
+          Alert.alert(
+            "Reserva enviada 📅",
+            "El negocio la confirmará en breve. Puedes verla en tu perfil → Mis reservas.",
+          );
+        }
       } else {
         Alert.alert("No se pudo reservar", data.error || "Inténtalo de nuevo");
+        if (reserveDate) loadReserveSlots(reserveDate, reserveParty);
       }
     } catch {
       Alert.alert("Error", "No se pudo enviar la reserva");
@@ -126,6 +165,47 @@ export default function BusinessDetailScreen() {
       setReserveSubmitting(false);
     }
   };
+
+  // 🔔 Avísame: apuntarse a la lista de espera de una franja completa
+  const submitWaitlist = async () => {
+    if (!reserveDate || !reserveTime) return;
+    setReserveWaitlisting(true);
+    try {
+      const res = await apiRequest("POST", "/api/reservations/waitlist", {
+        businessId,
+        date: reserveDate,
+        time: reserveTime,
+        partySize: reserveParty,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowReserveModal(false);
+        Alert.alert(
+          "Aviso activado 🔔",
+          "Te avisaremos en cuanto se libere una mesa para esa hora. ¡Sé rápido al reservar!",
+        );
+      } else {
+        Alert.alert("No se pudo activar el aviso", data.error || "Inténtalo de nuevo");
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo activar el aviso");
+    } finally {
+      setReserveWaitlisting(false);
+    }
+  };
+
+  // Franja completa seleccionada → el botón del modal pasa a "Avísame"
+  const selectedSlotFull = !!(
+    reserveTime &&
+    reserveSlots.find((s: any) => s.time === reserveTime)?.status === "full"
+  );
+
+  // Al cambiar fecha o comensales, recargar franjas y limpiar la hora elegida
+  useEffect(() => {
+    if (!showReserveModal || !reserveDate) return;
+    setReserveTime(null);
+    loadReserveSlots(reserveDate, reserveParty);
+  }, [showReserveModal, reserveDate, reserveParty, loadReserveSlots]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -401,9 +481,13 @@ export default function BusinessDetailScreen() {
                 {business.reservationsEnabled && (
                   <Pressable
                     onPress={() => {
-                      setReserveDate(null);
+                      const now = new Date();
+                      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                      setReserveDate(today);
                       setReserveTime(null);
                       setReserveParty(2);
+                      setReserveOccasion(null);
+                      setReserveSuccess(null);
                       setReserveName(user?.name || "");
                       setReservePhone(user?.phone || "");
                       setReserveNotes("");
@@ -625,6 +709,85 @@ export default function BusinessDetailScreen() {
       >
         <View style={styles.reserveOverlay}>
           <View style={[styles.reserveModal, { backgroundColor: theme.card }]}>
+            {reserveSuccess ? (
+              <View style={styles.reserveSuccessWrap}>
+                <View
+                  style={[
+                    styles.reserveSuccessIcon,
+                    { backgroundColor: "rgba(16,185,129,0.12)" },
+                  ]}
+                >
+                  <Feather name="check-circle" size={44} color="#10B981" />
+                </View>
+                <ThemedText type="h3" style={{ marginTop: Spacing.lg }}>
+                  ¡Mesa reservada!
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.xs, textAlign: "center" }}
+                >
+                  {reserveSuccess.party}{" "}
+                  {reserveSuccess.party === 1 ? "comensal" : "comensales"} ·{" "}
+                  {new Date(`${reserveSuccess.date}T12:00:00`).toLocaleDateString(
+                    "es-ES",
+                    { weekday: "long", day: "numeric", month: "long" },
+                  )}{" "}
+                  · {reserveSuccess.time}
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+                >
+                  Muestra este código al llegar
+                </ThemedText>
+                <View
+                  style={[
+                    styles.reserveCodeBox,
+                    { backgroundColor: theme.backgroundSecondary },
+                  ]}
+                >
+                  <ThemedText
+                    style={{
+                      fontSize: 34,
+                      fontWeight: "800",
+                      letterSpacing: 2,
+                      color: ComeYaColors.primary,
+                    }}
+                  >
+                    {reserveSuccess.code}
+                  </ThemedText>
+                </View>
+                <Pressable
+                  onPress={() => {
+                    setShowReserveModal(false);
+                    navigation.navigate("MyReservations");
+                  }}
+                  style={[
+                    styles.reserveSubmit,
+                    { backgroundColor: ComeYaColors.primary },
+                  ]}
+                >
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#FFF", fontWeight: "700" }}
+                  >
+                    Ver mis reservas
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowReserveModal(false)}
+                  style={{ marginTop: Spacing.sm }}
+                >
+                  <ThemedText
+                    type="small"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    Cerrar
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <>
             <View style={styles.reserveHeader}>
               <ThemedText type="h3">Reservar mesa</ThemedText>
               <Pressable onPress={() => setShowReserveModal(false)}>
@@ -683,37 +846,91 @@ export default function BusinessDetailScreen() {
                   marginBottom: Spacing.xs,
                 }}
               >
-                Hora
+                Hora {reserveConfig ? "· verde: libre · ámbar: últimas mesas" : ""}
               </ThemedText>
-              <View style={styles.reserveTimeRow}>
-                {RESERVE_TIMES.map((t) => (
-                  <Pressable
-                    key={t}
-                    onPress={() => setReserveTime(t)}
-                    style={[
-                      styles.reserveTimeChip,
-                      {
-                        borderColor:
-                          reserveTime === t ? ComeYaColors.primary : theme.border,
-                        backgroundColor:
-                          reserveTime === t
-                            ? ComeYaColors.primary
-                            : "transparent",
-                      },
-                    ]}
+              {reserveSlotsLoading ? (
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, paddingVertical: Spacing.md }}
+                >
+                  Consultando disponibilidad...
+                </ThemedText>
+              ) : reserveSlots.length === 0 ? (
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, paddingVertical: Spacing.md }}
+                >
+                  No hay franjas de reserva para este día. Prueba otra fecha.
+                </ThemedText>
+              ) : (
+                <View style={styles.reserveTimeRow}>
+                  {reserveSlots.map((slot: any) => {
+                    const disabled = slot.isPast;
+                    const full = slot.status === "full";
+                    const selected = reserveTime === slot.time;
+                    const borderColor = selected
+                      ? ComeYaColors.primary
+                      : slot.status === "last"
+                        ? "#F59E0B"
+                        : full
+                          ? ComeYaColors.error
+                          : theme.border;
+                    const bg = selected
+                      ? ComeYaColors.primary
+                      : disabled
+                        ? theme.backgroundSecondary
+                        : "transparent";
+                    const textColor = selected
+                      ? "#FFF"
+                      : disabled
+                        ? theme.textSecondary
+                        : slot.status === "last"
+                          ? "#B45309"
+                          : full
+                            ? ComeYaColors.error
+                            : theme.text;
+                    return (
+                      <Pressable
+                        key={slot.time}
+                        onPress={() => !disabled && setReserveTime(slot.time)}
+                        disabled={disabled}
+                        style={[
+                          styles.reserveTimeChip,
+                          {
+                            borderColor,
+                            backgroundColor: bg,
+                            opacity: disabled ? 0.55 : 1,
+                          },
+                        ]}
+                      >
+                        <ThemedText
+                          type="small"
+                          style={{ color: textColor, fontWeight: "600" }}
+                        >
+                          {slot.time}
+                        </ThemedText>
+                        {slot.status === "last" && !selected ? (
+                          <View
+                            style={[
+                              styles.slotDot,
+                              { backgroundColor: "#F59E0B" },
+                            ]}
+                          />
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+                {selectedSlotFull ? (
+                  <ThemedText
+                    type="caption"
+                    style={{ color: ComeYaColors.error, marginTop: Spacing.xs }}
                   >
-                    <ThemedText
-                      type="small"
-                      style={{
-                        color: reserveTime === t ? "#FFF" : theme.text,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {t}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </View>
+                    Esta hora está completa. Puedes activar el aviso 🔔 y te
+                    notificaremos si se libera una mesa.
+                  </ThemedText>
+                ) : null}
 
               <ThemedText
                 type="small"
@@ -742,7 +959,9 @@ export default function BusinessDetailScreen() {
                 </ThemedText>
                 <Pressable
                   onPress={() =>
-                    setReserveParty((p) => Math.min(20, p + 1))
+                    setReserveParty((p) =>
+                      Math.min(reserveConfig?.maxPartySize || 20, p + 1),
+                    )
                   }
                   style={[
                     styles.reservePartyBtn,
@@ -751,6 +970,61 @@ export default function BusinessDetailScreen() {
                 >
                   <Feather name="plus" size={18} color="#FFF" />
                 </Pressable>
+              </View>
+              {reserveConfig ? (
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
+                >
+                  Grupos de hasta {reserveConfig.maxPartySize} comensales
+                </ThemedText>
+              ) : null}
+
+              <ThemedText
+                type="small"
+                style={{
+                  color: theme.textSecondary,
+                  marginTop: Spacing.md,
+                  marginBottom: Spacing.xs,
+                }}
+              >
+                ¿Celebras algo? (opcional)
+              </ThemedText>
+              <View style={styles.reserveTimeRow}>
+                {(
+                  [
+                    { id: "birthday", label: "🎂 Cumpleaños" },
+                    { id: "anniversary", label: "❤️ Aniversario" },
+                    { id: "date", label: "💍 Cita" },
+                    { id: "family", label: "👨‍👩‍👧 Familiar" },
+                    { id: "business", label: "💼 Negocios" },
+                  ] as const
+                ).map((o) => {
+                  const active = reserveOccasion === o.id;
+                  return (
+                    <Pressable
+                      key={o.id}
+                      onPress={() => setReserveOccasion(active ? null : o.id)}
+                      style={[
+                        styles.reserveTimeChip,
+                        {
+                          borderColor: active ? ComeYaColors.primary : theme.border,
+                          backgroundColor: active ? ComeYaColors.primary : "transparent",
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        type="small"
+                        style={{
+                          color: active ? "#FFF" : theme.text,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {o.label}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
               </View>
 
               <TextInput
@@ -787,25 +1061,51 @@ export default function BusinessDetailScreen() {
                 ]}
               />
 
-              <Pressable
-                onPress={submitReservation}
-                disabled={reserveSubmitting}
-                style={[
-                  styles.reserveSubmit,
-                  {
-                    backgroundColor: ComeYaColors.primary,
-                    opacity: reserveSubmitting ? 0.6 : 1,
-                  },
-                ]}
-              >
-                <ThemedText
-                  type="body"
-                  style={{ color: "#FFF", fontWeight: "700" }}
+              {selectedSlotFull ? (
+                <Pressable
+                  onPress={submitWaitlist}
+                  disabled={reserveWaitlisting}
+                  style={[
+                    styles.reserveSubmit,
+                    {
+                      backgroundColor: "#F59E0B",
+                      opacity: reserveWaitlisting ? 0.6 : 1,
+                    },
+                  ]}
                 >
-                  {reserveSubmitting ? "Enviando..." : "Enviar reserva"}
-                </ThemedText>
-              </Pressable>
+                  <Feather name="bell" size={16} color="#FFF" />
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#FFF", fontWeight: "700", marginLeft: Spacing.sm }}
+                  >
+                    {reserveWaitlisting
+                      ? "Activando aviso..."
+                      : "🔔 Avísame si queda una mesa"}
+                  </ThemedText>
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={submitReservation}
+                  disabled={reserveSubmitting}
+                  style={[
+                    styles.reserveSubmit,
+                    {
+                      backgroundColor: ComeYaColors.primary,
+                      opacity: reserveSubmitting ? 0.6 : 1,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#FFF", fontWeight: "700" }}
+                  >
+                    {reserveSubmitting ? "Enviando..." : "Enviar reserva"}
+                  </ThemedText>
+                </Pressable>
+              )}
             </ScrollView>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -951,6 +1251,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  slotDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   reservePartyRow: {
     flexDirection: "row",
@@ -982,6 +1290,24 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: "center",
     marginTop: Spacing.lg,
+  },
+  reserveSuccessWrap: {
+    alignItems: "center",
+    paddingVertical: Spacing["3xl"],
+    paddingHorizontal: Spacing.lg,
+  },
+  reserveSuccessIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reserveCodeBox: {
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
   },
   reserveButton: {
     flex: 1,

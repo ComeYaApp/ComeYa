@@ -6,6 +6,9 @@ import {
   Pressable,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -26,8 +29,20 @@ const STATUS_META: Record<
 > = {
   pending: { label: "Pendiente de confirmar", color: "#F59E0B", icon: "clock" },
   confirmed: { label: "Confirmada", color: "#10B981", icon: "check-circle" },
+  seated: { label: "Estás en la mesa", color: "#3B82F6", icon: "user-check" },
+  completed: { label: "Completada", color: "#6B7280", icon: "check" },
+  no_show: { label: "No asististe", color: "#991B1B", icon: "user-x" },
   rejected: { label: "Rechazada", color: "#EF4444", icon: "x-circle" },
   cancelled: { label: "Cancelada", color: "#6B7280", icon: "slash" },
+};
+
+const OCCASION_LABELS: Record<string, string> = {
+  birthday: "🎂 Cumpleaños",
+  anniversary: "❤️ Aniversario",
+  date: "💍 Cita",
+  family: "👨‍👩‍👧 Familiar",
+  business: "💼 Negocios",
+  celebration: "🎉 Celebración",
 };
 
 export default function MyReservationsScreen() {
@@ -35,15 +50,132 @@ export default function MyReservationsScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const [reservations, setReservations] = useState<any[]>([]);
+  const [waitlist, setWaitlist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  // Reserva + pedido anticipado
+  const [preOrderFor, setPreOrderFor] = useState<any>(null);
+  const [preProducts, setPreProducts] = useState<any[]>([]);
+  const [preQty, setPreQty] = useState<Record<string, number>>({});
+  const [preLoading, setPreLoading] = useState(false);
+  const [preSubmitting, setPreSubmitting] = useState(false);
+  // Reservas entre amigos
+  const [shareFor, setShareFor] = useState<any>(null);
+  const [shareData, setShareData] = useState<any>(null);
+
+  const openShare = async (r: any) => {
+    setShareFor(r);
+    setShareData(null);
+    try {
+      const sRes = await apiRequest("POST", `/api/reservations/${r.id}/share`, {});
+      const sData = await sRes.json();
+      const pRes = await apiRequest("GET", `/api/reservations/${r.id}/participants`);
+      const pData = await pRes.json();
+      setShareData({
+        link: sData.link,
+        webLink: sData.webLink,
+        participants: pData.participants || [],
+        partySize: r.partySize,
+      });
+    } catch {
+      Alert.alert("Error", "No se pudo generar el enlace");
+      setShareFor(null);
+    }
+  };
+
+  const openPreOrder = useCallback(async (r: any) => {
+    setPreOrderFor(r);
+    setPreQty({});
+    setPreLoading(true);
+    try {
+      const res = await apiRequest("GET", `/api/businesses/${r.businessId}`);
+      const data = await res.json();
+      const prods = (data.business?.products || []).filter(
+        (p: any) =>
+          p.isAvailable === true ||
+          p.isAvailable === 1 ||
+          p.is_available === true ||
+          p.is_available === 1,
+      );
+      setPreProducts(prods);
+    } catch {
+      setPreProducts([]);
+      Alert.alert("Error", "No se pudo cargar la carta del negocio");
+    } finally {
+      setPreLoading(false);
+    }
+  }, []);
+
+  const submitPreOrder = async () => {
+    const items = preProducts
+      .filter((p) => (preQty[p.id] || 0) > 0)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: ((p.price || 0) / 100) * 1.15,
+        quantity: preQty[p.id],
+      }));
+    if (items.length === 0) {
+      Alert.alert("Pedido anticipado", "Elige al menos un producto.");
+      return;
+    }
+    const baseCents = items.reduce(
+      (s, it) => s + Math.round(((it.price / 1.15) * 100)) * it.quantity,
+      0,
+    );
+    const subtotalCents = items.reduce(
+      (s, it) => s + Math.round(it.price * 100) * it.quantity,
+      0,
+    );
+    setPreSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/orders", {
+        businessId: preOrderFor.businessId,
+        businessName: preOrderFor.businessName,
+        items: JSON.stringify(items),
+        status: "pending",
+        subtotal: subtotalCents,
+        productosBase: baseCents,
+        nemyCommission: subtotalCents - baseCents,
+        deliveryFee: 0,
+        total: subtotalCents,
+        paymentMethod: "cash",
+        orderType: "pickup",
+        reservationId: preOrderFor.id,
+        notes: `Pedido anticipado para reserva ${preOrderFor.code || ""} ${preOrderFor.date} ${preOrderFor.time}`,
+      });
+      const data = await res.json();
+      if (data.success || data.order) {
+        setPreOrderFor(null);
+        Alert.alert(
+          "Pedido anticipado listo 🍽️",
+          "El negocio lo preparará para tu llegada. Se paga al recoger.",
+        );
+        load();
+      } else {
+        Alert.alert("No se pudo crear el pedido", data.error || "");
+      }
+    } catch {
+      Alert.alert("Error", "No se pudo crear el pedido anticipado");
+    } finally {
+      setPreSubmitting(false);
+    }
+  };
 
   const load = useCallback(async () => {
     try {
       const res = await apiRequest("GET", "/api/reservations/mine");
       const data = await res.json();
       if (data.success) setReservations(data.reservations || []);
+      // Avisos de mesa (lista de espera)
+      try {
+        const wRes = await apiRequest("GET", "/api/reservations/waitlist/mine");
+        const wData = await wRes.json();
+        if (wData.success) setWaitlist(wData.entries || []);
+      } catch {
+        setWaitlist([]);
+      }
     } catch {
     } finally {
       setLoading(false);
@@ -116,6 +248,47 @@ export default function MyReservationsScreen() {
           />
         }
       >
+        {!loading && waitlist.length > 0 && (
+          <View style={[styles.waitlistSection, { backgroundColor: "#F59E0B10", borderColor: "#F59E0B44" }]}>
+            <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>
+              🔔 Avisos de mesa activados
+            </ThemedText>
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary, marginBottom: Spacing.sm }}
+            >
+              Te avisaremos si se libera una mesa o el negocio publica un hueco.
+              ¡Reserva rápido cuando llegue el aviso!
+            </ThemedText>
+            {waitlist.map((w: any) => (
+              <View key={w.id} style={styles.waitlistRow}>
+                <View style={{ flex: 1 }}>
+                  <ThemedText type="small" style={{ fontWeight: "700" }}>
+                    {w.businessName}
+                  </ThemedText>
+                  <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                    {w.date} · {w.time} · {w.partySize} {w.partySize === 1 ? "persona" : "personas"}
+                    {w.status === "notified" ? " · ⚡ ¡hay hueco, corre!" : ""}
+                  </ThemedText>
+                </View>
+                <Pressable
+                  onPress={async () => {
+                    await apiRequest(
+                      "POST",
+                      `/api/reservations/waitlist/${w.id}/cancel`,
+                      {},
+                    );
+                    load();
+                  }}
+                  hitSlop={8}
+                >
+                  <Feather name="x-circle" size={18} color={theme.textSecondary} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+
         {!loading && reservations.length === 0 && (
           <View style={styles.emptyState}>
             <Feather name="calendar" size={64} color={theme.textSecondary} />
@@ -203,6 +376,39 @@ export default function MyReservationsScreen() {
                   {r.partySize} comensales
                 </ThemedText>
               </View>
+              {r.occasion && OCCASION_LABELS[r.occasion] ? (
+                <View style={styles.infoRow}>
+                  <Feather name="gift" size={14} color={ComeYaColors.primary} />
+                  <ThemedText
+                    type="small"
+                    style={{ color: ComeYaColors.primary, marginLeft: Spacing.xs, fontWeight: "700" }}
+                  >
+                    {OCCASION_LABELS[r.occasion]}
+                  </ThemedText>
+                </View>
+              ) : null}
+              {r.code && ["confirmed", "seated"].includes(r.status) ? (
+                <View style={[styles.codeBox, { backgroundColor: theme.backgroundSecondary }]}>
+                  <Feather name="key" size={13} color={ComeYaColors.primary} />
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: ComeYaColors.primary,
+                      marginLeft: Spacing.xs,
+                      fontWeight: "800",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    Código {r.code}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginLeft: Spacing.sm }}
+                  >
+                    Muéstralo al llegar
+                  </ThemedText>
+                </View>
+              ) : null}
               {r.businessNote ? (
                 <View style={styles.businessNote}>
                   <ThemedText
@@ -210,6 +416,43 @@ export default function MyReservationsScreen() {
                     style={{ color: theme.text, fontWeight: "600" }}
                   >
                     Nota del negocio: {r.businessNote}
+                  </ThemedText>
+                </View>
+              ) : null}
+
+              {["confirmed", "seated"].includes(r.status) && !r.preOrderId ? (
+                <Pressable
+                  onPress={() => openPreOrder(r)}
+                  style={[
+                    styles.preOrderBtn,
+                    { borderColor: "#3B82F6", marginTop: Spacing.md },
+                  ]}
+                >
+                  <Feather name="package" size={14} color="#3B82F6" />
+                  <ThemedText type="small" style={{ color: "#3B82F6", marginLeft: 4, fontWeight: "600" }}>
+                    🍽️ Pedir para tener listo al llegar
+                  </ThemedText>
+                </Pressable>
+              ) : null}
+              {["confirmed", "seated"].includes(r.status) ? (
+                <Pressable
+                  onPress={() => openShare(r)}
+                  style={[
+                    styles.preOrderBtn,
+                    { borderColor: ComeYaColors.primary, marginTop: Spacing.sm },
+                  ]}
+                >
+                  <Feather name="users" size={14} color={ComeYaColors.primary} />
+                  <ThemedText type="small" style={{ color: ComeYaColors.primary, marginLeft: 4, fontWeight: "600" }}>
+                    👥 Invitar amigos
+                  </ThemedText>
+                </Pressable>
+              ) : null}
+              {r.preOrderId ? (
+                <View style={[styles.preOrderBtn, { borderColor: "#3B82F6", marginTop: Spacing.md, borderWidth: 1 }]}>
+                  <Feather name="check-circle" size={14} color="#3B82F6" />
+                  <ThemedText type="small" style={{ color: "#3B82F6", marginLeft: 4 }}>
+                    Pedido anticipado hecho
                   </ThemedText>
                 </View>
               ) : null}
@@ -239,6 +482,140 @@ export default function MyReservationsScreen() {
           );
         })}
       </ScrollView>
+
+      {/* Reserva + pedido anticipado */}
+      <Modal
+        visible={!!preOrderFor}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPreOrderFor(null)}
+      >
+        <View style={styles.preOverlay}>
+          <View style={[styles.preModal, { backgroundColor: theme.card }]}>
+            <View style={styles.preHeader}>
+              <ThemedText type="h3">Pedido anticipado</ThemedText>
+              <Pressable onPress={() => setPreOrderFor(null)}>
+                <Feather name="x" size={22} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+              {preOrderFor?.businessName} · {preOrderFor?.time} · listo a tu
+              llegada. Se paga al recoger.
+            </ThemedText>
+            <ScrollView style={{ marginTop: Spacing.md }}>
+              {preLoading ? (
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  Cargando carta...
+                </ThemedText>
+              ) : preProducts.length === 0 ? (
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  Este negocio no tiene carta publicada.
+                </ThemedText>
+              ) : (
+                preProducts.map((p) => {
+                  const qty = preQty[p.id] || 0;
+                  return (
+                    <View key={p.id} style={[styles.preRow, { borderColor: theme.border }]}>
+                      <View style={{ flex: 1 }}>
+                        <ThemedText type="small" numberOfLines={1}>
+                          {p.name}
+                        </ThemedText>
+                        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                          {(((p.price || 0) / 100) * 1.15).toFixed(2).replace(".", ",")} €
+                        </ThemedText>
+                      </View>
+                      <Pressable
+                        onPress={() =>
+                          setPreQty((m) => ({ ...m, [p.id]: Math.max(0, qty - 1) }))
+                        }
+                        style={[styles.preStep, { backgroundColor: theme.backgroundSecondary }]}
+                      >
+                        <Feather name="minus" size={14} color={theme.text} />
+                      </Pressable>
+                      <ThemedText style={{ marginHorizontal: Spacing.sm, fontWeight: "700" }}>
+                        {qty}
+                      </ThemedText>
+                      <Pressable
+                        onPress={() =>
+                          setPreQty((m) => ({ ...m, [p.id]: Math.min(20, qty + 1) }))
+                        }
+                        style={[styles.preStep, { backgroundColor: ComeYaColors.primary }]}
+                      >
+                        <Feather name="plus" size={14} color="#FFF" />
+                      </Pressable>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+            <Pressable
+              onPress={submitPreOrder}
+              disabled={preSubmitting}
+              style={[styles.preSubmit, { opacity: preSubmitting ? 0.6 : 1 }]}
+            >
+              <ThemedText style={{ color: "#FFF", fontWeight: "700" }}>
+                {preSubmitting ? "Enviando..." : "Confirmar pedido anticipado"}
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+      {/* Invitar amigos */}
+      <Modal
+        visible={!!shareFor}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareFor(null)}
+      >
+        <View style={styles.preOverlay}>
+          <View style={[styles.preModal, { backgroundColor: theme.card }]}>
+            <View style={styles.preHeader}>
+              <ThemedText type="h3">Invitar amigos</ThemedText>
+              <Pressable onPress={() => setShareFor(null)}>
+                <Feather name="x" size={22} color={theme.textSecondary} />
+              </Pressable>
+            </View>
+            {shareData ? (
+              <>
+                <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                  Comparte este enlace: cada amigo confirma y la mesa se llena sola.
+                </ThemedText>
+                <View style={[styles.linkBox, { backgroundColor: theme.backgroundSecondary }]}>
+                  <ThemedText type="small" style={{ flex: 1 }} numberOfLines={2}>
+                    {shareData.webLink}
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => {
+                      try {
+                        require("react-native").Clipboard.setString(shareData.webLink);
+                        Alert.alert("Enlace copiado", "Pégalo donde quieras");
+                      } catch {}
+                    }}
+                    hitSlop={8}
+                  >
+                    <Feather name="copy" size={16} color={ComeYaColors.primary} />
+                  </Pressable>
+                </View>
+                <ThemedText type="small" style={{ fontWeight: "700", marginTop: Spacing.md }}>
+                  Confirmados: {shareData.participants.filter((p: any) => p.status === "confirmed").length}/{shareData.partySize}
+                </ThemedText>
+                {shareData.participants.map((p: any) => (
+                  <View key={p.id} style={styles.pRow}>
+                    <Feather
+                      name={p.status === "confirmed" ? "check-circle" : "x-circle"}
+                      size={14}
+                      color={p.status === "confirmed" ? "#10B981" : theme.textSecondary}
+                    />
+                    <ThemedText type="small" style={{ marginLeft: 6 }}>{p.name}</ThemedText>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <ActivityIndicator color={ComeYaColors.primary} style={{ marginTop: Spacing.md }} />
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -288,6 +665,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.xs,
   },
+  codeBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+  },
+  waitlistSection: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  waitlistRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.sm,
+  },
   businessNote: {
     marginTop: Spacing.sm,
     padding: Spacing.sm,
@@ -305,4 +702,59 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
+  preOrderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  preOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  preModal: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: Spacing.lg,
+    maxHeight: "80%",
+  },
+  preHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: Spacing.xs,
+  },
+  preRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  preStep: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  preSubmit: {
+    backgroundColor: ComeYaColors.primary,
+    borderRadius: BorderRadius.md,
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  linkBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  pRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
 });

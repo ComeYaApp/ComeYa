@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Platform, View } from "react-native";
+import { StyleSheet, Platform, View, Linking } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   NavigationContainer,
@@ -177,6 +177,7 @@ export default function App() {
             section?: string;
             type?: string;
             ticketId?: string;
+            reservationId?: string;
           }
         | undefined;
       if (!data) return;
@@ -197,6 +198,7 @@ export default function App() {
             orders_active: "orders",
             finance_earnings: "finance",
             finance_payouts: "finance",
+            finance_reservations: "finance",
           };
           const tab = sectionToTab[data.section];
           nav.navigate("AdminTab", tab ? { initialTab: tab } : undefined);
@@ -210,6 +212,9 @@ export default function App() {
         "DriverEarnings",
         "DriverMyDeliveries",
         "BusinessOrders",
+        "BusinessReservations",
+        "BusinessFees",
+        "MyReservations",
         "Main",
         "TicketDetail",
         "OrderTracking",
@@ -220,6 +225,7 @@ export default function App() {
         const params: any = {};
         if (data.orderId) params.orderId = data.orderId;
         if (data.ticketId) params.ticketId = data.ticketId;
+        if (data.reservationId) params.reservationId = data.reservationId;
         nav.navigate(data.screen, Object.keys(params).length ? params : undefined);
         return;
       }
@@ -233,13 +239,34 @@ export default function App() {
     const sub = Notifications.addNotificationResponseReceivedListener(
       handleResponse,
     );
+
+    // Deep links de reservas entre amigos: comeya://reservation/<token>
+    const nav = navigationRef as any;
+    const handleUrl = ({ url }: { url: string }) => {
+      const match = /reservation\/([A-Za-z0-9-]+)/.exec(url || "");
+      if (match && nav.isReady()) {
+        nav.navigate("JoinReservation", { token: match[1] });
+        return;
+      }
+      const billMatch = /bill\/([A-Za-z0-9-]+)/.exec(url || "");
+      if (billMatch && nav.isReady()) {
+        nav.navigate("BillPayment", { billId: billMatch[1] });
+      }
+    };
+    const linkingSub = Linking.addEventListener("url", handleUrl);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
     // App abierta desde una notificación (arranque en frío)
     Notifications.getLastNotificationResponseAsync()
       .then((response) => {
         if (response) handleResponse(response);
       })
       .catch(() => {});
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      linkingSub.remove();
+    };
   }, []);
 
   // Web: abrir el panel admin en la sección correcta tras hacer clic en una

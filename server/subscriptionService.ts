@@ -12,6 +12,20 @@ export class SubscriptionService {
   // Planes hardcoded como fallback si la BD no tiene datos.
   // Estructura Soria 2026. Precios en céntimos: 499 = 4,99 €, etc.
   static readonly PLANS_FALLBACK = {
+    // ComeYa Pass (clientes): puntos x2 en reservas/pedidos y ofertas exclusivas
+    comeya_pass: {
+      name: "ComeYa Pass",
+      price: 499, // 4,99 €/mes
+      audience: "customer",
+      benefits: {
+        freeDelivery: false,
+        discountPercentage: 0,
+        prioritySupport: false,
+        exclusiveDeals: true,
+        noMinimumOrder: false,
+        doublePoints: true,
+      },
+    },
     free: {
       name: "Free",
       price: 0,

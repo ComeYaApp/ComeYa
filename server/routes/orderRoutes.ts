@@ -64,11 +64,35 @@ router.post(
   validateOrderFinancials,
   async (req, res) => {
     try {
-      const { orders, businesses, addresses } = await import(
+      const { orders, businesses, addresses, reservations } = await import(
         "@shared/schema-mysql"
       );
       const { db } = await import("../db");
       const { eq, desc } = await import("drizzle-orm");
+
+      // Reserva + pedido: orden pickup programada a la hora de la reserva.
+      // Se valida la reserva ANTES de crear nada y se fuerza recogida sin envío.
+      let linkedReservation: any = null;
+      let scheduledFor: Date | null = req.body.scheduledFor
+        ? new Date(req.body.scheduledFor)
+        : null;
+      if (req.body.reservationId) {
+        const [rsv] = await db
+          .select()
+          .from(reservations)
+          .where(eq(reservations.id, String(req.body.reservationId)))
+          .limit(1);
+        if (!rsv || rsv.userId !== req.user!.id) {
+          return res.status(403).json({ error: "Reserva no válida" });
+        }
+        if (!["confirmed", "seated"].includes(rsv.status)) {
+          return res
+            .status(400)
+            .json({ error: "La reserva debe estar confirmada" });
+        }
+        linkedReservation = rsv;
+        scheduledFor = new Date(`${rsv.date}T${rsv.time}:00`);
+      }
 
       // Calculate dynamic delivery fee if coordinates provided
       let deliveryFee = req.body.deliveryFee;
@@ -208,9 +232,11 @@ router.post(
       const subDiscount = subBenefits.discount;
       const subDeliveryFee = subBenefits.deliveryFee;
 
-      // Para pickup, deliveryFee = 0
+      // Para pickup (y pedidos anticipados de reserva, siempre pickup), fee 0
       const finalDeliveryFee =
-        req.body.orderType === "pickup" ? 0 : subDeliveryFee;
+        req.body.orderType === "pickup" || linkedReservation
+          ? 0
+          : subDeliveryFee;
 
       // Recalcular la comisión según la tasa del negocio (suscripción
       // Impulso Local 10% / Escaparate 8% / personalizada / 15% por defecto)
@@ -249,8 +275,17 @@ router.post(
         deliveryFee: finalDeliveryFee,
         total: calculatedTotal,
         paymentMethod: req.body.paymentMethod,
-        orderType: req.body.orderType === "pickup" ? "pickup" : "delivery",
-        deliveryAddress: req.body.deliveryAddress,
+        orderType: linkedReservation
+          ? "pickup"
+          : req.body.orderType === "pickup"
+            ? "pickup"
+            : "delivery",
+        // delivery_address es NOT NULL en MySQL: en recogida va una etiqueta
+        deliveryAddress:
+          req.body.deliveryAddress ||
+          (linkedReservation || req.body.orderType === "pickup"
+            ? "Recogida en local"
+            : null),
         deliveryLatitude,
         deliveryLongitude,
         notes: req.body.notes,
@@ -260,6 +295,7 @@ router.post(
         cashPaymentAmount: req.body.cashPaymentAmount,
         cashChangeAmount: req.body.cashChangeAmount,
         estimatedDeliveryTime,
+        scheduledFor,
       };
 
       // Número secuencial público #CY000001 (reserva atómica)
@@ -281,6 +317,18 @@ router.post(
         .limit(1);
 
       const orderId = createdOrder[0].id;
+
+      // Reserva + pedido: enlazar el pedido anticipado a su reserva
+      if (linkedReservation) {
+        try {
+          await db
+            .update(reservations)
+            .set({ preOrderId: orderId })
+            .where(eq(reservations.id, linkedReservation.id));
+        } catch (err) {
+          console.error("Error linking pre-order to reservation:", err);
+        }
+      }
 
       // Pedidos de recogida en local: generar código de 6 dígitos y QR ahora
       // que conocemos el orderId (el QR del cliente contiene ambos). Sin esto

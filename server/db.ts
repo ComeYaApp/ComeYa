@@ -263,6 +263,175 @@ export async function runStartupMigrations(): Promise<void> {
       console.log("Migration note (reservations):", err.message);
     }
 
+    // Reservas 2.0: configuración de aforo del negocio + columnas de ciclo de
+    // vida (código, llegada/no-show, tarifa por comensal, recordatorio)
+    try {
+      await conn.query(
+        `ALTER TABLE businesses ADD COLUMN reservation_config TEXT NULL`,
+      );
+      console.log("✅ Added reservation_config to businesses");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (reservation_config):", err.message);
+    }
+    const reservationColumns: Array<[string, string]> = [
+      ["code", "VARCHAR(10) NULL"],
+      ["cancelled_by", "VARCHAR(20) NULL"],
+      ["reminder_sent_at", "TIMESTAMP NULL"],
+      ["seated_at", "TIMESTAMP NULL"],
+      ["completed_at", "TIMESTAMP NULL"],
+      ["no_show_at", "TIMESTAMP NULL"],
+      ["fee_cents", "INT NULL"],
+      ["fee_charged_at", "TIMESTAMP NULL"],
+    ];
+    for (const [column, definition] of reservationColumns) {
+      try {
+        await conn.query(
+          `ALTER TABLE reservations ADD COLUMN ${column} ${definition}`,
+        );
+        console.log(`✅ Added ${column} to reservations`);
+      } catch (err: any) {
+        if (err.code !== "ER_DUP_FIELDNAME")
+          console.log(`Migration note (reservations.${column}):`, err.message);
+      }
+    }
+
+    // Reservas Pro: ocasión especial en la reserva
+    try {
+      await conn.query(
+        `ALTER TABLE reservations ADD COLUMN occasion VARCHAR(20) NULL`,
+      );
+      console.log("✅ Added occasion to reservations");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (reservations.occasion):", err.message);
+    }
+
+    // Reserva + pedido anticipado
+    try {
+      await conn.query(
+        `ALTER TABLE reservations ADD COLUMN pre_order_id VARCHAR(255) NULL`,
+      );
+      console.log("✅ Added pre_order_id to reservations");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (reservations.pre_order_id):", err.message);
+    }
+
+    // Reservas entre amigos
+    try {
+      await conn.query(
+        `ALTER TABLE reservations ADD COLUMN group_token VARCHAR(16) NULL`,
+      );
+      console.log("✅ Added group_token to reservations");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (reservations.group_token):", err.message);
+    }
+    // Pago de cuenta por QR
+    try {
+      await conn.query(
+        `ALTER TABLE reservations ADD COLUMN bill_id VARCHAR(255) NULL`,
+      );
+      console.log("✅ Added bill_id to reservations");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (reservations.bill_id):", err.message);
+    }
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS restaurant_bills (
+          id VARCHAR(255) NOT NULL PRIMARY KEY,
+          business_id VARCHAR(255) NOT NULL,
+          reservation_id VARCHAR(255),
+          items TEXT,
+          total_cents INT NOT NULL,
+          paid_cents INT NOT NULL DEFAULT 0,
+          tip_cents INT NOT NULL DEFAULT 0,
+          status VARCHAR(20) NOT NULL DEFAULT 'open',
+          payments TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          paid_at TIMESTAMP NULL,
+          INDEX idx_bills_business (business_id, status)
+        )`,
+      );
+      console.log("✅ restaurant_bills table ready");
+    } catch (err: any) {
+      console.log("Migration note (restaurant_bills):", err.message);
+    }
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS reservation_participants (
+          id VARCHAR(255) NOT NULL PRIMARY KEY,
+          reservation_id VARCHAR(255) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          phone VARCHAR(50),
+          status VARCHAR(20) NOT NULL DEFAULT 'confirmed',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_participants_reservation (reservation_id)
+        )`,
+      );
+      console.log("✅ reservation_participants table ready");
+    } catch (err: any) {
+      console.log("Migration note (reservation_participants):", err.message);
+    }
+
+    // Lista de espera "Avísame"
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS reservation_waitlist (
+          id VARCHAR(255) NOT NULL PRIMARY KEY,
+          business_id VARCHAR(255) NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          \`date\` VARCHAR(10) NOT NULL,
+          \`time\` VARCHAR(5) NOT NULL,
+          party_size INT NOT NULL DEFAULT 2,
+          status VARCHAR(20) NOT NULL DEFAULT 'active',
+          notified_at TIMESTAMP NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_waitlist_business (business_id, \`date\`, \`time\`),
+          INDEX idx_waitlist_user (user_id)
+        )`,
+      );
+      console.log("✅ reservation_waitlist table ready");
+    } catch (err: any) {
+      console.log("Migration note (reservation_waitlist):", err.message);
+    }
+
+    // Mesas flash / Radar de huecos
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS reservation_flash (
+          id VARCHAR(255) NOT NULL PRIMARY KEY,
+          business_id VARCHAR(255) NOT NULL,
+          \`date\` VARCHAR(10) NOT NULL,
+          \`time\` VARCHAR(5) NOT NULL,
+          party_size INT NOT NULL DEFAULT 2,
+          note VARCHAR(200),
+          status VARCHAR(20) NOT NULL DEFAULT 'active',
+          expires_at TIMESTAMP NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_flash_status (status, \`date\`)
+        )`,
+      );
+      console.log("✅ reservation_flash table ready");
+    } catch (err: any) {
+      console.log("Migration note (reservation_flash):", err.message);
+    }
+
+    // Comprobantes de tarifas de reservas: columna purpose para distinguirlos
+    // sin usar order_id (que tiene FK real a orders)
+    try {
+      await conn.query(
+        `ALTER TABLE payment_proofs ADD COLUMN purpose VARCHAR(20) NOT NULL DEFAULT 'order'`,
+      );
+      console.log("✅ Added purpose to payment_proofs");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (payment_proofs.purpose):", err.message);
+    }
+
     // proximity_alerts / delivery_proofs: las tablas antiguas se crearon
     // sin default en el id y los INSERT fallaban con ER_NO_DEFAULT_FOR_FIELD
     for (const table of ["proximity_alerts", "delivery_proofs"]) {

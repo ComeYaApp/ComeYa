@@ -112,6 +112,44 @@ export default function BusinessMapScreen() {
   >({});
   const [Circle, setCircle] = useState<any>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  // Capa "Mesas hoy": solo negocios con reserva disponible para hoy
+  const [reserveOnly, setReserveOnly] = useState(false);
+  const [reserveIds, setReserveIds] = useState<Set<string>>(new Set());
+  const [reserveLoading, setReserveLoading] = useState(false);
+
+  // Mapa gastronómico de reservas: al activar "Mesas hoy" solo se pintan
+  // negocios con disponibilidad real de reserva para hoy
+  useEffect(() => {
+    if (!reserveOnly) return;
+    let cancelled = false;
+    setReserveLoading(true);
+    const load = async () => {
+      try {
+        const { apiRequest } = await import("@/lib/query-client");
+        const d = new Date();
+        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const res = await apiRequest(
+          "GET",
+          `/api/reservations/search?date=${today}&partySize=2`,
+        );
+        const data = await res.json();
+        if (cancelled) return;
+        const ids = new Set<string>(
+          (data.businesses || [])
+            .filter((b: any) => b.availability?.status !== "full")
+            .map((b: any) => b.id),
+        );
+        setReserveIds(ids);
+      } catch {
+      } finally {
+        if (!cancelled) setReserveLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [reserveOnly]);
   const mapRef = useRef<any>(null);
 
   const CATEGORIES = [
@@ -467,7 +505,9 @@ export default function BusinessMapScreen() {
         {Marker &&
           businesses
             .filter(
-              (b) => categoryFilter === "all" || b.type === categoryFilter,
+              (b) =>
+                (categoryFilter === "all" || b.type === categoryFilter) &&
+                (!reserveOnly || reserveIds.has(b.id)),
             )
             .map((b) => {
               const meta = businessMarkerMeta(
@@ -624,6 +664,32 @@ export default function BusinessMapScreen() {
 
       {/* Filtros de categoría */}
       <View style={[styles.filtersRow, { top: insets.top + 58 }]}>
+        <Pressable
+          onPress={() => {
+            setReserveOnly((v) => !v);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={[
+            styles.filterChip,
+            { backgroundColor: reserveOnly ? ComeYaColors.primary : theme.card },
+          ]}
+        >
+          <Feather
+            name="calendar"
+            size={13}
+            color={reserveOnly ? "#fff" : ComeYaColors.primary}
+          />
+          <ThemedText
+            type="caption"
+            style={{
+              marginLeft: 4,
+              color: reserveOnly ? "#fff" : ComeYaColors.primary,
+              fontWeight: "600",
+            }}
+          >
+            {reserveLoading ? "Buscando..." : "🪑 Mesas hoy"}
+          </ThemedText>
+        </Pressable>
         {CATEGORIES.map((cat) => (
           <Pressable
             key={cat.key}

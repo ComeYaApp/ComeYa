@@ -42,6 +42,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { BusinessCard } from "@/components/BusinessCard";
 import { CartButton } from "@/components/CartButton";
 import { BusinessCardSkeleton } from "@/components/SkeletonLoader";
+import { HomeReserveMode } from "@/components/HomeReserveMode";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApp } from "@/contexts/AppContext";
@@ -101,6 +102,8 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  // Modo de la Home: pedir (delivery/pickup) o reservar mesa
+  const [homeMode, setHomeMode] = useState<"order" | "reserve">("order");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{
@@ -488,6 +491,82 @@ export default function HomeScreen() {
             contentFit="contain"
           />
         </Animated.View>
+
+        {/* Conmutador Pedir / Reservar mesa */}
+        <Animated.View
+          entering={FadeInDown.delay(75).springify()}
+          style={styles.modeSwitchContainer}
+        >
+          <Pressable
+            onPress={() => {
+              if (homeMode !== "order") {
+                Haptics.selectionAsync();
+                setHomeMode("order");
+              }
+            }}
+            style={[
+              styles.modeSwitchBtn,
+              homeMode === "order" && styles.modeSwitchBtnActive,
+              {
+                backgroundColor:
+                  homeMode === "order" ? ComeYaColors.primary : "transparent",
+              },
+            ]}
+          >
+            <Feather
+              name="shopping-bag"
+              size={15}
+              color={homeMode === "order" ? "#FFF" : theme.textSecondary}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                color: homeMode === "order" ? "#FFF" : theme.textSecondary,
+                fontWeight: "700",
+                marginLeft: 5,
+              }}
+            >
+              Pedir
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              if (homeMode !== "reserve") {
+                Haptics.selectionAsync();
+                setHomeMode("reserve");
+              }
+            }}
+            style={[
+              styles.modeSwitchBtn,
+              homeMode === "reserve" && styles.modeSwitchBtnActive,
+              {
+                backgroundColor:
+                  homeMode === "reserve" ? ComeYaColors.primary : "transparent",
+              },
+            ]}
+          >
+            <Feather
+              name="calendar"
+              size={15}
+              color={homeMode === "reserve" ? "#FFF" : theme.textSecondary}
+            />
+            <ThemedText
+              type="small"
+              style={{
+                color: homeMode === "reserve" ? "#FFF" : theme.textSecondary,
+                fontWeight: "700",
+                marginLeft: 5,
+              }}
+            >
+              Reservar mesa
+            </ThemedText>
+          </Pressable>
+        </Animated.View>
+
+        {homeMode === "reserve" ? (
+          <HomeReserveMode />
+        ) : (
+        <>
 
         {/* Question Header */}
         <Animated.View
@@ -1286,6 +1365,8 @@ export default function HomeScreen() {
             ) : null}
           </>
         )}
+        </>
+        )}
       </ScrollView>
 
       <CartButton
@@ -1324,6 +1405,25 @@ const styles = StyleSheet.create({
   brandWordmark: {
     width: 216,
     height: 74,
+  },
+  modeSwitchContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(128,128,128,0.12)",
+    borderRadius: BorderRadius.full,
+    padding: 4,
+    marginBottom: Spacing.lg,
+    gap: 4,
+  },
+  modeSwitchBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
+  modeSwitchBtnActive: {
+    ...Shadows.sm,
   },
   questionContainer: {
     marginBottom: Spacing.lg,

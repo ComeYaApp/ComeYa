@@ -24,6 +24,7 @@ export type AdminSection =
   | "finance"
   | "finance_payouts"
   | "finance_proofs"
+  | "finance_reservations"
   | "finance_accounts"
   | "finance_earnings"
   | "finance_giftcards"
@@ -126,6 +127,7 @@ const NAV: NavItem[] = [
     children: [
       { id: "finance_earnings", label: "Ganancias", icon: "trending-up" },
       { id: "finance_payouts", label: "Payouts", icon: "send" },
+      { id: "finance_reservations", label: "Cobros reservas", icon: "calendar" },
       { id: "finance_refunds", label: "Devoluciones", icon: "rotate-ccw" },
       { id: "finance_proofs", label: "Comprobantes", icon: "file-text" },
       { id: "finance_giftcards", label: "Gift Cards", icon: "gift" },

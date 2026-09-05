@@ -206,6 +206,20 @@ export function notifyAdminNewProof(data: {
   });
 }
 
+// Comprobante de pago de tarifas de reservas pendiente de verificar
+export function notifyAdminNewFeeProof(data: {
+  proofId: string;
+  ownerName: string;
+  amount: number;
+  method: string;
+}) {
+  if (!io) return;
+  io.to("admins").emit("admin_new_fee_proof", {
+    ...data,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 export function notifyAdminNewPayout(data: {
   payoutId: string;
   recipientName: string;

@@ -13,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { ComeyaIcon, ComeyaIconName } from "@/components/icons/comeya/ComeyaIcon";
+import { HomeReserveMode } from "@/components/HomeReserveMode";
 import { Image } from "expo-image";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
 import { useAuth } from "@/contexts/AuthContext";
@@ -72,6 +73,8 @@ export default function HomeScreen() {
   const [sortBy, setSortBy] = useState("rating");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // Modo de la Home: pedir (delivery/pickup) o reservar mesa
+  const [homeMode, setHomeMode] = useState<"order" | "reserve">("order");
   const [favoriteBusinessIds, setFavoriteBusinessIds] = useState<
     Set<string | number>
   >(new Set());
@@ -623,6 +626,61 @@ export default function HomeScreen() {
             </View>
           )}
 
+          {/* Conmutador Pedir / Reservar mesa */}
+          {!search && typeFilter === "all" && !activeCategory && (
+            <View style={s.modeSwitch}>
+              <Pressable
+                onPress={() => setHomeMode("order")}
+                style={[
+                  s.modeSwitchBtn,
+                  homeMode === "order" && { backgroundColor: PRIMARY },
+                ]}
+              >
+                <Feather
+                  name="shopping-bag"
+                  size={14}
+                  color={homeMode === "order" ? "#fff" : sub}
+                />
+                <Text
+                  style={[
+                    s.modeSwitchTxt,
+                    { color: homeMode === "order" ? "#fff" : sub },
+                  ]}
+                >
+                  Pedir
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setHomeMode("reserve")}
+                style={[
+                  s.modeSwitchBtn,
+                  homeMode === "reserve" && { backgroundColor: PRIMARY },
+                ]}
+              >
+                <Feather
+                  name="calendar"
+                  size={14}
+                  color={homeMode === "reserve" ? "#fff" : sub}
+                />
+                <Text
+                  style={[
+                    s.modeSwitchTxt,
+                    { color: homeMode === "reserve" ? "#fff" : sub },
+                  ]}
+                >
+                  Reservar mesa
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {homeMode === "reserve" &&
+          !search &&
+          typeFilter === "all" &&
+          !activeCategory ? (
+            <HomeReserveMode />
+          ) : (
+          <>
           {/* Resultados count */}
           <Text style={[s.resultsCount, { color: sub, marginBottom: 14 }]}>
             {loading
@@ -722,6 +780,8 @@ export default function HomeScreen() {
                 </View>
               ))}
             </View>
+          )}
+          </>
           )}
         </ScrollView>
       </View>
@@ -920,6 +980,23 @@ const s = StyleSheet.create({
   heroSub: { fontSize: 13, color: "rgba(255,255,255,0.8)" },
   heroEmoji: { fontSize: 36 },
   resultsCount: { fontSize: 13, fontWeight: "600" },
+  modeSwitch: {
+    flexDirection: "row",
+    backgroundColor: "rgba(128,128,128,0.12)",
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
+    marginBottom: 16,
+  },
+  modeSwitchBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  modeSwitchTxt: { fontSize: 13, fontWeight: "700", marginLeft: 6 },
   loadingBox: { paddingVertical: 60, alignItems: "center" },
   emptyBox: { paddingVertical: 60, alignItems: "center", gap: 8 },
   emptyTitle: { fontSize: 18, fontWeight: "700" },

@@ -212,6 +212,16 @@ const server = httpServer.listen(PORT, () => {
       import("./staleOrdersCron")
         .then(({ startStaleOrdersCron }) => startStaleOrdersCron())
         .catch(console.error);
+      import("./reservationReminderCron")
+        .then(({ startReservationReminderCron }) =>
+          startReservationReminderCron(),
+        )
+        .catch(console.error);
+      import("./reservationFeeChargeCron")
+        .then(({ startReservationFeeChargeCron }) =>
+          startReservationFeeChargeCron(),
+        )
+        .catch(console.error);
       // Webhook de pagos de Stripe: se asegura de que el endpoint exista,
       // esté activo y su secreto de firma guardado en app_settings
       import("./stripeWebhookRegistration")

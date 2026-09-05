@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { AdminShell, AdminSection } from "@/components/admin/AdminShell.web";
 import { FinanceTab } from "@/components/admin/tabs/FinanceTab.web";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
+import { FeeProofsTab } from "@/components/admin/tabs/FeeProofsTab";
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
 import { GiftCardsAdminTab } from "../components/admin/tabs/GiftCardsAdminTab.web";
 import { useToast } from "@/contexts/ToastContext";
@@ -32,6 +33,8 @@ export default function AdminFinanceScreen() {
         return <FinanceTab defaultTab="payouts" />;
       case "finance_proofs":
         return <PaymentProofsTab />;
+      case "finance_reservations":
+        return <FeeProofsTab />;
       case "finance_accounts":
         return <AdminPaymentAccountsPanel />;
       default:

@@ -17,6 +17,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ComeYaColors, Spacing, BorderRadius } from "../../../constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { FeeProofsTab } from "@/components/admin/tabs/FeeProofsTab";
 
 interface Props {
   theme: any;
@@ -61,7 +62,7 @@ const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
 
 export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   const [tab, setTab] = useState<
-    "payouts" | "history" | "metrics" | "tips" | "drivers"
+    "payouts" | "history" | "metrics" | "tips" | "drivers" | "fees"
   >("payouts");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -628,7 +629,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
     <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
       {/* Tabs */}
       <View style={[s.tabBar, { paddingTop: insets.top }]}>
-        {(["payouts", "history", "metrics", "tips", "drivers"] as const).map(
+        {(["payouts", "history", "metrics", "tips", "drivers", "fees"] as const).map(
           (t) => (
             <TouchableOpacity
               key={t}
@@ -644,7 +645,9 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                       ? "Métricas"
                       : t === "tips"
                         ? `Propinas${pendingTips.length ? ` (${pendingTips.length})` : ""}`
-                        : "Repartidores"}
+                        : t === "fees"
+                          ? "Tarifas reservas"
+                          : "Repartidores"}
               </Text>
             </TouchableOpacity>
           ),
@@ -1172,6 +1175,9 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
             )}
           </>
         )}
+
+        {/* ── COBROS DE TARIFAS DE RESERVAS ── */}
+        {tab === "fees" && <FeeProofsTab />}
       </ScrollView>
     </View>
   );

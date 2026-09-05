@@ -37,6 +37,12 @@ import BusinessStripeSetupScreen from "@/screens/BusinessStripeSetupScreen";
 import EditProfileScreen from "@/screens/EditProfileScreen";
 import MyReservationsScreen from "@/screens/MyReservationsScreen";
 import BusinessReservationsScreen from "@/screens/BusinessReservationsScreen";
+import BusinessReservationsSettingsScreen from "@/screens/BusinessReservationsSettingsScreen";
+import BusinessFeesScreen from "@/screens/BusinessFeesScreen";
+import JoinReservationScreen from "@/screens/JoinReservationScreen";
+import BillPaymentScreen from "@/screens/BillPaymentScreen";
+import ComeYaPassScreen from "@/screens/ComeYaPassScreen";
+import ComeYaPlanScreen from "@/screens/ComeYaPlanScreen";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -141,8 +147,14 @@ export type RootStackParamList = {
   Subscriptions: undefined;
   GiftCards: undefined;
   ScheduledOrders: undefined;
-  MyReservations: undefined;
-  BusinessReservations: undefined;
+  MyReservations: { reservationId?: string } | undefined;
+  BusinessReservations: { reservationId?: string } | undefined;
+  BusinessReservationsSettings: { businessId?: string } | undefined;
+  BusinessFees: undefined;
+  JoinReservation: { token: string };
+  BillPayment: { billId: string };
+  ComeYaPass: undefined;
+  ComeYaPlan: undefined;
   NotificationPreferences: undefined;
   Referral: undefined;
   Addresses: undefined;
@@ -330,6 +342,12 @@ export default function RootStackNavigator() {
           <Stack.Screen name="ScheduledOrders" component={ScheduledOrdersScreen} options={{ headerShown: false }} />
           <Stack.Screen name="MyReservations" component={MyReservationsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BusinessReservations" component={BusinessReservationsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="BusinessReservationsSettings" component={BusinessReservationsSettingsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="BusinessFees" component={BusinessFeesScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="JoinReservation" component={JoinReservationScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="BillPayment" component={BillPaymentScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ComeYaPass" component={ComeYaPassScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ComeYaPlan" component={ComeYaPlanScreen} options={{ headerShown: false }} />
           <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} options={{ headerTitle: "Notificaciones" }} />
           <Stack.Screen name="Referral" component={ReferralScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerTitle: "Editar perfil" }} />

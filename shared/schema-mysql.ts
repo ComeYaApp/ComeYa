@@ -57,6 +57,12 @@ export const users = mysqlTable("users", {
   pushToken: text("push_token"),
   // Stripe Connect (cuenta vinculada del usuario)
   stripeAccountId: varchar("stripe_account_id", { length: 255 }),
+  // Stripe: cliente y método de pago guardado para cobros off-session
+  // (tarifas de reservas, suscripciones). Columnas ya existentes en MySQL.
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  stripePaymentMethodId: varchar("stripe_payment_method_id", { length: 255 }),
+  cardLast4: varchar("card_last4", { length: 4 }),
+  cardBrand: varchar("card_brand", { length: 30 }),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at"),
 });
@@ -257,6 +263,10 @@ export const businesses = mysqlTable("businesses", {
   // solo con reservas (deliveryEnabled=false oculta el carrito al cliente)
   reservationsEnabled: boolean("reservations_enabled").notNull().default(false),
   deliveryEnabled: boolean("delivery_enabled").notNull().default(true),
+  // Configuración de reservas (JSON): capacityPerSlot, turnMinutes, slotMinutes,
+  // maxPartySize, advanceDays, autoConfirm, maxCoversPerDay. Null = sin aforo
+  // configurado → flujo manual clásico (reserva nace pendiente).
+  reservationConfig: text("reservation_config"),
   updatedAt: timestamp("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
   ),
@@ -275,12 +285,98 @@ export const reservations = mysqlTable("reservations", {
   customerName: varchar("customer_name", { length: 255 }),
   customerPhone: varchar("customer_phone", { length: 50 }),
   notes: text("notes"),
-  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending, confirmed, rejected, cancelled
+  // pending, confirmed, rejected, cancelled, seated, completed, no_show
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
   businessNote: text("business_note"),
+  // Ocasión especial: birthday, anniversary, date, family, business, celebration
+  occasion: varchar("occasion", { length: 20 }),
+  // Pedido anticipado ("Reserva + pedido"): orden pickup programada a la hora
+  // de la reserva para tenerlo listo al llegar
+  preOrderId: varchar("pre_order_id", { length: 255 }),
+  // Reservas entre amigos: token público para compartir el enlace
+  groupToken: varchar("group_token", { length: 16 }),
+  // Cuenta del restaurante generada desde la reserva (pago por QR)
+  billId: varchar("bill_id", { length: 255 }),
+  // Código corto de confirmación para el negocio (CY-XXXX)
+  code: varchar("code", { length: 10 }),
+  cancelledBy: varchar("cancelled_by", { length: 20 }), // customer | business | admin
+  reminderSentAt: timestamp("reminder_sent_at"),
+  seatedAt: timestamp("seated_at"),
+  completedAt: timestamp("completed_at"),
+  noShowAt: timestamp("no_show_at"),
+  // Tarifa ComeYa: 0,99 € por comensal que asiste (en céntimos)
+  feeCents: int("fee_cents"),
+  feeChargedAt: timestamp("fee_charged_at"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(
     sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
   ),
+});
+
+// Lista de espera "Avísame": el cliente se apunta a una franja completa y
+// recibe push si se libera mesa o si el negocio publica una mesa flash
+export const reservationWaitlist = mysqlTable("reservation_waitlist", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  businessId: varchar("business_id", { length: 255 }).notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  time: varchar("time", { length: 5 }).notNull(),
+  partySize: int("party_size").notNull().default(2),
+  // active | notified | fulfilled | cancelled
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  notifiedAt: timestamp("notified_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(
+    sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+  ),
+});
+
+// Mesas flash / Radar: el negocio publica un hueco de última hora por tiempo
+// limitado (30-60 min) para llenar mesas que quedarían vacías
+export const reservationFlash = mysqlTable("reservation_flash", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  businessId: varchar("business_id", { length: 255 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(),
+  time: varchar("time", { length: 5 }).notNull(),
+  partySize: int("party_size").notNull().default(2),
+  note: varchar("note", { length: 200 }),
+  // active | reserved | expired | cancelled
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Cuenta de restaurante pagable por QR (Pagar la cuenta desde ComeYa)
+export const restaurantBills = mysqlTable("restaurant_bills", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  businessId: varchar("business_id", { length: 255 }).notNull(),
+  reservationId: varchar("reservation_id", { length: 255 }),
+  items: text("items"), // JSON: [{name, priceCents, quantity}]
+  totalCents: int("total_cents").notNull(),
+  paidCents: int("paid_cents").notNull().default(0),
+  tipCents: int("tip_cents").notNull().default(0),
+  status: varchar("status", { length: 20 }).notNull().default("open"), // open | paid
+  payments: text("payments"), // JSON: [{paymentIntentId, amountCents, at}]
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  paidAt: timestamp("paid_at"),
+});
+
+// Reservas entre amigos: quién confirma que va a la reserva compartida
+export const reservationParticipants = mysqlTable("reservation_participants", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  reservationId: varchar("reservation_id", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 50 }),
+  status: varchar("status", { length: 20 }).notNull().default("confirmed"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 // Wallets - billetera para cada usuario
@@ -895,6 +991,10 @@ export const paymentProofs = mysqlTable("payment_proofs", {
   referenceNumber: varchar("reference_number", { length: 100 }),
   amount: int("amount").notNull(),
   status: varchar("status", { length: 20 }).default("pending"),
+  // Qué es este comprobante: order (pedido), subscription (suscripción) o
+  // reservation_fees (tarifas de reservas del negocio). Los de tarifas NO
+  // usan order_id (hay FK real a orders en MySQL).
+  purpose: varchar("purpose", { length: 20 }).default("order"),
   verifiedBy: varchar("verified_by", { length: 255 }),
   verifiedAt: timestamp("verified_at"),
   verificationNotes: text("verification_notes"),

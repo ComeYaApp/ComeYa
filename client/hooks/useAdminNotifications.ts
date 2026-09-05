@@ -132,6 +132,18 @@ export function useAdminNotifications() {
           });
         });
 
+        // ⚠️ ALTO — Comprobante de tarifas de reservas pendiente
+        socket.on("admin_new_fee_proof", (data: any) => {
+          const fmt = (c: number) => `${(c / 100).toFixed(2)} €`;
+          add({
+            level: "high",
+            icon: "calendar",
+            title: "💳 Tarifas de reservas pendientes",
+            body: `${data.ownerName} pagó ${fmt(data.amount)} via ${data.method} · verificar comprobante`,
+            action: { label: "Verificar", section: "finance_reservations" },
+          });
+        });
+
         // ⚠️ ALTO — Nuevo payout generado
         socket.on("admin_new_payout", (data: any) => {
           const fmt = (c: number) => `${(c / 100).toFixed(2)} €`;

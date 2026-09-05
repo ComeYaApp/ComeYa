@@ -332,7 +332,9 @@ router.get("/payment-method/:userId", authenticateToken, async (req, res) => {
   }
 });
 
-// Create setup intent for adding card
+// Create setup intent for adding card.
+// usage: "off_session" es imprescindible para poder cobrar la tarjeta guardada
+// sin el usuario delante (tarifas de reservas, suscripciones).
 router.post("/create-setup-intent", authenticateToken, async (req, res) => {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -350,6 +352,7 @@ router.post("/create-setup-intent", authenticateToken, async (req, res) => {
         stripeClient.setupIntents.create({
           customer: cid,
           payment_method_types: ["card"],
+          usage: "off_session",
         }),
     );
 
@@ -369,14 +372,33 @@ router.post("/save-payment-method", authenticateToken, async (req, res) => {
     const stripe = (await import("stripe")).default;
     const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY);
 
-    const { userId, paymentMethodId } = req.body;
+    const userId = req.body?.userId || req.user!.id;
+    const { paymentMethodId } = req.body;
+    if (!paymentMethodId) {
+      return res.status(400).json({ error: "paymentMethodId requerido" });
+    }
 
     const paymentMethod =
       await stripeClient.paymentMethods.retrieve(paymentMethodId);
 
+    // Adjuntar el método al customer de la plataforma si aún no lo está:
+    // sin el attach no se puede cobrar off-session más adelante
+    const { customerId } = await withStripeCustomer(userId, async (cid) => {
+      if (paymentMethod.customer && paymentMethod.customer !== cid) {
+        return null; // pertenece a otro customer: no se re-attach
+      }
+      if (!paymentMethod.customer) {
+        return stripeClient.paymentMethods.attach(paymentMethodId, {
+          customer: cid,
+        });
+      }
+      return null;
+    });
+
     await db
       .update(users)
       .set({
+        stripeCustomerId: customerId,
         stripePaymentMethodId: paymentMethodId,
         cardLast4: paymentMethod.card?.last4 || null,
         cardBrand: paymentMethod.card?.brand || null,

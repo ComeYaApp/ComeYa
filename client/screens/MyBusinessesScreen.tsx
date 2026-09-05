@@ -1173,6 +1173,34 @@ export default function MyBusinessesScreen() {
                 </ThemedText>
               </View>
             </Pressable>
+            {newBusiness.reservationsEnabled ? (
+              <Pressable
+                style={[
+                  styles.toggleRow,
+                  { justifyContent: "flex-start", gap: 6 },
+                ]}
+                onPress={() =>
+                  navigation.navigate("BusinessReservationsSettings", {
+                    businessId: businessToEdit?.id || selectedBusiness?.id,
+                  })
+                }
+              >
+                <Feather
+                  name="sliders"
+                  size={16}
+                  color={ComeYaColors.primary}
+                />
+                <ThemedText
+                  style={{
+                    color: ComeYaColors.primary,
+                    fontWeight: "600",
+                    fontSize: 14,
+                  }}
+                >
+                  Configurar aforo, turnos y confirmación
+                </ThemedText>
+              </Pressable>
+            ) : null}
             <Pressable
               style={styles.toggleRow}
               onPress={() =>

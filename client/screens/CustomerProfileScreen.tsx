@@ -244,6 +244,11 @@ export default function CustomerProfileScreen() {
         label: "Mis reservas",
         onPress: () => navigation.navigate("MyReservations" as any),
       },
+      {
+        icon: "star",
+        label: "ComeYa Pass",
+        onPress: () => navigation.navigate("ComeYaPass" as any),
+      },
     ];
 
     return (
