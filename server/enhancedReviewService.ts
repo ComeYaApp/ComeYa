@@ -129,6 +129,31 @@ export class EnhancedReviewService {
     // Actualizar rating del negocio
     await this.updateBusinessRating(businessId);
 
+    // ComeYa Rewards: ⭐ valorar = +5 puntos (doble con ComeYa Pass)
+    try {
+      const { LoyaltyService } = await import("./loyaltyService");
+      const { subscriptions } = await import("@shared/schema-mysql");
+      const [pass] = await db
+        .select({ id: subscriptions.id })
+        .from(subscriptions)
+        .where(
+          and(
+            eq(subscriptions.userId, userId),
+            eq(subscriptions.plan, "comeya_pass"),
+            eq(subscriptions.status, "active"),
+          ),
+        )
+        .limit(1);
+      await LoyaltyService.addPoints(
+        userId,
+        pass ? 10 : 5,
+        "review",
+        "Valoración de pedido",
+        orderId,
+        undefined,
+      );
+    } catch {}
+
     // Actualizar rating del repartidor si aplica
     if (deliveryPersonId && driverRating) {
       await this.updateDriverRating(deliveryPersonId);

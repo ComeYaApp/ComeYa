@@ -432,6 +432,18 @@ export async function runStartupMigrations(): Promise<void> {
         console.log("Migration note (payment_proofs.purpose):", err.message);
     }
 
+    // ComeYa Rewards: recompensa por defecto 500 puntos → 5 € descuento
+    try {
+      await conn.query(
+        `INSERT INTO loyalty_rewards (id, title, description, points_cost, type, value, is_available, min_tier)
+         SELECT 'reward-500-5e', 'Descuento de 5 €', 'Canjea 500 puntos por 5 € de descuento en tu próximo pedido', 500, 'discount', 500, TRUE, NULL
+         WHERE NOT EXISTS (SELECT 1 FROM loyalty_rewards WHERE id = 'reward-500-5e')`,
+      );
+      console.log("✅ Rewards: recompensa 500 pts = 5 € asegurada");
+    } catch (err: any) {
+      console.log("Migration note (loyalty reward seed):", err.message);
+    }
+
     // proximity_alerts / delivery_proofs: las tablas antiguas se crearon
     // sin default en el id y los INSERT fallaban con ER_NO_DEFAULT_FOR_FIELD
     for (const table of ["proximity_alerts", "delivery_proofs"]) {
