@@ -665,6 +665,27 @@ export default function BusinessDetailScreen() {
                   <ProductCardSkeleton />
                   <ProductCardSkeleton />
                 </>
+              ) : filteredProducts.length === 0 ? (
+                <View
+                  style={[
+                    styles.emptyMenu,
+                    { backgroundColor: theme.backgroundSecondary },
+                  ]}
+                >
+                  <Feather name="book-open" size={22} color={theme.textSecondary} />
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: theme.textSecondary,
+                      marginLeft: Spacing.sm,
+                      flex: 1,
+                    }}
+                  >
+                    {business.deliveryEnabled === false
+                      ? "Este restaurante trabaja con reservas y no publica carta en la app: el menú se consulta en el local."
+                      : "Este negocio aún no ha publicado su menú."}
+                  </ThemedText>
+                </View>
               ) : (
                 filteredProducts.map((product) => (
                   <ProductCard
@@ -1341,6 +1362,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
+  },
+  emptyMenu: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
   },
   productsSection: {
     paddingHorizontal: Spacing.lg,
