@@ -153,7 +153,10 @@ export function HomeReserveMode() {
   };
 
   const openBusiness = (id: string) =>
-    (navigation as any).navigate("BusinessDetail", { businessId: id });
+    (navigation as any).navigate("BusinessDetail", {
+      businessId: id,
+      reserveMode: true,
+    });
 
   const dateLabel = new Date(`${date}T12:00:00`).toLocaleDateString("es-ES", {
     weekday: "long",

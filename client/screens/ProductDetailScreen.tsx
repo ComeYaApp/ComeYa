@@ -53,6 +53,8 @@ export default function ProductDetailScreen() {
   const productId = route.params?.productId;
   const businessId = route.params?.businessId;
   const businessName = route.params?.businessName;
+  const reserveMode = route.params?.reserveMode === true;
+  const onAddReservationItem = route.params?.onAddReservationItem;
   const [product, setProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [unitAmount, setUnitAmount] = useState("1");
@@ -103,6 +105,22 @@ export default function ProductDetailScreen() {
 
   const handleAddToCart = async () => {
     if (!product) return;
+
+    // Modo reservas: el plato va a la cesta de reserva, nunca al carrito.
+    // La sesión se pide al confirmar la reserva, no al elegir platos.
+    if (reserveMode && onAddReservationItem) {
+      if (product.requiresNote && !note.trim()) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        showToast(
+          "Por favor agrega una especificación para este producto.",
+          "warning",
+        );
+        return;
+      }
+      onAddReservationItem(product, quantity);
+      navigation.goBack();
+      return;
+    }
 
     if (!user) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -379,7 +397,7 @@ export default function ProductDetailScreen() {
           disabled={!product.available}
           style={styles.addButton}
         >
-          Agregar al carrito
+          {reserveMode ? "Añadir a mi reserva" : "Agregar al carrito"}
         </Button>
       </View>
 

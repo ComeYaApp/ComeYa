@@ -90,12 +90,14 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: { phone?: string } | undefined;
   VerifyPhone: { phone: string };
-  BusinessDetail: { businessId: string };
+  BusinessDetail: { businessId: string; reserveMode?: boolean };
   ProductDetail: {
     productId: string;
     businessId: string;
     businessName: string;
     product?: import("@/types").Product;
+    reserveMode?: boolean;
+    onAddReservationItem?: (product: any, quantity: number) => void;
   };
   Cart: undefined;
   Checkout:

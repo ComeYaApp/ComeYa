@@ -53,6 +53,9 @@ export default function BusinessDetailScreen() {
   const queryClient = useQueryClient();
 
   const businessId = route.params?.businessId;
+  // Modo reservas: se llega desde la Home "Reservar mesa". Los platos se
+  // añaden a la reserva (pedido anticipado), nunca al carrito de reparto.
+  const reserveMode = route.params?.reserveMode === true;
   const [isLoading, setIsLoading] = useState(true);
   const [business, setBusiness] = useState<Business | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -191,6 +194,151 @@ export default function BusinessDetailScreen() {
       Alert.alert("Error", "No se pudo activar el aviso");
     } finally {
       setReserveWaitlisting(false);
+    }
+  };
+
+  // ── Cesta de reserva (modo reservas): platos + fecha + franja + comensales ──
+  const [rbItems, setRbItems] = useState<
+    Array<{ id: string; name: string; price: number; qty: number }>
+  >([]);
+  const [showRbModal, setShowRbModal] = useState(false);
+  const [rbDate, setRbDate] = useState<string | null>(null);
+  const [rbTime, setRbTime] = useState<string | null>(null);
+  const [rbParty, setRbParty] = useState(2);
+  const [rbOccasion, setRbOccasion] = useState<string | null>(null);
+  const [rbSlots, setRbSlots] = useState<any[]>([]);
+  const [rbSlotsLoading, setRbSlotsLoading] = useState(false);
+  const [rbSubmitting, setRbSubmitting] = useState(false);
+  const [rbSuccess, setRbSuccess] = useState<any>(null);
+
+  const rbTotal = rbItems.reduce(
+    (sum, it) => sum + Math.round(it.price * 100) * it.qty,
+    0,
+  );
+  const rbCount = rbItems.reduce((sum, it) => sum + it.qty, 0);
+
+  const addReservationItem = useCallback(
+    (product: any, quantity: number) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setRbItems((prev) => {
+        const found = prev.find((i) => i.id === product.id);
+        if (found) {
+          return prev.map((i) =>
+            i.id === product.id ? { ...i, qty: i.qty + quantity } : i,
+          );
+        }
+        return [
+          ...prev,
+          {
+            id: product.id,
+            name: product.name,
+            price: product.price ?? 0,
+            qty: quantity,
+          },
+        ];
+      });
+    },
+    [],
+  );
+
+  const loadRbSlots = useCallback(
+    async (date: string, party: number) => {
+      setRbSlotsLoading(true);
+      try {
+        const res = await apiRequest(
+          "GET",
+          `/api/reservations/availability?businessId=${businessId}&date=${date}&partySize=${party}`,
+        );
+        const data = await res.json();
+        setRbSlots(data.success ? data.slots || [] : []);
+      } catch {
+        setRbSlots([]);
+      } finally {
+        setRbSlotsLoading(false);
+      }
+    },
+    [businessId],
+  );
+
+  useEffect(() => {
+    if (!showRbModal || !rbDate) return;
+    setRbTime(null);
+    loadRbSlots(rbDate, rbParty);
+  }, [showRbModal, rbDate, rbParty, loadRbSlots]);
+
+  const submitReserveBasket = async () => {
+    if (!rbDate || !rbTime || rbItems.length === 0) return;
+    if (!user) {
+      navigation.navigate("Login" as never);
+      return;
+    }
+    setRbSubmitting(true);
+    try {
+      // 1) La reserva
+      const resRes = await apiRequest("POST", "/api/reservations", {
+        businessId,
+        date: rbDate,
+        time: rbTime,
+        partySize: rbParty,
+        customerName: user?.name || "",
+        customerPhone: user?.phone || "",
+        occasion: rbOccasion || null,
+        notes: "Pedido anticipado desde la carta",
+      });
+      const dataRes = await resRes.json();
+      if (!dataRes.success) {
+        Alert.alert("No se pudo reservar", dataRes.error || "Inténtalo de nuevo");
+        return;
+      }
+      // 2) El pedido anticipado ligado
+      const items = rbItems.map((it) => ({
+        id: it.id,
+        name: it.name,
+        price: it.price,
+        quantity: it.qty,
+      }));
+      const baseCents = rbItems.reduce(
+        (sum, it) => sum + Math.round((it.price / 1.15) * 100) * it.qty,
+        0,
+      );
+      const subtotalCents = rbItems.reduce(
+        (sum, it) => sum + Math.round(it.price * 100) * it.qty,
+        0,
+      );
+      const resOrder = await apiRequest("POST", "/api/orders", {
+        businessId,
+        businessName: business?.name,
+        items: JSON.stringify(items),
+        status: "pending",
+        subtotal: subtotalCents,
+        productosBase: baseCents,
+        nemyCommission: subtotalCents - baseCents,
+        deliveryFee: 0,
+        total: subtotalCents,
+        paymentMethod: "cash",
+        orderType: "pickup",
+        reservationId: dataRes.reservation.id,
+        notes: `Pedido anticipado para reserva ${dataRes.reservation.code || ""} ${rbDate} ${rbTime}`,
+      });
+      const dataOrder = await resOrder.json();
+      if (!dataOrder.success && !dataOrder.order) {
+        Alert.alert(
+          "Reserva creada con avisos",
+          "Tu mesa quedó reservada, pero el pedido anticipado no se pudo crear. Podrás hacerlo desde Mis reservas.",
+        );
+      }
+      setRbSuccess({
+        code: dataRes.reservation.code,
+        autoConfirmed: dataRes.autoConfirmed,
+        date: rbDate,
+        time: rbTime,
+        party: rbParty,
+        total: subtotalCents,
+      });
+    } catch {
+      Alert.alert("Error", "No se pudo completar la reserva");
+    } finally {
+      setRbSubmitting(false);
     }
   };
 
@@ -593,7 +741,7 @@ export default function BusinessDetailScreen() {
               )}
             </View>
 
-            {categories.length > 0 ? (
+            {categories.length > 1 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -698,6 +846,10 @@ export default function BusinessDetailScreen() {
                         businessId: business.id,
                         businessName: business.name,
                         product: product,
+                        reserveMode,
+                        onAddReservationItem: reserveMode
+                          ? addReservationItem
+                          : undefined,
                       })
                     }
                   />
@@ -708,7 +860,7 @@ export default function BusinessDetailScreen() {
         ) : null}
       </ScrollView>
 
-      {business && business.deliveryEnabled !== false && (
+      {business && business.deliveryEnabled !== false && !reserveMode && (
         <CartButton
           onPress={() => {
             if (!user) {
@@ -720,6 +872,334 @@ export default function BusinessDetailScreen() {
           }}
         />
       )}
+
+      {/* Cesta de reserva (modo reservas): platos elegidos → reservar y pedir */}
+      {reserveMode && rbCount > 0 && !rbSuccess ? (
+        <Pressable
+          onPress={() => {
+            const now = new Date();
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+            setRbDate((d) => d || today);
+            setShowRbModal(true);
+          }}
+          style={[styles.rbBasketBtn, Shadows.md]}
+        >
+          <Feather name="calendar" size={22} color="#FFF" />
+          <View style={styles.rbBadge}>
+            <ThemedText style={{ color: "#FFF", fontSize: 11, fontWeight: "800" }}>
+              {rbCount}
+            </ThemedText>
+          </View>
+        </Pressable>
+      ) : null}
+
+      {/* Modal de reserva + pedido anticipado */}
+      <Modal
+        visible={showRbModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRbModal(false)}
+      >
+        <View style={styles.reserveOverlay}>
+          <View style={[styles.reserveModal, { backgroundColor: theme.card }]}>
+            {rbSuccess ? (
+              <View style={styles.reserveSuccessWrap}>
+                <View
+                  style={[
+                    styles.reserveSuccessIcon,
+                    { backgroundColor: "rgba(16,185,129,0.12)" },
+                  ]}
+                >
+                  <Feather name="check-circle" size={44} color="#10B981" />
+                </View>
+                <ThemedText type="h3" style={{ marginTop: Spacing.lg }}>
+                  ¡Mesa y pedido listos!
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.xs, textAlign: "center" }}
+                >
+                  {rbSuccess.party} comensales ·{" "}
+                  {new Date(`${rbSuccess.date}T12:00:00`).toLocaleDateString("es-ES", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                  })}{" "}
+                  · {rbSuccess.time}
+                  {rbSuccess.autoConfirmed ? "" : " (pendiente de confirmación)"}
+                </ThemedText>
+                {rbSuccess.code ? (
+                  <>
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+                    >
+                      Muestra este código al llegar
+                    </ThemedText>
+                    <View
+                      style={[
+                        styles.reserveCodeBox,
+                        { backgroundColor: theme.backgroundSecondary },
+                      ]}
+                    >
+                      <ThemedText
+                        style={{
+                          fontSize: 34,
+                          fontWeight: "800",
+                          letterSpacing: 2,
+                          color: ComeYaColors.primary,
+                        }}
+                      >
+                        {rbSuccess.code}
+                      </ThemedText>
+                    </View>
+                  </>
+                ) : null}
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.md }}
+                >
+                  Pedido anticipado: {(rbSuccess.total / 100).toFixed(2).replace(".", ",")} € ·
+                  se paga al llegar
+                </ThemedText>
+                <Pressable
+                  onPress={() => {
+                    setShowRbModal(false);
+                    setRbSuccess(null);
+                    setRbItems([]);
+                  }}
+                  style={[
+                    styles.reserveSubmit,
+                    { backgroundColor: ComeYaColors.primary },
+                  ]}
+                >
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#FFF", fontWeight: "700" }}
+                  >
+                    Listo
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.reserveHeader}>
+                  <ThemedText type="h3">Tu reserva con pedido</ThemedText>
+                  <Pressable
+                    onPress={() => setShowRbModal(false)}
+                  >
+                    <Feather name="x" size={22} color={theme.textSecondary} />
+                  </Pressable>
+                </View>
+
+                {/* Platos elegidos */}
+                {rbItems.map((it) => (
+                  <View key={it.id} style={styles.rbItemRow}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText type="small" numberOfLines={1}>
+                        {it.qty} × {it.name}
+                      </ThemedText>
+                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                        {((it.price * it.qty) || 0).toFixed(2).replace(".", ",")} €
+                      </ThemedText>
+                    </View>
+                    <Pressable
+                      onPress={() =>
+                        setRbItems((prev) => prev.filter((i) => i.id !== it.id))
+                      }
+                      hitSlop={8}
+                    >
+                      <Feather name="x-circle" size={18} color={theme.textSecondary} />
+                    </Pressable>
+                  </View>
+                ))}
+                <ThemedText type="small" style={{ fontWeight: "700", marginTop: Spacing.sm }}>
+                  Total del pedido: {(rbTotal / 100).toFixed(2).replace(".", ",")} € (se paga al llegar)
+                </ThemedText>
+
+                {/* Fecha */}
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs }}
+                >
+                  Día
+                </ThemedText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: Spacing.xs }}
+                >
+                  {reserveDates.map((d) => {
+                    const active = rbDate === d.value;
+                    return (
+                      <Pressable
+                        key={d.value}
+                        onPress={() => setRbDate(d.value)}
+                        style={[
+                          styles.reserveDateChip,
+                          {
+                            borderColor: active ? ComeYaColors.primary : theme.border,
+                            backgroundColor: active ? ComeYaColors.primary : "transparent",
+                          },
+                        ]}
+                      >
+                        <ThemedText
+                          type="small"
+                          style={{ color: active ? "#FFF" : theme.text, fontWeight: "600" }}
+                        >
+                          {d.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Franjas */}
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs }}
+                >
+                  Hora · verde: libre · ámbar: últimas mesas
+                </ThemedText>
+                {rbSlotsLoading ? (
+                  <ThemedText type="small" style={{ color: theme.textSecondary, paddingVertical: Spacing.md }}>
+                    Consultando disponibilidad...
+                  </ThemedText>
+                ) : rbSlots.length === 0 ? (
+                  <ThemedText type="small" style={{ color: theme.textSecondary, paddingVertical: Spacing.md }}>
+                    No hay franjas para este día. Prueba otra fecha.
+                  </ThemedText>
+                ) : (
+                  <View style={styles.reserveTimeRow}>
+                    {rbSlots.map((slot: any) => {
+                      const disabled = slot.isPast || slot.status === "full";
+                      const selected = rbTime === slot.time;
+                      const borderColor = selected
+                        ? ComeYaColors.primary
+                        : slot.status === "last"
+                          ? "#F59E0B"
+                          : slot.status === "full"
+                            ? ComeYaColors.error
+                            : theme.border;
+                      const textColor = selected
+                        ? "#FFF"
+                        : disabled
+                          ? theme.textSecondary
+                          : slot.status === "last"
+                            ? "#B45309"
+                            : slot.status === "full"
+                              ? ComeYaColors.error
+                              : theme.text;
+                      return (
+                        <Pressable
+                          key={slot.time}
+                          onPress={() =>
+                            !slot.isPast && slot.status !== "full" && setRbTime(slot.time)
+                          }
+                          disabled={slot.isPast}
+                          style={[
+                            styles.reserveTimeChip,
+                            {
+                              borderColor,
+                              backgroundColor: selected ? ComeYaColors.primary : "transparent",
+                              opacity: disabled ? 0.55 : 1,
+                            },
+                          ]}
+                        >
+                          <ThemedText type="small" style={{ color: textColor, fontWeight: "600" }}>
+                            {slot.time}
+                          </ThemedText>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Comensales */}
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs }}
+                >
+                  Comensales
+                </ThemedText>
+                <View style={styles.reservePartyRow}>
+                  <Pressable
+                    onPress={() => setRbParty((p) => Math.max(1, p - 1))}
+                    style={[styles.reservePartyBtn, { backgroundColor: theme.backgroundSecondary }]}
+                  >
+                    <Feather name="minus" size={18} color={theme.text} />
+                  </Pressable>
+                  <ThemedText type="h4" style={{ marginHorizontal: Spacing.lg }}>
+                    {rbParty}
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => setRbParty((p) => Math.min(20, p + 1))}
+                    style={[styles.reservePartyBtn, { backgroundColor: ComeYaColors.primary }]}
+                  >
+                    <Feather name="plus" size={18} color="#FFF" />
+                  </Pressable>
+                </View>
+
+                {/* Ocasión */}
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs }}
+                >
+                  ¿Celebras algo? (opcional)
+                </ThemedText>
+                <View style={styles.reserveTimeRow}>
+                  {(
+                    [
+                      { id: "birthday", label: "🎂 Cumpleaños" },
+                      { id: "anniversary", label: "❤️ Aniversario" },
+                      { id: "date", label: "💍 Cita" },
+                      { id: "family", label: "👨‍👩‍👧 Familiar" },
+                      { id: "business", label: "💼 Negocios" },
+                    ] as const
+                  ).map((o) => {
+                    const active = rbOccasion === o.id;
+                    return (
+                      <Pressable
+                        key={o.id}
+                        onPress={() => setRbOccasion(active ? null : o.id)}
+                        style={[
+                          styles.reserveTimeChip,
+                          {
+                            borderColor: active ? ComeYaColors.primary : theme.border,
+                            backgroundColor: active ? ComeYaColors.primary : "transparent",
+                          },
+                        ]}
+                      >
+                        <ThemedText
+                          type="small"
+                          style={{ color: active ? "#FFF" : theme.text, fontWeight: "600" }}
+                        >
+                          {o.label}
+                        </ThemedText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                <Pressable
+                  onPress={submitReserveBasket}
+                  disabled={rbSubmitting || !rbTime}
+                  style={[
+                    styles.reserveSubmit,
+                    { opacity: rbSubmitting || !rbTime ? 0.6 : 1 },
+                  ]}
+                >
+                  <ThemedText type="body" style={{ color: "#FFF", fontWeight: "700" }}>
+                    {rbSubmitting
+                      ? "Reservando..."
+                      : `Reservar y pedir (${(rbTotal / 100).toFixed(2).replace(".", ",")} €)`}
+                  </ThemedText>
+                </Pressable>
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de reserva de mesa */}
       <Modal
@@ -1275,6 +1755,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
+  },
+  rbBasketBtn: {
+    position: "absolute",
+    bottom: 90,
+    right: Spacing.lg,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: ComeYaColors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rbBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: ComeYaColors.primaryDark,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  rbItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.xs,
   },
   slotDot: {
     width: 6,
