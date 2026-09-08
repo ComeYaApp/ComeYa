@@ -434,6 +434,22 @@ export default function MyReservationsScreen() {
                   </ThemedText>
                 </Pressable>
               ) : null}
+              {["confirmed", "seated"].includes(r.status) && r.billId ? (
+                <Pressable
+                  onPress={() =>
+                    (navigation as any).navigate("BillPayment", { billId: r.billId })
+                  }
+                  style={[
+                    styles.preOrderBtn,
+                    { borderColor: "#3B82F6", marginTop: Spacing.md, backgroundColor: "#3B82F612" },
+                  ]}
+                >
+                  <Feather name="credit-card" size={14} color="#3B82F6" />
+                  <ThemedText type="small" style={{ color: "#3B82F6", marginLeft: 4, fontWeight: "700" }}>
+                    💳 Pagar cuenta
+                  </ThemedText>
+                </Pressable>
+              ) : null}
               {["confirmed", "seated"].includes(r.status) ? (
                 <Pressable
                   onPress={() => openShare(r)}

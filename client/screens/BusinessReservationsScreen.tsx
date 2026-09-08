@@ -243,6 +243,10 @@ export default function BusinessReservationsScreen() {
   };
 
   const publishFlash = async () => {
+    if (!selectedBusiness?.id) {
+      showToast("Selecciona primero uno de tus negocios", "error");
+      return;
+    }
     if (!flashTime) {
       showToast("Elige la hora del hueco", "error");
       return;

@@ -167,6 +167,13 @@ export class SubscriptionService {
           })),
         };
       }
+      // Robustez: si un plan del fallback no existe en BD (p. ej. comeya_pass
+      // antes de migrar), se fusiona para que la suscripción no falle
+      for (const [key, fallbackPlan] of Object.entries(this.PLANS_FALLBACK)) {
+        if (!result[key]) {
+          result[key] = fallbackPlan;
+        }
+      }
       return result;
     } catch {
       return this.PLANS_FALLBACK;

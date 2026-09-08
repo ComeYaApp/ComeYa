@@ -301,6 +301,40 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
+  // Web: enlaces compartidos públicos de reservas — /reserva/<token> (amigos)
+  // y /cuenta/<id> (pagar la cuenta con QR) llevan directo a su pantalla.
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    const routePath = () => {
+      const nav = navigationRef as any;
+      if (!navigationRef.isReady?.()) return;
+      const path = window.location.pathname || "";
+      const resv = /^\/reserva\/([A-Za-z0-9-]+)/.exec(path);
+      if (resv) {
+        nav.navigate("JoinReservation", { token: resv[1] });
+        return;
+      }
+      const bill = /^\/cuenta\/([A-Za-z0-9-]+)/.exec(path);
+      if (bill) {
+        nav.navigate("BillPayment", { billId: bill[1] });
+      }
+    };
+
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      routePath();
+      if (attempts > 20) clearInterval(timer);
+    }, 500);
+    window.addEventListener("popstate", routePath);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("popstate", routePath);
+    };
+  }, []);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }

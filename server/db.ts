@@ -444,6 +444,19 @@ export async function runStartupMigrations(): Promise<void> {
       console.log("Migration note (loyalty reward seed):", err.message);
     }
 
+    // ComeYa Pass (clientes): asegurar el plan en subscription_plans aunque
+    // la tabla ya tenga los planes de negocio sembrados
+    try {
+      await conn.query(
+        `INSERT INTO subscription_plans (id, plan_key, name, description, price, billing_cycle, is_active, display_order, color, icon)
+         SELECT 'plan-comeya-pass', 'comeya_pass', 'ComeYa Pass', 'Suscripción para clientes: puntos x2 en reservas y pedidos y ofertas exclusivas', 499, 'monthly', TRUE, 99, '#E60000', 'star'
+         WHERE NOT EXISTS (SELECT 1 FROM subscription_plans WHERE plan_key = 'comeya_pass')`,
+      );
+      console.log("✅ ComeYa Pass plan asegurado en subscription_plans");
+    } catch (err: any) {
+      console.log("Migration note (comeya_pass seed):", err.message);
+    }
+
     // proximity_alerts / delivery_proofs: las tablas antiguas se crearon
     // sin default en el id y los INSERT fallaban con ER_NO_DEFAULT_FOR_FIELD
     for (const table of ["proximity_alerts", "delivery_proofs"]) {
