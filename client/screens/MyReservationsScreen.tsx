@@ -306,7 +306,10 @@ export default function MyReservationsScreen() {
                 textAlign: "center",
               }}
             >
-              Entra en un negocio con reservas y toca "Reservar mesa".
+              Abre la pestaña Reservar de la inicio, elige un restaurante,
+              día y hora, y pulsa "Enviar reserva" (el botón rojo fijo abajo
+              del todo). También puedes pedir platos por adelantado y reservar
+              con "Reservar y pedir".
             </ThemedText>
           </View>
         )}

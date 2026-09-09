@@ -1175,6 +1175,7 @@ export default function BusinessDetailScreen() {
                 </Pressable>
               </View>
             ) : (
+              <>
               <ScrollView showsVerticalScrollIndicator={false}>
                 <View style={styles.reserveHeader}>
                   <ThemedText type="h3">Tu reserva con pedido</ThemedText>
@@ -1374,6 +1375,24 @@ export default function BusinessDetailScreen() {
                   })}
                 </View>
 
+              </ScrollView>
+              <View style={[styles.reserveFooter, { borderTopColor: theme.border }]}>
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: theme.textSecondary,
+                    textAlign: "center",
+                    marginBottom: Spacing.xs,
+                  }}
+                >
+                  {rbTime && rbDate
+                    ? `${new Date(`${rbDate}T12:00:00`).toLocaleDateString("es-ES", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                      })} · ${rbTime} · ${rbParty} ${rbParty === 1 ? "comensal" : "comensales"}`
+                    : "Elige día y hora para continuar"}
+                </ThemedText>
                 <Pressable
                   onPress={submitReserveBasket}
                   disabled={rbSubmitting || !rbTime}
@@ -1388,7 +1407,8 @@ export default function BusinessDetailScreen() {
                       : `Reservar y pedir (${(rbTotal / 100).toFixed(2).replace(".", ",")} €)`}
                   </ThemedText>
                 </Pressable>
-              </ScrollView>
+              </View>
+              </>
             )}
           </View>
         </View>
@@ -1756,6 +1776,24 @@ export default function BusinessDetailScreen() {
                 ]}
               />
 
+            </ScrollView>
+            <View style={[styles.reserveFooter, { borderTopColor: theme.border }]}>
+              <ThemedText
+                type="caption"
+                style={{
+                  color: theme.textSecondary,
+                  textAlign: "center",
+                  marginBottom: Spacing.xs,
+                }}
+              >
+                {reserveTime && reserveDate
+                  ? `${new Date(`${reserveDate}T12:00:00`).toLocaleDateString("es-ES", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                    })} · ${reserveTime} · ${reserveParty} ${reserveParty === 1 ? "comensal" : "comensales"}`
+                  : "Elige fecha y hora para activar el botón"}
+              </ThemedText>
               {selectedSlotFull ? (
                 <Pressable
                   onPress={submitWaitlist}
@@ -1781,12 +1819,12 @@ export default function BusinessDetailScreen() {
               ) : (
                 <Pressable
                   onPress={submitReservation}
-                  disabled={reserveSubmitting}
+                  disabled={reserveSubmitting || !reserveTime}
                   style={[
                     styles.reserveSubmit,
                     {
                       backgroundColor: ComeYaColors.primary,
-                      opacity: reserveSubmitting ? 0.6 : 1,
+                      opacity: !reserveTime || reserveSubmitting ? 0.6 : 1,
                     },
                   ]}
                 >
@@ -1798,7 +1836,7 @@ export default function BusinessDetailScreen() {
                   </ThemedText>
                 </Pressable>
               )}
-            </ScrollView>
+            </View>
               </>
             )}
           </View>
@@ -1928,6 +1966,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius.xl,
     padding: Spacing.lg,
     paddingBottom: Spacing["3xl"],
+  },
+  reserveFooter: {
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
   },
   reserveHeader: {
     flexDirection: "row",
