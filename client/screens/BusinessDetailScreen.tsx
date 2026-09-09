@@ -529,13 +529,19 @@ export default function BusinessDetailScreen() {
             featured: data.business.isFeatured || false,
             reservationsEnabled:
               data.business.reservationsEnabled === true ||
-              data.business.reservationsEnabled === 1,
+              data.business.reservationsEnabled === 1 ||
+              data.business.reservations_enabled === true ||
+              data.business.reservations_enabled === 1,
             deliveryEnabled:
-              data.business.deliveryEnabled === undefined ||
-              data.business.deliveryEnabled === null
+              (data.business.deliveryEnabled ?? data.business.delivery_enabled) ===
+                undefined ||
+              (data.business.deliveryEnabled ?? data.business.delivery_enabled) ===
+                null
                 ? true
-                : data.business.deliveryEnabled === true ||
-                  data.business.deliveryEnabled === 1,
+                : (data.business.deliveryEnabled ?? data.business.delivery_enabled) ===
+                    true ||
+                  (data.business.deliveryEnabled ?? data.business.delivery_enabled) ===
+                    1,
           };
 
           const adaptedProducts: Product[] = (data.business.products || []).map(
@@ -601,6 +607,20 @@ export default function BusinessDetailScreen() {
     if (!selectedCategory) return products;
     return products.filter((p) => p.category === selectedCategory);
   }, [products, selectedCategory]);
+
+  const openReserveModal = useCallback(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    setReserveDate(today);
+    setReserveTime(null);
+    setReserveParty(2);
+    setReserveOccasion(null);
+    setReserveSuccess(null);
+    setReserveName(user?.name || "");
+    setReservePhone(user?.phone || "");
+    setReserveNotes("");
+    setShowReserveModal(true);
+  }, [user?.name, user?.phone]);
 
   const handleCall = () => {
     if (business?.phone) {
@@ -743,19 +763,7 @@ export default function BusinessDetailScreen() {
               <View style={styles.contactRow}>
                 {business.reservationsEnabled && (
                   <Pressable
-                    onPress={() => {
-                      const now = new Date();
-                      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-                      setReserveDate(today);
-                      setReserveTime(null);
-                      setReserveParty(2);
-                      setReserveOccasion(null);
-                      setReserveSuccess(null);
-                      setReserveName(user?.name || "");
-                      setReservePhone(user?.phone || "");
-                      setReserveNotes("");
-                      setShowReserveModal(true);
-                    }}
+                    onPress={openReserveModal}
                     style={[
                       styles.contactButton,
                       styles.reserveButton,
@@ -1050,7 +1058,11 @@ export default function BusinessDetailScreen() {
             setRbDate((d) => d || today);
             setShowRbModal(true);
           }}
-          style={[styles.rbBasketBtn, Shadows.md]}
+          style={[
+            styles.rbBasketBtn,
+            { bottom: 90 + insets.bottom },
+            Shadows.md,
+          ]}
         >
           <Feather name="calendar" size={22} color="#FFF" />
           <View style={styles.rbBadge}>
@@ -1058,6 +1070,26 @@ export default function BusinessDetailScreen() {
               {rbCount}
             </ThemedText>
           </View>
+        </Pressable>
+      ) : null}
+
+      {/* Modo reservas: acción principal SIEMPRE visible abajo */}
+      {reserveMode && business?.reservationsEnabled ? (
+        <Pressable
+          onPress={openReserveModal}
+          style={[
+            styles.reserveCta,
+            { paddingBottom: insets.bottom + Spacing.sm },
+            Shadows.md,
+          ]}
+        >
+          <Feather name="calendar" size={20} color="#FFF" />
+          <ThemedText
+            type="body"
+            style={{ color: "#FFF", fontWeight: "800", marginLeft: Spacing.sm }}
+          >
+            Reservar mesa
+          </ThemedText>
         </Pressable>
       ) : null}
 
@@ -1069,7 +1101,13 @@ export default function BusinessDetailScreen() {
         onRequestClose={() => setShowRbModal(false)}
       >
         <View style={styles.reserveOverlay}>
-          <View style={[styles.reserveModal, { backgroundColor: theme.card }]}>
+          <View
+            style={[
+              styles.reserveModal,
+              !rbSuccess && styles.reserveModalForm,
+              { backgroundColor: theme.card },
+            ]}
+          >
             {rbSuccess ? (
               <View style={styles.reserveSuccessWrap}>
                 <View
@@ -1176,7 +1214,7 @@ export default function BusinessDetailScreen() {
               </View>
             ) : (
               <>
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
                 <View style={styles.reserveHeader}>
                   <ThemedText type="h3">Tu reserva con pedido</ThemedText>
                   <Pressable
@@ -1422,7 +1460,13 @@ export default function BusinessDetailScreen() {
         onRequestClose={() => setShowReserveModal(false)}
       >
         <View style={styles.reserveOverlay}>
-          <View style={[styles.reserveModal, { backgroundColor: theme.card }]}>
+          <View
+            style={[
+              styles.reserveModal,
+              !reserveSuccess && styles.reserveModalForm,
+              { backgroundColor: theme.card },
+            ]}
+          >
             {reserveSuccess ? (
               <View style={styles.reserveSuccessWrap}>
                 <View
@@ -1509,7 +1553,7 @@ export default function BusinessDetailScreen() {
                 <Feather name="x" size={22} color={theme.textSecondary} />
               </Pressable>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
               <ThemedText
                 type="small"
                 style={{ color: theme.textSecondary, marginBottom: Spacing.xs }}
@@ -1966,6 +2010,22 @@ const styles = StyleSheet.create({
     borderTopRightRadius: BorderRadius.xl,
     padding: Spacing.lg,
     paddingBottom: Spacing["3xl"],
+  },
+  reserveCta: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    backgroundColor: ComeYaColors.primary,
+  },
+  // Formulario de reserva: altura fija para que el ScrollView se flexible
+  // y el botón del pie quede SIEMPRE visible (no recortado por maxHeight).
+  reserveModalForm: {
+    height: "88%",
   },
   reserveFooter: {
     paddingTop: Spacing.sm,

@@ -2053,6 +2053,15 @@ router.get("/:id", async (req, res) => {
       success: true,
       business: {
         ...business,
+        // El SELECT * devuelve snake_case; normalizamos los booleanos a
+        // camelCase porque la app decide con ellos si mostrar "Reservar mesa"
+        // o el flujo de reparto (delivery_enabled=0 => solo reservas).
+        reservationsEnabled:
+          business.reservations_enabled === 1 ||
+          business.reservations_enabled === true,
+        deliveryEnabled:
+          business.delivery_enabled === 1 ||
+          business.delivery_enabled === true,
         products: productRows,
         isOpen: calculatedIsOpen,
         openingHours: parsedOpeningHours,
