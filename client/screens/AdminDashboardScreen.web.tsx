@@ -19,6 +19,7 @@ import { BusinessesTab } from "@/components/admin/tabs/BusinessesTab.web";
 import { DriversTab } from "@/components/admin/tabs/DriversTab.web";
 import { UsersTab } from "@/components/admin/tabs/UsersTab.web";
 import { FinanceTab } from "@/components/admin/tabs/FinanceTab.web";
+import { AdminReservationsTab } from "@/components/admin/tabs/AdminReservationsTab";
 import { PaymentProofsTab } from "@/components/admin/tabs/PaymentProofsTab.web";
 import { GiftCardsAdminTab } from "@/components/admin/tabs/GiftCardsAdminTab.web";
 import { PremiumSubsTab } from "@/components/admin/tabs/PremiumSubsTab.web";
@@ -190,6 +191,10 @@ export default function AdminDashboardScreen({ route }: any) {
       // ── Dashboard ──
       case "dashboard":
         return <DashboardView onNavigate={setSection} />;
+
+      // ── Reservas de mesa ──
+      case "reservations":
+        return <AdminReservationsTab />;
 
       // ── Pedidos ──
       case "orders":

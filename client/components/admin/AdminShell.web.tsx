@@ -10,6 +10,7 @@ const PRIMARY = "#E60000";
 
 export type AdminSection =
   | "dashboard"
+  | "reservations"
   | "orders"
   | "orders_active"
   | "orders_history"
@@ -81,6 +82,12 @@ const NAV: NavItem[] = [
     label: "Dashboard",
     icon: "bar-chart-2",
     color: PRIMARY,
+  },
+  {
+    id: "reservations",
+    label: "Reservas",
+    icon: "calendar",
+    color: "#F97316",
   },
   {
     id: "orders",

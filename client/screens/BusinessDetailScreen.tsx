@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
+﻿import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -16,6 +16,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -43,6 +44,15 @@ type BusinessDetailNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   "BusinessDetail"
 >;
+
+// Cesta de reserva persistida (una sola, ligada a su negocio)
+const RB_STORAGE_KEY = "@ComeYa_reserve_basket";
+
+const MY_RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
+  pending: { label: "Pendiente de confirmación", color: "#F59E0B" },
+  confirmed: { label: "Confirmada", color: "#10B981" },
+  seated: { label: "Ya estás en la mesa", color: "#10B981" },
+};
 
 export default function BusinessDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -153,6 +163,7 @@ export default function BusinessDetailScreen() {
           });
         } else {
           setShowReserveModal(false);
+          loadMyReservation();
           Alert.alert(
             "Reserva enviada 📅",
             "El negocio la confirmará en breve. Puedes verla en tu perfil → Mis reservas.",
@@ -210,6 +221,105 @@ export default function BusinessDetailScreen() {
   const [rbSlotsLoading, setRbSlotsLoading] = useState(false);
   const [rbSubmitting, setRbSubmitting] = useState(false);
   const [rbSuccess, setRbSuccess] = useState<any>(null);
+  // Reserva ya existente del usuario en este negocio (banner al reentrar)
+  const [myReservation, setMyReservation] = useState<any>(null);
+
+  const loadMyReservation = useCallback(
+    async () => {
+      if (!reserveMode || !user) {
+        setMyReservation(null);
+        return;
+      }
+      try {
+        const res = await apiRequest("GET", "/api/reservations/mine");
+        const data = await res.json();
+        if (!data.success) {
+          setMyReservation(null);
+          return;
+        }
+        // Activa: sentado ahora, o pendiente/confirmada que aún no haya
+        // empezado (con 1 h de margen para no desaparecer nada más llegar)
+        const limit = Date.now() - 60 * 60 * 1000;
+        const active = (data.reservations || [])
+          .filter(
+            (r: any) =>
+              r.businessId === businessId &&
+              (r.status === "seated" ||
+                ((r.status === "pending" || r.status === "confirmed") &&
+                  new Date(
+                    `${r.date}T${(r.time || "00:00").slice(0, 5)}:00`,
+                  ).getTime() >= limit)),
+          )
+          .sort(
+            (a: any, b: any) =>
+              new Date(`${a.date}T${a.time}:00`).getTime() -
+              new Date(`${b.date}T${b.time}:00`).getTime(),
+          );
+        setMyReservation(active[0] || null);
+      } catch {
+        setMyReservation(null);
+      }
+    },
+    [reserveMode, user, businessId],
+  );
+
+  useEffect(() => {
+    loadMyReservation();
+  }, [loadMyReservation]);
+
+  // La cesta de reserva sobrevive al salir de la ficha: se guarda en
+  // AsyncStorage (una sola cesta, ligada a su negocio, como el carrito).
+  const rbRestoredRef = useRef(false);
+
+  useEffect(() => {
+    if (!reserveMode) return;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(RB_STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          if (saved?.businessId === businessId) {
+            if (Array.isArray(saved.items) && saved.items.length > 0) {
+              setRbItems(saved.items);
+            }
+            if (typeof saved.party === "number" && saved.party > 0) {
+              setRbParty(saved.party);
+            }
+            if (typeof saved.occasion === "string") {
+              setRbOccasion(saved.occasion);
+            }
+          }
+        }
+      } catch {}
+      rbRestoredRef.current = true;
+    })();
+  }, [reserveMode, businessId]);
+
+  useEffect(() => {
+    if (!reserveMode || !rbRestoredRef.current) return;
+    (async () => {
+      try {
+        if (rbItems.length === 0) {
+          // Solo borra lo guardado si era la cesta de ESTE negocio
+          const raw = await AsyncStorage.getItem(RB_STORAGE_KEY);
+          const saved = raw ? JSON.parse(raw) : null;
+          if (saved?.businessId === businessId) {
+            await AsyncStorage.removeItem(RB_STORAGE_KEY);
+          }
+        } else {
+          await AsyncStorage.setItem(
+            RB_STORAGE_KEY,
+            JSON.stringify({
+              businessId,
+              items: rbItems,
+              party: rbParty,
+              occasion: rbOccasion,
+            }),
+          );
+        }
+      } catch {}
+    })();
+  }, [reserveMode, businessId, rbItems, rbParty, rbOccasion]);
 
   const rbTotal = rbItems.reduce(
     (sum, it) => sum + Math.round(it.price * 100) * it.qty,
@@ -335,6 +445,11 @@ export default function BusinessDetailScreen() {
         party: rbParty,
         total: subtotalCents,
       });
+      // La reserva quedó creada: la cesta no debe reaparecer al reentrar
+      setRbItems([]);
+      try {
+        await AsyncStorage.removeItem(RB_STORAGE_KEY);
+      } catch {}
     } catch {
       Alert.alert("Error", "No se pudo completar la reserva");
     } finally {
@@ -741,6 +856,59 @@ export default function BusinessDetailScreen() {
               )}
             </View>
 
+            {reserveMode && myReservation ? (
+              <Pressable
+                onPress={() => navigation.navigate("MyReservations")}
+                style={[
+                  styles.infoCard,
+                  styles.myResBanner,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor:
+                      MY_RESERVATION_STATUS[myReservation.status]?.color ||
+                      "#10B981",
+                  },
+                  Shadows.sm,
+                ]}
+              >
+                <Feather
+                  name="calendar"
+                  size={20}
+                  color={
+                    MY_RESERVATION_STATUS[myReservation.status]?.color ||
+                    "#10B981"
+                  }
+                />
+                <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+                  <ThemedText style={{ fontWeight: "700" }}>
+                    Ya tienes una mesa reservada aquí
+                  </ThemedText>
+                  <ThemedText
+                    type="small"
+                    style={{ color: theme.textSecondary, marginTop: 2 }}
+                  >
+                    {new Date(
+                      `${myReservation.date}T12:00:00`,
+                    ).toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}{" "}
+                    · {myReservation.time} · {myReservation.partySize}{" "}
+                    comensales ·{" "}
+                    {MY_RESERVATION_STATUS[myReservation.status]?.label ||
+                      myReservation.status}
+                    {myReservation.code ? ` · ${myReservation.code}` : ""}
+                  </ThemedText>
+                </View>
+                <Feather
+                  name="chevron-right"
+                  size={20}
+                  color={theme.textSecondary}
+                />
+              </Pressable>
+            ) : null}
+
             {categories.length > 1 ? (
               <ScrollView
                 horizontal
@@ -967,6 +1135,7 @@ export default function BusinessDetailScreen() {
                     setShowRbModal(false);
                     setRbSuccess(null);
                     setRbItems([]);
+                    loadMyReservation();
                   }}
                   style={[
                     styles.reserveSubmit,
@@ -978,6 +1147,30 @@ export default function BusinessDetailScreen() {
                     style={{ color: "#FFF", fontWeight: "700" }}
                   >
                     Listo
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setShowRbModal(false);
+                    setRbSuccess(null);
+                    setRbItems([]);
+                    navigation.navigate("MyReservations");
+                  }}
+                  style={[
+                    styles.reserveSubmit,
+                    {
+                      backgroundColor: "transparent",
+                      borderWidth: 1.5,
+                      borderColor: ComeYaColors.primary,
+                      marginTop: Spacing.xs,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="body"
+                    style={{ color: ComeYaColors.primary, fontWeight: "700" }}
+                  >
+                    Ver mis reservas
                   </ThemedText>
                 </Pressable>
               </View>
@@ -1261,6 +1454,7 @@ export default function BusinessDetailScreen() {
                 <Pressable
                   onPress={() => {
                     setShowReserveModal(false);
+                    loadMyReservation();
                     navigation.navigate("MyReservations");
                   }}
                   style={[
@@ -1689,6 +1883,12 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.lg,
+  },
+  myResBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderLeftWidth: 4,
+    paddingVertical: Spacing.md,
   },
   infoRow: {
     flexDirection: "row",

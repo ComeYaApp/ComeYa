@@ -11,3 +11,4 @@ export { SettingsTab } from "./SettingsTab";
 export { VerificationsTab } from "./VerificationsTab";
 export { IssuesTab } from "./IssuesTab";
 export { RefundsTab } from "./RefundsTab";
+export { AdminReservationsTab } from "./AdminReservationsTab";

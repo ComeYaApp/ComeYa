@@ -17,7 +17,7 @@ import {
   reservationParticipants,
   restaurantBills,
 } from "@shared/schema-mysql";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, gte, inArray, sql } from "drizzle-orm";
 import { authenticateToken, requireRole } from "./authMiddleware";
 import {
   asyncHandler,
@@ -30,6 +30,7 @@ import { BusinessHoursService } from "./businessHoursService";
 import {
   ReservationAvailabilityService,
   RESERVATION_FEE_CENTS_PER_GUEST,
+  zonedNow,
 } from "./reservationAvailabilityService";
 import {
   ReservationFeeSettlementService,
@@ -1263,6 +1264,69 @@ router.get(
           guestReliability: reliability[r.reservation.userId] || null,
         }))
         .sort((a: any, b: any) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0)),
+    });
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Todas las reservas del sistema (panel admin, solo lectura): la mesa la
+// gestiona el negocio; el admin solo supervisa. Filtros ?status= (active por
+// defecto | all | un estado concreto) y ?date=YYYY-MM-DD.
+// ─────────────────────────────────────────────────────────────────────────────
+router.get(
+  "/admin/all",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  asyncHandler(async (req, res) => {
+    const statusFilter = String(req.query.status || "active");
+    const dateFilter = String(req.query.date || "");
+    const limit = Math.min(Number(req.query.limit) || 200, 300);
+
+    const conditions = [];
+    if (dateFilter) {
+      conditions.push(eq(reservations.date, dateFilter));
+    }
+    if (statusFilter === "active") {
+      // Activas: pendientes/confirmadas/sentadas que no hayan pasado ya
+      const today = zonedNow().dateStr;
+      conditions.push(
+        gte(reservations.date, today),
+        inArray(reservations.status, ["pending", "confirmed", "seated"]),
+      );
+    } else if (statusFilter !== "all") {
+      conditions.push(eq(reservations.status, statusFilter));
+    }
+
+    const rows = await db
+      .select({
+        reservation: reservations,
+        businessName: businesses.name,
+      })
+      .from(reservations)
+      .leftJoin(businesses, eq(businesses.id, reservations.businessId))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(reservations.date), desc(reservations.time))
+      .limit(limit);
+
+    // Totales por estado para la cabecera del panel
+    const totalsRows = await db
+      .select({ status: reservations.status, count: sql<number>`COUNT(*)` })
+      .from(reservations)
+      .groupBy(reservations.status);
+    const totals: Record<string, number> = {};
+    for (const t of totalsRows) {
+      totals[t.status] = Number(t.count);
+    }
+
+    res.json({
+      success: true,
+      status: statusFilter,
+      date: dateFilter || null,
+      totals,
+      reservations: rows.map((r: any) => ({
+        ...r.reservation,
+        businessName: r.businessName,
+      })),
     });
   }),
 );

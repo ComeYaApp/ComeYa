@@ -43,6 +43,7 @@ import {
   VerificationsTab,
   IssuesTab,
   RefundsTab,
+  AdminReservationsTab,
 } from "@/components/admin/tabs";
 import type {
   DashboardMetrics,
@@ -124,6 +125,13 @@ const menuItems: MenuItem[] = [
     icon: "package",
     tab: "orders",
     color: "#2196F3",
+  },
+  {
+    title: "Reservas",
+    subtitle: "Reservas de mesa de todos los negocios",
+    icon: "calendar",
+    tab: "reservations",
+    color: "#F97316",
   },
   {
     title: "Repartidores",
@@ -524,6 +532,8 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         return <DriversTab theme={theme} showToast={showToast} />;
       case "finance":
         return <FinanceTab theme={theme} showToast={showToast} />;
+      case "reservations":
+        return <AdminReservationsTab />;
       case "businesses":
         return (
           <View style={{ flex: 1 }}>

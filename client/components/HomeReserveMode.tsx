@@ -226,9 +226,26 @@ export function HomeReserveMode() {
 
   return (
     <View>
-      <ThemedText type="h1" style={styles.title}>
-        ¿Dónde quieres comer?
-      </ThemedText>
+      <View style={styles.titleRow}>
+        <ThemedText type="h1" style={[styles.title, { flex: 1 }]}>
+          ¿Dónde quieres comer?
+        </ThemedText>
+        <Pressable
+          onPress={() => (navigation as any).navigate("MyReservations")}
+          style={[
+            styles.myResBtn,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Feather name="calendar" size={15} color={ComeYaColors.primary} />
+          <ThemedText
+            type="small"
+            style={{ color: ComeYaColors.primary, fontWeight: "700" }}
+          >
+            Mis reservas
+          </ThemedText>
+        </Pressable>
+      </View>
       <ThemedText type="small" style={{ color: theme.textSecondary, marginBottom: Spacing.md }}>
         Elige día, hora y comensales: te mostramos mesas reales.
       </ThemedText>
@@ -465,6 +482,16 @@ export function HomeReserveMode() {
 
 const styles = StyleSheet.create({
   title: { fontSize: 26 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  myResBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 8,
+  },
   label: { marginBottom: Spacing.xs, marginTop: Spacing.sm },
   viewRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.xs, marginBottom: Spacing.md },
   viewChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: BorderRadius.full },
