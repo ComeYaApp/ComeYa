@@ -648,10 +648,48 @@ router.put(
       }
       const { systemSettings } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
-      await db
+      const updated = await db
         .update(systemSettings)
         .set({ value: String(value), updatedAt: new Date() })
         .where(eq(systemSettings.key, key));
+
+      // Clave nueva (o borrada): crearla para que no sea un update silencioso
+      if (!updated[0]?.affectedRows) {
+        await db
+          .insert(systemSettings)
+          .values({
+            key,
+            value: String(value),
+            type: "string",
+            category: "custom",
+            updatedBy: req.user!.id,
+          })
+          .onDuplicateKeyUpdate({ set: { value: String(value) } });
+      }
+
+      // Sin esto, los caches en memoria (60 s / 5 min) seguían sirviendo los
+      // valores viejos y parecía que guardar no hacía nada
+      try {
+        const { invalidatePricingCache } = await import("../pricingService");
+        invalidatePricingCache();
+      } catch {}
+      try {
+        const { financialService } = await import(
+          "../unifiedFinancialService"
+        );
+        financialService.clearCache();
+      } catch {}
+      try {
+        const { invalidateSettingsCache } = await import("../config");
+        invalidateSettingsCache();
+      } catch {}
+      try {
+        const { clearDeliveryConfigCache } = await import(
+          "../services/deliveryConfigService"
+        );
+        clearDeliveryConfigCache();
+      } catch {}
+
       res.json({ success: true, message: "Configuración actualizada" });
     } catch (error: any) {
       console.error("Update setting error:", error);

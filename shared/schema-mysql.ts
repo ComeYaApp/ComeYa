@@ -98,6 +98,7 @@ export const orders = mysqlTable("orders", {
   subtotal: int("subtotal").notNull(),
   productosBase: int("productos_base").default(0), // Precio base sin markup ComeYa
   nemyCommission: int("nemy_commission").default(0), // 15% markup ComeYa
+  serviceFee: int("service_fee").default(0), // Coste de servicio ComeYa por pedido
   deliveryFee: int("delivery_fee").notNull(),
   total: int("total").notNull(),
   paymentMethod: text("payment_method").notNull(),

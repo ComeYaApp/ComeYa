@@ -204,10 +204,17 @@ export class SubscriptionService {
     return subscription;
   }
 
-  // Tasa de comisión de la plataforma para un negocio (0-1).
+  // Tasa de comisión de la plataforma para un negocio (0-1), aplicada sobre
+  // el subtotal con markup (base + markup).
   // Prioridad: suscripción activa (impulso_local 10%, escaparate_soria 8%),
-  // luego comisión personalizada del admin, luego 15% por defecto.
+  // luego comisión personalizada del admin, luego la general del config
+  // (pricing_commission_pct, 15% por defecto).
   static async getBusinessCommissionRate(businessId: string): Promise<number> {
+    let fallback = 0.15;
+    try {
+      const { getPricingConfig } = await import("./pricingService");
+      fallback = (await getPricingConfig()).commissionPct / 100;
+    } catch {}
     try {
       const { businesses } = await import("@shared/schema-mysql");
       const [business] = await db
@@ -215,7 +222,7 @@ export class SubscriptionService {
         .from(businesses)
         .where(eq(businesses.id, businessId))
         .limit(1);
-      if (!business) return 0.15;
+      if (!business) return fallback;
 
       if (business.ownerId) {
         const sub = await this.getActiveSubscription(business.ownerId);
@@ -229,9 +236,9 @@ export class SubscriptionService {
       ) {
         return (business as any).customCommission / 100;
       }
-      return 0.15;
+      return fallback;
     } catch {
-      return 0.15;
+      return fallback;
     }
   }
 

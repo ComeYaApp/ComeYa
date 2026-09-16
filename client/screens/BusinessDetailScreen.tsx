@@ -37,6 +37,7 @@ import { mockBusinesses, mockProducts } from "@/data/mockData";
 import { Business, Product } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
+import { getMarkupMultiplier } from "@/services/pricingConfigService";
 import { formatEuros } from "@/utils/currency";
 
 type BusinessDetailRouteProp = RouteProp<RootStackParamList, "BusinessDetail">;
@@ -407,8 +408,12 @@ export default function BusinessDetailScreen() {
         price: it.price,
         quantity: it.qty,
       }));
+      // El servidor recalcula los importes autoritativos; esto es solo
+      // informativo para la respuesta
+      const markupMultiplier = await getMarkupMultiplier();
       const baseCents = rbItems.reduce(
-        (sum, it) => sum + Math.round((it.price / 1.15) * 100) * it.qty,
+        (sum, it) =>
+          sum + Math.round((it.price / markupMultiplier) * 100) * it.qty,
         0,
       );
       const subtotalCents = rbItems.reduce(
@@ -544,12 +549,15 @@ export default function BusinessDetailScreen() {
                     1,
           };
 
+          // Markup configurable desde el panel admin (5% por defecto)
+          const markupMultiplier = await getMarkupMultiplier();
+
           const adaptedProducts: Product[] = (data.business.products || []).map(
             (p: any) => {
               console.log("🔍 Product raw data:", {
                 name: p.name,
                 isAvailable: p.isAvailable,
-                is_available: p.is_available,
+                is_available: p.isAvailable,
                 available: p.available,
               });
 
@@ -560,10 +568,10 @@ export default function BusinessDetailScreen() {
                 p.is_available === true ||
                 p.is_available === 1;
 
-              // Precio con comisión del 15% incluida, redondeado a céntimos
-              // (p.price en céntimos → 1050 * 1.15 = 1207.5 → 1208 = 12,08 €)
+              // Precio con markup incluida, redondeado a céntimos
+              // (p.price en céntimos → 1000 * 1.05 = 1050 = 10,50 €)
               const priceWithCommission =
-                Math.round((p.price || 0) * 1.15) / 100;
+                Math.round((p.price || 0) * markupMultiplier) / 100;
 
               return {
                 id: p.id,

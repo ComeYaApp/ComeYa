@@ -197,6 +197,10 @@ const server = httpServer.listen(PORT, () => {
   import("./db")
     .then(({ runStartupMigrations }) => runStartupMigrations())
     .then(() => {
+      // Claves de pricing y settings por defecto (inserta solo las que falten)
+      import("./systemSettingsService")
+        .then(({ initializeDefaultSettings }) => initializeDefaultSettings())
+        .catch(console.error);
       import("./businessHoursCron")
         .then(({ startBusinessHoursCron }) => startBusinessHoursCron())
         .catch(console.error);

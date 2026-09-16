@@ -31,6 +31,10 @@ import {
 } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
+import {
+  getPricingConfig,
+  getMarkupMultiplier,
+} from "@/services/pricingConfigService";
 import { useToast } from "@/contexts/ToastContext";
 import {
   calculateDistance,
@@ -330,7 +334,25 @@ useEffect(() => {
 
 const effectiveDeliveryFee = finalDeliveryFee ?? 0;
 
-const total = subtotal + effectiveDeliveryFee - couponDiscount - subDiscount;
+// Coste de servicio por pedido de reparto (0,49 € por defecto), desde el
+// mismo config con el que calcula el servidor. Recogida no paga servicio.
+const [serviceFeeCents, setServiceFeeCents] = useState(0);
+useEffect(() => {
+  if (confirmedOrderType === "pickup") {
+    setServiceFeeCents(0);
+    return;
+  }
+  getPricingConfig()
+    .then((cfg) => setServiceFeeCents(cfg.serviceFeeCents))
+    .catch(() => setServiceFeeCents(49));
+}, [confirmedOrderType]);
+
+const total =
+  subtotal +
+  effectiveDeliveryFee +
+  serviceFeeCents / 100 -
+  couponDiscount -
+  subDiscount;
 
 // Si el cliente cambia la dirección en el checkout, la tarifa se recotiza
 // con la MISMA fórmula del servidor (calculate-delivery): el total mostrado
@@ -501,16 +523,18 @@ useEffect(() => {
         ? itemSubstitutions
         : {};
       const subtotalCents = Math.round(subtotal * 100);
-      // Calcular base sin comisión (revertir el markup del 15%)
-      const baseSubtotalCents = Math.round(subtotalCents / 1.15);
+      // Base sin markup — el servidor recalcula todos los importes desde
+      // precios de BD + config de pricing; esto solo acompaña la petición
+      const markupMultiplier = await getMarkupMultiplier();
+      const baseSubtotalCents = Math.round(subtotalCents / markupMultiplier);
       const commissionCents = subtotalCents - baseSubtotalCents;
       const deliveryFeeCents = Math.round(effectiveDeliveryFee * 100);
       const discountCents = appliedCoupon
         ? Math.round(couponDiscount * 100)
         : 0;
-      // El total que valida el servidor
+      const orderServiceFee = confirmedOrderType === "pickup" ? 0 : serviceFeeCents;
       const orderTotal =
-        baseSubtotalCents + commissionCents + deliveryFeeCents - discountCents;
+        subtotalCents + deliveryFeeCents + orderServiceFee - discountCents;
       const totalAmount = orderTotal;
 
       const orderResponse = await apiRequest("POST", "/api/orders", {
@@ -522,6 +546,7 @@ useEffect(() => {
         subtotal: subtotalCents,
         productosBase: baseSubtotalCents,
         nemyCommission: commissionCents,
+        serviceFee: orderServiceFee,
         deliveryFee: Math.round((finalDeliveryFee ?? 0) * 100),
         total: orderTotal,
         tip: 0,
@@ -725,25 +750,24 @@ useEffect(() => {
       const data = await response.json();
 
       if (data.valid) {
-        const discount =
-          data.discountType === "percentage"
-            ? ((subtotal + effectiveDeliveryFee) * data.discount) / 100
-            : data.discount / 100;
-
-        const maxDiscount = data.coupon.maxDiscountAmount
-          ? data.coupon.maxDiscountAmount / 100
-          : discount;
-        const finalDiscount = Math.min(discount, maxDiscount);
+        // El servidor ya devuelve el descuento FINAL en céntimos (con tope
+        // maxDiscount y tipo aplicados): no se recalcula nada aquí, era la
+        // causa de importes equivocados al aplicar el cupón
+        const finalDiscountCents = Math.min(
+          Number(data.discount) || 0,
+          Math.round(subtotal * 100),
+        );
+        const finalDiscount = finalDiscountCents / 100;
 
         setAppliedCoupon(data.coupon);
         setCouponDiscount(finalDiscount);
         showToast(
-          `¡Cupón aplicado! Ahorras ${formatEuros(finalDiscount)}`,
+          data.message || `¡Cupón aplicado! Ahorras ${formatEuros(finalDiscount)}`,
           "success",
         );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        showToast(data.error || "Cupón inválido", "error");
+        showToast(data.message || data.error || "Cupón inválido", "error");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (error) {
@@ -1792,6 +1816,16 @@ navigation.navigate("DigitalPaymentMethod", {
             </ThemedText>
             <ThemedText type="body">
               {feeResolved ? formatEuros(finalDeliveryFee ?? 0) : "Calculando…"}
+            </ThemedText>
+          </View>
+        )}
+        {confirmedOrderType === "delivery" && serviceFeeCents > 0 && (
+          <View style={styles.totalRow}>
+            <ThemedText type="body" style={{ color: theme.textSecondary }}>
+              Coste de servicio
+            </ThemedText>
+            <ThemedText type="body">
+              {formatEuros(serviceFeeCents / 100)}
             </ThemedText>
           </View>
         )}

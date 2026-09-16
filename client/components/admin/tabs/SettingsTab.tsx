@@ -26,27 +26,41 @@ const SETTINGS: {
   placeholder: string;
   hint?: string;
 }[] = [
-  // Comisiones
+  // Tarifas (modelo híbrido: markup + comisión + coste de servicio)
   {
-    key: "comeya_commission",
-    label: "Comision ComeYa (%)",
-    category: "Comisiones",
+    key: "pricing_markup_pct",
+    label: "Markup sobre productos (%)",
+    category: "Tarifas",
+    placeholder: "5",
+    hint: "Subida del precio que ve el cliente (10 € → 10,50 € con 5%)",
+  },
+  {
+    key: "pricing_commission_pct",
+    label: "Comisión ComeYa (%)",
+    category: "Tarifas",
     placeholder: "15",
-    hint: "Markup sobre precio base de productos",
+    hint: "Sobre el subtotal con markup (10,50 € → 1,58 € con 15%)",
   },
   {
-    key: "business_commission",
-    label: "Comision Negocio (%)",
-    category: "Comisiones",
-    placeholder: "100",
-    hint: "% del precio base que recibe el negocio",
+    key: "pricing_service_fee_cents",
+    label: "Coste de servicio por pedido (céntimos)",
+    category: "Tarifas",
+    placeholder: "49",
+    hint: "Se cobra al cliente en pedidos de reparto (49 = 0,49 €)",
   },
   {
-    key: "driver_commission",
-    label: "Comision Repartidor (%)",
-    category: "Comisiones",
-    placeholder: "100",
-    hint: "% de la tarifa de entrega que recibe el repartidor",
+    key: "pricing_reservation_guest_fee_cents",
+    label: "Tarifa por comensal de reserva (céntimos)",
+    category: "Tarifas",
+    placeholder: "99",
+    hint: "Se cobra al negocio por comensal asistente (99 = 0,99 €)",
+  },
+  {
+    key: "pricing_reservation_service_fee_cents",
+    label: "Coste de servicio por reserva (céntimos)",
+    category: "Tarifas",
+    placeholder: "49",
+    hint: "Se cobra al negocio al liquidar cada reserva (49 = 0,49 €)",
   },
   // Operaciones
   {
@@ -73,7 +87,7 @@ const SETTINGS: {
 ];
 
 // Cuentas de pago (Bizum, IBAN, PayPal) se gestionan en "Cuentas de pago" del perfil admin.
-const CATEGORIES = ["Comisiones", "Operaciones"];
+const CATEGORIES = ["Tarifas", "Operaciones"];
 
 export const SettingsTab: React.FC<Props> = ({ theme, showToast }) => {
   const [values, setValues] = useState<Record<string, string>>({});
@@ -216,6 +230,7 @@ export const SettingsTab: React.FC<Props> = ({ theme, showToast }) => {
                     placeholderTextColor={theme.textSecondary}
                     autoCapitalize="none"
                     keyboardType={
+                      item.key.startsWith("pricing_") ||
                       item.key.includes("commission") ||
                       item.key.includes("seconds") ||
                       item.key.includes("minutes") ||

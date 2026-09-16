@@ -100,24 +100,31 @@ export class UnifiedFinancialService {
     const safeTotal = Math.max(0, totalAmount || 0);
     const safeDeliveryFee = Math.max(0, deliveryFee || 0);
 
+    // Markup del config para aislar el producto del subtotal marcado-up
+    const { getPricingConfig } = await import("./pricingService");
+    const markupRate = 1 + (await getPricingConfig()).markupPct / 100;
+
     // Si nos dan productosBase o nemyCommission, respetarlos para backwards compatibility
     let productBase =
       productosBase && productosBase > 0
         ? productosBase
         : safeTotal - safeDeliveryFee;
 
-    // Si el total ya incluye comisión ComeYa, removerla para aislar el producto
+    // Si el total ya incluye el markup ComeYa, removerlo para aislar el producto
     if (!productosBase || productosBase <= 0) {
       const baseWithoutDelivery = safeTotal - safeDeliveryFee;
       productBase =
-        baseWithoutDelivery > 0 ? Math.round(baseWithoutDelivery / 1.15) : 0;
+        baseWithoutDelivery > 0
+          ? Math.round(baseWithoutDelivery / markupRate)
+          : 0;
     }
 
+    // Comisión sobre el subtotal con markup (base + markup), no sobre la base
     const platformAmount =
       nemyCommission && nemyCommission > 0
         ? nemyCommission
         : Math.round(
-            productBase *
+            Math.round(productBase * markupRate) *
               (await this.getBusinessCommissionRate(businessOwnerId)),
           );
 
@@ -572,13 +579,18 @@ export class UnifiedFinancialService {
   }
 
   async getBusinessCommissionRate(ownerId?: string): Promise<number> {
-    if (!ownerId) return 0.15;
+    let fallback = 0.15;
+    try {
+      const { getPricingConfig } = await import("./pricingService");
+      fallback = (await getPricingConfig()).commissionPct / 100;
+    } catch {}
+    if (!ownerId) return fallback;
     try {
       const discount =
         await SubscriptionService.getBusinessCommissionDiscount(ownerId);
       return discount.commissionRate;
     } catch {
-      return 0.15;
+      return fallback;
     }
   }
 }

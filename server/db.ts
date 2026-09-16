@@ -481,6 +481,17 @@ export async function runStartupMigrations(): Promise<void> {
         console.log("Migration note (scheduled_for):", err.message);
     }
 
+    // Coste de servicio ComeYa por pedido (modelo híbrido: markup + comisión)
+    try {
+      await conn.query(
+        `ALTER TABLE orders ADD COLUMN service_fee INT DEFAULT 0`,
+      );
+      console.log("✅ Added service_fee to orders");
+    } catch (err: any) {
+      if (err.code !== "ER_DUP_FIELDNAME")
+        console.log("Migration note (service_fee):", err.message);
+    }
+
     try {
       await conn.query(
         `ALTER TABLE users ADD COLUMN profile_image TEXT DEFAULT NULL`,

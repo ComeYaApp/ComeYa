@@ -2,21 +2,17 @@ import { Request, Response, NextFunction } from "express";
 import { FinancialIntegrity } from "./financialIntegrity";
 import { financialService } from "./unifiedFinancialService";
 
-// Validar financials de pedido antes de crear
+// Validar financials de pedido antes de crear.
+// NOTA: el total autoritativo lo calcula el servidor en POST /api/orders
+// (precios de BD + config de pricing), así que aquí solo se comprueba que los
+// importes enviados por la app sean números no negativos.
 export async function validateOrderFinancials(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
   try {
-    const {
-      subtotal,
-      deliveryFee,
-      total,
-      productosBase,
-      nemyCommission,
-      couponDiscount,
-    } = req.body;
+    const { subtotal, deliveryFee, total } = req.body;
 
     // Validar que los campos existan
     if (
@@ -33,26 +29,6 @@ export async function validateOrderFinancials(
     if (subtotal < 0 || deliveryFee < 0 || total < 0) {
       return res.status(400).json({
         error: "Los montos deben ser positivos",
-      });
-    }
-
-    // Validar total: subtotal (base) + comision (15%) + deliveryFee - descuento
-    const baseSubtotal = productosBase ?? subtotal;
-    const platformCommission =
-      typeof nemyCommission === "number" && nemyCommission > 0
-        ? nemyCommission
-        : Math.round(baseSubtotal * 0.15);
-    const discount = couponDiscount || 0;
-    const calculatedTotal =
-      baseSubtotal + platformCommission + deliveryFee - discount;
-
-    // Permitir diferencia de 1 centavo por redondeo
-    if (Math.abs(calculatedTotal - total) > 1) {
-      return res.status(400).json({
-        error: "Total inválido",
-        expected: calculatedTotal,
-        received: total,
-        breakdown: { baseSubtotal, platformCommission, deliveryFee, discount },
       });
     }
 

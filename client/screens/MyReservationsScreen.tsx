@@ -22,6 +22,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { getMarkupMultiplier } from "@/services/pricingConfigService";
 
 const STATUS_META: Record<
   string,
@@ -59,6 +60,7 @@ export default function MyReservationsScreen() {
   const [preProducts, setPreProducts] = useState<any[]>([]);
   const [preQty, setPreQty] = useState<Record<string, number>>({});
   const [preLoading, setPreLoading] = useState(false);
+  const [preMarkup, setPreMarkup] = useState(1.05);
   const [preSubmitting, setPreSubmitting] = useState(false);
   // Reservas entre amigos
   const [shareFor, setShareFor] = useState<any>(null);
@@ -89,7 +91,11 @@ export default function MyReservationsScreen() {
     setPreQty({});
     setPreLoading(true);
     try {
-      const res = await apiRequest("GET", `/api/businesses/${r.businessId}`);
+      const [res, markupMultiplier] = await Promise.all([
+        apiRequest("GET", `/api/businesses/${r.businessId}`),
+        getMarkupMultiplier(),
+      ]);
+      setPreMarkup(markupMultiplier);
       const data = await res.json();
       const prods = (data.business?.products || []).filter(
         (p: any) =>
@@ -108,12 +114,15 @@ export default function MyReservationsScreen() {
   }, []);
 
   const submitPreOrder = async () => {
+    // Markup configurable (5% por defecto); el servidor recalcula los
+    // importes autoritativos al crear el pedido
+    const markupMultiplier = await getMarkupMultiplier();
     const items = preProducts
       .filter((p) => (preQty[p.id] || 0) > 0)
       .map((p) => ({
         id: p.id,
         name: p.name,
-        price: ((p.price || 0) / 100) * 1.15,
+        price: ((p.price || 0) / 100) * markupMultiplier,
         quantity: preQty[p.id],
       }));
     if (items.length === 0) {
@@ -121,7 +130,8 @@ export default function MyReservationsScreen() {
       return;
     }
     const baseCents = items.reduce(
-      (s, it) => s + Math.round(((it.price / 1.15) * 100)) * it.quantity,
+      (s, it) =>
+        s + Math.round(((it.price / markupMultiplier) * 100)) * it.quantity,
       0,
     );
     const subtotalCents = items.reduce(
@@ -540,7 +550,7 @@ export default function MyReservationsScreen() {
                           {p.name}
                         </ThemedText>
                         <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                          {(((p.price || 0) / 100) * 1.15).toFixed(2).replace(".", ",")} €
+                          {(((p.price || 0) / 100) * preMarkup).toFixed(2).replace(".", ",")} €
                         </ThemedText>
                       </View>
                       <Pressable

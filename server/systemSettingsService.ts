@@ -5,6 +5,48 @@ import { eq } from "drizzle-orm";
 
 // Default system settings
 const DEFAULT_SETTINGS = [
+  // Pricing — modelo híbrido (única fuente de verdad, ver server/pricingService.ts)
+  {
+    key: "pricing_markup_pct",
+    value: "5",
+    type: "number",
+    category: "pricing",
+    description: "Markup sobre el precio base que ve el cliente (%)",
+    isPublic: true,
+  },
+  {
+    key: "pricing_commission_pct",
+    value: "15",
+    type: "number",
+    category: "pricing",
+    description: "Comisión ComeYa sobre el subtotal con markup (%)",
+    isPublic: false,
+  },
+  {
+    key: "pricing_service_fee_cents",
+    value: "49",
+    type: "number",
+    category: "pricing",
+    description: "Coste de servicio por pedido de reparto (céntimos)",
+    isPublic: true,
+  },
+  {
+    key: "pricing_reservation_guest_fee_cents",
+    value: "99",
+    type: "number",
+    category: "pricing",
+    description: "Tarifa por comensal asistente en reservas (céntimos)",
+    isPublic: false,
+  },
+  {
+    key: "pricing_reservation_service_fee_cents",
+    value: "49",
+    type: "number",
+    category: "pricing",
+    description:
+      "Coste de servicio por reserva liquidada al negocio (céntimos)",
+    isPublic: false,
+  },
   // Commissions
   {
     key: "platform_commission_rate",

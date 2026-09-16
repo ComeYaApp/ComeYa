@@ -224,18 +224,30 @@ router.get("/system/exchange-rate", async (req, res) => {
 });
 
 // ─── Coupon validation ────────────────────────────────────────────────────────
-router.post("/coupons/validate", authenticateToken, async (req, res) => {
+// Manejado por routes/coupons.ts (POST /api/coupons/validate), que evalúa
+// restricciones por negocio/producto/primera compra. El handler inline que
+// había aquí se registraba antes y lo tapaba, dejando esas reglas sin efecto.
+
+// ─── Pricing config (público) ─────────────────────────────────────────────────
+// Markup y coste de servicio para que la app muestre los mismos precios que
+// calcula el servidor al crear el pedido.
+router.get("/pricing-config", async (_req, res) => {
   try {
-    const { AdvancedCouponService } = await import("./advancedCouponService");
-    const { code, userId, orderTotal } = req.body;
-    const context = {
-      userId: userId || req.user!.id,
-      orderTotal: orderTotal || 0,
-    };
-    const result = await AdvancedCouponService.validateCoupon(code, context);
-    res.json(result);
+    const { getPricingConfig } = await import("./pricingService");
+    const cfg = await getPricingConfig();
+    res.json({
+      success: true,
+      markupPct: cfg.markupPct,
+      commissionPct: cfg.commissionPct,
+      serviceFeeCents: cfg.serviceFeeCents,
+    });
   } catch (error: any) {
-    res.status(500).json({ valid: false, error: error.message });
+    res.json({
+      success: true,
+      markupPct: 5,
+      commissionPct: 15,
+      serviceFeeCents: 49,
+    });
   }
 });
 

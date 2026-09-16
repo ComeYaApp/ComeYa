@@ -98,14 +98,24 @@ export class ScheduledOrdersService {
           items = [];
         }
 
-        // Calcular importes en céntimos (mismo modelo que el checkout)
+        // Calcular importes en céntimos (mismo modelo que el checkout):
+        // los items guardan el precio con markup, se revierte al precio base
+        // y se recalculan comisión y coste de servicio con el config actual
+        const { getPricingConfig, commissionOn } = await import(
+          "./pricingService"
+        );
+        const pricing = await getPricingConfig();
+
         const subtotal = items.reduce(
           (sum, it) =>
             sum + Math.round((Number(it.price) || 0) * 100 * (Number(it.quantity) || 1)),
           0,
         );
-        const productosBase = Math.round(subtotal / 1.15);
-        const nemyCommission = subtotal - productosBase;
+        const productosBase = Math.round(
+          subtotal / (1 + pricing.markupPct / 100),
+        );
+        let nemyCommission = commissionOn(subtotal, pricing.commissionPct);
+        let serviceFee = pricing.serviceFeeCents;
 
         const [business] = await db
           .select({
@@ -118,8 +128,18 @@ export class ScheduledOrdersService {
           .where(eq(businesses.id, scheduled.businessId))
           .limit(1);
 
+        // Comisión real del negocio (suscripción / personalizada / general)
+        try {
+          const { SubscriptionService } = await import("./subscriptionService");
+          const rate =
+            await SubscriptionService.getBusinessCommissionRate(
+              scheduled.businessId,
+            );
+          nemyCommission = commissionOn(subtotal, rate * 100);
+        } catch {}
+
         const deliveryFee = Number(business?.deliveryFee) || 0;
-        const total = subtotal + deliveryFee;
+        const total = subtotal + deliveryFee + serviceFee;
 
         // Número secuencial público #CY000001 (reserva atómica)
         const { nextOrderNumber } = await import("./orderNumberService");
@@ -137,6 +157,7 @@ export class ScheduledOrdersService {
           subtotal,
           productosBase,
           nemyCommission,
+          serviceFee,
           deliveryFee,
           total,
           paymentMethod: scheduled.paymentMethod,

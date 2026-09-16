@@ -127,9 +127,7 @@ router.post("/create-payment-sheet", authenticateToken, async (req, res) => {
     const stripe = getStripe();
     const { orders } = await import("@shared/schema-mysql");
 
-    // Calcular comision
     const subtotalCents = Math.round(subtotal || 0);
-    const nemyCommission = Math.round(subtotalCents * 0.15);
     const amountCents = Math.round(amount);
 
     // Customer + ephemeral key + PaymentIntent con recuperacion automatica:
@@ -154,25 +152,21 @@ router.post("/create-payment-sheet", authenticateToken, async (req, res) => {
             giftCardId: giftCardId || "",
             subtotal: subtotalCents.toString(),
             deliveryFee: (deliveryFee || 0).toString(),
-            nemyCommission: nemyCommission.toString(),
           },
         });
         return { ephemeralKeySecret: ephemeralKey.secret, paymentIntent };
       },
     );
 
-    // Actualizar pedido con el paymentIntentId solo para pedidos normales
+    // Actualizar pedido con el paymentIntentId solo para pedidos normales.
+    // Los importes (productosBase/nemyCommission/serviceFee) ya son
+    // autoritativos desde POST /api/orders: NO se sobrescriben aquí.
     if (!isGiftCard && orderId) {
       await db
         .update(orders)
         .set({
           paymentIntentId: payment.paymentIntent.id,
           stripePaymentIntentId: payment.paymentIntent.id,
-          productosBase: subtotalCents,
-          nemyCommission,
-          platformFee: nemyCommission,
-          businessEarnings: subtotalCents,
-          deliveryEarnings: deliveryFee || 0,
           updatedAt: new Date(),
         })
         .where(eq(orders.id, orderId));
@@ -250,9 +244,6 @@ router.post("/create-payment-intent", authenticateToken, async (req, res) => {
     const amountInCents = Math.round(amount);
     const subtotalInCents = Math.round(subtotal || 0);
 
-    // Comision ComeYa (15% del subtotal)
-    const nemyCommission = Math.round(subtotalInCents * 0.15);
-
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: "eur",
@@ -263,11 +254,12 @@ router.post("/create-payment-intent", authenticateToken, async (req, res) => {
         giftCardId: giftCardId || "",
         subtotal: subtotalInCents.toString(),
         deliveryFee: (deliveryFee || 0).toString(),
-        nemyCommission: nemyCommission.toString(),
       },
     });
 
-    // Update order with payment details (solo pedidos normales)
+    // Update order with payment details (solo pedidos normales).
+    // Los importes autoritativos los fija POST /api/orders: aquí solo se
+    // enlaza el PaymentIntent.
     if (orderId && !isGiftCard && !isSubscription) {
       const { orders } = await import("@shared/schema-mysql");
       await db
@@ -275,11 +267,6 @@ router.post("/create-payment-intent", authenticateToken, async (req, res) => {
         .set({
           paymentIntentId: paymentIntent.id,
           stripePaymentIntentId: paymentIntent.id,
-          productosBase: subtotalInCents,
-          nemyCommission,
-          platformFee: nemyCommission,
-          businessEarnings: subtotalInCents, // Business gets 100% of products
-          deliveryEarnings: deliveryFee || 0, // Delivery gets 100% of delivery fee
           updatedAt: new Date(),
         })
         .where(eq(orders.id, orderId));

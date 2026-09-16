@@ -178,8 +178,9 @@ function isValidTime(time: unknown): time is string {
   return typeof time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(time);
 }
 
-// Tarifa ComeYa: 0,99 € por comensal que asiste, como transacción negativa en
-// la wallet del dueño del negocio. Idempotente vía fee_charged_at.
+// Tarifa ComeYa: 0,99 € por comensal que asiste + 0,49 € de coste de servicio
+// por reserva, como transacción negativa en la wallet del dueño del negocio.
+// Idempotente vía fee_charged_at.
 async function chargeReservationFee(
   reservation: any,
   business: any,
@@ -190,7 +191,16 @@ async function chargeReservationFee(
   const ownerId = business?.ownerId;
   if (!ownerId) return { charged: false, feeCents: 0 };
 
-  const feeCents = RESERVATION_FEE_CENTS_PER_GUEST * (reservation.partySize || 0);
+  let perGuestCents = RESERVATION_FEE_CENTS_PER_GUEST;
+  let serviceFeeCents = 49;
+  try {
+    const { getPricingConfig } = await import("./pricingService");
+    const pricing = await getPricingConfig();
+    perGuestCents = pricing.reservationGuestFeeCents;
+    serviceFeeCents = pricing.reservationServiceFeeCents;
+  } catch {}
+  const feeCents =
+    perGuestCents * (reservation.partySize || 0) + serviceFeeCents;
   const now = new Date();
 
   // Idempotencia: la primera escritura de fee_charged_at gana; si otra
@@ -244,14 +254,15 @@ async function chargeReservationFee(
     amount: -feeCents,
     balanceBefore,
     balanceAfter,
-    description: `Tarifa reserva ${reservation.code || reservation.id.slice(-6).toUpperCase()} · ${reservation.partySize} comensales × 0,99 €`,
+    description: `Tarifa reserva ${reservation.code || reservation.id.slice(-6).toUpperCase()} · ${reservation.partySize} comensales + coste de servicio`,
     status: "completed",
     metadata: JSON.stringify({
       reservationId: reservation.id,
       date: reservation.date,
       time: reservation.time,
       partySize: reservation.partySize,
-      feePerGuestCents: RESERVATION_FEE_CENTS_PER_GUEST,
+      feePerGuestCents: perGuestCents,
+      serviceFeeCents,
       source: "reservations_module",
     }),
   });
@@ -1094,11 +1105,20 @@ router.get(
       .limit(1);
     const parsed =
       ReservationAvailabilityService.parseConfig(row?.reservationConfig);
+    let guestFee = RESERVATION_FEE_CENTS_PER_GUEST;
+    let serviceFee = 49;
+    try {
+      const { getPricingConfig } = await import("./pricingService");
+      const pricing = await getPricingConfig();
+      guestFee = pricing.reservationGuestFeeCents;
+      serviceFee = pricing.reservationServiceFeeCents;
+    } catch {}
     res.json({
       success: true,
       reservationsEnabled: row?.reservationsEnabled ?? false,
       config: parsed,
-      feeCentsPerGuest: RESERVATION_FEE_CENTS_PER_GUEST,
+      feeCentsPerGuest: guestFee,
+      serviceFeeCents: serviceFee,
     });
   }),
 );
@@ -1108,7 +1128,7 @@ router.put(
   authenticateToken,
   requireRole("business_owner", "admin", "super_admin"),
   asyncHandler(async (req, res) => {
-    const { businessId, config } = req.body || {};
+    const { businessId, config, reservationsEnabled } = req.body || {};
     if (!businessId) throw new ValidationError("businessId es obligatorio");
     const biz = await assertBusinessOwnership(businessId, (req as any).user);
     if (!config || typeof config !== "object") {
@@ -1138,10 +1158,13 @@ router.put(
       toStore = JSON.stringify(normalized);
     }
 
-    await db
-      .update(businesses)
-      .set({ reservationConfig: toStore, updatedAt: new Date() })
-      .where(eq(businesses.id, biz.id));
+    // reservationsEnabled se persiste aquí además de en PUT /api/business/:id:
+    // el GET lo devuelve, así que el guardado tenía que ser simétrico
+    const patch: any = { reservationConfig: toStore, updatedAt: new Date() };
+    if (reservationsEnabled !== undefined) {
+      patch.reservationsEnabled = reservationsEnabled === true;
+    }
+    await db.update(businesses).set(patch).where(eq(businesses.id, biz.id));
 
     res.json({
       success: true,

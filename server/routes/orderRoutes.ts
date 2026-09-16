@@ -215,10 +215,112 @@ router.post(
         }
       }
 
-      // El subtotal que viene del frontend YA incluye la comisión del 15%
-      // No necesitamos calcular productosBase ni nemyCommission por separado
-      const subtotal = req.body.subtotal; // Productos con comisión incluida
-      const couponDiscount = req.body.couponDiscount || 0;
+      // ── Cálculo de precios AUTORITATIVO en servidor ──
+      // El cliente ya no decide los totales: se recalcula todo desde los
+      // precios base de BD + config de pricing (markup, comisión, servicio).
+      // Los importes enviados por la app solo se usan como fallback si un
+      // producto ya no existe en BD.
+      const { getPricingConfig, applyMarkup, commissionOn } = await import(
+        "../pricingService"
+      );
+      const pricing = await getPricingConfig();
+
+      let itemsList: any[] = [];
+      try {
+        itemsList =
+          typeof req.body.items === "string"
+            ? JSON.parse(req.body.items)
+            : (req.body.items || []);
+      } catch {
+        itemsList = [];
+      }
+      const { products } = await import("@shared/schema-mysql");
+      const { inArray: inArrayProd } = await import("drizzle-orm");
+      const productIds = [
+        ...new Set(
+          itemsList
+            .map((it: any) => String(it.id || it.productId || ""))
+            .filter(Boolean),
+        ),
+      ];
+      const dbProducts = productIds.length
+        ? await db
+            .select({ id: products.id, price: products.price })
+            .from(products)
+            .where(inArrayProd(products.id, productIds))
+        : [];
+      const priceById = new Map<string, number>(
+        dbProducts.map((p: any) => [String(p.id), Number(p.price) || 0] as [string, number]),
+      );
+
+      let productosBase = 0;
+      for (const it of itemsList) {
+        const qty = Math.max(1, Number(it.qty ?? it.quantity ?? 1));
+        const dbPrice = priceById.get(String(it.id || it.productId));
+        if (dbPrice != null) {
+          productosBase += dbPrice * qty;
+        } else {
+          // Sin producto en BD: derivar el base del precio enviado (trae markup)
+          const sentCents = Math.round((Number(it.price) || 0) * 100);
+          productosBase += Math.round(
+            sentCents / (1 + pricing.markupPct / 100),
+          );
+        }
+      }
+
+      const subtotal = applyMarkup(productosBase, pricing); // lo que paga el cliente
+
+      // Comisión: tasa del negocio (suscripción / comisión personalizada) o
+      // la general del config, aplicada sobre el subtotal (base + markup)
+      let commissionRatePct = pricing.commissionPct;
+      try {
+        const { SubscriptionService } = await import("../subscriptionService");
+        commissionRatePct =
+          (await SubscriptionService.getBusinessCommissionRate(
+            req.body.businessId,
+          )) * 100;
+      } catch (err) {
+        console.error("Error applying business commission rate:", err);
+      }
+      const nemyCommission = commissionOn(subtotal, commissionRatePct);
+
+      // Coste de servicio: solo pedidos de reparto (recogida y pedidos
+      // anticipados de reserva no pagan servicio)
+      const isPickup =
+        req.body.orderType === "pickup" || linkedReservation !== null;
+      const serviceFee = isPickup ? 0 : pricing.serviceFeeCents;
+
+      // Cupón: revalidado en servidor — el descuento del cliente no se acepta
+      let couponDiscount = 0;
+      if (req.body.couponCode) {
+        try {
+          const { AdvancedCouponService } = await import(
+            "../advancedCouponService"
+          );
+          const { db: db2 } = await import("../db");
+          const isFirstOrderRes = await db2.execute(
+            `SELECT COUNT(*) as count FROM orders WHERE user_id = ? AND status = 'delivered'`,
+            [req.user!.id],
+          );
+          const isFirstOrder =
+            Number((isFirstOrderRes as any)[0]?.count || 0) === 0;
+          const result = await AdvancedCouponService.validateCoupon(
+            String(req.body.couponCode).toUpperCase(),
+            {
+              userId: req.user!.id,
+              orderTotal: subtotal,
+              businessId: req.body.businessId,
+              productIds,
+              isFirstOrder,
+            },
+          );
+          if (result.valid && result.discount > 0) {
+            couponDiscount = Math.min(result.discount, subtotal);
+          }
+        } catch (err) {
+          console.error("Error validating coupon at order creation:", err);
+        }
+      }
 
       // Aplicar beneficios de suscripcion Premium/Business
       const { SubscriptionService } = await import("../subscriptionService");
@@ -226,7 +328,7 @@ router.post(
         req.body.orderType === "pickup" ? 0 : deliveryFee || 0;
       const subBenefits = await SubscriptionService.applySubscriptionBenefits(
         req.user!.id,
-        req.body.subtotal || 0,
+        subtotal || 0,
         rawDeliveryFee,
       );
       const subDiscount = subBenefits.discount;
@@ -238,28 +340,14 @@ router.post(
           ? 0
           : subDeliveryFee;
 
-      // Recalcular la comisión según la tasa del negocio (suscripción
-      // Impulso Local 10% / Escaparate 8% / personalizada / 15% por defecto)
-      let productosBase = req.body.productosBase || null;
-      let nemyCommission = req.body.nemyCommission || null;
-      try {
-        const { SubscriptionService } = await import("../subscriptionService");
-        const rate = await SubscriptionService.getBusinessCommissionRate(
-          req.body.businessId,
-        );
-        if (rate !== 0.15 && subtotal > 0) {
-          // subtotal incluye markup: base = subtotal / (1 + rate)
-          productosBase = Math.round(subtotal / (1 + rate));
-          nemyCommission = subtotal - productosBase;
-        }
-      } catch (err) {
-        console.error("Error applying business commission rate:", err);
-      }
-
-      // Total = subtotal (ya con comisión) + delivery - descuentos
+      // Total = subtotal (base + markup) + envío + servicio - descuentos
       const calculatedTotal = Math.max(
         0,
-        subtotal + finalDeliveryFee - couponDiscount - subDiscount,
+        subtotal +
+          finalDeliveryFee +
+          serviceFee -
+          couponDiscount -
+          subDiscount,
       );
 
       const orderData = {
@@ -272,6 +360,7 @@ router.post(
         subtotal: subtotal,
         productosBase,
         nemyCommission,
+        serviceFee,
         deliveryFee: finalDeliveryFee,
         total: calculatedTotal,
         paymentMethod: req.body.paymentMethod,
@@ -339,6 +428,34 @@ router.post(
           await pickupService.createPickupOrder(orderId, 15);
         } catch (err) {
           console.error("Error generating pickup codes:", err);
+        }
+      }
+
+      // Registrar el uso del cupón validado (contador global y por usuario);
+      // antes dependía de que la app llamara a /coupons/apply y nunca se contaba
+      if (couponDiscount > 0 && req.body.couponCode) {
+        try {
+          const { coupons } = await import("@shared/schema-mysql");
+          const { AdvancedCouponService } = await import(
+            "../advancedCouponService"
+          );
+          const [coupon] = await db
+            .select()
+            .from(coupons)
+            .where(
+              eq(coupons.code, String(req.body.couponCode).toUpperCase()),
+            )
+            .limit(1);
+          if (coupon) {
+            await AdvancedCouponService.recordCouponUsage(
+              coupon.id,
+              req.user!.id,
+              orderId,
+              couponDiscount,
+            );
+          }
+        } catch (err) {
+          console.error("Error recording coupon usage:", err);
         }
       }
 
