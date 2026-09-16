@@ -12,6 +12,13 @@ interface DriverPinProps {
   size?: number;
   /** Etiqueta opcional debajo (ETA, estado) */
   label?: string;
+  /**
+   * Anillo pulsante. POR DEFECTO APAGADO dentro de markers de
+   * react-native-maps: Android congela la vista del marker como bitmap a los
+   * ~200 ms (tracksViewChanges) y captura el anillo A MEDIOS de la animación,
+   * deformando el icono (medio cuadrado, medio círculo). Solo activar si el
+   * pin NO va dentro de un <Marker>.
+   */
   pulse?: boolean;
   /** Mostrar el mini-badge del vehículo (por defecto sí) */
   showBadge?: boolean;
@@ -30,7 +37,7 @@ export function DriverPin({
   color = "#10B981",
   size = 46,
   label,
-  pulse = true,
+  pulse = false,
   showBadge = true,
   heading,
 }: DriverPinProps) {
@@ -159,7 +166,7 @@ const styles = StyleSheet.create({
   ring: {
     position: "absolute",
     borderWidth: 2,
-    opacity: 0.45,
+    opacity: 0.55,
   },
   headingLayer: {
     position: "absolute",

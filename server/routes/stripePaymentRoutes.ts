@@ -362,6 +362,87 @@ router.post("/create-setup-intent", authenticateToken, async (req, res) => {
   }
 });
 
+// POST /api/stripe/confirm-setup-intent — tras completar el PaymentSheet en
+// modo "guardar tarjeta", el cliente envía el id del SetupIntent (seti_...)
+// y el SERVIDOR recupera el método de pago de Stripe y lo guarda en el
+// usuario. Mucho más fiable que recuperar el SetupIntent desde el móvil
+// (que fallaba y mostraba "error al guardar tarjeta").
+router.post(
+  "/confirm-setup-intent",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return res.status(503).json({ error: "Stripe no configurado" });
+      }
+      const { setupIntentId } = req.body || {};
+      if (!setupIntentId || !String(setupIntentId).startsWith("seti_")) {
+        return res
+          .status(400)
+          .json({ error: "setupIntentId inválido (debe empezar por seti_)" });
+      }
+
+      const stripe = getStripe();
+      const si = await stripe.setupIntents.retrieve(String(setupIntentId));
+
+      if (si.status !== "succeeded" || !si.payment_method) {
+        return res.status(400).json({
+          error:
+            si.status === "succeeded"
+              ? "El SetupIntent no tiene método de pago"
+              : `La tarjeta no quedó guardada (estado: ${si.status})`,
+        });
+      }
+
+      // El SI debe pertenecer al customer del usuario (nadie confirma un SI ajeno)
+      const [user] = await db
+        .select({ stripeCustomerId: users.stripeCustomerId })
+        .from(users)
+        .where(eq(users.id, req.user!.id))
+        .limit(1);
+      if (
+        user?.stripeCustomerId &&
+        si.customer &&
+        si.customer !== user.stripeCustomerId
+      ) {
+        return res.status(403).json({ error: "No autorizado" });
+      }
+
+      const paymentMethod = await stripe.paymentMethods.retrieve(
+        String(si.payment_method),
+      );
+
+      // Adjuntar al customer si aún no lo está (necesario para cobros off-session)
+      const customerId = user?.stripeCustomerId || (si.customer as string);
+      if (customerId && !paymentMethod.customer) {
+        await stripe.paymentMethods.attach(String(si.payment_method), {
+          customer: customerId,
+        });
+      }
+
+      await db
+        .update(users)
+        .set({
+          stripeCustomerId: customerId,
+          stripePaymentMethodId: String(si.payment_method),
+          cardLast4: paymentMethod.card?.last4 || null,
+          cardBrand: paymentMethod.card?.brand || null,
+        })
+        .where(eq(users.id, req.user!.id));
+
+      res.json({
+        success: true,
+        card: {
+          last4: paymentMethod.card?.last4,
+          brand: paymentMethod.card?.brand,
+        },
+      });
+    } catch (error: any) {
+      stripeErrorResponse(res, error, "confirm-setup-intent");
+    }
+  },
+);
+
 // Save payment method
 router.post("/save-payment-method", authenticateToken, async (req, res) => {
   try {

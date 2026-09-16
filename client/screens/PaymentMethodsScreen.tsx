@@ -117,7 +117,8 @@ export default function PaymentMethodsScreen() {
 
   // Guardar una tarjeta con el PaymentSheet de Stripe en modo setup-intent:
   // la tarjeta queda tokenizada para siempre y se usa en futuros pagos sin
-  // volver a escribir el número.
+  // volver a escribir el número. Bizum NO se guarda aquí: se elige al pagar
+  // en el checkout (Stripe Bizum).
   const handleAddCard = async () => {
     if (isWeb) return;
     setAddingCard(true);
@@ -125,15 +126,18 @@ export default function PaymentMethodsScreen() {
       const res = await apiRequest("POST", "/api/stripe/create-setup-intent", {});
       const data = await res.json();
       if (!data.clientSecret) {
-        showToast("No se pudo iniciar el guardado de la tarjeta", "error");
+        showToast(
+          data.error || "No se pudo iniciar el guardado de la tarjeta",
+          "error",
+        );
         return;
       }
 
       const StripeModule = await import("@stripe/stripe-react-native");
-      const { error: initError } = await StripeModule.initPaymentSheet({
+      // customer/ephemeralKey solo si el servidor los devolvió (setup mode
+      // funciona también solo con el clientSecret)
+      const initParams: any = {
         merchantDisplayName: "ComeYa",
-        customerId: data.customer,
-        customerEphemeralKeySecret: data.ephemeralKey,
         setupIntentClientSecret: data.clientSecret,
         appearance: {
           colors: {
@@ -148,36 +152,74 @@ export default function PaymentMethodsScreen() {
             placeholderText: "#AAAAAA",
           },
         },
-      });
+      };
+      if (data.customer && data.ephemeralKey) {
+        initParams.customerId = data.customer;
+        initParams.customerEphemeralKeySecret = data.ephemeralKey;
+      }
+      const { error: initError } =
+        await StripeModule.initPaymentSheet(initParams);
       if (initError) {
-        showToast("No se pudo abrir el formulario de tarjeta", "error");
+        showToast(
+          "No se pudo abrir el formulario de tarjeta: " + initError.message,
+          "error",
+        );
         return;
       }
 
       const { error: presentError } = await StripeModule.presentPaymentSheet();
       if (presentError) {
         if (presentError.code !== "Canceled") {
-          showToast("No se pudo guardar la tarjeta", "error");
+          showToast(
+            "No se pudo guardar la tarjeta: " + presentError.message,
+            "error",
+          );
         }
         return;
       }
 
-      const { setupIntent, error: retrieveError } =
-        await StripeModule.retrieveSetupIntent(data.clientSecret);
-      const paymentMethodId =
-        setupIntent?.paymentMethodId || (setupIntent as any)?.payment_method;
-      if (!paymentMethodId) {
-        showToast("No se pudo obtener la tarjeta guardada", "error");
-        return;
+      // Confirmación en el SERVIDOR: recupera el SetupIntent de Stripe y
+      // guarda el método de pago (el clientSecret tiene forma
+      // seti_XXX_secret_YYY)
+      const setupIntentId = String(data.clientSecret).split("_secret_")[0];
+      const confirmRes = await apiRequest(
+        "POST",
+        "/api/stripe/confirm-setup-intent",
+        { setupIntentId },
+      );
+      const confirmData = await confirmRes.json();
+      if (confirmData.success) {
+        showToast("Tarjeta guardada correctamente", "success");
+        await loadData();
+      } else {
+        // Fallback para servidor aún sin el endpoint: recuperar del móvil
+        try {
+          const { setupIntent } = await StripeModule.retrieveSetupIntent(
+            data.clientSecret,
+          );
+          const paymentMethodId =
+            setupIntent?.paymentMethodId ||
+            (setupIntent as any)?.payment_method;
+          if (paymentMethodId) {
+            await apiRequest("POST", "/api/stripe/save-payment-method", {
+              paymentMethodId,
+            });
+            showToast("Tarjeta guardada correctamente", "success");
+            await loadData();
+            return;
+          }
+        } catch {}
+        showToast(
+          confirmData.error ||
+            "El pago se completó pero no se pudo guardar la tarjeta",
+          "error",
+        );
       }
-
-      await apiRequest("POST", "/api/stripe/save-payment-method", {
-        paymentMethodId,
-      });
-      showToast("Tarjeta guardada correctamente", "success");
-      await loadData();
-    } catch {
-      showToast("Error al guardar la tarjeta", "error");
+    } catch (e: any) {
+      showToast(
+        "Error al guardar la tarjeta: " + (e?.message || "inténtalo de nuevo"),
+        "error",
+      );
     } finally {
       setAddingCard(false);
     }
@@ -353,8 +395,9 @@ export default function PaymentMethodsScreen() {
                     textAlign: "center",
                   }}
                 >
-                  Se guarda para todos tus próximos pagos: no volverás a escribir
-                  el número
+                  Se guarda para todos tus próximos pagos: no volverás a
+                  escribir el número. Bizum no necesita tarjeta guardada: se
+                  elige directamente al pagar en el checkout.
                 </ThemedText>
               </View>
             )}

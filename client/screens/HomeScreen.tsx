@@ -18,6 +18,7 @@ import {
 } from "@react-navigation/bottom-tabs";
 import {
   useNavigation,
+  useFocusEffect,
   CompositeNavigationProp,
 } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -279,6 +280,16 @@ export default function HomeScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Refrescar la lista al volver a la Home: el estado abierto/cerrado se
+  // calcula en el servidor en el momento, y antes la tarjeta podía quedar
+  // con un "Abierto" viejo (p. ej. el negocio cerró entre medias con horario
+  // partido) que no coincidía con la ficha
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData]),
+  );
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

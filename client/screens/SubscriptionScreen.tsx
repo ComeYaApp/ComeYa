@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/query-client";
 import { formatCurrency } from "@/utils/currency";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { LinearGradient } from "expo-linear-gradient";
+import PlanCardArt from "@/components/subscriptions/PlanCardArt";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -430,17 +430,17 @@ export default function SubscriptionScreen() {
           const visiblePlans = allPlans.filter((planKey) => {
             const p = plansData[planKey];
             if (!p?.price) return false;
-            // Cliente → soria_local; negocio → los 3 planes de negocio
+            // Cliente → sus dos planes (Soria Local y ComeYa Pass,
+            // unificados en esta pantalla); negocio → los 3 planes
             return isBusinessOwner
               ? BUSINESS_PLAN_KEYS.includes(planKey)
-              : planKey === "soria_local";
+              : planKey === "soria_local" || planKey === "comeya_pass";
           });
 
           return visiblePlans.map((planKey) => {
             const p = plansData[planKey];
             if (currentPlan === planKey && isActive) return null;
             const cycle = p.billingCycle === "weekly" ? "semana" : "mes";
-            const color = (p.color || "#E60000").replace("#", "");
             // Beneficios priorizando la lista real de la BD; el texto de
             // description es solo respaldo (se separa por saltos de línea)
             const benefitsText: string[] =
@@ -462,19 +462,18 @@ export default function SubscriptionScreen() {
                 onPress={() => setSelectedPlan(planKey)}
                 activeOpacity={0.9}
               >
-                <LinearGradient
-                  colors={[`#${color}`, `#${color}CC`]}
-                  style={styles.planGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.planName}>
-                    {PLAN_ICONS[planKey] || "⭐"} {p.name}
-                  </Text>
-                  <Text style={styles.planPrice}>
-                    {formatCurrency(p.price)}/{cycle}
-                  </Text>
-                </LinearGradient>
+                {/* Arte con volumen por plan (esferas 3D, motivo propio y
+                    logo ComeYa en el borde) en vez de la banda de color plana */}
+                <PlanCardArt
+                  plan={
+                    (["impulso_local", "top_soria", "premium_soria",
+                      "soria_local", "comeya_pass"].includes(planKey)
+                      ? planKey
+                      : "soria_local") as any
+                  }
+                  name={`${PLAN_ICONS[planKey] || "⭐"} ${p.name}`}
+                  priceLabel={`${formatCurrency(p.price)}/${cycle}`}
+                />
                 <View style={styles.planBenefits}>
                   {benefitsText.map((b: string) => (
                     <View key={b} style={styles.benefit}>

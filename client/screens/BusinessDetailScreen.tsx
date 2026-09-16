@@ -521,11 +521,12 @@ export default function BusinessDetailScreen() {
             deliveryTime: data.business.deliveryTime || "30-45 min",
             deliveryFee: (data.business.deliveryFee || 300) / 100,
             minimumOrder: (data.business.minOrder || 1000) / 100,
+            // SOLO el valor en tiempo real del servidor: antes también se
+            // miraba la columna is_open (que puede quedar vieja) y la ficha
+            // podía decir "Abierto" cuando el negocio ya había cerrado (o al
+            // revés) — inconsistente con la lista
             isOpen:
-              data.business.isOpen === true ||
-              data.business.isOpen === 1 ||
-              data.business.is_open === true ||
-              data.business.is_open === 1,
+              data.business.isOpen === true || data.business.isOpen === 1,
             openingHours: parsedOpeningHours,
             address: data.business.address || "Soria, España",
             phone: data.business.phone || "",

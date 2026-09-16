@@ -18,6 +18,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
+import { TabErrorBoundary } from "@/components/admin/TabErrorBoundary";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
@@ -2519,8 +2520,12 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         </View>
         {/* Cada tab gestiona su propio scroll; los overlays/modal se centran
             sobre la pantalla (antes iban dentro de un ScrollView y el overlay
-            quedaba fuera del viewport en listas largas) */}
-        <View style={{ flex: 1 }}>{renderTabContent()}</View>
+            quedaba fuera del viewport en listas largas). ErrorBoundary: si un
+            tab falla al renderizar se muestra el error en pantalla en vez de
+            cerrar la app entera (pasaba al entrar en Finanzas). */}
+        <TabErrorBoundary tabName={String(activeTab)}>
+          <View style={{ flex: 1 }}>{renderTabContent()}</View>
+        </TabErrorBoundary>
       </SafeAreaView>
     );
   }

@@ -58,7 +58,29 @@ const METHOD_LABELS: Record<string, string> = {
   cash: "Efectivo",
 };
 
-const fmt = (cents: number) => `${(cents / 100).toFixed(2)} €`;
+const fmt = (cents: number) => `${((cents ?? 0) / 100).toFixed(2)} €`;
+
+// Fecha segura: MySQL devuelve "YYYY-MM-DD HH:MM:SS" (con espacio), que
+// Android no parsea → Invalid Date → toLocaleDateString lanza RangeError y
+// LA APP SE CIERRA al entrar en Finanzas. Se normaliza a "T" y se captura.
+const safeDate = (value: any): string => {
+  try {
+    const d = new Date(String(value ?? "").replace(" ", "T"));
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("es-ES");
+  } catch {
+    return "—";
+  }
+};
+const safeDateTime = (value: any): string => {
+  try {
+    const d = new Date(String(value ?? "").replace(" ", "T"));
+    if (isNaN(d.getTime())) return "—";
+    return `${d.toLocaleDateString("es-ES")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return "—";
+  }
+};
 
 export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   const [tab, setTab] = useState<
@@ -263,7 +285,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
           <Text style={[s.sub, { color: theme.textSecondary }]}>
             {selected.isWithdrawal ? "Retiro" : "Pedido"} #
             {displayOrderNumber({ id: selected.orderId })} ·{" "}
-            {new Date(selected.createdAt).toLocaleDateString("es-ES")}
+            {safeDate(selected.createdAt)}
           </Text>
         </View>
 
@@ -743,7 +765,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                 <Text style={[s.sub, { color: theme.textSecondary }]}>
                   {payout.isWithdrawal ? "Retiro" : "Pedido"} #
                   {displayOrderNumber({ id: payout.orderId })} ·{" "}
-                  {new Date(payout.createdAt).toLocaleDateString("es-ES")}
+                  {safeDate(payout.createdAt)}
                 </Text>
                 <View style={s.tapHint}>
                   <Feather name="send" size={13} color={ComeYaColors.primary} />
@@ -824,7 +846,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                 <Text style={[s.sub, { color: theme.textSecondary }]}>
                   {payout.isWithdrawal ? "Retiro" : "Pedido"} #
                   {displayOrderNumber({ id: payout.orderId })} · Creado:{" "}
-                  {new Date(payout.createdAt).toLocaleDateString("es-ES")}
+                  {safeDate(payout.createdAt)}
                 </Text>
                 {payout.method && (
                   <View
@@ -855,7 +877,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                 {payout.paidAt && (
                   <Text style={[s.sub, { color: ComeYaColors.success }]}>
                     ✓ Pagado:{" "}
-                    {new Date(payout.paidAt).toLocaleDateString("es-ES")}
+                    {safeDate(payout.paidAt)}
                   </Text>
                 )}
                 {payout.notes && (
@@ -1044,7 +1066,7 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
                       : ""}
                     Declarada{" "}
                     {tip.declaredAt
-                      ? new Date(tip.declaredAt).toLocaleString("es-ES")
+                      ? safeDateTime(tip.declaredAt)
                       : ""}
                   </Text>
                   {!!tip.proofUrl && (

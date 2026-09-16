@@ -244,11 +244,8 @@ export default function CustomerProfileScreen() {
         label: "Mis reservas",
         onPress: () => navigation.navigate("MyReservations" as any),
       },
-      {
-        icon: "star",
-        label: "ComeYa Pass",
-        onPress: () => navigation.navigate("ComeYaPass" as any),
-      },
+      // ComeYa Pass ya NO es una entrada separada: sus dos planes de cliente
+      // (Plan Soria Local y ComeYa Pass) viven juntos en "Suscripciones"
     ];
 
     return (
