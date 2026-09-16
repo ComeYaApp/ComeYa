@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -28,6 +28,7 @@ export default function StripePaymentScreen() {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const paymentIntentIdRef = useRef<string | null>(null);
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -77,6 +78,12 @@ export default function StripePaymentScreen() {
         subscriptionId,
       });
       const data = await res.json();
+
+      // Id del PaymentIntent (para la verificación del servidor al activar
+      // la suscripción): el client_secret tiene forma pi_XXX_secret_YYY
+      if (data.clientSecret) {
+        paymentIntentIdRef.current = String(data.clientSecret).split("_secret_")[0];
+      }
 
       // PaymentSheet nativo de Stripe (iOS y Android)
       if (data.clientSecret && initPaymentSheet && presentPaymentSheet) {
@@ -138,7 +145,11 @@ export default function StripePaymentScreen() {
   const handlePaymentSuccess = async () => {
     if (isSubscription && subscriptionId) {
       try {
-        await apiRequest("POST", `/api/stripe/confirm-subscription/${subscriptionId}`);
+        // El servidor VERIFICA el PaymentIntent antes de activar el plan:
+        // se envía el id extraído del client_secret
+        await apiRequest("POST", `/api/stripe/confirm-subscription/${subscriptionId}`, {
+          paymentIntentId: paymentIntentIdRef.current || undefined,
+        });
       } catch (e) { /* silencioso */ }
       queryClient.invalidateQueries({ queryKey: ["subscription"] });
       Alert.alert(

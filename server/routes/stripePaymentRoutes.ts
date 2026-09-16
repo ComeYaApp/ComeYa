@@ -594,10 +594,10 @@ router.post(
         return res.status(503).json({ error: "Stripe no configurado" });
       }
       const { subscriptionId, amount } = req.body;
-      if (!subscriptionId || !amount || amount <= 0) {
+      if (!subscriptionId) {
         return res
           .status(400)
-          .json({ error: "subscriptionId y amount son requeridos" });
+          .json({ error: "subscriptionId es requerido" });
       }
 
       const { subscriptions } = await import("@shared/schema-mysql");
@@ -610,9 +610,20 @@ router.post(
         return res.status(404).json({ error: "Suscripción no encontrada" });
       }
 
+      // Si el cliente no envía importe (ComeYaPass), se usa el precio del plan
+      let amountCents = Math.round(amount || 0);
+      if (amountCents <= 0) {
+        const { SubscriptionService } = await import("../subscriptionService");
+        const plans = await SubscriptionService.getPlansFromDB();
+        amountCents = Number((plans as any)[sub.plan]?.price) || 0;
+      }
+      if (amountCents <= 0) {
+        return res.status(400).json({ error: "Importe de pago inválido" });
+      }
+
       const stripe = getStripe();
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount),
+        amount: amountCents,
         currency: "eur",
         automatic_payment_methods: { enabled: true },
         metadata: { userId: req.user!.id, subscriptionId, plan: sub.plan },
@@ -625,15 +636,17 @@ router.post(
   },
 );
 
-// POST /api/stripe/confirm-subscription/:subscriptionId — activar suscripción tras pago Stripe
+// POST /api/stripe/confirm-subscription/:subscriptionId — activar suscripción tras pago Stripe.
+// VERIFICA el PaymentIntent en Stripe antes de activar: antes se activaba el
+// plan con solo llamar a este endpoint, sin comprobar que el pago existiera.
 router.post(
   "/confirm-subscription/:subscriptionId",
   authenticateToken,
   async (req, res) => {
     try {
       const { subscriptionId } = req.params;
+      const { paymentIntentId } = req.body;
       const { subscriptions } = await import("@shared/schema-mysql");
-      const { sql } = await import("drizzle-orm");
 
       // Buscar por id O por userId (por si el subscriptionId cambio al sobreescribir)
       let [sub] = await db
@@ -652,6 +665,28 @@ router.post(
         if (!byUser)
           return res.status(404).json({ error: "Suscripción no encontrada" });
         sub = byUser;
+      }
+
+      // Verificación del pago en Stripe (obligatoria): el importe cobrado
+      // debe coincidir con el precio del plan en ese momento
+      if (process.env.STRIPE_SECRET_KEY) {
+        if (!paymentIntentId) {
+          return res
+            .status(400)
+            .json({ error: "Falta el identificador del pago" });
+        }
+        const stripe = getStripe();
+        const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+        if (pi.status !== "succeeded") {
+          return res
+            .status(400)
+            .json({ error: "El pago no se ha completado" });
+        }
+        if (pi.metadata?.subscriptionId !== subscriptionId) {
+          return res
+            .status(400)
+            .json({ error: "El pago no corresponde a esta suscripción" });
+        }
       }
 
       const now = new Date();
@@ -686,6 +721,29 @@ router.post(
           data: { screen: "Subscriptions" },
         });
       } catch {}
+
+      // El admin debe enterarse de cada nueva suscripción (feedback del
+      // cliente): push a todos los admins
+      try {
+        const { users } = await import("@shared/schema-mysql");
+        const { inArray } = await import("drizzle-orm");
+        const admins = await db
+          .select({ id: users.id, name: users.name })
+          .from(users)
+          .where(inArray(users.role as any, ["admin", "super_admin"]));
+        const { sendPushToUser } = await import("../enhancedPushService");
+        const { notifyAdminNewSubscription } = await import("../websocket");
+        for (const admin of admins) {
+          await sendPushToUser(admin.id, {
+            title: "💳 Nueva suscripción activada",
+            body: `${sub.plan} — usuario ${sub.userId.slice(0, 8)}… pagó y activó su plan.`,
+            data: { screen: "AdminDashboard", section: "subscriptions" },
+          });
+        }
+        notifyAdminNewSubscription?.(sub);
+      } catch (notifyErr) {
+        console.error("Error notifying admins about subscription:", notifyErr);
+      }
 
       res.json({ success: true, plan: sub.plan });
     } catch (error: any) {

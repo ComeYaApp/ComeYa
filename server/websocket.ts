@@ -278,3 +278,12 @@ export function notifyAdmins(data: { type: string; [key: string]: any }) {
     timestamp: new Date().toISOString(),
   });
 }
+
+// Nueva suscripción activada (pago verificado) — el admin debe verlo al momento
+export function notifyAdminNewSubscription(sub: {
+  id: string;
+  userId: string;
+  plan: string;
+}) {
+  notifyAdmins({ type: "new_subscription", ...sub });
+}

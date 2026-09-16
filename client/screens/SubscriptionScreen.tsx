@@ -25,6 +25,8 @@ import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme"
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+// Solo tarjeta (Stripe): el pago de suscripciones no admite transferencias
+// ni comprobantes manuales (feedback del cliente)
 const PAYMENT_METHODS = [
   {
     id: "stripe_card",
@@ -33,22 +35,6 @@ const PAYMENT_METHODS = [
     label: "Tarjeta (Stripe)",
     sub: "Visa, Mastercard — pago instantáneo",
     instant: true,
-  },
-  {
-    id: "bizum_manual",
-    icon: "smartphone",
-    color: "#00ADEF",
-    label: "Bizum",
-    sub: "Transferencia Bizum + subir comprobante",
-    instant: false,
-  },
-  {
-    id: "paypal_manual",
-    icon: "dollar-sign",
-    color: "#1A56DB",
-    label: "PayPal",
-    sub: "Pago por PayPal + subir comprobante",
-    instant: false,
   },
 ];
 
@@ -230,16 +216,8 @@ export default function SubscriptionScreen() {
         subscriptionId,
         provider: methodId,
       } as any);
-    } else {
-      // Pago manual con comprobante (Bizum / PayPal)
-      const paymentMethod = methodId === "paypal_manual" ? "paypal" : "bizum";
-      navigation.navigate("PaymentProof", {
-        orderId: subscriptionId,
-        amount,           // centavos (1500 → €15)
-        paymentMethod,
-        subscriptionId,
-      });
     }
+    // No hay más métodos: las suscripciones solo se pagan con tarjeta
   };
 
   // ── Botón suscribirse ────────────────────────────────────────────────────
@@ -266,7 +244,17 @@ export default function SubscriptionScreen() {
     <ThemedView style={styles.container}>
       {/* Cabecera */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => {
+            // Si no hay pantalla previa (deep link/notificación), volver a Inicio
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              (navigation as any).navigate("HomeTab");
+            }
+          }}
+          style={styles.backButton}
+        >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
         <ThemedText type="h3" style={styles.headerTitle}>
@@ -422,22 +410,27 @@ export default function SubscriptionScreen() {
           <Text style={styles.sectionTitle}>Elige tu plan</Text>
         )}
 
-        {/* ── PLANES DINÁMICOS (7 planes ComeYa Soria desde BD) ────────── */}
+        {/* ── PLANES DINÁMICOS (solo 3 de negocio + el del cliente) ─────── */}
         {(() => {
-          // Planes legacy (premium/business) retirados: solo los 7 de ComeYa
+          // Feedback del cliente: solo quedan estas 3 categorías para negocios
           const BUSINESS_PLAN_KEYS = [
             "impulso_local",
             "top_soria",
             "premium_soria",
-            "logistica_local",
-            "escaparate_soria",
-            "express_semana",
           ];
+          // Icono por plan (los Feather genéricos anteriores se cambiaron)
+          const PLAN_ICONS: Record<string, string> = {
+            impulso_local: "🚀",
+            top_soria: "🏆",
+            premium_soria: "👑",
+            soria_local: "⭐",
+            comeya_pass: "✨",
+          };
           const allPlans = plansData ? Object.keys(plansData) : [];
           const visiblePlans = allPlans.filter((planKey) => {
             const p = plansData[planKey];
             if (!p?.price) return false;
-            // Cliente → soria_local; negocio → los 6 planes de negocio
+            // Cliente → soria_local; negocio → los 3 planes de negocio
             return isBusinessOwner
               ? BUSINESS_PLAN_KEYS.includes(planKey)
               : planKey === "soria_local";
@@ -475,7 +468,9 @@ export default function SubscriptionScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Text style={styles.planName}>{p.name}</Text>
+                  <Text style={styles.planName}>
+                    {PLAN_ICONS[planKey] || "⭐"} {p.name}
+                  </Text>
                   <Text style={styles.planPrice}>
                     {formatCurrency(p.price)}/{cycle}
                   </Text>
@@ -506,6 +501,10 @@ export default function SubscriptionScreen() {
           ].map((item) => (
             <Text key={item} style={styles.comparisonText}>{item}</Text>
           ))}
+          <Text style={[styles.comparisonText, { marginTop: 8, fontSize: 11, color: "#888" }]}>
+            * Beneficios y condiciones definitivas por plan: consulta el
+            documento de condiciones de ComeYa.
+          </Text>
         </View>
       </ScrollView>
 
@@ -525,8 +524,12 @@ export default function SubscriptionScreen() {
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>¿Cómo quieres pagar?</Text>
             <Text style={styles.modalSub}>
-              Plan {paymentModal?.plan === "premium" ? "Premium" : "Business"} —{" "}
-              {paymentModal ? (paymentModal.amount / 100).toFixed(0) : "0"} €/mes
+              Plan{" "}
+              {paymentModal
+                ? plansData?.[paymentModal.plan]?.name || paymentModal.plan
+                : ""}{" "}
+              — {paymentModal ? (paymentModal.amount / 100).toFixed(0) : "0"}{" "}
+              €/mes · Solo tarjeta, sin transferencias
             </Text>
 
             {PAYMENT_METHODS.map((m) => (

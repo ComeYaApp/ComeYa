@@ -70,11 +70,11 @@ export default function ComeYaPassScreen() {
         if (presentError.code !== "Canceled") showToast("El pago no se completó", "error");
         return;
       }
-      // 3) Confirmar la suscripción
+      // 3) Confirmar la suscripción (el servidor verifica el PaymentIntent)
       const confRes = await apiRequest(
         "POST",
         `/api/stripe/confirm-subscription/${subscriptionId}`,
-        {},
+        { paymentIntentId: String(payData.clientSecret).split("_secret_")[0] },
       );
       const confData = await confRes.json();
       if (confData.success || confData.subscription) {

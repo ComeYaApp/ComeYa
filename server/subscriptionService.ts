@@ -9,7 +9,15 @@ import {
 import { eq, and, gte } from "drizzle-orm";
 
 export class SubscriptionService {
-  // Planes hardcoded como fallback si la BD no tiene datos.
+  // Planes de negocio retirados del catálogo (feedback del cliente): solo
+  // quedan Impulso Local Soria, Top Soria y Premium Soria para negocios.
+  static readonly RETIRED_PLAN_KEYS = [
+    "logistica_local",
+    "escaparate_soria",
+    "express_semana",
+  ];
+
+  // Planes hardcodeados como fallback si la BD no tiene datos.
   // Estructura Soria 2026. Precios en céntimos: 499 = 4,99 €, etc.
   static readonly PLANS_FALLBACK = {
     // ComeYa Pass (clientes): puntos x2 en reservas/pedidos y ofertas exclusivas
@@ -49,7 +57,7 @@ export class SubscriptionService {
       },
     },
     impulso_local: {
-      name: "Impulso Local",
+      name: "Impulso Local Soria",
       price: 2900, // 29 €/mes + comisión 10%
       benefits: {
         freeDelivery: false,
@@ -129,6 +137,10 @@ export class SubscriptionService {
 
       const result: Record<string, any> = {};
       for (const plan of plans) {
+        // Catálogo de negocio reducido a 3 planes (feedback del cliente):
+        // Impulso Local, Top Soria y Premium Soria. Los demás se ocultan del
+        // catálogo; las suscripciones ya activas de esos planes se respetan.
+        if (this.RETIRED_PLAN_KEYS.includes(plan.planKey)) continue;
         const planBenefits = benefits.filter((b: typeof benefits[0]) => b.plan === plan.planKey);
         const discountBenefit = planBenefits.find(
           (b: typeof planBenefits[0]) => b.benefitType === "discount",
@@ -170,6 +182,7 @@ export class SubscriptionService {
       // Robustez: si un plan del fallback no existe en BD (p. ej. comeya_pass
       // antes de migrar), se fusiona para que la suscripción no falle
       for (const [key, fallbackPlan] of Object.entries(this.PLANS_FALLBACK)) {
+        if (this.RETIRED_PLAN_KEYS.includes(key)) continue;
         if (!result[key]) {
           result[key] = fallbackPlan;
         }
