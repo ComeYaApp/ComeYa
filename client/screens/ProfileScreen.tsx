@@ -2455,7 +2455,7 @@ export default function ProfileScreen() {
                       ? "Datos"
                       : tab === "seguridad"
                         ? "Seguridad"
-                        : "Profesión"}
+                        : "Validación"}
                   </ThemedText>
                 </Pressable>
               ))}
@@ -2661,8 +2661,9 @@ export default function ProfileScreen() {
                   </Pressable>
                 </>
               ) : (
-                // Profesión tab - solo documentos personales para drivers/business owners
-                // Los datos del vehículo están en "Mi vehículo"
+                // Validación: documentos de verificación para repartidores y
+                // dueños de negocio. Todo documento enviado llega al admin
+                // para su verificación.
                 <>
                   <ThemedText
                     type="body"
@@ -2673,7 +2674,7 @@ export default function ProfileScreen() {
                   >
                     {user?.role === "delivery_driver"
                       ? "Para gestionar tu vehículo y sus documentos, ve a 'Mi vehículo' en la pantalla de perfil."
-                      : "Gestiona tus documentos de verificación abajo."}
+                      : "Sube aquí los documentos que validan tu negocio. El administrador los revisará."}
                   </ThemedText>
 
                   {user?.role === "business_owner" && (
@@ -2682,21 +2683,36 @@ export default function ProfileScreen() {
                         type="h4"
                         style={{ marginBottom: Spacing.md }}
                       >
-                        Documentos
+                        Documentos del negocio
                       </ThemedText>
+                      <DocumentUploadButton
+                        documentType="idDocument"
+                        label="DNI / Identificación (frente)"
+                        currentUrl={professionalData?.idDocumentUrl}
+                      />
+                      <DocumentUploadButton
+                        documentType="idDocumentBack"
+                        label="DNI / Identificación (reverso)"
+                        currentUrl={professionalData?.idDocumentBackUrl}
+                      />
+                      <DocumentUploadButton
+                        documentType="autonomo"
+                        label="Certificado de Autónomo / Empresa"
+                        currentUrl={professionalData?.autonomoDocumentUrl}
+                      />
                       <View
                         style={[
                           styles.strikeInfoCard,
                           {
                             backgroundColor: theme.backgroundSecondary,
-                            marginBottom: Spacing.md,
+                            marginTop: Spacing.md,
                           },
                         ]}
                       >
                         <Feather
-                          name="info"
+                          name="check-circle"
                           size={16}
-                          color={theme.textSecondary}
+                          color={ComeYaColors.success}
                         />
                         <ThemedText
                           type="caption"
@@ -2706,8 +2722,8 @@ export default function ProfileScreen() {
                             flex: 1,
                           }}
                         >
-                          Aquí puedes ver el estado de tus documentos. Contacta
-                          soporte si necesitas actualizar algo.
+                          Al subir un documento pasa a "pendiente" y el
+                          administrador lo verifica antes de validar tu cuenta.
                         </ThemedText>
                       </View>
                     </>

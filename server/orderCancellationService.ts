@@ -13,7 +13,7 @@
 //   sistema   sin repartidor (30 min)    100%                  no       no
 //   admin     cualquiera                 100% (editable)       según    según
 import { db } from "./db";
-import { orders, payouts, users } from "@shared/schema-mysql";
+import { orders, payouts, users, businesses } from "@shared/schema-mysql";
 import { eq, and, inArray } from "drizzle-orm";
 import { logger } from "./logger";
 import { sendPushToUser } from "./enhancedPushService";
@@ -451,6 +451,24 @@ export async function cancelOrder(
   // Solo el dueño del pedido puede cancelarlo como cliente
   if (actorRole === "customer" && order.userId !== actorId) {
     return { success: false, message: "No autorizado", error: "forbidden" };
+  }
+
+  // Un negocio solo puede cancelar pedidos de SUS negocios (p. ej. recogida
+  // en la que el cliente no apareció)
+  if (actorRole === "business_owner") {
+    const [biz] = await db
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.id, order.businessId),
+          eq(businesses.ownerId, actorId),
+        ),
+      )
+      .limit(1);
+    if (!biz) {
+      return { success: false, message: "No autorizado", error: "forbidden" };
+    }
   }
 
   const policy = computeCancelPolicy(order, actorRole, opts);

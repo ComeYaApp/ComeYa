@@ -78,18 +78,26 @@ const BUSINESS_TYPES = [
   { id: "other", name: "Otro" },
 ];
 
+// 4 tipos con emoticonos propios (feedback del cliente): coche, moto, bici y patinete
 const VEHICLE_TYPES = [
+  {
+    id: "car",
+    name: "Coche",
+    icon: "🚗",
+    requiresPlate: true,
+    requiresInsurance: true,
+  },
+  {
+    id: "motorcycle",
+    name: "Moto",
+    icon: "🏍️",
+    requiresPlate: true,
+    requiresInsurance: true,
+  },
   {
     id: "bicycle",
     name: "Bicicleta",
     icon: "🚲",
-    requiresPlate: false,
-    requiresInsurance: false,
-  },
-  {
-    id: "ebike",
-    name: "Bici eléctrica",
-    icon: "⚡🚲",
     requiresPlate: false,
     requiresInsurance: false,
   },
@@ -99,20 +107,6 @@ const VEHICLE_TYPES = [
     icon: "🛴",
     requiresPlate: false,
     requiresInsurance: false,
-  },
-  {
-    id: "motorcycle",
-    name: "Moto/Ciclomotor",
-    icon: "🏍️",
-    requiresPlate: true,
-    requiresInsurance: true,
-  },
-  {
-    id: "car",
-    name: "Coche",
-    icon: "🚗",
-    requiresPlate: true,
-    requiresInsurance: true,
   },
 ];
 

@@ -793,21 +793,84 @@ export default function BusinessOrdersScreen() {
 
           {["ready", "on_the_way", "picked_up"].includes(item.status) &&
             item.orderType === "pickup" && (
-              <Pressable
-                onPress={() => navigation.navigate("PickupScanner" as any)}
-                style={[
-                  styles.actionButton,
-                  { backgroundColor: ComeYaColors.success, flex: 1 },
-                ]}
-              >
-                <Feather name="hash" size={18} color="#FFF" />
-                <ThemedText
-                  type="small"
-                  style={{ color: "#FFF", marginLeft: Spacing.xs }}
+              <>
+                <Pressable
+                  onPress={() =>
+                    (navigation as any).navigate("PickupScanner")
+                  }
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: ComeYaColors.success, flex: 1 },
+                  ]}
                 >
-                  Escanear Código
-                </ThemedText>
-              </Pressable>
+                  <Feather name="hash" size={18} color="#FFF" />
+                  <ThemedText
+                    type="small"
+                    style={{ color: "#FFF", marginLeft: Spacing.xs }}
+                  >
+                    Escanear Código
+                  </ThemedText>
+                </Pressable>
+                {/* El cliente no ha venido a recoger: el negocio cierra el
+                    pedido con reembolso (feedback del cliente) */}
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Cliente no ha venido",
+                      "Se cerrará el pedido y se reembolsará al cliente por completo. ¿Confirmas?",
+                      [
+                        { text: "Volver", style: "cancel" },
+                        {
+                          text: "Sí, cerrar pedido",
+                          style: "destructive",
+                          onPress: async () => {
+                            try {
+                              const res = await apiRequest(
+                                "PATCH",
+                                `/api/orders/${item.id}/cancel`,
+                                {
+                                  reason:
+                                    "El cliente no acudió a recoger el pedido",
+                                },
+                              );
+                              const data = await res.json();
+                              if (data.success) {
+                                Alert.alert(
+                                  "Pedido cerrado",
+                                  "El cliente recibirá el reembolso completo.",
+                                );
+                                loadOrders();
+                              } else {
+                                Alert.alert(
+                                  "Error",
+                                  data.error || "No se pudo cerrar el pedido",
+                                );
+                              }
+                            } catch {
+                              Alert.alert(
+                                "Error",
+                                "No se pudo cerrar el pedido",
+                              );
+                            }
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: ComeYaColors.error + "15" },
+                  ]}
+                >
+                  <Feather name="x-circle" size={18} color={ComeYaColors.error} />
+                  <ThemedText
+                    type="small"
+                    style={{ color: ComeYaColors.error, marginLeft: Spacing.xs }}
+                  >
+                    No ha venido
+                  </ThemedText>
+                </Pressable>
+              </>
             )}
 
           {item.status === "accepted" && (

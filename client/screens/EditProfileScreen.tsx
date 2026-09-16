@@ -788,9 +788,10 @@ export default function EditProfileScreen() {
               </ThemedText>
               <View style={styles.vehicleChipContainer}>
                 {[
-                  { id: "bike", label: "Bicicleta", icon: "wind" },
-                  { id: "motorcycle", label: "Moto", icon: "zap" },
-                  { id: "car", label: "Coche", icon: "truck" },
+                  { id: "car", label: "Coche", icon: "🚗" },
+                  { id: "motorcycle", label: "Moto", icon: "🏍️" },
+                  { id: "bike", label: "Bici", icon: "🚲" },
+                  { id: "scooter", label: "Patinete", icon: "🛴" },
                 ].map((v) => (
                   <Pressable
                     key={v.id}
@@ -813,11 +814,9 @@ export default function EditProfileScreen() {
                       Shadows.sm,
                     ]}
                   >
-                    <Feather
-                      name={v.icon as any}
-                      size={20}
-                      color={vehicleType === v.id ? "#FFF" : ComeYaColors.primary}
-                    />
+                    <ThemedText type="body" style={{ fontSize: 18 }}>
+                      {v.icon}
+                    </ThemedText>
                     <ThemedText
                       type="small"
                       style={{
