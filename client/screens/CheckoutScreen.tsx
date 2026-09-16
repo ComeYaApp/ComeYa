@@ -385,18 +385,15 @@ useEffect(() => {
 
 const effectiveDeliveryFee = finalDeliveryFee ?? 0;
 
-// Coste de servicio por pedido de reparto (0,49 € por defecto), desde el
-// mismo config con el que calcula el servidor. Recogida no paga servicio.
+// Coste de servicio por pedido (0,49 € por defecto), desde el mismo config
+// con el que calcula el servidor. Se aplica a TODOS los pedidos, también
+// recogida en local (feedback del cliente).
 const [serviceFeeCents, setServiceFeeCents] = useState(0);
 useEffect(() => {
-  if (confirmedOrderType === "pickup") {
-    setServiceFeeCents(0);
-    return;
-  }
   getPricingConfig()
     .then((cfg) => setServiceFeeCents(cfg.serviceFeeCents))
     .catch(() => setServiceFeeCents(49));
-}, [confirmedOrderType]);
+}, []);
 
 const total =
   subtotal +
@@ -583,7 +580,7 @@ useEffect(() => {
       const discountCents = appliedCoupon
         ? Math.round(couponDiscount * 100)
         : 0;
-      const orderServiceFee = confirmedOrderType === "pickup" ? 0 : serviceFeeCents;
+      const orderServiceFee = serviceFeeCents;
       const orderTotal =
         subtotalCents + deliveryFeeCents + orderServiceFee - discountCents;
       const totalAmount = orderTotal;
@@ -1954,7 +1951,7 @@ navigation.navigate("DigitalPaymentMethod", {
             </ThemedText>
           </View>
         )}
-        {confirmedOrderType === "delivery" && serviceFeeCents > 0 && (
+        {serviceFeeCents > 0 && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>
               Coste de servicio

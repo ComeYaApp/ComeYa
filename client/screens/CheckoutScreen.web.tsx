@@ -27,6 +27,10 @@ import {
 } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
+import {
+  getPricingConfig,
+  getMarkupMultiplier,
+} from "@/services/pricingConfigService";
 import { useToast } from "@/contexts/ToastContext";
 import {
   calculateDistance,
@@ -43,7 +47,8 @@ type PaymentMethod =
   | "stripe_bizum"
   | "paypal"
   | "bizum_manual"
-  | "binance";
+  | "binance"
+  | "comeyacard";
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -105,6 +110,52 @@ export default function CheckoutScreen({ route }: any) {
   const [tip, setTip] = useState(0);
   const { isMobile } = useResponsive();
 
+  // ComeYaCard (tarjeta regalo) como método de pago — mismo flujo que la app
+  const [giftCardCode, setGiftCardCode] = useState("");
+  const [giftCardInfo, setGiftCardInfo] = useState<any>(null); // {code, balance}
+  const [giftCardLoading, setGiftCardLoading] = useState(false);
+
+  const handleApplyGiftCard = async () => {
+    const code = giftCardCode.trim().toUpperCase();
+    if (!code) {
+      showToast("Introduce el código de tu tarjeta regalo", "error");
+      return;
+    }
+    setGiftCardLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/gift-cards/validate", { code });
+      const data = await res.json();
+      if (data.success && data.giftCard) {
+        if (data.giftCard.balance < totalShown) {
+          showToast(
+            `Saldo insuficiente: la tarjeta tiene ${data.giftCard.balance.toFixed(2)} € y el pedido cuesta ${totalShown.toFixed(2)} €`,
+            "error",
+          );
+          setGiftCardInfo(null);
+          return;
+        }
+        setGiftCardInfo(data.giftCard);
+        setPaymentMethod("comeyacard" as any);
+        showToast(
+          `ComeYaCard aplicada (saldo ${data.giftCard.balance.toFixed(2)} €)`,
+          "success",
+        );
+      } else {
+        showToast(data.error || "Tarjeta regalo no válida", "error");
+        setGiftCardInfo(null);
+      }
+    } catch {
+      showToast("Error al validar la tarjeta regalo", "error");
+    } finally {
+      setGiftCardLoading(false);
+    }
+  };
+
+  const handleRemoveGiftCard = () => {
+    setGiftCardInfo(null);
+    setGiftCardCode("");
+  };
+
   // Cargar productos del negocio al abrir el selector de sustituto
   useEffect(() => {
     if (
@@ -155,8 +206,21 @@ export default function CheckoutScreen({ route }: any) {
   const [subPreviewDone, setSubPreviewDone] = useState(false);
   const feeResolved =
     orderTypeLocal === "pickup" || quotedDeliveryFee != null;
+  // Coste de servicio en todos los pedidos (0,49 € por defecto), igual que
+  // calcula el servidor
+  const [serviceFeeCents, setServiceFeeCents] = useState(0);
+  useEffect(() => {
+    getPricingConfig()
+      .then((cfg) => setServiceFeeCents(cfg.serviceFeeCents))
+      .catch(() => setServiceFeeCents(49));
+  }, []);
   const total =
-    subtotal + deliveryFee - couponDiscount - subDiscount + tip;
+    subtotal +
+    deliveryFee +
+    serviceFeeCents / 100 -
+    couponDiscount -
+    subDiscount +
+    tip;
 
   // Recotizar la tarifa con la MISMA fórmula del servidor cuando cambia la
   // dirección o el negocio: el total mostrado coincide con el del backend
@@ -210,7 +274,12 @@ export default function CheckoutScreen({ route }: any) {
   const effectiveDeliveryFee =
     quotedDeliveryFee != null ? quotedDeliveryFee : deliveryFee;
   const totalShown =
-    subtotal + effectiveDeliveryFee - couponDiscount - subDiscount + tip;
+    subtotal +
+    effectiveDeliveryFee +
+    serviceFeeCents / 100 -
+    couponDiscount -
+    subDiscount +
+    tip;
 
   // Cargar beneficios de suscripcion cuando cambia el subtotal o deliveryFee
   useEffect(() => {
@@ -330,6 +399,9 @@ export default function CheckoutScreen({ route }: any) {
       if (route?.params?.selectedPaymentMethod) {
         setSelectedPaymentMethod(route.params.selectedPaymentMethod);
         setPaymentMethod(route.params.selectedPaymentMethod.provider);
+        // Al cambiar de método se descarta la tarjeta regalo aplicada
+        setGiftCardInfo(null);
+        setGiftCardCode("");
         navigation.setParams({ selectedPaymentMethod: undefined } as any);
       }
     }, [loadAddresses, route?.params?.selectedPaymentMethod, route?.params?.selectedAddressId]),
@@ -471,16 +543,26 @@ export default function CheckoutScreen({ route }: any) {
       const finalItemSubstitutions = showItemSubstitutions
         ? itemSubstitutions
         : {};
+      // Mismo cálculo que la app y que el servidor: precios con markup del
+      // config + coste de servicio (0,49 € en TODOS los pedidos). El server
+      // recalcula todo de todos modos; esto solo acompaña la petición.
+      const markupMultiplier = await getMarkupMultiplier();
       const subtotalCents = Math.round(subtotal * 100);
-      const baseSubtotalCents = Math.round(subtotalCents / 1.15);
+      const baseSubtotalCents = Math.round(subtotalCents / markupMultiplier);
       const commissionCents = subtotalCents - baseSubtotalCents;
       const deliveryFeeCents = Math.round(effectiveDeliveryFee * 100);
       const discountCents = appliedCoupon
         ? Math.round(couponDiscount * 100)
         : 0;
       const tipCents = Math.round(tip * 100);
+      const serviceFeeCents = await getPricingConfig().then(
+        (cfg) => cfg.serviceFeeCents,
+      );
       const orderTotal =
-        baseSubtotalCents + commissionCents + deliveryFeeCents - discountCents;
+        subtotalCents +
+        deliveryFeeCents +
+        serviceFeeCents -
+        discountCents;
       const totalAmount = orderTotal + tipCents;
 
       const orderResponse = await apiRequest("POST", "/api/orders", {
@@ -492,10 +574,11 @@ export default function CheckoutScreen({ route }: any) {
         subtotal: subtotalCents,
         productosBase: baseSubtotalCents,
         nemyCommission: commissionCents,
+        serviceFee: serviceFeeCents,
         deliveryFee: deliveryFeeCents,
         total: orderTotal,
         tip: tipCents,
-        paymentMethod,
+        paymentMethod: giftCardInfo ? "comeyacard" : paymentMethod,
         orderType: orderTypeLocal,
         deliveryAddressId: selectedAddress?.id,
         deliveryAddress: selectedAddress
@@ -514,10 +597,27 @@ export default function CheckoutScreen({ route }: any) {
             : null,
         couponCode: appliedCoupon ? couponCode.toUpperCase() : null,
         couponDiscount: discountCents || null,
+        giftCardCode: giftCardInfo ? giftCardInfo.code : null,
       });
 
       const order = await orderResponse.json();
       const orderId = order.orderId || order.id;
+
+      // ComeYaCard: el server valida saldo, canjea y marca el pedido pagado
+      // al instante — sin pasarela
+      if (giftCardInfo) {
+        await clearCart();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setIsLoading(false);
+        navigation.reset({
+          index: 0,
+          routes: [
+            { name: "Main" },
+            { name: "OrderTracking", params: { orderId } },
+          ],
+        } as any);
+        return;
+      }
 
       if (paymentMethod === "stripe_card" || paymentMethod === "stripe_bizum") {
         if (Platform.OS === "web") {
@@ -641,7 +741,15 @@ export default function CheckoutScreen({ route }: any) {
           </View>
 
           <View style={styles.centerWrap}>
-            <View style={[styles.formCard, { backgroundColor: theme.card }]}>
+            <View
+              style={[
+                styles.formCard,
+                { backgroundColor: theme.card },
+                // En móvil web el padding grande comía el ancho y cortaba
+                // palabras y botones
+                isMobile && { padding: 16 },
+              ]}
+            >
               {/* Order Type Selector */}
               <View style={styles.section}>
                 <View style={styles.formSectionHeader}>
@@ -887,9 +995,11 @@ export default function CheckoutScreen({ route }: any) {
                         ? "credit-card"
                         : paymentMethod === "stripe_bizum"
                           ? "smartphone"
-                          : paymentMethod === "paypal"
-                            ? "dollar-sign"
-                            : "zap"
+                          : paymentMethod === "comeyacard"
+                            ? "gift"
+                            : paymentMethod === "paypal"
+                              ? "dollar-sign"
+                              : "zap"
                     }
                     size={24}
                     color="#1F2937"
@@ -898,19 +1008,24 @@ export default function CheckoutScreen({ route }: any) {
                     <ThemedText
                       type="body"
                       style={{ fontWeight: "600", marginBottom: 4 }}
+                      numberOfLines={2}
                     >
                       {selectedPaymentMethod?.displayName ||
                         (paymentMethod === "stripe_card"
                           ? "Tarjeta"
                           : paymentMethod === "stripe_bizum"
                             ? "Bizum"
-                            : paymentMethod === "paypal"
-                              ? "PayPal"
-                              : "Binance Pay")}
+                            : paymentMethod === "comeyacard"
+                              ? `ComeYaCard (saldo ${giftCardInfo?.balance?.toFixed(2) ?? "0"} €)`
+                              : paymentMethod === "paypal"
+                                ? "PayPal"
+                                : "Binance Pay")}
                     </ThemedText>
                     <ThemedText type="small" style={{ color: "#6B7280" }}>
                       {selectedPaymentMethod?.instructions ||
-                        "Pago seguro y automático"}
+                        (paymentMethod === "comeyacard"
+                          ? "Pago con tu tarjeta regalo"
+                          : "Pago seguro y automático")}
                     </ThemedText>
                   </View>
                   <Feather name="check-circle" size={20} color={PRIMARY} />
@@ -973,6 +1088,78 @@ export default function CheckoutScreen({ route }: any) {
                       ]}
                     >
                       {couponLoading ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <ThemedText
+                          type="body"
+                          style={{ color: "#FFF", fontWeight: "600" }}
+                        >
+                          Aplicar
+                        </ThemedText>
+                      )}
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.divider} />
+
+              {/* ComeYaCard (tarjeta regalo) — mismo flujo que la app */}
+              <View style={styles.section}>
+                <View style={styles.formSectionHeader}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Feather name="gift" size={20} color={PRIMARY} />
+                    <ThemedText type="h4" style={{ marginLeft: 12 }}>
+                      Pagar con ComeYaCard
+                    </ThemedText>
+                  </View>
+                </View>
+
+                {giftCardInfo ? (
+                  <View style={styles.appliedCoupon}>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText
+                        type="body"
+                        style={{
+                          fontWeight: "600",
+                          color: "#059669",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {giftCardInfo.code}
+                      </ThemedText>
+                      <ThemedText type="small" style={{ color: "#6B7280" }}>
+                        Cubrirá el total del pedido (
+                        {totalShown.toFixed(2)} €)
+                      </ThemedText>
+                    </View>
+                    <Pressable onPress={handleRemoveGiftCard}>
+                      <Feather name="x" size={20} color="#E60000" />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles.couponInputRow}>
+                    <TextInput
+                      style={styles.couponInput}
+                      value={giftCardCode}
+                      onChangeText={setGiftCardCode}
+                      placeholder="XXXX-XXXX-XXXX-XXXX"
+                      placeholderTextColor="#9CA3AF"
+                      autoCapitalize="characters"
+                      editable={!giftCardLoading}
+                    />
+                    <Pressable
+                      onPress={handleApplyGiftCard}
+                      disabled={giftCardLoading || !giftCardCode.trim()}
+                      style={[
+                        styles.applyButton,
+                        {
+                          opacity:
+                            giftCardLoading || !giftCardCode.trim() ? 0.5 : 1,
+                        },
+                      ]}
+                    >
+                      {giftCardLoading ? (
                         <ActivityIndicator size="small" color="#FFF" />
                       ) : (
                         <ThemedText
@@ -1244,6 +1431,16 @@ export default function CheckoutScreen({ route }: any) {
                   <View style={styles.pickupBadge}>
                     <ThemedText type="small" style={{ color: "#059669" }}>
                       🎉 Sin coste de envío al recoger en local
+                    </ThemedText>
+                  </View>
+                )}
+                {serviceFeeCents > 0 && (
+                  <View style={styles.summaryRow}>
+                    <ThemedText type="body" style={{ color: "#6B7280" }}>
+                      Coste de servicio
+                    </ThemedText>
+                    <ThemedText type="body">
+                      {(serviceFeeCents / 100).toFixed(2)} €
                     </ThemedText>
                   </View>
                 )}
@@ -1695,6 +1892,11 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    // En móvil el valor caía fuera de tarjeta y se "cortaban" palabras:
+    // con wrap el importe pasa a la línea siguiente en vez de desbordar
+    flexWrap: "wrap",
     marginBottom: 12,
   },
   totalRow: {

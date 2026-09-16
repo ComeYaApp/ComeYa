@@ -284,11 +284,10 @@ router.post(
       }
       const nemyCommission = commissionOn(subtotal, commissionRatePct);
 
-      // Coste de servicio: solo pedidos de reparto (recogida y pedidos
-      // anticipados de reserva no pagan servicio)
-      const isPickup =
-        req.body.orderType === "pickup" || linkedReservation !== null;
-      const serviceFee = isPickup ? 0 : pricing.serviceFeeCents;
+      // Coste de servicio en TODOS los pedidos, también recogida en local
+      // y pedidos anticipados de reserva (feedback del cliente: "terminalo
+      // todo que esté todo completo")
+      const serviceFee = pricing.serviceFeeCents;
 
       // Pago con ComeYaCard (tarjeta regalo): validación previa para fallar
       // rápido; el canje atómico se hace tras crear el pedido (necesita el id)
