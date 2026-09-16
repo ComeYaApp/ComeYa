@@ -12,3 +12,4 @@ export { VerificationsTab } from "./VerificationsTab";
 export { IssuesTab } from "./IssuesTab";
 export { RefundsTab } from "./RefundsTab";
 export { AdminReservationsTab } from "./AdminReservationsTab";
+export { RankingTab } from "./RankingTab";

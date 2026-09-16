@@ -63,6 +63,21 @@ export class LoyaltyService {
     orderTotal: number,
   ) {
     try {
+      // Idempotencia: si este pedido ya dio puntos (confirmación manual +
+      // auto-confirm corriendo a la vez), no se duplican
+      const { and, eq } = await import("drizzle-orm");
+      const [existing] = await db
+        .select({ id: loyaltyTransactions.id })
+        .from(loyaltyTransactions)
+        .where(
+          and(
+            eq(loyaltyTransactions.orderId, orderId),
+            eq(loyaltyTransactions.type, "earned"),
+          ),
+        )
+        .limit(1);
+      if (existing) return;
+
       // 1 punto por cada euro gastado (orderTotal en centimos)
       const points = Math.floor(orderTotal / 100);
 

@@ -48,9 +48,11 @@ export default function GamificationScreen() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<
-    "rewards" | "achievements" | "leaderboard"
-  >("rewards");
+  // El ranking de compradores es SOLO para el administrador (protección de
+  // datos): aquí ya no se muestra. Tabs: Recompensas y Logros.
+  const [activeTab, setActiveTab] = useState<"rewards" | "achievements">(
+    "rewards",
+  );
   const [refreshing, setRefreshing] = useState(false);
 
   // Puntos del usuario
@@ -78,18 +80,6 @@ export default function GamificationScreen() {
       const response = await apiRequest(
         "GET",
         "/api/gamification/achievements",
-      );
-      return response.json();
-    },
-  });
-
-  // Leaderboard
-  const { data: leaderboardData } = useQuery({
-    queryKey: ["/api/gamification/leaderboard"],
-    queryFn: async () => {
-      const response = await apiRequest(
-        "GET",
-        "/api/gamification/leaderboard?limit=50",
       );
       return response.json();
     },
@@ -130,7 +120,6 @@ export default function GamificationScreen() {
   const points = pointsData?.points;
   const rewards = rewardsData?.rewards || [];
   const achievements = achievementsData || { unlocked: [], locked: [] };
-  const leaderboard = leaderboardData?.leaderboard || [];
 
   const tierColor = points?.tier
     ? TIER_COLORS[points.tier as keyof typeof TIER_COLORS]
@@ -213,9 +202,9 @@ export default function GamificationScreen() {
         </ThemedText>
       </View>
 
-      {/* Tabs */}
+      {/* Tabs (sin Ranking: es exclusivo del administrador) */}
       <View style={styles.tabs}>
-        {(["rewards", "achievements", "leaderboard"] as const).map((tab) => (
+        {(["rewards", "achievements"] as const).map((tab) => (
           <Pressable
             key={tab}
             onPress={() => {
@@ -239,11 +228,7 @@ export default function GamificationScreen() {
                 fontWeight: activeTab === tab ? "600" : "400",
               }}
             >
-              {tab === "rewards"
-                ? "Recompensas"
-                : tab === "achievements"
-                  ? "Logros"
-                  : "Ranking"}
+              {tab === "rewards" ? "Recompensas" : "Logros"}
             </ThemedText>
           </Pressable>
         ))}
@@ -403,69 +388,6 @@ export default function GamificationScreen() {
           </View>
         )}
 
-        {/* Leaderboard Tab */}
-        {activeTab === "leaderboard" && (
-          <View>
-            {leaderboard.map((entry: any, index: number) => (
-              <View
-                key={entry.userId}
-                style={[
-                  styles.leaderboardCard,
-                  { backgroundColor: theme.card },
-                  Shadows.sm,
-                ]}
-              >
-                <View style={styles.leaderboardLeft}>
-                  <View
-                    style={[
-                      styles.rankBadge,
-                      {
-                        backgroundColor:
-                          index === 0
-                            ? "#FFD700"
-                            : index === 1
-                              ? "#C0C0C0"
-                              : index === 2
-                                ? "#CD7F32"
-                                : theme.backgroundSecondary,
-                      },
-                    ]}
-                  >
-                    <ThemedText
-                      type="caption"
-                      style={{
-                        color: index < 3 ? "#FFFFFF" : theme.text,
-                        fontWeight: "600",
-                      }}
-                    >
-                      {index + 1}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.leaderboardInfo}>
-                    <ThemedText type="body" numberOfLines={1}>
-                      {entry.userName}
-                    </ThemedText>
-                    <ThemedText
-                      type="caption"
-                      style={{
-                        color: theme.textSecondary,
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {entry.tier}
-                    </ThemedText>
-                  </View>
-                </View>
-                <ThemedText
-                  type="body"
-                  style={{ fontWeight: "600", color: ComeYaColors.primary }}
-                >
-                  {entry.totalEarned} pts
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-        )}
       </ScrollView>
     </ThemedView>
   );

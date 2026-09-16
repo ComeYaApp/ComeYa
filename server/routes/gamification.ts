@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken } from "../authMiddleware";
+import { authenticateToken, requireRole } from "../authMiddleware";
 import { GamificationService } from "../gamificationService";
 
 const router = express.Router();
@@ -15,17 +15,24 @@ router.get("/points", authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/gamification/leaderboard - Obtener leaderboard
-router.get("/leaderboard", async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit as string) || 50;
-    const result = await GamificationService.getLeaderboard(limit);
-    res.json(result);
-  } catch (error: any) {
-    console.error("Get leaderboard error:", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// GET /api/gamification/leaderboard - Ranking de clientes.
+// SOLO ADMIN: antes era público y cualquier cliente veía los nombres reales
+// y los puntos de los demás compradores (protección de datos).
+router.get(
+  "/leaderboard",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 50;
+      const result = await GamificationService.getLeaderboard(limit);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Get leaderboard error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
 
 // GET /api/gamification/achievements - Obtener achievements del usuario
 router.get("/achievements", authenticateToken, async (req, res) => {

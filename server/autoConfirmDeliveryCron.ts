@@ -72,6 +72,19 @@ export function startAutoConfirmCron() {
             })
             .where(eq(orders.id, order.id));
 
+          // Puntos de lealtad reales también al auto-confirmar: cada pedido
+          // completado da 1 punto por euro (idempotente por orderId)
+          try {
+            const { LoyaltyService } = await import("./loyaltyService");
+            await LoyaltyService.awardPointsForOrder(
+              order.userId,
+              order.id,
+              order.total,
+            );
+          } catch (loyaltyErr) {
+            console.error("Error awarding loyalty points (auto-confirm):", loyaltyErr);
+          }
+
           const [business] = await db
             .select({ ownerId: businesses.ownerId })
             .from(businesses)

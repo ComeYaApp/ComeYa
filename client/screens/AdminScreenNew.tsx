@@ -43,6 +43,7 @@ import {
   VerificationsTab,
   IssuesTab,
   RefundsTab,
+  RankingTab,
   AdminReservationsTab,
 } from "@/components/admin/tabs";
 import type {
@@ -146,6 +147,13 @@ const menuItems: MenuItem[] = [
     icon: "users",
     tab: "users",
     color: "#FF9800",
+  },
+  {
+    title: "Ranking clientes",
+    subtitle: "Quiénes más compran (privado)",
+    icon: "award",
+    tab: "ranking",
+    color: "#E91E63",
   },
   {
     title: "Negocios",
@@ -542,6 +550,12 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
               onBusinessPress={handleBusinessPress}
               onRefresh={fetchData}
             />
+          </View>
+        );
+      case "ranking":
+        return (
+          <View style={{ flex: 1 }}>
+            <RankingTab />
           </View>
         );
       case "users":
