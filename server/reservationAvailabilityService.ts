@@ -249,8 +249,11 @@ export class ReservationAvailabilityService {
     const dayOfWeek = new Date(`${date}T12:00:00`).getDay();
     const entry = resolveDayEntry(hours, dayOfWeek);
     let windows = dayWindows(entry);
-    if (windows.length === 0 && !hours) {
-      // Sin horarios: turno estándar 13:00–16:00 y 20:00–23:30
+    if (windows.length === 0) {
+      // Sin horarios válidos (null, vacío {} o malformado): turno estándar
+      // 13:00–16:00 y 20:00–23:30. Antes solo aplicaba con hours=null y los
+      // negocios con openingHours "{}" no ofrecían NINGUNA franja — era el
+      // caso de reservas imposibles salvo desde "Tu noche planificada".
       windows = [
         { start: 13 * 60, end: 16 * 60 },
         { start: 20 * 60, end: 23 * 60 + 30 },

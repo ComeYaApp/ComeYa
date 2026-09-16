@@ -1179,11 +1179,20 @@ export default function MyBusinessesScreen() {
                   styles.toggleRow,
                   { justifyContent: "flex-start", gap: 6 },
                 ]}
-                onPress={() =>
+                onPress={() => {
+                  const bizId =
+                    businessToEdit?.id || selectedBusiness?.id || null;
+                  if (!bizId) {
+                    Alert.alert(
+                      "Guarda primero el negocio",
+                      "Guarda los datos del negocio para poder configurar las reservas.",
+                    );
+                    return;
+                  }
                   navigation.navigate("BusinessReservationsSettings", {
-                    businessId: businessToEdit?.id || selectedBusiness?.id,
-                  })
-                }
+                    businessId: bizId,
+                  });
+                }}
               >
                 <Feather
                   name="sliders"

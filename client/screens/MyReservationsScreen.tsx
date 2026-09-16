@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import {
@@ -62,6 +63,15 @@ export default function MyReservationsScreen() {
   const [preLoading, setPreLoading] = useState(false);
   const [preMarkup, setPreMarkup] = useState(1.05);
   const [preSubmitting, setPreSubmitting] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Activas = pendiente/confirmada/sentada (pueden ser varias a la vez)
+  const ACTIVE_RES_STATUSES = ["pending", "confirmed", "seated"];
+  const visibleReservations = showHistory
+    ? reservations
+    : reservations.filter((r: any) =>
+        ACTIVE_RES_STATUSES.includes(r.status),
+      );
   // Reservas entre amigos
   const [shareFor, setShareFor] = useState<any>(null);
   const [shareData, setShareData] = useState<any>(null);
@@ -299,7 +309,45 @@ export default function MyReservationsScreen() {
           </View>
         )}
 
-        {!loading && reservations.length === 0 && (
+        {/* Solo reservas ACTIVAS por defecto (feedback del cliente): el
+            historial queda a un toque */}
+        {reservations.length > 0 && (
+          <View style={styles.historyToggleRow}>
+            {[
+              { key: false, label: "Activas" },
+              { key: true, label: "Historial" },
+            ].map((tab) => (
+              <Pressable
+                key={String(tab.key)}
+                onPress={() => {
+                  setShowHistory(tab.key);
+                  Haptics.selectionAsync();
+                }}
+                style={[
+                  styles.historyToggle,
+                  {
+                    backgroundColor:
+                      showHistory === tab.key
+                        ? ComeYaColors.primary
+                        : theme.backgroundSecondary,
+                  },
+                ]}
+              >
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: showHistory === tab.key ? "#FFF" : theme.text,
+                    fontWeight: "700",
+                  }}
+                >
+                  {tab.label}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {!loading && visibleReservations.length === 0 && (
           <View style={styles.emptyState}>
             <Feather name="calendar" size={64} color={theme.textSecondary} />
             <ThemedText
@@ -324,7 +372,7 @@ export default function MyReservationsScreen() {
           </View>
         )}
 
-        {reservations.map((r: any) => {
+        {visibleReservations.map((r: any) => {
           const meta = STATUS_META[r.status] || STATUS_META.pending;
           const cancellable =
             (r.status === "pending" || r.status === "confirmed") &&
@@ -667,6 +715,16 @@ const styles = StyleSheet.create({
   content: {
     padding: Spacing.lg,
     paddingBottom: Spacing["4xl"],
+  },
+  historyToggleRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  historyToggle: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
   },
   emptyState: {
     alignItems: "center",
