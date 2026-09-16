@@ -44,6 +44,7 @@ import {
   IssuesTab,
   RefundsTab,
   RankingTab,
+  CommunicationsTab,
   AdminReservationsTab,
 } from "@/components/admin/tabs";
 import type {
@@ -154,6 +155,13 @@ const menuItems: MenuItem[] = [
     icon: "award",
     tab: "ranking",
     color: "#E91E63",
+  },
+  {
+    title: "Comunicaciones",
+    subtitle: "Notificar ofertas a clientes, negocios y repartidores",
+    icon: "bell",
+    tab: "communications",
+    color: "#3B82F6",
   },
   {
     title: "Negocios",
@@ -556,6 +564,12 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         return (
           <View style={{ flex: 1 }}>
             <RankingTab />
+          </View>
+        );
+      case "communications":
+        return (
+          <View style={{ flex: 1 }}>
+            <CommunicationsTab theme={theme} showToast={showToast} />
           </View>
         );
       case "users":

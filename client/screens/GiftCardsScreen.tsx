@@ -26,6 +26,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { SocialIntegrationService } from "@/services/SocialIntegrationService";
 import { useToast } from "@/contexts/ToastContext";
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 import * as Clipboard from "expo-clipboard";
@@ -534,29 +535,58 @@ export default function GiftCardsScreen() {
                       <Feather name="gift" size={24} color={st.color} />
                     </View>
                     <View style={styles.cardInfo}>
-                      <Pressable
-                        style={styles.codeCopyRow}
-                        onPress={async () => {
-                          try {
-                            await Clipboard.setStringAsync(card.code);
-                            showToast("Código copiado", "success");
+                      <View style={styles.codeCopyRow}>
+                        <Pressable
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                          onPress={async () => {
+                            try {
+                              await Clipboard.setStringAsync(card.code);
+                              showToast("Código copiado", "success");
+                              Haptics.impactAsync(
+                                Haptics.ImpactFeedbackStyle.Light,
+                              );
+                            } catch {
+                              showToast("No se pudo copiar el código", "error");
+                            }
+                          }}
+                        >
+                          <ThemedText type="body" style={{ fontWeight: "600" }}>
+                            {card.code}
+                          </ThemedText>
+                          <Feather
+                            name="copy"
+                            size={16}
+                            color={ComeYaColors.primary}
+                          />
+                        </Pressable>
+                        {/* Enviar el código al destinatario por WhatsApp o la
+                            red social que elija (el código es dinero: solo
+                            lo comparte el dueño de la tarjeta) */}
+                        <Pressable
+                          onPress={() => {
                             Haptics.impactAsync(
                               Haptics.ImpactFeedbackStyle.Light,
                             );
-                          } catch {
-                            showToast("No se pudo copiar el código", "error");
-                          }
-                        }}
-                      >
-                        <ThemedText type="body" style={{ fontWeight: "600" }}>
-                          {card.code}
-                        </ThemedText>
-                        <Feather
-                          name="copy"
-                          size={16}
-                          color={ComeYaColors.primary}
-                        />
-                      </Pressable>
+                            SocialIntegrationService.shareGiftCardCode(
+                              card.code,
+                              card.balance?.toFixed(2) ??
+                                card.amount?.toFixed(2) ??
+                                "0",
+                            );
+                          }}
+                          hitSlop={8}
+                        >
+                          <Feather
+                            name="share-2"
+                            size={16}
+                            color={ComeYaColors.primary}
+                          />
+                        </Pressable>
+                      </View>
                       <View
                         style={{
                           backgroundColor: st.color + "20",

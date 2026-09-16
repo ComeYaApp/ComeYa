@@ -38,6 +38,7 @@ import { Business, Product } from "@/types";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { getMarkupMultiplier } from "@/services/pricingConfigService";
+import { SocialIntegrationService } from "@/services/SocialIntegrationService";
 import { formatEuros } from "@/utils/currency";
 
 type BusinessDetailRouteProp = RouteProp<RootStackParamList, "BusinessDetail">;
@@ -679,6 +680,26 @@ export default function BusinessDetailScreen() {
             style={[styles.backButton, { backgroundColor: theme.card }]}
           >
             <Feather name="arrow-left" size={24} color={theme.text} />
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              if (!business) return;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              // Hoja de compartir nativa: muestra Instagram, TikTok,
+              // Facebook, WhatsApp… según las apps instaladas
+              SocialIntegrationService.shareBusiness({
+                businessId: business.id,
+                businessName: business.name,
+                rating: business.rating,
+                image: business.profileImage,
+              });
+            }}
+            style={[
+              styles.backButton,
+              { backgroundColor: theme.card, left: undefined, right: Spacing.lg },
+            ]}
+          >
+            <Feather name="share-2" size={22} color={theme.text} />
           </Pressable>
         </View>
 

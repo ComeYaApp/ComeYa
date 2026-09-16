@@ -14,7 +14,7 @@ export class SocialIntegrationService {
       .map((item) => `• ${item.quantity}x ${item.product?.name || item.name}`)
       .join("\n");
 
-    const message = `🍔 ¡Acabo de pedir en ${businessName}!\n\n${itemsList}\n\nTotal: Bs.${total.toFixed(2)}\n\n📱 Descarga ComeYa y pide tú también:\nComeYa://download`;
+    const message = `🍔 ¡Acabo de pedir en ${businessName}!\n\n${itemsList}\n\nTotal: ${total.toFixed(2)} €\n\n📱 Descarga ComeYa y pide tú también:\nComeYa://download`;
 
     const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
 
@@ -60,7 +60,7 @@ export class SocialIntegrationService {
 
   // Compartir código de referido
   static async shareReferralCode(referralCode: string, userName: string) {
-    const message = `🎁 ${userName} te invita a ComeYa!\n\nUsa mi código: ${referralCode}\n\n✨ Obtén Bs.10 de descuento en tu primer pedido\n\n📱 Descarga la app:\nComeYa://referral/${referralCode}`;
+    const message = `🎁 ${userName} te invita a ComeYa!\n\nUsa mi código: ${referralCode}\n\n✨ Obtén 10 € de descuento en tu primer pedido\n\n📱 Descarga la app:\nComeYa://referral/${referralCode}`;
 
     try {
       await Share.share({
@@ -70,6 +70,24 @@ export class SocialIntegrationService {
       return { success: true };
     } catch (error) {
       console.error("Share referral error:", error);
+      return { success: false, error: "Error al compartir" };
+    }
+  }
+
+  // Enviar el código de una gift card al destinatario (WhatsApp o cualquier
+  // app de la hoja de compartir). El código es dinero: se comparte solo por
+  // elección explícita del dueño de la tarjeta.
+  static async shareGiftCardCode(code: string, amountEuros: string) {
+    const message = `🎁 ¡Te he regalado una tarjeta ComeYa de ${amountEuros} €!\n\nTu código: ${code}\n\nÚsalo en el checkout eligiendo "ComeYaCard" como método de pago.`;
+
+    try {
+      await Share.share({
+        message,
+        title: "🎁 Tarjeta regalo ComeYa",
+      });
+      return { success: true };
+    } catch (error) {
+      console.error("Share gift card error:", error);
       return { success: false, error: "Error al compartir" };
     }
   }
