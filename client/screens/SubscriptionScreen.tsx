@@ -403,6 +403,30 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
+        {/* Condiciones 2026: visible SIN hacer scroll (antes quedaba al final
+            de la pantalla y casi no se veía) */}
+        <TouchableOpacity
+          style={styles.termsButton}
+          onPress={() =>
+            navigation.navigate(
+              "SubscriptionConditions",
+              {
+                initialPlan: isBusinessOwner
+                  ? "impulso_local"
+                  : currentPlan === "comeya_pass"
+                    ? "comeya_pass"
+                    : "soria_local",
+              } as never,
+            )
+          }
+        >
+          <Feather name="file-text" size={18} color={ComeYaColors.primary} />
+          <Text style={[styles.termsButtonText, { color: ComeYaColors.primary }]}>
+            Ver condiciones completas 2026
+          </Text>
+          <Feather name="chevron-right" size={18} color={ComeYaColors.primary} />
+        </TouchableOpacity>
+
         {/* Título sección planes */}
         {isActive && currentPlan !== "free" ? (
           <Text style={styles.sectionTitle}>Cambiar de plan</Text>
@@ -506,17 +530,6 @@ export default function SubscriptionScreen() {
           </Text>
         </View>
 
-        {/* Enlace al documento de condiciones 2026 */}
-        <TouchableOpacity
-          style={styles.termsButton}
-          onPress={() => navigation.navigate("SubscriptionConditions" as never)}
-        >
-          <Feather name="file-text" size={18} color={ComeYaColors.primary} />
-          <Text style={[styles.termsButtonText, { color: ComeYaColors.primary }]}>
-            Ver condiciones completas 2026
-          </Text>
-          <Feather name="chevron-right" size={18} color={ComeYaColors.primary} />
-        </TouchableOpacity>
       </ScrollView>
 
       {/* ── MODAL MÉTODO DE PAGO ─────────────────────────────────────────── */}

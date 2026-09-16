@@ -11,9 +11,15 @@ import { Pressable } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
-type PlanKey = "soria_local" | "impulso_local" | "top_soria" | "premium_soria";
+type PlanKey =
+  | "soria_local"
+  | "comeya_pass"
+  | "impulso_local"
+  | "top_soria"
+  | "premium_soria";
 
 interface Section {
   title: string;
@@ -55,6 +61,41 @@ const PLANS: Record<
           "Sin permanencia: puedes cancelar cuando quieras desde tu perfil.",
           "Si cancelas, conservas los beneficios hasta el final del período ya pagado.",
           "El importe del mes en curso no se reembolsa una vez aplicados beneficios.",
+        ],
+      },
+    ],
+  },
+  comeya_pass: {
+    name: "ComeYa Pass (clientes)",
+    emoji: "✨",
+    price: "4,99 €",
+    cycle: "al mes",
+    audience: "Para clientes frecuentes de ComeYa",
+    sections: [
+      {
+        title: "1. Qué incluye tu suscripción",
+        items: [
+          "Puntos x2 en tus pedidos y en tus reservas de mesa.",
+          "Ofertas exclusivas y acceso anticipado a novedades.",
+          "Insignia Pass visible en tu perfil.",
+          "Soporte prioritario en el chat de la aplicación.",
+        ],
+      },
+      {
+        title: "2. Precio y facturación",
+        items: [
+          "El precio es de 4,99 € al mes, IVA incluido.",
+          "El pago se realiza exclusivamente con tarjeta a través de Stripe (no se aceptan transferencias).",
+          "La suscripción se renueva automáticamente cada mes hasta que la canceles.",
+          "Los puntos dobles se aplican de forma automática al completarse el pedido o confirmarse la reserva.",
+        ],
+      },
+      {
+        title: "3. Permanencia y cancelación",
+        items: [
+          "Sin permanencia: puedes cancelar cuando quieras desde tu perfil.",
+          "Si cancelas, conservas el beneficio hasta el final del período ya pagado.",
+          "Los puntos ya ganados no se pierden al cancelar.",
         ],
       },
     ],
@@ -174,11 +215,23 @@ const GENERAL_TERMS = [
   "Para cualquier duda sobre tu suscripción: soporte@comeya.es o el chat de ayuda de la aplicación.",
 ];
 
-export default function SubscriptionConditionsScreen() {
+export default function SubscriptionConditionsScreen({ route }: { route?: any }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const [plan, setPlan] = useState<PlanKey>("impulso_local");
+  const { user } = useAuth();
+  const isBusinessOwner = user?.role === "business_owner";
+
+  // Condiciones SEGÚN EL ROL: el cliente ve sus planes (Soria Local /
+  // ComeYa Pass) y el negocio los suyos (Impulso, Top, Premium)
+  const planKeys: PlanKey[] = isBusinessOwner
+    ? ["impulso_local", "top_soria", "premium_soria"]
+    : ["soria_local", "comeya_pass"];
+
+  const initial = (route?.params?.initialPlan as PlanKey) ?? planKeys[0];
+  const [plan, setPlan] = useState<PlanKey>(
+    planKeys.includes(initial) ? initial : planKeys[0],
+  );
   const current = PLANS[plan];
 
   return (
@@ -194,9 +247,9 @@ export default function SubscriptionConditionsScreen() {
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}
       >
-        {/* Selector de plan */}
+        {/* Selector de plan (solo los del rol actual) */}
         <View style={styles.planRow}>
-          {(Object.keys(PLANS) as PlanKey[]).map((key) => (
+          {planKeys.map((key) => (
             <Pressable
               key={key}
               onPress={() => setPlan(key)}

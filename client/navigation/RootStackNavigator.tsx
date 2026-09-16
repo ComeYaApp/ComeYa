@@ -148,7 +148,7 @@ export type RootStackParamList = {
   ChangePhoneEmail: undefined;
   Gamification: undefined;
   Subscriptions: undefined;
-  SubscriptionConditions: undefined;
+  SubscriptionConditions: { initialPlan?: string } | undefined;
   GiftCards: undefined;
   ScheduledOrders: undefined;
   MyReservations: { reservationId?: string } | undefined;
