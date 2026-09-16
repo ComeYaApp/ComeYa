@@ -14,9 +14,9 @@ export default {
         ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
-      // Versionado local: App Store Connect ya tiene el build 14; cada
-      // build nuevo debe incrementar este número a mano (13, 14, 15…)
-      buildNumber: "17",
+      // Versionado local: App Store Connect ya tiene el build 17; cada
+      // build nuevo debe incrementar este número a mano (16, 17, 18…)
+      buildNumber: "18",
       config: {
         // ComeYa iOS Key (Maps SDK for iOS, restringida por bundle). Fallback
         // a la genérica solo para no romper builds sin la variable.
