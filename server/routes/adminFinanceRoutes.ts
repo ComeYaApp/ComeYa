@@ -251,39 +251,56 @@ router.get(
   },
 );
 
-// GET /api/admin/finance/earnings-chart - Datos para gráfica de ganancias
+// GET /api/admin/finance/earnings-chart - Datos para gráfica de ganancias.
+// Agrupación por día en SQL (antes cargaba TODOS los pedidos en memoria y
+// los filtraba en JavaScript) y rellenando los días sin ventas con 0 para
+// que la gráfica diaria sea real.
 router.get(
   "/earnings-chart",
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { orders } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
+      const { sql } = await import("drizzle-orm");
 
-      const days = parseInt(req.query.days as string) || 30;
-      const allOrders = await db.select().from(orders);
-      const deliveredOrders = allOrders.filter((o) => o.status === "delivered");
+      const days = Math.min(parseInt(req.query.days as string) || 30, 90);
 
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
+      const [result] = await db.execute(sql`
+        SELECT DATE(created_at) AS day,
+               COALESCE(SUM(nemy_commission), 0) AS commission,
+               COALESCE(SUM(service_fee), 0) AS service_fees,
+               COUNT(*) AS orders
+        FROM orders
+        WHERE status = 'delivered'
+          AND created_at >= DATE_SUB(CURDATE(), INTERVAL ${days} DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY day ASC
+      `);
 
-      // Agrupar por día
-      const dailyEarnings = new Map<string, number>();
-
-      for (const order of deliveredOrders) {
-        const orderDate = new Date(order.createdAt);
-        if (orderDate >= startDate) {
-          const dateKey = orderDate.toISOString().split("T")[0];
-          const current = dailyEarnings.get(dateKey) || 0;
-          dailyEarnings.set(dateKey, current + (order.nemyCommission || 0));
-        }
+      // Mapa fecha → valores, rellenando los días sin ventas con 0
+      const byDay = new Map<string, any>();
+      for (const row of result as any[]) {
+        const day =
+          row.day instanceof Date
+            ? row.day.toISOString().split("T")[0]
+            : String(row.day).split("T")[0];
+        byDay.set(day, row);
       }
-
-      // Convertir a array ordenado
-      const chartData = Array.from(dailyEarnings.entries())
-        .map(([date, amount]) => ({ date, amount }))
-        .sort((a, b) => a.date.localeCompare(b.date));
+      const chartData: { date: string; amount: number; serviceFees: number; orders: number }[] = [];
+      const cursor = new Date();
+      cursor.setDate(cursor.getDate() - (days - 1));
+      for (let i = 0; i < days; i++) {
+        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+        const row = byDay.get(key);
+        chartData.push({
+          date: key,
+          amount: Number(row?.commission) || 0,
+          serviceFees: Number(row?.service_fees) || 0,
+          orders: Number(row?.orders) || 0,
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
 
       res.json({
         success: true,

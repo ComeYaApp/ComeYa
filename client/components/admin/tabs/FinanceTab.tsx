@@ -1234,7 +1234,9 @@ const st = (theme: any) =>
     sub: { fontSize: 12, marginBottom: 2 },
     accountBox: { borderRadius: 8, padding: 10, marginBottom: 8 },
     accountLabel: { fontSize: 12, fontWeight: "700", marginBottom: 4 },
-    accountValue: { fontSize: 13, marginBottom: 2 },
+    // flexShrink para que los valores largos (IBAN, correos) no se corten
+    // ni desborden la tarjeta en pantallas estrechas
+    accountValue: { fontSize: 13, marginBottom: 2, flexShrink: 1 },
     input: {
       borderWidth: 1,
       borderRadius: 8,

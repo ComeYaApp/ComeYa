@@ -226,6 +226,47 @@ export default function AdminMapScreen() {
     [refresh],
   );
 
+  // Cancelar pedido + reembolso desde el mapa (control total del admin)
+  const handleAdminCancel = useCallback(
+    (order: OpsOrder) => {
+      Alert.alert(
+        "Cancelar y reembolsar",
+        `Se cancelará ${displayOrderNumber(order as any)} (${euro(order.total)}) y se reembolsará al cliente por completo. ¿Confirmas?`,
+        [
+          { text: "Volver", style: "cancel" },
+          {
+            text: "Sí, cancelar y reembolsar",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const res = await apiRequest(
+                  "POST",
+                  `/api/admin/orders/${order.id}/cancel`,
+                  { reason: "Cancelado por el administrador desde el mapa" },
+                );
+                const data = await res.json();
+                if (data.success) {
+                  setSelected(null);
+                  setNearby(null);
+                  refresh();
+                  Alert.alert(
+                    "Pedido cancelado",
+                    data.message || "El cliente recibirá el reembolso.",
+                  );
+                } else {
+                  Alert.alert("Error", data.error || "No se pudo cancelar");
+                }
+              } catch {
+                Alert.alert("Error", "No se pudo conectar con el servidor");
+              }
+            },
+          },
+        ],
+      );
+    },
+    [refresh],
+  );
+
   if (loading && !orders.length && !error) {
     return (
       <View style={[s.centered, { backgroundColor: theme.background }]}>
@@ -558,6 +599,14 @@ export default function AdminMapScreen() {
                 label={selected.driver ? "Reasignar" : "Asignar"}
                 color={ComeYaColors.primary}
                 onPress={() => loadNearby(selected.id)}
+              />
+              {/* Control total desde el mapa (feedback del cliente): cancelar
+                  el pedido y reembolsar al cliente sin salir del mapa */}
+              <ActionBtn
+                icon="x-circle"
+                label="Cancelar + Reembolsar"
+                color="#EF4444"
+                onPress={() => handleAdminCancel(selected)}
               />
             </View>
 

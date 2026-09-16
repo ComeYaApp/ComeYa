@@ -15,65 +15,99 @@ router.get(
     try {
       const { db } = await import("../db");
 
-      const [[todayRow], [activeRow], [avgRow], [driverRow], [bizRow]] =
-        (await Promise.all([
-          db
-            .execute(sql`
-              SELECT
-                COUNT(*) AS orders_today,
-                SUM(status = 'cancelled') AS cancelled_today,
-                SUM(status = 'delivered') AS delivered_today,
-                COALESCE(SUM(CASE WHEN status = 'delivered' THEN total ELSE 0 END), 0) AS revenue_today
-              FROM orders WHERE created_at >= CURDATE()
-            `)
-            .then((r: any) => r[0]),
-          db
-            .execute(sql`
-              SELECT COUNT(*) AS active_orders FROM orders
-              WHERE status IN (
-                'pending','accepted','preparing','ready',
-                'assigned_driver','picked_up','on_the_way','in_transit','arriving'
-              )
-            `)
-            .then((r: any) => r[0]),
-          db
-            .execute(sql`
-              SELECT
-                AVG(TIMESTAMPDIFF(MINUTE, created_at, delivered_at)) AS avg_total,
-                AVG(TIMESTAMPDIFF(MINUTE, driver_picked_up_at, delivered_at)) AS avg_delivery
-              FROM orders
-              WHERE status = 'delivered' AND delivered_at IS NOT NULL
-                AND delivered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-                AND TIMESTAMPDIFF(MINUTE, created_at, delivered_at) BETWEEN 1 AND 240
-            `)
-            .then((r: any) => r[0]),
-          db
-            .execute(sql`
-              SELECT
-                COUNT(*) AS total,
-                SUM(
-                  is_available = 1
-                  AND last_location_update IS NOT NULL
-                  AND last_location_update >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
-                ) AS online
-              FROM delivery_drivers
-            `)
-            .then((r: any) => r[0]),
-          db
-            .execute(sql`
-              SELECT
-                COUNT(*) AS total,
-                SUM(is_paused = 1 OR is_active = 0) AS paused
-              FROM businesses
-            `)
-            .then((r: any) => r[0]),
-        ])) as any;
+      const [
+        [todayRow],
+        [activeRow],
+        [avgRow],
+        [driverRow],
+        [bizRow],
+        [userRow],
+        [statesRow],
+      ] = (await Promise.all([
+        db
+          .execute(sql`
+            SELECT
+              COUNT(*) AS orders_today,
+              SUM(status = 'cancelled') AS cancelled_today,
+              SUM(status = 'delivered') AS delivered_today,
+              COALESCE(SUM(CASE WHEN status = 'delivered' THEN total ELSE 0 END), 0) AS revenue_today
+            FROM orders WHERE created_at >= CURDATE()
+          `)
+          .then((r: any) => r[0]),
+        db
+          .execute(sql`
+            SELECT COUNT(*) AS active_orders FROM orders
+            WHERE status IN (
+              'pending','accepted','preparing','ready',
+              'assigned_driver','picked_up','on_the_way','in_transit','arriving'
+            )
+          `)
+          .then((r: any) => r[0]),
+        db
+          .execute(sql`
+            SELECT
+              AVG(TIMESTAMPDIFF(MINUTE, created_at, delivered_at)) AS avg_total,
+              AVG(TIMESTAMPDIFF(MINUTE, driver_picked_up_at, delivered_at)) AS avg_delivery
+            FROM orders
+            WHERE status = 'delivered' AND delivered_at IS NOT NULL
+              AND delivered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+              AND TIMESTAMPDIFF(MINUTE, created_at, delivered_at) BETWEEN 1 AND 240
+          `)
+          .then((r: any) => r[0]),
+        db
+          .execute(sql`
+            SELECT
+              COUNT(*) AS total,
+              SUM(
+                is_available = 1
+                AND last_location_update IS NOT NULL
+                AND last_location_update >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+              ) AS online
+            FROM delivery_drivers
+          `)
+          .then((r: any) => r[0]),
+        db
+          .execute(sql`
+            SELECT
+              COUNT(*) AS total,
+              SUM(is_paused = 1 OR is_active = 0) AS paused,
+              SUM(is_active = 1 AND (is_paused = 0 OR is_paused IS NULL)) AS active_biz
+            FROM businesses
+          `)
+          .then((r: any) => r[0]),
+        // Usuarios totales y registrados hoy (antes no se calculaba en ningún
+        // sitio y el KPI del dashboard pintaba 0)
+        db
+          .execute(sql`
+            SELECT
+              COUNT(*) AS total_users,
+              SUM(created_at >= CURDATE()) AS new_users_today,
+              SUM(role = 'customer') AS customers,
+              SUM(role = 'business_owner') AS owners,
+              SUM(role = 'delivery_driver') AS drivers
+            FROM users
+          `)
+          .then((r: any) => r[0]),
+        // Estados de pedido de HOY, verídicos (el dashboard mostraba 0s)
+        db
+          .execute(sql`
+            SELECT status, COUNT(*) AS cnt FROM orders
+            WHERE created_at >= CURDATE()
+            GROUP BY status
+          `)
+          .then((r: any) => r[0]),
+      ])) as any;
 
       const today = (todayRow as any[])[0] || {};
       const active = (activeRow as any[])[0] || {};
       const avg = (avgRow as any[])[0] || {};
       const drv = (driverRow as any[])[0] || {};
       const biz = (bizRow as any[])[0] || {};
+      const usr = (userRow as any[])[0] || {};
+      const orderStatesToday: Record<string, number> = {};
+      for (const row of (statesRow as any[]) || []) {
+        if (row?.status) orderStatesToday[row.status] = Number(row.cnt) || 0;
+      }
 
       // Contadores de badges del sidebar: cada uno tolerante a fallo para que
       // una tabla pendiente de migrar no tumbe las métricas completas
@@ -105,6 +139,9 @@ router.get(
             ? Math.round(Number(avg.avg_total))
             : null;
 
+      const totalBusinesses = Number(biz.total) || 0;
+      const activeBusinesses = Number(biz.active_biz) || 0;
+
       res.json({
         activeOrders: Number(active.active_orders) || 0,
         ordersToday,
@@ -123,7 +160,20 @@ router.get(
         driversOnline: onlineDrivers,
         totalDrivers: Number(drv.total) || 0,
         pausedBusinesses: Number(biz.paused) || 0,
-        totalBusinesses: Number(biz.total) || 0,
+        totalBusinesses,
+        // Negocios activos/inactivos EN TIEMPO REAL (feedback del cliente)
+        activeBusinesses,
+        inactiveBusinesses: Math.max(0, totalBusinesses - activeBusinesses),
+        // Usuarios reales: totales y registrados hoy
+        totalUsers: Number(usr.total_users) || 0,
+        newUsersToday: Number(usr.new_users_today) || 0,
+        usersByRole: {
+          customers: Number(usr.customers) || 0,
+          businessOwners: Number(usr.owners) || 0,
+          drivers: Number(usr.drivers) || 0,
+        },
+        // Estados de pedido de hoy, reales
+        orderStatesToday,
         // Badges del sidebar (antes siempre a 0: nadie los calculaba)
         pendingOrders: Number(active.active_orders) || 0,
         openIssues,
