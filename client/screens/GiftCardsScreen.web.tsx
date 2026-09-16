@@ -16,6 +16,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { apiRequest } from "@/lib/query-client";
+import GiftCardArt from "@/components/giftcards/GiftCardArt";
+import { GIFT_CARD_DESIGNS } from "@/components/giftcards/designs";
 import { MobileSidebarWrapper } from "@/components/MobileSidebarWrapper";
 
 import { WebLayout } from "@/components/WebLayout";
@@ -60,7 +62,7 @@ export default function GiftCardsScreen() {
   const [amount, setAmount] = useState("25");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [selectedDesign, setSelectedDesign] = useState("default");
+  const [selectedDesign, setSelectedDesign] = useState("gold");
   const [paymentMethod] = useState<"stripe">("stripe");
 
   const [proofCardId, setProofCardId] = useState<string | null>(null);
@@ -167,7 +169,6 @@ export default function GiftCardsScreen() {
     },
   });
 
-  const designs = designsData?.designs || [];
   const myCards = myCardsData?.purchased || [];
   const canBuy =
     !!amount && parseFloat(amount) >= 10 && !purchaseMutation.isPending;
@@ -352,45 +353,49 @@ export default function GiftCardsScreen() {
                 />
               </View>
 
-              {/* Diseños */}
-              {designs.length > 0 && (
-                <View
-                  style={[
-                    s.card,
-                    { backgroundColor: card, borderColor: border },
-                  ]}
-                >
-                  <View style={s.cardHeader}>
-                    <Feather name="image" size={18} color={PRIMARY} />
-                    <Text style={[s.cardTitle, { color: text }]}>Diseño</Text>
-                  </View>
-                  <View style={s.designsRow}>
-                    {designs.map((d: any) => (
-                      <Pressable
-                        key={d.id}
-                        onPress={() => setSelectedDesign(d.name)}
-                        style={[
-                          s.designCard,
-                          {
-                            borderColor:
-                              selectedDesign === d.name ? PRIMARY : border,
-                            borderWidth: selectedDesign === d.name ? 3 : 1,
-                          },
-                        ]}
-                      >
-                        <Image
-                          source={{ uri: d.imageUrl }}
-                          style={s.designImg}
-                          contentFit="cover"
-                        />
-                        <Text style={[s.designName, { color: sub }]}>
-                          {d.name}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
+              {/* Diseños nuevos: SVG animados con el logo en el borde */}
+              <View
+                style={[
+                  s.card,
+                  { backgroundColor: card, borderColor: border },
+                ]}
+              >
+                <View style={s.cardHeader}>
+                  <Feather name="image" size={18} color={PRIMARY} />
+                  <Text style={[s.cardTitle, { color: text }]}>Diseño</Text>
                 </View>
-              )}
+                <View style={{ marginBottom: 12 }}>
+                  <GiftCardArt
+                    design={selectedDesign as any}
+                    amount={
+                      amount && parseFloat(amount) >= 10
+                        ? `${parseFloat(amount).toFixed(0)} €`
+                        : null
+                    }
+                  />
+                </View>
+                <View style={s.designsRow}>
+                  {GIFT_CARD_DESIGNS.map((d) => (
+                    <Pressable
+                      key={d.key}
+                      onPress={() => setSelectedDesign(d.key)}
+                      style={[
+                        s.designCard,
+                        {
+                          borderColor:
+                            selectedDesign === d.key ? PRIMARY : border,
+                          borderWidth: selectedDesign === d.key ? 3 : 1,
+                        },
+                      ]}
+                    >
+                      <GiftCardArt design={d.key} compact style={{ width: "100%" }} />
+                      <Text style={[s.designName, { color: sub }]}>
+                        {d.emoji} {d.name}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
 
               {/* Método de pago */}
               <View

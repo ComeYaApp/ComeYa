@@ -27,6 +27,8 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { SocialIntegrationService } from "@/services/SocialIntegrationService";
+import GiftCardArt from "@/components/giftcards/GiftCardArt";
+import { GIFT_CARD_DESIGNS, isGiftCardDesignKey } from "@/components/giftcards/designs";
 import { useToast } from "@/contexts/ToastContext";
 import { useStripePaymentSheet } from "@/hooks/useStripePaymentSheet";
 import * as Clipboard from "expo-clipboard";
@@ -55,7 +57,7 @@ export default function GiftCardsScreen() {
   const [amount, setAmount] = useState("25");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [selectedDesign, setSelectedDesign] = useState("default");
+  const [selectedDesign, setSelectedDesign] = useState("gold");
   // Solo tarjeta (Stripe): las transferencias dejaron de aceptarse
   const [paymentMethod] = useState<"stripe">("stripe");
 
@@ -92,11 +94,8 @@ export default function GiftCardsScreen() {
     }
   };
 
-  const { data: designsData } = useQuery({
-    queryKey: ["/api/gift-cards/designs"],
-    queryFn: async () =>
-      (await apiRequest("GET", "/api/gift-cards/designs")).json(),
-  });
+  // Los diseños son componentes animados propios (client/components/giftcards):
+  // ya no dependen de imágenes subidas a la tabla gift_card_designs.
 
   const { data: myCardsData, refetch: refetchCards } = useQuery({
     queryKey: ["/api/gift-cards/my-cards"],
@@ -208,7 +207,6 @@ export default function GiftCardsScreen() {
     },
   });
 
-  const designs = designsData?.designs || [];
   const myCards = myCardsData?.purchased || [];
 
   return (
@@ -380,57 +378,71 @@ export default function GiftCardsScreen() {
               />
             </View>
 
-            {/* Diseños */}
-            {designs.length > 0 && (
-              <View
-                style={[
-                  styles.section,
-                  { backgroundColor: theme.card },
-                  Shadows.sm,
-                ]}
+            {/* Diseños nuevos: SVG animados con el logo en un borde pequeño */}
+            <View
+              style={[
+                styles.section,
+                { backgroundColor: theme.card },
+                Shadows.sm,
+              ]}
+            >
+              <ThemedText type="h4" style={{ marginBottom: Spacing.xs }}>
+                Diseño
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginBottom: Spacing.md }}
               >
-                <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
-                  Diseño
-                </ThemedText>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.designsRow}>
-                    {designs.map((design: any) => (
-                      <Pressable
-                        key={design.id}
-                        onPress={() => {
-                          setSelectedDesign(design.name);
-                          Haptics.impactAsync(
-                            Haptics.ImpactFeedbackStyle.Light,
-                          );
-                        }}
-                        style={[
-                          styles.designCard,
-                          {
-                            borderColor:
-                              selectedDesign === design.name
-                                ? ComeYaColors.primary
-                                : theme.border,
-                            borderWidth: selectedDesign === design.name ? 3 : 1,
-                          },
-                        ]}
+                Cada tarjeta lleva el logo de ComeYa en su borde y efectos en
+                movimiento. Gold es exclusivo de la zona premium.
+              </ThemedText>
+
+              {/* Vista previa grande del diseño elegido */}
+              <GiftCardArt
+                design={selectedDesign as any}
+                amount={
+                  amount && parseFloat(amount) >= 10
+                    ? `${parseFloat(amount).toFixed(0)} €`
+                    : null
+                }
+                style={{ marginBottom: Spacing.md }}
+              />
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.designsRow}>
+                  {GIFT_CARD_DESIGNS.map((design) => (
+                    <Pressable
+                      key={design.key}
+                      onPress={() => {
+                        setSelectedDesign(design.key);
+                        Haptics.impactAsync(
+                          Haptics.ImpactFeedbackStyle.Light,
+                        );
+                      }}
+                      style={[
+                        styles.designCardNew,
+                        {
+                          borderColor:
+                            selectedDesign === design.key
+                              ? ComeYaColors.primary
+                              : theme.border,
+                          borderWidth: selectedDesign === design.key ? 3 : 1,
+                        },
+                      ]}
+                    >
+                      <GiftCardArt design={design.key} compact style={{ width: "100%" }} />
+                      <ThemedText
+                        type="caption"
+                        numberOfLines={1}
+                        style={{ marginTop: 4, textAlign: "center", fontWeight: "600" }}
                       >
-                        <Image
-                          source={{ uri: design.imageUrl }}
-                          style={styles.designImage}
-                          contentFit="cover"
-                        />
-                        <ThemedText
-                          type="caption"
-                          style={{ marginTop: 4, textAlign: "center" }}
-                        >
-                          {design.name}
-                        </ThemedText>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-            )}
+                        {design.emoji} {design.name}
+                      </ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
 
             {/* Método de pago: solo tarjeta (Stripe). Nada de transferencias. */}
             <View
@@ -512,6 +524,7 @@ export default function GiftCardsScreen() {
             {myCards.map((card: any) => {
               const st = STATUS_LABELS[card.status] || STATUS_LABELS["active"];
               const isProofOpen = proofCardId === card.id;
+              const hasArt = isGiftCardDesignKey(String(card.design || ""));
               return (
                 <View
                   key={card.id}
@@ -525,15 +538,25 @@ export default function GiftCardsScreen() {
                     Shadows.sm,
                   ]}
                 >
+                  {/* Arte animado del diseño elegido (o icono genérico) */}
+                  {hasArt ? (
+                    <GiftCardArt
+                      design={card.design}
+                      compact
+                      style={{ marginBottom: Spacing.md }}
+                    />
+                  ) : null}
                   <View style={styles.cardRow}>
-                    <View
-                      style={[
-                        styles.cardIcon,
-                        { backgroundColor: st.color + "20" },
-                      ]}
-                    >
-                      <Feather name="gift" size={24} color={st.color} />
-                    </View>
+                    {!hasArt && (
+                      <View
+                        style={[
+                          styles.cardIcon,
+                          { backgroundColor: st.color + "20" },
+                        ]}
+                      >
+                        <Feather name="gift" size={24} color={st.color} />
+                      </View>
+                    )}
                     <View style={styles.cardInfo}>
                       <View style={styles.codeCopyRow}>
                         <Pressable
@@ -859,6 +882,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   designsRow: { flexDirection: "row", gap: Spacing.md },
+  designCardNew: { width: 132, borderRadius: BorderRadius.lg, overflow: "hidden", padding: 4 },
   designCard: { width: 100, borderRadius: BorderRadius.lg, overflow: "hidden" },
   designImage: { width: 100, height: 100, borderRadius: BorderRadius.lg },
   purchaseButton: {
