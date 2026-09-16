@@ -16,13 +16,13 @@ router.get(
       const { db } = await import("../db");
 
       const [
-        [todayRow],
-        [activeRow],
-        [avgRow],
-        [driverRow],
-        [bizRow],
-        [userRow],
-        [statesRow],
+        todayRows,
+        activeRows,
+        avgRows,
+        driverRows,
+        bizRows,
+        userRows,
+        statesRows,
       ] = (await Promise.all([
         db
           .execute(sql`
@@ -98,14 +98,17 @@ router.get(
           .then((r: any) => r[0]),
       ])) as any;
 
-      const today = (todayRow as any[])[0] || {};
-      const active = (activeRow as any[])[0] || {};
-      const avg = (avgRow as any[])[0] || {};
-      const drv = (driverRow as any[])[0] || {};
-      const biz = (bizRow as any[])[0] || {};
-      const usr = (userRow as any[])[0] || {};
+      // IMPORTANTE: cada fila se desenvuelve UNA sola vez (rows[0]). El
+      // código anterior hacía doble indexado y devolvía TODO A CERO — por
+      // eso el dashboard "no tenía función" según el cliente.
+      const today = (todayRows as any[])[0] || {};
+      const active = (activeRows as any[])[0] || {};
+      const avg = (avgRows as any[])[0] || {};
+      const drv = (driverRows as any[])[0] || {};
+      const biz = (bizRows as any[])[0] || {};
+      const usr = (userRows as any[])[0] || {};
       const orderStatesToday: Record<string, number> = {};
-      for (const row of (statesRow as any[]) || []) {
+      for (const row of (statesRows as any[]) || []) {
         if (row?.status) orderStatesToday[row.status] = Number(row.cnt) || 0;
       }
 
