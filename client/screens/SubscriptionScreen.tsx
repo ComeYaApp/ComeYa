@@ -506,6 +506,18 @@ export default function SubscriptionScreen() {
             documento de condiciones de ComeYa.
           </Text>
         </View>
+
+        {/* Enlace al documento de condiciones 2026 */}
+        <TouchableOpacity
+          style={styles.termsButton}
+          onPress={() => navigation.navigate("SubscriptionConditions" as never)}
+        >
+          <Feather name="file-text" size={18} color={ComeYaColors.primary} />
+          <Text style={[styles.termsButtonText, { color: ComeYaColors.primary }]}>
+            Ver condiciones completas 2026
+          </Text>
+          <Feather name="chevron-right" size={18} color={ComeYaColors.primary} />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ── MODAL MÉTODO DE PAGO ─────────────────────────────────────────── */}
@@ -570,6 +582,19 @@ export default function SubscriptionScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  termsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: ComeYaColors.primary + "55",
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  termsButtonText: { fontWeight: "700", fontSize: 14, flex: 1, textAlign: "left" },
   header: {
     flexDirection: "row",
     alignItems: "center",

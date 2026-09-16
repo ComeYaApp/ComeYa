@@ -48,6 +48,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 import GamificationScreen from "@/screens/GamificationScreen";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
+import SubscriptionConditionsScreen from "@/screens/SubscriptionConditionsScreen";
 import GiftCardsScreen from "@/screens/GiftCardsScreen";
 import ScheduledOrdersScreen from "@/screens/ScheduledOrdersScreen";
 import NotificationPreferencesScreen from "@/screens/NotificationPreferencesScreen";
@@ -147,6 +148,7 @@ export type RootStackParamList = {
   ChangePhoneEmail: undefined;
   Gamification: undefined;
   Subscriptions: undefined;
+  SubscriptionConditions: undefined;
   GiftCards: undefined;
   ScheduledOrders: undefined;
   MyReservations: { reservationId?: string } | undefined;
@@ -340,6 +342,7 @@ export default function RootStackNavigator() {
           <Stack.Screen name="BusinessDashboard" component={BusinessDashboardScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Gamification" component={GamificationScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Subscriptions" component={SubscriptionScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SubscriptionConditions" component={SubscriptionConditionsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="GiftCards" component={GiftCardsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ScheduledOrders" component={ScheduledOrdersScreen} options={{ headerShown: false }} />
           <Stack.Screen name="MyReservations" component={MyReservationsScreen} options={{ headerShown: false }} />
