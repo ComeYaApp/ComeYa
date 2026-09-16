@@ -209,6 +209,21 @@ async function handlePaymentIntentSucceeded(
     return;
   }
 
+  // Pago de una GIFT CARD: activarla aquí mismo. Antes la activación dependía
+  // de que la app llamara a /stripe-success tras pagar: si se cerraba o
+  // crasheaba, la tarjeta quedaba en pending_payment para siempre.
+  if (paymentIntent.metadata?.giftCardId) {
+    const { GiftCardService } = await import("./giftCardService");
+    const gcResult = await GiftCardService.activateFromStripeWebhook(
+      paymentIntent.metadata.giftCardId,
+    );
+    logWebhookEvent(
+      context,
+      `Gift card ${paymentIntent.metadata.giftCardId}: ${gcResult.message ?? gcResult.error}`,
+    );
+    return;
+  }
+
   const orderId = paymentIntent.metadata?.orderId;
 
   if (!orderId) {

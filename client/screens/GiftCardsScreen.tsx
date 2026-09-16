@@ -55,9 +55,8 @@ export default function GiftCardsScreen() {
   const [recipientEmail, setRecipientEmail] = useState("");
   const [message, setMessage] = useState("");
   const [selectedDesign, setSelectedDesign] = useState("default");
-  const [paymentMethod, setPaymentMethod] = useState<
-    "stripe" | "bizum_manual"
-  >("stripe");
+  // Solo tarjeta (Stripe): las transferencias dejaron de aceptarse
+  const [paymentMethod] = useState<"stripe">("stripe");
 
   const [proofCardId, setProofCardId] = useState<string | null>(null);
   const [proofProvider, setProofProvider] = useState("bizum");
@@ -169,16 +168,6 @@ export default function GiftCardsScreen() {
             });
             setActiveTab("my-cards");
           }
-        } else {
-          showToast(
-            "Gift Card creada. Sube el comprobante de pago.",
-            "success",
-          );
-          queryClient.invalidateQueries({
-            queryKey: ["/api/gift-cards/my-cards"],
-          });
-          setProofCardId(data.giftCard.id);
-          setActiveTab("my-cards");
         }
         setAmount("25");
         setRecipientEmail("");
@@ -280,8 +269,8 @@ export default function GiftCardsScreen() {
             >
               <Feather name="info" size={15} color="#3B82F6" />
               <ThemedText type="caption" style={{ color: "#3B82F6", flex: 1 }}>
-                Tras crear la gift card, sube el comprobante de pago. El admin
-                la activará en breve.
+                Pago solo con tarjeta. La gift card se activa al instante y el
+                código llega por correo al comprador y al destinatario.
               </ThemedText>
             </View>
 
@@ -442,7 +431,7 @@ export default function GiftCardsScreen() {
               </View>
             )}
 
-            {/* Método de pago */}
+            {/* Método de pago: solo tarjeta (Stripe). Nada de transferencias. */}
             <View
               style={[
                 styles.section,
@@ -453,60 +442,34 @@ export default function GiftCardsScreen() {
               <ThemedText type="h4" style={{ marginBottom: Spacing.md }}>
                 Método de pago
               </ThemedText>
-              {[
-                {
-                  id: "stripe",
-                  label: "Tarjeta / Bizum (Stripe)",
-                  desc: "Pago instantáneo",
-                },
-                {
-                  id: "bizum_manual",
-                  label: "Bizum manual",
-                  desc: "Transfieres tú — admin activa en breve",
-                },
-              ].map((m) => (
-                <Pressable
-                  key={m.id}
-                  onPress={() => setPaymentMethod(m.id as any)}
-                  style={[
-                    {
-                      flexDirection: "row",
-                      alignItems: "center",
-                      padding: Spacing.md,
-                      borderRadius: BorderRadius.md,
-                      borderWidth: 1.5,
-                      marginBottom: Spacing.sm,
-                      borderColor:
-                        paymentMethod === m.id
-                          ? ComeYaColors.primary
-                          : theme.border,
-                      backgroundColor:
-                        paymentMethod === m.id
-                          ? ComeYaColors.primary + "10"
-                          : theme.backgroundSecondary,
-                    },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <ThemedText type="body" style={{ fontWeight: "700" }}>
-                      {m.label}
-                    </ThemedText>
-                    <ThemedText
-                      type="caption"
-                      style={{ color: theme.textSecondary }}
-                    >
-                      {m.desc}
-                    </ThemedText>
-                  </View>
-                  {paymentMethod === m.id && (
-                    <Feather
-                      name="check-circle"
-                      size={18}
-                      color={ComeYaColors.primary}
-                    />
-                  )}
-                </Pressable>
-              ))}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: Spacing.md,
+                  borderRadius: BorderRadius.md,
+                  borderWidth: 1.5,
+                  borderColor: ComeYaColors.primary,
+                  backgroundColor: ComeYaColors.primary + "10",
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <ThemedText type="body" style={{ fontWeight: "700" }}>
+                    Tarjeta (Stripe)
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary }}
+                  >
+                    Pago instantáneo y seguro — sin transferencias
+                  </ThemedText>
+                </View>
+                <Feather
+                  name="check-circle"
+                  size={18}
+                  color={ComeYaColors.primary}
+                />
+              </View>
             </View>
 
             <Pressable

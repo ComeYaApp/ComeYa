@@ -50,7 +50,8 @@ type PaymentMethod =
   | "stripe_bizum"
   | "paypal"
   | "bizum_manual"
-  | "binance";
+  | "binance"
+  | "comeyacard";
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -164,6 +165,53 @@ export default function CheckoutScreen({ route }: any) {
   const [couponLoading, setCouponLoading] = useState(false);
   const [addressPickerVisible, setAddressPickerVisible] = useState(false);
 
+  // ComeYaCard (tarjeta regalo) como método de pago
+  const [giftCardCode, setGiftCardCode] = useState("");
+  const [giftCardInfo, setGiftCardInfo] = useState<any>(null); // {balance}
+  const [giftCardLoading, setGiftCardLoading] = useState(false);
+
+  const handleApplyGiftCard = async () => {
+    const code = giftCardCode.trim().toUpperCase();
+    if (!code) {
+      showToast("Introduce el código de tu tarjeta regalo", "error");
+      return;
+    }
+    setGiftCardLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/gift-cards/validate", { code });
+      const data = await res.json();
+      if (data.success && data.giftCard) {
+        if (data.giftCard.balance < total) {
+          showToast(
+            `Saldo insuficiente: la tarjeta tiene ${formatEuros(data.giftCard.balance)} y el pedido cuesta ${formatEuros(total)}`,
+            "error",
+          );
+          setGiftCardInfo(null);
+          return;
+        }
+        setGiftCardInfo(data.giftCard);
+        setPaymentMethod("comeyacard" as any);
+        showToast(
+          `ComeYaCard aplicada (saldo ${formatEuros(data.giftCard.balance)})`,
+          "success",
+        );
+      } else {
+        showToast(data.error || "Tarjeta regalo no válida", "error");
+        setGiftCardInfo(null);
+      }
+    } catch {
+      showToast("Error al validar la tarjeta regalo", "error");
+    } finally {
+      setGiftCardLoading(false);
+    }
+  };
+
+  const handleRemoveGiftCard = () => {
+    setGiftCardInfo(null);
+    setGiftCardCode("");
+    Haptics.selectionAsync();
+  };
+
   const loadAddresses = React.useCallback(
     async (preferredId?: string) => {
       if (!user?.id) return;
@@ -222,6 +270,9 @@ export default function CheckoutScreen({ route }: any) {
         );
         setSelectedPaymentMethod(route.params.selectedPaymentMethod);
         setPaymentMethod(route.params.selectedPaymentMethod.provider);
+        // Al cambiar de método se descarta la tarjeta regalo aplicada
+        setGiftCardInfo(null);
+        setGiftCardCode("");
         // Limpiar el parámetro
         navigation.setParams({ selectedPaymentMethod: undefined } as any);
       }
@@ -562,6 +613,7 @@ useEffect(() => {
             ? JSON.stringify(finalItemSubstitutions)
             : null,
         couponCode: appliedCoupon ? couponCode.toUpperCase() : null,
+        giftCardCode: giftCardInfo ? giftCardInfo.code : null,
         couponDiscount: discountCents || null,
         substituteProductIds:
           Object.keys(substituteProductIds).length > 0
@@ -1253,9 +1305,11 @@ navigation.navigate("DigitalPaymentMethod", {
                     ? "credit-card"
                     : paymentMethod === "stripe_bizum"
                       ? "smartphone"
-                      : paymentMethod === "paypal"
-                        ? "dollar-sign"
-                        : "zap"
+                      : paymentMethod === "comeyacard"
+                        ? "gift"
+                        : paymentMethod === "paypal"
+                          ? "dollar-sign"
+                          : "zap"
                 }
                 size={24}
                 color={theme.text}
@@ -1267,16 +1321,20 @@ navigation.navigate("DigitalPaymentMethod", {
                       ? "Tarjeta"
                       : paymentMethod === "stripe_bizum"
                         ? "Bizum"
-                        : paymentMethod === "paypal"
-                          ? "PayPal"
-                          : "Binance Pay")}
+                        : paymentMethod === "comeyacard"
+                          ? `ComeYaCard (saldo ${formatEuros(giftCardInfo?.balance || 0)})`
+                          : paymentMethod === "paypal"
+                            ? "PayPal"
+                            : "Binance Pay")}
                 </ThemedText>
                 <ThemedText
                   type="caption"
                   style={{ color: theme.textSecondary }}
                 >
                   {selectedPaymentMethod?.instructions ||
-                    "Pago seguro y automático"}
+                    (paymentMethod === "comeyacard"
+                      ? "Pago con tu tarjeta regalo"
+                      : "Pago seguro y automático")}
                 </ThemedText>
               </View>
             </View>
@@ -1286,6 +1344,83 @@ navigation.navigate("DigitalPaymentMethod", {
               color={ComeYaColors.primary}
             />
           </Pressable>
+        </View>
+
+        {/* Sección ComeYaCard (tarjeta regalo) */}
+        <View
+          style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+        >
+          <View style={styles.sectionHeader}>
+            <Feather name="gift" size={20} color={ComeYaColors.primary} />
+            <ThemedText type="h4" style={styles.sectionTitle}>
+              Pagar con ComeYaCard
+            </ThemedText>
+          </View>
+
+          {giftCardInfo ? (
+            <View
+              style={[
+                styles.appliedCouponBox,
+                {
+                  backgroundColor: ComeYaColors.success + "15",
+                  borderColor: ComeYaColors.success,
+                },
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <ThemedText
+                  type="body"
+                  style={{ fontWeight: "600", color: ComeYaColors.success }}
+                >
+                  {giftCardInfo.code}
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  style={{ color: theme.textSecondary, marginTop: 4 }}
+                >
+                  Cubrirá el total del pedido ({formatEuros(total)})
+                </ThemedText>
+              </View>
+              <Pressable
+                onPress={handleRemoveGiftCard}
+                style={styles.removeCouponButton}
+              >
+                <Feather name="x" size={20} color={ComeYaColors.error} />
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.couponInputContainer}>
+              <TextInput
+                style={[
+                  styles.couponInput,
+                  {
+                    color: theme.text,
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+                value={giftCardCode}
+                onChangeText={setGiftCardCode}
+                placeholder="XXXX-XXXX-XXXX-XXXX"
+                placeholderTextColor={theme.textSecondary}
+                autoCapitalize="characters"
+                editable={!giftCardLoading}
+              />
+              <Pressable
+                onPress={handleApplyGiftCard}
+                disabled={giftCardLoading || !giftCardCode.trim()}
+                style={[
+                  styles.applyCouponButton,
+                  { backgroundColor: ComeYaColors.primary },
+                  (!giftCardCode.trim() || giftCardLoading) && { opacity: 0.5 },
+                ]}
+              >
+                <ThemedText type="small" style={{ color: "#FFF" }}>
+                  {giftCardLoading ? "…" : "Aplicar"}
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         {/* Sección de cupón */}

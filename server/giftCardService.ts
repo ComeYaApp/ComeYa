@@ -195,7 +195,9 @@ export class GiftCardService {
       balanceAfter: gc.amount,
     });
 
-    // Notificar al comprador que su gift card quedó activa
+    // Notificar al comprador que su gift card quedó activa + enviar el código
+    // por email (comprador y destinatario): antes el código solo era visible
+    // en la app y nunca se enviaba por correo.
     try {
       const { sendPushToUser } = await import("./enhancedPushService");
       if (gc.purchasedBy) {
@@ -208,8 +210,78 @@ export class GiftCardService {
     } catch (err) {
       console.error("Error notifying gift card activation:", err);
     }
+    await this.emailCode(gc);
 
     return { success: true, message: "Gift card activada", expiresAt };
+  }
+
+  // Envía el código por email al comprador y, si se indicó, al destinatario
+  static async emailCode(gc: any) {
+    try {
+      const { sendGiftCardCodeEmail } = await import("./emailService");
+      const emails = new Set<string>();
+      if (gc.recipientEmail) emails.add(String(gc.recipientEmail));
+      try {
+        const { users } = await import("@shared/schema-mysql");
+        const [buyer] = await db
+          .select({ email: users.email })
+          .from(users)
+          .where(eq(users.id, gc.purchasedBy))
+          .limit(1);
+        if (buyer?.email) emails.add(String(buyer.email));
+      } catch {}
+      for (const to of emails) {
+        await sendGiftCardCodeEmail({
+          to,
+          code: gc.code,
+          amountEuros: (gc.amount / 100).toFixed(2),
+          message: gc.message,
+        });
+      }
+    } catch (err) {
+      console.error("Error emailing gift card code:", err);
+    }
+  }
+
+  // Activación desde el webhook de Stripe (payment_intent.succeeded con
+  // metadata.giftCardId): el cliente ya no depende de llamar a
+  // /stripe-success, que se perdía si la app se cerraba justo al pagar.
+  static async activateFromStripeWebhook(giftCardId: string) {
+    const [gc] = await db
+      .select()
+      .from(giftCards)
+      .where(eq(giftCards.id, giftCardId))
+      .limit(1);
+    if (!gc) return { success: false, error: "Gift card no encontrada" };
+    if (gc.status === "active") return { success: true, message: "Ya activa" };
+
+    const expiresAt = new Date(
+      Date.now() + this.EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    );
+    await db
+      .update(giftCards)
+      .set({ status: "active", balance: gc.amount, expiresAt })
+      .where(eq(giftCards.id, giftCardId));
+
+    await db.insert(giftCardTransactions).values({
+      id: crypto.randomUUID(),
+      giftCardId,
+      amount: gc.amount,
+      balanceAfter: gc.amount,
+    });
+
+    const activated = { ...gc, status: "active" };
+    await this.emailCode(activated);
+    try {
+      const { sendPushToUser } = await import("./enhancedPushService");
+      await sendPushToUser(gc.purchasedBy, {
+        title: "🎁 Gift Card activada",
+        body: `Tu tarjeta de ${(gc.amount / 100).toFixed(2)} € ya está lista para usar o regalar.`,
+        data: { screen: "GiftCards" },
+      });
+    } catch {}
+
+    return { success: true, message: "Gift card activada desde webhook" };
   }
 
   // Admin: rechazar gift card
@@ -278,7 +350,9 @@ export class GiftCardService {
     };
   }
 
-  // Canjear gift card en pedido
+  // Canjear gift card en pedido.
+  // El descuento de saldo es ATÓMICO (UPDATE condicional con saldo >= importe):
+  // dos pedidos simultáneos no pueden gastar dos veces el mismo saldo.
   static async redeemGiftCard(data: {
     code: string;
     orderId: string;
@@ -295,19 +369,28 @@ export class GiftCardService {
       .from(giftCards)
       .where(eq(giftCards.code, code.toUpperCase()))
       .limit(1);
-    if (!gc || amountToUse > gc.balance)
-      return { success: false, error: "Saldo insuficiente" };
+    if (!gc) return { success: false, error: "Tarjeta no encontrada" };
 
-    const newBalance = gc.balance - amountToUse;
+    const result = await db.execute(
+      `UPDATE gift_cards
+         SET balance = balance - ?,
+             redeemed_at = ?,
+             status = IF(balance - ? <= 0, 'redeemed', 'active'),
+             updated_at = NOW()
+       WHERE id = ? AND status = 'active' AND balance >= ?`,
+      [amountToUse, new Date(), amountToUse, gc.id, amountToUse],
+    );
+    const affected = Number((result as any)[0]?.affectedRows ?? 0);
+    if (affected === 0) {
+      return { success: false, error: "Saldo insuficiente o tarjeta ya usada" };
+    }
 
-    await db
-      .update(giftCards)
-      .set({
-        balance: newBalance,
-        redeemedAt: new Date(),
-        status: newBalance === 0 ? "redeemed" : "active",
-      })
-      .where(eq(giftCards.id, gc.id));
+    const [updated] = await db
+      .select()
+      .from(giftCards)
+      .where(eq(giftCards.id, gc.id))
+      .limit(1);
+    const newBalance = updated?.balance ?? Math.max(0, gc.balance - amountToUse);
 
     await db.insert(giftCardTransactions).values({
       id: crypto.randomUUID(),

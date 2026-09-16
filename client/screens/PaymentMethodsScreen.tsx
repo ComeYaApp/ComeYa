@@ -68,6 +68,7 @@ export default function PaymentMethodsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
+  const [addingCard, setAddingCard] = useState(false);
 
   const isDriver = user?.role === "delivery_driver";
 
@@ -114,6 +115,74 @@ export default function PaymentMethodsScreen() {
     }
   };
 
+  // Guardar una tarjeta con el PaymentSheet de Stripe en modo setup-intent:
+  // la tarjeta queda tokenizada para siempre y se usa en futuros pagos sin
+  // volver a escribir el número.
+  const handleAddCard = async () => {
+    if (isWeb) return;
+    setAddingCard(true);
+    try {
+      const res = await apiRequest("POST", "/api/stripe/create-setup-intent", {});
+      const data = await res.json();
+      if (!data.clientSecret) {
+        showToast("No se pudo iniciar el guardado de la tarjeta", "error");
+        return;
+      }
+
+      const StripeModule = await import("@stripe/stripe-react-native");
+      const { error: initError } = await StripeModule.initPaymentSheet({
+        merchantDisplayName: "ComeYa",
+        customerId: data.customer,
+        customerEphemeralKeySecret: data.ephemeralKey,
+        setupIntentClientSecret: data.clientSecret,
+        appearance: {
+          colors: {
+            primary: "#FF6B35",
+            background: "#FFFFFF",
+            componentBackground: "#F7F7F7",
+            componentBorder: "#E0E0E0",
+            componentDivider: "#E0E0E0",
+            primaryText: "#1A1A1A",
+            secondaryText: "#555555",
+            componentText: "#1A1A1A",
+            placeholderText: "#AAAAAA",
+          },
+        },
+      });
+      if (initError) {
+        showToast("No se pudo abrir el formulario de tarjeta", "error");
+        return;
+      }
+
+      const { error: presentError } = await StripeModule.presentPaymentSheet();
+      if (presentError) {
+        if (presentError.code !== "Canceled") {
+          showToast("No se pudo guardar la tarjeta", "error");
+        }
+        return;
+      }
+
+      const { setupIntent, error: retrieveError } =
+        await StripeModule.retrieveSetupIntent(data.clientSecret);
+      const paymentMethodId =
+        setupIntent?.paymentMethodId || (setupIntent as any)?.payment_method;
+      if (!paymentMethodId) {
+        showToast("No se pudo obtener la tarjeta guardada", "error");
+        return;
+      }
+
+      await apiRequest("POST", "/api/stripe/save-payment-method", {
+        paymentMethodId,
+      });
+      showToast("Tarjeta guardada correctamente", "success");
+      await loadData();
+    } catch {
+      showToast("Error al guardar la tarjeta", "error");
+    } finally {
+      setAddingCard(false);
+    }
+  };
+
   const confirmDeleteCard = async () => {
     if (!cardToDelete) return;
     try {
@@ -128,11 +197,7 @@ export default function PaymentMethodsScreen() {
     }
   };
 
-  const getBrandIcon = (brand: string) => {
-    const b = brand.toLowerCase();
-    if (b === "visa") return "credit-card";
-    if (b === "mastercard") return "credit-card";
-    if (b === "amex") return "credit-card";
+  const getBrandIcon = (brand: string): "credit-card" => {
     return "credit-card";
   };
 
@@ -249,6 +314,47 @@ export default function PaymentMethodsScreen() {
                 <ThemedText type="body" style={{ color: ComeYaColors.warning }}>
                   Para agregar tarjetas, usa la aplicación móvil. Aquí puedes
                   ver tus tarjetas guardadas e historial.
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Botón añadir tarjeta (móvil) */}
+            {!isWeb && (
+              <View style={styles.section}>
+                <Pressable
+                  onPress={handleAddCard}
+                  disabled={addingCard}
+                  style={[
+                    styles.addCardBtn,
+                    {
+                      backgroundColor: addingCard
+                        ? theme.backgroundSecondary
+                        : ComeYaColors.primary,
+                    },
+                  ]}
+                >
+                  {addingCard ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Feather name="plus" size={18} color="#FFF" />
+                  )}
+                  <ThemedText
+                    type="body"
+                    style={{ color: "#FFF", fontWeight: "700", marginLeft: Spacing.sm }}
+                  >
+                    {addingCard ? "Guardando..." : "Añadir tarjeta"}
+                  </ThemedText>
+                </Pressable>
+                <ThemedText
+                  type="caption"
+                  style={{
+                    color: theme.textSecondary,
+                    marginTop: Spacing.xs,
+                    textAlign: "center",
+                  }}
+                >
+                  Se guarda para todos tus próximos pagos: no volverás a escribir
+                  el número
                 </ThemedText>
               </View>
             )}
@@ -556,6 +662,13 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: Spacing.lg,
+  },
+  addCardBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
   },
   card: {
     borderRadius: BorderRadius.lg,

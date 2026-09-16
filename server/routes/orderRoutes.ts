@@ -290,6 +290,24 @@ router.post(
         req.body.orderType === "pickup" || linkedReservation !== null;
       const serviceFee = isPickup ? 0 : pricing.serviceFeeCents;
 
+      // Pago con ComeYaCard (tarjeta regalo): validación previa para fallar
+      // rápido; el canje atómico se hace tras crear el pedido (necesita el id)
+      let giftCardCode: string | null = null;
+      let giftCardBalanceCents = 0;
+      if (req.body.giftCardCode) {
+        const { GiftCardService } = await import("../giftCardService");
+        const gcValidation = await GiftCardService.validateGiftCard(
+          String(req.body.giftCardCode).toUpperCase(),
+        );
+        if (!gcValidation.success || !gcValidation.giftCard) {
+          return res.status(400).json({
+            error: (gcValidation as any).error || "Tarjeta regalo no válida",
+          });
+        }
+        giftCardBalanceCents = Math.round(gcValidation.giftCard.balance * 100);
+        giftCardCode = String(req.body.giftCardCode).toUpperCase();
+      }
+
       // Cupón: revalidado en servidor — el descuento del cliente no se acepta
       let couponDiscount = 0;
       if (req.body.couponCode) {
@@ -363,7 +381,7 @@ router.post(
         serviceFee,
         deliveryFee: finalDeliveryFee,
         total: calculatedTotal,
-        paymentMethod: req.body.paymentMethod,
+        paymentMethod: giftCardCode ? "comeyacard" : req.body.paymentMethod,
         orderType: linkedReservation
           ? "pickup"
           : req.body.orderType === "pickup"
@@ -456,6 +474,55 @@ router.post(
           }
         } catch (err) {
           console.error("Error recording coupon usage:", err);
+        }
+      }
+
+      // Pago con ComeYaCard: canje atómico del saldo + pedido marcado como
+      // pagado al instante (sin pasarela). Si el canje falla por carrera,
+      // el pedido se cancela y se devuelve error al cliente.
+      if (giftCardCode) {
+        if (giftCardBalanceCents < calculatedTotal) {
+          const { cancelOrder } = await import("../orderCancellationService");
+          await cancelOrder(orderId, "system", "Saldo insuficiente en la tarjeta regalo", {
+            actorRole: "system",
+          });
+          return res.status(400).json({
+            error:
+              "La tarjeta regalo no tiene saldo suficiente para cubrir el pedido",
+          });
+        }
+        const { GiftCardService } = await import("../giftCardService");
+        const redeem = await GiftCardService.redeemGiftCard({
+          code: giftCardCode,
+          orderId,
+          userId: req.user!.id,
+          amountToUse: calculatedTotal,
+        });
+        if (!redeem.success) {
+          const { cancelOrder } = await import("../orderCancellationService");
+          await cancelOrder(orderId, "system", "Canje de tarjeta regalo fallido", {
+            actorRole: "system",
+          });
+          return res.status(400).json({
+            error:
+              (redeem as any).error || "No se pudo canjear la tarjeta regalo",
+          });
+        }
+        await db
+          .update(orders)
+          .set({ paidAt: new Date(), updatedAt: new Date() })
+          .where(eq(orders.id, orderId));
+        try {
+          const { confirmPaidOrder } = await import(
+            "../paymentConfirmationService"
+          );
+          await confirmPaidOrder(
+            orderId,
+            { id: `gc_${orderId}`, amount: calculatedTotal, currency: "eur" },
+            "reconciliation",
+          );
+        } catch (err) {
+          console.error("Error confirming gift-card paid order:", err);
         }
       }
 

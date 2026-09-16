@@ -61,9 +61,7 @@ export default function GiftCardsScreen() {
   const [recipientEmail, setRecipientEmail] = useState("");
   const [message, setMessage] = useState("");
   const [selectedDesign, setSelectedDesign] = useState("default");
-  const [paymentMethod, setPaymentMethod] = useState<
-    "stripe" | "bizum_manual"
-  >("stripe");
+  const [paymentMethod] = useState<"stripe">("stripe");
 
   const [proofCardId, setProofCardId] = useState<string | null>(null);
   const [proofProvider, setProofProvider] = useState("bizum");
@@ -253,8 +251,8 @@ export default function GiftCardsScreen() {
               >
                 <Feather name="info" size={16} color="#3B82F6" />
                 <Text style={[s.infoText, { color: "#3B82F6" }]}>
-                  Tras crear la gift card, sube el comprobante de pago. El admin
-                  la activará en breve.
+                  Pago solo con tarjeta. La gift card se activa al instante y
+                  el código llega por correo al comprador y al destinatario.
                 </Text>
               </View>
 
@@ -408,20 +406,13 @@ export default function GiftCardsScreen() {
                   {[
                     {
                       id: "stripe",
-                      label: "Tarjeta / Bizum (Stripe)",
+                      label: "Tarjeta (Stripe)",
                       icon: "zap",
                       desc: "Pago instantáneo — gift card activa al momento",
-                    },
-                    {
-                      id: "bizum_manual",
-                      label: "Bizum manual",
-                      icon: "smartphone",
-                      desc: "Transfieres tú — admin activa en breve",
                     },
                   ].map((m) => (
                     <Pressable
                       key={m.id}
-                      onPress={() => setPaymentMethod(m.id as any)}
                       style={[
                         s.methodRow,
                         {

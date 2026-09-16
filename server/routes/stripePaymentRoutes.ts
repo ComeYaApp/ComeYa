@@ -322,6 +322,8 @@ router.get("/payment-method/:userId", authenticateToken, async (req, res) => {
 // Create setup intent for adding card.
 // usage: "off_session" es imprescindible para poder cobrar la tarjeta guardada
 // sin el usuario delante (tarifas de reservas, suscripciones).
+// Devuelve además ephemeralKey y customer para poder usar el PaymentSheet de
+// Stripe en modo "guardar tarjeta" desde Métodos de pago.
 router.post("/create-setup-intent", authenticateToken, async (req, res) => {
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -333,17 +335,28 @@ router.post("/create-setup-intent", authenticateToken, async (req, res) => {
 
     const userId = req.body?.userId || req.user!.id;
 
-    const { result: setupIntent } = await withStripeCustomer(
-      userId,
-      async (cid) =>
-        stripeClient.setupIntents.create({
-          customer: cid,
-          payment_method_types: ["card"],
-          usage: "off_session",
-        }),
-    );
+    const { result } = await withStripeCustomer(userId, async (cid) => {
+      const ephemeralKey = await stripeClient.ephemeralKeys.create(
+        { customer: cid },
+        { apiVersion: "2024-06-20" },
+      );
+      const setupIntent = await stripeClient.setupIntents.create({
+        customer: cid,
+        payment_method_types: ["card"],
+        usage: "off_session",
+      });
+      return {
+        clientSecret: setupIntent.client_secret,
+        ephemeralKeySecret: ephemeralKey.secret,
+        customer: cid,
+      };
+    });
 
-    res.json({ clientSecret: setupIntent.client_secret });
+    res.json({
+      clientSecret: result.clientSecret,
+      ephemeralKey: result.ephemeralKeySecret,
+      customer: result.customer,
+    });
   } catch (error: any) {
     stripeErrorResponse(res, error, "create-setup-intent");
   }
