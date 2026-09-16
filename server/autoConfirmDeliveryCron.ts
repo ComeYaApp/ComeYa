@@ -20,6 +20,9 @@ export function startAutoConfirmCron() {
 
       // Find orders delivered more than 12 hours ago without customer confirmation.
       // La columna es booleana (0/1): sin confirmar puede ser 0 o NULL.
+      // deliveredAt puede faltar en pedidos viejos: se usa createdAt como
+      // fallback — sin eso quedaban "delivered sin confirmar" eternamente
+      // visibles en Pendientes.
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
       const ordersToConfirm = await db
@@ -32,7 +35,13 @@ export function startAutoConfirmCron() {
               isNull(orders.confirmedByCustomer),
               eq(orders.confirmedByCustomer, false),
             ),
-            lt(orders.deliveredAt, twelveHoursAgo),
+            or(
+              and(
+                isNull(orders.deliveredAt),
+                lt(orders.createdAt, twelveHoursAgo),
+              ),
+              lt(orders.deliveredAt, twelveHoursAgo),
+            ),
           ),
         );
 

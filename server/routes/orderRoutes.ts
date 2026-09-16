@@ -495,7 +495,9 @@ router.get("/", authenticateToken, async (req, res) => {
 
     // Filtro por status si se proporciona
     if (req.query.status === "active") {
-      // Pedidos activos = pending, confirmed, preparing, ready, on_the_way
+      // Pedidos activos: todo lo que no sea entregado/cancelado/reembolsado.
+      // Antes faltaban assigned_driver/picked_up/in_transit/arriving y las
+      // rutas desaparecían del mapa a mitad de reparto.
       userOrders = await db
         .select()
         .from(orders)
@@ -504,10 +506,23 @@ router.get("/", authenticateToken, async (req, res) => {
           and(eq(orders.userId, req.user!.id), isNull(orders.deletedAt)),
         );
       // Filtrar en memoria para incluir solo estados activos
-      userOrders = userOrders.filter((o: { status: string }) =>
-        ["pending", "accepted", "preparing", "ready", "on_the_way"].includes(
-          o.status,
-        ),
+      userOrders = userOrders.filter(
+        (o: { status: string; scheduledFor?: string | null }) =>
+          [
+            "pending",
+            "accepted",
+            "confirmed",
+            "preparing",
+            "ready",
+            "assigned",
+            "assigned_driver",
+            "picked_up",
+            "on_the_way",
+            "in_transit",
+            "arriving",
+          ].includes(o.status) &&
+          // Los programados solo cuentan como activos cuando llega su hora
+          (!o.scheduledFor || new Date(o.scheduledFor) <= new Date()),
       );
     } else {
       userOrders = await db

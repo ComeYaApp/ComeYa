@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useMemo } from "react";
+﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -91,6 +91,7 @@ export default function HomeScreen() {
   const { settings } = useApp();
   const showCarnivalBanner = false;
   const { width: windowWidth } = useWindowDimensions();
+  const promosScrollRef = useRef<ScrollView>(null);
   // Limitar ancho en web escritorio
   const contentWidth = Math.min(windowWidth, 900);
   const GRID_CARD_WIDTH = (contentWidth - GRID_PADDING - GRID_GAP) / 2;
@@ -847,8 +848,25 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <ThemedText type="h3" style={{ marginBottom: 0 }}>Promociones</ThemedText>
+              {/* Flechas para navegar sin deslizar (accesible en cualquier móvil) */}
+              <View style={{ flexDirection: "row", gap: Spacing.sm }}>
+                <Pressable
+                  onPress={() => promosScrollRef.current?.scrollTo({ x: 0, animated: true })}
+                  style={[styles.carouselArrow, { borderColor: theme.border, backgroundColor: theme.card }]}
+                >
+                  <Feather name="chevron-left" size={16} color={theme.text} />
+                </Pressable>
+                <Pressable
+                  onPress={() => promosScrollRef.current?.scrollToEnd({ animated: true })}
+                  style={[styles.carouselArrow, { borderColor: theme.border, backgroundColor: theme.card }]}
+                >
+                  <Feather name="chevron-right" size={16} color={theme.text} />
+                </Pressable>
+              </View>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.md }}>
+            <ScrollView
+              ref={promosScrollRef}
+              horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Spacing.md }}>
               {realFeatures.map((feature) => (
                 <Pressable
                   key={feature.id}
@@ -1236,7 +1254,14 @@ export default function HomeScreen() {
                   <Pressable
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      navigation.navigate("BusinessMap");
+                      // BusinessMap vive en el stack raíz: se sube toda la
+                      // cadena de navegadores para que el botón funcione
+                      // desde la pestaña Inicio (antes no navegaba)
+                      let nav: any = navigation;
+                      while (nav.getParent && nav.getParent()) {
+                        nav = nav.getParent();
+                      }
+                      nav.navigate("BusinessMap");
                     }}
                     style={({ pressed }) => [
                       styles.marketsBanner,
@@ -1583,6 +1608,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: Spacing.md,
+  },
+  carouselArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   sectionTitle: {
     marginBottom: Spacing.md,

@@ -111,52 +111,15 @@ export default function BusinessMapScreen() {
     Record<string, { origin: RouteCoordinate; dest: RouteCoordinate }>
   >({});
   const [Circle, setCircle] = useState<any>(null);
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  // Capa "Mesas hoy": solo negocios con reserva disponible para hoy
-  const [reserveOnly, setReserveOnly] = useState(false);
-  const [reserveIds, setReserveIds] = useState<Set<string>>(new Set());
-  const [reserveLoading, setReserveLoading] = useState(false);
-
-  // Mapa gastronómico de reservas: al activar "Mesas hoy" solo se pintan
-  // negocios con disponibilidad real de reserva para hoy
-  useEffect(() => {
-    if (!reserveOnly) return;
-    let cancelled = false;
-    setReserveLoading(true);
-    const load = async () => {
-      try {
-        const { apiRequest } = await import("@/lib/query-client");
-        const d = new Date();
-        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        const res = await apiRequest(
-          "GET",
-          `/api/reservations/search?date=${today}&partySize=2`,
-        );
-        const data = await res.json();
-        if (cancelled) return;
-        const ids = new Set<string>(
-          (data.businesses || [])
-            .filter((b: any) => b.availability?.status !== "full")
-            .map((b: any) => b.id),
-        );
-        setReserveIds(ids);
-      } catch {
-      } finally {
-        if (!cancelled) setReserveLoading(false);
-      }
-    };
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [reserveOnly]);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const mapRef = useRef<any>(null);
 
+  // Solo dos categorías con iconos propios (feedback del cliente):
+  // un bowl/plato para Comida y una cesta para Mercado. Sin filtro
+  // seleccionado se ven todos los negocios.
   const CATEGORIES = [
-    { key: "all", label: "Todos", icon: "grid" },
-    { key: "restaurant", label: "Comida", icon: "coffee" },
-    { key: "market", label: "Mercado", icon: "shopping-bag" },
-    { key: "pharmacy", label: "Farmacia", icon: "plus-circle" },
+    { key: "restaurant", label: "Comida", emoji: "🍜" },
+    { key: "market", label: "Mercado", emoji: "🧺" },
   ];
 
   const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -358,11 +321,8 @@ export default function BusinessMapScreen() {
           longitude: loc.coords.longitude,
         };
         setUserLocation(coords);
-        // Centrar el mapa en el usuario apenas llegue el GPS
-        mapRef.current?.animateToRegion(
-          { ...coords, latitudeDelta: 0.04, longitudeDelta: 0.04 },
-          600,
-        );
+        // No se auto-centra aquí: el mapa se encuadra con TODOS los negocios
+        // (fitToCoordinates) y el usuario tiene el botón de centrado propio.
       }
     })();
   }, []);
@@ -391,6 +351,23 @@ export default function BusinessMapScreen() {
             categories: b.categories ? b.categories.split(",") : [],
           }));
         setBusinesses(pins);
+
+        // Encuadrar el mapa para que se vean TODOS los negocios a la vez
+        // (antes arrancaba centrado en Soria y los pins quedaban fuera de
+        // pantalla — era la "visualización mala" del mapa)
+        if (pins.length > 0 && mapRef.current) {
+          const coords = pins.map((p) => ({
+            latitude: p.latitude,
+            longitude: p.longitude,
+          }));
+          if (userLocation) coords.push(userLocation);
+          try {
+            mapRef.current.fitToCoordinates(coords, {
+              edgePadding: { top: 140, right: 60, bottom: 220, left: 60 },
+              animated: true,
+            });
+          } catch {}
+        }
       } catch (e) {
         console.error("Error loading businesses for map:", e);
       } finally {
@@ -505,9 +482,7 @@ export default function BusinessMapScreen() {
         {Marker &&
           businesses
             .filter(
-              (b) =>
-                (categoryFilter === "all" || b.type === categoryFilter) &&
-                (!reserveOnly || reserveIds.has(b.id)),
+              (b) => !categoryFilter || b.type === categoryFilter,
             )
             .map((b) => {
               const meta = businessMarkerMeta(
@@ -648,9 +623,9 @@ export default function BusinessMapScreen() {
             type="body"
             style={{ fontWeight: "700", marginLeft: Spacing.xs }}
           >
-            {categoryFilter === "all"
-              ? businesses.length
-              : businesses.filter((b) => b.type === categoryFilter).length}{" "}
+            {categoryFilter
+              ? businesses.filter((b) => b.type === categoryFilter).length
+              : businesses.length}{" "}
             negocios
           </ThemedText>
         </View>
@@ -662,39 +637,13 @@ export default function BusinessMapScreen() {
         </Pressable>
       </View>
 
-      {/* Filtros de categoría */}
+      {/* Filtros de categoría: solo Comida y Mercado (feedback del cliente) */}
       <View style={[styles.filtersRow, { top: insets.top + 58 }]}>
-        <Pressable
-          onPress={() => {
-            setReserveOnly((v) => !v);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }}
-          style={[
-            styles.filterChip,
-            { backgroundColor: reserveOnly ? ComeYaColors.primary : theme.card },
-          ]}
-        >
-          <Feather
-            name="calendar"
-            size={13}
-            color={reserveOnly ? "#fff" : ComeYaColors.primary}
-          />
-          <ThemedText
-            type="caption"
-            style={{
-              marginLeft: 4,
-              color: reserveOnly ? "#fff" : ComeYaColors.primary,
-              fontWeight: "600",
-            }}
-          >
-            {reserveLoading ? "Buscando..." : "🪑 Mesas hoy"}
-          </ThemedText>
-        </Pressable>
         {CATEGORIES.map((cat) => (
           <Pressable
             key={cat.key}
             onPress={() => {
-              setCategoryFilter(cat.key);
+              setCategoryFilter((cur) => (cur === cat.key ? null : cat.key));
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
             style={[
@@ -707,11 +656,9 @@ export default function BusinessMapScreen() {
               },
             ]}
           >
-            <Feather
-              name={cat.icon as any}
-              size={13}
-              color={categoryFilter === cat.key ? "#fff" : theme.text}
-            />
+            <ThemedText type="caption" style={{ fontSize: 14 }}>
+              {cat.emoji}
+            </ThemedText>
             <ThemedText
               type="caption"
               style={{

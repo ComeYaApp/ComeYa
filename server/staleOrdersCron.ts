@@ -342,39 +342,122 @@ async function deleteUnpaidPhantoms(): Promise<number> {
   return phantoms.length;
 }
 
+/**
+ * Red de seguridad: cualquier pedido en estado ACTIVO (con o sin repartidor)
+ * más antiguo que ZOMBIE_HOURS se cancela con reembolso del 100% y se avisa
+ * al admin. Cubre los estados que las reglas anteriores no tocaban
+ * (assigned_driver / picked_up / on_the_way / in_transit / arriving), que
+ * eran los que quedaban "para siempre" en Pendientes y en el mapa.
+ */
+const ZOMBIE_HOURS = 48;
+const ACTIVE_STATUSES = [
+  "pending",
+  "payment_failed",
+  "accepted",
+  "confirmed",
+  "preparing",
+  "ready",
+  "assigned",
+  "assigned_driver",
+  "picked_up",
+  "on_the_way",
+  "in_transit",
+  "arriving",
+];
+
+async function checkZombieActiveOrders(): Promise<number> {
+  const cutoff = new Date(Date.now() - ZOMBIE_HOURS * 60 * 60 * 1000);
+
+  const zombies = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        inArray(orders.status as any, ACTIVE_STATUSES),
+        lt(orders.createdAt, cutoff),
+        // Los pedidos programados pueden nacer horas antes de ejecutarse
+        or(
+          isNull(orders.scheduledFor),
+          lt(orders.scheduledFor, new Date()),
+        ),
+      ),
+    )
+    .limit(50);
+
+  let cancelled = 0;
+  for (const order of zombies) {
+    try {
+      const result = await cancelOrder(
+        order.id,
+        "system",
+        `Pedido activo más de ${ZOMBIE_HOURS} horas sin completarse — cancelación automática con reembolso del 100% y aviso al administrador`,
+        { actorRole: "system" },
+      );
+      if (result.success) {
+        cancelled++;
+        console.log(`🧟 ${orderRef(order)} cerrado por antigüedad (${order.status})`);
+        try {
+          const { sendPushToUser } = await import("./enhancedPushService");
+          const { db: db2 } = await import("./db");
+          const { users } = await import("@shared/schema-mysql");
+          const admins = await db2
+            .select({ id: users.id })
+            .from(users)
+            .where(inArray(users.role as any, ["admin", "super_admin"]));
+          for (const a of admins) {
+            await sendPushToUser(a.id, {
+              title: "Pedido estancado cerrado automáticamente",
+              body: `${orderRef(order)} llevaba más de ${ZOMBIE_HOURS} h en estado "${order.status}" y se canceló con reembolso.`,
+              data: { type: "order_stuck", orderId: order.id },
+            });
+          }
+        } catch {}
+      }
+    } catch (error) {
+      console.error(`Error closing zombie order ${order.id}:`, error);
+    }
+  }
+  return cancelled;
+}
+
 export async function runOrderCleanup(): Promise<{
   unaccepted: number;
   stale: number;
   proofStuck: number;
   stuckPickups: number;
   phantoms: number;
+  zombies: number;
 }> {
-  const [unaccepted, stale, proofStuck, stuckPickups, phantoms] =
+  const [unaccepted, stale, proofStuck, stuckPickups, phantoms, zombies] =
     await Promise.all([
       checkUnacceptedOrders(),
       checkStaleOrders(),
       checkStuckPaymentProofs(),
       checkStuckPickups(),
       deleteUnpaidPhantoms(),
+      checkZombieActiveOrders(),
     ]);
   // Los reembolsos fallidos se reintentan SIEMPRE, no solo cuando en esta
   // pasada hubo cancelaciones: un 'failed' (p. ej. pedido stripe nunca
   // cobrado que se cierra como no_charge) quedaría eternamente sin
   // procesar si ninguna cancelación lo desbloquea.
   retryFailedRefunds().catch(() => {});
-  return { unaccepted, stale, proofStuck, stuckPickups, phantoms };
+  return { unaccepted, stale, proofStuck, stuckPickups, phantoms, zombies };
 }
 
 let interval: ReturnType<typeof setInterval> | null = null;
 
 export function startStaleOrdersCron() {
   if (interval) return;
-  if (process.env.NODE_ENV === "development") {
-    console.log("⏰ Stale orders cron: solo producción (omitido en desarrollo)");
+  // Antes solo arrancaba con NODE_ENV=production: en despliegues sin esa
+  // variable los pedidos viejos se acumulaban para siempre en Pendientes y
+  // en el mapa. Opt-out explícito con DISABLE_CLEANUP_CRONS=true.
+  if (process.env.DISABLE_CLEANUP_CRONS === "true") {
+    console.log("⏰ Stale orders cron desactivado (DISABLE_CLEANUP_CRONS)");
     return;
   }
   console.log(
-    `⏰ Stale orders cron iniciado (cada 2 min · sin aceptar: ${NO_ACCEPTANCE_MINUTES} min · sin repartidor: ${NO_DRIVER_MINUTES} min · comprobante sin verificar: ${PROOF_PENDING_MAX_MINUTES} min)`,
+    `⏰ Stale orders cron iniciado (cada 2 min · sin aceptar: ${NO_ACCEPTANCE_MINUTES} min · sin repartidor: ${NO_DRIVER_MINUTES} min · comprobante sin verificar: ${PROOF_PENDING_MAX_MINUTES} min · zombis: ${ZOMBIE_HOURS} h)`,
   );
   runOrderCleanup().catch(console.error);
   interval = setInterval(

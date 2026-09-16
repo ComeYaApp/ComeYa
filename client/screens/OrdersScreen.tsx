@@ -166,11 +166,11 @@ export default function OrdersScreen() {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return `Hoy, ${date.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}`;
+      return `Hoy, ${date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`;
     } else if (diffDays === 1) {
-      return `Ayer, ${date.toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" })}`;
+      return `Ayer, ${date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}`;
     } else {
-      return date.toLocaleDateString("es-VE", {
+      return date.toLocaleDateString("es-ES", {
         day: "numeric",
         month: "short",
         hour: "2-digit",
@@ -179,19 +179,32 @@ export default function OrdersScreen() {
     }
   };
 
-  // delivered sin confirmar = activo (cliente debe confirmar)
+  // "Pendientes" = pedidos en curso de verdad. delivered sin confirmar
+  // cuenta como pendiente SOLO 24 h (después el servidor lo auto-confirma;
+  // antes los pedidos viejos sin confirmar se quedaban aquí para siempre).
+  const ACTIVE_STATUSES = [
+    "pending",
+    "accepted",
+    "confirmed",
+    "preparing",
+    "ready",
+    "assigned",
+    "assigned_driver",
+    "picked_up",
+    "on_the_way",
+    "in_transit",
+    "arriving",
+  ];
+  const isFreshDelivered = (o: Order) => {
+    if (o.status !== "delivered" || (o as any).confirmedByCustomer) return false;
+    const ref = (o as any).deliveredAt || (o as any).createdAt;
+    if (!ref) return true;
+    return Date.now() - new Date(ref).getTime() < 24 * 60 * 60 * 1000;
+  };
   const activeOrders = orders.filter(
-    (o) =>
-      !(
-        o.status === "cancelled" ||
-        (o.status === "delivered" && (o as any).confirmedByCustomer)
-      ),
+    (o) => ACTIVE_STATUSES.includes(o.status) || isFreshDelivered(o),
   );
-  const pastOrders = orders.filter(
-    (o) =>
-      o.status === "cancelled" ||
-      (o.status === "delivered" && (o as any).confirmedByCustomer),
-  );
+  const pastOrders = orders.filter((o) => !activeOrders.includes(o));
 
   // ── Pestañas: Pendientes / Realizados / Cancelados ──
   const completedOrders = orders.filter(

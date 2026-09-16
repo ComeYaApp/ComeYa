@@ -158,8 +158,11 @@ export async function unblockExpiredDriversJob() {
 }
 
 export function startBackgroundJobs() {
-  if (process.env.NODE_ENV !== "production") {
-    logger.warn("Background jobs disabled in development");
+  // Antes se desactivaban fuera de NODE_ENV=production: en despliegues sin
+  // esa variable los pedidos programados nunca se ejecutaban. Opt-out
+  // explícito con DISABLE_BACKGROUND_JOBS=true.
+  if (process.env.DISABLE_BACKGROUND_JOBS === "true") {
+    logger.warn("Background jobs disabled (DISABLE_BACKGROUND_JOBS)");
     return;
   }
 
