@@ -19,7 +19,7 @@ const PRIMARY = "#E60000";
 const TABS = [
   { id: "all", label: "Todos", icon: "grid" },
   { id: "restaurant", label: "Restaurantes", icon: "coffee" },
-  { id: "market", label: "Mercados", icon: "shopping-bag" },
+  { id: "market", label: "Alimentación", icon: "shopping-bag" },
 ];
 const FILTERS = [
   { id: "open", label: "Abiertos", icon: "clock" },

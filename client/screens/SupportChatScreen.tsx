@@ -7,6 +7,7 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -72,7 +73,7 @@ function MessageBubble({ message }: { message: Message }) {
             ]}
           >
             <Image
-              source={require("../../assets/images/comeya-logo-final.png")}
+              source={require("../../assets/images/comeya-badge.png")}
               style={{ width: 16, height: 16 }}
               resizeMode="contain"
             />
@@ -118,7 +119,7 @@ function EmptyState() {
         <Feather name="message-circle" size={48} color={ComeYaColors.primary} />
       </View>
       <Image
-        source={require("../../assets/images/comeya-logo-final.png")}
+        source={require("../../assets/images/comeya-badge.png")}
         style={{ width: 80, height: 80, marginTop: Spacing.md }}
         resizeMode="contain"
       />
@@ -273,8 +274,9 @@ export default function SupportChatScreen() {
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior="padding"
-        keyboardVerticalOffset={0}
+        // "height" en Android evita que el teclado tape el input (antes con
+        // padding + offset 0 el campo quedaba oculto tras el teclado)
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <FlatList
           ref={flatListRef}

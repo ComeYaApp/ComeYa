@@ -30,7 +30,7 @@ const PRIMARY = "#E60000";
 const FILTERS = [
   { id: "all", label: "Todos" },
   { id: "restaurant", label: "Restaurantes" },
-  { id: "market", label: "Mercados" },
+  { id: "market", label: "Alimentación" },
 ];
 const SORT = [
   { id: "rating", label: "Mejor valorados" },

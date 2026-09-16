@@ -136,6 +136,20 @@ export async function executeScheduledOrdersJob() {
   } catch (error) {
     logger.error("Execute scheduled orders job failed", error);
   }
+
+  // Recurrencias semanales vencidas → materializar su scheduled order y
+  // adelantar la siguiente ejecución
+  try {
+    const { RecurringOrdersService } = await import(
+      "./recurringOrdersService"
+    );
+    const executed = await RecurringOrdersService.executeDueRecurring();
+    if (executed > 0) {
+      logger.info(`Materialized ${executed} recurring orders`);
+    }
+  } catch (error) {
+    logger.error("Execute recurring orders job failed", error);
+  }
 }
 
 // Desbloquear repartidores cuyo periodo de bloqueo por strikes terminó

@@ -80,7 +80,7 @@ export default function GuestProfileScreen({ navigation }: GuestProfileScreenPro
 
       <View style={styles.infoSection}>
         <ThemedText type="small" style={[styles.infoText, { color: theme.textSecondary }]}>
-          Puedes explorar restaurantes, mercados y productos sin necesidad de registrarte.
+          Puedes explorar restaurantes, tiendas de alimentación y productos sin necesidad de registrarte.
         </ThemedText>
         <View style={styles.infoRow}>
           <Feather name="home" size={16} color={theme.textSecondary} />

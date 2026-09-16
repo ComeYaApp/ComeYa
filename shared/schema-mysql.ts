@@ -730,6 +730,26 @@ export const scheduledOrders = mysqlTable("scheduled_orders", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Recurring Orders - Pedidos programados recurrentes (se repiten cada semana
+// los días elegidos). Cada ejecución materializa un scheduled_order normal.
+export const recurringOrders = mysqlTable("recurring_orders", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  businessId: varchar("business_id", { length: 255 }).notNull(),
+  businessName: text("business_name"),
+  items: text("items").notNull(), // JSON
+  daysOfWeek: text("days_of_week").notNull(), // JSON [0..6] (0=domingo)
+  scheduledTime: varchar("scheduled_time", { length: 5 }).notNull(), // "HH:MM"
+  deliveryAddress: text("delivery_address"),
+  notes: text("notes"),
+  paymentMethod: text("payment_method"),
+  nextRunAt: timestamp("next_run_at"),
+  status: text("status").notNull().default("active"), // active, cancelled
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Support Chats - Chats de soporte con IA
 export const supportChats = mysqlTable("support_chats", {
   id: varchar("id", { length: 255 })

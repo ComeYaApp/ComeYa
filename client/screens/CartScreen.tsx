@@ -190,7 +190,7 @@ export default function CartScreen() {
         <EmptyState
           image={require("../../assets/images/empty-cart.png")}
           title="Tu carrito está vacío"
-          description="Agrega productos de tus restaurantes y mercados favoritos"
+          description="Agrega productos de tus restaurantes y tiendas de alimentación favoritas"
           actionLabel="Explorar negocios"
           onAction={() => navigation.goBack()}
         />

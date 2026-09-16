@@ -492,6 +492,30 @@ export async function runStartupMigrations(): Promise<void> {
         console.log("Migration note (service_fee):", err.message);
     }
 
+    // Pedidos recurrentes (semanal): tabla para la recurrencia real
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS recurring_orders (
+          id VARCHAR(255) PRIMARY KEY DEFAULT (UUID()),
+          user_id VARCHAR(255) NOT NULL,
+          business_id VARCHAR(255) NOT NULL,
+          business_name TEXT NULL,
+          items TEXT NOT NULL,
+          days_of_week TEXT NOT NULL,
+          scheduled_time VARCHAR(5) NOT NULL,
+          delivery_address TEXT NULL,
+          notes TEXT NULL,
+          payment_method TEXT NULL,
+          next_run_at DATETIME NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'active',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`,
+      );
+      console.log("✅ Tabla recurring_orders asegurada");
+    } catch (err: any) {
+      console.log("Migration note (recurring_orders):", err.message);
+    }
+
     try {
       await conn.query(
         `ALTER TABLE users ADD COLUMN profile_image TEXT DEFAULT NULL`,

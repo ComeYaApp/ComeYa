@@ -48,7 +48,7 @@ export function BusinessSidebar({ activeSection }: Props) {
       {/* Logo + negocio */}
       <View style={s.header}>
         <Image
-          source={require("../../assets/images/comeya-logo-final.png")}
+          source={require("../../assets/images/comeya-badge.png")}
           style={s.logo}
           contentFit="contain"
         />

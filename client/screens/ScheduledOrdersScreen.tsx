@@ -51,6 +51,32 @@ export default function ScheduledOrdersScreen() {
  const queryClient = useQueryClient();
  const [activeTab, setActiveTab] = useState<Tab>("upcoming");
 
+ // Recurrencias semanales (antes la funcionalidad era nula: el endpoint no existía)
+ const { data: recurring = [] } = useQuery({
+   queryKey: ["recurring-orders", user?.id],
+   queryFn: async () => {
+     const res = await apiRequest("GET", "/api/recurring-orders");
+     const d = await res.json();
+     return d.success ? d.recurringOrders : [];
+   },
+ });
+
+ const cancelRecurringMutation = useMutation({
+   mutationFn: async (id: string) => {
+     const res = await apiRequest("DELETE", `/api/recurring-orders/${id}`);
+     return res.json();
+   },
+   onSuccess: (data) => {
+     if (data.success) {
+       showToast("Pedido recurrente cancelado", "success");
+       queryClient.invalidateQueries({ queryKey: ["recurring-orders"] });
+     } else {
+       showToast(data.error || "No se pudo cancelar", "error");
+     }
+   },
+   onError: () => showToast("No se pudo cancelar", "error"),
+ });
+
  const { data: scheduledOrders = [], isLoading } = useQuery({
  queryKey: ["scheduled-orders", user?.id],
  queryFn: async () => {
@@ -105,10 +131,10 @@ export default function ScheduledOrdersScreen() {
  activeTab === "upcoming" ? upcomingOrders : historyOrders;
 
  const handleCancel = (id: string) => {
- Alert.alert("Cancelar pedido", ",%%Est%s seguro?", [
+ Alert.alert("Cancelar pedido", "¿Estás seguro?", [
  { text: "No", style: "cancel" },
  {
- text: "S%, cancelar",
+ text: "Sí, cancelar",
  style: "destructive",
  onPress: () => cancelMutation.mutate(id),
  },
@@ -138,7 +164,7 @@ export default function ScheduledOrdersScreen() {
  [
  {
  id: "upcoming",
- label: `Pr%%ximos (${upcomingOrders.length})`,
+ label: `Próximos (${upcomingOrders.length})`,
  icon: "clock",
  },
  {
@@ -175,6 +201,54 @@ export default function ScheduledOrdersScreen() {
  </Pressable>
  ))}
  </View>
+
+ {/* Recurrencias semanales activas */}
+ {activeTab === "upcoming" && (recurring as any[]).length > 0 && (
+   <View
+     style={[
+       styles.recurringBox,
+       { backgroundColor: theme.card, borderColor: theme.border },
+     ]}
+   >
+     <Text style={[styles.recurringTitle, { color: theme.text }]}>
+       🔁 Se repiten cada semana
+     </Text>
+     {(recurring as any[]).map((r: any) => (
+       <View
+         key={r.id}
+         style={[styles.recurringRow, { borderBottomColor: theme.border }]}
+       >
+         <View style={{ flex: 1 }}>
+           <Text style={[styles.recurringBiz, { color: theme.text }]}>
+             {r.businessName || "Negocio"}
+           </Text>
+           <Text style={[styles.recurringMeta, { color: theme.textSecondary }]}>
+             {r.daysOfWeekLabel} · {r.scheduledTime} h
+           </Text>
+         </View>
+         <Pressable
+           onPress={() =>
+             Alert.alert(
+               "Cancelar recurrencia",
+               "¿Dejar de repetir este pedido cada semana?",
+               [
+                 { text: "No", style: "cancel" },
+                 {
+                   text: "Sí, cancelar",
+                   style: "destructive",
+                   onPress: () => cancelRecurringMutation.mutate(r.id),
+                 },
+               ],
+             )
+           }
+           hitSlop={8}
+         >
+           <Feather name="x-circle" size={18} color={PRIMARY} />
+         </Pressable>
+       </View>
+     ))}
+   </View>
+ )}
 
  {isLoading ? (
  <View style={styles.loadingWrap}>
@@ -340,7 +414,7 @@ export default function ScheduledOrdersScreen() {
  { color: theme.textSecondary },
  ]}
  >
- +{items.length - 3} productos m%s
+ +{items.length - 3} productos más
  </Text>
  )}
  </View>
@@ -493,6 +567,22 @@ const styles = StyleSheet.create({
  },
  businessName: { fontSize: 15, fontWeight: "700", marginBottom: 3 },
  recurringBadge: { flexDirection: "row", alignItems: "center", gap: 4 },
+ recurringBox: {
+   borderRadius: BorderRadius.lg,
+   borderWidth: 1,
+   padding: Spacing.md,
+   marginHorizontal: Spacing.lg,
+   marginTop: Spacing.md,
+ },
+ recurringTitle: { fontSize: 13, fontWeight: "700", marginBottom: Spacing.sm },
+ recurringRow: {
+   flexDirection: "row",
+   alignItems: "center",
+   paddingVertical: Spacing.sm,
+   borderBottomWidth: 1,
+ },
+ recurringBiz: { fontSize: 13, fontWeight: "600" },
+ recurringMeta: { fontSize: 11, marginTop: 2 },
  recurringText: { fontSize: 11, fontWeight: "600" },
  totalText: { fontSize: 18, fontWeight: "800" },
  dateSection: {

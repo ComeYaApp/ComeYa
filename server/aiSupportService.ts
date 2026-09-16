@@ -62,8 +62,23 @@ Como hago un pedido?
 1. Explora negocios disponibles en Soria
 2. Agrega productos al carrito
 3. Confirma tu direccion de entrega
-4. Elige metodo de pago (tarjeta, Bizum o transferencia)
+4. Elige metodo de pago (tarjeta, Bizum o ComeYaCard)
 5. Confirma el pedido
+
+Que es una ComeYaCard?
+- Es una tarjeta regalo: se compra con tarjeta en la app
+- El codigo llega por email al comprador y al destinatario
+- Se usa en el checkout como metodo de pago
+
+Como funcionan las suscripciones?
+- Se pagan solo con tarjeta (sin transferencias)
+- Al pagar, las ventajas se aplican automaticamente
+- El administrador recibe un aviso de cada nueva suscripcion
+
+Como funcionan las reservas de mesa?
+- Elige negocio, dia, franja y numero de comensales
+- Puedes anadir platos por adelantado desde la carta
+- En "Mis reservas" ves todas tus reservas activas
 
 Cuanto tarda la entrega?
 - Promedio: 30-45 minutos

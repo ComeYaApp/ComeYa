@@ -70,12 +70,14 @@ const ROLES: {
   },
 ];
 
+// Solo estas categorías (feedback del cliente): fuera farmacia y abarrotes
 const BUSINESS_TYPES = [
   { id: "restaurant", name: "Restaurante" },
-  { id: "market", name: "Mercado" },
+  { id: "fruiteria", name: "Frutería" },
+  { id: "butcher", name: "Carnicería" },
   { id: "bakery", name: "Panadería" },
-  { id: "pharmacy", name: "Farmacia" },
-  { id: "other", name: "Otro" },
+  { id: "pastry", name: "Repostería" },
+  { id: "other", name: "Otros" },
 ];
 
 // 4 tipos con emoticonos propios (feedback del cliente): coche, moto, bici y patinete

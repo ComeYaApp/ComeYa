@@ -39,7 +39,7 @@ const CARD_WIDTH = (SCREEN_WIDTH - COLUMN_GAP) / 2;
 const TABS = [
   { id: "all", label: "Todos", icon: "grid" },
   { id: "restaurant", label: "Restaurantes", icon: "coffee" },
-  { id: "market", label: "Mercados", icon: "shopping-bag" },
+  { id: "market", label: "Alimentación", icon: "shopping-basket" },
 ];
 
 const FILTERS = [
@@ -360,7 +360,7 @@ export default function BusinessListScreen() {
                     ? "Todos los negocios"
                     : activeTab === "restaurant"
                       ? "Restaurantes"
-                      : "Mercados"}
+                      : "Alimentación"}
                 </ThemedText>
               </View>
             ) : null}

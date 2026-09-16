@@ -29,7 +29,7 @@ const legalContent = {
       {
         title: "2. Uso del Servicio",
         content:
-          "ComeYa proporciona una plataforma para conectar clientes con restaurantes, mercados y repartidores locales. Los usuarios deben tener al menos 18 anos para utilizar el servicio.",
+          "ComeYa proporciona una plataforma para conectar clientes con restaurantes, tiendas de alimentación y repartidores locales. Los usuarios deben tener al menos 18 anos para utilizar el servicio.",
       },
       {
         title: "3. Pedidos y Pagos",

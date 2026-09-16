@@ -681,7 +681,7 @@ export const BusinessesTab: React.FC<Props> = () => {
         {[
           { id: "all", label: "Todos los tipos" },
           { id: "restaurant", label: "Restaurantes" },
-          { id: "market", label: "Mercados" },
+          { id: "market", label: "Alimentación" },
         ].map((f) => (
           <TouchableOpacity
             key={f.id}

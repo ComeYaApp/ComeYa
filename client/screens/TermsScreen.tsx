@@ -78,7 +78,7 @@ export default function TermsScreen() {
             type="small"
             style={{ color: ComeYaColors.primary, fontWeight: "600" }}
           >
-            Última actualización: 1 de Enero de 2025
+            Última actualización: 1 de Enero de 2026
           </ThemedText>
         </View>
 
@@ -491,7 +491,7 @@ export default function TermsScreen() {
               marginTop: Spacing.xs,
             }}
           >
-            © 2025 ComeYa. Todos los derechos reservados.
+            © 2026 ComeYa. Todos los derechos reservados.
           </ThemedText>
         </View>
       </ScrollView>

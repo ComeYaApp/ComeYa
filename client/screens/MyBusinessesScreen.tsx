@@ -44,13 +44,14 @@ import { useAuth } from "@/contexts/AuthContext";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type MyBusinessesRouteProp = RouteProp<RootStackParamList, "MyBusinesses">;
 
+// Solo estas categorías (feedback del cliente): fuera farmacia, abarrotes…
 const BUSINESS_TYPES = [
   { id: "restaurant", name: "Restaurante", icon: "coffee" },
-  { id: "market", name: "Mercado", icon: "shopping-bag" },
-  { id: "bakery", name: "Panadería", icon: "award" },
-  { id: "grocery", name: "Abarrotes", icon: "package" },
-  { id: "pharmacy", name: "Farmacia", icon: "plus-circle" },
-  { id: "other", name: "Otro", icon: "grid" },
+  { id: "fruiteria", name: "Frutería", icon: "shopping-basket" },
+  { id: "butcher", name: "Carnicería", icon: "award" },
+  { id: "bakery", name: "Panadería", icon: "sun" },
+  { id: "pastry", name: "Repostería", icon: "star" },
+  { id: "other", name: "Otros", icon: "grid" },
 ];
 
 export default function MyBusinessesScreen() {

@@ -3,7 +3,9 @@ import { authenticateToken, requireRole } from "../authMiddleware";
 
 const router = express.Router();
 
-// Seed de categorías por defecto si la tabla está vacía
+// Seed de categorías por defecto si la tabla está vacía.
+// Catálogo reducido (feedback del cliente): fuera farmacia, tiendas,
+// ferreterías y papelerías — ComeYa se centra en comida y alimentación.
 const DEFAULT_CATEGORIES = [
   {
     name: "Restaurantes",
@@ -14,44 +16,12 @@ const DEFAULT_CATEGORIES = [
     displayOrder: 1,
   },
   {
-    name: "Mercados",
+    name: "Alimentación",
     slug: "market",
-    icon: "shopping-bag",
+    icon: "shopping-basket",
     color: "#10B981",
-    description: "Supermercados, fruterías y alimentación",
+    description: "Fruterías, carnicerías, panaderías, reposterías y tiendas de alimentación",
     displayOrder: 2,
-  },
-  {
-    name: "Farmacias",
-    slug: "pharmacy",
-    icon: "plus-circle",
-    color: "#3B82F6",
-    description: "Medicamentos, parafarmacia y productos de salud",
-    displayOrder: 3,
-  },
-  {
-    name: "Tiendas",
-    slug: "store",
-    icon: "package",
-    color: "#8B5CF6",
-    description: "Comercios locales y tiendas especializadas",
-    displayOrder: 4,
-  },
-  {
-    name: "Ferreterías",
-    slug: "hardware",
-    icon: "tool",
-    color: "#F59E0B",
-    description: "Herramientas, materiales y bricolaje",
-    displayOrder: 5,
-  },
-  {
-    name: "Papelerías",
-    slug: "stationery",
-    icon: "book",
-    color: "#EC4899",
-    description: "Material de oficina, libros y papelería",
-    displayOrder: 6,
   },
   {
     name: "Otros",

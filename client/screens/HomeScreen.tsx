@@ -1338,7 +1338,7 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.marketsTextContainer}>
                         <ThemedText type="h3" style={styles.marketsTitle}>
-                          Ver Mercados
+                          Ver Alimentación
                         </ThemedText>
                         <View style={styles.marketsCTA}>
                           <ThemedText
@@ -1367,7 +1367,7 @@ export default function HomeScreen() {
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <ThemedText type="h3" style={styles.sectionTitle}>
-                    Mercados cerca de ti
+                    Alimentación cerca de ti
                   </ThemedText>
                   <Feather
                     name="shopping-bag"

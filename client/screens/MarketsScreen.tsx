@@ -32,7 +32,7 @@ export default function MarketsScreen() {
         >
           <Feather name="arrow-left" size={24} color={theme.text} />
         </Pressable>
-        <ThemedText type="h2">Mercados</ThemedText>
+        <ThemedText type="h2">Alimentación</ThemedText>
         <View style={styles.placeholder} />
       </View>
 
@@ -50,7 +50,7 @@ export default function MarketsScreen() {
         >
           <Feather name="info" size={20} color="#4CAF50" />
           <ThemedText type="small" style={styles.infoText}>
-            En los mercados puedes especificar exactamente como quieres tus
+            En alimentación puedes especificar exactamente como quieres tus
             productos: "carne delgada sin grasa", "aguacates maduros", etc.
           </ThemedText>
         </View>
@@ -58,7 +58,7 @@ export default function MarketsScreen() {
         {/* Markets List */}
         <View style={styles.section}>
           <ThemedText type="h3" style={styles.sectionTitle}>
-            Mercados disponibles
+            Alimentación disponible
           </ThemedText>
           {markets.map((business) => (
             <BusinessCard
@@ -81,13 +81,13 @@ export default function MarketsScreen() {
               color={theme.textSecondary}
             />
             <ThemedText type="h3" style={styles.emptyTitle}>
-              No hay mercados disponibles
+              No hay tiendas de alimentación disponibles
             </ThemedText>
             <ThemedText
               type="body"
               style={{ color: theme.textSecondary, textAlign: "center" }}
             >
-              Pronto agregaremos mas mercados en tu zona
+              Pronto agregaremos mas tiendas de alimentación en tu zona
             </ThemedText>
           </View>
         ) : null}

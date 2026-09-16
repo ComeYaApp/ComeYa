@@ -37,7 +37,7 @@ export default {
       splash: {
         image: "./client/assets/splash.png",
         resizeMode: "contain",
-        backgroundColor: "#ffffff"
+        backgroundColor: "#DC2626"
       },
       associatedDomains: ["applinks:comeya.es"]
     },
@@ -79,7 +79,7 @@ export default {
         "expo-splash-screen",
         {
           image: "./client/assets/splash.png",
-          imageWidth: 500,
+          imageWidth: 320,
           resizeMode: "contain",
           backgroundColor: "#DC2626",
           dark: {

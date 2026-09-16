@@ -69,7 +69,7 @@ export default function MarketsScreen() {
             <Feather name="arrow-left" size={22} color={text} />
           </Pressable>
           <View>
-            <Text style={[s.headerTitle, { color: text }]}>Mercados</Text>
+            <Text style={[s.headerTitle, { color: text }]}>Alimentación</Text>
             <Text style={[s.headerSub, { color: sub }]}>
               {markets.length} mercado{markets.length !== 1 ? "s" : ""}{" "}
               disponible{markets.length !== 1 ? "s" : ""}
@@ -91,7 +91,7 @@ export default function MarketsScreen() {
           >
             <Feather name="info" size={18} color="#4CAF50" />
             <Text style={[s.infoText, { color: "#2E7D32" }]}>
-              En los mercados puedes especificar exactamente cómo quieres tus
+              En los tiendas de alimentación puedes especificar exactamente cómo quieres tus
               productos: "carne delgada sin grasa", "aguacates maduros", etc.
             </Text>
           </View>
@@ -106,10 +106,10 @@ export default function MarketsScreen() {
             >
               <Feather name="shopping-bag" size={48} color={sub} />
               <Text style={[s.emptyTitle, { color: text }]}>
-                No hay mercados disponibles
+                No hay tiendas de alimentación disponibles
               </Text>
               <Text style={[s.emptySub, { color: sub }]}>
-                Pronto agregaremos más mercados en tu zona
+                Pronto agregaremos más tiendas de alimentación en tu zona
               </Text>
             </View>
           ) : (

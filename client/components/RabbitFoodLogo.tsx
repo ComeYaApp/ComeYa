@@ -12,7 +12,7 @@ export const ComeYaLogo: React.FC<ComeYaLogoProps> = ({
 }) => {
   return (
     <Image
-      source={require("../../assets/images/comeya-logo-final.png")}
+      source={require("../../assets/images/comeya-badge.png")}
       style={[{ width: size, height: size, resizeMode: "contain" }, style]}
     />
   );

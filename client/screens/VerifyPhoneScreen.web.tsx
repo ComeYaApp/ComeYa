@@ -154,7 +154,7 @@ export default function VerifyPhoneScreen() {
     <View style={[s.root, { backgroundColor: bg }]}>
       <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
         <Image
-          source={require("../../assets/images/comeya-logo-final.png")}
+          source={require("../../assets/images/comeya-badge.png")}
           style={s.logo}
           contentFit="contain"
         />
