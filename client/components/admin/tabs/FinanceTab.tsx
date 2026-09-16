@@ -201,6 +201,94 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
   const s = st(theme);
   const insets = useSafeAreaInsets();
 
+
+  // ── Propinas manuales pendientes de verificación ─────────────────────────
+  const [pendingTips, setPendingTips] = useState<any[]>([]);
+  const [tipsLoading, setTipsLoading] = useState(false);
+
+  const loadPendingTips = useCallback(async () => {
+    setTipsLoading(true);
+    try {
+      const res = await apiRequest(
+        "GET",
+        "/api/admin/finance/pending-manual-tips",
+      );
+      const data = await res.json();
+      setPendingTips(data.tips || []);
+    } catch {}
+    setTipsLoading(false);
+  }, []);
+
+  const verifyTip = async (txId: string) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/finance/manual-tips/${txId}/verify`,
+        {},
+      );
+      const data = await res.json();
+      if (data.success) {
+        showToast("Propina verificada y abonada al repartidor", "success");
+        loadPendingTips();
+      } else {
+        showToast(data.error || "No se pudo verificar", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    }
+  };
+
+  const rejectTip = async (txId: string) => {
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/finance/manual-tips/${txId}/reject`,
+        {},
+      );
+      const data = await res.json();
+      if (data.success) {
+        showToast("Propina rechazada", "info");
+        loadPendingTips();
+      } else {
+        showToast(data.error || "No se pudo rechazar", "error");
+      }
+    } catch {
+      showToast("Error de conexión", "error");
+    }
+  };
+
+  // ── Ganancias mensuales por repartidor (facturación de autónomos) ────────
+  const [monthlyMonth, setMonthlyMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [monthlyRows, setMonthlyRows] = useState<any[]>([]);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [monthlyError, setMonthlyError] = useState("");
+
+  const loadMonthly = useCallback(async () => {
+    setMonthlyLoading(true);
+    setMonthlyError("");
+    try {
+      const res = await apiRequest(
+        "GET",
+        `/api/admin/finance/driver-monthly-earnings?month=${monthlyMonth}`,
+      );
+      const data = await res.json();
+      if (data.success) setMonthlyRows(data.rows || []);
+      else setMonthlyError(data.error || "Error al cargar");
+    } catch {
+      setMonthlyError("Error de conexión");
+    }
+    setMonthlyLoading(false);
+  }, [monthlyMonth]);
+
+  useEffect(() => {
+    if (tab === "tips") loadPendingTips();
+    if (tab === "drivers") loadMonthly();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, monthlyMonth]);
+
   if (loading) {
     return (
       <View style={[s.centered, { flex: 1 }]}>
@@ -558,94 +646,6 @@ export const FinanceTab: React.FC<Props> = ({ theme, showToast }) => {
       </ScrollView>
     );
   }
-
-  // ── Propinas manuales pendientes de verificación ─────────────────────────
-  const [pendingTips, setPendingTips] = useState<any[]>([]);
-  const [tipsLoading, setTipsLoading] = useState(false);
-
-  const loadPendingTips = useCallback(async () => {
-    setTipsLoading(true);
-    try {
-      const res = await apiRequest(
-        "GET",
-        "/api/admin/finance/pending-manual-tips",
-      );
-      const data = await res.json();
-      setPendingTips(data.tips || []);
-    } catch {}
-    setTipsLoading(false);
-  }, []);
-
-  const verifyTip = async (txId: string) => {
-    try {
-      const res = await apiRequest(
-        "POST",
-        `/api/admin/finance/manual-tips/${txId}/verify`,
-        {},
-      );
-      const data = await res.json();
-      if (data.success) {
-        showToast("Propina verificada y abonada al repartidor", "success");
-        loadPendingTips();
-      } else {
-        showToast(data.error || "No se pudo verificar", "error");
-      }
-    } catch {
-      showToast("Error de conexión", "error");
-    }
-  };
-
-  const rejectTip = async (txId: string) => {
-    try {
-      const res = await apiRequest(
-        "POST",
-        `/api/admin/finance/manual-tips/${txId}/reject`,
-        {},
-      );
-      const data = await res.json();
-      if (data.success) {
-        showToast("Propina rechazada", "info");
-        loadPendingTips();
-      } else {
-        showToast(data.error || "No se pudo rechazar", "error");
-      }
-    } catch {
-      showToast("Error de conexión", "error");
-    }
-  };
-
-  // ── Ganancias mensuales por repartidor (facturación de autónomos) ────────
-  const [monthlyMonth, setMonthlyMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
-  const [monthlyRows, setMonthlyRows] = useState<any[]>([]);
-  const [monthlyLoading, setMonthlyLoading] = useState(false);
-  const [monthlyError, setMonthlyError] = useState("");
-
-  const loadMonthly = useCallback(async () => {
-    setMonthlyLoading(true);
-    setMonthlyError("");
-    try {
-      const res = await apiRequest(
-        "GET",
-        `/api/admin/finance/driver-monthly-earnings?month=${monthlyMonth}`,
-      );
-      const data = await res.json();
-      if (data.success) setMonthlyRows(data.rows || []);
-      else setMonthlyError(data.error || "Error al cargar");
-    } catch {
-      setMonthlyError("Error de conexión");
-    }
-    setMonthlyLoading(false);
-  }, [monthlyMonth]);
-
-  useEffect(() => {
-    if (tab === "tips") loadPendingTips();
-    if (tab === "drivers") loadMonthly();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, monthlyMonth]);
-
   // ── Lista principal ────────────────────────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
