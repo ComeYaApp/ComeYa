@@ -35,7 +35,7 @@ import AdminMapScreenMobile from "@/screens/AdminMapScreen";
 // Pantallas web del business
 import BusinessDashboardScreenWeb from "@/screens/BusinessDashboardScreen.web";
 import BusinessOrdersScreenWeb from "@/screens/BusinessOrdersScreen.web";
-import BusinessReservationsScreenWeb from "@/screens/BusinessReservationsScreen.web";
+import BusinessReservationsScreenWeb from "@/screens/BusinessReservationsScreen";
 import BusinessProductsScreenWeb from "@/screens/BusinessProductsScreen.web";
 import BusinessHoursScreenWeb from "@/screens/BusinessHoursScreen.web";
 import BusinessStatsScreenWeb from "@/screens/BusinessStatsScreen.web";
