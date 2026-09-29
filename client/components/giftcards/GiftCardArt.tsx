@@ -287,7 +287,7 @@ export function GiftCardArt({
 
       {/* Chip del logo: borde pequeño con la marca, como pidió el cliente */}
       <View style={styles.logoChip} pointerEvents="none">
-        <Image source={require("../../../assets/images/comeya-badge.png")} style={styles.logoImg} />
+        <Image source={require("../../../assets/images/comeya-logo-nuevo.png")} style={styles.logoImg} />
         <Text style={styles.logoText}>ComeYa</Text>
       </View>
 

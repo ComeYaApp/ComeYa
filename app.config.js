@@ -4,8 +4,10 @@ export default {
     slug: "cy-soria",
     version: "1.0.16",
     orientation: "portrait",
-    // Icono generado desde el logo oficial (badge circular sobre el rojo de
-    // marca). Antes apuntaba a una imagen con bandas naranjas.
+    // Icono generado desde el LOGO OFICIAL del cliente
+    // (assets/images/comeya-logo-nuevo.svg: cuadrado rojo #EB0000 con el
+    // emblema circular). Antes se componía un círculo viejo que no era su
+    // logo, y mucho antes una imagen con bandas naranjas.
     icon: "./client/assets/icon.png",
     scheme: "comeya",
     userInterfaceStyle: "automatic",
@@ -16,10 +18,10 @@ export default {
         ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
-      // Versionado local: App Store Connect ya tiene el build 19 de la
-      // 1.0.16 (aún sin publicar), así que este envío es el build 20 de la
-      // MISMA versión. Cada build nuevo debe subir este número (21, 22…).
-      buildNumber: "20",
+      // Versionado local: el build 20 de la 1.0.16 ya está subido, así que
+      // este envío (logo oficial corregido + arreglos del cliente) es el
+      // build 21 de la MISMA versión. Cada build nuevo sube este número.
+      buildNumber: "21",
       config: {
         // ComeYa iOS Key (Maps SDK for iOS, restringida al bundle
         // com.comeya.app). Sin esta clave el SDK de Google pinta un mapa
@@ -42,19 +44,23 @@ export default {
       splash: {
         image: "./client/assets/splash.png",
         resizeMode: "contain",
-        backgroundColor: "#DC2626"
+        // Rojo del propio logo: el cuadrado del logo se funde con el fondo
+        // y no aparece ningún marco.
+        backgroundColor: "#EB0000"
       },
       associatedDomains: ["applinks:comeya.es"]
     },
     android: {
       adaptiveIcon: {
-        backgroundColor: "#DC2626",
+        backgroundColor: "#EB0000",
         foregroundImage: "./client/assets/adaptive-icon.png",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
             package: "com.comeya.app",
-      versionCode: 24,
+      // versionCode nativo (el APK local lo toma de android/app/build.gradle,
+      // se mantienen los dos en el mismo número).
+      versionCode: 25,
       config: {
         googleMaps: {
           // ComeYa Android Key (paquete + SHA-1). Coincide con la clave ya
@@ -86,9 +92,9 @@ export default {
           image: "./client/assets/splash.png",
           imageWidth: 320,
           resizeMode: "contain",
-          backgroundColor: "#DC2626",
+          backgroundColor: "#EB0000",
           dark: {
-            backgroundColor: "#DC2626",
+            backgroundColor: "#EB0000",
             image: "./client/assets/splash.png",
           },
         },

@@ -48,7 +48,7 @@ export function BusinessSidebar({ activeSection }: Props) {
       {/* Logo + negocio */}
       <View style={s.header}>
         <Image
-          source={require("../../assets/images/comeya-badge.png")}
+          source={require("../../assets/images/comeya-logo-nuevo.png")}
           style={s.logo}
           contentFit="contain"
         />
@@ -223,7 +223,7 @@ const s = StyleSheet.create({
     position: "relative" as any,
   },
   header: { padding: 24, paddingBottom: 16 },
-  logo: { width: 100, height: 32, marginBottom: 12 },
+  logo: { width: 100, height: 32, marginBottom: 12, borderRadius: 8 },
   bizSelector: {
     flexDirection: "row",
     alignItems: "center",

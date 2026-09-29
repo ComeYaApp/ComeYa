@@ -145,7 +145,8 @@ export default function SupportScreen() {
             >
               <View style={styles.chatPromoIcon}>
                 <Image
-                  source={require("../../assets/images/comeya-badge.png")}
+                  source={require("../../assets/images/comeya-logo-nuevo.png")}
+                  style={{ width: 40, height: 40, borderRadius: 9 }}
                   contentFit="contain"
                 />
               </View>
@@ -270,7 +271,8 @@ export default function SupportScreen() {
                   ]}
                 >
                   <Image
-                    source={require("../../assets/images/comeya-badge.png")}
+                    source={require("../../assets/images/comeya-logo-nuevo.png")}
+                    style={{ width: 64, height: 64, borderRadius: 14 }}
                     contentFit="contain"
                   />
                 </View>

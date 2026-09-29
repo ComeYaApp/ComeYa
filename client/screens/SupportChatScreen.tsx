@@ -73,8 +73,8 @@ function MessageBubble({ message }: { message: Message }) {
             ]}
           >
             <Image
-              source={require("../../assets/images/comeya-badge.png")}
-              style={{ width: 16, height: 16 }}
+              source={require("../../assets/images/comeya-logo-nuevo.png")}
+              style={{ width: 16, height: 16, borderRadius: 4 }}
               resizeMode="contain"
             />
           </View>
@@ -119,8 +119,8 @@ function EmptyState() {
         <Feather name="message-circle" size={48} color={ComeYaColors.primary} />
       </View>
       <Image
-        source={require("../../assets/images/comeya-badge.png")}
-        style={{ width: 80, height: 80, marginTop: Spacing.md }}
+        source={require("../../assets/images/comeya-logo-nuevo.png")}
+        style={{ width: 80, height: 80, marginTop: Spacing.md, borderRadius: 18 }}
         resizeMode="contain"
       />
       <ThemedText

@@ -154,7 +154,7 @@ export default function VerifyPhoneScreen() {
     <View style={[s.root, { backgroundColor: bg }]}>
       <View style={[s.card, { backgroundColor: card, borderColor: border }]}>
         <Image
-          source={require("../../assets/images/comeya-badge.png")}
+          source={require("../../assets/images/comeya-logo-nuevo.png")}
           style={s.logo}
           contentFit="contain"
         />
@@ -262,7 +262,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
   },
-  logo: { width: 80, height: 40, marginBottom: 24 },
+  logo: { width: 80, height: 40, marginBottom: 24, borderRadius: 9 },
   iconCircle: {
     width: 80,
     height: 80,

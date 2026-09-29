@@ -1,6 +1,9 @@
 <resources>
-  <color name="splashscreen_background">#DC2626</color>
-  <color name="iconBackground">#DC2626</color>
+  <!-- Rojo del propio logo (#EB0000). El splash y el fondo del icono
+       adaptativo DEBEN usar exactamente este rojo: el cuadrado del logo se
+       funde con él y así no se ve ningún marco alrededor. -->
+  <color name="splashscreen_background">#EB0000</color>
+  <color name="iconBackground">#EB0000</color>
   <color name="colorPrimary">#023c69</color>
-  <color name="colorPrimaryDark">#DC2626</color>
+  <color name="colorPrimaryDark">#EB0000</color>
 </resources>

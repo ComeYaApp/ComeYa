@@ -1,3 +1,4 @@
 <resources>
-  <color name="splashscreen_background">#DC2626</color>
+  <!-- Mismo rojo que el logo (#EB0000) para que el splash sea continuo. -->
+  <color name="splashscreen_background">#EB0000</color>
 </resources>
