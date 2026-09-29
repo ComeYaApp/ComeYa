@@ -320,6 +320,11 @@ export default function RootStackNavigator() {
       <Stack.Screen name="Carnival" component={CarnivalScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Markets" component={MarketsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="BusinessList" component={BusinessListScreen} options={{ headerShown: false }} />
+      {/* El mapa de negocios es PÚBLICO: la pestaña Inicio se muestra también
+          a invitados (MainTabNavigator), así que si esta ruta solo existiera
+          con sesión iniciada el botón "Ver mapa" del Home no haría nada en
+          absoluto para un invitado (el navigate se quedaba sin manejar). */}
+      <Stack.Screen name="BusinessMap" component={BusinessMapScreen} options={{ headerShown: false }} />
 
       {isAuthenticated && (
         <>
@@ -369,7 +374,6 @@ export default function RootStackNavigator() {
           <Stack.Screen name="ReportIssue" component={ReportIssueScreen} options={{ headerShown: false }} />
           <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BusinessDeliveryMap" component={BusinessDeliveryMapScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="BusinessMap" component={BusinessMapScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BecomeDriver" component={BecomeDriverScreen} options={{ headerShown: false }} />
           <Stack.Screen name="BusinessHours" component={BusinessHoursScreen} options={{ headerTitle: "Horarios" }} />
           <Stack.Screen name="BusinessCategories" component={BusinessCategoriesScreen} options={{ headerTitle: "Categorías" }} />

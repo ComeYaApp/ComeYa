@@ -60,6 +60,11 @@ export function WebLayout({
     { icon: "user", label: "Perfil", route: "Profile" },
   ];
 
+  // "Mis reservas" es del cliente con sesión iniciada: para un invitado la
+  // ruta no existe y el botón no haría nada.
+  const isCustomerUser =
+    !!user && user.role !== "business_owner" && user.role !== "delivery_driver";
+
   const DefaultSidebar = (
     <View
       style={[s.sidebar, { backgroundColor: card, borderRightColor: border }]}
@@ -75,6 +80,21 @@ export function WebLayout({
           <Text style={[s.sideItemText, { color: text }]}>{item.label}</Text>
         </Pressable>
       ))}
+
+      {isCustomerUser && (
+        <>
+          <Text style={[s.sideTitle, { color: sub, marginTop: 20 }]}>
+            MIS RESERVAS
+          </Text>
+          <Pressable
+            onPress={() => navigation.navigate("MyReservations" as any)}
+            style={s.sideItem}
+          >
+            <Feather name="calendar" size={15} color={sub} />
+            <Text style={[s.sideItemText, { color: text }]}>Reservas</Text>
+          </Pressable>
+        </>
+      )}
 
       {(user?.role === "business_owner" || user?.role === "admin") && (
         <>
@@ -101,6 +121,15 @@ export function WebLayout({
           >
             <Feather name="calendar" size={15} color={sub} />
             <Text style={[s.sideItemText, { color: text }]}>Reservas</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate("BusinessFinances" as any)}
+            style={s.sideItem}
+          >
+            <Feather name="credit-card" size={15} color={sub} />
+            <Text style={[s.sideItemText, { color: text }]}>
+              Historial de pagos
+            </Text>
           </Pressable>
         </>
       )}
@@ -139,14 +168,8 @@ export function WebLayout({
           style={s.navLogo}
           onPress={() => navigation.navigate("Main" as any)}
         >
-          <View
-            style={[
-              s.navLogoCircle,
-              { backgroundColor: isDark ? "#222" : "#fff" },
-            ]}
-          >
-            <ComeYaLogo size={22} />
-          </View>
+          {/* Logo oficial tal cual (cuadrado rojo), sin recortar a círculo */}
+          <ComeYaLogo size={28} />
           {!isMobile && <Text style={s.navLogoText}>ComeYa</Text>}
         </Pressable>
 
@@ -235,13 +258,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     flexShrink: 0,
-  },
-  navLogoCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: "center",
-    alignItems: "center",
   },
   navLogoText: { fontSize: 18, fontWeight: "900", color: PRIMARY },
   navSearch: {

@@ -13,6 +13,9 @@ import BusinessDashboardScreenWeb from "@/screens/BusinessDashboardScreen.web";
 import BusinessOrdersScreenWeb from "@/screens/BusinessOrdersScreen.web";
 import BusinessProductsScreenWeb from "@/screens/BusinessProductsScreen.web";
 import BusinessStatsScreenWeb from "@/screens/BusinessStatsScreen.web";
+import FavoritesScreen from "@/screens/FavoritesScreen";
+import BusinessFinancesScreen from "@/screens/BusinessFinancesScreen";
+import MyReservationsScreen from "@/screens/MyReservationsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +23,21 @@ export default function ProfileStackNavigatorWeb() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreenWeb} />
+      {/* Favoritos e Historial de pagos se navegaban desde la web, pero sus
+          rutas solo existían en los navegadores NATIVOS (FavoritesStack y el
+          stack del negocio), así que en web el botón no hacía nada. Estas dos
+          pantallas no pintan su propia cabecera, así que aquí se activa. */}
+      <Stack.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{ headerShown: true, headerTitle: "Favoritos" }}
+      />
+      <Stack.Screen
+        name="BusinessFinances"
+        component={BusinessFinancesScreen}
+      />
+      {/* Mis reservas pinta su propia cabecera con flecha de volver */}
+      <Stack.Screen name="MyReservations" component={MyReservationsScreen} />
       <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
       <Stack.Screen name="AddAddress" component={AddAddressScreen} />
       <Stack.Screen name="LocationPicker" component={LocationPickerScreen} />

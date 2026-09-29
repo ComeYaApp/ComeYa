@@ -100,6 +100,7 @@ process-*.js
 transfer-*.js
 create-test-*.sql
 audit-*.js
+!scripts/audit-web-parity.js
 compare-*.js
 analyze-*.js
 login-*.js

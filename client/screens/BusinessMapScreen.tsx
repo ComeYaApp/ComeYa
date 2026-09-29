@@ -113,6 +113,10 @@ export default function BusinessMapScreen() {
   >({});
   const [Circle, setCircle] = useState<any>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  // Si react-native-maps no carga, se muestra un aviso con reintento en vez
+  // de un "Cargando mapa..." eterno.
+  const [mapLoadFailed, setMapLoadFailed] = useState(false);
+  const [mapReloadKey, setMapReloadKey] = useState(0);
   const mapRef = useRef<any>(null);
 
   // Solo dos categorías con iconos propios (feedback del cliente):
@@ -131,18 +135,32 @@ export default function BusinessMapScreen() {
     on_the_way: { label: "En camino 🛵", color: ComeYaColors.success },
   };
 
-  // Cargar react-native-maps dinámicamente (no disponible en web)
+  // Cargar react-native-maps dinámicamente (no disponible en web).
+  // Si el módulo no carga, antes la pantalla se quedaba para siempre en
+  // "Cargando mapa..." sin decir nada; ahora se marca el error y se ofrece
+  // reintentar, para que el botón "Ver mapa" nunca parezca muerto.
   useEffect(() => {
-    if (Platform.OS !== "web") {
-      import("react-native-maps").then((mod) => {
+    if (Platform.OS === "web") return;
+    let cancelled = false;
+    import("react-native-maps")
+      .then((mod) => {
+        if (cancelled) return;
         setMapView(() => mod.default);
         setMarker(() => mod.Marker);
         setPolyline(() => mod.Polyline);
         setCircle(() => mod.Circle);
         setProviderGoogle(() => mod.PROVIDER_GOOGLE);
+        setMapLoadFailed(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("No se pudo cargar react-native-maps:", err);
+        setMapLoadFailed(true);
       });
-    }
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [mapReloadKey]);
 
   // Cargar pedidos activos del cliente
   useEffect(() => {
@@ -436,6 +454,44 @@ export default function BusinessMapScreen() {
     );
   }
 
+  // El mapa no cargó: se dice claramente y se ofrece reintentar.
+  if (!MapView && mapLoadFailed) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.centered,
+          { backgroundColor: theme.backgroundRoot },
+        ]}
+      >
+        <Feather name="map" size={48} color={theme.textSecondary} />
+        <ThemedText
+          type="body"
+          style={{ marginTop: Spacing.md, color: theme.textSecondary }}
+        >
+          No se pudo cargar el mapa.
+        </ThemedText>
+        <Pressable
+          onPress={() => {
+            setMapLoadFailed(false);
+            setMapReloadKey((k) => k + 1);
+          }}
+          style={{
+            marginTop: Spacing.lg,
+            paddingHorizontal: Spacing.xl,
+            paddingVertical: Spacing.md,
+            borderRadius: BorderRadius.full,
+            backgroundColor: ComeYaColors.primary,
+          }}
+        >
+          <ThemedText type="body" style={{ color: "#fff", fontWeight: "700" }}>
+            Reintentar
+          </ThemedText>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (isLoading || !MapView) {
     return (
       <View
@@ -620,12 +676,16 @@ export default function BusinessMapScreen() {
 
       {/* Header flotante */}
       <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={[styles.floatBtn, { backgroundColor: theme.card }]}
-        >
-          <Feather name="arrow-left" size={22} color={theme.text} />
-        </Pressable>
+        {/* La flecha solo aparece si de verdad se puede volver: abierto como
+            pestaña "Mapa" no hay a dónde volver y era un botón muerto. */}
+        {navigation.canGoBack() && (
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={[styles.floatBtn, { backgroundColor: theme.card }]}
+          >
+            <Feather name="arrow-left" size={22} color={theme.text} />
+          </Pressable>
+        )}
         <View style={[styles.headerTitle, { backgroundColor: theme.card }]}>
           <Feather name="map-pin" size={16} color={ComeYaColors.primary} />
           <ThemedText

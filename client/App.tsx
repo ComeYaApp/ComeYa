@@ -423,6 +423,16 @@ function AppThemedShell({ children }: { children: React.ReactNode }) {
         ref={navigationRef}
         theme={isDark ? DarkTheme : DefaultTheme}
         linking={linking}
+        // Red de seguridad: si un botón navega a una ruta que no está
+        // registrada (como le pasaba a "Ver mapa" con los invitados), React
+        // Navigation descarta la acción en silencio y el botón parece muerto.
+        // Al menos queda constancia en el log en vez de un fallo invisible.
+        onUnhandledAction={(action) => {
+          console.warn(
+            "[navegación] Acción sin manejar:",
+            JSON.stringify(action),
+          );
+        }}
       >
         {children}
       </NavigationContainer>
