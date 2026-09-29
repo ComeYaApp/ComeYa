@@ -105,6 +105,7 @@ compare-*.js
 analyze-*.js
 login-*.js
 
+
 # ============================================
 # OS & IDE
 # ============================================
@@ -184,6 +185,10 @@ scripts/*.ts
 scripts/*_temp.js
 scripts/check_db.js
 !scripts/build.js
+# Herramienta de mantenimiento (no un script de un solo uso): rellena las
+# coordenadas reales de los negocios. Va DESPUÉS de scripts/*.ts porque en
+# .gitignore gana el último patrón que coincide.
+!scripts/geocode-businesses.ts
 
 # ============================================
 # Replit
