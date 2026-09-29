@@ -1,3 +1,15 @@
+# Control de versiones. Importante: al existir un .easignore propio, EAS deja
+# de aplicar sus exclusiones por defecto y .git() se subia entero: 614 MB de
+# historial en CADA build, que es la causa de que la subida pareciera quedarse
+# colgada sin mostrar nada. EAS solo necesita el arbol de trabajo; el hash del
+# commit lo calcula con git en local.
+.git/
+
+# Binarios de herramientas locales que no participan en la compilacion
+# (cloudflared para tuneles, bundletool para inspeccionar APKs)
+cloudflared.exe
+bundletool.jar
+
 # Node modules (EAS Build los reconstruye con npm install)
 node_modules/
 
