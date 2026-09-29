@@ -380,9 +380,9 @@ export const FinanceTab: React.FC<Props> = ({ defaultTab = "payouts" }) => {
             >
               <Feather name="info" size={13} color="#3B82F6" />
               <Text style={[ea.infoTxt, { color: "#3B82F6" }]}>
-                Las ganancias son el 15% de markup sobre el precio base de los
-                productos. Los pagos a negocios y repartidores se gestionan en
-                la pestaña Payouts.
+                Las ganancias son el markup sobre el precio base de los
+                productos más el coste de servicio de cada pedido. Los pagos a
+                negocios y repartidores se gestionan en la pestaña Payouts.
               </Text>
             </View>
           </>

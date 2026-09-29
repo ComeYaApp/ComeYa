@@ -396,7 +396,9 @@ export default function BusinessStripeSetupScreen() {
               <Text style={[s.helpText, { color: sub }]}>
                 Tus ingresos se procesan directamente a través de Stripe
                 Connect. Recibes el 100% del precio base de tus productos.
-                ComeYa agrega un 15% de markup al precio final del cliente.
+                ComeYa agrega un porcentaje de markup sobre los precios base y
+                cobra un porcentaje de comisión a cada restaurante según el
+                volumen de pedidos.
               </Text>
             </View>
           </>
