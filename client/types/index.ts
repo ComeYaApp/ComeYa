@@ -116,6 +116,8 @@ export interface Order {
   subtotal: number;
   productosBase?: number;
   nemyCommission?: number;
+  /** Coste de servicio ComeYa (0,49 € por defecto), en TODOS los pedidos */
+  serviceFee?: number;
   deliveryFee: number;
   total: number;
   paymentMethod: "card";

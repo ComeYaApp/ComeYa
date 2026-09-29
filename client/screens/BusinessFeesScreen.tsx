@@ -263,7 +263,7 @@ export default function BusinessFeesScreen() {
                 style={{ color: theme.textSecondary, marginTop: Spacing.xs }}
               >
                 {outstanding > 0
-                  ? `Tarifa: 0,99 € por comensal que asiste · cobro automático al llegar a ${fmt(summary?.autochargeThresholdCents || 500)}`
+                  ? `Tarifa: 0,99 € por comensal que asiste + 0,49 € de servicio por reserva · cobro automático al llegar a ${fmt(summary?.autochargeThresholdCents || 500)}`
                   : "Todo al día ✅"}
               </ThemedText>
             </View>

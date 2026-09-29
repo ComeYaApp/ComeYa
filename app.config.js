@@ -4,7 +4,9 @@ export default {
     slug: "cy-soria",
     version: "1.0.16",
     orientation: "portrait",
-    icon: "./client/assets/nuevologoapp-padded.jpeg",
+    // Icono generado desde el logo oficial (badge circular sobre el rojo de
+    // marca). Antes apuntaba a una imagen con bandas naranjas.
+    icon: "./client/assets/icon.png",
     scheme: "comeya",
     userInterfaceStyle: "automatic",
     // New Architecture requerido por react-native-reanimated@4.1.1
@@ -14,12 +16,15 @@ export default {
         ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
-      // Versionado local: App Store Connect ya tiene el build 18; cada
-      // build nuevo debe incrementar este número a mano (18, 19, 20…)
-      buildNumber: "19",
+      // Versionado local: App Store Connect ya tiene el build 19 de la
+      // 1.0.16 (aún sin publicar), así que este envío es el build 20 de la
+      // MISMA versión. Cada build nuevo debe subir este número (21, 22…).
+      buildNumber: "20",
       config: {
-        // ComeYa iOS Key (Maps SDK for iOS, restringida por bundle). Fallback
-        // a la genérica solo para no romper builds sin la variable.
+        // ComeYa iOS Key (Maps SDK for iOS, restringida al bundle
+        // com.comeya.app). Sin esta clave el SDK de Google pinta un mapa
+        // vacío, así que si falta se cae a Apple Maps (ver
+        // client/utils/mapProvider.ts).
         googleMapsApiKey:
           process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY ||
           process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
@@ -33,7 +38,7 @@ export default {
         CFBundleAllowMixedLocalizations: true,
         UIBackgroundModes: ["location", "fetch"]
       },
-      icon: "./client/assets/nuevologoapp-padded.jpeg",
+      icon: "./client/assets/icon.png",
       splash: {
         image: "./client/assets/splash.png",
         resizeMode: "contain",
@@ -44,12 +49,12 @@ export default {
     android: {
       adaptiveIcon: {
         backgroundColor: "#DC2626",
-        foregroundImage: "./client/assets/nuevologoapp-padded.jpeg",
+        foregroundImage: "./client/assets/adaptive-icon.png",
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
             package: "com.comeya.app",
-      versionCode: 23,
+      versionCode: 24,
       config: {
         googleMaps: {
           // ComeYa Android Key (paquete + SHA-1). Coincide con la clave ya

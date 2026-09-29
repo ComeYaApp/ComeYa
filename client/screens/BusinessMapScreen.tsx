@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+import { effectiveMapProvider, USING_GOOGLE_MAPS } from "@/utils/mapProvider";
 import {
   View,
   StyleSheet,
@@ -460,13 +461,15 @@ export default function BusinessMapScreen() {
       {/* Mapa */}
       <MapView
         ref={mapRef}
-        provider={ProviderGoogle}
+        provider={effectiveMapProvider(ProviderGoogle)}
         style={StyleSheet.absoluteFillObject}
         initialRegion={DEFAULT_REGION}
         showsUserLocation
         showsMyLocationButton={false}
         userInterfaceStyle={isDark ? "dark" : "light"}
-        customMapStyle={mapStyleForTheme(isDark)}
+        customMapStyle={
+          USING_GOOGLE_MAPS ? mapStyleForTheme(isDark) : undefined
+        }
       >
         {/* Radio de cobertura */}
         {Circle && userLocation && (
@@ -489,13 +492,17 @@ export default function BusinessMapScreen() {
                 b.type,
                 b.categories.join(","),
               );
+              // Solo el negocio seleccionado muestra su tarjeta con el
+              // nombre: con 11 negocios en el centro de Soria las etiquetas
+              // se solapaban entre sí y no se leía ninguna.
+              const isSelected = selected?.id === b.id;
               return (
                 <SmartMarker
                   key={b.id}
                   coordinate={{ latitude: b.latitude, longitude: b.longitude }}
                   onPress={() => handlePinPress(b)}
                   anchor={{ x: 0.5, y: 1 }}
-                  trackKey={`biz-${b.id}-${b.isOpen ? "open" : "closed"}`}
+                  trackKey={`biz-${b.id}-${b.isOpen ? "open" : "closed"}-${isSelected ? "sel" : "pin"}`}
                 >
                   <View style={styles.businessPinWrapper}>
                     <BusinessBubblePin
@@ -510,6 +517,8 @@ export default function BusinessMapScreen() {
                             : "30-45 min"
                           : "Cerrado"
                       }
+                      pinOnly={!isSelected}
+                      selected={isSelected}
                     />
                   </View>
                 </SmartMarker>

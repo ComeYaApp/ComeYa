@@ -21,6 +21,7 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { useTheme } from "@/hooks/useTheme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ComeYaColors, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -61,6 +62,7 @@ function centsToDisplay(cents: number | null | undefined): string {
 export default function SubscriptionScreen() {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
 
   const isBusinessOwner = user?.role === "business_owner";
@@ -242,15 +244,19 @@ export default function SubscriptionScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Cabecera */}
-      <View style={styles.header}>
+      {/* Cabecera. Sin el inset superior la flecha de volver quedaba pegada
+          al borde (bajo el notch) y no se podía pulsar. */}
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.sm }]}>
         <Pressable
           onPress={() => {
             // Si no hay pantalla previa (deep link/notificación), volver a Inicio
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
-              (navigation as any).navigate("HomeTab");
+              // Sin pantalla previa (deep link o notificación): volver al
+              // inicio de verdad. "HomeTab" vive DENTRO del navigator de
+              // pestañas, así que hay que entrar por "Main".
+              (navigation as any).navigate("Main", { screen: "HomeTab" });
             }
           }}
           style={styles.backButton}

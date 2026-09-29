@@ -741,13 +741,15 @@ export function calculateHaversineDistance(
 }
 
 /**
- * Estimar tiempo de entrega basado en distancia (sin API)
+ * Estimar tiempo de entrega basado en distancia (sin API).
+ * Sin suelo artificial: un trayecto corto dentro de Soria puede ser de 1-2
+ * minutos, y forzarlo a 5 inflaba el tiempo que veía el cliente.
  */
 export function estimateDeliveryTimeMinutes(distanceKm: number): number {
   // Asumiendo velocidad promedio de 25 km/h en ciudad
   const speedKmh = 25;
   const hours = distanceKm / speedKmh;
-  return Math.max(5, Math.ceil(hours * 60)); // mínimo 5 minutos
+  return Math.max(1, Math.ceil(hours * 60));
 }
 
 /**

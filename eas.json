@@ -17,12 +17,18 @@
           "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
           "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
           "EXPO_PUBLIC_NODE_ENV": "production",
-          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w",
+          "EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
         }
       },
       "ios": {
         "simulator": true,
-        "image": "macos-sequoia-15.6-xcode-26.0"
+        "image": "macos-sequoia-15.6-xcode-26.0",
+        "env": {
+          "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
+          "EXPO_PUBLIC_NODE_ENV": "production",
+          "EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+        }
       }
     },
     "adhoc": {
@@ -34,7 +40,8 @@
           "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
           "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
           "EXPO_PUBLIC_NODE_ENV": "production",
-          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g",
+          "EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
         }
       }
     },
@@ -46,7 +53,8 @@
           "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
           "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
           "EXPO_PUBLIC_NODE_ENV": "production",
-          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w",
+          "EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY": "AIzaSyDXqkUBjbChGPwLXU5EqtOTcIypLsyjo3w"
         }
       },
       "ios": {
@@ -57,7 +65,8 @@
           "EXPO_PUBLIC_BACKEND_URL": "https://comeya-backend.onrender.com",
           "EXPO_PUBLIC_FRONTEND_URL": "https://app.comeya.es",
           "EXPO_PUBLIC_NODE_ENV": "production",
-          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
+          "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g",
+          "EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY": "AIzaSyCnO6adzc_17atX7OAH4FPL6ldwHRO_48g"
         }
       }
     }

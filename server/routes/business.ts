@@ -853,12 +853,22 @@ router.get(
           break;
       }
 
-      // Obtener transacciones (pedidos)
+      // Obtener transacciones (pedidos). Se traen también los importes que
+      // el negocio necesita para cuadrar: su precio base, el markup de
+      // ComeYa, la comisión y el coste de servicio.
       const [transactionRows] = (await db.execute(sql`
       SELECT 
         o.id,
+        o.order_number,
         o.subtotal,
+        o.productos_base,
+        o.nemy_commission,
+        o.service_fee,
         o.delivery_fee,
+        o.platform_fee,
+        o.business_earnings,
+        o.delivery_earnings,
+        o.order_type,
         o.total,
         o.status,
         o.payment_method,
@@ -886,7 +896,16 @@ router.get(
         return {
           id: row.id,
           orderId: row.id,
+          orderNumber: row.order_number || null,
           subtotal: row.subtotal || 0,
+          // Precio base del negocio (sin markup) = lo que realmente cobra
+          productosBase: row.productos_base || 0,
+          markupCents: row.nemy_commission || 0,
+          serviceFee: row.service_fee || 0,
+          platformFee: row.platform_fee || 0,
+          businessEarnings: row.business_earnings || 0,
+          deliveryEarnings: row.delivery_earnings || 0,
+          orderType: row.order_type || "delivery",
           deliveryFee: row.delivery_fee || 0,
           total: row.total || 0,
           status: row.status,
@@ -899,7 +918,10 @@ router.get(
         };
       });
 
-      // Calcular resumen
+      // Calcular resumen. "Ganancias" es lo que el negocio ingresa de verdad
+      // —su precio base— no el subtotal con el markup de ComeYa incluido:
+      // antes se sumaba `subtotal`, que inflaba la cifra y no cuadraba con
+      // la liquidación.
       const completedOrders = transactions.filter(
         (t: any) => t.status === "delivered",
       );
@@ -907,12 +929,25 @@ router.get(
         ["pending", "accepted", "preparing", "on_the_way"].includes(t.status),
       );
 
+      // Delivered ya tiene businessEarnings calculado; los pedidos en curso
+      // se estiman con su precio base (aún no hay liquidación cerrada).
+      const earningsOf = (t: any) =>
+        t.businessEarnings || t.productosBase || t.subtotal || 0;
+
       const completedAmount = completedOrders.reduce(
-        (sum: number, t: any) => sum + (t.subtotal || 0),
+        (sum: number, t: any) => sum + earningsOf(t),
         0,
       );
       const pendingAmount = pendingOrders.reduce(
-        (sum: number, t: any) => sum + (t.subtotal || 0),
+        (sum: number, t: any) => sum + earningsOf(t),
+        0,
+      );
+      const serviceFeesTotal = completedOrders.reduce(
+        (sum: number, t: any) => sum + (t.serviceFee || 0),
+        0,
+      );
+      const markupTotal = completedOrders.reduce(
+        (sum: number, t: any) => sum + (t.markupCents || 0),
         0,
       );
 
@@ -924,6 +959,9 @@ router.get(
           completedAmount,
           pendingAmount,
           transactionCount: transactions.length,
+          // Desglose para que el negocio pueda cuadrar cada pedido
+          serviceFeesTotal,
+          markupTotal,
         },
       });
     } catch (error: any) {

@@ -89,6 +89,9 @@ export interface AdminOrder {
   customerPhone: string;
   status: string;
   subtotal: number;
+  productosBase: number | null;
+  nemyCommission: number | null;
+  serviceFee: number | null;
   deliveryFee: number;
   total: number;
   paymentMethod: string;

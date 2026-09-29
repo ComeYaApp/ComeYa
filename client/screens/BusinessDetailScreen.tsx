@@ -47,7 +47,8 @@ type BusinessDetailNavigationProp = NativeStackNavigationProp<
   "BusinessDetail"
 >;
 
-// Cesta de reserva persistida (una sola, ligada a su negocio)
+// Clave antigua de la cesta de "reserva + pedido anticipado". Se conserva
+// solo para limpiarla del almacenamiento de quien la tuviera guardada.
 const RB_STORAGE_KEY = "@ComeYa_reserve_basket";
 
 const MY_RESERVATION_STATUS: Record<string, { label: string; color: string }> = {
@@ -65,8 +66,8 @@ export default function BusinessDetailScreen() {
   const queryClient = useQueryClient();
 
   const businessId = route.params?.businessId;
-  // Modo reservas: se llega desde la Home "Reservar mesa". Los platos se
-  // añaden a la reserva (pedido anticipado), nunca al carrito de reparto.
+  // Modo reservas: se llega desde la Home "Reservar mesa". Solo se reserva
+  // mesa; no se añade nada al carrito (los platos se piden al llegar).
   const reserveMode = route.params?.reserveMode === true;
   const [isLoading, setIsLoading] = useState(true);
   const [business, setBusiness] = useState<Business | null>(null);
@@ -210,10 +211,8 @@ export default function BusinessDetailScreen() {
     }
   };
 
-  // ── Cesta de reserva (modo reservas): platos + fecha + franja + comensales ──
-  const [rbItems, setRbItems] = useState<
-    Array<{ id: string; name: string; price: number; qty: number }>
-  >([]);
+  // ── Reserva desde el modo reservas: fecha + franja + comensales ──
+  // (el pedido anticipado se retiró: solo se reserva la mesa)
   const [showRbModal, setShowRbModal] = useState(false);
   const [rbDate, setRbDate] = useState<string | null>(null);
   const [rbTime, setRbTime] = useState<string | null>(null);
@@ -269,90 +268,6 @@ export default function BusinessDetailScreen() {
     loadMyReservation();
   }, [loadMyReservation]);
 
-  // La cesta de reserva sobrevive al salir de la ficha: se guarda en
-  // AsyncStorage (una sola cesta, ligada a su negocio, como el carrito).
-  const rbRestoredRef = useRef(false);
-
-  useEffect(() => {
-    if (!reserveMode) return;
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(RB_STORAGE_KEY);
-        if (raw) {
-          const saved = JSON.parse(raw);
-          if (saved?.businessId === businessId) {
-            if (Array.isArray(saved.items) && saved.items.length > 0) {
-              setRbItems(saved.items);
-            }
-            if (typeof saved.party === "number" && saved.party > 0) {
-              setRbParty(saved.party);
-            }
-            if (typeof saved.occasion === "string") {
-              setRbOccasion(saved.occasion);
-            }
-          }
-        }
-      } catch {}
-      rbRestoredRef.current = true;
-    })();
-  }, [reserveMode, businessId]);
-
-  useEffect(() => {
-    if (!reserveMode || !rbRestoredRef.current) return;
-    (async () => {
-      try {
-        if (rbItems.length === 0) {
-          // Solo borra lo guardado si era la cesta de ESTE negocio
-          const raw = await AsyncStorage.getItem(RB_STORAGE_KEY);
-          const saved = raw ? JSON.parse(raw) : null;
-          if (saved?.businessId === businessId) {
-            await AsyncStorage.removeItem(RB_STORAGE_KEY);
-          }
-        } else {
-          await AsyncStorage.setItem(
-            RB_STORAGE_KEY,
-            JSON.stringify({
-              businessId,
-              items: rbItems,
-              party: rbParty,
-              occasion: rbOccasion,
-            }),
-          );
-        }
-      } catch {}
-    })();
-  }, [reserveMode, businessId, rbItems, rbParty, rbOccasion]);
-
-  const rbTotal = rbItems.reduce(
-    (sum, it) => sum + Math.round(it.price * 100) * it.qty,
-    0,
-  );
-  const rbCount = rbItems.reduce((sum, it) => sum + it.qty, 0);
-
-  const addReservationItem = useCallback(
-    (product: any, quantity: number) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setRbItems((prev) => {
-        const found = prev.find((i) => i.id === product.id);
-        if (found) {
-          return prev.map((i) =>
-            i.id === product.id ? { ...i, qty: i.qty + quantity } : i,
-          );
-        }
-        return [
-          ...prev,
-          {
-            id: product.id,
-            name: product.name,
-            price: product.price ?? 0,
-            qty: quantity,
-          },
-        ];
-      });
-    },
-    [],
-  );
-
   const loadRbSlots = useCallback(
     async (date: string, party: number) => {
       setRbSlotsLoading(true);
@@ -379,14 +294,17 @@ export default function BusinessDetailScreen() {
   }, [showRbModal, rbDate, rbParty, loadRbSlots]);
 
   const submitReserveBasket = async () => {
-    if (!rbDate || !rbTime || rbItems.length === 0) return;
+    if (!rbDate || !rbTime) return;
     if (!user) {
       navigation.navigate("Login" as never);
       return;
     }
     setRbSubmitting(true);
     try {
-      // 1) La reserva
+      // Solo la reserva. El "pedido anticipado" se retiró a propósito: pedir
+      // platos por adelantado generaba conflictos si el negocio no tenía
+      // algún producto o si los comensales finalmente no aparecían. Si el
+      // cliente quiere comer algo concreto, lo pide al llegar.
       const resRes = await apiRequest("POST", "/api/reservations", {
         businessId,
         date: rbDate,
@@ -395,53 +313,11 @@ export default function BusinessDetailScreen() {
         customerName: user?.name || "",
         customerPhone: user?.phone || "",
         occasion: rbOccasion || null,
-        notes: "Pedido anticipado desde la carta",
       });
       const dataRes = await resRes.json();
       if (!dataRes.success) {
         Alert.alert("No se pudo reservar", dataRes.error || "Inténtalo de nuevo");
         return;
-      }
-      // 2) El pedido anticipado ligado
-      const items = rbItems.map((it) => ({
-        id: it.id,
-        name: it.name,
-        price: it.price,
-        quantity: it.qty,
-      }));
-      // El servidor recalcula los importes autoritativos; esto es solo
-      // informativo para la respuesta
-      const markupMultiplier = await getMarkupMultiplier();
-      const baseCents = rbItems.reduce(
-        (sum, it) =>
-          sum + Math.round((it.price / markupMultiplier) * 100) * it.qty,
-        0,
-      );
-      const subtotalCents = rbItems.reduce(
-        (sum, it) => sum + Math.round(it.price * 100) * it.qty,
-        0,
-      );
-      const resOrder = await apiRequest("POST", "/api/orders", {
-        businessId,
-        businessName: business?.name,
-        items: JSON.stringify(items),
-        status: "pending",
-        subtotal: subtotalCents,
-        productosBase: baseCents,
-        nemyCommission: subtotalCents - baseCents,
-        deliveryFee: 0,
-        total: subtotalCents,
-        paymentMethod: "cash",
-        orderType: "pickup",
-        reservationId: dataRes.reservation.id,
-        notes: `Pedido anticipado para reserva ${dataRes.reservation.code || ""} ${rbDate} ${rbTime}`,
-      });
-      const dataOrder = await resOrder.json();
-      if (!dataOrder.success && !dataOrder.order) {
-        Alert.alert(
-          "Reserva creada con avisos",
-          "Tu mesa quedó reservada, pero el pedido anticipado no se pudo crear. Podrás hacerlo desde Mis reservas.",
-        );
       }
       setRbSuccess({
         code: dataRes.reservation.code,
@@ -449,10 +325,7 @@ export default function BusinessDetailScreen() {
         date: rbDate,
         time: rbTime,
         party: rbParty,
-        total: subtotalCents,
       });
-      // La reserva quedó creada: la cesta no debe reaparecer al reentrar
-      setRbItems([]);
       try {
         await AsyncStorage.removeItem(RB_STORAGE_KEY);
       } catch {}
@@ -1052,10 +925,6 @@ export default function BusinessDetailScreen() {
                         businessId: business.id,
                         businessName: business.name,
                         product: product,
-                        reserveMode,
-                        onAddReservationItem: reserveMode
-                          ? addReservationItem
-                          : undefined,
                       })
                     }
                   />
@@ -1079,30 +948,6 @@ export default function BusinessDetailScreen() {
         />
       )}
 
-      {/* Cesta de reserva (modo reservas): platos elegidos → reservar y pedir */}
-      {reserveMode && rbCount > 0 && !rbSuccess ? (
-        <Pressable
-          onPress={() => {
-            const now = new Date();
-            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-            setRbDate((d) => d || today);
-            setShowRbModal(true);
-          }}
-          style={[
-            styles.rbBasketBtn,
-            { bottom: 90 + insets.bottom },
-            Shadows.md,
-          ]}
-        >
-          <Feather name="calendar" size={22} color="#FFF" />
-          <View style={styles.rbBadge}>
-            <ThemedText style={{ color: "#FFF", fontSize: 11, fontWeight: "800" }}>
-              {rbCount}
-            </ThemedText>
-          </View>
-        </Pressable>
-      ) : null}
-
       {/* Modo reservas: acción principal SIEMPRE visible abajo */}
       {reserveMode && business?.reservationsEnabled ? (
         <Pressable
@@ -1123,7 +968,7 @@ export default function BusinessDetailScreen() {
         </Pressable>
       ) : null}
 
-      {/* Modal de reserva + pedido anticipado */}
+      {/* Modal de reserva (modo reservas de la Home) */}
       <Modal
         visible={showRbModal}
         transparent
@@ -1149,7 +994,7 @@ export default function BusinessDetailScreen() {
                   <Feather name="check-circle" size={44} color="#10B981" />
                 </View>
                 <ThemedText type="h3" style={{ marginTop: Spacing.lg }}>
-                  ¡Mesa y pedido listos!
+                  ¡Mesa reservada!
                 </ThemedText>
                 <ThemedText
                   type="small"
@@ -1162,7 +1007,6 @@ export default function BusinessDetailScreen() {
                     month: "long",
                   })}{" "}
                   · {rbSuccess.time}
-                  {rbSuccess.autoConfirmed ? "" : " (pendiente de confirmación)"}
                 </ThemedText>
                 {rbSuccess.code ? (
                   <>
@@ -1179,8 +1023,10 @@ export default function BusinessDetailScreen() {
                       ]}
                     >
                       <ThemedText
+                        numberOfLines={1}
                         style={{
                           fontSize: 34,
+                          lineHeight: 42,
                           fontWeight: "800",
                           letterSpacing: 2,
                           color: ComeYaColors.primary,
@@ -1190,19 +1036,23 @@ export default function BusinessDetailScreen() {
                       </ThemedText>
                     </View>
                   </>
-                ) : null}
-                <ThemedText
-                  type="caption"
-                  style={{ color: theme.textSecondary, marginTop: Spacing.md }}
-                >
-                  Pedido anticipado: {(rbSuccess.total / 100).toFixed(2).replace(".", ",")} € ·
-                  se paga al llegar
-                </ThemedText>
+                ) : (
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color: theme.textSecondary,
+                      marginTop: Spacing.md,
+                      textAlign: "center",
+                    }}
+                  >
+                    El restaurante tiene que confirmarla. Te avisamos en cuanto
+                    lo haga y entonces verás el código de mesa.
+                  </ThemedText>
+                )}
                 <Pressable
                   onPress={() => {
                     setShowRbModal(false);
                     setRbSuccess(null);
-                    setRbItems([]);
                     loadMyReservation();
                   }}
                   style={[
@@ -1221,7 +1071,6 @@ export default function BusinessDetailScreen() {
                   onPress={() => {
                     setShowRbModal(false);
                     setRbSuccess(null);
-                    setRbItems([]);
                     navigation.navigate("MyReservations");
                   }}
                   style={[
@@ -1246,38 +1095,13 @@ export default function BusinessDetailScreen() {
               <>
               <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
                 <View style={styles.reserveHeader}>
-                  <ThemedText type="h3">Tu reserva con pedido</ThemedText>
+                  <ThemedText type="h3">Reservar mesa</ThemedText>
                   <Pressable
                     onPress={() => setShowRbModal(false)}
                   >
                     <Feather name="x" size={22} color={theme.textSecondary} />
                   </Pressable>
                 </View>
-
-                {/* Platos elegidos */}
-                {rbItems.map((it) => (
-                  <View key={it.id} style={styles.rbItemRow}>
-                    <View style={{ flex: 1 }}>
-                      <ThemedText type="small" numberOfLines={1}>
-                        {it.qty} × {it.name}
-                      </ThemedText>
-                      <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                        {((it.price * it.qty) || 0).toFixed(2).replace(".", ",")} €
-                      </ThemedText>
-                    </View>
-                    <Pressable
-                      onPress={() =>
-                        setRbItems((prev) => prev.filter((i) => i.id !== it.id))
-                      }
-                      hitSlop={8}
-                    >
-                      <Feather name="x-circle" size={18} color={theme.textSecondary} />
-                    </Pressable>
-                  </View>
-                ))}
-                <ThemedText type="small" style={{ fontWeight: "700", marginTop: Spacing.sm }}>
-                  Total del pedido: {(rbTotal / 100).toFixed(2).replace(".", ",")} € (se paga al llegar)
-                </ThemedText>
 
                 {/* Fecha */}
                 <ThemedText
@@ -1470,9 +1294,7 @@ export default function BusinessDetailScreen() {
                   ]}
                 >
                   <ThemedText type="body" style={{ color: "#FFF", fontWeight: "700" }}>
-                    {rbSubmitting
-                      ? "Reservando..."
-                      : `Reservar y pedir (${(rbTotal / 100).toFixed(2).replace(".", ",")} €)`}
+                    {rbSubmitting ? "Reservando..." : "Reservar mesa"}
                   </ThemedText>
                 </Pressable>
               </View>
@@ -1535,8 +1357,13 @@ export default function BusinessDetailScreen() {
                   ]}
                 >
                   <ThemedText
+                    numberOfLines={1}
                     style={{
                       fontSize: 34,
+                      // Sin lineHeight explícito heredaba los 24 px de
+                      // Typography.body y el código salía recortado por
+                      // arriba y por abajo en iOS.
+                      lineHeight: 42,
                       fontWeight: "800",
                       letterSpacing: 2,
                       color: ComeYaColors.primary,

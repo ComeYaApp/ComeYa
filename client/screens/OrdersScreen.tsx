@@ -179,9 +179,10 @@ export default function OrdersScreen() {
     }
   };
 
-  // "Pendientes" = pedidos en curso de verdad. delivered sin confirmar
-  // cuenta como pendiente SOLO 24 h (después el servidor lo auto-confirma;
-  // antes los pedidos viejos sin confirmar se quedaban aquí para siempre).
+  // "Pendientes" = pedidos en curso de verdad. Un pedido que nunca llegó a
+  // concretarse (sin aceptar por el negocio, o entregado pero sin confirmar)
+  // desaparece de aquí pasadas 24 h: el servidor lo cierra solo, y mientras
+  // tanto no tiene sentido seguir mostrándolo como si fuera a llegar.
   const ACTIVE_STATUSES = [
     "pending",
     "accepted",
@@ -195,14 +196,25 @@ export default function OrdersScreen() {
     "in_transit",
     "arriving",
   ];
-  const isFreshDelivered = (o: Order) => {
-    if (o.status !== "delivered" || (o as any).confirmedByCustomer) return false;
+  // Los pedidos programados a futuro no caducan por antigüedad.
+  const isScheduledForFuture = (o: any) => {
+    const when = o?.scheduledFor;
+    if (!when) return false;
+    const t = new Date(when).getTime();
+    return Number.isFinite(t) && t > Date.now();
+  };
+  const isRecent = (o: Order) => {
     const ref = (o as any).deliveredAt || (o as any).createdAt;
     if (!ref) return true;
-    return Date.now() - new Date(ref).getTime() < 24 * 60 * 60 * 1000;
+    const t = new Date(ref).getTime();
+    return !Number.isFinite(t) || Date.now() - t < 24 * 60 * 60 * 1000;
   };
   const activeOrders = orders.filter(
-    (o) => ACTIVE_STATUSES.includes(o.status) || isFreshDelivered(o),
+    (o) =>
+      (ACTIVE_STATUSES.includes(o.status) && (isRecent(o) || isScheduledForFuture(o))) ||
+      (o.status === "delivered" &&
+        !(o as any).confirmedByCustomer &&
+        isRecent(o)),
   );
   const pastOrders = orders.filter((o) => !activeOrders.includes(o));
 

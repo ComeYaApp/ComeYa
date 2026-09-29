@@ -22,10 +22,17 @@ const LOCATION_TASK_NAME = "comeya-driver-location";
 // Cadencia de CAPTURA (nivel Uber/Glovo): 1 fix/segundo o cada 5 m.
 const WATCH_INTERVAL_MS = 1000;
 const WATCH_DISTANCE_M = 5;
-// Envío al SERVIDOR: como mucho 1 POST cada 2 s … o al moverse 10 m.
-// El servidor re-emite por websocket cada 2 s → movimiento continuo.
-const POST_MIN_INTERVAL_MS = 2000;
-const POST_MIN_DISTANCE_M = 10;
+// Envío al SERVIDOR en MOVIMIENTO: 1 POST cada 1,5 s … o al moverse 8 m.
+// El servidor re-emite por websocket cada 1 s → movimiento continuo en el
+// mapa del cliente. Parado no hace falta tanto tráfico: 1 POST cada 15 s
+// (antes era fijo cada 2 s y aun así el pin llegaba tarde por el socket).
+const POST_MIN_INTERVAL_MS = 1500;
+const POST_MIN_DISTANCE_M = 8;
+const IDLE_POST_MIN_INTERVAL_MS = 15000;
+const IDLE_POST_MIN_DISTANCE_M = 25;
+// Por debajo de esta velocidad el repartidor está parado (1,5 m/s ≈ 5,4
+// km/h): semáforos, espera en el negocio, carga/descarga.
+const MOVING_SPEED_MS = 1.5;
 // Fixes más imprecisos que esto se descartan (ruido del GPS).
 const MAX_ACCURACY_M = 50;
 
@@ -86,6 +93,8 @@ class GPSService {
   private lastPostAt = 0;
   private lastPostedPos: { lat: number; lng: number } | null = null;
   private lastQueuedOfflineAt = 0;
+  // Última velocidad observada: decide la cadencia de envío (adaptativa).
+  private wasMoving = false;
 
   // ── Suscriptores (pantallas que quieren cada fix para render fluido) ──
   private listeners = new Set<(fix: GPSLocation) => void>();
@@ -343,9 +352,22 @@ class GPSService {
 
   /** Envía un fix al servidor con throttle temporal/por distancia (con
    *  fallback a la cola offline si falla). Público: las pantallas de
-   *  navegación con watch propio lo reutilizan para no duplicar POSTs. */
+   *  navegación con watch propio lo reutilizan para no duplicar POSTs.
+   *
+   *  La cadencia es ADAPTATIVA: en movimiento (≥1,5 m/s) se manda cada
+   *  1,5 s para que el cliente vea el pin deslizarse; parado se espacia a
+   *  15 s para no vaciar la batería sin perder la posición. */
   async postFix(location: GPSLocation): Promise<void> {
     const now = Date.now();
+    const moving =
+      typeof location.speed === "number" && location.speed >= MOVING_SPEED_MS;
+    const minInterval = moving
+      ? POST_MIN_INTERVAL_MS
+      : IDLE_POST_MIN_INTERVAL_MS;
+    const minDistance = moving
+      ? POST_MIN_DISTANCE_M
+      : IDLE_POST_MIN_DISTANCE_M;
+
     const movedEnough =
       !this.lastPostedPos ||
       this.calculateDistance(
@@ -353,9 +375,19 @@ class GPSService {
         this.lastPostedPos.lng,
         location.latitude,
         location.longitude,
-      ) >= POST_MIN_DISTANCE_M;
+      ) >= minDistance;
 
-    if (now - this.lastPostAt < POST_MIN_INTERVAL_MS && !movedEnough) return;
+    // El repartidor acaba de arrancar: no esperar el intervalo de parado.
+    const justStartedMoving = moving && !this.wasMoving;
+    this.wasMoving = moving;
+
+    if (
+      !justStartedMoving &&
+      now - this.lastPostAt < minInterval &&
+      !movedEnough
+    ) {
+      return;
+    }
 
     this.lastPostAt = now;
     this.lastPostedPos = { lat: location.latitude, lng: location.longitude };

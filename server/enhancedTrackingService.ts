@@ -1,5 +1,10 @@
 import { db } from "./db";
-import { orders, deliveryDrivers, proximityAlerts } from "@shared/schema-mysql";
+import {
+  orders,
+  businesses,
+  deliveryDrivers,
+  proximityAlerts,
+} from "@shared/schema-mysql";
 import { eq, and } from "drizzle-orm";
 import { sendPushToUser } from "./enhancedPushService";
 import { orderRef } from "./orderNumberService";
@@ -9,9 +14,42 @@ interface Location {
   longitude: number;
 }
 
-// Caché corta de ETA por pedido (el cliente hace polling cada 30s)
-const ETA_CACHE_TTL_MS = 60_000;
+// Estados en los que el repartidor TODAVÍA no ha recogido: el ETA tiene que
+// incluir su viaje al negocio, lo que le queda de preparación y el reparto.
+const PRE_PICKUP_STATUSES = [
+  "pending",
+  "payment_failed",
+  "accepted",
+  "confirmed",
+  "preparing",
+  "ready",
+  "assigned",
+  "assigned_driver",
+];
+// Estados con el pedido ya en la mano del repartidor: solo queda el reparto.
+const EN_ROUTE_STATUSES = [
+  "picked_up",
+  "on_the_way",
+  "in_transit",
+  "arriving",
+];
+// Preparación por defecto cuando el negocio no indicó una al aceptar.
+const DEFAULT_PREP_MINUTES = 20;
+// Velocidad media en ciudad cuando el proveedor de rutas no responde.
+const AVG_CITY_SPEED_KMH = 25;
+// A partir de esta distancia el viaje al negocio cuenta como trayecto real
+// (por debajo, el repartidor ya está en la puerta).
+const AT_BUSINESS_KM = 0.15;
+
+// Caché corta de ETA por pedido y tramo. El cliente refresca cada 15 s y el
+// pipeline emite cada 1 s: la clave incluye la posición redondeada a ~100 m
+// para reutilizar el cálculo mientras el repartidor no se mueva de verdad.
+const ETA_CACHE_TTL_MS = 30_000;
 const etaCache = new Map<string, { at: number; minutes: number }>();
+
+function locationKey(loc: Location): string {
+  return `${loc.latitude.toFixed(3)},${loc.longitude.toFixed(3)}`;
+}
 // Último ETA publicado por pedido: amortiguador anti-picos (un ETA no puede
 // subir de golpe +2 min/+20% — el salto 15→25 era de aquí, al alternar entre
 // ruta real y estimación por línea recta)
@@ -68,6 +106,11 @@ export class EnhancedTrackingService {
       .limit(1);
 
     if (!order || !order.deliveryPersonId) return;
+
+    // Solo se avisa cuando el repartidor ya lleva el pedido: antes de eso el
+    // ETA incluye el viaje al negocio y la preparación, así que un "llega en
+    // 5 minutos" sería falso (era el aviso que llegaba al hacer el pedido).
+    if (!EN_ROUTE_STATUSES.includes(order.status)) return;
 
     const timeAlerts = [
       {
@@ -151,6 +194,66 @@ export class EnhancedTrackingService {
     };
   }
 
+  /**
+   * Minutos reales de ruta por calles entre dos puntos, con caché por tramo.
+   * Si el proveedor de rutas falla, estima a velocidad media de ciudad.
+   */
+  private static async routeMinutes(
+    cacheKey: string,
+    from: Location,
+    to: Location,
+  ): Promise<number> {
+    const cached = etaCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < ETA_CACHE_TTL_MS) {
+      return cached.minutes;
+    }
+
+    let minutes: number | null = null;
+    try {
+      const { googleMapsService } = await import(
+        "./services/googleMapsService"
+      );
+      const dirs = await googleMapsService.getDirections(
+        from.latitude,
+        from.longitude,
+        to.latitude,
+        to.longitude,
+      );
+      if (dirs?.duration?.value) {
+        minutes = Math.max(1, Math.ceil(dirs.duration.value / 60));
+      }
+    } catch (e) {
+      console.error("ETA directions fallback:", e);
+    }
+
+    if (minutes == null) {
+      const km = this.calculateDistance(from, to);
+      minutes = Math.max(1, Math.ceil((km / AVG_CITY_SPEED_KMH) * 60));
+    }
+
+    etaCache.set(cacheKey, { at: Date.now(), minutes });
+    return minutes;
+  }
+
+  /**
+   * Preparación que le queda al negocio. Se descuenta el tiempo ya
+   * transcurrido desde que aceptó el pedido, y es 0 en cuanto lo marca
+   * como listo (ahí solo falta que el repartidor llegue y reparta).
+   */
+  private static remainingPrepMinutes(order: any): number {
+    if (["ready", "assigned", "assigned_driver"].includes(order.status)) {
+      return 0;
+    }
+    const prep =
+      Number(order.estimatedPrepMinutes) > 0
+        ? Number(order.estimatedPrepMinutes)
+        : DEFAULT_PREP_MINUTES;
+    const since = order.businessResponseAt || order.createdAt;
+    if (!since) return prep;
+    const elapsedMin = (Date.now() - new Date(since).getTime()) / 60_000;
+    return Math.max(0, Math.ceil(prep - elapsedMin));
+  }
+
   // Calcular ETA dinámico
   static async calculateDynamicETA(orderId: string) {
     const [order] = await db
@@ -159,86 +262,117 @@ export class EnhancedTrackingService {
       .where(eq(orders.id, orderId))
       .limit(1);
 
-    if (!order || !order.deliveryPersonId) {
+    if (!order) {
       return { success: false, eta: null };
     }
 
-    const [driver] = await db
-      .select()
-      .from(deliveryDrivers)
-      .where(eq(deliveryDrivers.userId, order.deliveryPersonId))
-      .limit(1);
-
-    if (
-      !driver ||
-      !driver.currentLatitude ||
-      !driver.currentLongitude ||
-      !order.deliveryLatitude ||
-      !order.deliveryLongitude
-    ) {
+    const enRoute = EN_ROUTE_STATUSES.includes(order.status);
+    const prePickup = PRE_PICKUP_STATUSES.includes(order.status);
+    if (!enRoute && !prePickup) {
       return { success: false, eta: null };
     }
 
-    const driverLocation: Location = {
-      latitude: parseFloat(driver.currentLatitude),
-      longitude: parseFloat(driver.currentLongitude),
-    };
+    const customerLocation: Location | null =
+      order.deliveryLatitude && order.deliveryLongitude
+        ? {
+            latitude: parseFloat(order.deliveryLatitude),
+            longitude: parseFloat(order.deliveryLongitude),
+          }
+        : null;
 
-    const customerLocation: Location = {
-      latitude: parseFloat(order.deliveryLatitude),
-      longitude: parseFloat(order.deliveryLongitude),
-    };
+    // Origen del tramo de reparto: el negocio (antes de recoger) o el
+    // repartidor (una vez tiene el pedido).
+    let businessLocation: Location | null = null;
+    try {
+      const [biz] = await db
+        .select({
+          latitude: businesses.latitude,
+          longitude: businesses.longitude,
+        })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      const lat = parseFloat(biz?.latitude ?? "");
+      const lng = parseFloat(biz?.longitude ?? "");
+      if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0)) {
+        businessLocation = { latitude: lat, longitude: lng };
+      }
+    } catch {
+      /* sin coordenadas del negocio: se cae al tramo del repartidor */
+    }
 
-    const distance = this.calculateDistance(driverLocation, customerLocation);
-
-    // ETA real con Google Directions (cacheado por el servicio) si el
-    // repartidor va en camino y hay distancia relevante; si no, estimación
-    let etaMinutes: number | null = null;
-    const etaCacheKey = `eta:${orderId}`;
-    const cachedETA = etaCache.get(etaCacheKey);
-    if (cachedETA && Date.now() - cachedETA.at < ETA_CACHE_TTL_MS) {
-      etaMinutes = cachedETA.minutes;
-    } else if (
-      ["picked_up", "on_the_way", "in_transit", "arriving"].includes(
-        order.status,
-      ) &&
-      // A partir de 300 m la ruta real por calles es la que manda (antes el
-      // umbral era 1 km y al bajar de ahí el ETA saltaba a la estimación
-      // por línea recta a 25 km/h)
-      distance > 0.3
-    ) {
-      try {
-        const { googleMapsService } = await import(
-          "./services/googleMapsService"
-        );
-        const dirs = await googleMapsService.getDirections(
-          driverLocation.latitude,
-          driverLocation.longitude,
-          customerLocation.latitude,
-          customerLocation.longitude,
-        );
-        if (dirs?.duration?.value) {
-          etaMinutes = Math.max(1, Math.ceil(dirs.duration.value / 60));
-          etaCache.set(etaCacheKey, { at: Date.now(), minutes: etaMinutes });
-        }
-      } catch (e) {
-        console.error("ETA directions fallback:", e);
+    let driverLocation: Location | null = null;
+    if (order.deliveryPersonId) {
+      const [driver] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, order.deliveryPersonId))
+        .limit(1);
+      const lat = parseFloat(driver?.currentLatitude ?? "");
+      const lng = parseFloat(driver?.currentLongitude ?? "");
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        driverLocation = { latitude: lat, longitude: lng };
       }
     }
 
-    // Fallback: velocidad promedio de 25 km/h en ciudad (la misma que usa
-    // el estimador de tarifas — antes había 25 y 30 según el servicio y el
-    // ETA "saltaba" al cambiar de método)
-    if (etaMinutes == null) {
-      const avgSpeed = 25;
-      etaMinutes = Math.ceil((distance / avgSpeed) * 60);
+    let totalETA = 0;
+    let prepRemaining = 0;
+    let distanceMeters = 0;
+
+    if (enRoute) {
+      // Ya recogido: solo cuenta el tramo repartidor → cliente.
+      if (!driverLocation || !customerLocation) {
+        return { success: false, eta: null };
+      }
+      totalETA = await this.routeMinutes(
+        `eta:${orderId}:d2c:${locationKey(driverLocation)}`,
+        driverLocation,
+        customerLocation,
+      );
+      distanceMeters = Math.round(
+        this.calculateDistance(driverLocation, customerLocation) * 1000,
+      );
+    } else {
+      // Aún sin recoger. El cliente tiene que ver el tiempo COMPLETO:
+      // viaje del repartidor al negocio + lo que falta de preparación +
+      // reparto hasta su casa. Antes solo se contaba el reparto y por eso
+      // un pedido recién hecho anunciaba "5 minutos".
+      prepRemaining = this.remainingPrepMinutes(order);
+
+      let toBusiness = 0;
+      if (driverLocation && businessLocation) {
+        const km = this.calculateDistance(driverLocation, businessLocation);
+        if (km > AT_BUSINESS_KM) {
+          toBusiness = await this.routeMinutes(
+            `eta:${orderId}:d2b:${locationKey(driverLocation)}`,
+            driverLocation,
+            businessLocation,
+          );
+        }
+      }
+
+      let toCustomer = 0;
+      if (customerLocation) {
+        const origin = businessLocation || driverLocation;
+        if (origin) {
+          toCustomer = await this.routeMinutes(
+            `eta:${orderId}:b2c:${locationKey(origin)}`,
+            origin,
+            customerLocation,
+          );
+          distanceMeters = Math.round(
+            this.calculateDistance(origin, customerLocation) * 1000,
+          );
+        }
+      }
+
+      totalETA = toBusiness + prepRemaining + toCustomer;
+      if (totalETA <= 0) {
+        return { success: false, eta: null };
+      }
     }
 
-    // El ETA devuelto es SOLO el tiempo de TRAYECTO del repartidor, sin
-    // sumar +15/+20 min de golpe según el estado (antes el número saltaba
-    // de 5 a 25 al pasar de estado). La preparación del negocio se muestra
-    // aparte en el cliente ("El negocio prepara tu pedido").
-    let totalETA = Math.max(1, etaMinutes);
+    totalETA = Math.max(1, totalETA);
 
     // Amortiguador anti-picos: frente al último valor publicado, el ETA
     // puede subir como mucho +2 min o +20 % (el tráfico real lo sube poco a
@@ -252,12 +386,12 @@ export class EnhancedTrackingService {
     lastEtaByOrder.set(orderId, totalETA);
     if (["delivered", "completed", "cancelled"].includes(order.status)) {
       lastEtaByOrder.delete(orderId);
-      etaCache.delete(etaCacheKey);
+      etaCache.delete(`eta:${orderId}:d2c:${locationKey(driverLocation || { latitude: 0, longitude: 0 })}`);
     }
 
     const etaDate = new Date(Date.now() + totalETA * 60 * 1000);
 
-    // Verificar alertas de tiempo
+    // Verificar alertas de tiempo (solo cuentan si ya va en camino)
     await this.checkTimeAlerts(orderId, totalETA);
 
     return {
@@ -265,8 +399,12 @@ export class EnhancedTrackingService {
       eta: {
         minutes: totalETA,
         timestamp: etaDate,
-        distance: Math.round(distance * 1000), // en metros
-        confidence: distance < 5 ? 95 : distance < 10 ? 85 : 75,
+        distance: distanceMeters, // en metros
+        confidence: distanceMeters < 5000 ? 95 : distanceMeters < 10000 ? 85 : 75,
+        // Tramo que domina ahora mismo — el cliente lo usa para explicar
+        // por qué el pedido tarda lo que tarda.
+        phase: enRoute ? "to_customer" : "to_business",
+        prepMinutes: prepRemaining,
       },
     };
   }

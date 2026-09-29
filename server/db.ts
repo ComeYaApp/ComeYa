@@ -526,6 +526,28 @@ export async function runStartupMigrations(): Promise<void> {
         console.log("Migration note:", err.message);
     }
 
+    // Las reservas ya no se auto-confirman: el restaurante tiene que aceptar
+    // cada solicitud para que la mesa sea válida. Se apaga la bandera en los
+    // negocios que la tenían activada (el código la ignora igualmente).
+    // JSON_VALID evita que JSON_SET deje la config en NULL si el texto está
+    // corrupto; afecta a 0 filas si la columna no es JSON válido.
+    try {
+      const [result]: any = await conn.query(
+        `UPDATE businesses
+            SET reservation_config = JSON_SET(reservation_config, '$.autoConfirm', false)
+          WHERE reservation_config IS NOT NULL
+            AND JSON_VALID(reservation_config)
+            AND JSON_UNQUOTE(JSON_EXTRACT(reservation_config, '$.autoConfirm')) = 'true'`,
+      );
+      if (result?.affectedRows) {
+        console.log(
+          `✅ Auto-confirmación de reservas desactivada en ${result.affectedRows} negocio(s)`,
+        );
+      }
+    } catch (err: any) {
+      console.log("Migration note (autoConfirm reservas):", err.message);
+    }
+
     try {
       await conn.query(
         `ALTER TABLE users ADD COLUMN bank_account TEXT DEFAULT NULL`,

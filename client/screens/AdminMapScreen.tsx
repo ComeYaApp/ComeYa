@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { effectiveMapProvider } from "@/utils/mapProvider";
 import {
   View,
   Text,
@@ -282,7 +283,7 @@ export default function AdminMapScreen() {
     <View style={{ flex: 1 }}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
+        provider={effectiveMapProvider(PROVIDER_GOOGLE)}
         style={{ flex: 1 }}
         initialRegion={SORIA_REGION}
       >

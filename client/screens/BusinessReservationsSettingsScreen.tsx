@@ -33,7 +33,9 @@ const DEFAULT_DRAFT: ConfigDraft = {
   slotMinutes: 30,
   maxPartySize: 8,
   advanceDays: 14,
-  autoConfirm: true,
+  // El restaurante confirma cada reserva: el aforo es una disponibilidad
+  // orientativa, no un compromiso de mesa.
+  autoConfirm: false,
   maxCoversPerDay: null,
 };
 
@@ -54,6 +56,8 @@ export default function BusinessReservationsSettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [reservationsEnabled, setReservationsEnabled] = useState(false);
   const [feeCentsPerGuest, setFeeCentsPerGuest] = useState(99);
+  // Coste de servicio por reserva (0,49 €): completa la tarifa por comensal
+  const [serviceFeeCents, setServiceFeeCents] = useState(49);
   const [draft, setDraft] = useState<ConfigDraft>(DEFAULT_DRAFT);
   const [hasCapacity, setHasCapacity] = useState(false);
   const [dayLimitText, setDayLimitText] = useState("");
@@ -72,6 +76,7 @@ export default function BusinessReservationsSettingsScreen() {
       if (data.success) {
         setReservationsEnabled(!!data.reservationsEnabled);
         setFeeCentsPerGuest(data.feeCentsPerGuest || 99);
+        setServiceFeeCents(data.serviceFeeCents || 49);
         if (data.config) {
           setHasCapacity(true);
           setDraft({
@@ -400,43 +405,32 @@ export default function BusinessReservationsSettingsScreen() {
               max={60}
             />
 
-            <Pressable
-              style={[styles.fieldCard, { backgroundColor: theme.card }]}
-              onPress={() =>
-                setDraft((d) => ({ ...d, autoConfirm: !d.autoConfirm }))
-              }
-            >
-              <View style={{ flex: 1 }}>
-                <ThemedText type="body" style={{ fontWeight: "700" }}>Confirmación automática</ThemedText>
+            {/* La confirmación automática ya no se ofrece: cada reserva
+                tiene que aceptarla el restaurante para que sea válida. */}
+            <View style={[styles.fieldCard, { backgroundColor: theme.card }]}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Feather
+                  name="check-circle"
+                  size={18}
+                  color={ComeYaColors.success}
+                />
                 <ThemedText
-                  type="caption"
-                  style={{ color: theme.textSecondary, marginTop: 2 }}
+                  type="body"
+                  style={{ fontWeight: "700", marginLeft: Spacing.sm }}
                 >
-                  Si hay aforo, la reserva se confirma al instante con código.
-                  Si lo prefieres, confírmalas tú una a una.
+                  Confirmación manual
                 </ThemedText>
               </View>
-              <View
-                style={[
-                  styles.togglePill,
-                  {
-                    backgroundColor: draft.autoConfirm
-                      ? ComeYaColors.success
-                      : theme.backgroundSecondary,
-                  },
-                ]}
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 4 }}
               >
-                <ThemedText
-                  style={{
-                    color: draft.autoConfirm ? "#FFF" : theme.textSecondary,
-                    fontWeight: "700",
-                    fontSize: 12,
-                  }}
-                >
-                  {draft.autoConfirm ? "SÍ" : "NO"}
-                </ThemedText>
-              </View>
-            </Pressable>
+                Todas las reservas te llegan como solicitud: las confirmas tú
+                desde el apartado Reservas. El cliente solo recibe el código de
+                mesa cuando la aceptas, así el aforo publicado nunca le hace
+                creer que tiene mesa sin que la hayas visto.
+              </ThemedText>
+            </View>
 
             <View style={[styles.fieldCard, { backgroundColor: theme.card }]}>
               <ThemedText type="body" style={{ fontWeight: "700" }}>Límite diario (opcional)</ThemedText>
@@ -471,7 +465,16 @@ export default function BusinessReservationsSettingsScreen() {
           <Feather name="credit-card" size={20} color={ComeYaColors.primary} />
           <View style={{ flex: 1, marginLeft: Spacing.sm }}>
             <ThemedText style={{ fontWeight: "700" }}>
-              Tarifa ComeYa: {(feeCentsPerGuest / 100).toFixed(2).replace(".", ",")} € por comensal
+              Tarifa ComeYa: {(feeCentsPerGuest / 100).toFixed(2).replace(".", ",")} € por
+              comensal + {(serviceFeeCents / 100).toFixed(2).replace(".", ",")} € por reserva
+            </ThemedText>
+            <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
+              Ejemplo: una mesa de 4 comensales que asisten son{" "}
+              {(((feeCentsPerGuest * 4 + serviceFeeCents) / 100) || 0)
+                .toFixed(2)
+                .replace(".", ",")}{" "}
+              €. El coste de servicio se cobra por la gestión de la reserva
+              (confirmación, aviso al cliente y control de aforo).
             </ThemedText>
             <ThemedText type="caption" style={{ color: theme.textSecondary, marginTop: 2 }}>
               Solo se cobra por los comensales que realmente asisten (al marcar

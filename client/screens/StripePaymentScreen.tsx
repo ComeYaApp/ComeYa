@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { useStripe } from "@stripe/stripe-react-native";
@@ -19,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 const PRIMARY = "#E60000";
 
 export default function StripePaymentScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { isDark } = useTheme();
@@ -211,7 +213,18 @@ export default function StripePaymentScreen() {
   return (
     <View style={[styles.root, { backgroundColor: bg }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: card, borderBottomColor: border }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: card,
+            borderBottomColor: border,
+            // Sin el inset la flecha de volver queda bajo el notch y no se
+            // puede pulsar.
+            paddingTop: insets.top + 12,
+          },
+        ]}
+      >
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={text} />
         </Pressable>

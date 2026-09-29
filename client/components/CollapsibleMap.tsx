@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { effectiveMapProvider, USING_GOOGLE_MAPS } from "@/utils/mapProvider";
 import {
   View,
   StyleSheet,
@@ -379,7 +380,7 @@ export function CollapsibleMap({
         {mapAvailable && hasAnyLocation ? (
           <MapView
             ref={mapRef}
-            provider={PROVIDER_GOOGLE}
+            provider={effectiveMapProvider(PROVIDER_GOOGLE)}
             style={styles.map}
             initialRegion={getInitialRegion()}
             showsUserLocation={false}
@@ -387,7 +388,10 @@ export function CollapsibleMap({
             showsCompass={false}
             showsTraffic={false}
             mapType="standard"
-            customMapStyle={mapStyleForTheme(isDark)}
+            // customMapStyle solo lo aplica Google Maps: en Apple Maps se ignora
+            customMapStyle={
+              USING_GOOGLE_MAPS ? mapStyleForTheme(isDark) : undefined
+            }
           >
             {/* Business marker — burbuja con icono del tipo de negocio */}
             {isValidLocation(businessLocation) && (

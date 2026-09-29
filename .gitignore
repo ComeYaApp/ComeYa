@@ -72,6 +72,9 @@ replit.md
 !build-android-bundle.bat
 !build-android-apk.bat
 !build-ios-production.bat
+# Build de la APK con el entorno aislado de Beefinder (JAVA_HOME + caché
+# de Gradle propios). Ver scripts/build-apk-comeya.bat
+!scripts/build-apk-comeya.bat
 *.sh
 !start-production.sh
 
@@ -212,3 +215,10 @@ create-available-orders.js
 
 # Credenciales de firma locales (NO subir a git)
 credentials.json
+
+# ============================================
+# Documentos del cliente
+# ============================================
+# El PDF de requisitos se conserva; las imágenes sueltas que se extraen de
+# él son un derivado regenerable y pesan ~26 MB.
+docs/requerimentos/pdf a imagenes/

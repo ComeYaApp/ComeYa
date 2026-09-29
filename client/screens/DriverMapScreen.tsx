@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { effectiveMapProvider } from "@/utils/mapProvider";
 import {
   View,
   StyleSheet,
@@ -405,7 +406,7 @@ export default function DriverMapScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={effectiveMapProvider(PROVIDER_GOOGLE)}
         initialRegion={initialRegion}
         showsUserLocation={false}
         showsMyLocationButton={false}

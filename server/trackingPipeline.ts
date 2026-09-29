@@ -13,7 +13,13 @@ import { evaluateDriverFix } from "./utils/locationFilter";
 
 // ─── Configuración ────────────────────────────────────────────────────────────
 const CHECK_INTERVAL_MS = 30_000; // checks caros (proximity/ETA/geofence) por pedido
-const EMIT_INTERVAL_MS = 2_000; // emisión websocket por pedido
+// Emisión websocket por pedido. En MOVIMIENTO se emite cada segundo (el pin
+// del cliente se desliza de verdad); parado se espacia a 3 s, porque repetir
+// la misma coordenada no aporta y multiplica el tráfico de todos los mapas.
+const EMIT_INTERVAL_MOVING_MS = 1_000;
+const EMIT_INTERVAL_IDLE_MS = 3_000;
+// A partir de esta velocidad (m/s) el repartidor se considera en movimiento.
+const MOVING_SPEED_MS = 1.5;
 const PICKUP_RADIUS_M = 200; // radio del local para "repartidor en el negocio"
 const ARRIVED_RADIUS_M = 200; // radio del cliente para marcar llegada
 
@@ -283,9 +289,12 @@ export async function handleDriverLocationUpdate(
   const now = Date.now();
 
   for (const order of activeOrders) {
-    // Emisión websocket (throttle 2s por pedido)
+    // Emisión websocket (throttle adaptativo por pedido)
+    const moving =
+      typeof extra?.speed === "number" && extra.speed >= MOVING_SPEED_MS;
+    const emitInterval = moving ? EMIT_INTERVAL_MOVING_MS : EMIT_INTERVAL_IDLE_MS;
     const lastEmit = lastEmitAt.get(order.id) ?? 0;
-    if (now - lastEmit >= EMIT_INTERVAL_MS) {
+    if (now - lastEmit >= emitInterval) {
       lastEmitAt.set(order.id, now);
       // Último heading VÁLIDO por repartidor: si el fix llega sin rumbo
       // (parado), se emite el último conocido para que la flecha del pin

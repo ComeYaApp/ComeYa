@@ -10,6 +10,13 @@ interface BusinessPinProps {
   subtitle?: string;
   selected?: boolean;
   compact?: boolean;
+  /**
+   * Solo el punto (círculo + rabo), sin la tarjeta con el nombre. Se usa
+   * cuando hay muchos negocios cerca: mostrar todas las etiquetas a la vez
+   * las apilaba unas encima de otras y no se leía ninguna. El nombre se
+   * muestra al seleccionar el negocio.
+   */
+  pinOnly?: boolean;
 }
 
 /**
@@ -23,7 +30,25 @@ export function BusinessPin({
   subtitle,
   selected = false,
   compact = false,
+  pinOnly = false,
 }: BusinessPinProps) {
+  if (pinOnly) {
+    return (
+      <View style={styles.wrap}>
+        <View
+          style={[
+            styles.pinCircle,
+            { backgroundColor: color },
+            selected && styles.pinCircleSelected,
+          ]}
+        >
+          <MaterialCommunityIcons name={icon as any} size={16} color="#FFFFFF" />
+        </View>
+        <View style={[styles.tail, { borderTopColor: color }]} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrap}>
       <View
@@ -80,6 +105,25 @@ const styles = StyleSheet.create({
   bubbleCompact: {
     paddingVertical: 4,
     paddingRight: 10,
+  },
+  pinCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  pinCircleSelected: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   iconCircle: {
     width: 28,

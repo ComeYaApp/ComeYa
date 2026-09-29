@@ -23,7 +23,7 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
-import { getMarkupMultiplier } from "@/services/pricingConfigService";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STATUS_META: Record<
   string,
@@ -36,6 +36,8 @@ const STATUS_META: Record<
   no_show: { label: "No asististe", color: "#991B1B", icon: "user-x" },
   rejected: { label: "Rechazada", color: "#EF4444", icon: "x-circle" },
   cancelled: { label: "Cancelada", color: "#6B7280", icon: "slash" },
+  // El restaurante no llegó a confirmarla antes de la hora reservada.
+  expired: { label: "Caducada", color: "#6B7280", icon: "clock" },
 };
 
 const OCCASION_LABELS: Record<string, string> = {
@@ -51,27 +53,32 @@ export default function MyReservationsScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [reservations, setReservations] = useState<any[]>([]);
   const [waitlist, setWaitlist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  // Reserva + pedido anticipado
-  const [preOrderFor, setPreOrderFor] = useState<any>(null);
-  const [preProducts, setPreProducts] = useState<any[]>([]);
-  const [preQty, setPreQty] = useState<Record<string, number>>({});
-  const [preLoading, setPreLoading] = useState(false);
-  const [preMarkup, setPreMarkup] = useState(1.05);
-  const [preSubmitting, setPreSubmitting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  // Activas = pendiente/confirmada/sentada (pueden ser varias a la vez)
+  // Activas = pendiente/confirmada/sentada (pueden ser varias a la vez) y
+  // SIEMPRE de hoy en adelante. Una reserva cuya hora ya pasó deja de ser
+  // "activa" aunque el servidor todavía no la haya cerrado (el cron lo hace
+  // cada 15 min), así no se queda para siempre en la lista.
   const ACTIVE_RES_STATUSES = ["pending", "confirmed", "seated"];
+  const isStillActive = useCallback((r: any) => {
+    if (!ACTIVE_RES_STATUSES.includes(r.status)) return false;
+    const d = new Date(`${r.date}T${(r.time || "00:00").slice(0, 5)}:00`);
+    if (Number.isNaN(d.getTime())) return true;
+    // Se mantiene visible hasta 2 h después (turno + margen): mientras
+    // estás en la mesa la reserva sigue siendo la tuya.
+    return d.getTime() + 120 * 60 * 1000 > Date.now();
+  }, []);
+
   const visibleReservations = showHistory
     ? reservations
-    : reservations.filter((r: any) =>
-        ACTIVE_RES_STATUSES.includes(r.status),
-      );
+    : reservations.filter((r: any) => isStillActive(r));
+
   // Reservas entre amigos
   const [shareFor, setShareFor] = useState<any>(null);
   const [shareData, setShareData] = useState<any>(null);
@@ -93,93 +100,6 @@ export default function MyReservationsScreen() {
     } catch {
       Alert.alert("Error", "No se pudo generar el enlace");
       setShareFor(null);
-    }
-  };
-
-  const openPreOrder = useCallback(async (r: any) => {
-    setPreOrderFor(r);
-    setPreQty({});
-    setPreLoading(true);
-    try {
-      const [res, markupMultiplier] = await Promise.all([
-        apiRequest("GET", `/api/businesses/${r.businessId}`),
-        getMarkupMultiplier(),
-      ]);
-      setPreMarkup(markupMultiplier);
-      const data = await res.json();
-      const prods = (data.business?.products || []).filter(
-        (p: any) =>
-          p.isAvailable === true ||
-          p.isAvailable === 1 ||
-          p.is_available === true ||
-          p.is_available === 1,
-      );
-      setPreProducts(prods);
-    } catch {
-      setPreProducts([]);
-      Alert.alert("Error", "No se pudo cargar la carta del negocio");
-    } finally {
-      setPreLoading(false);
-    }
-  }, []);
-
-  const submitPreOrder = async () => {
-    // Markup configurable (5% por defecto); el servidor recalcula los
-    // importes autoritativos al crear el pedido
-    const markupMultiplier = await getMarkupMultiplier();
-    const items = preProducts
-      .filter((p) => (preQty[p.id] || 0) > 0)
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: ((p.price || 0) / 100) * markupMultiplier,
-        quantity: preQty[p.id],
-      }));
-    if (items.length === 0) {
-      Alert.alert("Pedido anticipado", "Elige al menos un producto.");
-      return;
-    }
-    const baseCents = items.reduce(
-      (s, it) =>
-        s + Math.round(((it.price / markupMultiplier) * 100)) * it.quantity,
-      0,
-    );
-    const subtotalCents = items.reduce(
-      (s, it) => s + Math.round(it.price * 100) * it.quantity,
-      0,
-    );
-    setPreSubmitting(true);
-    try {
-      const res = await apiRequest("POST", "/api/orders", {
-        businessId: preOrderFor.businessId,
-        businessName: preOrderFor.businessName,
-        items: JSON.stringify(items),
-        status: "pending",
-        subtotal: subtotalCents,
-        productosBase: baseCents,
-        nemyCommission: subtotalCents - baseCents,
-        deliveryFee: 0,
-        total: subtotalCents,
-        paymentMethod: "cash",
-        orderType: "pickup",
-        reservationId: preOrderFor.id,
-        notes: `Pedido anticipado para reserva ${preOrderFor.code || ""} ${preOrderFor.date} ${preOrderFor.time}`,
-      });
-      const data = await res.json();
-      if (data.success || data.order) {
-        setPreOrderFor(null);
-        Alert.alert(
-          "Pedido anticipado listo 🍽️",
-          "El negocio lo preparará para tu llegada. Se paga al recoger.",
-        );
-        load();
-      } else {
-        Alert.alert("No se pudo crear el pedido", data.error || "");
-      }
-    } catch {
-      Alert.alert("Error", "No se pudo crear el pedido anticipado");
-    } finally {
-      setPreSubmitting(false);
     }
   };
 
@@ -206,6 +126,39 @@ export default function MyReservationsScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Tiempo real: en cuanto el restaurante confirma (o rechaza) la reserva,
+  // la lista se refresca sola. Antes el cliente dependía solo del push y, si
+  // lo tenía silenciado, seguía viendo "Pendiente" hasta reabrir la pantalla.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    let socket: any = null;
+    (async () => {
+      try {
+        const { getAuthToken, getApiUrl } = await import("@/lib/query-client");
+        const { io } = await import("socket.io-client");
+        const token = await getAuthToken();
+        if (cancelled) return;
+        socket = io(getApiUrl(), {
+          transports: ["websocket", "polling"],
+          reconnection: true,
+          reconnectionDelay: 1000,
+          auth: { token: token ?? undefined },
+        });
+        socket.on("connect", () => {
+          socket.emit("join", { userId: user.id, role: "customer" });
+        });
+        socket.on("reservation_status_changed", () => load());
+      } catch {
+        // sin socket: la lista se refresca al abrir la pantalla
+      }
+    })();
+    return () => {
+      cancelled = true;
+      socket?.disconnect();
+    };
+  }, [load, user?.id]);
 
   const cancelReservation = (r: any) => {
     Alert.alert(
@@ -481,20 +434,6 @@ export default function MyReservationsScreen() {
                 </View>
               ) : null}
 
-              {["confirmed", "seated"].includes(r.status) && !r.preOrderId ? (
-                <Pressable
-                  onPress={() => openPreOrder(r)}
-                  style={[
-                    styles.preOrderBtn,
-                    { borderColor: "#3B82F6", marginTop: Spacing.md },
-                  ]}
-                >
-                  <Feather name="package" size={14} color="#3B82F6" />
-                  <ThemedText type="small" style={{ color: "#3B82F6", marginLeft: 4, fontWeight: "600" }}>
-                    🍽️ Pedir para tener listo al llegar
-                  </ThemedText>
-                </Pressable>
-              ) : null}
               {["confirmed", "seated"].includes(r.status) && r.billId ? (
                 <Pressable
                   onPress={() =>
@@ -525,14 +464,6 @@ export default function MyReservationsScreen() {
                   </ThemedText>
                 </Pressable>
               ) : null}
-              {r.preOrderId ? (
-                <View style={[styles.preOrderBtn, { borderColor: "#3B82F6", marginTop: Spacing.md, borderWidth: 1 }]}>
-                  <Feather name="check-circle" size={14} color="#3B82F6" />
-                  <ThemedText type="small" style={{ color: "#3B82F6", marginLeft: 4 }}>
-                    Pedido anticipado hecho
-                  </ThemedText>
-                </View>
-              ) : null}
 
               {cancellable && (
                 <Pressable
@@ -560,83 +491,6 @@ export default function MyReservationsScreen() {
         })}
       </ScrollView>
 
-      {/* Reserva + pedido anticipado */}
-      <Modal
-        visible={!!preOrderFor}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPreOrderFor(null)}
-      >
-        <View style={styles.preOverlay}>
-          <View style={[styles.preModal, { backgroundColor: theme.card }]}>
-            <View style={styles.preHeader}>
-              <ThemedText type="h3">Pedido anticipado</ThemedText>
-              <Pressable onPress={() => setPreOrderFor(null)}>
-                <Feather name="x" size={22} color={theme.textSecondary} />
-              </Pressable>
-            </View>
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {preOrderFor?.businessName} · {preOrderFor?.time} · listo a tu
-              llegada. Se paga al recoger.
-            </ThemedText>
-            <ScrollView style={{ marginTop: Spacing.md }}>
-              {preLoading ? (
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Cargando carta...
-                </ThemedText>
-              ) : preProducts.length === 0 ? (
-                <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Este negocio no tiene carta publicada.
-                </ThemedText>
-              ) : (
-                preProducts.map((p) => {
-                  const qty = preQty[p.id] || 0;
-                  return (
-                    <View key={p.id} style={[styles.preRow, { borderColor: theme.border }]}>
-                      <View style={{ flex: 1 }}>
-                        <ThemedText type="small" numberOfLines={1}>
-                          {p.name}
-                        </ThemedText>
-                        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                          {(((p.price || 0) / 100) * preMarkup).toFixed(2).replace(".", ",")} €
-                        </ThemedText>
-                      </View>
-                      <Pressable
-                        onPress={() =>
-                          setPreQty((m) => ({ ...m, [p.id]: Math.max(0, qty - 1) }))
-                        }
-                        style={[styles.preStep, { backgroundColor: theme.backgroundSecondary }]}
-                      >
-                        <Feather name="minus" size={14} color={theme.text} />
-                      </Pressable>
-                      <ThemedText style={{ marginHorizontal: Spacing.sm, fontWeight: "700" }}>
-                        {qty}
-                      </ThemedText>
-                      <Pressable
-                        onPress={() =>
-                          setPreQty((m) => ({ ...m, [p.id]: Math.min(20, qty + 1) }))
-                        }
-                        style={[styles.preStep, { backgroundColor: ComeYaColors.primary }]}
-                      >
-                        <Feather name="plus" size={14} color="#FFF" />
-                      </Pressable>
-                    </View>
-                  );
-                })
-              )}
-            </ScrollView>
-            <Pressable
-              onPress={submitPreOrder}
-              disabled={preSubmitting}
-              style={[styles.preSubmit, { opacity: preSubmitting ? 0.6 : 1 }]}
-            >
-              <ThemedText style={{ color: "#FFF", fontWeight: "700" }}>
-                {preSubmitting ? "Enviando..." : "Confirmar pedido anticipado"}
-              </ThemedText>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
       {/* Invitar amigos */}
       <Modal
         visible={!!shareFor}

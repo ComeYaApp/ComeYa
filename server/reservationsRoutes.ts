@@ -532,12 +532,14 @@ router.post(
     const finalName = String(customerName || user?.name || "").slice(0, 255);
     const finalPhone = String(customerPhone || user?.phone || "").slice(0, 50);
 
-    // Auto-confirmación cuando el negocio configuró aforo y la activó
-    const autoConfirm = !!(config?.autoConfirm);
-    const status = autoConfirm ? "confirmed" : "pending";
-    const code = autoConfirm
-      ? await ReservationAvailabilityService.generateCode(businessId, date)
-      : null;
+    // La reserva SIEMPRE nace pendiente y sin código: el restaurante tiene
+    // que confirmarla para que sea válida (el aforo publicado es solo una
+    // disponibilidad orientativa). Antes, con la auto-confirmación activada,
+    // el cliente recibía el código y daba la mesa por segura sin que el
+    // negocio la hubiera visto.
+    const autoConfirm = false;
+    const status = "pending";
+    const code: string | null = null;
 
     await db.insert(reservations).values({
       id,
@@ -554,19 +556,8 @@ router.post(
       code,
     });
 
-    // Rewards: puntos por reserva confirmada
-    if (status === "confirmed") {
-      try {
-        await LoyaltyService.addPoints(
-          userId,
-          POINTS_RESERVATION_CONFIRMED * ((await passDoublesPoints(userId)) ? 2 : 1),
-          "reservation_confirmed",
-        "Reserva confirmada",
-          undefined,
-          undefined,
-        );
-      } catch {}
-    }
+    // Los puntos de fidelidad se conceden al CONFIRMAR el restaurante
+    // (PUT /business/:id/status), no aquí: la reserva nace pendiente.
 
     // Si reservó desde un aviso de lista de espera / flash, cerrar su entrada
     // y marcar la flash como ocupada si coincide
@@ -609,21 +600,20 @@ router.post(
     };
 
     if (business.ownerId) {
+      // Un fallo de push NUNCA debe tumbar la reserva ya creada.
       await sendPushToUser(business.ownerId, {
-        title: autoConfirm ? "📅 Nueva reserva confirmada" : "📅 Nueva reserva",
-        body: autoConfirm
-          ? `${finalName || "Cliente"} · ${size} comensales · ${date} ${time} (confirmada automáticamente)`
-          : `${finalName || "Cliente"} reservó para ${size} el ${date} a las ${time}`,
+        title: "📅 Nueva reserva por confirmar",
+        body: `${finalName || "Cliente"} reservó para ${size} el ${date} a las ${time}. Confírmala en Reservas.`,
         data: { reservationId: id, screen: "BusinessReservations" },
-      });
+      }).catch(() => {});
     }
-    if (autoConfirm) {
-      await sendPushToUser(userId, {
-        title: "✅ Reserva confirmada",
-        body: `${business.name}: ${size} comensales el ${date} a las ${time}. Código ${code}`,
-        data: { reservationId: id, screen: "MyReservations" },
-      });
-    }
+    // El cliente recibe acuse de recibo (pendiente), no una confirmación:
+    // la confirmación de verdad llega cuando el restaurante la acepta.
+    await sendPushToUser(userId, {
+      title: "📩 Reserva solicitada",
+      body: `${business.name}: ${size} comensales el ${date} a las ${time}. El restaurante la confirmará en breve.`,
+      data: { reservationId: id, screen: "MyReservations" },
+    }).catch(() => {});
     try {
       const { notifyNewReservation } = await import("./websocket");
       notifyNewReservation(businessId, row);
@@ -1276,15 +1266,31 @@ router.get(
       }
     }
 
+    // Tarifas vigentes: la agenda muestra a cada reserva lo que le va a
+    // costar al negocio (n × tarifa/comensal + coste de servicio).
+    let guestFeeCents = RESERVATION_FEE_CENTS_PER_GUEST;
+    let serviceFeeCents = 49;
+    try {
+      const { getPricingConfig } = await import("./pricingService");
+      const pricing = await getPricingConfig();
+      guestFeeCents = pricing.reservationGuestFeeCents;
+      serviceFeeCents = pricing.reservationServiceFeeCents;
+    } catch {}
+
     res.json({
       success: true,
       date: dateFilter || null,
       summary,
+      fees: { guestFeeCents, serviceFeeCents },
       reservations: rows
         .map((r: any) => ({
           ...r.reservation,
           businessName: r.businessName,
           guestReliability: reliability[r.reservation.userId] || null,
+          // Coste de esta reserva si finalmente asisten todos los comensales
+          feeCents:
+            guestFeeCents * Number(r.reservation.partySize || 0) +
+            serviceFeeCents,
         }))
         .sort((a: any, b: any) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0)),
     });

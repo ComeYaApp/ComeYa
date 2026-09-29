@@ -14,6 +14,7 @@ import BusinessAnalyticsScreen from "@/screens/BusinessAnalyticsScreen";
 import BusinessStatsScreen from "@/screens/BusinessStatsScreen";
 import BusinessFinancesScreen from "@/screens/BusinessFinancesScreen";
 import BusinessDeliveryMapScreen from "@/screens/BusinessDeliveryMapScreen";
+import { BusinessTabBar } from "@/components/BusinessTabBar";
 import { useTheme } from "@/hooks/useTheme";
 import { ComeYaColors } from "@/constants/theme";
 
@@ -51,6 +52,7 @@ export default function BusinessTabNavigator() {
 
   return (
     <Tab.Navigator
+      tabBar={(props) => <BusinessTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: ComeYaColors.primary,

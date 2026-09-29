@@ -269,11 +269,17 @@ export default function BusinessListScreen() {
                 >
                   <Feather
                     name={tab.icon as any}
-                    size={18}
+                    size={16}
                     color={activeTab === tab.id ? "#FFFFFF" : theme.text}
                   />
+                  {/* En una sola línea y encogiendo el texto si hace falta:
+                      con tres pestañas el título se partía y se pisaba con la
+                      pestaña de al lado. */}
                   <ThemedText
                     type="small"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
                     style={[
                       styles.tabText,
                       { color: activeTab === tab.id ? "#FFFFFF" : theme.text },
@@ -420,7 +426,10 @@ export default function BusinessListScreen() {
         contentContainerStyle={[
           styles.listContent,
           {
-            paddingTop: Spacing.md,
+            // Sin el inset de arriba el título y la flecha de volver quedaban
+            // pegados al borde superior (bajo el notch) y la flecha no se
+            // podía pulsar.
+            paddingTop: insets.top + Spacing.md,
             paddingBottom: insets.bottom + Spacing.xl,
           },
         ]}
@@ -490,6 +499,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     borderRadius: BorderRadius.md,
     gap: Spacing.xs,
   },

@@ -16,7 +16,13 @@ export interface ReservationConfig {
   slotMinutes: number; // intervalo entre franjas ofertadas
   maxPartySize: number; // máximo de comensales por reserva
   advanceDays: number; // antelación máxima en días
-  autoConfirm: boolean; // confirmación automática cuando hay aforo
+  /**
+   * @deprecated La confirmación automática está DESACTIVADA: el restaurante
+   * tiene que aceptar cada reserva para que sea válida (requisito del
+   * cliente). El campo se conserva para no romper configuraciones guardadas,
+   * pero se ignora al crear reservas.
+   */
+  autoConfirm: boolean;
   maxCoversPerDay: number | null; // límite diario total de comensales (opcional)
 }
 
@@ -35,6 +41,10 @@ export const RESERVATION_FEE_CENTS_PER_GUEST = 99;
 
 // Estados que ocupan aforo (una reserva sentada sigue ocupando hasta cerrarse)
 const OCCUPYING_STATUSES = ["pending", "confirmed", "seated"];
+
+// Una reserva SOLO es válida cuando el restaurante la confirma: el aforo
+// publicado es una disponibilidad orientativa, no un compromiso de mesa.
+export const AUTO_CONFIRM_ENABLED = false;
 
 type DayEntry = {
   isOpen?: boolean;
@@ -188,7 +198,8 @@ export class ReservationAvailabilityService {
       slotMinutes: num(cfg.slotMinutes, 15, 120, DEFAULT_RESERVATION_CONFIG.slotMinutes),
       maxPartySize: num(cfg.maxPartySize, 1, 20, DEFAULT_RESERVATION_CONFIG.maxPartySize),
       advanceDays: num(cfg.advanceDays, 1, 60, DEFAULT_RESERVATION_CONFIG.advanceDays),
-      autoConfirm: cfg.autoConfirm === true,
+      // Siempre false: la reserva nace pendiente y la confirma el restaurante.
+      autoConfirm: AUTO_CONFIRM_ENABLED,
       maxCoversPerDay: cfg.maxCoversPerDay
         ? num(cfg.maxCoversPerDay, 1, 1000, 0) || null
         : null,

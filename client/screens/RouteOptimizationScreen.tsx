@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { effectiveMapProvider } from "@/utils/mapProvider";
 import {
   View,
   Text,
@@ -341,7 +342,7 @@ export default function RouteOptimizationScreen({ navigation }: any) {
 
           <View style={styles.mapContainer}>
             <MapView
-              provider={PROVIDER_GOOGLE}
+              provider={effectiveMapProvider(PROVIDER_GOOGLE)}
               style={styles.map}
               initialRegion={{
                 latitude: optimizedRoute.nodes[0]?.lat ?? 41.7636,

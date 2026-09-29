@@ -161,25 +161,46 @@ export default function HomeScreen() {
     string,
     { icon: ComeyaIconName; label: string }
   > = {
-    pizza: { icon: "pizza", label: "Pizzas" },
+    paella: { icon: "paella", label: "España" },
+    mariscos: { icon: "paella", label: "Mariscos" },
+    sushi: { icon: "sushi", label: "Oriental" },
+    ramen: { icon: "ramen", label: "Ramen" },
+    asiatica: { icon: "ramen", label: "Asiática" },
+    tacos: { icon: "taco", label: "Mexicana" },
+    mexicana: { icon: "taco", label: "Mexicana" },
+    pollo: { icon: "pollo", label: "Pollo" },
     burger: { icon: "hamburguesa", label: "Hamburguesas" },
     burgers: { icon: "hamburguesa", label: "Hamburguesas" },
     hamburguesas: { icon: "hamburguesa", label: "Hamburguesas" },
-    sushi: { icon: "sushi", label: "Sushi" },
-    pollo: { icon: "pollo", label: "Pollo" },
-    mariscos: { icon: "paella", label: "Mariscos" },
-    paella: { icon: "paella", label: "Paella" },
-    tacos: { icon: "taco", label: "Mexicana" },
-    mexicana: { icon: "taco", label: "Mexicana" },
+    pizza: { icon: "pizza", label: "Pizzas" },
     ensaladas: { icon: "ensalada", label: "Ensaladas" },
-    ramen: { icon: "ramen", label: "Ramen" },
-    asiatica: { icon: "ramen", label: "Asiática" },
     postres: { icon: "postre", label: "Postres" },
     mercado: { icon: "mercado", label: "Mercado" },
     carniceria: { icon: "pollo", label: "Carnicería" },
   };
 
-  // Genera categorias unicas usando SOLO la primera categoria de cada negocio
+  // Orden fijo pedido por el cliente para las categorías de la Home:
+  // España, Oriental, Mexicana, Pollo, Hamburguesas, Pizza… y el resto detrás.
+  // Canónicas: qué clave representa a cada posición del orden fijo.
+  const ORDERED_KEYS = ["paella", "sushi", "tacos", "pollo", "hamburguesas", "pizza"];
+  const ALIASES: Record<string, string> = {
+    mariscos: "paella",
+    paella: "paella",
+    sushi: "sushi",
+    ramen: "sushi",
+    asiatica: "sushi",
+    tacos: "tacos",
+    mexicana: "tacos",
+    pollo: "pollo",
+    carniceria: "pollo",
+    burger: "hamburguesas",
+    burgers: "hamburguesas",
+    hamburguesas: "hamburguesas",
+    pizza: "pizza",
+  };
+
+  // Genera categorias unicas usando SOLO la primera categoria de cada negocio,
+  // y las devuelve en el orden fijo que pidió el cliente.
   const dynamicCategories = React.useMemo(() => {
     const seen = new Set<string>();
     const cats: { id: string; icon: ComeyaIconName; label: string }[] = [];
@@ -193,7 +214,15 @@ export default function HomeScreen() {
       };
       cats.push({ id: firstCat, ...style });
     });
-    return cats;
+
+    return cats.sort((a, b) => {
+      const canonA = ALIASES[a.id] || a.id;
+      const canonB = ALIASES[b.id] || b.id;
+      const posA = ORDERED_KEYS.indexOf(canonA);
+      const posB = ORDERED_KEYS.indexOf(canonB);
+      // Las que no están en el orden fijo van al final, sin alterar su orden
+      return (posA === -1 ? 99 : posA) - (posB === -1 ? 99 : posB);
+    });
   }, [businesses]);
 
   const loadData = useCallback(async () => {

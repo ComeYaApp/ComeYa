@@ -38,6 +38,7 @@ export function buildInvoiceHtml(order: any): string {
   const items = safeParse(order?.items);
   const subtotal = cents(order?.subtotal);
   const deliveryFee = cents(order?.deliveryFee ?? order?.delivery_fee);
+  const serviceFee = cents(order?.serviceFee ?? order?.service_fee);
   const tip = cents(order?.tipAmount ?? order?.tip_amount);
   const discount =
     cents(order?.couponDiscount ?? order?.coupon_discount) +
@@ -79,7 +80,7 @@ export function buildInvoiceHtml(order: any): string {
   td { padding: 8px 4px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: top; }
   .num { text-align: right; white-space: nowrap; }
   .note { color: #B45309; font-size: 12px; margin-top: 2px; }
-  .totals { margin-left: auto; width: 260px; }
+  .totals { margin-left: auto; width: 300px; }
   .totals div { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
   .grand { font-weight: 700; font-size: 16px; border-top: 2px solid #111; margin-top: 8px; padding-top: 8px; }
   .footer { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 12px; font-size: 12px; color: #888; }
@@ -106,8 +107,9 @@ export function buildInvoiceHtml(order: any): string {
   </table>
 
   <div class="totals">
-    <div><span>Subtotal</span><span>${eur(subtotal)}</span></div>
+    <div><span>Subtotal productos</span><span>${eur(subtotal)}</span></div>
     ${deliveryFee > 0 ? `<div><span>Envío</span><span>${eur(deliveryFee)}</span></div>` : ""}
+    ${serviceFee > 0 ? `<div><span>Coste de servicio ComeYa</span><span>${eur(serviceFee)}</span></div>` : ""}
     ${tip > 0 ? `<div><span>Propina repartidor</span><span>${eur(tip)}</span></div>` : ""}
     ${discount > 0 ? `<div><span>Descuentos</span><span>−${eur(discount)}</span></div>` : ""}
     <div class="grand"><span>Total</span><span>${eur(total)}</span></div>

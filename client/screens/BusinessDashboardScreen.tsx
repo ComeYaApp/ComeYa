@@ -592,13 +592,19 @@ export default function BusinessDashboardScreen() {
             • Recibes el 100% del precio base de tus productos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • ComeYa agrega un 15% de markup al precio final
+            • ComeYa agrega un porcentaje de markup sobre los precios base de
+            los productos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • Pagos: Bizum, Transferencia, Tarjeta, Efectivo
+            • ComeYa cobra un porcentaje de comisión a cada restaurante en
+            función del volumen de pedidos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • Transferimos tus ganancias al confirmar la entrega
+            • Los pagos a los negocios se harán a través de: Bizum,
+            Transferencia y tarjeta
+          </ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            • Las ganancias son transferidas entre 0 a 48 horas
           </ThemedText>
         </View>
 
@@ -733,7 +739,13 @@ export default function BusinessDashboardScreen() {
                 size={24}
                 color={ComeYaColors.primary}
               />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs }}>
+              <ThemedText
+                type="small"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={{ marginTop: Spacing.xs, textAlign: "center" }}
+              >
                 Pedidos
               </ThemedText>
             </Pressable>
@@ -742,7 +754,13 @@ export default function BusinessDashboardScreen() {
               onPress={() => navigation.navigate("BusinessProducts" as any)}
             >
               <Feather name="package" size={24} color={ComeYaColors.primary} />
-              <ThemedText type="small" style={{ marginTop: Spacing.xs }}>
+              <ThemedText
+                type="small"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={{ marginTop: Spacing.xs, textAlign: "center" }}
+              >
                 Productos
               </ThemedText>
             </Pressable>
@@ -753,6 +771,9 @@ export default function BusinessDashboardScreen() {
               <Feather name="clock" size={24} color="#FF9800" />
               <ThemedText
                 type="small"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 style={{ marginTop: Spacing.xs, textAlign: "center" }}
               >
                 Horarios
@@ -765,6 +786,9 @@ export default function BusinessDashboardScreen() {
               <Feather name="calendar" size={24} color="#8B5CF6" />
               <ThemedText
                 type="small"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 style={{ marginTop: Spacing.xs, textAlign: "center" }}
               >
                 Reservas
@@ -782,6 +806,9 @@ export default function BusinessDashboardScreen() {
               <Feather name="maximize" size={24} color="#4CAF50" />
               <ThemedText
                 type="small"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 style={{ marginTop: Spacing.xs, textAlign: "center" }}
               >
                 Escanear QR
@@ -794,6 +821,9 @@ export default function BusinessDashboardScreen() {
               <Feather name="settings" size={24} color={ComeYaColors.primary} />
               <ThemedText
                 type="small"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 style={{ marginTop: Spacing.xs, textAlign: "center" }}
               >
                 Ajustes
@@ -941,9 +971,14 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    padding: Spacing.lg,
+    // Padding más contenido y texto en una sola línea: con el padding
+    // anterior las palabras se partían ("Ped ido s") en pantallas estrechas.
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xs,
     borderRadius: BorderRadius.lg,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 84,
     ...Shadows.sm,
   },
 });

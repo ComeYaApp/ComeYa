@@ -217,7 +217,38 @@ export async function autoAssignDriver(
       selectedDriver.latitude,
       selectedDriver.longitude,
     );
-    const estimatedTime = Math.ceil(10 + distance * 2); // Base 10 min + 2 min per km
+
+    // Tiempo estimado hasta la entrega: el repartidor tiene que llegar al
+    // negocio, la cocina tiene que terminar y luego hay que repartir. Antes
+    // era "10 min + 2 min/km" ignorando la preparación, y era el origen de
+    // los "llega en 5 minutos" que veía el cliente al hacer el pedido.
+    const KM_PER_MIN = 25 / 60; // ~25 km/h en ciudad
+    const prepMinutes =
+      Number(order.estimatedPrepMinutes) > 0
+        ? Number(order.estimatedPrepMinutes)
+        : 20;
+    const prepSince = order.businessResponseAt || order.createdAt;
+    const prepElapsed = prepSince
+      ? (Date.now() - new Date(prepSince).getTime()) / 60_000
+      : 0;
+    const prepRemaining = Math.max(0, Math.ceil(prepMinutes - prepElapsed));
+
+    const customerKm =
+      order.deliveryLatitude && order.deliveryLongitude
+        ? calculateDistance(
+            businessLat,
+            businessLng,
+            parseFloat(order.deliveryLatitude),
+            parseFloat(order.deliveryLongitude),
+          )
+        : 0;
+
+    const estimatedTime = Math.max(
+      1,
+      Math.ceil(distance / KM_PER_MIN) +
+        prepRemaining +
+        Math.ceil(customerKm / KM_PER_MIN),
+    );
 
     // Assign driver to order
     await db

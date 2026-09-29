@@ -92,6 +92,9 @@ export default function BusinessFinancesScreen() {
     pendingAmount: 0,
     completedAmount: 0,
     transactionCount: 0,
+    // Desglose de lo que ya se ha descontado en los pedidos entregados
+    serviceFeesTotal: 0,
+    markupTotal: 0,
   });
   const [payouts, setPayouts] = useState<Payout[]>([]);
 
@@ -122,6 +125,8 @@ export default function BusinessFinancesScreen() {
             pendingAmount: 0,
             completedAmount: 0,
             transactionCount: 0,
+            serviceFeesTotal: 0,
+            markupTotal: 0,
           },
         );
       }
@@ -309,6 +314,22 @@ export default function BusinessFinancesScreen() {
               </ThemedText>
             </View>
           </View>
+
+          {/* Ganancias = tu precio base, ya sin el markup de ComeYa (que lo
+              paga el cliente). Se enseña el desglose para poder cuadrar. */}
+          {Number(summary.markupTotal) > 0 ||
+          Number(summary.serviceFeesTotal) > 0 ? (
+            <ThemedText
+              type="caption"
+              style={{ color: "rgba(255,255,255,0.85)", marginTop: Spacing.md }}
+            >
+              Ya descontado el markup de ComeYa (
+              {formatCurrency(Number(summary.markupTotal || 0) / 100)}) y el
+              coste de servicio de los pedidos entregados (
+              {formatCurrency(Number(summary.serviceFeesTotal || 0) / 100)}),
+              que los paga el cliente.
+            </ThemedText>
+          ) : null}
         </Animated.View>
 
         {/* Sistema de Pagos */}
@@ -328,13 +349,19 @@ export default function BusinessFinancesScreen() {
             • Recibes el 100% del precio base de tus productos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • ComeYa agrega un 15% de markup al precio final del cliente
+            • ComeYa agrega un porcentaje de markup sobre los precios base de
+            los productos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • Métodos: Bizum, Transferencia (SEPA), PayPal, Tarjeta
+            • ComeYa cobra un porcentaje de comisión a cada restaurante en
+            función del volumen de pedidos
           </ThemedText>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            • El admin transfiere tus ganancias a tu cuenta de pago
+            • Los pagos a los negocios se harán a través de: Bizum,
+            Transferencia y tarjeta
+          </ThemedText>
+          <ThemedText type="body" style={{ color: theme.textSecondary }}>
+            • Las ganancias son transferidas entre 0 a 48 horas
           </ThemedText>
         </View>
 

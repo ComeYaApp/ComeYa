@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { effectiveMapProvider } from "@/utils/mapProvider";
 import {
   View,
   Text,
@@ -148,7 +149,7 @@ export default function LocationPickerScreen() {
         <WebMapFallback location={location} />
       ) : MapView ? (
         <MapView
-          provider={PROVIDER_GOOGLE}
+          provider={effectiveMapProvider(PROVIDER_GOOGLE)}
           style={styles.map}
           initialRegion={{
             ...AUTLAN_CENTER,

@@ -42,22 +42,41 @@ const CATEGORY_STYLE: Record<
   string,
   { icon: ComeyaIconName; label: string }
 > = {
-  pizza: { icon: "pizza", label: "Pizzas" },
+  paella: { icon: "paella", label: "España" },
+  mariscos: { icon: "paella", label: "Mariscos" },
+  sushi: { icon: "sushi", label: "Oriental" },
+  ramen: { icon: "ramen", label: "Ramen" },
+  asiatica: { icon: "ramen", label: "Asiática" },
+  tacos: { icon: "taco", label: "Mexicana" },
+  mexicana: { icon: "taco", label: "Mexicana" },
+  pollo: { icon: "pollo", label: "Pollo" },
   burger: { icon: "hamburguesa", label: "Hamburguesas" },
   burgers: { icon: "hamburguesa", label: "Hamburguesas" },
   hamburguesas: { icon: "hamburguesa", label: "Hamburguesas" },
-  sushi: { icon: "sushi", label: "Sushi" },
-  pollo: { icon: "pollo", label: "Pollo" },
-  mariscos: { icon: "paella", label: "Mariscos" },
-  paella: { icon: "paella", label: "Paella" },
-  tacos: { icon: "taco", label: "Mexicana" },
-  mexicana: { icon: "taco", label: "Mexicana" },
+  pizza: { icon: "pizza", label: "Pizzas" },
   ensaladas: { icon: "ensalada", label: "Ensaladas" },
-  ramen: { icon: "ramen", label: "Ramen" },
-  asiatica: { icon: "ramen", label: "Asiática" },
   postres: { icon: "postre", label: "Postres" },
   mercado: { icon: "mercado", label: "Mercado" },
   carniceria: { icon: "pollo", label: "Carnicería" },
+};
+
+// Orden fijo pedido por el cliente: España, Oriental, Mexicana, Pollo,
+// Hamburguesas, Pizza… y el resto después.
+const ORDERED_KEYS = ["paella", "sushi", "tacos", "pollo", "hamburguesas", "pizza"];
+const CATEGORY_ALIASES: Record<string, string> = {
+  mariscos: "paella",
+  paella: "paella",
+  sushi: "sushi",
+  ramen: "sushi",
+  asiatica: "sushi",
+  tacos: "tacos",
+  mexicana: "tacos",
+  pollo: "pollo",
+  carniceria: "pollo",
+  burger: "hamburguesas",
+  burgers: "hamburguesas",
+  hamburguesas: "hamburguesas",
+  pizza: "pizza",
 };
 
 export default function HomeScreen() {
@@ -182,7 +201,7 @@ export default function HomeScreen() {
 
   const dynamicCategories = React.useMemo(() => {
     const seen = new Set<string>();
-    return businesses.reduce<
+    const cats = businesses.reduce<
       { id: string; icon: ComeyaIconName; label: string }[]
     >((acc, b) => {
       const cat = b.categories[0]?.toLowerCase().trim();
@@ -195,6 +214,12 @@ export default function HomeScreen() {
       acc.push({ id: cat, ...style });
       return acc;
     }, []);
+
+    return cats.sort((a, b) => {
+      const posA = ORDERED_KEYS.indexOf(CATEGORY_ALIASES[a.id] || a.id);
+      const posB = ORDERED_KEYS.indexOf(CATEGORY_ALIASES[b.id] || b.id);
+      return (posA === -1 ? 99 : posA) - (posB === -1 ? 99 : posB);
+    });
   }, [businesses]);
 
   const filtered = businesses

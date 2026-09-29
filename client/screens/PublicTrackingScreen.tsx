@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { effectiveMapProvider } from "@/utils/mapProvider";
 import {
   View,
   StyleSheet,
@@ -182,7 +183,7 @@ export default function PublicTrackingScreen() {
             style={[s.mapWrap, { backgroundColor: theme.backgroundSecondary }]}
           >
             <MapView
-              provider={PROVIDER_GOOGLE}
+              provider={effectiveMapProvider(PROVIDER_GOOGLE)}
               style={s.map}
               initialRegion={{
                 ...(driverCoord || customerCoord || SORIA),

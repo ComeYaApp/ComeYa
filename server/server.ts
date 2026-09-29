@@ -226,6 +226,13 @@ const server = httpServer.listen(PORT, () => {
           startReservationFeeChargeCron(),
         )
         .catch(console.error);
+      // Reservas cuya hora ya pasó: se cierran solas para que no se queden
+      // eternamente en "Activas" ni en la agenda del negocio.
+      import("./reservationCleanupCron")
+        .then(({ startReservationCleanupCron }) =>
+          startReservationCleanupCron(),
+        )
+        .catch(console.error);
       // Webhook de pagos de Stripe: se asegura de que el endpoint exista,
       // esté activo y su secreto de firma guardado en app_settings
       import("./stripeWebhookRegistration")

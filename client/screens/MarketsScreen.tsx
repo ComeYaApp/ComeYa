@@ -50,8 +50,9 @@ export default function MarketsScreen() {
         >
           <Feather name="info" size={20} color="#4CAF50" />
           <ThemedText type="small" style={styles.infoText}>
-            En alimentación puedes especificar exactamente como quieres tus
-            productos: "carne delgada sin grasa", "aguacates maduros", etc.
+            En Alimentación puedes especificar en tus pedidos exactamente como
+            quieres tus productos. Por ejemplo: "filetes de ternera finos",
+            "plátanos maduros", "pescado limpio y abierto".
           </ThemedText>
         </View>
 

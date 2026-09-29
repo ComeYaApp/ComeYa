@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { effectiveMapProvider } from "@/utils/mapProvider";
 import {
   View,
   StyleSheet,
@@ -381,7 +382,7 @@ const WebMap = ({
     return (
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
+        provider={effectiveMapProvider(PROVIDER_GOOGLE)}
         style={styles.map}
         initialRegion={mapRegion}
         onPress={handleMapPress}

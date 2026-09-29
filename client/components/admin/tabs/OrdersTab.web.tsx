@@ -324,6 +324,19 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
                 </Text>
               </View>
             )}
+            {/* Coste de servicio ComeYa: se cobra en todos los pedidos y no
+                se veía en el panel, así que el desglose no cuadraba con el
+                total. */}
+            {Number(selected.serviceFee) > 0 && (
+              <View style={det.totalRow}>
+                <Text style={[det.totalLabel, { color: sub }]}>
+                  Coste de servicio
+                </Text>
+                <Text style={[det.totalVal, { color: text }]}>
+                  {(Number(selected.serviceFee) / 100).toFixed(2)} €
+                </Text>
+              </View>
+            )}
             <View style={[det.totalRow, { marginTop: 6 }]}>
               <Text
                 style={[det.totalLabel, { color: text, fontWeight: "700" }]}

@@ -54,6 +54,19 @@ type OrderTrackingNavigationProp = NativeStackNavigationProp<
 const ORDERS_KEY = "@ComeYa_orders";
 const { width } = Dimensions.get("window");
 
+/**
+ * Etiqueta de frescura del último dato del repartidor. Pasados los primeros
+ * segundos no se dice "en tiempo real" aunque el socket esté caído y el dato
+ * venga del polling: así el cliente no da por buena una posición vieja.
+ */
+const driverFixLabel = (ageMs: number): string => {
+  const sec = Math.max(0, Math.round(ageMs / 1000));
+  if (sec <= 8) return "Ubicación en tiempo real";
+  if (sec < 60) return `Ubicación actualizada hace ${sec} s`;
+  const min = Math.round(sec / 60);
+  return `Ubicación actualizada hace ${min} min`;
+};
+
 const parseDeliveryAddress = (address: string | null): string => {
   if (!address) return "Dirección no disponible";
   try {
@@ -126,6 +139,8 @@ export default function OrderTrackingScreen() {
   const [dynamicETA, setDynamicETA] = useState<{
     minutes: number;
     confidence: number;
+    phase?: "to_business" | "to_customer";
+    prepMinutes?: number;
   } | null>(null);
 
   // Cuenta atrás de la política de aceptación (10 min) — hook sin condiciones
@@ -153,7 +168,7 @@ export default function OrderTrackingScreen() {
     return unsub;
   }, [orderId, navigation]);
 
-  // Poll for ETA updates every 30 seconds (en pickup el tiempo restante
+  // Poll for ETA updates every 15 seconds (en pickup el tiempo restante
   // viene de la info de pickup, no del repartidor)
   useEffect(() => {
     if (orderType === "pickup") return;
@@ -171,7 +186,12 @@ export default function OrderTrackingScreen() {
           setDynamicETA((prev) => {
             const next = Math.round(Number(data.eta.minutes) || 0);
             if (!prev || Math.abs(prev.minutes - next) >= 1) {
-              return { minutes: next, confidence: data.eta.confidence };
+              return {
+                minutes: next,
+                confidence: data.eta.confidence,
+                phase: data.eta.phase,
+                prepMinutes: data.eta.prepMinutes,
+              };
             }
             return prev;
           });
@@ -182,7 +202,7 @@ export default function OrderTrackingScreen() {
     };
 
     fetchETA();
-    const interval = setInterval(fetchETA, 30000);
+    const interval = setInterval(fetchETA, 15000);
     return () => clearInterval(interval);
   }, [orderId, orderType]);
 
@@ -193,8 +213,12 @@ export default function OrderTrackingScreen() {
     connected: socketConnected,
     usingFallback: locationFallback,
   } = useDriverLocationSocket(orderType === "pickup" ? null : orderId, {
-    fallbackIntervalMs: 5000,
+    fallbackIntervalMs: 3000,
   });
+
+  // Cuándo llegó el último dato del repartidor: el mapa avisa si el pin
+  // lleva demasiado tiempo sin refrescarse en vez de mostrarlo como actual.
+  const [driverFixAt, setDriverFixAt] = useState<number | null>(null);
 
   useEffect(() => {
     if (!socketLocation) return;
@@ -203,6 +227,11 @@ export default function OrderTrackingScreen() {
       longitude: socketLocation.longitude,
     });
     setDriverHeading(socketLocation.heading ?? undefined);
+    setDriverFixAt(
+      socketLocation.lastUpdate
+        ? new Date(socketLocation.lastUpdate).getTime()
+        : Date.now(),
+    );
   }, [socketLocation]);
 
   // Fetch inicial inmediato (hasta que conecte el socket)
@@ -227,6 +256,13 @@ export default function OrderTrackingScreen() {
             if (coord) setDeliveryLocation(coord);
             const h = Number(data.location.heading);
             if (Number.isFinite(h) && h >= 0) setDriverHeading(h);
+            if (coord) {
+              setDriverFixAt(
+                data.location.lastUpdate
+                  ? new Date(data.location.lastUpdate).getTime()
+                  : Date.now(),
+              );
+            }
           }
         }
       } catch (error) {
@@ -347,6 +383,7 @@ export default function OrderTrackingScreen() {
             nemyCommission: apiOrder.nemyCommission
               ? apiOrder.nemyCommission / 100
               : undefined,
+            serviceFee: Number(apiOrder.serviceFee || 0) / 100,
             deliveryFee: apiOrder.deliveryFee / 100,
             total: apiOrder.total / 100,
             paymentMethod: apiOrder.paymentMethod,
@@ -431,8 +468,9 @@ export default function OrderTrackingScreen() {
     loadOrder();
     loadOrderRef.current = loadOrder;
 
-    // Poll for order updates every 30 seconds
-    const interval = setInterval(loadOrder, 30000);
+    // Poll for order updates every 15 seconds (antes 30 s: los cambios de
+    // estado — aceptado, listo, recogido — tardaban medio minuto en verse)
+    const interval = setInterval(loadOrder, 15000);
     return () => clearInterval(interval);
   }, [orderId]);
 
@@ -968,6 +1006,33 @@ export default function OrderTrackingScreen() {
                 <ThemedText type="h3" style={{ color: ComeYaColors.primary }}>
                   {dynamicETA.minutes} min
                 </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary, marginTop: 2 }}
+                >
+                  {dynamicETA.phase === "to_business"
+                    ? dynamicETA.prepMinutes
+                      ? `Incluye el reparto y ${dynamicETA.prepMinutes} min de cocina`
+                      : "Incluye que el repartidor recoja tu pedido"
+                    : "Tiempo real del repartidor hasta tu dirección"}
+                </ThemedText>
+                {/* Frescura del dato: si el pin del repartidor lleva
+                    demasiado sin refrescarse se dice, en vez de mostrarlo
+                    como si fuera la posición actual. */}
+                {driverFixAt ? (
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color:
+                        policyNow - driverFixAt > 45000
+                          ? ComeYaColors.warning
+                          : theme.textSecondary,
+                      marginTop: 2,
+                    }}
+                  >
+                    {driverFixLabel(policyNow - driverFixAt)}
+                  </ThemedText>
+                ) : null}
               </View>
             </View>
           </View>
@@ -1429,6 +1494,12 @@ export default function OrderTrackingScreen() {
             </ThemedText>
           )}
           <View style={[styles.totalSection, { borderTopColor: theme.border }]}>
+            <View style={styles.itemRow}>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Subtotal
+              </ThemedText>
+              <ThemedText type="small">{order.subtotal.toFixed(2)} €</ThemedText>
+            </View>
             {orderType === "delivery" && (
               <View style={styles.itemRow}>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
@@ -1439,6 +1510,19 @@ export default function OrderTrackingScreen() {
                 </ThemedText>
               </View>
             )}
+            {/* Coste de servicio ComeYa: se cobra en TODOS los pedidos,
+                también en recogida en local (no hay reparto, pero sí
+                servicio). Tiene que verse para que el total cuadre. */}
+            {Number(order.serviceFee) > 0 ? (
+              <View style={styles.itemRow}>
+                <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                  Coste de servicio
+                </ThemedText>
+                <ThemedText type="small">
+                  {Number(order.serviceFee).toFixed(2)} €
+                </ThemedText>
+              </View>
+            ) : null}
             <View style={styles.itemRow}>
               <ThemedText type="h4">Total</ThemedText>
               <ThemedText type="h4" style={{ color: ComeYaColors.primary }}>

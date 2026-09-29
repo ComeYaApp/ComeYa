@@ -27,23 +27,35 @@ router.get(
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
       // Filtrar pedidos entregados
-      const deliveredOrders = allOrders.filter((o) => o.status === "delivered");
+      const deliveredOrders = allOrders.filter(
+        (o: any) => o.status === "delivered",
+      );
 
-      // Calcular comisiones por período
-      const todayEarnings = deliveredOrders
-        .filter((o) => new Date(o.createdAt) >= today)
-        .reduce((sum, o) => sum + (o.nemyCommission || 0), 0);
+      // Ingresos de la plataforma = markup + coste de servicio. El coste de
+      // servicio (0,49 € por pedido, también en recogida) NO se contaba
+      // antes aquí, así que la contabilidad de ComeYa salía a la baja.
+      const platformRevenueOf = (o: any) =>
+        (o.nemyCommission || 0) + (o.serviceFee || 0);
 
-      const weekEarnings = deliveredOrders
-        .filter((o) => new Date(o.createdAt) >= weekAgo)
-        .reduce((sum, o) => sum + (o.nemyCommission || 0), 0);
+      const sumInPeriod = (from: Date) =>
+        deliveredOrders
+          .filter((o: any) => new Date(o.createdAt) >= from)
+          .reduce((sum: number, o: any) => sum + platformRevenueOf(o), 0);
 
-      const monthEarnings = deliveredOrders
-        .filter((o) => new Date(o.createdAt) >= monthStart)
-        .reduce((sum, o) => sum + (o.nemyCommission || 0), 0);
+      const todayEarnings = sumInPeriod(today);
+      const weekEarnings = sumInPeriod(weekAgo);
+      const monthEarnings = sumInPeriod(monthStart);
 
       const totalEarnings = deliveredOrders.reduce(
-        (sum, o) => sum + (o.nemyCommission || 0),
+        (sum: number, o: any) => sum + platformRevenueOf(o),
+        0,
+      );
+      const totalMarkup = deliveredOrders.reduce(
+        (sum: number, o: any) => sum + (o.nemyCommission || 0),
+        0,
+      );
+      const totalServiceFees = deliveredOrders.reduce(
+        (sum: number, o: any) => sum + (o.serviceFee || 0),
         0,
       );
 
@@ -61,15 +73,17 @@ router.get(
       // Transacciones recientes (últimas 50)
       const recentTransactions = deliveredOrders
         .sort(
-          (a, b) =>
+          (a: any, b: any) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         )
         .slice(0, 50)
-        .map((order) => ({
+        .map((order: any) => ({
           id: order.id,
           orderId: order.id,
           date: order.createdAt,
-          amount: order.nemyCommission || 0,
+          amount: platformRevenueOf(order),
+          markup: order.nemyCommission || 0,
+          serviceFee: order.serviceFee || 0,
           type: "commission",
           businessName: order.businessName,
           status: order.status,
@@ -84,7 +98,8 @@ router.get(
           total: totalEarnings,
         },
         breakdown: {
-          productMarkup: totalEarnings,
+          productMarkup: totalMarkup,
+          serviceFees: totalServiceFees,
           deliveryCommission: 0, // ComeYa no cobra comisión de delivery
           businessCommission: 0, // ComeYa no cobra comisión a negocios
           penalties: penalties,
@@ -338,13 +353,20 @@ router.post(
         );
       }
 
-      // Generar CSV
-      const csvHeader = "Fecha,Pedido ID,Negocio,Comisión (EUR),Estado\n";
+      // Generar CSV. Se desglosa cada concepto por separado porque el
+      // cliente necesita poder sacar facturas y cuadrar la contabilidad
+      // trimestral pedido a pedido.
+      const csvHeader =
+        "Fecha,Pedido ID,Negocio,Base productos (EUR),Markup ComeYa (EUR),Coste servicio (EUR),Envio (EUR),Total cobrado (EUR),Estado\n";
       const csvRows = filteredOrders
-        .map((order) => {
+        .map((order: any) => {
           const date = new Date(order.createdAt).toLocaleDateString("es-VE");
-          const commission = ((order.nemyCommission || 0) / 100).toFixed(2);
-          return `${date},${order.id},${order.businessName},${commission},${order.status}`;
+          const base = ((order.productosBase || 0) / 100).toFixed(2);
+          const markup = ((order.nemyCommission || 0) / 100).toFixed(2);
+          const service = ((order.serviceFee || 0) / 100).toFixed(2);
+          const shipping = ((order.deliveryFee || 0) / 100).toFixed(2);
+          const total = ((order.total || 0) / 100).toFixed(2);
+          return `${date},${order.id},${order.businessName},${base},${markup},${service},${shipping},${total},${order.status}`;
         })
         .join("\n");
 

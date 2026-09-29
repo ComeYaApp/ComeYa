@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { effectiveMapProvider } from "@/utils/mapProvider";
 import { displayOrderNumber } from "@/utils/orderNumber";
 import {
   View,
@@ -183,9 +184,13 @@ export default function BusinessDeliveryMapScreen() {
       try {
         const { io } = await import("socket.io-client");
         if (cancelled) return;
+        const { getAuthToken } = await import("@/lib/query-client");
+        const token = await getAuthToken();
         socket = io(getApiUrl(), {
           transports: ["websocket", "polling"],
           reconnection: true,
+          reconnectionDelay: 1000,
+          auth: { token: token ?? undefined },
         });
         const joinAll = () => {
           socket.emit("join", {
@@ -340,7 +345,7 @@ export default function BusinessDeliveryMapScreen() {
         <MapView
           ref={mapRef}
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
+          provider={effectiveMapProvider(PROVIDER_GOOGLE)}
           initialRegion={DEFAULT_REGION}
           showsUserLocation
           showsMyLocationButton

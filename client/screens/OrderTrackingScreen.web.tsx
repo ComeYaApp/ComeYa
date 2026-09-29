@@ -467,7 +467,7 @@ export default function OrderTrackingScreen() {
       } catch {}
     };
     fetchETA();
-    const interval = setInterval(fetchETA, 30000);
+    const interval = setInterval(fetchETA, 15000);
     return () => clearInterval(interval);
   }, [orderId, order?.status]);
 
@@ -657,7 +657,7 @@ export default function OrderTrackingScreen() {
     ETA_STATUSES.includes(order?.status ?? "") && order?.orderType !== "pickup"
       ? orderId
       : null,
-    { fallbackIntervalMs: 5000 },
+    { fallbackIntervalMs: 3000 },
   );
 
   // ── RECOGIDA A PIE (pickup): posición propia + ruta hacia el local ──
@@ -1352,6 +1352,21 @@ export default function OrderTrackingScreen() {
                       {((order.deliveryFee || 0) / 100).toFixed(2)} €
                     </ThemedText>
                   </View>
+                  {/* Coste de servicio ComeYa: va en todos los pedidos,
+                      también en recogida en local. */}
+                  {Number(order.serviceFee) > 0 ? (
+                    <View style={s.detailRow}>
+                      <ThemedText
+                        type="small"
+                        style={{ color: theme.textSecondary }}
+                      >
+                        Coste de servicio
+                      </ThemedText>
+                      <ThemedText type="small">
+                        {(Number(order.serviceFee) / 100).toFixed(2)} €
+                      </ThemedText>
+                    </View>
+                  ) : null}
                   <View style={[s.detailRow, { marginTop: Spacing.sm }]}>
                     <ThemedText type="h4">Total</ThemedText>
                     <ThemedText

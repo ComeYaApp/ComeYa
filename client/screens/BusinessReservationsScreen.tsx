@@ -35,6 +35,8 @@ const STATUS_META: Record<string, { label: string; color: string; icon: string }
     no_show: { label: "No vino", color: "#991B1B", icon: "user-x" },
     rejected: { label: "Rechazada", color: "#EF4444", icon: "x-circle" },
     cancelled: { label: "Cancelada", color: "#6B7280", icon: "slash" },
+    // Caducada: pasó la hora y el restaurante nunca la confirmó.
+    expired: { label: "Caducada", color: "#6B7280", icon: "clock" },
   };
 
 const OCCASION_META: Record<string, string> = {
@@ -67,6 +69,15 @@ export default function BusinessReservationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [noteDraft, setNoteDraft] = useState<Record<string, string>>({});
   const [actingId, setActingId] = useState<string | null>(null);
+  // Filtro de la agenda: por defecto "por confirmar" (lo urgente)
+  const [agendaFilter, setAgendaFilter] = useState<
+    "pending" | "confirmed" | "all"
+  >("pending");
+  // Tarifas vigentes (0,99 €/comensal + 0,49 € de servicio)
+  const [fees, setFees] = useState<{
+    guestFeeCents: number;
+    serviceFeeCents: number;
+  }>({ guestFeeCents: 99, serviceFeeCents: 49 });
   // Radar ComeYa: publicar mesa flash
   const [flashes, setFlashes] = useState<any[]>([]);
   const [showFlashPanel, setShowFlashPanel] = useState(false);
@@ -105,6 +116,7 @@ export default function BusinessReservationsScreen() {
       const data = await res.json();
       if (data.success) {
         setReservations(data.reservations || []);
+        if (data.fees?.guestFeeCents) setFees(data.fees);
         if (mode === "day" && data.summary) {
           const key = selectedBusiness?.id || Object.keys(data.summary)[0];
           setSummary(data.summary[key] || null);
@@ -318,19 +330,64 @@ export default function BusinessReservationsScreen() {
     }
   };
 
-  // Agrupar por hora en modo agenda
+  // Agrupar por hora en modo agenda. Cada franja lleva su total de comensales
+  // y su coste ComeYa, que es lo que el restaurante necesita para cuadrar el
+  // servicio ("a las 18:00 van 4, a las 20:00 van 2…").
   const grouped = useMemo(() => {
     if (mode !== "day") return null;
-    const map = new Map<string, any[]>();
-    for (const r of reservations) {
-      const list = map.get(r.time) || [];
-      list.push(r);
-      map.set(r.time, list);
-    }
-    return Array.from(map.entries())
-      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-      .map(([time, items]) => ({ time, items }));
-  }, [reservations, mode]);
+    const group = (list: any[]) => {
+      const map = new Map<string, any[]>();
+      for (const r of list) {
+        const arr = map.get(r.time) || [];
+        arr.push(r);
+        map.set(r.time, arr);
+      }
+      return Array.from(map.entries())
+        .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+        .map(([time, items]) => ({
+          time,
+          items,
+          covers: items.reduce(
+            (sum, i) => sum + Number(i.partySize || 0),
+            0,
+          ),
+          // Solo se cobra lo que se confirma: las pendientes/rechazadas no
+          // generan coste hasta que asisten.
+          costCents: items
+            .filter((i) => ["confirmed", "seated", "completed"].includes(i.status))
+            .reduce((sum, i) => sum + Number(i.feeCents || 0), 0),
+          pendingCostCents: items
+            .filter((i) => i.status === "pending")
+            .reduce((sum, i) => sum + Number(i.feeCents || 0), 0),
+        }));
+    };
+
+    // Filtro de la agenda: por defecto lo accionable (pendientes + confirmadas)
+    const filtered =
+      agendaFilter === "all"
+        ? reservations
+        : reservations.filter((r: any) =>
+            agendaFilter === "pending"
+              ? r.status === "pending"
+              : ["confirmed", "seated", "completed"].includes(r.status),
+          );
+
+    return group(filtered);
+  }, [reservations, mode, agendaFilter]);
+
+  // Totales del día visibles ahora mismo (respetan el filtro activo)
+  const dayTotals = useMemo(() => {
+    const list = grouped ? grouped.flatMap((g) => g.items) : [];
+    return {
+      covers: list.reduce((s, r) => s + Number(r.partySize || 0), 0),
+      pending: reservations.filter((r: any) => r.status === "pending").length,
+      costCents: list
+        .filter((r: any) =>
+          ["confirmed", "seated", "completed"].includes(r.status),
+        )
+        .reduce((s, r: any) => s + Number(r.feeCents || 0), 0),
+    };
+  }, [grouped, reservations]);
 
   const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString(
     "es-ES",
@@ -360,22 +417,6 @@ export default function BusinessReservationsScreen() {
                     style={{ color: "#10B981", marginLeft: 3, fontWeight: "700" }}
                   >
                     Cliente fiable
-                  </ThemedText>
-                </View>
-              ) : null}
-              {r.preOrderId ? (
-                <View
-                  style={[
-                    styles.reliableChip,
-                    { backgroundColor: "#3B82F612" },
-                  ]}
-                >
-                  <Feather name="package" size={11} color="#3B82F6" />
-                  <ThemedText
-                    type="caption"
-                    style={{ color: "#3B82F6", marginLeft: 3, fontWeight: "700" }}
-                  >
-                    Pedido anticipado
                   </ThemedText>
                 </View>
               ) : null}
@@ -434,6 +475,25 @@ export default function BusinessReservationsScreen() {
                   })} · ${r.time}`}{" "}
               · {r.partySize} comensales
             </ThemedText>
+            {/* Coste ComeYa de esta mesa: lo que se le factura al negocio si
+                asisten los comensales. Desglosado para que cuadre. */}
+            {r.feeCents ? (
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 2 }}
+              >
+                💶 {r.partySize} ×{" "}
+                {(fees.guestFeeCents / 100).toFixed(2).replace(".", ",")} € +{" "}
+                {(fees.serviceFeeCents / 100).toFixed(2).replace(".", ",")} €
+                servicio ={" "}
+                <ThemedText
+                  type="caption"
+                  style={{ fontWeight: "700", color: theme.text }}
+                >
+                  {(Number(r.feeCents) / 100).toFixed(2).replace(".", ",")} €
+                </ThemedText>
+              </ThemedText>
+            ) : null}
             {mode === "upcoming" && r.businessName ? (
               <ThemedText
                 type="caption"
@@ -814,6 +874,72 @@ export default function BusinessReservationsScreen() {
           </View>
         ) : null}
 
+        {/* Filtro + totales del día. El restaurante necesita ver de un
+            vistazo cuánta gente viene, qué está sin confirmar y cuánto le
+            cuesta el servicio ComeYa. */}
+        {mode === "day" && reservations.length > 0 ? (
+          <View style={[styles.agendaFilters, { backgroundColor: theme.card }]}>
+            <View style={styles.agendaFilterRow}>
+              {(
+                [
+                  { key: "pending", label: "Por confirmar" },
+                  { key: "confirmed", label: "Confirmadas" },
+                  { key: "all", label: "Todas" },
+                ] as const
+              ).map((f) => {
+                const active = agendaFilter === f.key;
+                const count =
+                  f.key === "pending"
+                    ? reservations.filter((r: any) => r.status === "pending")
+                        .length
+                    : f.key === "confirmed"
+                      ? reservations.filter((r: any) =>
+                          ["confirmed", "seated", "completed"].includes(
+                            r.status,
+                          ),
+                        ).length
+                      : reservations.length;
+                return (
+                  <Pressable
+                    key={f.key}
+                    onPress={() => setAgendaFilter(f.key)}
+                    style={[
+                      styles.agendaFilterChip,
+                      {
+                        backgroundColor: active
+                          ? ComeYaColors.primary
+                          : theme.backgroundSecondary,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      type="caption"
+                      style={{
+                        color: active ? "#FFF" : theme.text,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {f.label} ({count})
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+            >
+              👥 {dayTotals.covers} comensales
+              {dayTotals.pending > 0
+                ? ` · ${dayTotals.pending} sin confirmar`
+                : ""}
+              {dayTotals.costCents > 0
+                ? ` · coste ComeYa ${(dayTotals.costCents / 100).toFixed(2).replace(".", ",")} €`
+                : ""}
+            </ThemedText>
+          </View>
+        ) : null}
+
         {/* Radar ComeYa: publicar mesa flash */}
         {showFlashPanel ? (
           <View
@@ -963,6 +1089,15 @@ export default function BusinessReservationsScreen() {
                   <Feather name="clock" size={13} color={theme.textSecondary} />
                   <ThemedText style={{ marginLeft: 6, fontWeight: "700" }}>
                     {g.time}
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ marginLeft: 8, color: theme.textSecondary }}
+                  >
+                    {g.covers} {g.covers === 1 ? "comensal" : "comensales"}
+                    {g.costCents > 0
+                      ? ` · ${(g.costCents / 100).toFixed(2).replace(".", ",")} €`
+                      : ""}
                   </ThemedText>
                   <View
                     style={[styles.timeDivider, { backgroundColor: theme.border }]}
@@ -1152,6 +1287,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.md,
     marginBottom: Spacing.sm,
+  },
+  agendaFilters: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  agendaFilterRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    flexWrap: "wrap",
+  },
+  agendaFilterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs + 2,
+    borderRadius: BorderRadius.full,
   },
   timeDivider: {
     flex: 1,

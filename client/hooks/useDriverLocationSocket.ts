@@ -27,7 +27,10 @@ export function useDriverLocationSocket(
   orderId: string | null | undefined,
   opts: Options = {},
 ) {
-  const fallbackIntervalMs = opts.fallbackIntervalMs ?? 5000;
+  // 3 s de respaldo (antes 5 s): si el websocket no conecta —red móvil
+  // inestable, proxy que corta el upgrade— el pin del repartidor llegaba
+  // con demasiado retraso y parecía congelado.
+  const fallbackIntervalMs = opts.fallbackIntervalMs ?? 3000;
   const enabled = opts.enabled ?? true;
 
   const [location, setLocation] = useState<DriverLocationUpdate | null>(null);
@@ -49,7 +52,8 @@ export function useDriverLocationSocket(
           auth: { token: token ?? undefined },
           transports: ["websocket", "polling"],
           reconnection: true,
-          reconnectionDelay: 2000,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
         });
         socketRef.current = socket;
 
