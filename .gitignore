@@ -60,6 +60,11 @@ migrations/*.sql
 *.md
 !README.md
 !APP_STORE_CONNECT_GUIDE.md
+# Informes y notas de version entregados al cliente: se versionan para
+# conservar el historial de que se entrego en cada version.
+!docs/INFORME-CLIENTE-*.md
+!docs/NOTAS-VERSION-*.md
+!docs/WHATSAPP-*.md
 replit.md
 
 # ============================================
