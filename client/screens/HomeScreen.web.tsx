@@ -23,6 +23,10 @@ import { useResponsive } from "@/hooks/useResponsive";
 import { apiRequest } from "@/lib/query-client";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { Business } from "@/types";
+import {
+  CUISINE_CATEGORIES,
+  matchesCuisine,
+} from "@/constants/cuisineCategories";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 const PRIMARY = "#E60000";
@@ -38,46 +42,41 @@ const SORT = [
   { id: "price", label: "Más económicos" },
 ];
 
-const CATEGORY_STYLE: Record<
-  string,
-  { icon: ComeyaIconName; label: string }
-> = {
-  paella: { icon: "paella", label: "España" },
-  mariscos: { icon: "paella", label: "Mariscos" },
-  sushi: { icon: "sushi", label: "Oriental" },
-  ramen: { icon: "ramen", label: "Ramen" },
-  asiatica: { icon: "ramen", label: "Asiática" },
-  tacos: { icon: "taco", label: "Mexicana" },
-  mexicana: { icon: "taco", label: "Mexicana" },
-  pollo: { icon: "pollo", label: "Pollo" },
-  burger: { icon: "hamburguesa", label: "Hamburguesas" },
-  burgers: { icon: "hamburguesa", label: "Hamburguesas" },
-  hamburguesas: { icon: "hamburguesa", label: "Hamburguesas" },
-  pizza: { icon: "pizza", label: "Pizzas" },
-  ensaladas: { icon: "ensalada", label: "Ensaladas" },
-  postres: { icon: "postre", label: "Postres" },
-  mercado: { icon: "mercado", label: "Mercado" },
-  carniceria: { icon: "pollo", label: "Carnicería" },
-};
-
-// Orden fijo pedido por el cliente: España, Oriental, Mexicana, Pollo,
-// Hamburguesas, Pizza… y el resto después.
-const ORDERED_KEYS = ["paella", "sushi", "tacos", "pollo", "hamburguesas", "pizza"];
-const CATEGORY_ALIASES: Record<string, string> = {
-  mariscos: "paella",
-  paella: "paella",
-  sushi: "sushi",
-  ramen: "sushi",
-  asiatica: "sushi",
-  tacos: "tacos",
-  mexicana: "tacos",
-  pollo: "pollo",
-  carniceria: "pollo",
-  burger: "hamburguesas",
-  burgers: "hamburguesas",
-  hamburguesas: "hamburguesas",
-  pizza: "pizza",
-};
+// Las mismas cuatro promos que muestra la app en el inicio.
+const realFeatures = [
+  {
+    id: "vip",
+    title: "Hazte VIP",
+    subtitle: "Envío gratis + 10% dto.",
+    color: "#FB8C00",
+    icon: "award",
+    screen: "Subscriptions",
+  },
+  {
+    id: "gift",
+    title: "Tarjeta Regalo",
+    subtitle: "El mejor detalle",
+    color: "#D81B60",
+    icon: "gift",
+    screen: "GiftCards",
+  },
+  {
+    id: "points",
+    title: "Tus Puntos",
+    subtitle: "Gana recompensas",
+    color: "#8E24AA",
+    icon: "star",
+    screen: "Gamification",
+  },
+  {
+    id: "referral",
+    title: "Invita y Gana",
+    subtitle: "Puntos por cada amigo",
+    color: "#0288D1",
+    icon: "heart",
+    screen: "Referral",
+  },
+];
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
@@ -199,36 +198,18 @@ export default function HomeScreen() {
     }
   };
 
-  const dynamicCategories = React.useMemo(() => {
-    const seen = new Set<string>();
-    const cats = businesses.reduce<
-      { id: string; icon: ComeyaIconName; label: string }[]
-    >((acc, b) => {
-      const cat = b.categories[0]?.toLowerCase().trim();
-      if (!cat || seen.has(cat)) return acc;
-      seen.add(cat);
-      const style = CATEGORY_STYLE[cat] || {
-        icon: "lupa" as ComeyaIconName,
-        label: cat.charAt(0).toUpperCase() + cat.slice(1),
-      };
-      acc.push({ id: cat, ...style });
-      return acc;
-    }, []);
-
-    return cats.sort((a, b) => {
-      const posA = ORDERED_KEYS.indexOf(CATEGORY_ALIASES[a.id] || a.id);
-      const posB = ORDERED_KEYS.indexOf(CATEGORY_ALIASES[b.id] || b.id);
-      return (posA === -1 ? 99 : posA) - (posB === -1 ? 99 : posB);
-    });
-  }, [businesses]);
+  // Categorías de cocina: lista FIJA y compartida con la app
+  // (client/constants/cuisineCategories.ts). Antes se deducían de la BD y
+  // salían chips duplicados ("Mexicana" dos veces) y sueltos ("Carnicería",
+  // "Ramén", "Asiática"…). Ahora web y app muestran exactamente lo mismo.
+  const dynamicCategories = CUISINE_CATEGORIES;
 
   const filtered = businesses
     .filter((b) => {
       if (typeFilter !== "all" && b.type !== typeFilter) return false;
-      if (
-        activeCategory &&
-        !b.categories.some((c) => c.toLowerCase().trim() === activeCategory)
-      )
+      // Agrupa sinónimos: "Mexicana" incluye los negocios con categoría
+      // `tacos` y "Pollo" incluye la carnicería.
+      if (activeCategory && !matchesCuisine(b.categories, activeCategory))
         return false;
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -479,14 +460,8 @@ export default function HomeScreen() {
       >
         {/* Logo */}
         <View style={s.navLogo}>
-          <View
-            style={[
-              s.navLogoCircle,
-              { backgroundColor: isDark ? "#222" : "#fff" },
-            ]}
-          >
-            <ComeYaLogo size={22} />
-          </View>
+          {/* Logo oficial tal cual (cuadrado rojo), sin recortar a círculo */}
+          <ComeYaLogo size={28} />
           {!isMobile && <Text style={s.navLogoText}>ComeYa</Text>}
         </View>
 
@@ -607,16 +582,13 @@ export default function HomeScreen() {
           {/* Franja de marca */}
           {!search && typeFilter === "all" && !activeCategory && (
             <View style={s.brandBand}>
+              {/* Logo oficial tal cual. La franja usa su mismo rojo para que
+                  el cuadrado se funda y solo se vea el emblema. */}
               <Image
-                source={require("../../assets/images/comeya-badge.png")}
-                style={s.brandBadge}
+                source={require("../../assets/images/comeya-logo-nuevo.png")}
+                style={s.brandLogo}
                 contentFit="contain"
                 pointerEvents="none"
-              />
-              <Image
-                source={require("../../assets/images/comeya-wordmark-white.png")}
-                style={s.brandWordmark}
-                contentFit="contain"
               />
             </View>
           )}
@@ -696,6 +668,60 @@ export default function HomeScreen() {
                   Reservar mesa
                 </Text>
               </Pressable>
+            </View>
+          )}
+
+          {/* Acciones rápidas: los MISMOS dos botones que la app nativa
+              ("Explorar" y "Ver mapa"). En web no existían, así que el
+              cliente no podía entrar al explorador ni al mapa desde el
+              inicio. */}
+          {!search && typeFilter === "all" && !activeCategory && (
+            <View style={s.quickRow}>
+              <Pressable
+                onPress={() => navigation.navigate("BusinessList")}
+                style={({ pressed }) => [
+                  s.quickBtn,
+                  { backgroundColor: PRIMARY, opacity: pressed ? 0.9 : 1 },
+                ]}
+              >
+                <Feather name="compass" size={20} color="#fff" />
+                <Text style={s.quickTxt}>Explorar negocios</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => navigation.navigate("BusinessMap")}
+                style={({ pressed }) => [
+                  s.quickBtn,
+                  { backgroundColor: "#1565C0", opacity: pressed ? 0.9 : 1 },
+                ]}
+              >
+                <Feather name="map" size={20} color="#fff" />
+                <Text style={s.quickTxt}>Ver mapa</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Promos: las mismas cuatro de la app (VIP, tarjeta regalo,
+              puntos e invita y gana) */}
+          {!search && typeFilter === "all" && !activeCategory && (
+            <View style={s.promoRow}>
+              {realFeatures.map((f) => (
+                <Pressable
+                  key={f.id}
+                  onPress={() => navigation.navigate(f.screen as any)}
+                  style={({ pressed }) => [
+                    s.promoCard,
+                    { backgroundColor: f.color, opacity: pressed ? 0.9 : 1 },
+                  ]}
+                >
+                  <Feather name={f.icon as any} size={18} color="#fff" />
+                  <Text style={s.promoTitle} numberOfLines={1}>
+                    {f.title}
+                  </Text>
+                  <Text style={s.promoSub} numberOfLines={1}>
+                    {f.subtitle}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           )}
 
@@ -831,13 +857,6 @@ const s = StyleSheet.create({
     gap: 8,
     flexShrink: 0,
   },
-  navLogoCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   navLogoText: { fontSize: 18, fontWeight: "900", color: PRIMARY },
   navSearch: {
     flexDirection: "row",
@@ -968,7 +987,9 @@ const s = StyleSheet.create({
   main: { flex: 1 },
   mainContent: { paddingBottom: 48 },
   brandBand: {
-    backgroundColor: PRIMARY,
+    // Rojo del propio logo (#EB0000): el cuadrado del logo se funde con la
+    // franja y en pantalla solo se ve el emblema, sin marcos.
+    backgroundColor: "#EB0000",
     height: 96,
     justifyContent: "center",
     alignItems: "center",
@@ -976,14 +997,7 @@ const s = StyleSheet.create({
     marginBottom: 16,
     position: "relative" as any,
   },
-  brandBadge: {
-    position: "absolute" as any,
-    left: 18,
-    top: 16,
-    width: 64,
-    height: 64,
-  },
-  brandWordmark: { width: 216, height: 74 },
+  brandLogo: { width: 88, height: 88 },
   heroIcons: { flexDirection: "row", gap: 10 },
   heroIconCircle: {
     width: 48,
@@ -1005,6 +1019,27 @@ const s = StyleSheet.create({
   heroSub: { fontSize: 13, color: "rgba(255,255,255,0.8)" },
   heroEmoji: { fontSize: 36 },
   resultsCount: { fontSize: 13, fontWeight: "600" },
+  quickRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  quickBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  quickTxt: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  promoRow: { flexDirection: "row", gap: 10, marginBottom: 18, flexWrap: "wrap" },
+  promoCard: {
+    flex: 1,
+    minWidth: 120,
+    borderRadius: 12,
+    padding: 12,
+    gap: 4,
+  },
+  promoTitle: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  promoSub: { color: "rgba(255,255,255,0.85)", fontSize: 11 },
   modeSwitch: {
     flexDirection: "row",
     backgroundColor: "rgba(128,128,128,0.12)",

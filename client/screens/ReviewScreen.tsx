@@ -209,7 +209,7 @@ export default function ReviewScreen() {
           <TextInput
             value={comment}
             onChangeText={setComment}
-            placeholder="Cuentanos mas sobre tu experiencia..."
+            placeholder="Cuéntanos más sobre tu experiencia..."
             placeholderTextColor={theme.textSecondary}
             style={[
               styles.textArea,

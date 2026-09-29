@@ -108,7 +108,7 @@ export const SettingsTab: React.FC<Props> = ({ theme, showToast }) => {
       });
       setValues(map);
     } catch {
-      showToast("Error al cargar configuracion", "error");
+      showToast("Error al cargar configuración", "error");
     } finally {
       setLoading(false);
     }
@@ -125,7 +125,7 @@ export const SettingsTab: React.FC<Props> = ({ theme, showToast }) => {
       if (data.success) showToast("Guardado", "success");
       else showToast(data.error ?? "Error", "error");
     } catch {
-      showToast("Error de conexion", "error");
+      showToast("Error de conexión", "error");
     } finally {
       setSaving(null);
     }
@@ -136,7 +136,7 @@ export const SettingsTab: React.FC<Props> = ({ theme, showToast }) => {
       const res = await apiRequest("POST", "/api/admin/settings/initialize");
       const data = await res.json();
       if (data.success) {
-        showToast("Configuracion inicializada", "success");
+        showToast("Configuración inicializada", "success");
         load();
       }
     } catch {

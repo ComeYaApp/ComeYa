@@ -206,7 +206,7 @@ export default function VerifyPhoneScreen({
       setError("");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      setError("Error al reenviar codigo");
+      setError("Error al reenviar código");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsResending(false);
@@ -322,7 +322,7 @@ export default function VerifyPhoneScreen({
 
         <View style={styles.resendContainer}>
           <ThemedText type="body" style={{ color: theme.textSecondary }}>
-            ¿No recibiste el codigo?{" "}
+            ¿No recibiste el código?{" "}
           </ThemedText>
           {canResend ? (
             <Pressable onPress={handleResend} disabled={isResending}>

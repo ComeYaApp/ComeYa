@@ -62,7 +62,7 @@ export default function DeliveryConfigScreen() {
       if (data.success) showToast("Tarifas actualizadas", "success");
       else showToast("Error al guardar", "error");
     } catch {
-      showToast("Error de conexion", "error");
+      showToast("Error de conexión", "error");
     } finally {
       setSaving(false);
     }

@@ -30,7 +30,7 @@ const PROVIDERS = [
     fields: [
       {
         key: "phone",
-        label: "Numero de telefono",
+        label: "Número de teléfono",
         placeholder: "+34 600 000 000",
         keyboard: "phone-pad" as const,
       },

@@ -67,7 +67,7 @@ async function scheduleEventReminders(
     return {
       success: false,
       message:
-        "Los recordatorios solo funcionan en la app movil. Escanea el codigo QR con Expo Go.",
+        "Los recordatorios solo funcionan en la app móvil. Escanea el código QR con Expo Go.",
     };
   }
 
@@ -89,7 +89,7 @@ async function scheduleEventReminders(
   if (oneHourBefore <= now) {
     return {
       success: false,
-      message: "Este evento ya esta muy cerca o ya paso.",
+      message: "Este evento ya está muy cerca o ya pasó.",
     };
   }
 

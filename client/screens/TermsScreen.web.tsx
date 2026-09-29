@@ -63,7 +63,7 @@ export default function TermsScreen() {
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       <MobileSidebarWrapper
-        title="Terminos"
+        title="Términos"
         sidebarStyle={[
           s.sidebar,
           { backgroundColor: card, borderRightColor: border },

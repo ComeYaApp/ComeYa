@@ -60,6 +60,10 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { formatCurrency } from "@/utils/currency";
 import { MainTabParamList } from "@/navigation/MainTabNavigator";
 import { calculateDistance } from "@/utils/distance";
+import {
+  CUISINE_CATEGORIES,
+  matchesCuisine,
+} from "@/constants/cuisineCategories";
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, "HomeTab">,
@@ -72,8 +76,8 @@ const GRID_GAP = Spacing.sm;
 // GRID_CARD_WIDTH se calcula dinámicamente en el componente
 
 const filters: { id: string; name: string; icon: ComeyaIconName }[] = [
-  { id: "rapido", name: "Rapido", icon: "rayo" },
-  { id: "economico", name: "Economico", icon: "dolar" },
+  { id: "rapido", name: "Rápido", icon: "rayo" },
+  { id: "economico", name: "Económico", icon: "dolar" },
   { id: "popular", name: "Popular", icon: "estrella" },
   { id: "open", name: "Abierto ahora", icon: "reloj" },
 ];
@@ -156,74 +160,11 @@ export default function HomeScreen() {
     return () => { isMounted = false; };
   }, []);
 
-  // Mapa de iconos de marca por categoría - clave = primera categoria del negocio
-  const CATEGORY_STYLE: Record<
-    string,
-    { icon: ComeyaIconName; label: string }
-  > = {
-    paella: { icon: "paella", label: "España" },
-    mariscos: { icon: "paella", label: "Mariscos" },
-    sushi: { icon: "sushi", label: "Oriental" },
-    ramen: { icon: "ramen", label: "Ramen" },
-    asiatica: { icon: "ramen", label: "Asiática" },
-    tacos: { icon: "taco", label: "Mexicana" },
-    mexicana: { icon: "taco", label: "Mexicana" },
-    pollo: { icon: "pollo", label: "Pollo" },
-    burger: { icon: "hamburguesa", label: "Hamburguesas" },
-    burgers: { icon: "hamburguesa", label: "Hamburguesas" },
-    hamburguesas: { icon: "hamburguesa", label: "Hamburguesas" },
-    pizza: { icon: "pizza", label: "Pizzas" },
-    ensaladas: { icon: "ensalada", label: "Ensaladas" },
-    postres: { icon: "postre", label: "Postres" },
-    mercado: { icon: "mercado", label: "Mercado" },
-    carniceria: { icon: "pollo", label: "Carnicería" },
-  };
-
-  // Orden fijo pedido por el cliente para las categorías de la Home:
-  // España, Oriental, Mexicana, Pollo, Hamburguesas, Pizza… y el resto detrás.
-  // Canónicas: qué clave representa a cada posición del orden fijo.
-  const ORDERED_KEYS = ["paella", "sushi", "tacos", "pollo", "hamburguesas", "pizza"];
-  const ALIASES: Record<string, string> = {
-    mariscos: "paella",
-    paella: "paella",
-    sushi: "sushi",
-    ramen: "sushi",
-    asiatica: "sushi",
-    tacos: "tacos",
-    mexicana: "tacos",
-    pollo: "pollo",
-    carniceria: "pollo",
-    burger: "hamburguesas",
-    burgers: "hamburguesas",
-    hamburguesas: "hamburguesas",
-    pizza: "pizza",
-  };
-
-  // Genera categorias unicas usando SOLO la primera categoria de cada negocio,
-  // y las devuelve en el orden fijo que pidió el cliente.
-  const dynamicCategories = React.useMemo(() => {
-    const seen = new Set<string>();
-    const cats: { id: string; icon: ComeyaIconName; label: string }[] = [];
-    businesses.forEach((b) => {
-      const firstCat = b.categories[0]?.toLowerCase().trim();
-      if (!firstCat || seen.has(firstCat)) return;
-      seen.add(firstCat);
-      const style = CATEGORY_STYLE[firstCat] || {
-        icon: "lupa" as ComeyaIconName,
-        label: firstCat.charAt(0).toUpperCase() + firstCat.slice(1),
-      };
-      cats.push({ id: firstCat, ...style });
-    });
-
-    return cats.sort((a, b) => {
-      const canonA = ALIASES[a.id] || a.id;
-      const canonB = ALIASES[b.id] || b.id;
-      const posA = ORDERED_KEYS.indexOf(canonA);
-      const posB = ORDERED_KEYS.indexOf(canonB);
-      // Las que no están en el orden fijo van al final, sin alterar su orden
-      return (posA === -1 ? 99 : posA) - (posB === -1 ? 99 : posB);
-    });
-  }, [businesses]);
+  // Categorías de cocina: lista FIJA y compartida (client/constants/
+  // cuisineCategories.ts). El cliente pidió estas seis, en este orden, sin
+  // repetidos y sin extras; antes se deducían de la BD y salían chips
+  // duplicados ("Mexicana" dos veces) y sueltos ("Carnicería", "Ramén"…).
+  const dynamicCategories = CUISINE_CATEGORIES;
 
   const loadData = useCallback(async () => {
     try {
@@ -413,11 +354,11 @@ export default function HomeScreen() {
       }
 
       if (activeCategory) {
-        // Buscar en todas las categorias del negocio, no solo la primera
+        // Buscar en todas las categorias del negocio, no solo la primera, y
+        // agrupando sinónimos: al tocar "Mexicana" entran los negocios con
+        // categoría `tacos`, y al tocar "Pollo" también la carnicería.
         filtered = filtered.filter((b) =>
-          b.categories.some(
-            (cat) => cat.toLowerCase().trim() === activeCategory,
-          ),
+          matchesCuisine(b.categories, activeCategory),
         );
       }
 
@@ -520,16 +461,14 @@ export default function HomeScreen() {
           entering={FadeInDown.delay(50).springify()}
           style={styles.brandBand}
         >
+          {/* El logo oficial, tal cual lo envió el cliente. La franja usa su
+              mismo rojo (#EB0000), así que el cuadrado se funde con el fondo
+              y en pantalla se ve solo el emblema, sin bordes. */}
           <Image
-            source={require("../../assets/images/comeya-badge.png")}
-            style={styles.brandBadge}
+            source={require("../../assets/images/comeya-logo-nuevo.png")}
+            style={styles.brandLogo}
             contentFit="contain"
             pointerEvents="none"
-          />
-          <Image
-            source={require("../../assets/images/comeya-wordmark-white.png")}
-            style={styles.brandWordmark}
-            contentFit="contain"
           />
         </Animated.View>
 
@@ -1040,7 +979,7 @@ export default function HomeScreen() {
               style={[styles.emptyStateText, { color: theme.textSecondary }]}
             >
               No encontramos negocios con esos filtros.
-              {"\n"}Intenta con otra busqueda o categoria.
+              {"\n"}Intenta con otra búsqueda o categoría.
             </ThemedText>
             <Pressable
               onPress={() => {
@@ -1453,23 +1392,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   brandBand: {
-    backgroundColor: ComeYaColors.primary,
+    // Rojo del propio logo: el cuadrado del logo se funde con la franja, así
+    // que en pantalla solo se ve el emblema (sin marcos ni bordes).
+    backgroundColor: "#EB0000",
     marginHorizontal: -Spacing.lg,
     height: 96,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: Spacing.lg,
   },
-  brandBadge: {
-    position: "absolute",
-    left: Spacing.lg,
-    top: 16,
-    width: 64,
-    height: 64,
-  },
-  brandWordmark: {
-    width: 216,
-    height: 74,
+  brandLogo: {
+    width: 88,
+    height: 88,
   },
   modeSwitchContainer: {
     flexDirection: "row",
