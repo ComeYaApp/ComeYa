@@ -12,6 +12,10 @@ android/
 *.apk
 *.aab
 
+# Documentos del cliente (el PDF de requisitos pesa 17 MB y no hace falta
+# para compilar: solo alarga la subida del proyecto a EAS)
+docs/requerimentos/
+
 # Cache de Gradle
 .gradle-comeya/
 .gradle/
