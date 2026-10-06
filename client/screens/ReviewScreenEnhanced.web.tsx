@@ -85,10 +85,18 @@ export default function ReviewScreenEnhanced() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [wantTip, setWantTip] = useState(false);
   const [tipAmount, setTipAmount] = useState(2);
+  // Importe personalizado además de los chips 1-5 €
+  const [customTipAmount, setCustomTipAmount] = useState("");
   // En web la propina se envía por pago manual (comprobante verificado por el
-  // admin) o en efectivo (doble confirmación). La tarjeta está en la app.
-  const [tipMethod, setTipMethod] = useState<"manual" | "cash">("manual");
+  // admin). El efectivo se gestiona fuera de la app y la tarjeta está en la
+  // app nativa.
+  const [tipMethod, setTipMethod] = useState<"manual">("manual");
   const [tipProofUrl, setTipProofUrl] = useState<string | null>(null);
+
+  const customTipCents = Math.round(
+    parseFloat(customTipAmount.replace(",", ".")) * 100,
+  );
+  const effectiveTipAmountCents = tipAmount > 0 ? tipAmount * 100 : customTipCents;
 
   const bg = isDark ? "#111" : "#f7f7f7";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -133,7 +141,7 @@ export default function ReviewScreenEnhanced() {
           comment: comment.trim() || undefined,
           tags: selectedTags.length ? selectedTags : undefined,
           photos: photos.length ? photos : undefined,
-          tipAmount: wantTip ? tipAmount * 100 : 0,
+          tipAmount: wantTip ? effectiveTipAmountCents : 0,
           tipMethod: wantTip ? tipMethod : undefined,
           tipProof:
             wantTip && tipMethod === "manual" ? tipProofUrl : undefined,
@@ -308,6 +316,7 @@ export default function ReviewScreenEnhanced() {
                       onPress={() => {
                         setWantTip(true);
                         setTipAmount(amount);
+                        setCustomTipAmount("");
                       }}
                       style={[
                         s.tipBtn,
@@ -331,71 +340,60 @@ export default function ReviewScreenEnhanced() {
               </View>
               {wantTip && (
                 <>
-                  <View style={s.tipsWrap}>
-                    {[
-                      { id: "manual", label: "Bizum/Transferencia" },
-                      { id: "cash", label: "Efectivo" },
-                    ].map((opt) => {
-                      const active = tipMethod === opt.id;
-                      return (
-                        <Pressable
-                          key={opt.id}
-                          onPress={() => setTipMethod(opt.id as any)}
-                          style={[
-                            s.tipBtn,
-                            {
-                              backgroundColor: active ? "#10B981" : cardBg,
-                              borderColor: active ? "#10B981" : border,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              s.tipBtnText,
-                              { color: active ? "#fff" : text },
-                            ]}
-                          >
-                            {opt.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                  <Text style={[s.noTipText, { color: sub, marginTop: 8 }]}>
-                    {tipMethod === "manual"
-                      ? "Envía el importe por Bizum/transferencia al número de la plataforma y adjunta el comprobante. Se abona al repartidor cuando se verifica el pago."
-                      : "Le das el efectivo al repartidor en mano. Él lo confirma en su app y queda registrado en sus ganancias."}
+                  <TextInput
+                    value={customTipAmount}
+                    onChangeText={(t) => {
+                      setCustomTipAmount(t.replace(/[^0-9.,]/g, ""));
+                      setTipAmount(0);
+                    }}
+                    placeholder="Otra cantidad (€)"
+                    placeholderTextColor={sub}
+                    keyboardType="decimal-pad"
+                    style={{
+                      marginTop: 10,
+                      borderWidth: 1,
+                      borderColor: customTipAmount ? "#10B981" : border,
+                      borderRadius: 10,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      color: text,
+                      backgroundColor: cardBg,
+                      fontSize: 15,
+                    }}
+                  />
+                  <Text style={[s.noTipText, { color: sub, marginTop: 10 }]}>
+                    Envía el importe por Bizum/transferencia al número de la
+                    plataforma y adjunta el comprobante. Se abona al repartidor
+                    cuando se verifica el pago.
                   </Text>
-                  {tipMethod === "manual" && (
-                    <Pressable
-                      onPress={async () => {
-                        const { pickAndUploadImage } = await import(
-                          "@/utils/uploadImageWeb"
-                        );
-                        const url = await pickAndUploadImage("tip-proofs");
-                        if (url) setTipProofUrl(url);
-                      }}
+                  <Pressable
+                    onPress={async () => {
+                      const { pickAndUploadImage } = await import(
+                        "@/utils/uploadImageWeb"
+                      );
+                      const url = await pickAndUploadImage("tip-proofs");
+                      if (url) setTipProofUrl(url);
+                    }}
+                    style={{
+                      marginTop: 8,
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Feather name="camera" size={14} color="#10B981" />
+                    <Text
                       style={{
-                        marginTop: 8,
-                        flexDirection: "row",
-                        alignItems: "center",
+                        color: "#10B981",
+                        marginLeft: 6,
+                        fontWeight: "600",
+                        fontSize: 13,
                       }}
                     >
-                      <Feather name="camera" size={14} color="#10B981" />
-                      <Text
-                        style={{
-                          color: "#10B981",
-                          marginLeft: 6,
-                          fontWeight: "600",
-                          fontSize: 13,
-                        }}
-                      >
-                        {tipProofUrl
-                          ? "Comprobante adjuntado ✓"
-                          : "Adjuntar comprobante (opcional)"}
-                      </Text>
-                    </Pressable>
-                  )}
+                      {tipProofUrl
+                        ? "Comprobante adjuntado ✓"
+                        : "Adjuntar comprobante (opcional)"}
+                    </Text>
+                  </Pressable>
                   <Pressable
                     onPress={() => setWantTip(false)}
                     style={[s.noTipBtn, { marginTop: 12 }]}

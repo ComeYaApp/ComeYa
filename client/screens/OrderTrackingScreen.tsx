@@ -24,6 +24,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { CollapsibleMap } from "@/components/CollapsibleMap";
 import { QRCodeDisplay } from "@/components/QRCodeDisplay";
+import TipSheet, { TipStatusInfo } from "@/components/TipSheet";
 import { useTheme } from "@/hooks/useTheme";
 import { useDriverLocationSocket } from "@/hooks/useDriverLocationSocket";
 import {
@@ -105,10 +106,14 @@ export default function OrderTrackingScreen() {
     amountCents: number;
     declaredBy: "customer" | "driver";
   } | null>(null);
+  // Estado de la propina electrónica del pedido (para no cobrar dos veces)
+  const [tipStatus, setTipStatus] = useState<TipStatusInfo | null>(null);
   const [orderType, setOrderType] = useState<"delivery" | "pickup">("delivery");
   const [pickupInfo, setPickupInfo] = useState<any>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [showQR, setShowQR] = useState(false);
+  // Pedido cuya hoja de propina está abierta
+  const [tipOrder, setTipOrder] = useState<Order | null>(null);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -397,6 +402,7 @@ export default function OrderTrackingScreen() {
           setOrder(transformedOrder);
           setOrderType(apiOrder.orderType || "delivery");
           setPendingCashTip((apiOrder as any).pendingCashTip || null);
+          setTipStatus((apiOrder as any).tipStatus || null);
 
           // Cargar ubicación real del negocio
           if (apiOrder.businessId) {
@@ -766,12 +772,9 @@ export default function OrderTrackingScreen() {
     }
   };
 
-  const estimatedTime = order.estimatedDelivery
-    ? new Date(order.estimatedDelivery).toLocaleTimeString("es-ES", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : null;
+  // El tiempo restante se muestra con dynamicETA.minutes (fuente suavizada
+  // del servidor); el antiguo reloj derivado de order.estimatedDelivery se
+  // eliminó porque venía de otra fuente y saltaba de un valor a otro.
 
   // nemyCommission ya viene transformado a unidades (dividido entre 100)
   const nemyCommission = order.nemyCommission
@@ -1739,6 +1742,51 @@ export default function OrderTrackingScreen() {
                 </ThemedText>
               </Pressable>
             )}
+            {/* Dar propina: disponible en cualquier momento tras la entrega
+                confirmada, también si el pedido ya está valorado */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setTipOrder(order);
+              }}
+              style={[
+                styles.confirmButton,
+                {
+                  backgroundColor:
+                    tipStatus?.status === "completed"
+                      ? "#FFD70022"
+                      : theme.backgroundSecondary,
+                  marginTop: Spacing.sm,
+                },
+              ]}
+            >
+              <Feather
+                name="heart"
+                size={20}
+                color={
+                  tipStatus?.status === "completed"
+                    ? "#B8860B"
+                    : ComeYaColors.primary
+                }
+              />
+              <ThemedText
+                type="body"
+                style={{
+                  color:
+                    tipStatus?.status === "completed"
+                      ? "#B8860B"
+                      : ComeYaColors.primary,
+                  marginLeft: Spacing.sm,
+                  fontWeight: "600",
+                }}
+              >
+                {tipStatus?.status === "completed"
+                  ? "Propina enviada 💝"
+                  : tipStatus?.status === "pending"
+                    ? "Propina pendiente de verificación"
+                    : "Dar propina al repartidor"}
+              </ThemedText>
+            </Pressable>
           </View>
         ) : null}
 
@@ -2070,6 +2118,18 @@ export default function OrderTrackingScreen() {
           </>
         )}
       </ScrollView>
+      <TipSheet
+        visible={tipOrder !== null}
+        orderId={tipOrder?.id ?? ""}
+        orderLabel={tipOrder ? displayOrderNumber(tipOrder) : undefined}
+        driverName={tipOrder?.deliveryPersonName || undefined}
+        tipStatus={tipStatus}
+        onClose={() => setTipOrder(null)}
+        onTipSent={(status) => {
+          setTipStatus(status);
+          loadOrderRef.current?.();
+        }}
+      />
     </View>
   );
 }

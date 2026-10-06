@@ -614,9 +614,49 @@ router.get("/", authenticateToken, async (req, res) => {
         );
       for (const r of revs) reviewedOrderIds.add(r.orderId);
     }
+
+    // Estado de la propina de cada pedido: el historial lo usa para mostrar
+    // "Dar propina" o "Propina enviada". Gana la completed si la hay; si no,
+    // la última declarada (pending/failed).
+    const { transactions } = await import("@shared/schema-mysql");
+    const { parseTipMeta } = await import("../tipService");
+    const tipByOrder = new Map<
+      string,
+      { method: string; amountCents: number; status: string }
+    >();
+    if (userOrders.length > 0) {
+      const tips = await db
+        .select()
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.type, "tip"),
+            inArray(
+              transactions.orderId,
+              userOrders.map((o: any) => o.id),
+            ),
+          ),
+        );
+      for (const t of tips as any[]) {
+        const prev = tipByOrder.get(t.orderId);
+        if (
+          !prev ||
+          (t.status === "completed" && prev.status !== "completed") ||
+          (t.status === prev.status && prev.status !== "completed")
+        ) {
+          const meta = parseTipMeta(t.metadata);
+          tipByOrder.set(t.orderId, {
+            method: meta.tipMethod || "",
+            amountCents: t.amount,
+            status: t.status,
+          });
+        }
+      }
+    }
     const ordersWithFlag = userOrders.map((o: any) => ({
       ...o,
       hasReview: reviewedOrderIds.has(o.id),
+      tipStatus: tipByOrder.get(o.id) ?? null,
     }));
 
     res.json({ success: true, orders: ordersWithFlag });
@@ -631,7 +671,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
     const { orders, users, deliveryDrivers, businesses, reviews } =
       await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const { eq, sql } = await import("drizzle-orm");
+    const { eq, sql, and } = await import("drizzle-orm");
     const orderId = Array.isArray(req.params.id)
       ? req.params.id[0]
       : req.params.id;
@@ -748,6 +788,37 @@ router.get("/:id", authenticateToken, async (req, res) => {
       /* sin propina pendiente */
     }
 
+    // Estado de la propina electrónica del pedido: evita cobrar dos veces y
+    // muestra "Propina enviada" en el seguimiento
+    let tipStatus: any = null;
+    try {
+      const { transactions } = await import("@shared/schema-mysql");
+      const { parseTipMeta } = await import("../tipService");
+      const tips = await db
+        .select()
+        .from(transactions)
+        .where(
+          and(eq(transactions.orderId, orderId), eq(transactions.type, "tip")),
+        )
+        .limit(10);
+      for (const t of tips as any[]) {
+        if (
+          !tipStatus ||
+          (t.status === "completed" && tipStatus.status !== "completed") ||
+          (t.status === tipStatus.status && tipStatus.status !== "completed")
+        ) {
+          const meta = parseTipMeta(t.metadata);
+          tipStatus = {
+            method: meta.tipMethod || "",
+            amountCents: t.amount,
+            status: t.status,
+          };
+        }
+      }
+    } catch {
+      /* sin propinas */
+    }
+
     // Return order with driver info included
     res.json({
       success: true,
@@ -759,6 +830,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
         hasReview,
         substitutions,
         pendingCashTip,
+        tipStatus,
       },
     });
   } catch (error: any) {

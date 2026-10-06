@@ -16,6 +16,7 @@ import { Image } from "expo-image";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useDriverLocationSocket } from "@/hooks/useDriverLocationSocket";
+import TipSheet from "@/components/TipSheet";
 import {
   Spacing,
   BorderRadius,
@@ -202,6 +203,8 @@ export default function OrderTrackingScreen() {
   }, [order?.createdAt, policyNow]);
   const [driverPhoto, setDriverPhoto] = useState<string | null>(null);
   const [driverVehicle, setDriverVehicle] = useState<string | null>(null);
+  // Pedido cuya hoja de propina está abierta (tras entrega confirmada)
+  const [tipOrder, setTipOrder] = useState<any | null>(null);
   const [businessLocation, setBusinessLocation] = useState<{
     lat: number;
     lng: number;
@@ -1258,14 +1261,16 @@ export default function OrderTrackingScreen() {
                 <ThemedText type="h4" style={{ color: statusInfo.color }}>
                   {statusInfo.label}
                 </ThemedText>
-                {eta !== null && order?.status === "on_the_way" && (
-                  <ThemedText
-                    type="small"
-                    style={{ color: theme.textSecondary, marginTop: 2 }}
-                  >
-                    Llega en aproximadamente {eta} minutos
-                  </ThemedText>
-                )}
+                {(dynamicETA?.minutes || eta !== null) &&
+                  order?.status === "on_the_way" && (
+                    <ThemedText
+                      type="small"
+                      style={{ color: theme.textSecondary, marginTop: 2 }}
+                    >
+                      Llega en aproximadamente{" "}
+                      {dynamicETA?.minutes ?? eta} minutos
+                    </ThemedText>
+                  )}
               </View>
             </View>
 
@@ -1673,6 +1678,48 @@ export default function OrderTrackingScreen() {
                       </ThemedText>
                     </Pressable>
                   )}
+                  {/* Dar propina: en cualquier momento tras confirmar la
+                      entrega, también si el pedido ya está valorado */}
+                  <Pressable
+                    onPress={() => setTipOrder(order)}
+                    style={[
+                      s.confirmButton,
+                      {
+                        backgroundColor:
+                          (order as any).tipStatus?.status === "completed"
+                            ? "#FFD70022"
+                            : theme.backgroundSecondary,
+                        marginTop: Spacing.sm,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name="heart"
+                      size={20}
+                      color={
+                        (order as any).tipStatus?.status === "completed"
+                          ? "#B8860B"
+                          : ComeYaColors.primary
+                      }
+                    />
+                    <ThemedText
+                      type="body"
+                      style={{
+                        color:
+                          (order as any).tipStatus?.status === "completed"
+                            ? "#B8860B"
+                            : ComeYaColors.primary,
+                        marginLeft: Spacing.sm,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {(order as any).tipStatus?.status === "completed"
+                        ? "Propina enviada 💝"
+                        : (order as any).tipStatus?.status === "pending"
+                          ? "Propina pendiente de verificación"
+                          : "Dar propina al repartidor"}
+                    </ThemedText>
+                  </Pressable>
                 </View>
               )}
 
@@ -1766,6 +1813,16 @@ export default function OrderTrackingScreen() {
               />
             </Elements>
           )}
+
+          <TipSheet
+            visible={tipOrder !== null}
+            orderId={tipOrder?.id ?? ""}
+            orderLabel={tipOrder ? displayOrderNumber(tipOrder) : undefined}
+            driverName={tipOrder?.deliveryPersonName || undefined}
+            tipStatus={tipOrder?.tipStatus ?? null}
+            onClose={() => setTipOrder(null)}
+            onTipSent={() => setReloadKey((k) => k + 1)}
+          />
         </View>
       </View>
     </View>

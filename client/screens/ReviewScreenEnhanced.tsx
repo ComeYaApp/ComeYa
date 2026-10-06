@@ -117,12 +117,18 @@ export default function ReviewScreenEnhanced() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [wantTip, setWantTip] = useState<boolean | null>(null);
   const [tipAmount, setTipAmount] = useState(0);
-  // Canal de la propina: tarjeta (Payment Sheet), pago manual (comprobante
-  // verificado por el admin) o efectivo (doble confirmación con el repartidor)
-  const [tipMethod, setTipMethod] = useState<"stripe" | "manual" | "cash">(
-    "stripe",
-  );
+  // Importe personalizado (además de los chips 1-5 €)
+  const [customTipAmount, setCustomTipAmount] = useState("");
+  // Canal de la propina: tarjeta (Payment Sheet) o pago manual (comprobante
+  // verificado por el admin). El efectivo se gestiona fuera de la app.
+  const [tipMethod, setTipMethod] = useState<"stripe" | "manual">("stripe");
   const [tipProof, setTipProof] = useState<string | null>(null);
+
+  // Importe efectivo de la propina: chip elegido o cantidad personalizada
+  const customTipCents = Math.round(
+    parseFloat(customTipAmount.replace(",", ".")) * 100,
+  );
+  const effectiveTipAmountCents = tipAmount > 0 ? tipAmount * 100 : customTipCents;
 
   const { data: tagsData } = useQuery({
     queryKey: ["/api/reviews/tags"],
@@ -133,6 +139,19 @@ export default function ReviewScreenEnhanced() {
   });
 
   const availableTags: ReviewTag[] = tagsData?.tags || [];
+
+  // Estado de la propina del pedido: si ya se envió desde el historial, no
+  // se vuelve a ofrecer aquí (evita cobrar dos veces)
+  const { data: orderData } = useQuery({
+    queryKey: ["/api/orders", orderId, "tip-status"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/orders/${orderId}`);
+      return response.json();
+    },
+  });
+  const alreadyTipped =
+    orderData?.order?.tipStatus?.status === "completed" ||
+    orderData?.order?.tipStatus?.status === "pending";
 
   const handlePickImage = async () => {
     if (photos.length >= 3) {
@@ -192,8 +211,8 @@ export default function ReviewScreenEnhanced() {
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         photos: photos.length > 0 ? photos : undefined,
         // Propina: solo tras la entrega confirmada (allowTip). El canal lo
-        // elige el cliente: tarjeta, pago manual o efectivo.
-        tipAmount: wantTip ? tipAmount * 100 : 0,
+        // elige el cliente: tarjeta o pago manual con comprobante.
+        tipAmount: wantTip ? effectiveTipAmountCents : 0,
         tipMethod: wantTip ? tipMethod : undefined,
         tipProof:
           wantTip && tipMethod === "manual" ? tipProof : undefined,
@@ -508,7 +527,7 @@ export default function ReviewScreenEnhanced() {
           />
         </Animated.View>
 
-        {deliveryPersonId && allowTip ? (
+        {deliveryPersonId && allowTip && !alreadyTipped ? (
           <Animated.View
             entering={FadeInDown.delay(350)}
             style={[
@@ -625,6 +644,7 @@ export default function ReviewScreenEnhanced() {
                       key={amount}
                       onPress={() => {
                         setTipAmount(amount);
+                        setCustomTipAmount("");
                         Haptics.selectionAsync();
                       }}
                       style={[
@@ -659,6 +679,31 @@ export default function ReviewScreenEnhanced() {
                   ))}
                 </View>
 
+                {/* Importe personalizado además de los chips */}
+                <TextInput
+                  value={customTipAmount}
+                  onChangeText={(t) => {
+                    setCustomTipAmount(t.replace(/[^0-9.,]/g, ""));
+                    setTipAmount(0);
+                  }}
+                  placeholder="Otra cantidad (€)"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="decimal-pad"
+                  style={{
+                    marginTop: Spacing.sm,
+                    borderWidth: 2,
+                    borderColor: customTipAmount
+                      ? ComeYaColors.primary
+                      : theme.border,
+                    borderRadius: BorderRadius.md,
+                    paddingHorizontal: Spacing.md,
+                    paddingVertical: Spacing.sm,
+                    backgroundColor: theme.backgroundSecondary,
+                    color: theme.text,
+                    fontSize: 16,
+                  }}
+                />
+
                 {/* Canal de la propina */}
                 <View
                   style={{
@@ -671,7 +716,6 @@ export default function ReviewScreenEnhanced() {
                   {[
                     { id: "stripe", label: "Tarjeta", icon: "credit-card" },
                     { id: "manual", label: "Bizum/Transf.", icon: "smartphone" },
-                    { id: "cash", label: "Efectivo", icon: "dollar-sign" },
                   ].map((opt) => {
                     const active = tipMethod === opt.id;
                     return (
@@ -730,9 +774,7 @@ export default function ReviewScreenEnhanced() {
                 >
                   {tipMethod === "stripe"
                     ? "Se cobra a tu tarjeta y llega directo al repartidor."
-                    : tipMethod === "manual"
-                      ? "Envía el importe por Bizum/transferencia al número de la plataforma y adjunta el comprobante. Se abona al verificar el pago."
-                      : "Le das el efectivo al repartidor en mano. Él lo confirma en su app y queda registrado en sus ganancias."}
+                    : "Envía el importe por Bizum/transferencia al número de la plataforma y adjunta el comprobante. Se abona al verificar el pago."}
                 </ThemedText>
 
                 {tipMethod === "manual" && (
@@ -786,6 +828,26 @@ export default function ReviewScreenEnhanced() {
                 pedidos.
               </ThemedText>
             )}
+          </Animated.View>
+        ) : deliveryPersonId && allowTip && alreadyTipped ? (
+          <Animated.View
+            entering={FadeInDown.delay(350)}
+            style={[styles.section, { backgroundColor: theme.card }, Shadows.sm]}
+          >
+            <View style={styles.sectionHeader}>
+              <Feather name="heart" size={20} color={ComeYaColors.primary} />
+              <ThemedText type="h4" style={{ marginLeft: Spacing.sm }}>
+                Propina al repartidor
+              </ThemedText>
+            </View>
+            <ThemedText
+              type="small"
+              style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+            >
+              {orderData?.order?.tipStatus?.status === "pending"
+                ? "Tienes una propina pendiente de verificación en este pedido. 💝"
+                : "Ya enviaste tu propina a este repartidor. 💝"}
+            </ThemedText>
           </Animated.View>
         ) : null}
 

@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/query-client";
 import { useResponsive } from "@/hooks/useResponsive";
 import { OrderProgressBar } from "@/components/OrderProgressBar";
 import { displayOrderNumber } from "@/utils/orderNumber";
+import TipSheet from "@/components/TipSheet";
 
 const PRIMARY = "#E60000";
 
@@ -53,6 +54,7 @@ export default function OrdersScreen() {
   const [selected, setSelected] = useState<any>(null);
   const [tab, setTab] = useState<"active" | "done" | "cancelled">("active");
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [tipOrder, setTipOrder] = useState<any | null>(null);
   const { isMobile } = useResponsive();
 
   const bg = isDark ? "#111" : "#f7f7f7";
@@ -438,6 +440,54 @@ export default function OrdersScreen() {
                       </Pressable>
                     )}
 
+                  {/* Dar propina — en cualquier momento tras confirmar la entrega */}
+                  {selected.status === "delivered" &&
+                    selected.confirmedByCustomer && (
+                      <Pressable
+                        onPress={() => setTipOrder(selected)}
+                        style={[
+                          s.confirmBtn,
+                          {
+                            backgroundColor:
+                              (selected as any).tipStatus?.status ===
+                              "completed"
+                                ? "#FFD70022"
+                                : "transparent",
+                            borderWidth: 1,
+                            borderColor: PRIMARY + "55",
+                          },
+                        ]}
+                      >
+                        <Feather
+                          name="heart"
+                          size={18}
+                          color={
+                            (selected as any).tipStatus?.status === "completed"
+                              ? "#B8860B"
+                              : PRIMARY
+                          }
+                        />
+                        <Text
+                          style={[
+                            s.confirmBtnText,
+                            {
+                              color:
+                                (selected as any).tipStatus?.status ===
+                                "completed"
+                                  ? "#B8860B"
+                                  : PRIMARY,
+                            },
+                          ]}
+                        >
+                          {(selected as any).tipStatus?.status === "completed"
+                            ? "Propina enviada 💝"
+                            : (selected as any).tipStatus?.status === "pending"
+                              ? "Propina pendiente de verificación"
+                              : "Dar propina"}
+                        </Text>
+                      </Pressable>
+                    )}
+
                   {/* Pedir de nuevo */}
                   {(selected.status === "delivered" ||
                     selected.status === "cancelled") && (
@@ -516,6 +566,15 @@ export default function OrdersScreen() {
             })()
           )}
         </View>
+        <TipSheet
+          visible={tipOrder !== null}
+          orderId={tipOrder?.id ?? ""}
+          orderLabel={tipOrder ? displayOrderNumber(tipOrder) : undefined}
+          driverName={tipOrder?.driverName || undefined}
+          tipStatus={tipOrder?.tipStatus ?? null}
+          onClose={() => setTipOrder(null)}
+          onTipSent={() => loadOrders()}
+        />
       </View>
     </View>
   );

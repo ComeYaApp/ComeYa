@@ -31,6 +31,7 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { apiRequest } from "@/lib/query-client";
 import { displayOrderNumber } from "@/utils/orderNumber";
 import { ConfirmModal } from "@/components/ConfirmModal";
+import TipSheet from "@/components/TipSheet";
 
 type OrdersScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -91,6 +92,8 @@ export default function OrdersScreen() {
     null,
   );
   const [pendingConfirmId, setPendingConfirmId] = useState<string | null>(null);
+  // Pedido cuya hoja de propina está abierta (solo entregados y confirmados)
+  const [tipOrder, setTipOrder] = useState<any | null>(null);
 
   const loadOrders = useCallback(async () => {
     try {
@@ -398,6 +401,52 @@ export default function OrdersScreen() {
                 </Pressable>
               )
             ) : null}
+            {item.status === "delivered" &&
+            (item as any).confirmedByCustomer ? (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  setTipOrder(item);
+                }}
+                style={[
+                  styles.reorderButton,
+                  {
+                    backgroundColor:
+                      (item as any).tipStatus?.status === "completed"
+                        ? "#FFD70022"
+                        : theme.backgroundSecondary,
+                    marginTop: Spacing.xs,
+                  },
+                ]}
+              >
+                <Feather
+                  name="heart"
+                  size={16}
+                  color={
+                    (item as any).tipStatus?.status === "completed"
+                      ? "#B8860B"
+                      : ComeYaColors.primary
+                  }
+                />
+                <ThemedText
+                  type="small"
+                  style={{
+                    color:
+                      (item as any).tipStatus?.status === "completed"
+                        ? "#B8860B"
+                        : ComeYaColors.primary,
+                    marginLeft: Spacing.xs,
+                    fontWeight: "600",
+                  }}
+                >
+                  {(item as any).tipStatus?.status === "completed"
+                    ? "Propina enviada 💝"
+                    : (item as any).tipStatus?.status === "pending"
+                      ? "Propina pendiente de verificación"
+                      : "Dar propina"}
+                </ThemedText>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() => reorder(item)}
               style={[
@@ -533,6 +582,15 @@ export default function OrdersScreen() {
         cancelText="Cancelar"
         onConfirm={handleConfirmDelivery}
         onCancel={() => setPendingConfirmId(null)}
+      />
+      <TipSheet
+        visible={tipOrder !== null}
+        orderId={tipOrder?.id ?? ""}
+        orderLabel={tipOrder ? displayOrderNumber(tipOrder) : undefined}
+        driverName={(tipOrder as any)?.driverName || undefined}
+        tipStatus={(tipOrder as any)?.tipStatus ?? null}
+        onClose={() => setTipOrder(null)}
+        onTipSent={() => loadOrders()}
       />
     </LinearGradient>
   );

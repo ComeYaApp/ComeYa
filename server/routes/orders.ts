@@ -588,10 +588,10 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
 });
 
 // Tip — solo el cliente del pedido puede enviar propina al repartidor.
-// SOLO tras la entrega confirmada (delivered + confirmedByCustomer). Tres
-// canales: tarjeta (PaymentIntent), pago manual (verificación del admin) y
-// efectivo (doble confirmación con el repartidor). La propina ya no se abona
-// gratis: el dinero se cobra/verifica antes de llegar a la wallet.
+// SOLO tras la entrega confirmada (delivered + confirmedByCustomer) y en
+// cualquier momento posterior (no solo al valorar). Dos canales: tarjeta
+// (PaymentIntent, abono inmediato) y pago manual (comprobante verificado por
+// el admin). El efectivo se gestiona fuera de la app.
 router.post("/:id/tip", authenticateToken, async (req, res) => {
   try {
     if (req.user!.role !== "customer") {
@@ -605,7 +605,7 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
     if (!amountCents || amountCents <= 0 || amountCents > 50000) {
       return res.status(400).json({ error: "Monto de propina inválido" });
     }
-    const method = (["stripe", "manual", "cash"] as const).includes(tipMethod)
+    const method = (["stripe", "manual"] as const).includes(tipMethod)
       ? tipMethod
       : "stripe";
 
@@ -652,12 +652,16 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
       let proofUrl: string | null = null;
       if (tipProof) {
         try {
-          const { CloudinaryService } = await import("../cloudinaryService");
-          proofUrl = await CloudinaryService.uploadImage(
-            String(tipProof),
-            "tip-proofs",
-            `tip-${orderId}-${Date.now()}`,
-          );
+          // La web sube el comprobante y manda la URL; la app manda base64
+          proofUrl = /^https?:\/\//i.test(String(tipProof))
+            ? String(tipProof)
+            : await (
+                await import("../cloudinaryService")
+              ).CloudinaryService.uploadImage(
+                String(tipProof),
+                "tip-proofs" as any,
+                `tip-${orderId}-${Date.now()}`,
+              );
         } catch {}
       }
       await tipService.declareTip({
@@ -676,27 +680,7 @@ router.post("/:id/tip", authenticateToken, async (req, res) => {
       });
     }
 
-    // cash: el repartidor debe confirmar la recepción en su app
-    await tipService.declareTip({
-      orderId,
-      driverId,
-      amountCents,
-      method: "cash",
-      declaredBy: "customer",
-    });
-    try {
-      const { sendPushToUser } = await import("../enhancedPushService");
-      await sendPushToUser(driverId, {
-        title: "💵 Propina en efectivo declarada",
-        body: `El cliente te dará ${(amountCents / 100).toFixed(2)} € en efectivo. Confírmalo en la app cuando la recibas.`,
-        data: { orderId, screen: "DriverMyDeliveries" },
-      });
-    } catch {}
-    res.json({
-      success: true,
-      tipPending: true,
-      message: "Propina en efectivo declarada. El repartidor debe confirmarla en su app.",
-    });
+    // Sin más canales: el efectivo se gestiona fuera de la app.
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

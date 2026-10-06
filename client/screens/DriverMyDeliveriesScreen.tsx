@@ -67,8 +67,6 @@ export default function DriverMyDeliveriesScreen() {
   const [pickupOrderId, setPickupOrderId] = useState<string | null>(null);
   const [showOnTheWayModal, setShowOnTheWayModal] = useState(false);
   const [onTheWayOrderId, setOnTheWayOrderId] = useState<string | null>(null);
-  const [showCashTipModal, setShowCashTipModal] = useState(false);
-  const [cashTipOrderId, setCashTipOrderId] = useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
   const [cancelMode, setCancelMode] = useState<"released" | "cancelled">(
@@ -370,6 +368,7 @@ export default function DriverMyDeliveriesScreen() {
   // Propina en efectivo: doble confirmación. El cliente la declara y el
   // repartidor confirma haberla recibido, o al revés. Solo con ambas partes
   // de acuerdo queda registrada en las ganancias (nunca toca la wallet).
+  // (Solo quedan pendientes antiguas: las nuevas propinas se dan por la app.)
   const respondCashTip = async (orderId: string, approved: boolean) => {
     try {
       const res = await apiRequest(
@@ -393,32 +392,6 @@ export default function DriverMyDeliveriesScreen() {
     } catch (error: any) {
       Alert.alert("Error", error?.message || "No se pudo procesar la propina");
     }
-  };
-
-  const declareCashTip = async (amountCents: number) => {
-    if (!cashTipOrderId) return;
-    try {
-      const res = await apiRequest(
-        "POST",
-        `/api/orders/${cashTipOrderId}/cash-tip/declare`,
-        { amount: amountCents },
-      );
-      const data = await res.json();
-      if (data.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          "Propina declarada",
-          data.message || "El cliente debe confirmarla en su app.",
-        );
-      } else {
-        Alert.alert("Error", data.error || "No se pudo declarar la propina");
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error?.message || "No se pudo declarar la propina");
-    }
-    setShowCashTipModal(false);
-    setCashTipOrderId(null);
-    loadOrders();
   };
 
   const handleDelivered = async (orderId: string) => {
@@ -1112,28 +1085,8 @@ export default function DriverMyDeliveriesScreen() {
           </View>
         )}
 
-        {/* Sin propina pendiente: el repartidor puede declarar una propia */}
-        {!item.pendingCashTip && (
-          <Pressable
-            onPress={() => {
-              setCashTipOrderId(item.id);
-              setShowCashTipModal(true);
-            }}
-            style={{
-              marginTop: Spacing.sm,
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
-            <Feather name="dollar-sign" size={14} color={ComeYaColors.primary} />
-            <ThemedText
-              type="small"
-              style={{ color: ComeYaColors.primary, marginLeft: 4 }}
-            >
-              Registrar propina en efectivo
-            </ThemedText>
-          </Pressable>
-        )}
+        {/* Las propinas nuevas se dan desde la app del cliente (tarjeta o
+            Bizum con comprobante): el repartidor solo las recibe. */}
       </View>
     );
   };
@@ -1465,73 +1418,6 @@ export default function DriverMyDeliveriesScreen() {
         onCancel={() => setGpsError(false)}
         variant="danger"
       />
-
-      {/* Propina en efectivo: elegir importe (el cliente la valida luego) */}
-      <Modal visible={showCashTipModal} transparent animationType="fade">
-        <View style={styles.successOverlay}>
-          <Animated.View
-            entering={ZoomIn.springify()}
-            style={[styles.successCard, { backgroundColor: theme.card }]}
-          >
-            <ThemedText type="h3" style={{ textAlign: "center" }}>
-              💵 Propina en efectivo
-            </ThemedText>
-            <ThemedText
-              type="small"
-              style={{
-                color: theme.textSecondary,
-                textAlign: "center",
-                marginTop: Spacing.sm,
-              }}
-            >
-              ¿El cliente te dio una propina en efectivo? Elige el importe y
-              él la confirmará en su app para que quede registrada en tus
-              ganancias.
-            </ThemedText>
-            <View
-              style={{
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: Spacing.sm,
-                justifyContent: "center",
-                marginTop: Spacing.lg,
-              }}
-            >
-              {[1, 2, 3, 4, 5].map((euros) => (
-                <Pressable
-                  key={euros}
-                  onPress={() => declareCashTip(euros * 100)}
-                  style={{
-                    paddingHorizontal: Spacing.lg,
-                    paddingVertical: Spacing.sm,
-                    borderRadius: BorderRadius.full,
-                    borderWidth: 2,
-                    borderColor: ComeYaColors.primary,
-                  }}
-                >
-                  <ThemedText
-                    type="body"
-                    style={{ color: ComeYaColors.primary, fontWeight: "600" }}
-                  >
-                    {euros} €
-                  </ThemedText>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable
-              onPress={() => {
-                setShowCashTipModal(false);
-                setCashTipOrderId(null);
-              }}
-              style={{ marginTop: Spacing.lg, alignSelf: "center" }}
-            >
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Cancelar
-              </ThemedText>
-            </Pressable>
-          </Animated.View>
-        </View>
-      </Modal>
 
       {/* Cancelar pedido con motivo (libera antes de recoger / cancela después) */}
       <Modal visible={showCancelModal} transparent animationType="fade">
