@@ -40,6 +40,13 @@ const ROLE_LABEL: Record<string, string> = {
   business_owner: "Negocio",
 };
 
+// Etiqueta de rol: si tiene fila de repartidor se muestra como tal aunque su
+// rol en users siga siendo "customer" (flujo de registro antiguo)
+function roleLabel(u: any): string {
+  if (u?.deliveryDriver) return "Repartidor";
+  return ROLE_LABEL[u?.role] || u?.role || "—";
+}
+
 // Documentos e información mínimos para completar la verificación
 function getMissingItems(u: any): string[] {
   const missing: string[] = [];
@@ -54,8 +61,15 @@ function getMissingItems(u: any): string[] {
     if (!u.autonomoDocumentUrl) missing.push("Autónomo/empresa");
     if (!u.business?.address) missing.push("Dirección del negocio");
   }
-  if (u.role === "delivery_driver") {
-    if (!u.deliveryDriver?.vehicleLicensePhoto)
+  // Repartidor: se detecta por el rol O por la fila de delivery_drivers
+  // (el flujo antiguo dejaba el rol en "customer")
+  const isDriver = u.role === "delivery_driver" || !!u.deliveryDriver;
+  if (isDriver) {
+    // El permiso de circulación solo existe en vehículos con placa
+    const requiresPlate = ["moped", "motorcycle", "car"].includes(
+      u.deliveryDriver?.vehicleType,
+    );
+    if (requiresPlate && !u.deliveryDriver?.vehicleLicensePhoto)
       missing.push("Permiso de circulación");
     if (!u.deliveryDriver?.vehiclePhoto) missing.push("Foto del vehículo");
     if (!u.deliveryDriver?.vehicleType) missing.push("Tipo de vehículo");
@@ -154,7 +168,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Documentación</title></head>
         <body style="font-family:sans-serif;padding:24px;color:#111;">
           <h1>Documentación — ${u.name}</h1>
-          <p><b>Rol:</b> ${ROLE_LABEL[u.role] || u.role}</p>
+          <p><b>Rol:</b> ${roleLabel(u)}</p>
           <p><b>Teléfono:</b> ${u.phone || "—"}</p>
           <p><b>Email:</b> ${u.email || "—"}</p>
           <p><b>DNI/NIE:</b> ${u.dni || "—"}</p>
@@ -311,7 +325,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                           fontWeight: "600",
                         }}
                       >
-                        {ROLE_LABEL[u.role] || u.role}
+                        {roleLabel(u)}
                       </Text>
                     </View>
                     <View
@@ -523,7 +537,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   <Section title="Datos personales" theme={theme}>
                     <Row
                       label="Rol"
-                      value={ROLE_LABEL[selected.role] || selected.role}
+                      value={roleLabel(selected)}
                       theme={theme}
                     />
                     <Row

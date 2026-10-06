@@ -629,6 +629,8 @@ export const deliveryDrivers = mysqlTable("delivery_drivers", {
   vehicleItvPhoto: text("vehicle_itv_photo"),
   vehicleInsurancePhoto: text("vehicle_insurance_photo"),
   vehicleLicensePhoto: text("vehicle_license_photo"),
+  // Contacto de emergencia declarado al registrarse como repartidor
+  emergencyContact: text("emergency_contact"),
   updatedAt: timestamp("updated_at"),
   isAvailable: boolean("is_available").notNull().default(false),
   currentLatitude: text("current_latitude"),

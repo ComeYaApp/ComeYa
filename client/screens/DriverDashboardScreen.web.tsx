@@ -25,7 +25,8 @@ export default function DriverDashboardScreen() {
   const [isOnline, setIsOnline] = useState(false);
   const [togglingOnline, setToggling] = useState(false);
   const [loadingStatus, setLoading] = useState(true);
-  const [isApproved, setIsApproved] = useState(true);
+  // Empieza en false hasta que el servidor confirme la verificación
+  const [isApproved, setIsApproved] = useState(false);
   const [mapOrderId, setMapOrderId] = useState<string | undefined>();
   const [mapDestLat, setMapDestLat] = useState<string | undefined>();
   const [mapDestLng, setMapDestLng] = useState<string | undefined>();
@@ -38,11 +39,7 @@ export default function DriverDashboardScreen() {
       const data = await res.json();
       if (data.success && typeof data.isOnline !== "undefined") {
         setIsOnline(data.isOnline);
-        setIsApproved(
-          data.verificationStatus
-            ? data.verificationStatus === "verified"
-            : true,
-        );
+        setIsApproved(data.verificationStatus === "verified");
       }
     } catch {
     } finally {

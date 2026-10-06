@@ -17,6 +17,7 @@ const env = Object.fromEntries(
 const MIGRATIONS = [
   "migrations/add_notification_preferences_and_referrals.sql",
   "migrations/fix_scheduled_orders_table.sql",
+  "migrations/delivery_driver_emergency_contact.sql",
 ];
 
 const IGNORABLE = {

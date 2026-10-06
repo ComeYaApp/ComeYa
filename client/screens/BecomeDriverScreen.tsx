@@ -48,6 +48,7 @@ export default function BecomeDriverScreen() {
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [inePhoto, setInePhoto] = useState<string | null>(null);
+  const [inePhotoBack, setInePhotoBack] = useState<string | null>(null);
   const [vehiclePhoto, setVehiclePhoto] = useState<string | null>(null);
   const [licensePhoto, setLicensePhoto] = useState<string | null>(null);
   const [bankClabe, setBankClabe] = useState("");
@@ -55,28 +56,36 @@ export default function BecomeDriverScreen() {
   const [emergencyContact, setEmergencyContact] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const pickImage = async (type: "profile" | "ine" | "vehicle" | "license") => {
+  const pickImage = async (
+    type: "profile" | "ine" | "ineBack" | "vehicle" | "license",
+  ) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: type === "profile" ? [1, 1] : [4, 3],
       quality: 0.8,
+      // base64: el servidor sube la imagen a Cloudinary (un file:// local no
+      // serviría y antes los documentos se perdían en silencio)
+      base64: true,
     });
 
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
+    if (!result.canceled && result.assets[0]?.base64) {
+      const dataUri = `data:image/jpeg;base64,${result.assets[0].base64}`;
       switch (type) {
         case "profile":
-          setProfilePhoto(uri);
+          setProfilePhoto(dataUri);
           break;
         case "ine":
-          setInePhoto(uri);
+          setInePhoto(dataUri);
+          break;
+        case "ineBack":
+          setInePhotoBack(dataUri);
           break;
         case "vehicle":
-          setVehiclePhoto(uri);
+          setVehiclePhoto(dataUri);
           break;
         case "license":
-          setLicensePhoto(uri);
+          setLicensePhoto(dataUri);
           break;
       }
     }
@@ -88,7 +97,8 @@ export default function BecomeDriverScreen() {
       return;
     }
 
-    if (!vehiclePlate.trim()) {
+    // La matrícula solo es obligatoria para moto/coche (la bici no lleva)
+    if (["motorcycle", "car"].includes(vehicleType) && !vehiclePlate.trim()) {
       showToast("Ingresa las placas de tu vehículo", "error");
       return;
     }
@@ -100,6 +110,11 @@ export default function BecomeDriverScreen() {
 
     if (!inePhoto) {
       showToast("Agrega foto de tu INE", "error");
+      return;
+    }
+
+    if (!inePhotoBack) {
+      showToast("Agrega foto del reverso de tu INE", "error");
       return;
     }
 
@@ -123,9 +138,10 @@ export default function BecomeDriverScreen() {
       await apiRequest("POST", "/api/delivery/register", {
         userId: user?.id,
         vehicleType,
-        vehiclePlate: vehiclePlate.toUpperCase(),
+        vehiclePlate: vehiclePlate.trim().toUpperCase() || undefined,
         profilePhoto,
         inePhoto,
+        inePhotoBack,
         vehiclePhoto,
         licensePhoto,
         bankClabe,
@@ -136,8 +152,8 @@ export default function BecomeDriverScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showToast("Solicitud enviada. Espera aprobación del admin", "success");
       navigation.goBack();
-    } catch (error) {
-      showToast("Error al enviar solicitud", "error");
+    } catch (error: any) {
+      showToast(error?.message || "Error al enviar solicitud", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -278,7 +294,9 @@ export default function BecomeDriverScreen() {
             type="body"
             style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
           >
-            Placas del vehículo
+            {vehicleType === "bike"
+              ? "Placas del vehículo (opcional)"
+              : "Placas del vehículo *"}
           </ThemedText>
           <TextInput
             style={[
@@ -363,6 +381,45 @@ export default function BecomeDriverScreen() {
                   style={{ marginTop: Spacing.xs, color: theme.textSecondary }}
                 >
                   Toca para subir INE
+                </ThemedText>
+              </>
+            )}
+          </Pressable>
+
+          {/* Foto INE reverso */}
+          <ThemedText
+            type="body"
+            style={{ marginTop: Spacing.lg, marginBottom: Spacing.sm }}
+          >
+            Foto de INE (reverso) *
+          </ThemedText>
+          <Pressable
+            onPress={() => pickImage("ineBack")}
+            style={[
+              styles.photoButton,
+              {
+                backgroundColor: theme.backgroundSecondary,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            {inePhotoBack ? (
+              <Image
+                source={{ uri: inePhotoBack }}
+                style={styles.photoPreview}
+              />
+            ) : (
+              <>
+                <Feather
+                  name="credit-card"
+                  size={24}
+                  color={theme.textSecondary}
+                />
+                <ThemedText
+                  type="small"
+                  style={{ marginTop: Spacing.xs, color: theme.textSecondary }}
+                >
+                  Toca para subir el reverso del INE
                 </ThemedText>
               </>
             )}

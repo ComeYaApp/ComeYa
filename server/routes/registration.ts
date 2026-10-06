@@ -103,14 +103,24 @@ router.post("/upload-documents", async (req, res) => {
     // Persistir los documentos personales en users (DNI anverso/reverso y
     // autónomo). Antes solo se subían a Cloudinary y se perdían: el admin
     // no podía verificar nada.
-    const userUpdates: any = { verificationStatus: "pending" };
+    // Un repartidor ya verificado que completa documentos no vuelve a
+    // "pending": antes quedaba bloqueado para trabajar por añadir un doc.
+    const [currentUser] = await db
+      .select({ verificationStatus: users.verificationStatus })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const userUpdates: any = {};
+    if ((currentUser as any)?.verificationStatus !== "verified") {
+      userUpdates.verificationStatus = "pending";
+    }
     if (uploadedUrls.idDocument) userUpdates.idDocumentUrl = uploadedUrls.idDocument;
     if (uploadedUrls.idDocumentBack)
       userUpdates.idDocumentBackUrl = uploadedUrls.idDocumentBack;
     if (uploadedUrls.autonomoDocument)
       userUpdates.autonomoDocumentUrl = uploadedUrls.autonomoDocument;
 
-    if (Object.keys(userUpdates).length > 1) {
+    if (Object.keys(userUpdates).length > 0) {
       await db
         .update(users)
         .set(userUpdates as any)
@@ -151,11 +161,14 @@ router.post("/upload-documents", async (req, res) => {
         } as any);
       }
 
-      // Los documentos enviados quedan pendientes de verificación
-      await db
-        .update(users)
-        .set({ verificationStatus: "pending" } as any)
-        .where(eq(users.id, userId));
+      // Los documentos enviados quedan pendientes de verificación SOLO si
+      // el repartidor aún no estaba verificado (ver arriba)
+      if ((currentUser as any)?.verificationStatus !== "verified") {
+        await db
+          .update(users)
+          .set({ verificationStatus: "pending" } as any)
+          .where(eq(users.id, userId));
+      }
     }
 
     res.json({

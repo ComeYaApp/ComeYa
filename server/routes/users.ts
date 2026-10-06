@@ -381,10 +381,22 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
 
     if (docsChanged || infoChanged) {
       const { users } = await import("@shared/schema-mysql");
-      await db
-        .update(users)
-        .set({ verificationStatus: "pending" })
-        .where(eq(users.id, req.user!.id as string));
+      // Solo los repartidores NO verificados vuelven a "pending" al tocar
+      // documentos o datos del vehículo. Un repartidor ya verificado que
+      // actualiza algo no debe quedarse bloqueado: antes cualquier cambio
+      // (p. ej. subir el permiso de circulación que faltaba) lo tumbaba a
+      // "pending" y ya no podía activar el reparto.
+      const [currentUser] = await db
+        .select({ verificationStatus: users.verificationStatus })
+        .from(users)
+        .where(eq(users.id, req.user!.id as string))
+        .limit(1);
+      if ((currentUser as any)?.verificationStatus !== "verified") {
+        await db
+          .update(users)
+          .set({ verificationStatus: "pending" })
+          .where(eq(users.id, req.user!.id as string));
+      }
       try {
         const { notifyAdmins } = await import("../websocket");
         notifyAdmins({

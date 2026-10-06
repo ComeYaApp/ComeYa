@@ -1211,20 +1211,39 @@ router.get(
       const { db } = await import("../db");
       const { inArray, eq } = await import("drizzle-orm");
 
-      const pending = await db
+      const rolePending = await db
         .select()
         .from(users)
         .where(
           inArray(users.role, ["delivery_driver", "business_owner"] as any),
         );
 
+      // También quienes aplicaron como repartidor pero su rol sigue siendo
+      // "customer" (el flujo de registro antiguo nunca lo cambiaba): así el
+      // admin los ve aquí y puede aprobarlos sin tocar la base de datos.
+      const driverApplicants = await db
+        .select({ user: users, dd: deliveryDrivers })
+        .from(users)
+        .innerJoin(deliveryDrivers, eq(users.id, deliveryDrivers.userId));
+
+      const byId = new Map<string, any>();
+      for (const u of rolePending) byId.set(u.id, u);
+      for (const row of driverApplicants) {
+        if (!byId.has(row.user.id)) byId.set(row.user.id, row.user);
+      }
+      const pending = [...byId.values()];
+
+      const ddByUser = new Map<string, any>(
+        driverApplicants.map((row: any) => [row.user.id, row.dd]),
+      );
+
       // Enriquecer con datos de delivery_drivers y businesses
       const enriched = await Promise.all(
         pending.map(async (user: any) => {
-          let deliveryDriver = null;
+          let deliveryDriver = ddByUser.get(user.id) || null;
           let business = null;
 
-          if (user.role === "delivery_driver") {
+          if (!deliveryDriver && user.role === "delivery_driver") {
             const [dd] = await db
               .select()
               .from(deliveryDrivers)
@@ -1280,6 +1299,15 @@ router.put(
       const verificationStatus = action === "approve" ? "verified" : "rejected";
       const isActive = action === "approve";
 
+      // Fila de repartidor: puede existir aunque el rol siga en "customer"
+      // (el flujo de registro antiguo no lo cambiaba)
+      const { deliveryDrivers } = await import("@shared/schema-mysql");
+      const [ddRow] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, userId))
+        .limit(1);
+
       // Antes de aprobar, validar que tenga los documentos mínimos
       // (DNI anverso + reverso + permiso/actividad según rol)
       if (action === "approve") {
@@ -1294,16 +1322,16 @@ router.put(
         if (!(targetUser as any)?.idDocumentBackUrl)
           missing.push("DNI/NIE (reverso)");
 
-        if (targetUser?.role === "delivery_driver") {
-          const { deliveryDrivers } = await import("@shared/schema-mysql");
-          const [dd] = await db
-            .select()
-            .from(deliveryDrivers)
-            .where(eq(deliveryDrivers.userId, userId))
-            .limit(1);
-          if (!(dd as any)?.vehicleLicensePhoto)
+        const isDriver = targetUser?.role === "delivery_driver" || !!ddRow;
+        if (isDriver) {
+          // El permiso de circulación solo existe en vehículos con placa
+          // (moto/coche); bici, ebike y patinete no lo necesitan.
+          const requiresPlate = ["moped", "motorcycle", "car"].includes(
+            (ddRow as any)?.vehicleType ?? "",
+          );
+          if (requiresPlate && !(ddRow as any)?.vehicleLicensePhoto)
             missing.push("Permiso de circulación");
-          if (!(dd as any)?.vehiclePhoto)
+          if (!(ddRow as any)?.vehiclePhoto)
             missing.push("Foto del vehículo");
         }
 
@@ -1327,6 +1355,11 @@ router.put(
           verificationStatus,
           verificationNotes: notes || null,
           isActive,
+          // Al aprobar a un aspirante a repartidor se activa su rol aunque
+          // el registro antiguo lo hubiera dejado en "customer"
+          ...(action === "approve" && ddRow
+            ? { role: "delivery_driver" }
+            : {}),
         })
         .where(eq(users.id, userId));
 

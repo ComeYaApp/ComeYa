@@ -21,11 +21,22 @@ router.post(
   "/register",
   authenticateToken,
   asyncHandler(async (req, res) => {
-    const { userId, vehicleType, vehiclePlate, bankClabe, bankName } =
-      req.body;
+    const {
+      userId,
+      vehicleType,
+      vehiclePlate,
+      bankClabe,
+      bankName,
+      profilePhoto,
+      inePhoto,
+      inePhotoBack,
+      vehiclePhoto,
+      licensePhoto,
+      emergencyContact,
+    } = req.body;
 
-    if (!vehicleType || !vehiclePlate) {
-      throw new ValidationError("Vehicle type and plate are required");
+    if (!vehicleType) {
+      throw new ValidationError("Vehicle type is required");
     }
 
     // Se aceptan los valores de ambos flujos de registro (SignupScreen envía
@@ -44,6 +55,37 @@ router.post(
       throw new ValidationError("Invalid vehicle type");
     }
 
+    // La matrícula solo es obligatoria para vehículos con placa
+    // (moto/coche); bici, ebike y patinete no llevan.
+    const requiresPlate = ["moped", "motorcycle", "car"].includes(vehicleType);
+    if (requiresPlate && !vehiclePlate) {
+      throw new ValidationError("Vehicle plate is required for this vehicle type");
+    }
+
+    // Subir los documentos a Cloudinary. Antes se descartaban en silencio:
+    // el repartidor quedaba sin docs, sin rol y el admin no podía aprobarlo.
+    // Si llega una URL (flujo web) se usa tal cual.
+    const uploadDoc = async (data: string | undefined, name: string) => {
+      if (!data) return null;
+      if (/^https?:\/\//i.test(data)) return data;
+      try {
+        const { CloudinaryService } = await import("./cloudinaryService");
+        return await CloudinaryService.uploadImage(
+          data,
+          "verification-docs",
+          `driver-${userId}-${name}-${Date.now()}`,
+        );
+      } catch (err) {
+        console.error(`Error subiendo documento ${name}:`, err);
+        return null;
+      }
+    };
+    const idDocumentUrl = await uploadDoc(inePhoto, "ine-front");
+    const idDocumentBackUrl = await uploadDoc(inePhotoBack, "ine-back");
+    const profileImage = await uploadDoc(profilePhoto, "profile");
+    const vehiclePhotoUrl = await uploadDoc(vehiclePhoto, "vehicle");
+    const vehicleLicenseUrl = await uploadDoc(licensePhoto, "license");
+
     const [existing] = await db
       .select()
       .from(deliveryDrivers)
@@ -54,14 +96,20 @@ router.post(
         .update(deliveryDrivers)
         .set({
           vehicleType,
-          vehiclePlate: vehiclePlate.toUpperCase(),
+          vehiclePlate: vehiclePlate ? vehiclePlate.toUpperCase() : null,
+          ...(vehiclePhotoUrl ? { vehiclePhoto: vehiclePhotoUrl } : {}),
+          ...(vehicleLicenseUrl ? { vehicleLicensePhoto: vehicleLicenseUrl } : {}),
+          ...(emergencyContact ? { emergencyContact } : {}),
         })
         .where(eq(deliveryDrivers.userId, userId));
     } else {
       await db.insert(deliveryDrivers).values({
         userId,
         vehicleType,
-        vehiclePlate: vehiclePlate.toUpperCase(),
+        vehiclePlate: vehiclePlate ? vehiclePlate.toUpperCase() : null,
+        vehiclePhoto: vehiclePhotoUrl,
+        vehicleLicensePhoto: vehicleLicenseUrl,
+        emergencyContact: emergencyContact || null,
         isAvailable: false,
         totalDeliveries: 0,
         rating: 0,
@@ -70,6 +118,21 @@ router.post(
         isBlocked: false,
       });
     }
+
+    // Activar el perfil de repartidor. Sin este paso el usuario seguía con
+    // rol "customer": la app no le mostraba el modo repartidor, el servidor
+    // le denegaba activarse y no aparecía en la lista de pendientes del admin.
+    await db
+      .update(users)
+      .set({
+        role: "delivery_driver",
+        verificationStatus: "pending",
+        isActive: true,
+        ...(idDocumentUrl ? { idDocumentUrl } : {}),
+        ...(idDocumentBackUrl ? { idDocumentBackUrl } : {}),
+        ...(profileImage ? { profileImage } : {}),
+      })
+      .where(eq(users.id, userId));
 
     const [driver] = await db
       .select()

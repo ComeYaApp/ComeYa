@@ -37,7 +37,10 @@ export default function DriverAvailableOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
-  const [isApproved, setIsApproved] = useState(true);
+  // Empieza en false: el toggle no debe parecer activable hasta que el
+  // servidor confirme que el perfil está verificado (antes arrancaba en true
+  // y el toggle parecía funcionar aunque el servidor lo rechazara con 403)
+  const [isApproved, setIsApproved] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
@@ -55,11 +58,7 @@ export default function DriverAvailableOrdersScreen() {
       if (data.success && typeof data.isOnline !== "undefined") {
         console.log("✅ Current status:", data.isOnline);
         setIsOnline(data.isOnline);
-        setIsApproved(
-          data.verificationStatus
-            ? data.verificationStatus === "verified"
-            : true,
-        );
+        setIsApproved(data.verificationStatus === "verified");
       } else {
         console.error("❌ Failed to load status:", data);
         // Set default to false if we can't get status
