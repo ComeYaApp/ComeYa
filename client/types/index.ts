@@ -23,6 +23,7 @@ export interface User {
   isActive?: boolean;
   verificationStatus?: string;
   token?: string; // JWT token for authentication
+  refreshToken?: string; // Para renovar el token cuando caduca (7 días)
   preferences?: {
     theme: "light" | "dark" | "system";
     accentColor: string;

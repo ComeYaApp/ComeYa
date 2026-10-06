@@ -12,6 +12,58 @@ const signToken = (userId: string) =>
     { expiresIn: "7d" },
   );
 
+// Emitir par access + refresh: el access caduca (7 días) y el refresh queda
+// guardado en BD para renovarlo sin volver a verificar el teléfono.
+async function issueTokenPair(user: any) {
+  const token = signToken(user.id);
+  try {
+    const { generateRefreshToken, storeRefreshToken } = await import(
+      "../refreshTokenService"
+    );
+    const payload = {
+      id: user.id,
+      userId: user.id,
+      phone: user.phone,
+      role: user.role,
+    };
+    const refreshToken = generateRefreshToken(payload as any);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 90);
+    await storeRefreshToken(user.id, refreshToken, expiresAt);
+    return { token, refreshToken };
+  } catch (e) {
+    // Si falla el refresh no debe romper el login
+    console.error("No se pudo emitir el refresh token:", e);
+    return { token, refreshToken: null };
+  }
+}
+
+// POST /api/auth/refresh — renueva el access token con un refresh válido.
+// Sin este endpoint, al caducar el token el cliente borraba la sesión local
+// y el panel del negocio quedaba vacío hasta volver a entrar.
+router.post("/refresh", async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ error: "Refresh token requerido" });
+    }
+    const { rotateRefreshToken } = await import("../refreshTokenService");
+    const result = await rotateRefreshToken(refreshToken);
+    if (!result) {
+      return res
+        .status(401)
+        .json({ error: "Refresh token inválido o expirado" });
+    }
+    res.json({
+      success: true,
+      token: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/auth/send-code  (inicia login por teléfono O reenvía código)
 router.post("/send-code", async (req, res) => {
   try {
@@ -120,10 +172,11 @@ router.post("/phone-login", async (req, res) => {
       user.isActive = true;
     }
 
-    const token = signToken(user.id);
+    const { token, refreshToken } = await issueTokenPair(user);
     res.json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
@@ -345,10 +398,11 @@ router.post("/biometric-login", async (req, res) => {
       .limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    const token = signToken(user.id);
+    const { token, refreshToken } = await issueTokenPair(user);
     res.json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: user.id,
         name: user.name,
@@ -471,6 +525,10 @@ router.put("/change-phone", authenticateToken, async (req, res) => {
 
 // POST /api/auth/logout
 router.post("/logout", authenticateToken, async (req, res) => {
+  try {
+    const { revokeAllUserTokens } = await import("../refreshTokenService");
+    await revokeAllUserTokens(req.user!.id);
+  } catch {}
   res.json({ success: true, message: "Sesión cerrada" });
 });
 

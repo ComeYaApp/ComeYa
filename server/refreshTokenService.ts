@@ -4,14 +4,15 @@ import { refreshTokens } from "../shared/schema-mysql";
 import { eq, and, lt } from "drizzle-orm";
 
 const JWT_SECRET =
-  process.env.JWT_SECRET || "comeya-secret-key-change-in-production";
+  process.env.JWT_SECRET || "comeya_local_secret_key";
 const REFRESH_SECRET =
   process.env.REFRESH_SECRET || "comeya-refresh-secret-change-in-production";
 const ACCESS_TOKEN_EXPIRY = "30d"; // 30 días
 const REFRESH_TOKEN_EXPIRY = "90d"; // 90 días
 
 interface TokenPayload {
-  userId: number;
+  id: string;
+  userId: string;
   phone: string;
   role: string;
 }
@@ -25,7 +26,7 @@ export function generateRefreshToken(payload: TokenPayload): string {
 }
 
 export async function storeRefreshToken(
-  userId: number,
+  userId: string,
   token: string,
   expiresAt: Date,
 ): Promise<void> {
@@ -95,17 +96,37 @@ export async function rotateRefreshToken(oldToken: string): Promise<{
     return null;
   }
 
+  // Datos frescos del usuario: el rol puede haber cambiado desde que se
+  // emitió el token (p. ej. aprobación como repartidor/negocio por el admin)
+  const { users } = await import("../shared/schema-mysql");
+  const userId = String(payload.userId || payload.id);
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!user) {
+    await revokeRefreshToken(oldToken);
+    return null;
+  }
+
   // Revocar el token antiguo
   await revokeRefreshToken(oldToken);
 
   // Generar nuevos tokens
-  const newAccessToken = generateAccessToken(payload);
-  const newRefreshToken = generateRefreshToken(payload);
+  const tokenPayload: TokenPayload = {
+    id: user.id,
+    userId: user.id,
+    phone: user.phone,
+    role: user.role,
+  };
+  const newAccessToken = generateAccessToken(tokenPayload);
+  const newRefreshToken = generateRefreshToken(tokenPayload);
 
   // Almacenar el nuevo refresh token
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 90); // 90 días
-  await storeRefreshToken(payload.userId, newRefreshToken, expiresAt);
+  await storeRefreshToken(user.id, newRefreshToken, expiresAt);
 
   return {
     accessToken: newAccessToken,

@@ -69,7 +69,12 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-async function tryRefreshToken(): Promise<string | null> {
+// Intenta renovar el token con el refresh guardado. Devuelve el nuevo token,
+// "expired" si el servidor rechazó el refresh (sesión muerta de verdad) o
+// null si no se pudo (error de red, sin refresh, etc.). Nunca borra la
+// sesión por un fallo de red: antes cualquier 404 del endpoint borraba el
+// usuario guardado y el panel del negocio quedaba en blanco.
+async function tryRefreshToken(): Promise<string | "expired" | null> {
   try {
     const AsyncStorage =
       require("@react-native-async-storage/async-storage").default;
@@ -84,12 +89,14 @@ async function tryRefreshToken(): Promise<string | null> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken: user.refreshToken }),
     });
+    if (res.status === 401 || res.status === 403) return "expired";
     if (!res.ok) return null;
     const data = await res.json();
     if (!data.token) return null;
 
-    // Guardar nuevo token
+    // Guardar el nuevo par (el refresh rota en cada uso)
     user.token = data.token;
+    if (data.refreshToken) user.refreshToken = data.refreshToken;
     await AsyncStorage.setItem("@ComeYa_user", JSON.stringify(user));
     await AsyncStorage.setItem("token", data.token);
     tokenCache = data.token;
@@ -136,9 +143,9 @@ export async function apiRequest(
 
     // Si es 401, intentar refresh y reintentar
     if (res.status === 401) {
-      const newToken = await tryRefreshToken();
-      if (newToken) {
-        headers["Authorization"] = `Bearer ${newToken}`;
+      const refreshResult = await tryRefreshToken();
+      if (refreshResult && refreshResult !== "expired") {
+        headers["Authorization"] = `Bearer ${refreshResult}`;
         const retryRes = await fetch(url, {
           method,
           headers,
@@ -148,13 +155,16 @@ export async function apiRequest(
         await throwIfResNotOk(retryRes);
         return retryRes;
       }
-      // Si no se pudo refrescar, limpiar sesión
-      const AsyncStorage =
-        require("@react-native-async-storage/async-storage").default;
-      await AsyncStorage.removeItem("@ComeYa_user");
-      await AsyncStorage.removeItem("token");
-      tokenCache = null;
-      tokenCacheTime = 0;
+      // Solo se limpia la sesión si el servidor confirmó que el refresh ya
+      // no vale; un fallo de red mantiene la sesión guardada
+      if (refreshResult === "expired") {
+        const AsyncStorage =
+          require("@react-native-async-storage/async-storage").default;
+        await AsyncStorage.removeItem("@ComeYa_user");
+        await AsyncStorage.removeItem("token");
+        tokenCache = null;
+        tokenCacheTime = 0;
+      }
     }
 
     await throwIfResNotOk(res);

@@ -37,7 +37,7 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 export default function BusinessProductsScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { selectedBusiness, businesses } = useBusiness();
+  const { selectedBusiness, businesses, loadBusinesses } = useBusiness();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [products, setProducts] = useState([]);
@@ -73,11 +73,19 @@ export default function BusinessProductsScreen() {
   };
 
   useEffect(() => {
+    // Si el contexto quedó vacío por un error al cargar, reintentar los
+    // negocios antes de pedir productos (autosanado del panel vacío)
+    if (businesses.length === 0) {
+      loadBusinesses();
+    }
     loadProducts();
   }, [selectedBusiness?.id]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    if (businesses.length === 0) {
+      await loadBusinesses();
+    }
     await loadProducts();
     setRefreshing(false);
   };

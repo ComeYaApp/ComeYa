@@ -201,6 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profileImage: data.user.profileImage || undefined,
         stripeCustomerId: data.user.stripeCustomerId,
         token: data.token,
+        refreshToken: data.refreshToken,
         createdAt: new Date().toISOString(),
         preferences: {
           theme: "system",
@@ -311,6 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         accentColor: "#00C853",
       },
       token: data.token,
+      refreshToken: data.refreshToken,
     };
 
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
@@ -369,6 +371,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         stripeCustomerId: data.user.stripeCustomerId,
         createdAt: new Date().toISOString(),
         token: data.token, // Save the JWT token
+        refreshToken: data.refreshToken,
         preferences: {
           theme: "system",
           accentColor: "#00C853",

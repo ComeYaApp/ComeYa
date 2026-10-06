@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { AppState } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiRequest } from "@/lib/query-client";
 import { useAuth } from "./AuthContext";
@@ -70,41 +71,50 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
 
     setIsLoading(true);
     try {
-      const response = await apiRequest("GET", "/api/business/my-businesses");
+      // Reintentos: un fallo puntual de red al abrir la app dejaba el panel
+      // vacío ("sin negocio registrado") sin recuperación hasta re-login.
+      // Si al final no se pudo cargar, se conservan los datos previos.
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const response = await apiRequest(
+            "GET",
+            "/api/business/my-businesses",
+          );
+          const data = await response.json();
 
-      // Handle 404 gracefully - user might not have businesses yet
-      if (response.status === 404) {
-        console.log("No businesses found for user");
-        setBusinesses([]);
-        setSelectedBusiness(null);
-        return;
-      }
+          if (data.success && data.businesses) {
+            setBusinesses(data.businesses);
 
-      const data = await response.json();
-
-      if (data.success && data.businesses) {
-        setBusinesses(data.businesses);
-
-        const savedId = await AsyncStorage.getItem(SELECTED_BUSINESS_KEY);
-        if (savedId) {
-          const saved = data.businesses.find((b: Business) => b.id === savedId);
-          if (saved) {
-            setSelectedBusiness(saved);
-          } else if (data.businesses.length > 0) {
-            setSelectedBusiness(data.businesses[0]);
+            const savedId = await AsyncStorage.getItem(SELECTED_BUSINESS_KEY);
+            if (savedId) {
+              const saved = data.businesses.find(
+                (b: Business) => b.id === savedId,
+              );
+              if (saved) {
+                setSelectedBusiness(saved);
+              } else if (data.businesses.length > 0) {
+                setSelectedBusiness(data.businesses[0]);
+              }
+            } else if (data.businesses.length > 0) {
+              setSelectedBusiness(data.businesses[0]);
+            }
+            return;
           }
-        } else if (data.businesses.length > 0) {
-          setSelectedBusiness(data.businesses[0]);
+
+          // Respuesta válida sin negocios: realmente no tiene ninguno
+          setBusinesses([]);
+          setSelectedBusiness(null);
+          return;
+        } catch (error) {
+          console.log(
+            `Error loading businesses (intento ${attempt}/3):`,
+            error,
+          );
+          if (attempt < 3) {
+            await new Promise((r) => setTimeout(r, attempt * 800));
+          }
         }
-      } else {
-        // No businesses found
-        setBusinesses([]);
-        setSelectedBusiness(null);
       }
-    } catch (error) {
-      console.log("Error loading businesses (user may not have any):", error);
-      setBusinesses([]);
-      setSelectedBusiness(null);
     } finally {
       setIsLoading(false);
     }
@@ -115,6 +125,17 @@ export function BusinessProvider({ children }: { children: React.ReactNode }) {
       loadBusinesses();
     }
   }, [user?.id, user?.role]);
+
+  // Al volver la app a primer plano se recarga: si el primer intento falló
+  // (p. ej. sin conexión al abrir) el panel se rellena solo al volver
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active" && user?.role === "business_owner") {
+        loadBusinesses();
+      }
+    });
+    return () => sub.remove();
+  }, [user?.role, loadBusinesses]);
 
   const selectBusiness = async (business: Business | null) => {
     setSelectedBusiness(business);

@@ -152,6 +152,7 @@ export default function BusinessDashboardScreen() {
     businesses,
     selectedBusiness,
     isLoading: businessLoading,
+    loadBusinesses,
   } = useBusiness();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -226,6 +227,11 @@ export default function BusinessDashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!businessLoading) {
+        // Si el contexto quedó vacío por un error al cargar, reintentar
+        // (autosanado del panel "sin negocio registrado")
+        if (businesses.length === 0) {
+          loadBusinesses();
+        }
         loadData();
       }
     }, [selectedBusiness, businessLoading]),
@@ -247,6 +253,9 @@ export default function BusinessDashboardScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    // El pull-to-refresh también recarga los negocios del contexto (antes
+    // solo refrescaba stats y un contexto vacío no se recuperaba)
+    await loadBusinesses();
     await loadData();
     setRefreshing(false);
   };
