@@ -38,22 +38,30 @@ const DEFAULT_PREP_MINUTES = 20;
 // Velocidad media en ciudad cuando el proveedor de rutas no responde.
 const AVG_CITY_SPEED_KMH = 25;
 // A partir de esta distancia el viaje al negocio cuenta como trayecto real
-// (por debajo, el repartidor ya está en la puerta).
+// (por debajo, el repartidor ya está en la puerta). Con histéresis: no se
+// vuelve a sumar hasta salir de AT_BUSINESS_OFF_KM para que el GPS parpadeando
+// en el borde no añada y quite minutos alternativamente.
 const AT_BUSINESS_KM = 0.15;
+const AT_BUSINESS_OFF_KM = 0.35;
+// Por pedido: si el repartidor estaba "en el negocio" en el último cálculo.
+const atBusinessByOrder = new Map<string, boolean>();
 
 // Caché corta de ETA por pedido y tramo. El cliente refresca cada 15 s y el
 // pipeline emite cada 1 s: la clave incluye la posición redondeada a ~100 m
 // para reutilizar el cálculo mientras el repartidor no se mueva de verdad.
-const ETA_CACHE_TTL_MS = 30_000;
+const ETA_CACHE_TTL_MS = 60_000;
 const etaCache = new Map<string, { at: number; minutes: number }>();
 
 function locationKey(loc: Location): string {
   return `${loc.latitude.toFixed(3)},${loc.longitude.toFixed(3)}`;
 }
 // Último ETA publicado por pedido: amortiguador anti-picos (un ETA no puede
-// subir de golpe +2 min/+20% — el salto 15→25 era de aquí, al alternar entre
+// subir de golpe +2 min/+20 % — el salto 15→25 era de aquí, al alternar entre
 // ruta real y estimación por línea recta)
 const lastEtaByOrder = new Map<string, number>();
+// Último estado con el que se publicó el ETA: detecta el cambio de fase
+// (p. ej. al recoger) para permitir una bajada mayor acotada una sola vez.
+const lastStatusByOrder = new Map<string, string>();
 
 export class EnhancedTrackingService {
   // Calcular distancia entre dos puntos (Haversine)
@@ -342,7 +350,14 @@ export class EnhancedTrackingService {
       let toBusiness = 0;
       if (driverLocation && businessLocation) {
         const km = this.calculateDistance(driverLocation, businessLocation);
-        if (km > AT_BUSINESS_KM) {
+        // Histéresis: se entra en "en el negocio" a 150 m y no se sale hasta
+        // los 350 m, para no sumar/quitar el trayecto con el GPS parpadeando.
+        const wasAtBusiness = atBusinessByOrder.get(orderId) ?? false;
+        const isAtBusiness = wasAtBusiness
+          ? km <= AT_BUSINESS_OFF_KM
+          : km <= AT_BUSINESS_KM;
+        atBusinessByOrder.set(orderId, isAtBusiness);
+        if (!isAtBusiness) {
           toBusiness = await this.routeMinutes(
             `eta:${orderId}:d2b:${locationKey(driverLocation)}`,
             driverLocation,
@@ -374,18 +389,32 @@ export class EnhancedTrackingService {
 
     totalETA = Math.max(1, totalETA);
 
-    // Amortiguador anti-picos: frente al último valor publicado, el ETA
-    // puede subir como mucho +2 min o +20 % (el tráfico real lo sube poco a
-    // poco; lo que se elimina es el salto seco por cambiar de método de
-    // cálculo). Nunca baja en falso: si mejora, se publica la mejora.
+    // Amortiguador anti-picos en ambas direcciones: frente al último valor
+    // publicado, el ETA puede subir como mucho +2 min/+20 % y bajar como
+    // mucho −3 min/−30 % (el tráfico real lo mueve poco a poco; lo que se
+    // elimina es el salto seco por cambiar de método de cálculo o de fuente).
+    // En un cambio de fase (p. ej. al recoger el pedido) se permite una única
+    // bajada mayor acotada (−50 %) para que el nuevo estado se note sin que
+    // el número rebote de vuelta.
     const lastEta = lastEtaByOrder.get(orderId);
+    const lastStatus = lastStatusByOrder.get(orderId);
+    const phaseChanged = lastStatus != null && lastStatus !== order.status;
     if (lastEta != null) {
       const maxRise = Math.max(2, Math.round(lastEta * 0.2));
-      totalETA = Math.min(totalETA, lastEta + maxRise);
+      const maxDrop = phaseChanged
+        ? Math.round(lastEta * 0.5)
+        : Math.max(3, Math.round(lastEta * 0.3));
+      totalETA = Math.min(
+        Math.max(totalETA, lastEta - maxDrop),
+        lastEta + maxRise,
+      );
     }
     lastEtaByOrder.set(orderId, totalETA);
+    lastStatusByOrder.set(orderId, order.status);
     if (["delivered", "completed", "cancelled"].includes(order.status)) {
       lastEtaByOrder.delete(orderId);
+      lastStatusByOrder.delete(orderId);
+      atBusinessByOrder.delete(orderId);
       etaCache.delete(`eta:${orderId}:d2c:${locationKey(driverLocation || { latitude: 0, longitude: 0 })}`);
     }
 
