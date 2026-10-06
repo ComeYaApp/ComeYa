@@ -1,5 +1,9 @@
 CÓMO PROBAR ESTA VERSIÓN (1.0.16 build 22)
 
+Nota: para pegar en App Store Connect (TestFlight > Qué se debe probar) usa la versión
+limpia de docs/TESTFLIGHT-QUE-PROBAR-1.0.16-BUILD-22-APPSTORE.txt: ese campo rechaza
+emojis, flechas y checkmarks, y admite un máximo de 4.000 caracteres.
+
 Antes de empezar:
 - Comprueba en Ajustes que la versión instalada es la 1.0.16 (22).
 - Los cambios de propinas, repartidor, tiempos y sesión necesitan el SERVIDOR ACTUALIZADO. Si algo no funciona como se describe aquí, avisa antes de darlo por malo: puede ser que falte desplegar.

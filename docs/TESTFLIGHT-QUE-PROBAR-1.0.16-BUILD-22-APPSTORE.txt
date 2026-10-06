@@ -1,0 +1,49 @@
+CÓMO PROBAR ESTA VERSIÓN (1.0.16 build 22)
+
+Antes de empezar:
+- En Ajustes debe aparecer la versión 1.0.16 (22).
+- Los cambios necesitan el SERVIDOR ACTUALIZADO. Si algo no funciona como se describe, avisa antes de darlo por malo.
+- Aviso: las propinas con tarjeta cobran de verdad (Stripe en producción). Para probar usa 1 euro, o mejor el canal Bizum/transferencia.
+- Si algo falla, indica la sección, el rol, el número de pedido y una captura.
+
+1. PROPINA (cliente, pedido ya entregado y confirmado)
+a) En Mis Pedidos, el pedido entregado y confirmado debe mostrar el botón "Dar propina".
+b) Tócalo, elige 3 euros, paga con Tarjeta: debe cerrarse con "Propina enviada" y el botón del pedido queda en "Propina enviada".
+c) Vuelve a entrar al mismo pedido: NO debe dejar pagar otra vez.
+d) En otro pedido usa "Otra cantidad" (por ejemplo 7,50 euros), elige Bizum/Transf., adjunta el comprobante y envía: debe quedar "pendiente de verificación".
+e) Un pedido SIN confirmar la entrega no debe ofrecer propina.
+f) En el seguimiento de un pedido entregado, junto a "Entrega confirmada" debe estar también "Dar propina".
+g) En un pedido de recogida en el local no aparece (no hay repartidor).
+
+2. PROPINA (repartidor)
+a) Con la propina de tarjeta pagada, al repartidor le debe llegar el aviso "Recibiste una propina" y verla en Ganancias.
+b) En sus entregas ya NO debe aparecer "Registrar propina en efectivo".
+
+3. PROPINA (administración)
+a) Con la propina de Bizum: Admin > Finanzas > propinas pendientes debe mostrar el comprobante y permitir verificar o rechazar.
+b) Al verificar, el repartidor recibe el aviso y la propina aparece en sus ganancias.
+
+4. REPARTIDOR - registro completo con documentos
+a) Con una cuenta de prueba: Perfil > Ser Repartidor > rellena foto de perfil, INE anverso, INE reverso, foto del vehículo, licencia (si aplica), CLABE y contacto de emergencia > Enviar: debe decir "Solicitud enviada. Espera aprobación del admin".
+b) Como admin: Verificaciones > la solicitud debe aparecer con los documentos visibles y el aviso "Documentos completos, puede aprobarse" > Aprobar.
+c) Como repartidor: cierra sesión y vuelve a entrar; el interruptor de disponible ya debe funcionar. Actívalo y comprueba que puede recibir y aceptar pedidos.
+
+5. REPARTIDOR - bicicleta sin papeleo de coche
+a) Envía una solicitud con tipo Bicicleta, sin matrícula y sin permiso de circulación: el admin debe poder aprobarla (antes era imposible).
+
+6. REPARTIDOR - Hernán / documentos que se reenvían
+a) Hernán entra en Ser Repartidor y reenvía sus documentos (sobre todo el INE anverso y el reverso).
+b) Admin > Verificaciones: debe poder verlos y aprobarlo.
+c) Prueba importante: que reenvíe un documento estando YA aprobado; debe seguir pudiendo activar el reparto (antes se quedaba bloqueado).
+
+7. TIEMPOS DE ENTREGA (cliente)
+a) Haz un pedido y mira el tiempo durante la preparación: debe mantenerse estable, con ajustes pequeños.
+b) Cuando el repartidor llegue al negocio, el número no debe alternar (sumar y quitar minutos).
+c) Al recoger el pedido: el tiempo baja una vez de forma razonable y luego va bajando, sin rebotar hacia arriba.
+d) La hora de llegada debe ser coherente con los minutos restantes y con la posición del repartidor en el mapa.
+
+8. PANEL DEL NEGOCIO (negocio)
+a) Abre la app con la cuenta del negocio: deben verse el negocio y sus productos.
+b) Pasa la app a segundo plano y vuelve: debe seguir todo bien.
+c) Tira para refrescar: debe recargar los datos.
+d) Si aparece "Sin negocio registrado": cierra y abre la app, o tira para refrescar; debe recuperarse solo, sin reinstalar.
