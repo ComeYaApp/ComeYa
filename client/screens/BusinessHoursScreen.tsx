@@ -8,12 +8,15 @@ import {
   Modal,
   ActivityIndicator,
   TextInput,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -259,19 +262,41 @@ export default function BusinessHoursScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  // Normaliza el input del usuario a HH:MM válido
+  // Normaliza el input del usuario a HH:MM válido (tolera horas a medias,
+  // ej. "21:3" → 21:03, "9" → 09:00)
   const normalizeTimeInput = (raw: string): string => {
-    const digits = raw.replace(/[^0-9]/g, "");
-    if (digits.length === 0) return "00:00";
-    if (digits.length <= 2) {
-      let h = parseInt(digits, 10);
-      if (h > 23) h = 23;
-      return `${String(h).padStart(2, "0")}:00`;
-    }
-    // 3-4 dígitos: HHMM → HH:MM
-    const h = Math.min(parseInt(digits.slice(0, -2) || "0", 10), 23);
-    const m = Math.min(parseInt(digits.slice(-2), 10), 59);
+    const [hPart, mPart] = raw.replace(/[^0-9:]/g, "").split(":");
+    let h = parseInt(hPart || "0", 10);
+    if (!Number.isFinite(h)) h = 0;
+    h = Math.min(Math.max(h, 0), 23);
+    let m = parseInt((mPart || "").slice(0, 2), 10);
+    if (!Number.isFinite(m)) m = 0;
+    m = Math.min(Math.max(m, 0), 59);
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+
+  // Android: reloj nativo en diálogo (evita el spinner embebido, que salta
+  // al re-renderizar mientras se gira)
+  const openNativeClock = () => {
+    DateTimePickerAndroid.open({
+      value: pickerDate,
+      mode: "time",
+      is24Hour: true,
+      onChange: (event: any, date?: Date) => {
+        if (event.type === "set" && date && pickerTarget) {
+          const hh = String(date.getHours()).padStart(2, "0");
+          const mm = String(date.getMinutes()).padStart(2, "0");
+          updateShift(
+            pickerTarget.dayIndex,
+            pickerTarget.shift,
+            pickerTarget.field,
+            `${hh}:${mm}`,
+          );
+          setPickerVisible(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      },
+    });
   };
 
   // Copia el horario de un día origen a varios días destino
@@ -734,50 +759,56 @@ export default function BusinessHoursScreen() {
               {pickerTarget?.field === "open" ? "Hora de apertura" : "Hora de cierre"}
             </ThemedText>
 
-            {/* Reloj nativo con ruedas para elegir hora y minutos */}
-            <View style={styles.wheelWrap}>
-              <DateTimePicker
-                value={pickerDate}
-                mode="time"
-                is24Hour
-                display="spinner"
-                minuteInterval={5}
-                onChange={(event: any, date?: Date) => {
-                  if (event.type === "dismissed") {
-                    setPickerVisible(false);
-                    return;
-                  }
-                  if (date) {
-                    setPickerDate(date);
-                    const hh = String(date.getHours()).padStart(2, "0");
-                    const mm = String(date.getMinutes()).padStart(2, "0");
-                    setPickerValue(`${hh}:${mm}`);
-                  }
-                }}
-              />
-            </View>
+            {Platform.OS === "ios" ? (
+              /* iOS: reloj con ruedas integrado en la ventana */
+              <View style={styles.wheelWrap}>
+                <DateTimePicker
+                  value={pickerDate}
+                  mode="time"
+                  display="spinner"
+                  minuteInterval={5}
+                  onChange={(event: any, date?: Date) => {
+                    if (date) {
+                      setPickerDate(date);
+                      const hh = String(date.getHours()).padStart(2, "0");
+                      const mm = String(date.getMinutes()).padStart(2, "0");
+                      setPickerValue(`${hh}:${mm}`);
+                    }
+                  }}
+                />
+              </View>
+            ) : (
+              /* Android: reloj nativo en diálogo, más estable que el spinner */
+              <Pressable
+                onPress={openNativeClock}
+                style={[
+                  styles.clockBtn,
+                  {
+                    backgroundColor: theme.backgroundSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <Feather name="clock" size={20} color={ComeYaColors.primary} />
+                <ThemedText
+                  type="body"
+                  style={{ fontWeight: "700", marginLeft: Spacing.sm }}
+                >
+                  Elegir con el reloj
+                </ThemedText>
+              </Pressable>
+            )}
 
             {/* Entrada manual para minutos exactos */}
             <View style={styles.manualRow}>
               <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                O escribe la hora exacta:
+                O escribe la hora:
               </ThemedText>
               <TextInput
                 value={pickerValue}
                 onChangeText={(t) => {
                   const clean = t.replace(/[^0-9:]/g, "").slice(0, 5);
                   setPickerValue(clean);
-                  const [h, m] = clean.split(":");
-                  if (h && m !== undefined) {
-                    const d = new Date(pickerDate);
-                    d.setHours(
-                      Math.min(parseInt(h, 10) || 0, 23),
-                      Math.min(parseInt(m, 10) || 0, 59),
-                      0,
-                      0,
-                    );
-                    setPickerDate(d);
-                  }
                 }}
                 style={[
                   styles.manualInput,
@@ -961,6 +992,16 @@ const styles = StyleSheet.create({
   wheelWrap: {
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  clockBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
     marginBottom: Spacing.md,
   },
   manualRow: {
