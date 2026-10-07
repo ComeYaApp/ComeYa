@@ -55,6 +55,8 @@ type DayEntry = {
   closeTime?: string;
   morning?: { open?: string; close?: string };
   evening?: { open?: string; close?: string };
+  eveningOpen?: string;
+  eveningClose?: string;
   hasEvening?: boolean;
   day?: string;
 };
@@ -131,15 +133,18 @@ function dayWindows(entry: DayEntry | null): { start: number; end: number }[] {
   const push = (open?: string, close?: string) => {
     const o = open ? minutesOf(open) : null;
     const c = close ? minutesOf(close) : null;
-    if (o === null || c === null || c <= o) return;
-    windows.push({ start: o, end: Math.min(c, 24 * 60) });
+    if (o === null || c === null || c === o) return;
+    // Tramo nocturno (cierre < apertura, ej. 20:00-01:00): las reservas se
+    // generan solo hasta medianoche.
+    windows.push({ start: o, end: Math.min(c > o ? c : 24 * 60, 24 * 60) });
   };
-  if (entry.morning?.open || entry.evening?.open) {
-    push(entry.morning?.open, entry.morning?.close);
-    push(entry.evening?.open, entry.evening?.close);
-  } else {
-    push(entry.openTime || entry.open, entry.closeTime || entry.close);
-  }
+  // Mañana: objeto anidado o campos planos open/openTime
+  push(
+    entry.morning?.open ?? entry.openTime ?? entry.open,
+    entry.morning?.close ?? entry.closeTime ?? entry.close,
+  );
+  // Tarde: objeto anidado o campos planos eveningOpen/eveningClose
+  push(entry.evening?.open ?? entry.eveningOpen, entry.evening?.close ?? entry.eveningClose);
   return windows;
 }
 

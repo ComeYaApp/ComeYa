@@ -233,10 +233,11 @@ export default function MyBusinessesScreen() {
     }
   };
 
-  const handleEditBusiness = async () => {
+  // Guarda los datos del formulario en el servidor. Devuelve true si fue bien.
+  const persistBusiness = async (): Promise<boolean> => {
     if (!businessToEdit || !newBusiness.name.trim()) {
       Alert.alert("Error", "El nombre del negocio es requerido");
-      return;
+      return false;
     }
     setSubmitting(true);
     try {
@@ -253,27 +254,34 @@ export default function MyBusinessesScreen() {
         deliveryEnabled: newBusiness.deliveryEnabled,
       });
       await loadBusinesses();
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setShowEditModal(false);
-      setBusinessToEdit(null);
-      setNewBusiness({
-        name: "",
-        description: "",
-        type: "restaurant",
-        address: "",
-        phone: "",
-        image: "",
-        latitude: null,
-        longitude: null,
-        reservationsEnabled: false,
-        deliveryEnabled: true,
-      });
-      Alert.alert("Éxito", "Negocio actualizado correctamente");
+      return true;
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo actualizar el negocio");
+      return false;
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleEditBusiness = async () => {
+    const saved = await persistBusiness();
+    if (!saved) return;
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowEditModal(false);
+    setBusinessToEdit(null);
+    setNewBusiness({
+      name: "",
+      description: "",
+      type: "restaurant",
+      address: "",
+      phone: "",
+      image: "",
+      latitude: null,
+      longitude: null,
+      reservationsEnabled: false,
+      deliveryEnabled: true,
+    });
+    Alert.alert("Éxito", "Negocio actualizado correctamente");
   };
 
   const openEditModal = (business: Business) => {
@@ -473,9 +481,11 @@ export default function MyBusinessesScreen() {
       backgroundColor: theme.theme.card,
       borderTopLeftRadius: BorderRadius.xl,
       borderTopRightRadius: BorderRadius.xl,
-      padding: Spacing.lg,
-      paddingBottom: insets.bottom + Spacing.lg,
       maxHeight: "90%",
+    },
+    modalScroll: {
+      padding: Spacing.lg,
+      flexShrink: 1,
     },
     modalTitle: {
       fontSize: 20,
@@ -580,7 +590,11 @@ export default function MyBusinessesScreen() {
     modalButtons: {
       flexDirection: "row",
       gap: Spacing.md,
-      marginTop: Spacing.lg,
+      paddingHorizontal: Spacing.lg,
+      paddingTop: Spacing.md,
+      paddingBottom: Math.max(insets.bottom, Spacing.lg),
+      borderTopWidth: 1,
+      borderTopColor: "rgba(128,128,128,0.15)",
     },
     modalButton: {
       flex: 1,
@@ -1080,8 +1094,12 @@ export default function MyBusinessesScreen() {
         onRequestClose={() => setShowEditModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <ScrollView style={styles.modalContent}>
-            <ThemedText style={styles.modalTitle}>Editar Negocio</ThemedText>
+          <View style={styles.modalContent}>
+            <ScrollView
+              style={styles.modalScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <ThemedText style={styles.modalTitle}>Editar Negocio</ThemedText>
 
             <ThemedText style={styles.inputLabel}>Nombre *</ThemedText>
             <TextInput
@@ -1180,7 +1198,7 @@ export default function MyBusinessesScreen() {
                   styles.toggleRow,
                   { justifyContent: "flex-start", gap: 6 },
                 ]}
-                onPress={() => {
+                onPress={async () => {
                   const bizId =
                     businessToEdit?.id || selectedBusiness?.id || null;
                   if (!bizId) {
@@ -1190,9 +1208,19 @@ export default function MyBusinessesScreen() {
                     );
                     return;
                   }
-                  navigation.navigate("BusinessReservationsSettings", {
-                    businessId: bizId,
-                  });
+                  // Guardar antes de entrar: así activar "Acepta reservas"
+                  // queda persistido y la pantalla ve las reservas activadas.
+                  if (submitting) return;
+                  const saved = await persistBusiness();
+                  if (!saved) return;
+                  // El modal queda por encima del navegador: hay que cerrarlo
+                  // antes de navegar o la pantalla se abre oculta debajo.
+                  setShowEditModal(false);
+                  setTimeout(() => {
+                    navigation.navigate("BusinessReservationsSettings", {
+                      businessId: bizId,
+                    });
+                  }, 300);
                 }}
               >
                 <Feather
@@ -1299,6 +1327,7 @@ export default function MyBusinessesScreen() {
               )}
             </Pressable>
 
+            </ScrollView>
             <View style={styles.modalButtons}>
               <Pressable
                 style={[styles.modalButton, styles.cancelButton]}
@@ -1324,7 +1353,7 @@ export default function MyBusinessesScreen() {
                 )}
               </Pressable>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>

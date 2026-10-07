@@ -61,6 +61,16 @@ export default function BusinessReservationsSettingsScreen() {
   const [draft, setDraft] = useState<ConfigDraft>(DEFAULT_DRAFT);
   const [hasCapacity, setHasCapacity] = useState(false);
   const [dayLimitText, setDayLimitText] = useState("");
+  const [hoursSummary, setHoursSummary] = useState<
+    { label: string; text: string }[]
+  >([]);
+
+  // Último estado guardado, para detectar cambios sin guardar
+  const [savedSnapshot, setSavedSnapshot] = useState("");
+  const dirty =
+    savedSnapshot !== "" &&
+    savedSnapshot !==
+      JSON.stringify({ draft, hasCapacity, dayLimitText });
 
   const load = useCallback(async () => {
     if (!businessId) {
@@ -78,8 +88,7 @@ export default function BusinessReservationsSettingsScreen() {
         setFeeCentsPerGuest(data.feeCentsPerGuest || 99);
         setServiceFeeCents(data.serviceFeeCents || 49);
         if (data.config) {
-          setHasCapacity(true);
-          setDraft({
+          const parsedDraft = {
             capacityPerSlot: data.config.capacityPerSlot,
             turnMinutes: data.config.turnMinutes,
             slotMinutes: data.config.slotMinutes,
@@ -87,14 +96,29 @@ export default function BusinessReservationsSettingsScreen() {
             advanceDays: data.config.advanceDays,
             autoConfirm: data.config.autoConfirm,
             maxCoversPerDay: data.config.maxCoversPerDay,
-          });
-          setDayLimitText(
-            data.config.maxCoversPerDay
-              ? String(data.config.maxCoversPerDay)
-              : "",
+          };
+          const limitText = data.config.maxCoversPerDay
+            ? String(data.config.maxCoversPerDay)
+            : "";
+          setHasCapacity(true);
+          setDraft(parsedDraft);
+          setDayLimitText(limitText);
+          setSavedSnapshot(
+            JSON.stringify({
+              draft: parsedDraft,
+              hasCapacity: true,
+              dayLimitText: limitText,
+            }),
           );
         } else {
           setHasCapacity(false);
+          setSavedSnapshot(
+            JSON.stringify({
+              draft: DEFAULT_DRAFT,
+              hasCapacity: false,
+              dayLimitText: "",
+            }),
+          );
         }
       }
     } catch {
@@ -103,9 +127,44 @@ export default function BusinessReservationsSettingsScreen() {
     }
   }, [businessId]);
 
+  const loadHoursSummary = useCallback(async () => {
+    if (!businessId) return;
+    try {
+      const res = await apiRequest(
+        "GET",
+        `/api/business/hours?businessId=${businessId}`,
+      );
+      const data = await res.json();
+      if (data.success && data.hours) {
+        const DAYS = [
+          { key: "monday", label: "Lunes" },
+          { key: "tuesday", label: "Martes" },
+          { key: "wednesday", label: "Miércoles" },
+          { key: "thursday", label: "Jueves" },
+          { key: "friday", label: "Viernes" },
+          { key: "saturday", label: "Sábado" },
+          { key: "sunday", label: "Domingo" },
+        ];
+        setHoursSummary(
+          DAYS.map((d) => {
+            const v = data.hours[d.key];
+            if (!v || v.closed) return { label: d.label, text: "Cerrado" };
+            const parts = [`${v.open || "—"} – ${v.close || "—"}`];
+            if (v.eveningOpen)
+              parts.push(`${v.eveningOpen} – ${v.eveningClose || ""}`);
+            return { label: d.label, text: parts.join(" · ") };
+          }),
+        );
+      }
+    } catch {
+      // Sin horarios: la tarjeta queda vacía
+    }
+  }, [businessId]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadHoursSummary();
+  }, [load, loadHoursSummary]);
 
   const save = async () => {
     if (!businessId) return;
@@ -130,6 +189,7 @@ export default function BusinessReservationsSettingsScreen() {
       );
       const data = await res.json();
       if (data.success) {
+        setSavedSnapshot(JSON.stringify({ draft, hasCapacity, dayLimitText }));
         Alert.alert(
           "Configuración guardada ✅",
           hasCapacity
@@ -165,8 +225,10 @@ export default function BusinessReservationsSettingsScreen() {
   }) => (
     <View
       style={[
-        styles.fieldCard,
-        { backgroundColor: theme.card, opacity: disabled ? 0.5 : 1 },
+        styles.sectionCard,
+        { backgroundColor: theme.card },
+        Shadows.sm,
+        { opacity: disabled ? 0.5 : 1 },
       ]}
     >
       <View style={{ flex: 1 }}>
@@ -282,57 +344,155 @@ export default function BusinessReservationsSettingsScreen() {
             ]}
           >
             <Feather name="alert-triangle" size={20} color="#F59E0B" />
-            <ThemedText type="small" style={{ flex: 1, marginLeft: Spacing.sm }}>
-              Las reservas están desactivadas en "Mis negocios → Servicios del
-              negocio". Actívalas para que los clientes puedan reservar mesa.
-            </ThemedText>
+            <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+              <ThemedText type="small" style={{ fontWeight: "700" }}>
+                Las reservas están desactivadas
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 2 }}
+              >
+                Actívalas en "Mis negocios → Editar → Acepta reservas" para que
+                los clientes puedan reservar mesa.
+              </ThemedText>
+            </View>
           </View>
         ) : null}
 
+        {/* Cómo se generan las horas */}
         <View
-          style={[styles.infoCard, { backgroundColor: theme.card }, Shadows.sm]}
+          style={[styles.sectionCard, { backgroundColor: theme.card }, Shadows.sm]}
         >
-          <Feather name="info" size={20} color={ComeYaColors.primary} />
-          <ThemedText type="small" style={{ flex: 1, marginLeft: Spacing.sm }}>
-            ComeYa genera las horas de reserva desde tu horario de apertura. Con
-            aforo configurado, cada franja se cierra sola al llenarse y puedes
-            activar la confirmación automática.
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionIcon}>
+              <Feather name="info" size={16} color={ComeYaColors.primary} />
+            </View>
+            <ThemedText style={{ fontWeight: "700", flex: 1 }}>
+              Cómo funcionan las horas de reserva
+            </ThemedText>
+          </View>
+          <ThemedText
+            type="caption"
+            style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+          >
+            ComeYa genera las horas de reserva a partir de tu horario de
+            apertura: cada turno (mañana y noche) ofrece sus propias franjas.
+            Edítalo en la tarjeta de abajo.
           </ThemedText>
+        </View>
+
+        {/* Horario de apertura */}
+        <View
+          style={[styles.sectionCard, { backgroundColor: theme.card }, Shadows.sm]}
+        >
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionIcon}>
+              <Feather name="clock" size={16} color={ComeYaColors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ThemedText style={{ fontWeight: "700" }}>
+                Horario de apertura
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 2 }}
+              >
+                Las horas en las que los clientes podrán reservar.
+              </ThemedText>
+            </View>
+          </View>
+          {hoursSummary.length > 0 ? (
+            <View style={{ marginTop: Spacing.sm }}>
+              {hoursSummary.map((d) => (
+                <View key={d.label} style={styles.hoursRow}>
+                  <ThemedText
+                    type="small"
+                    style={{ color: theme.textSecondary, width: 78 }}
+                  >
+                    {d.label}
+                  </ThemedText>
+                  <ThemedText type="small" style={{ flex: 1, fontWeight: "600" }}>
+                    {d.text}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <ThemedText
+              type="caption"
+              style={{ color: theme.textSecondary, marginTop: Spacing.sm }}
+            >
+              Aún no has definido horarios para este negocio.
+            </ThemedText>
+          )}
+          <Pressable
+            onPress={() =>
+              (navigation as any).navigate("BusinessHours", { businessId })
+            }
+            style={[
+              styles.feeLinkBtn,
+              {
+                backgroundColor: `${ComeYaColors.primary}15`,
+                marginTop: Spacing.sm,
+              },
+            ]}
+          >
+            <Feather name="edit-2" size={14} color={ComeYaColors.primary} />
+            <ThemedText
+              type="caption"
+              style={{
+                color: ComeYaColors.primary,
+                marginLeft: 4,
+                fontWeight: "700",
+              }}
+            >
+              Gestionar horarios de apertura
+            </ThemedText>
+          </Pressable>
         </View>
 
         {/* Gestionar aforo */}
         <Pressable
-          style={[styles.fieldCard, { backgroundColor: theme.card }]}
+          style={[styles.sectionCard, { backgroundColor: theme.card }, Shadows.sm]}
           onPress={() => setHasCapacity((v) => !v)}
         >
-          <View style={{ flex: 1 }}>
-            <ThemedText type="body" style={{ fontWeight: "700" }}>Gestionar aforo por franja</ThemedText>
-            <ThemedText
-              type="caption"
-              style={{ color: theme.textSecondary, marginTop: 2 }}
+          <View style={styles.sectionTitleRow}>
+            <View style={styles.sectionIcon}>
+              <Feather name="users" size={16} color={ComeYaColors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <ThemedText style={{ fontWeight: "700" }}>
+                Gestionar aforo por franja
+              </ThemedText>
+              <ThemedText
+                type="caption"
+                style={{ color: theme.textSecondary, marginTop: 2 }}
+              >
+                {hasCapacity
+                  ? "Con aforo: la app limita los comensales de cada franja automáticamente."
+                  : "Sin aforo: toda reserva nace pendiente y la confirmas a mano."}
+              </ThemedText>
+            </View>
+            <View
+              style={[
+                styles.togglePill,
+                {
+                  backgroundColor: hasCapacity
+                    ? ComeYaColors.success
+                    : theme.backgroundSecondary,
+                },
+              ]}
             >
-              Sin aforo, toda reserva nace "pendiente" y la confirmas a mano.
-            </ThemedText>
-          </View>
-          <View
-            style={[
-              styles.togglePill,
-              {
-                backgroundColor: hasCapacity
-                  ? ComeYaColors.success
-                  : theme.backgroundSecondary,
-              },
-            ]}
-          >
-            <ThemedText
-              style={{
-                color: hasCapacity ? "#FFF" : theme.textSecondary,
-                fontWeight: "700",
-                fontSize: 12,
-              }}
-            >
-              {hasCapacity ? "SÍ" : "NO"}
-            </ThemedText>
+              <ThemedText
+                style={{
+                  color: hasCapacity ? "#FFF" : theme.textSecondary,
+                  fontWeight: "700",
+                  fontSize: 12,
+                }}
+              >
+                {hasCapacity ? "SÍ" : "NO"}
+              </ThemedText>
+            </View>
           </View>
         </Pressable>
 
@@ -340,20 +500,22 @@ export default function BusinessReservationsSettingsScreen() {
           <>
             <Stepper
               label="Comensales a la vez (aforo)"
-              hint="Cuántas personas puedes atender simultáneamente en un turno."
+              hint="Cuántas personas puedes atender simultáneamente en cada franja."
               value={draft.capacityPerSlot}
               onChange={(v) => setDraft((d) => ({ ...d, capacityPerSlot: v }))}
               min={1}
               max={200}
             />
 
-            <View style={[styles.fieldCard, { backgroundColor: theme.card }]}>
-              <ThemedText type="body" style={{ fontWeight: "700" }}>Duración del turno</ThemedText>
+            <View
+              style={[styles.sectionCard, { backgroundColor: theme.card }, Shadows.sm]}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>Duración del turno</ThemedText>
               <ThemedText
                 type="caption"
                 style={{ color: theme.textSecondary, marginTop: 2, marginBottom: Spacing.sm }}
               >
-                Cuánto tiempo ocupa una mesa (afecta a la disponibilidad).
+                Cuánto tiempo ocupa una mesa (afecta a la disponibilidad de cada franja).
               </ThemedText>
               <View style={styles.chipRow}>
                 {TURN_OPTIONS.map((t) => (
@@ -367,13 +529,16 @@ export default function BusinessReservationsSettingsScreen() {
               </View>
             </View>
 
-            <View style={[styles.fieldCard, { backgroundColor: theme.card }]}>
-              <ThemedText type="body" style={{ fontWeight: "700" }}>Intervalo entre horas</ThemedText>
+            <View
+              style={[styles.sectionCard, { backgroundColor: theme.card }, Shadows.sm]}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>Intervalo entre franjas</ThemedText>
               <ThemedText
                 type="caption"
                 style={{ color: theme.textSecondary, marginTop: 2, marginBottom: Spacing.sm }}
               >
-                Cada cuánto se ofrece una hora de reserva.
+                Cada cuánto se oferta una hora de reserva. Ejemplo con 30 min:
+                13:00, 13:30, 14:00…
               </ThemedText>
               <View style={styles.chipRow}>
                 {SLOT_OPTIONS.map((s) => (
@@ -388,8 +553,8 @@ export default function BusinessReservationsSettingsScreen() {
             </View>
 
             <Stepper
-              label="Máximo por reserva"
-              hint="Grupo máximo de comensales aceptado."
+              label="Máximo de comensales por reserva"
+              hint="Grupo máximo que aceptas en una sola reserva."
               value={draft.maxPartySize}
               onChange={(v) => setDraft((d) => ({ ...d, maxPartySize: v }))}
               min={1}
@@ -397,7 +562,7 @@ export default function BusinessReservationsSettingsScreen() {
             />
 
             <Stepper
-              label="Antelación máxima"
+              label="Antelación máxima (días)"
               hint="Con cuántos días de antelación se puede reservar."
               value={draft.advanceDays}
               onChange={(v) => setDraft((d) => ({ ...d, advanceDays: v }))}
@@ -407,38 +572,49 @@ export default function BusinessReservationsSettingsScreen() {
 
             {/* La confirmación automática ya no se ofrece: cada reserva
                 tiene que aceptarla el restaurante para que sea válida. */}
-            <View style={[styles.fieldCard, { backgroundColor: theme.card }]}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Feather
-                  name="check-circle"
-                  size={18}
-                  color={ComeYaColors.success}
-                />
-                <ThemedText
-                  type="body"
-                  style={{ fontWeight: "700", marginLeft: Spacing.sm }}
+            <View
+              style={[styles.sectionCard, { backgroundColor: theme.card }, Shadows.sm]}
+            >
+              <View style={styles.sectionTitleRow}>
+                <View
+                  style={[
+                    styles.sectionIcon,
+                    { backgroundColor: `${ComeYaColors.success}18` },
+                  ]}
                 >
-                  Confirmación manual
-                </ThemedText>
+                  <Feather
+                    name="check-circle"
+                    size={16}
+                    color={ComeYaColors.success}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={{ fontWeight: "700" }}>
+                    Confirmación manual
+                  </ThemedText>
+                  <ThemedText
+                    type="caption"
+                    style={{ color: theme.textSecondary, marginTop: 2 }}
+                  >
+                    Todas las reservas te llegan como solicitud y las confirmas
+                    tú desde el apartado Reservas. El cliente solo recibe el
+                    código de mesa cuando la aceptas.
+                  </ThemedText>
+                </View>
               </View>
-              <ThemedText
-                type="caption"
-                style={{ color: theme.textSecondary, marginTop: 4 }}
-              >
-                Todas las reservas te llegan como solicitud: las confirmas tú
-                desde el apartado Reservas. El cliente solo recibe el código de
-                mesa cuando la aceptas, así el aforo publicado nunca le hace
-                creer que tiene mesa sin que la hayas visto.
-              </ThemedText>
             </View>
 
-            <View style={[styles.fieldCard, { backgroundColor: theme.card }]}>
-              <ThemedText type="body" style={{ fontWeight: "700" }}>Límite diario (opcional)</ThemedText>
+            <View
+              style={[styles.sectionCard, { backgroundColor: theme.card }, Shadows.sm]}
+            >
+              <ThemedText style={{ fontWeight: "700" }}>
+                Límite de comensales al día (opcional)
+              </ThemedText>
               <ThemedText
                 type="caption"
                 style={{ color: theme.textSecondary, marginTop: 2, marginBottom: Spacing.sm }}
               >
-                Tope total de comensales por día (deja vacío para no limitar).
+                Tope total de comensales por día. Deja el campo vacío para no limitar.
               </ThemedText>
               <TextInput
                 value={dayLimitText}
@@ -453,7 +629,35 @@ export default function BusinessReservationsSettingsScreen() {
               />
             </View>
           </>
-        ) : null}
+        ) : (
+          <View
+            style={[
+              styles.sectionCard,
+              { backgroundColor: theme.backgroundSecondary },
+              Shadows.sm,
+            ]}
+          >
+            <View style={styles.sectionTitleRow}>
+              <View style={[styles.sectionIcon, { backgroundColor: theme.card }]}>
+                <Feather name="users" size={16} color={theme.textSecondary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <ThemedText style={{ fontWeight: "700" }}>
+                  Aforo desactivado
+                </ThemedText>
+                <ThemedText
+                  type="caption"
+                  style={{ color: theme.textSecondary, marginTop: 2 }}
+                >
+                  En este modo cada reserva llega "pendiente" y la confirmas a
+                  mano. Activa "Gestionar aforo por franja" para editar
+                  comensales por turno, duración del turno, intervalo entre
+                  franjas, máximo por reserva y límite diario.
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Tarifa */}
         <View
@@ -499,13 +703,36 @@ export default function BusinessReservationsSettingsScreen() {
           </View>
         </View>
 
+      </ScrollView>
+
+      {/* Barra de guardado fija */}
+      <View
+        style={[
+          styles.saveBar,
+          {
+            backgroundColor: theme.card,
+            borderTopColor: theme.border,
+            paddingBottom: Math.max(insets.bottom, Spacing.md),
+          },
+        ]}
+      >
+        {dirty ? (
+          <ThemedText
+            type="caption"
+            style={{
+              color: "#F59E0B",
+              fontWeight: "700",
+              textAlign: "center",
+              marginBottom: Spacing.xs,
+            }}
+          >
+            ● Cambios sin guardar
+          </ThemedText>
+        ) : null}
         <Pressable
           onPress={save}
           disabled={saving}
-          style={[
-            styles.saveBtn,
-            { opacity: saving ? 0.7 : 1 },
-          ]}
+          style={[styles.saveBtn, { opacity: saving ? 0.7 : 1 }]}
         >
           {saving ? (
             <ActivityIndicator size="small" color="#FFF" />
@@ -518,7 +745,7 @@ export default function BusinessReservationsSettingsScreen() {
             Guardar configuración
           </ThemedText>
         </Pressable>
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -536,10 +763,33 @@ const styles = StyleSheet.create({
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing["4xl"],
+    paddingBottom: Spacing.xl,
     maxWidth: 640,
     width: "100%",
     alignSelf: "center",
+  },
+  sectionCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  sectionIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: `${ComeYaColors.primary}15`,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  saveBar: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
   },
   noticeCard: {
     flexDirection: "row",
@@ -555,6 +805,11 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginBottom: Spacing.md,
+  },
+  hoursRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 2,
   },
   fieldCard: {
     borderRadius: BorderRadius.lg,

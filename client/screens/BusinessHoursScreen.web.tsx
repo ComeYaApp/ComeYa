@@ -14,7 +14,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { ComeYaColors } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { BusinessSidebar } from "@/components/BusinessSidebar";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 interface Business {
   id: string;
@@ -55,15 +55,45 @@ const DEFAULT_HOURS: DayHours[] = DAYS.map((d) => ({
   evening: { open: "20:00", close: "23:00" },
 }));
 
-const TIME_OPTIONS: string[] = [];
-for (let h = 0; h < 24; h++)
-  for (const m of [0, 15, 30, 45])
-    TIME_OPTIONS.push(
-      `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
-    );
+const timeToMin = (t: string): number => {
+  const [h, m] = t.split(":").map((n) => parseInt(n, 10));
+  return (h || 0) * 60 + (m || 0);
+};
+
+const shiftRange = (s: Shift) => `${s.open} – ${s.close}`;
+
+const dayPreview = (h: DayHours): string => {
+  if (!h.isOpen) return "Cerrado";
+  const parts = [shiftRange(h.morning)];
+  if (h.hasEvening) parts.push(shiftRange(h.evening));
+  return parts.join(" · ");
+};
+
+const isOvernightShift = (s: Shift) => timeToMin(s.close) <= timeToMin(s.open);
+
+const eveningOverlaps = (h: DayHours): boolean => {
+  if (!h.isOpen || !h.hasEvening) return false;
+  if (isOvernightShift(h.morning) || isOvernightShift(h.evening)) return false;
+  return (
+    timeToMin(h.evening.open) < timeToMin(h.morning.close) &&
+    timeToMin(h.evening.close) > timeToMin(h.morning.open)
+  );
+};
+
+const dayWarnings = (h: DayHours): string[] => {
+  if (!h.isOpen) return [];
+  const warnings: string[] = [];
+  if (isOvernightShift(h.morning) || (h.hasEvening && isOvernightShift(h.evening)))
+    warnings.push("Horario nocturno: las reservas se generan hasta las 24:00.");
+  if (eveningOverlaps(h))
+    warnings.push("El turno de noche se solapa con el de mañana.");
+  return warnings;
+};
 
 export default function BusinessHoursScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const routeBusinessId = route.params?.businessId as string | undefined;
   const { theme, isDark } = useTheme();
   const { showToast } = useToast();
 
@@ -98,7 +128,14 @@ export default function BusinessHoursScreen() {
         if (data.success && data.businesses) {
           setMyBusinesses(data.businesses);
           if (data.businesses.length > 0) {
-            setSelectedBusinessId(data.businesses[0].id);
+            // Si venimos de "Configurar reservas" con un negocio concreto,
+            // seleccionamos ese (si sigue perteneciendo al usuario)
+            const fromRoute =
+              routeBusinessId &&
+              data.businesses.some((b: Business) => b.id === routeBusinessId)
+                ? routeBusinessId
+                : undefined;
+            setSelectedBusinessId(fromRoute || data.businesses[0].id);
           }
         }
       })
@@ -188,6 +225,34 @@ export default function BusinessHoursScreen() {
       );
     setPickerOpen(false);
   };
+
+  // Copia el horario de un día origen a varios días destino
+  const copyFromDay = (sourceKey: string, targetKeys: string[]) => {
+    const source = hours.find((h) => h.dayKey === sourceKey);
+    if (!source) return;
+    setHours((prev) =>
+      prev.map((h) =>
+        targetKeys.includes(h.dayKey)
+          ? {
+              ...h,
+              isOpen: source.isOpen,
+              morning: { ...source.morning },
+              hasEvening: source.hasEvening,
+              evening: { ...source.evening },
+            }
+          : h,
+      ),
+    );
+    showToast("Horario copiado", "success");
+  };
+
+  const copyAllDays = () =>
+    copyFromDay(
+      "monday",
+      DAYS.map((d) => d.key).filter((k) => k !== "monday"),
+    );
+  const copyWeekdays = () =>
+    copyFromDay("monday", ["tuesday", "wednesday", "thursday", "friday"]);
 
   const handleSave = async () => {
     if (!selectedBusinessId) return;
@@ -323,14 +388,34 @@ export default function BusinessHoursScreen() {
           </View>
         ) : null}
 
-        {/* Botón guardar */}
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            marginBottom: 20,
-          }}
-        >
+        {/* Acciones rápidas y guardar */}
+        <View style={s.topBar}>
+          <View style={s.bulkRow}>
+            <Pressable
+              onPress={copyAllDays}
+              style={[
+                s.bulkBtn,
+                { backgroundColor: ComeYaColors.primary + "15" },
+              ]}
+            >
+              <Feather name="copy" size={14} color={ComeYaColors.primary} />
+              <Text style={[s.bulkBtnText, { color: ComeYaColors.primary }]}>
+                Copiar Lunes a todos los días
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={copyWeekdays}
+              style={[
+                s.bulkBtn,
+                { backgroundColor: ComeYaColors.primary + "15" },
+              ]}
+            >
+              <Feather name="copy" size={14} color={ComeYaColors.primary} />
+              <Text style={[s.bulkBtnText, { color: ComeYaColors.primary }]}>
+                Copiar a laborables (L–V)
+              </Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={handleSave}
             disabled={saving}
@@ -349,138 +434,157 @@ export default function BusinessHoursScreen() {
             )}
           </Pressable>
         </View>
+
         {loading ? (
           <View style={s.loading}>
             <ActivityIndicator color={ComeYaColors.primary} size="large" />
           </View>
         ) : (
-          hours.map((hour, i) => (
-            <View
-              key={hour.dayKey}
-              style={[
-                s.dayCard,
-                { backgroundColor: card, borderColor: border },
-              ]}
-            >
-              <View style={s.dayHeader}>
-                <Text style={[s.dayName, { color: text }]}>{hour.day}</Text>
-                <View style={s.dayHeaderRight}>
-                  <Text
-                    style={[
-                      s.dayStatus,
-                      {
-                        color: hour.isOpen
-                          ? ComeYaColors.success
-                          : ComeYaColors.error,
-                      },
-                    ]}
-                  >
-                    {hour.isOpen ? "Abierto" : "Cerrado"}
-                  </Text>
-                  <Switch
-                    value={hour.isOpen}
-                    onValueChange={(v) => update(i, { isOpen: v })}
-                    trackColor={{
-                      false: ComeYaColors.error,
-                      true: ComeYaColors.success,
-                    }}
-                    thumbColor="#fff"
-                  />
-                </View>
-              </View>
-
-              {hour.isOpen && (
-                <>
-                  <View style={s.shiftRow}>
-                    <View
-                      style={[
-                        s.shiftBadge,
-                        { backgroundColor: ComeYaColors.primary + "15" },
-                      ]}
-                    >
-                      <Feather
-                        name="sun"
-                        size={13}
-                        color={ComeYaColors.primary}
-                      />
-                      <Text
-                        style={[s.shiftLabel, { color: ComeYaColors.primary }]}
-                      >
-                        Mañana
-                      </Text>
-                    </View>
-                    <View style={s.timePair}>
-                      <TimeBtn
-                        value={hour.morning.open}
-                        onPress={() => openPicker(i, "morning", "open")}
-                      />
-                      <Feather name="arrow-right" size={14} color={sub} />
-                      <TimeBtn
-                        value={hour.morning.close}
-                        onPress={() => openPicker(i, "morning", "close")}
-                      />
-                    </View>
-                  </View>
-
-                  <Pressable
-                    onPress={() => update(i, { hasEvening: !hour.hasEvening })}
-                    style={s.addShiftBtn}
-                  >
-                    <Feather
-                      name={hour.hasEvening ? "minus-circle" : "plus-circle"}
-                      size={15}
-                      color={
-                        hour.hasEvening
-                          ? ComeYaColors.error
-                          : ComeYaColors.primary
-                      }
-                    />
+          <View style={s.daysGrid}>
+            {hours.map((hour, i) => (
+              <View
+                key={hour.dayKey}
+                style={[
+                  s.dayCard,
+                  { backgroundColor: card, borderColor: border },
+                ]}
+              >
+                <View style={s.dayHeader}>
+                  <Text style={[s.dayName, { color: text }]}>{hour.day}</Text>
+                  <View style={s.dayHeaderRight}>
                     <Text
                       style={[
-                        s.addShiftText,
+                        s.dayStatus,
                         {
-                          color: hour.hasEvening
-                            ? ComeYaColors.error
-                            : ComeYaColors.primary,
+                          color: hour.isOpen
+                            ? ComeYaColors.success
+                            : ComeYaColors.error,
                         },
                       ]}
                     >
-                      {hour.hasEvening
-                        ? "Quitar turno noche"
-                        : "Añadir turno tarde/noche"}
+                      {hour.isOpen ? "Abierto" : "Cerrado"}
                     </Text>
-                  </Pressable>
+                    <Switch
+                      value={hour.isOpen}
+                      onValueChange={(v) => update(i, { isOpen: v })}
+                      trackColor={{
+                        false: ComeYaColors.error,
+                        true: ComeYaColors.success,
+                      }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                </View>
 
-                  {hour.hasEvening && (
+                {hour.isOpen && (
+                  <>
                     <View style={s.shiftRow}>
                       <View
                         style={[
                           s.shiftBadge,
-                          { backgroundColor: "#3F51B5" + "15" },
+                          { backgroundColor: ComeYaColors.primary + "15" },
                         ]}
                       >
-                        <Feather name="moon" size={13} color="#3F51B5" />
-                        <Text style={[s.shiftLabel, { color: "#3F51B5" }]}>
-                          Noche
+                        <Feather
+                          name="sun"
+                          size={13}
+                          color={ComeYaColors.primary}
+                        />
+                        <Text
+                          style={[s.shiftLabel, { color: ComeYaColors.primary }]}
+                        >
+                          Mañana
                         </Text>
                       </View>
                       <View style={s.timePair}>
                         <TimeBtn
-                          value={hour.evening.open}
-                          onPress={() => openPicker(i, "evening", "open")}
+                          value={hour.morning.open}
+                          onPress={() => openPicker(i, "morning", "open")}
                         />
                         <Feather name="arrow-right" size={14} color={sub} />
                         <TimeBtn
-                          value={hour.evening.close}
-                          onPress={() => openPicker(i, "evening", "close")}
+                          value={hour.morning.close}
+                          onPress={() => openPicker(i, "morning", "close")}
                         />
                       </View>
                     </View>
-                  )}
-                </>
-              )}
-            </View>
-          ))
+
+                    <Pressable
+                      onPress={() => update(i, { hasEvening: !hour.hasEvening })}
+                      style={s.addShiftBtn}
+                    >
+                      <Feather
+                        name={hour.hasEvening ? "minus-circle" : "plus-circle"}
+                        size={15}
+                        color={
+                          hour.hasEvening
+                            ? ComeYaColors.error
+                            : ComeYaColors.primary
+                        }
+                      />
+                      <Text
+                        style={[
+                          s.addShiftText,
+                          {
+                            color: hour.hasEvening
+                              ? ComeYaColors.error
+                              : ComeYaColors.primary,
+                          },
+                        ]}
+                      >
+                        {hour.hasEvening
+                          ? "Quitar turno noche"
+                          : "Añadir turno tarde/noche"}
+                      </Text>
+                    </Pressable>
+
+                    {hour.hasEvening && (
+                      <View style={s.shiftRow}>
+                        <View
+                          style={[
+                            s.shiftBadge,
+                            { backgroundColor: "#3F51B5" + "15" },
+                          ]}
+                        >
+                          <Feather name="moon" size={13} color="#3F51B5" />
+                          <Text style={[s.shiftLabel, { color: "#3F51B5" }]}>
+                            Noche
+                          </Text>
+                        </View>
+                        <View style={s.timePair}>
+                          <TimeBtn
+                            value={hour.evening.open}
+                            onPress={() => openPicker(i, "evening", "open")}
+                          />
+                          <Feather name="arrow-right" size={14} color={sub} />
+                          <TimeBtn
+                            value={hour.evening.close}
+                            onPress={() => openPicker(i, "evening", "close")}
+                          />
+                        </View>
+                      </View>
+                    )}
+
+                    <View style={s.previewRow}>
+                      <Feather name="calendar" size={13} color={sub} />
+                      <Text style={[s.previewText, { color: sub }]}>
+                        Reservas: {dayPreview(hour)}
+                      </Text>
+                    </View>
+
+                    {dayWarnings(hour).map((w) => (
+                      <View key={w} style={s.warningRow}>
+                        <Feather name="alert-triangle" size={13} color="#F59E0B" />
+                        <Text style={[s.warningText, { color: "#F59E0B" }]}>
+                          {w}
+                        </Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
 
@@ -530,6 +634,7 @@ export default function BusinessHoursScreen() {
                 "21:00",
                 "22:00",
                 "23:00",
+                "00:00",
               ].map((t) => (
                 <Pressable
                   key={t}
@@ -545,7 +650,7 @@ export default function BusinessHoursScreen() {
                   <Text
                     style={{
                       color: pickerValue === t ? "#fff" : text,
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: "600",
                     }}
                   >
@@ -580,7 +685,7 @@ export default function BusinessHoursScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
   main: { flex: 1 },
-  content: { padding: 32, maxWidth: 720 },
+  content: { padding: 32, maxWidth: 760 },
   // Selector de negocio
   businessSelectorLoading: { paddingVertical: 20 },
   businessSelector: { padding: 20, borderRadius: 14, borderWidth: 1 },
@@ -605,6 +710,25 @@ const s = StyleSheet.create({
   },
   singleBusinessText: { fontSize: 14 },
   loading: { paddingVertical: 80, alignItems: "center" },
+  // Barra superior: acciones en bloque + guardar
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    flexWrap: "wrap",
+    marginBottom: 20,
+  },
+  bulkRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  bulkBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+  bulkBtnText: { fontSize: 13, fontWeight: "600" },
   saveBtn: {
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -613,7 +737,21 @@ const s = StyleSheet.create({
     flexDirection: "row",
   },
   saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  dayCard: { padding: 20, borderRadius: 14, borderWidth: 1, marginBottom: 12 },
+  // Cuadrícula de días
+  daysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    alignItems: "stretch",
+  },
+  dayCard: {
+    padding: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexGrow: 1,
+    flexBasis: 320,
+    minWidth: 300,
+  },
   dayHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -643,6 +781,7 @@ const s = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -657,6 +796,24 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
   addShiftText: { fontSize: 13, fontWeight: "600" },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128,128,128,0.2)",
+  },
+  previewText: { fontSize: 12 },
+  warningRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 4,
+  },
+  warningText: { fontSize: 12 },
+  // Picker
   pickerOverlay: {
     position: "absolute",
     inset: 0,
@@ -664,15 +821,21 @@ const s = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   } as any,
-  pickerCard: { width: 400, padding: 28, borderRadius: 20, borderWidth: 1 },
+  pickerCard: { width: 440, padding: 28, borderRadius: 20, borderWidth: 1 },
   pickerTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   timeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
     marginBottom: 20,
   },
-  timeOption: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
+  timeOption: {
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: 6,
+    minWidth: 52,
+    alignItems: "center",
+  },
   pickerBtns: { flexDirection: "row", gap: 10 },
   pickerBtn: {
     flex: 1,

@@ -64,6 +64,16 @@ const DAY_NAME_TO_INDEX: Record<string, number> = {
   sabado: 6, sábado: 6, saturday: 6,
 };
 
+// ¿Tiene el día alguna ventana de servicio definida? (mañana o tarde)
+function hasAnyWindow(entry: DaySchedule | undefined | null): boolean {
+  if (!entry) return false;
+  const hasMain = !!(
+    (entry.openTime || entry.open) && (entry.closeTime || entry.close)
+  );
+  const hasEvening = !!(entry.eveningOpen && entry.eveningClose);
+  return hasMain || hasEvening;
+}
+
 function resolveTodaySchedule(
   hours: any,
   dayOfWeek: number,
@@ -73,7 +83,7 @@ function resolveTodaySchedule(
   // ─── CASO 1: Array ────────────────────────────────────────────────────
   if (Array.isArray(hours)) {
     const byIndex = hours[dayOfWeek];
-    if (byIndex && !isDayClosed(byIndex) && (byIndex.openTime || byIndex.open) && (byIndex.closeTime || byIndex.close)) {
+    if (byIndex && !isDayClosed(byIndex) && hasAnyWindow(byIndex)) {
       return byIndex;
     }
     // Buscar por nombre de día (español o inglés)
@@ -92,7 +102,7 @@ function resolveTodaySchedule(
 
   // ─── CASO 2: Objeto indexado numéricamente ─────────────────────────────
   const byKey = hours[dayOfWeek] || hours[String(dayOfWeek)];
-  if (byKey && !isDayClosed(byKey) && (byKey.openTime || byKey.open) && (byKey.closeTime || byKey.close)) {
+  if (byKey && !isDayClosed(byKey) && hasAnyWindow(byKey)) {
     return byKey;
   }
 
@@ -127,6 +137,18 @@ function parseTimeToMinutes(timeValue?: string): number | null {
   return hours * 60 + minutes;
 }
 
+// ¿Cae reqMin dentro de la ventana? Soporta tramos nocturnos (cierre < apertura).
+// null = ventana inválida o sin definir.
+function inWindow(
+  openMin: number | null,
+  closeMin: number | null,
+  reqMin: number,
+): boolean | null {
+  if (openMin === null || closeMin === null) return null;
+  if (closeMin < openMin) return reqMin >= openMin || reqMin <= closeMin;
+  return reqMin >= openMin && reqMin <= closeMin;
+}
+
 export class BusinessHoursService {
   // ¿Está abierto el negocio en una fecha/hora concreta? (para reservas).
   // dateStr: YYYY-MM-DD, timeStr: HH:mm. Sin horario configurado → abierto.
@@ -149,18 +171,22 @@ export class BusinessHoursService {
       const schedule = resolveTodaySchedule(hours, dayOfWeek);
       if (!schedule || isDayClosed(schedule)) return false;
 
-      const openValue = schedule.openTime || schedule.open;
-      const closeValue = schedule.closeTime || schedule.close;
-      const openMin = parseTimeToMinutes(openValue);
-      const closeMin = parseTimeToMinutes(closeValue);
       const reqMin = parseTimeToMinutes(timeStr);
-      if (openMin === null || closeMin === null || reqMin === null) return true;
+      if (reqMin === null) return true;
 
-      // Horario nocturno (ej. 22:00 - 02:00)
-      if (closeMin < openMin) {
-        return reqMin >= openMin || reqMin <= closeMin;
-      }
-      return reqMin >= openMin && reqMin <= closeMin;
+      const morningOk = inWindow(
+        parseTimeToMinutes(schedule.openTime || schedule.open),
+        parseTimeToMinutes(schedule.closeTime || schedule.close),
+        reqMin,
+      );
+      const eveningOk = inWindow(
+        parseTimeToMinutes(schedule.eveningOpen),
+        parseTimeToMinutes(schedule.eveningClose),
+        reqMin,
+      );
+      // Sin horarios válidos en el día → abierto (comportamiento clásico)
+      if (morningOk === null && eveningOk === null) return true;
+      return morningOk === true || eveningOk === true;
     } catch {
       return true;
     }
@@ -186,30 +212,22 @@ export class BusinessHoursService {
       const todayHours = resolveTodaySchedule(hours, dayOfWeek);
       if (!todayHours || isDayClosed(todayHours)) return false;
 
-      // Soporta tanto open/openTime como close/closeTime
-      const openValue = todayHours.openTime || todayHours.open;
-      const closeValue = todayHours.closeTime || todayHours.close;
+      const morningOk = inWindow(
+        parseTimeToMinutes(todayHours.openTime || todayHours.open),
+        parseTimeToMinutes(todayHours.closeTime || todayHours.close),
+        currentTimeInMinutes,
+      );
+      const eveningOk = inWindow(
+        parseTimeToMinutes(todayHours.eveningOpen),
+        parseTimeToMinutes(todayHours.eveningClose),
+        currentTimeInMinutes,
+      );
 
-      const openTimeInMinutes = parseTimeToMinutes(openValue);
-      const closeTimeInMinutes = parseTimeToMinutes(closeValue);
-
-      if (openTimeInMinutes === null || closeTimeInMinutes === null) {
+      if (morningOk === null && eveningOk === null) {
         // Si no hay horarios válidos, asumimos abierto
         return true;
       }
-
-      // Caso: horario nocturno (ej. 22:00 - 02:00)
-      if (closeTimeInMinutes < openTimeInMinutes) {
-        return (
-          currentTimeInMinutes >= openTimeInMinutes ||
-          currentTimeInMinutes <= closeTimeInMinutes
-        );
-      }
-
-      return (
-        currentTimeInMinutes >= openTimeInMinutes &&
-        currentTimeInMinutes <= closeTimeInMinutes
-      );
+      return morningOk === true || eveningOk === true;
     } catch {
       return true;
     }

@@ -196,7 +196,7 @@ export type RootStackParamList = {
   BusinessDeliveryMap: undefined;
   BusinessMap: undefined;
   BecomeDriver: undefined;
-  BusinessHours: undefined;
+  BusinessHours: { businessId?: string } | undefined;
   BusinessCategories: undefined;
   MyBusinesses:
     | {

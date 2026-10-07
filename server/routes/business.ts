@@ -488,25 +488,39 @@ router.get(
               .where(inArray(orders.businessId, businessIds))
           : [];
 
-      const result = ownerBusinesses.map((business) => {
-        const bOrders = allOrders.filter((o) => o.businessId === business.id);
-        const deliveredOrders = bOrders.filter((o) => o.status === "delivered");
-        const pendingOrders = bOrders.filter((o) =>
-          ["pending", "accepted", "preparing"].includes(o.status),
-        );
+      const { BusinessHoursService } = await import("../businessHoursService");
 
-        return {
-          ...business,
-          stats: {
-            pendingOrders: pendingOrders.length,
-            totalOrders: deliveredOrders.length,
-            totalRevenue: deliveredOrders.reduce(
-              (s, o) => s + (o.subtotal || 0),
-              0,
-            ),
-          },
-        };
-      });
+      // El badge Abierto/Cerrado debe reflejar el horario actual, no el último
+      // cálculo del cron (que corre cada 5 min)
+      const result = await Promise.all(
+        ownerBusinesses.map(async (business) => {
+          let isOpenNow: boolean = business.isOpen;
+          try {
+            isOpenNow = await BusinessHoursService.isBusinessOpen(business.id);
+          } catch {
+            // Si falla el cálculo se mantiene el valor guardado
+          }
+
+          const bOrders = allOrders.filter((o) => o.businessId === business.id);
+          const deliveredOrders = bOrders.filter((o) => o.status === "delivered");
+          const pendingOrders = bOrders.filter((o) =>
+            ["pending", "accepted", "preparing"].includes(o.status),
+          );
+
+          return {
+            ...business,
+            isOpen: isOpenNow,
+            stats: {
+              pendingOrders: pendingOrders.length,
+              totalOrders: deliveredOrders.length,
+              totalRevenue: deliveredOrders.reduce(
+                (s, o) => s + (o.subtotal || 0),
+                0,
+              ),
+            },
+          };
+        }),
+      );
 
       res.json({ success: true, businesses: result });
     } catch (error: any) {

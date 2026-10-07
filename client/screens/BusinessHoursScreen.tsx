@@ -10,9 +10,10 @@ import {
   TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
@@ -24,7 +25,6 @@ import {
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
 import { useToast } from "@/contexts/ToastContext";
-import { Platform } from "react-native";
 
 interface Business {
   id: string;
@@ -66,9 +66,46 @@ const DEFAULT_HOURS: DayHours[] = DAYS.map((d) => ({
   evening: { open: "20:00", close: "23:00" },
 }));
 
+const timeToMin = (t: string): number => {
+  const [h, m] = t.split(":").map((n) => parseInt(n, 10));
+  return (h || 0) * 60 + (m || 0);
+};
+
+const shiftRange = (s: Shift) => `${s.open} – ${s.close}`;
+
+const dayPreview = (h: DayHours): string => {
+  if (!h.isOpen) return "Cerrado";
+  const parts = [shiftRange(h.morning)];
+  if (h.hasEvening) parts.push(shiftRange(h.evening));
+  return parts.join(" · ");
+};
+
+const isOvernightShift = (s: Shift) => timeToMin(s.close) <= timeToMin(s.open);
+
+const eveningOverlaps = (h: DayHours): boolean => {
+  if (!h.isOpen || !h.hasEvening) return false;
+  if (isOvernightShift(h.morning) || isOvernightShift(h.evening)) return false;
+  return (
+    timeToMin(h.evening.open) < timeToMin(h.morning.close) &&
+    timeToMin(h.evening.close) > timeToMin(h.morning.open)
+  );
+};
+
+const dayWarnings = (h: DayHours): string[] => {
+  if (!h.isOpen) return [];
+  const warnings: string[] = [];
+  if (isOvernightShift(h.morning) || (h.hasEvening && isOvernightShift(h.evening)))
+    warnings.push("Horario nocturno: las reservas se generan hasta las 24:00.");
+  if (eveningOverlaps(h))
+    warnings.push("El turno de noche se solapa con el de mañana.");
+  return warnings;
+};
+
 export default function BusinessHoursScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const route = useRoute<any>();
+  const routeBusinessId = route.params?.businessId as string | undefined;
   const { theme } = useTheme();
   const { showToast } = useToast();
 
@@ -80,7 +117,11 @@ export default function BusinessHoursScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Time picker modal — simple, sin grid
+  // Último estado guardado, para detectar cambios sin guardar
+  const [savedSnapshot, setSavedSnapshot] = useState("");
+  const dirty = savedSnapshot !== "" && JSON.stringify(hours) !== savedSnapshot;
+
+  // Time picker modal
   const [pickerVisible, setPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<{
     dayIndex: number;
@@ -88,6 +129,11 @@ export default function BusinessHoursScreen() {
     field: "open" | "close";
   } | null>(null);
   const [pickerValue, setPickerValue] = useState("09:00");
+  const [pickerDate, setPickerDate] = useState(() => {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0);
+    return d;
+  });
 
   useEffect(() => {
     loadMyBusinesses();
@@ -100,7 +146,14 @@ export default function BusinessHoursScreen() {
       if (data.success && data.businesses) {
         setMyBusinesses(data.businesses);
         if (data.businesses.length > 0) {
-          setSelectedBusinessId(data.businesses[0].id);
+          // Si venimos de "Configurar reservas" con un negocio concreto,
+          // seleccionamos ese (si sigue perteneciendo al usuario)
+          const fromRoute =
+            routeBusinessId &&
+            data.businesses.some((b: Business) => b.id === routeBusinessId)
+              ? routeBusinessId
+              : undefined;
+          setSelectedBusinessId(fromRoute || data.businesses[0].id);
         }
       }
     } catch (e) {
@@ -147,6 +200,7 @@ export default function BusinessHoursScreen() {
           };
         });
         setHours(parsed);
+        setSavedSnapshot(JSON.stringify(parsed));
       }
     } catch (e) {
       console.error("Error loading hours:", e);
@@ -183,6 +237,10 @@ export default function BusinessHoursScreen() {
     const current = hours[dayIndex][shift][field];
     setPickerTarget({ dayIndex, shift, field });
     setPickerValue(current);
+    const [hRaw, mRaw] = current.split(":");
+    const d = new Date();
+    d.setHours(parseInt(hRaw, 10) || 0, parseInt(mRaw, 10) || 0, 0, 0);
+    setPickerDate(d);
     setPickerVisible(true);
     Haptics.selectionAsync();
   };
@@ -216,26 +274,34 @@ export default function BusinessHoursScreen() {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
   };
 
-  // Ajustar hora con botones +/- (saltos de 30 min)
-  const adjustTime = (direction: 1 | -1) => {
-    const [hRaw, mRaw] = pickerValue.split(":");
-    let totalMinutes = parseInt(hRaw) * 60 + parseInt(mRaw);
-    totalMinutes += direction * 30;
-    if (totalMinutes < 0) totalMinutes = 24 * 60 + totalMinutes;
-    if (totalMinutes >= 24 * 60) totalMinutes = totalMinutes - 24 * 60;
-    const newH = Math.floor(totalMinutes / 60);
-    const newM = totalMinutes % 60;
-    setPickerValue(
-      `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`,
+  // Copia el horario de un día origen a varios días destino
+  const copyFromDay = (sourceKey: string, targetKeys: string[]) => {
+    const source = hours.find((h) => h.dayKey === sourceKey);
+    if (!source) return;
+    setHours((prev) =>
+      prev.map((h) =>
+        targetKeys.includes(h.dayKey)
+          ? {
+              ...h,
+              isOpen: source.isOpen,
+              morning: { ...source.morning },
+              hasEvening: source.hasEvening,
+              evening: { ...source.evening },
+            }
+          : h,
+      ),
     );
     Haptics.selectionAsync();
+    showToast("Horario copiado", "success");
   };
 
-  // Quick presets según si es apertura o cierre
-  const getQuickPresets = (field: "open" | "close"): string[] => {
-    if (field === "open") return ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "16:00", "18:00", "20:00"];
-    return ["12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00", "23:30", "00:00", "01:00", "02:00"];
-  };
+  const copyAllDays = () =>
+    copyFromDay(
+      "monday",
+      DAYS.map((d) => d.key).filter((k) => k !== "monday"),
+    );
+  const copyWeekdays = () =>
+    copyFromDay("monday", ["tuesday", "wednesday", "thursday", "friday"]);
 
   const saveHours = async () => {
     if (!selectedBusinessId) return;
@@ -259,6 +325,7 @@ export default function BusinessHoursScreen() {
         businessId: selectedBusinessId,
         hours: hoursObject,
       });
+      setSavedSnapshot(JSON.stringify(hours));
       showToast("Horarios guardados correctamente", "success");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
@@ -396,6 +463,48 @@ export default function BusinessHoursScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Acciones rápidas en bloque */}
+        <View style={styles.bulkRow}>
+          <Pressable
+            onPress={copyAllDays}
+            style={[
+              styles.bulkBtn,
+              { backgroundColor: ComeYaColors.primary + "15" },
+            ]}
+          >
+            <Feather name="copy" size={14} color={ComeYaColors.primary} />
+            <ThemedText
+              type="small"
+              style={{
+                color: ComeYaColors.primary,
+                fontWeight: "600",
+                marginLeft: 4,
+              }}
+            >
+              Copiar Lunes a todos los días
+            </ThemedText>
+          </Pressable>
+          <Pressable
+            onPress={copyWeekdays}
+            style={[
+              styles.bulkBtn,
+              { backgroundColor: ComeYaColors.primary + "15" },
+            ]}
+          >
+            <Feather name="copy" size={14} color={ComeYaColors.primary} />
+            <ThemedText
+              type="small"
+              style={{
+                color: ComeYaColors.primary,
+                fontWeight: "600",
+                marginLeft: 4,
+              }}
+            >
+              Copiar a laborables (L–V)
+            </ThemedText>
+          </Pressable>
+        </View>
+
         {hours.map((hour, index) => (
           <View
             key={hour.dayKey}
@@ -520,6 +629,32 @@ export default function BusinessHoursScreen() {
                     </View>
                   </View>
                 )}
+
+                <View style={styles.previewRow}>
+                  <Feather name="calendar" size={13} color={theme.textSecondary} />
+                  <ThemedText
+                    type="caption"
+                    style={{
+                      color: theme.textSecondary,
+                      marginLeft: 4,
+                      flex: 1,
+                    }}
+                  >
+                    Reservas: {dayPreview(hour)}
+                  </ThemedText>
+                </View>
+
+                {dayWarnings(hour).map((w) => (
+                  <View key={w} style={styles.warningRow}>
+                    <Feather name="alert-triangle" size={13} color="#F59E0B" />
+                    <ThemedText
+                      type="caption"
+                      style={{ color: "#F59E0B", marginLeft: 4, flex: 1 }}
+                    >
+                      {w}
+                    </ThemedText>
+                  </View>
+                ))}
               </>
             )}
 
@@ -533,7 +668,32 @@ export default function BusinessHoursScreen() {
             )}
           </View>
         ))}
+      </ScrollView>
 
+      {/* Barra de guardado siempre visible */}
+      <View
+        style={[
+          styles.saveBar,
+          {
+            backgroundColor: theme.card,
+            borderTopColor: theme.border,
+            paddingBottom: Math.max(insets.bottom, Spacing.md),
+          },
+        ]}
+      >
+        {dirty ? (
+          <ThemedText
+            type="caption"
+            style={{
+              color: "#F59E0B",
+              fontWeight: "700",
+              textAlign: "center",
+              marginBottom: Spacing.xs,
+            }}
+          >
+            ● Cambios sin guardar
+          </ThemedText>
+        ) : null}
         <Pressable
           onPress={saveHours}
           disabled={saving}
@@ -553,9 +713,9 @@ export default function BusinessHoursScreen() {
             </ThemedText>
           )}
         </Pressable>
-      </ScrollView>
+      </View>
 
-      {/* ─── TIME PICKER MODAL (estilo simple con input + botones +/-) ─── */}
+      {/* ─── TIME PICKER MODAL ─── */}
       <Modal
         visible={pickerVisible}
         transparent
@@ -570,77 +730,65 @@ export default function BusinessHoursScreen() {
             style={[styles.pickerCard, { backgroundColor: theme.card }]}
             onPress={() => {}} // Evita cerrar al tocar dentro
           >
-            <ThemedText type="h4" style={{ textAlign: "center", marginBottom: Spacing.lg }}>
+            <ThemedText type="h4" style={{ textAlign: "center", marginBottom: Spacing.md }}>
               {pickerTarget?.field === "open" ? "Hora de apertura" : "Hora de cierre"}
             </ThemedText>
 
-            {/* Display grande de la hora con botones +/- */}
-            <View style={styles.timeAdjustRow}>
-              <Pressable
-                onPress={() => adjustTime(-1)}
-                style={[styles.adjustBtn, { backgroundColor: theme.backgroundSecondary }]}
-              >
-                <Feather name="minus" size={28} color={theme.text} />
-              </Pressable>
-
-              <View style={styles.timeDisplayContainer}>
-                <TextInput
-                  value={pickerValue}
-                  onChangeText={(t) => {
-                    const clean = t.replace(/[^0-9:]/g, "").slice(0, 5);
-                    setPickerValue(clean);
-                  }}
-                  style={[styles.timeDisplay, { color: theme.text, borderColor: ComeYaColors.primary }]}
-                  keyboardType="numeric"
-                  maxLength={5}
-                  placeholder="09:00"
-                  placeholderTextColor={theme.textSecondary}
-                  selectTextOnFocus
-                />
-              </View>
-
-              <Pressable
-                onPress={() => adjustTime(1)}
-                style={[styles.adjustBtn, { backgroundColor: theme.backgroundSecondary }]}
-              >
-                <Feather name="plus" size={28} color={theme.text} />
-              </Pressable>
+            {/* Reloj nativo con ruedas para elegir hora y minutos */}
+            <View style={styles.wheelWrap}>
+              <DateTimePicker
+                value={pickerDate}
+                mode="time"
+                is24Hour
+                display="spinner"
+                minuteInterval={5}
+                onChange={(event: any, date?: Date) => {
+                  if (event.type === "dismissed") {
+                    setPickerVisible(false);
+                    return;
+                  }
+                  if (date) {
+                    setPickerDate(date);
+                    const hh = String(date.getHours()).padStart(2, "0");
+                    const mm = String(date.getMinutes()).padStart(2, "0");
+                    setPickerValue(`${hh}:${mm}`);
+                  }
+                }}
+              />
             </View>
 
-            <ThemedText type="caption" style={{ color: theme.textSecondary, textAlign: "center", marginBottom: Spacing.lg }}>
-              Escribe la hora o usa los botones +/- (saltos de 30 min)
-            </ThemedText>
-
-            {/* Quick presets */}
-            <View style={styles.quickPresetsRow}>
-              {getQuickPresets(pickerTarget?.field || "open").map((t) => (
-                <Pressable
-                  key={t}
-                  onPress={() => {
-                    setPickerValue(t);
-                    Haptics.selectionAsync();
-                  }}
-                  style={[
-                    styles.presetChip,
-                    {
-                      backgroundColor:
-                        pickerValue === t ? ComeYaColors.primary : theme.backgroundSecondary,
-                      borderColor:
-                        pickerValue === t ? ComeYaColors.primary : theme.border,
-                    },
-                  ]}
-                >
-                  <ThemedText
-                    type="small"
-                    style={{
-                      color: pickerValue === t ? "#FFF" : theme.text,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {t}
-                  </ThemedText>
-                </Pressable>
-              ))}
+            {/* Entrada manual para minutos exactos */}
+            <View style={styles.manualRow}>
+              <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+                O escribe la hora exacta:
+              </ThemedText>
+              <TextInput
+                value={pickerValue}
+                onChangeText={(t) => {
+                  const clean = t.replace(/[^0-9:]/g, "").slice(0, 5);
+                  setPickerValue(clean);
+                  const [h, m] = clean.split(":");
+                  if (h && m !== undefined) {
+                    const d = new Date(pickerDate);
+                    d.setHours(
+                      Math.min(parseInt(h, 10) || 0, 23),
+                      Math.min(parseInt(m, 10) || 0, 59),
+                      0,
+                      0,
+                    );
+                    setPickerDate(d);
+                  }
+                }}
+                style={[
+                  styles.manualInput,
+                  { color: theme.text, borderColor: theme.border },
+                ]}
+                keyboardType="numeric"
+                maxLength={5}
+                placeholder="09:00"
+                placeholderTextColor={theme.textSecondary}
+                selectTextOnFocus
+              />
             </View>
 
             <View style={styles.pickerButtons}>
@@ -677,9 +825,12 @@ function TimeButton({ label, value, onPress, theme }: any) {
       <ThemedText type="caption" style={{ color: theme.textSecondary }}>
         {label}
       </ThemedText>
-      <ThemedText type="body" style={{ fontWeight: "700", color: theme.text }}>
-        {value}
-      </ThemedText>
+      <View style={styles.timeBtnValueRow}>
+        <Feather name="clock" size={14} color={ComeYaColors.primary} />
+        <ThemedText style={{ fontWeight: "700", color: theme.text, fontSize: 16 }}>
+          {value}
+        </ThemedText>
+      </View>
     </Pressable>
   );
 }
@@ -714,7 +865,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
   },
-  scrollContent: { padding: Spacing.lg, paddingBottom: 100 },
+  scrollContent: { padding: Spacing.lg, paddingBottom: Spacing.xl },
+  bulkRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  bulkBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.full,
+  },
   dayCard: {
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
@@ -743,17 +908,40 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: "center",
   },
+  timeBtnValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
   addShiftBtn: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: Spacing.md,
     paddingVertical: Spacing.xs,
   },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(128,128,128,0.15)",
+  },
+  warningRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: Spacing.xs,
+  },
+  saveBar: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+  },
   saveButton: {
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     alignItems: "center",
-    marginTop: Spacing.lg,
   },
   // ── PICKER MODAL ──
   pickerOverlay: {
@@ -766,48 +954,32 @@ const styles = StyleSheet.create({
   pickerCard: {
     width: "100%",
     maxWidth: 400,
+    maxHeight: "88%",
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
   },
-  timeAdjustRow: {
+  wheelWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  manualRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  adjustBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  timeDisplayContainer: {
-    alignItems: "center",
-  },
-  timeDisplay: {
-    fontSize: 48,
-    fontWeight: "800",
-    letterSpacing: 4,
-    textAlign: "center",
-    borderBottomWidth: 3,
-    paddingBottom: 4,
-    minWidth: 160,
-    fontVariant: ["tabular-nums"],
-  },
-  quickPresetsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: Spacing.sm,
-    justifyContent: "center",
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.md,
   },
-  presetChip: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.full,
+  manualInput: {
     borderWidth: 1.5,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    fontSize: 18,
+    fontWeight: "700",
+    minWidth: 90,
+    textAlign: "center",
+    fontVariant: ["tabular-nums"],
   },
   pickerButtons: {
     flexDirection: "row",
