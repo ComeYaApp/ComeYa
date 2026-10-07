@@ -18,11 +18,11 @@ export default {
         ios: {
       supportsTablet: true,
       bundleIdentifier: "com.comeya.app",
-      // Versionado local: el build 21 de la 1.0.16 ya está en App Store
-      // Connect, así que este envío (propinas, repartidor, tiempos ETA y
-      // sesión del negocio) es el build 22 de la MISMA versión.
+      // Versionado local: el build 22 de la 1.0.16 está en App Store
+      // Connect ("Lista para enviar"), así que este envío es el build 23
+      // de la MISMA versión.
       // Cada build nuevo sube SOLO este número; el version no se toca.
-      buildNumber: "22",
+      buildNumber: "23",
       config: {
         // ComeYa iOS Key (Maps SDK for iOS, restringida al bundle
         // com.comeya.app). Sin esta clave el SDK de Google pinta un mapa
