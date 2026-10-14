@@ -149,6 +149,7 @@ export default function LocationPickerScreen() {
         <WebMapFallback location={location} />
       ) : MapView ? (
         <MapView
+          toolbarEnabled={false}
           provider={effectiveMapProvider(PROVIDER_GOOGLE)}
           style={styles.map}
           initialRegion={{

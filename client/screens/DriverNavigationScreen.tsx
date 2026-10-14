@@ -492,6 +492,7 @@ export default function DriverNavigationScreen() {
     <View style={styles.container}>
       {/* Mapa */}
       <MapView
+        toolbarEnabled={false}
         ref={mapRef}
         style={styles.map}
         provider={effectiveMapProvider(PROVIDER_GOOGLE)}

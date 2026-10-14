@@ -516,6 +516,7 @@ export default function BusinessMapScreen() {
     <View style={styles.container}>
       {/* Mapa */}
       <MapView
+        toolbarEnabled={false}
         ref={mapRef}
         provider={effectiveMapProvider(ProviderGoogle)}
         style={StyleSheet.absoluteFillObject}

@@ -381,6 +381,7 @@ const WebMap = ({
 
     return (
       <MapView
+        toolbarEnabled={false}
         ref={mapRef}
         provider={effectiveMapProvider(PROVIDER_GOOGLE)}
         style={styles.map}

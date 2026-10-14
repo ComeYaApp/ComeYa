@@ -343,6 +343,7 @@ export default function BusinessDeliveryMapScreen() {
       {/* Map */}
       <View style={styles.mapContainer}>
         <MapView
+          toolbarEnabled={false}
           ref={mapRef}
           style={styles.map}
           provider={effectiveMapProvider(PROVIDER_GOOGLE)}

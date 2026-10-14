@@ -379,6 +379,7 @@ export function CollapsibleMap({
       <View style={styles.mapContainer}>
         {mapAvailable && hasAnyLocation ? (
           <MapView
+            toolbarEnabled={false}
             ref={mapRef}
             provider={effectiveMapProvider(PROVIDER_GOOGLE)}
             style={styles.map}

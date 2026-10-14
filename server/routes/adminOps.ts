@@ -337,4 +337,75 @@ router.get(
   },
 );
 
+// ─── GET /api/admin/ops/summary-7d ───────────────────────────────────────────
+// Resumen de actividad de los últimos 7 días con comparativa vs los 7
+// anteriores (para el widget "Resumen de la actividad" del Centro de
+// Operaciones, como en la propuesta del cliente).
+router.get(
+  "/ops/summary-7d",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const [rows] = (await db.execute(sql`
+        SELECT
+          (SELECT COUNT(*) FROM orders
+            WHERE created_at >= CURDATE() - INTERVAL 6 DAY) AS orders_7d,
+          (SELECT COUNT(*) FROM orders
+            WHERE created_at >= CURDATE() - INTERVAL 13 DAY
+              AND created_at < CURDATE() - INTERVAL 6 DAY) AS orders_prev,
+          (SELECT COUNT(DISTINCT user_id) FROM orders
+            WHERE created_at >= CURDATE() - INTERVAL 6 DAY) AS users_7d,
+          (SELECT COUNT(DISTINCT user_id) FROM orders
+            WHERE created_at >= CURDATE() - INTERVAL 13 DAY
+              AND created_at < CURDATE() - INTERVAL 6 DAY) AS users_prev,
+          (SELECT COALESCE(SUM(total), 0) FROM orders
+            WHERE status = 'delivered'
+              AND delivered_at >= CURDATE() - INTERVAL 6 DAY) AS revenue_7d,
+          (SELECT COALESCE(SUM(total), 0) FROM orders
+            WHERE status = 'delivered'
+              AND delivered_at >= CURDATE() - INTERVAL 13 DAY
+              AND delivered_at < CURDATE() - INTERVAL 6 DAY) AS revenue_prev,
+          (SELECT COUNT(*) FROM order_issues
+            WHERE status IN ('open', 'in_review')) AS reports_open,
+          (SELECT COUNT(*) FROM order_issues
+            WHERE created_at >= CURDATE() - INTERVAL 6 DAY) AS reports_7d,
+          (SELECT COUNT(*) FROM order_issues
+            WHERE created_at >= CURDATE() - INTERVAL 13 DAY
+              AND created_at < CURDATE() - INTERVAL 6 DAY) AS reports_prev
+      `)) as any;
+
+      const row = (rows as any[])[0] || {};
+      const pct = (value: number, prev: number): number | null =>
+        prev > 0 ? Math.round(((value - prev) / prev) * 1000) / 10 : null;
+
+      const orders = Number(row.orders_7d) || 0;
+      const users = Number(row.users_7d) || 0;
+      const revenue = Number(row.revenue_7d) || 0;
+      const reportsOpen = Number(row.reports_open) || 0;
+
+      res.json({
+        success: true,
+        window: 7,
+        orders: { value: orders, pct: pct(orders, Number(row.orders_prev) || 0) },
+        users: { value: users, pct: pct(users, Number(row.users_prev) || 0) },
+        revenue: {
+          value: revenue,
+          pct: pct(revenue, Number(row.revenue_prev) || 0),
+        },
+        reportsOpen,
+        reports: {
+          value: Number(row.reports_7d) || 0,
+          pct: pct(
+            Number(row.reports_7d) || 0,
+            Number(row.reports_prev) || 0,
+          ),
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
 export default router;

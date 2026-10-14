@@ -14,7 +14,6 @@ import ProfileStackNavigatorWeb from "@/navigation/ProfileStackNavigator.web";
 import GuestProfileScreen from "@/screens/GuestProfileScreen";
 import BusinessMapScreen from "@/screens/BusinessMapScreen";
 import AdminDashboardScreen from "@/screens/AdminDashboardScreen.web";
-import AdminMapScreen from "@/screens/AdminOpsCenterScreen.web";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import DriverDashboardScreen from "@/screens/DriverDashboardScreen.web";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -378,6 +377,10 @@ export default function MainTabNavigator() {
 
       {isAdmin && (
         <>
+          {/* Una sola pestaña para el admin: el "Panel Admin" YA incluye el
+              Centro de Operaciones con el mapa en vivo como pantalla de
+              inicio. Antes había una pestaña "Mapa GPS" que renderizaba el
+              mismo panel duplicado. */}
           <Tab.Screen
             name="DashboardTab"
             component={AdminDashboardScreen}
@@ -385,16 +388,6 @@ export default function MainTabNavigator() {
               title: "Panel Admin",
               tabBarIcon: ({ color, size }) => (
                 <Feather name="bar-chart-2" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="MapTab"
-            component={AdminMapScreen}
-            options={{
-              title: "Mapa GPS",
-              tabBarIcon: ({ color, size }) => (
-                <Feather name="map" size={size} color={color} />
               ),
             }}
           />

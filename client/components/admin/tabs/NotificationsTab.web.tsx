@@ -14,51 +14,13 @@ import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { apiRequest } from "@/lib/query-client";
 import { AdminSection } from "@/components/admin/AdminShell.web";
+import {
+  LEVEL_META,
+  notifIcon,
+  timeAgo,
+} from "@/components/admin/notificationMeta";
 
 const PRIMARY = "#E60000";
-
-const LEVEL_META: Record<string, { label: string; color: string }> = {
-  critical: { label: "Crítico", color: "#EF4444" },
-  high: { label: "Importante", color: "#F59E0B" },
-  medium: { label: "Info", color: "#3B82F6" },
-};
-
-const TYPE_ICON: Record<string, string> = {
-  new_order: "shopping-bag",
-  new_registration: "user-plus",
-  new_delivery_verification: "user-check",
-  driver_data_updated: "truck",
-  driver_document_updated: "file-text",
-  document_updated: "file-text",
-  new_proof: "file-text",
-  new_fee_proof: "calendar",
-  new_payout: "send",
-  new_ticket: "message-circle",
-  new_issue: "alert-circle",
-  fraud: "alert-octagon",
-  order_stuck: "clock",
-  ops_no_driver: "clock",
-  ops_no_response: "bell-off",
-  ops_stale_gps: "wifi-off",
-  ops_too_long: "alert-triangle",
-  cancellation_refund: "rotate-ccw",
-  refund_failed: "alert-triangle",
-  chargeback: "alert-octagon",
-  new_subscription: "star",
-};
-
-function timeAgo(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return `hace ${diff}s`;
-  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
-  return new Date(iso).toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 interface Props {
   onNavigate?: (s: AdminSection) => void;
@@ -180,7 +142,7 @@ export const NotificationsTab: React.FC<Props> = ({ onNavigate }) => {
         >
           {filtered.map((n) => {
             const meta = LEVEL_META[n.severity] || LEVEL_META.medium;
-            const icon = TYPE_ICON[n.type] || "bell";
+            const icon = notifIcon(n.type);
             const unreadItem = !n.readAt;
             return (
               <View

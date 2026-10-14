@@ -183,6 +183,7 @@ export default function PublicTrackingScreen() {
             style={[s.mapWrap, { backgroundColor: theme.backgroundSecondary }]}
           >
             <MapView
+              toolbarEnabled={false}
               provider={effectiveMapProvider(PROVIDER_GOOGLE)}
               style={s.map}
               initialRegion={{

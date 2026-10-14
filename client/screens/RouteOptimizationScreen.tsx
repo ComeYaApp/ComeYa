@@ -342,6 +342,7 @@ export default function RouteOptimizationScreen({ navigation }: any) {
 
           <View style={styles.mapContainer}>
             <MapView
+              toolbarEnabled={false}
               provider={effectiveMapProvider(PROVIDER_GOOGLE)}
               style={styles.map}
               initialRegion={{

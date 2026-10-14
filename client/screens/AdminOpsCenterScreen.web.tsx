@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   TextInput,
+  useWindowDimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
@@ -33,6 +34,13 @@ import {
   vehicleMarkerMeta,
   CUSTOMER_MARKER,
 } from "@/utils/markerMeta";
+import {
+  LEVEL_META,
+  ALERT_TYPE_META,
+  notifIcon,
+  timeAgo,
+} from "@/components/admin/notificationMeta";
+import { onAdminRealtimeEvent } from "@/services/adminRealtime";
 
 const SORIA = { lat: 41.7636, lng: -2.4677 };
 
@@ -151,6 +159,13 @@ export default function AdminOpsCenterScreen() {
   const [silencedMsg, setSilencedMsg] = useState<string | null>(null);
   const [driverBusy, setDriverBusy] = useState(false);
   const [bizBusy, setBizBusy] = useState(false);
+  // "Actividad en tiempo real" (feed de avisos) + resumen 7 días + enlace de
+  // seguimiento mostrado EN LA APP (sin abrir pestañas externas)
+  const [activity, setActivity] = useState<any[]>([]);
+  const [summary7d, setSummary7d] = useState<any>(null);
+  const [trackingLink, setTrackingLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const { width: winWidth } = useWindowDimensions();
 
   const {
     kpis,
@@ -622,13 +637,57 @@ export default function AdminOpsCenterScreen() {
       const res = await apiRequest("POST", `/api/gps/tracking-token/${orderId}`);
       const data = await res.json();
       if (data.trackingUrl) {
-        window.open(data.trackingUrl, "_blank");
+        // Se muestra DENTRO de la app con botón copiar: sin abrir pestañas
+        // ni apps externas (el enlace se comparte por WhatsApp/teléfono)
+        setCopied(false);
+        setTrackingLink(data.trackingUrl);
       } else {
         setActionMsg("No se pudo generar el enlace de seguimiento");
       }
     } catch {
       setActionMsg("No se pudo generar el enlace de seguimiento");
     }
+  }, []);
+
+  // ── Actividad en tiempo real: avisos del servidor + socket ──
+  const loadActivity = useCallback(async () => {
+    try {
+      const res = await apiRequest("GET", "/api/admin/notifications?limit=15");
+      const json = await res.json();
+      if (json?.notifications) setActivity(json.notifications);
+    } catch {
+      /*silencioso*/
+    }
+  }, []);
+
+  const loadSummary = useCallback(async () => {
+    try {
+      const res = await apiRequest("GET", "/api/admin/ops/summary-7d");
+      const json = await res.json();
+      if (json?.success) setSummary7d(json);
+    } catch {
+      /*silencioso*/
+    }
+  }, []);
+
+  useEffect(() => {
+    loadActivity();
+    loadSummary();
+    const t1 = setInterval(loadActivity, 60_000);
+    const t2 = setInterval(loadSummary, 5 * 60_000);
+    return () => {
+      clearInterval(t1);
+      clearInterval(t2);
+    };
+  }, [loadActivity, loadSummary]);
+
+  // Llegada en vivo: prepend del aviso nuevo al feed de actividad
+  useEffect(() => {
+    const unsub = onAdminRealtimeEvent("admin_notification", (payload: any) => {
+      if (!payload?.title) return;
+      setActivity((prev) => [payload, ...prev].slice(0, 20));
+    });
+    return unsub;
   }, []);
 
   // Silenciar una alerta de operación 30 minutos (persistido en servidor)
@@ -736,6 +795,19 @@ export default function AdminOpsCenterScreen() {
 
   const statusCounts = kpis?.byStatus || {};
 
+  // Rutas activas = pedidos ya en camino con repartidor asignado
+  const IN_TRANSIT_STATUSES = useMemo(
+    () => ["picked_up", "on_the_way", "in_transit", "arriving"],
+    [],
+  );
+  const transitOrders = useMemo(
+    () =>
+      orders.filter(
+        (o) => IN_TRANSIT_STATUSES.includes(o.status) && !!o.driver,
+      ),
+    [orders, IN_TRANSIT_STATUSES],
+  );
+
   return (
     <View style={[s.root, { backgroundColor: bg }]}>
       {/* ── Sidebar de operaciones ── */}
@@ -803,6 +875,7 @@ export default function AdminOpsCenterScreen() {
               bord={bord}
               text={text}
               sub={sub}
+              hint="en curso"
             />
             <Kpi
               label="Sin repartidor"
@@ -812,6 +885,7 @@ export default function AdminOpsCenterScreen() {
               bord={bord}
               text={text}
               sub={sub}
+              hint="requieren asignación"
             />
             <Kpi
               label="Repartidores"
@@ -821,6 +895,7 @@ export default function AdminOpsCenterScreen() {
               bord={bord}
               text={text}
               sub={sub}
+              hint="disponibles ahora"
             />
             <Kpi
               label="Alertas"
@@ -830,6 +905,7 @@ export default function AdminOpsCenterScreen() {
               bord={bord}
               text={text}
               sub={sub}
+              hint="activas"
             />
             <Kpi
               label="Ingresos hoy"
@@ -839,6 +915,7 @@ export default function AdminOpsCenterScreen() {
               bord={bord}
               text={text}
               sub={sub}
+              hint="pedidos entregados"
             />
             <Kpi
               label="Tiempo medio"
@@ -852,6 +929,7 @@ export default function AdminOpsCenterScreen() {
               bord={bord}
               text={text}
               sub={sub}
+              hint="de entrega"
             />
           </View>
 
@@ -881,9 +959,42 @@ export default function AdminOpsCenterScreen() {
                       },
                     ]}
                   >
-                    <Text style={[s.caption, { color: text, fontWeight: "700" }]}>
-                      {a.businessName || "Negocio"} · {a.minutesActive ?? "?"} min
-                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <View
+                        style={[
+                          s.levelPill,
+                          {
+                            backgroundColor:
+                              (ALERT_TYPE_META[a.alerts[0]?.type]?.color ||
+                                "#F59E0B") + "22",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            fontWeight: "800",
+                            color:
+                              ALERT_TYPE_META[a.alerts[0]?.type]?.color ||
+                              "#F59E0B",
+                          }}
+                        >
+                          {ALERT_TYPE_META[a.alerts[0]?.type]?.label || "Media"}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[s.caption, { color: text, fontWeight: "700" }]}
+                      >
+                        {a.businessName || "Negocio"} · {a.minutesActive ?? "?"}{" "}
+                        min
+                      </Text>
+                    </View>
                     <Text style={[s.caption, { color: "#E60000" }]}>
                       {a.alerts.map((x: any) => `⚠️ ${x.message}`).join(" · ")}
                     </Text>
@@ -1096,6 +1207,51 @@ export default function AdminOpsCenterScreen() {
                 </Pressable>
               );
             })
+          )}
+
+          {/* Rutas activas: pedidos ya en camino con su fase y repartidor */}
+          {transitOrders.length > 0 && (
+            <>
+              <Text
+                style={[s.sectionLabel, { color: sub, marginTop: Spacing.md }]}
+              >
+                Rutas activas ({transitOrders.length})
+              </Text>
+              {transitOrders.map((o) => (
+                <Pressable
+                  key={`route-${o.id}`}
+                  onPress={() => focusOrder(o)}
+                  style={[
+                    s.orderRow,
+                    {
+                      borderBottomColor: bord,
+                      borderLeftWidth: 3,
+                      borderLeftColor: "#14B8A6",
+                    },
+                  ]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <View style={s.rowBetween}>
+                      <Text style={[s.orderId, { color: text }]}>
+                        {fmtNum(o)}
+                      </Text>
+                      <Text style={[s.caption, { color: "#14B8A6" }]}>
+                        {routePhaseForStatus(o.status) === "to_customer"
+                          ? "Hacia el cliente"
+                          : "Hacia el negocio"}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[s.caption, { color: sub }]}
+                      numberOfLines={1}
+                    >
+                      🛵 {o.driver?.name || "Sin repartidor"} ·{" "}
+                      {o.minutesActive ?? "?"} min · {o.business?.name || "—"}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </>
           )}
         </ScrollView>
       </View>
@@ -1480,6 +1636,236 @@ export default function AdminOpsCenterScreen() {
           <LegendRow color="#E60000" label="Alerta" />
         </View>
       </View>
+
+      {/* ── Columna derecha: actividad, resumen y estado (pantallas anchas) ── */}
+      {winWidth >= 1100 && (
+        <View
+          style={[s.rightCol, { backgroundColor: card, borderLeftColor: bord }]}
+        >
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Actividad en tiempo real (feed de avisos en vivo) */}
+            <View style={s.rightHeader}>
+              <Text style={[s.sectionLabel, { color: sub, marginTop: 0 }]}>
+                Actividad en tiempo real
+              </Text>
+              <View
+                style={[
+                  s.liveBadge,
+                  {
+                    backgroundColor: socketConnected ? "#22C55E18" : "#F59E0B18",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    s.liveDot,
+                    {
+                      backgroundColor: socketConnected ? "#22C55E" : "#F59E0B",
+                    },
+                  ]}
+                />
+                <Text
+                  style={{
+                    fontSize: 9,
+                    fontWeight: "800",
+                    color: socketConnected ? "#22C55E" : "#F59E0B",
+                  }}
+                >
+                  {socketConnected ? "EN VIVO" : "POLLING"}
+                </Text>
+              </View>
+            </View>
+            {activity.length === 0 ? (
+              <Text style={[s.caption, { color: sub, padding: Spacing.sm }]}>
+                Sin actividad reciente
+              </Text>
+            ) : (
+              activity.slice(0, 12).map((n: any, i: number) => {
+                const meta = LEVEL_META[n.severity] || LEVEL_META.medium;
+                return (
+                  <View
+                    key={n.id || i}
+                    style={[s.activityRow, { borderBottomColor: bord }]}
+                  >
+                    <View
+                      style={[
+                        s.activityIcon,
+                        { backgroundColor: meta.color + "18" },
+                      ]}
+                    >
+                      <Feather
+                        name={notifIcon(String(n.type)) as any}
+                        size={12}
+                        color={meta.color}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[s.caption, { color: text, fontWeight: "700" }]}
+                        numberOfLines={1}
+                      >
+                        {n.title}
+                      </Text>
+                      <Text
+                        style={[s.caption, { color: sub }]}
+                        numberOfLines={1}
+                      >
+                        {n.body}
+                      </Text>
+                    </View>
+                    <Text style={[s.caption, { color: sub, fontSize: 9 }]}>
+                      {timeAgo(n.createdAt || new Date())}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
+
+            {/* Resumen de la actividad (últimos 7 días) */}
+            <Text style={[s.sectionLabel, { color: sub }]}>
+              Resumen de la actividad (7 días)
+            </Text>
+            <View style={s.summaryGrid}>
+              <SummaryStat
+                label="Pedidos"
+                value={summary7d?.orders?.value ?? "—"}
+                pct={summary7d?.orders?.pct}
+                color="#6C5CE7"
+                card={card}
+                bord={bord}
+                text={text}
+                sub={sub}
+              />
+              <SummaryStat
+                label="Usuarios activos"
+                value={summary7d?.users?.value ?? "—"}
+                pct={summary7d?.users?.pct}
+                color="#10B981"
+                card={card}
+                bord={bord}
+                text={text}
+                sub={sub}
+              />
+              <SummaryStat
+                label="Ingresos"
+                value={euro(summary7d?.revenue?.value ?? 0)}
+                pct={summary7d?.revenue?.pct}
+                color="#F59E0B"
+                card={card}
+                bord={bord}
+                text={text}
+                sub={sub}
+              />
+              <SummaryStat
+                label="Reportes"
+                value={summary7d?.reports?.value ?? "—"}
+                pct={summary7d?.reports?.pct}
+                color="#EF4444"
+                card={card}
+                bord={bord}
+                text={text}
+                sub={sub}
+              />
+            </View>
+
+            {/* Estado del servicio */}
+            <Text style={[s.sectionLabel, { color: sub }]}>
+              Estado del servicio
+            </Text>
+            <ServiceRow
+              ok={socketConnected}
+              label="Señal en tiempo real"
+              detail={socketConnected ? "Conectado" : "Reintentando"}
+              text={text}
+              sub={sub}
+              bord={bord}
+            />
+            <ServiceRow
+              ok={(kpis?.drivers.online ?? 0) > 0}
+              label="Repartidores activos"
+              detail={`${kpis?.drivers.online ?? 0}/${kpis?.drivers.total ?? 0}`}
+              text={text}
+              sub={sub}
+              bord={bord}
+            />
+            <ServiceRow
+              ok={(kpis?.alertCount ?? 0) === 0}
+              label="Alertas activas"
+              detail={`${kpis?.alertCount ?? 0}`}
+              text={text}
+              sub={sub}
+              bord={bord}
+            />
+            <ServiceRow
+              ok
+              label="Tiempo medio de entrega"
+              detail={
+                kpis?.avgDeliveryMinutes != null
+                  ? `${kpis.avgDeliveryMinutes} min`
+                  : "—"
+              }
+              text={text}
+              sub={sub}
+              bord={bord}
+            />
+            <View style={{ height: 20 }} />
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Enlace de seguimiento EN LA APP (sin abrir apps/pestañas externas) */}
+      {trackingLink && (
+        <View style={s.modalOverlay}>
+          <View
+            style={[s.modalCard, { backgroundColor: card, borderColor: bord }]}
+          >
+            <View style={s.rowBetween}>
+              <Text style={[s.title, { color: text }]}>
+                Enlace de seguimiento
+              </Text>
+              <Pressable
+                onPress={() => setTrackingLink(null)}
+                style={s.iconBtn}
+              >
+                <Feather name="x" size={18} color={sub} />
+              </Pressable>
+            </View>
+            <Text style={[s.caption, { color: sub, marginTop: 4 }]}>
+              Compártelo con el cliente por WhatsApp o teléfono. El seguimiento
+              se muestra dentro de la propia app.
+            </Text>
+            <TextInput
+              value={trackingLink}
+              editable={false}
+              selectTextOnFocus
+              style={[s.linkInput, { color: text, borderColor: bord }]}
+            />
+            <View style={s.actionRow}>
+              <ActionBtn
+                icon={copied ? "check" : "copy"}
+                label={copied ? "Copiado" : "Copiar enlace"}
+                color="#10B981"
+                onPress={() => {
+                  try {
+                    (navigator as any)?.clipboard
+                      ?.writeText(trackingLink)
+                      .then(() => setCopied(true))
+                      .catch(() => setCopied(false));
+                  } catch {
+                    setCopied(false);
+                  }
+                }}
+              />
+              <ActionBtn
+                icon="x"
+                label="Cerrar"
+                color="#6B7280"
+                onPress={() => setTrackingLink(null)}
+              />
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -1492,6 +1878,7 @@ function Kpi({
   bord,
   text,
   sub,
+  hint,
 }: {
   label: string;
   value: any;
@@ -1500,6 +1887,7 @@ function Kpi({
   bord: string;
   text: string;
   sub: string;
+  hint?: string;
 }) {
   return (
     <View
@@ -1510,6 +1898,97 @@ function Kpi({
     >
       <Text style={[s.kpiValue, { color: text }]}>{value}</Text>
       <Text style={[s.kpiLabel, { color: sub }]}>{label}</Text>
+      {hint ? (
+        <Text style={[s.kpiHint, { color: sub }]}>{hint}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+// Estadística del "Resumen de la actividad" con su % vs los 7 días previos
+function SummaryStat({
+  label,
+  value,
+  pct,
+  color,
+  card,
+  bord,
+  text,
+  sub,
+}: {
+  label: string;
+  value: any;
+  pct: number | null | undefined;
+  color: string;
+  card: string;
+  bord: string;
+  text: string;
+  sub: string;
+}) {
+  const up = (pct ?? 0) >= 0;
+  return (
+    <View style={[s.summaryStat, { backgroundColor: card, borderColor: bord }]}>
+      <Text style={[s.caption, { color: sub }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={{ color: text, fontSize: 16, fontWeight: "800", marginTop: 2 }}>
+        {value}
+      </Text>
+      {pct != null ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginTop: 2 }}>
+          <Feather
+            name={up ? "trending-up" : "trending-down"}
+            size={11}
+            color={up ? "#10B981" : "#EF4444"}
+          />
+          <Text
+            style={{
+              fontSize: 10,
+              fontWeight: "700",
+              color: up ? "#10B981" : "#EF4444",
+            }}
+          >
+            {up ? "+" : ""}
+            {pct}%
+          </Text>
+        </View>
+      ) : (
+        <Text style={[s.caption, { color: sub, fontSize: 9, marginTop: 2 }]}>
+          sin datos previos
+        </Text>
+      )}
+      <View style={[s.summaryBar, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+// Fila del panel "Estado del servicio"
+function ServiceRow({
+  ok,
+  label,
+  detail,
+  text,
+  sub,
+  bord,
+}: {
+  ok: boolean;
+  label: string;
+  detail: string;
+  text: string;
+  sub: string;
+  bord: string;
+}) {
+  return (
+    <View style={[s.serviceRow, { borderBottomColor: bord }]}>
+      <Feather
+        name={ok ? "check-circle" : "alert-circle"}
+        size={13}
+        color={ok ? "#10B981" : "#F59E0B"}
+      />
+      <Text style={[s.caption, { color: text, flex: 1 }]} numberOfLines={1}>
+        {label}
+      </Text>
+      <Text style={[s.caption, { color: sub }]}>{detail}</Text>
     </View>
   );
 }
@@ -1698,4 +2177,106 @@ const s = StyleSheet.create({
   legendRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 9, height: 9, borderRadius: 5 },
   legendTxt: { fontSize: 10, color: "#888" },
+  // Sub-etiqueta de los KPIs
+  kpiHint: { fontSize: 9, marginTop: 1, opacity: 0.8 },
+  // Chip de severidad de las alertas
+  levelPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  // Columna derecha (Actividad / Resumen / Estado del servicio)
+  rightCol: {
+    width: 320,
+    borderLeftWidth: 1,
+  },
+  rightHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.sm,
+    paddingTop: Spacing.sm,
+  },
+  liveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  activityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  activityIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  summaryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: Spacing.sm,
+    gap: 6,
+  },
+  summaryStat: {
+    width: "48%",
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    overflow: "hidden",
+  },
+  summaryBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    opacity: 0.7,
+  } as any,
+  serviceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  // Modal interno (enlace de seguimiento)
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "#00000066",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10000,
+  } as any,
+  modalCard: {
+    width: 460,
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  linkInput: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    fontSize: 11,
+    marginTop: Spacing.sm,
+  },
 });

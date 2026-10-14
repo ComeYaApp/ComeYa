@@ -25,6 +25,12 @@ import {
 } from "@/utils/directions";
 import { routePhaseForStatus } from "@/utils/routePhase";
 import { displayOrderNumber } from "@/utils/orderNumber";
+import {
+  LEVEL_META,
+  notifIcon,
+  timeAgo,
+} from "@/components/admin/notificationMeta";
+import { onAdminRealtimeEvent } from "@/services/adminRealtime";
 import { SmartMarker } from "@/components/map/SmartMarker";
 import { MapPin } from "@/components/map/MapPin";
 import { DriverPin } from "@/components/map/DriverPin";
@@ -72,6 +78,9 @@ export default function AdminMapScreen() {
   const [selected, setSelected] = useState<OpsOrder | null>(null);
   const [nearby, setNearby] = useState<any[] | null>(null);
   const [assigning, setAssigning] = useState(false);
+  // Panel interno "Actividad en tiempo real" (avisos del servidor + socket)
+  const [showActivity, setShowActivity] = useState(false);
+  const [activity, setActivity] = useState<any[]>([]);
   // Ruta REAL por calles del pedido seleccionado (nunca línea recta)
   const [selectedRoute, setSelectedRoute] = useState<RouteCoordinate[]>([]);
   const lastSelRouteRef = useRef<{
@@ -91,6 +100,33 @@ export default function AdminMapScreen() {
     updatedAt,
     refresh,
   } = useAdminOps(15000);
+
+  // Actividad en tiempo real: historial del servidor + llegada en vivo
+  const loadActivity = useCallback(async () => {
+    try {
+      const res = await apiRequest("GET", "/api/admin/notifications?limit=15");
+      const json = await res.json();
+      if (json?.notifications) setActivity(json.notifications);
+    } catch {
+      /*silencioso*/
+    }
+  }, []);
+
+  useEffect(() => {
+    loadActivity();
+    const t = setInterval(loadActivity, 60_000);
+    const unsub = onAdminRealtimeEvent(
+      "admin_notification",
+      (payload: any) => {
+        if (!payload?.title) return;
+        setActivity((prev) => [payload, ...prev].slice(0, 20));
+      },
+    );
+    return () => {
+      clearInterval(t);
+      unsub();
+    };
+  }, [loadActivity]);
 
   const visibleOrders = useMemo(
     () => (filter === "alerts" ? orders.filter((o) => o.alerts.length > 0) : orders),
@@ -282,6 +318,7 @@ export default function AdminMapScreen() {
   return (
     <View style={{ flex: 1 }}>
       <MapView
+        toolbarEnabled={false}
         ref={mapRef}
         provider={effectiveMapProvider(PROVIDER_GOOGLE)}
         style={{ flex: 1 }}
@@ -427,6 +464,12 @@ export default function AdminMapScreen() {
               </Text>
             </View>
           </View>
+          <TouchableOpacity
+            onPress={() => setShowActivity((v) => !v)}
+            style={s.iconBtn}
+          >
+            <Feather name="bell" size={17} color={ComeYaColors.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={refresh} style={s.iconBtn}>
             <Feather name="refresh-cw" size={17} color={ComeYaColors.primary} />
           </TouchableOpacity>
@@ -666,6 +709,107 @@ export default function AdminMapScreen() {
           </Text>
         </TouchableOpacity>
       )}
+
+      {/* Panel interno de Actividad en tiempo real (sin salir de la app) */}
+      {showActivity && (
+        <View
+          style={[
+            s.activityPanel,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              top: insets.top + 108,
+            },
+            Shadows.md,
+          ]}
+        >
+          <View style={[s.activityHeader, { borderBottomColor: theme.border }]}>
+            <Text style={[s.title, { color: theme.text, fontSize: 15 }]}>
+              Actividad en tiempo real
+            </Text>
+            <View style={s.liveRow}>
+              <View
+                style={[
+                  s.liveDot,
+                  { backgroundColor: socketConnected ? "#22C55E" : "#F59E0B" },
+                ]}
+              />
+              <Text style={[s.caption, { color: theme.textSecondary }]}>
+                {socketConnected ? "En vivo" : "Actualizando"}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowActivity(false)}
+              style={s.iconBtn}
+            >
+              <Feather name="x" size={17} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ maxHeight: 400 }}>
+            {activity.length === 0 ? (
+              <Text
+                style={[
+                  s.caption,
+                  { color: theme.textSecondary, padding: Spacing.md },
+                ]}
+              >
+                Sin actividad reciente
+              </Text>
+            ) : (
+              activity.slice(0, 15).map((n: any, i: number) => {
+                const meta = LEVEL_META[n.severity] || LEVEL_META.medium;
+                return (
+                  <View
+                    key={n.id || i}
+                    style={[
+                      s.activityRow,
+                      { borderBottomColor: theme.border },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        s.activityIcon,
+                        { backgroundColor: meta.color + "18" },
+                      ]}
+                    >
+                      <Feather
+                        name={notifIcon(String(n.type)) as any}
+                        size={13}
+                        color={meta.color}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          s.caption,
+                          { color: theme.text, fontWeight: "700" },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {n.title}
+                      </Text>
+                      <Text
+                        style={[s.caption, { color: theme.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {n.body}
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        s.caption,
+                        { color: theme.textSecondary, fontSize: 9 },
+                      ]}
+                    >
+                      {timeAgo(n.createdAt || new Date())}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
@@ -724,6 +868,39 @@ const s = StyleSheet.create({
   liveRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
   liveDot: { width: 7, height: 7, borderRadius: 4 },
   iconBtn: { padding: 8 },
+  // Panel flotante de Actividad en tiempo real
+  activityPanel: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    overflow: "hidden",
+    zIndex: 60,
+  } as any,
+  activityHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+  },
+  activityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  activityIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   kpiChip: {
     paddingHorizontal: 10,
     paddingVertical: 5,

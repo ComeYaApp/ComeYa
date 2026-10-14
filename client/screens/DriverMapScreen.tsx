@@ -404,6 +404,7 @@ export default function DriverMapScreen() {
   return (
     <View style={styles.container}>
       <MapView
+        toolbarEnabled={false}
         ref={mapRef}
         style={styles.map}
         provider={effectiveMapProvider(PROVIDER_GOOGLE)}
