@@ -713,6 +713,37 @@ export const pushTokens = mysqlTable("push_tokens", {
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Centro de avisos del admin: historial PERSISTENTE de notificaciones del
+// panel (antes solo había campana en memoria). entityKey permite deduplicar
+// alertas derivadas (p.ej. ops_no_driver:<orderId>) y resolved_at marca
+// cuándo dejó de aplicar la condición.
+export const adminNotifications = mysqlTable("admin_notifications", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  type: varchar("type", { length: 60 }).notNull(),
+  severity: varchar("severity", { length: 10 }).notNull().default("medium"),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  section: varchar("section", { length: 50 }),
+  data: text("data"),
+  entityKey: varchar("entity_key", { length: 255 }),
+  readAt: timestamp("read_at"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Alertas de operación silenciadas por el admin durante un rato
+export const adminAlertMutes = mysqlTable("admin_alert_mutes", {
+  id: varchar("id", { length: 255 })
+    .primaryKey()
+    .default(sql`(UUID())`),
+  orderId: varchar("order_id", { length: 255 }).notNull(),
+  alertType: varchar("alert_type", { length: 40 }).notNull(),
+  mutedUntil: timestamp("muted_until").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Scheduled Orders - Pedidos programados
 export const scheduledOrders = mysqlTable("scheduled_orders", {
   id: varchar("id", { length: 255 })

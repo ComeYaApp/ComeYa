@@ -804,23 +804,9 @@ router.post(
       } catch {}
 
       // El admin debe enterarse de cada nueva suscripción (feedback del
-      // cliente): push a todos los admins
+      // cliente): aviso unificado (historial + socket + push)
       try {
-        const { users } = await import("@shared/schema-mysql");
-        const { inArray } = await import("drizzle-orm");
-        const admins = await db
-          .select({ id: users.id, name: users.name })
-          .from(users)
-          .where(inArray(users.role as any, ["admin", "super_admin"]));
-        const { sendPushToUser } = await import("../enhancedPushService");
         const { notifyAdminNewSubscription } = await import("../websocket");
-        for (const admin of admins) {
-          await sendPushToUser(admin.id, {
-            title: "💳 Nueva suscripción activada",
-            body: `${sub.plan} — usuario ${sub.userId.slice(0, 8)}… pagó y activó su plan.`,
-            data: { screen: "AdminDashboard", section: "subscriptions" },
-          });
-        }
         notifyAdminNewSubscription?.(sub);
       } catch (notifyErr) {
         console.error("Error notifying admins about subscription:", notifyErr);

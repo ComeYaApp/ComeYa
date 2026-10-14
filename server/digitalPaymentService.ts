@@ -247,29 +247,19 @@ export class DigitalPaymentService {
       // el chip "Verificando pago" y el cron no lo toca mientras tanto —
       // la revisión debe ser cuestión de minutos, no de horas
       try {
-        const { users } = await import("@shared/schema-mysql");
-        const { inArray } = await import("drizzle-orm");
-        const admins = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(inArray(users.role as any, ["admin", "super_admin"]));
         const { orderRef } = await import("./orderNumberService");
-        const { sendPushToUser } = await import("./enhancedPushService");
+        const { recordAdminNotification } = await import(
+          "./adminNotificationService"
+        );
         const ref = orderRef(order);
-        for (const admin of admins) {
-          await sendPushToUser(admin.id, {
-            title: "🧾 Comprobante pendiente de verificación",
-            body: `Pedido ${ref} — ${data.paymentProvider} (${(data.amount / 100).toFixed(2)} €). Verifícalo para activar el pedido.`,
-            data: { orderId: data.orderId, screen: "AdminFinance" },
-          });
-        }
-        const { notifyAdmins } = await import("./websocket");
-        notifyAdmins({
-          type: "payment_proof_pending",
-          orderId: data.orderId,
-          proofId: proof.id,
-          provider: data.paymentProvider,
-          amount: data.amount,
+        await recordAdminNotification({
+          type: "new_proof",
+          severity: "high",
+          title: "🧾 Comprobante pendiente de verificación",
+          body: `Pedido ${ref} — ${data.paymentProvider} (${(data.amount / 100).toFixed(2)} €). Verifícalo para activar el pedido.`,
+          section: "finance_proofs",
+          data: { orderId: data.orderId, proofId: proof.id },
+          entityKey: `proof:${proof.id}`,
         });
       } catch (notifyError) {
         logger.error("Failed to notify admins of payment proof", notifyError);

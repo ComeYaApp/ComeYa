@@ -231,15 +231,23 @@ router.get(
         fetchBusinessesForMap(),
       ]);
 
+      // Alertas operativas: se descartan las silenciadas por el admin
+      const { getActiveAdminAlertMutes } = await import(
+        "../adminNotificationService"
+      );
+      const mutes = await getActiveAdminAlertMutes();
+
       const alerts = orders
-        .filter((o: any) => o.alerts.length > 0)
         .map((o: any) => ({
           orderId: o.id,
           status: o.status,
           businessName: o.business?.name ?? null,
           minutesActive: o.minutesActive,
-          alerts: o.alerts,
-        }));
+          alerts: (o.alerts || []).filter(
+            (a: any) => !mutes.has(`${o.id}:${a.type}`),
+          ),
+        }))
+        .filter((o: any) => o.alerts.length > 0);
 
       const payload = {
         success: true,

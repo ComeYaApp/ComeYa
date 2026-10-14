@@ -32,6 +32,10 @@ import { ZonesTab } from "@/components/admin/tabs/ZonesTab.web";
 import { CategoriesTab } from "@/components/admin/tabs/CategoriesTab.web";
 import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab.web";
 import { AuditLogsTab } from "@/components/admin/tabs/AuditLogsTab.web";
+import { NotificationsTab } from "@/components/admin/tabs/NotificationsTab.web";
+import { FeeProofsTab } from "@/components/admin/tabs/FeeProofsTab";
+import { CommunicationsTab } from "@/components/admin/tabs/CommunicationsTab";
+import { TabErrorBoundary } from "@/components/admin/TabErrorBoundary";
 
 // Web-specific screens embedded as panels
 import AdminPaymentAccountsPanel from "@/screens/AdminPaymentAccountsScreen.web";
@@ -157,11 +161,12 @@ function TabWrap({ children }: { children: React.ReactNode }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function AdminDashboardScreen({ route }: any) {
   const { showToast } = useToast();
+  const { theme } = useTheme();
   // Las notificaciones y enlaces antiguos usan ids que ya no existen como
   // sección (p.ej. "AdminSupport", "proofs"): se redirigen por alias para no
   // acabar en el dashboard en silencio.
   const resolveSection = (raw: any): AdminSection => {
-    const id = typeof raw === "string" ? raw : "dashboard";
+    const id = typeof raw === "string" ? raw : "operations";
     return (SECTION_ALIASES[id] as AdminSection) || id;
   };
   const initialSection = resolveSection(route?.params?.section);
@@ -187,87 +192,108 @@ export default function AdminDashboardScreen({ route }: any) {
   }, []);
 
   const renderContent = () => {
-    switch (section) {
-      // ── Dashboard ──
-      case "dashboard":
-        return <DashboardView onNavigate={setSection} />;
+    const content = (() => {
+      switch (section) {
+        // ── Centro de Operaciones (inicio) ──
+        case "operations":
+        case "drivers_map":
+          return <AdminMapPanel />;
 
-      // ── Reservas de mesa ──
-      case "reservations":
-        return <AdminReservationsTab />;
+        // ── Centro de Avisos ──
+        case "notifications":
+          return <NotificationsTab onNavigate={setSection} />;
 
-      // ── Pedidos ──
-      case "orders":
-      case "orders_active":
-        return <OrdersTab mode="active" />;
-      case "orders_history":
-        return <OrdersTab mode="history" />;
+        // ── Resumen (dashboard clásico) ──
+        case "dashboard":
+          return <DashboardView onNavigate={setSection} />;
 
-      // ── Negocios ──
-      case "businesses":
-      case "businesses_list":
-        return <BusinessesTab />;
-      case "businesses_zones":
-        return <ZonesTab />;
-      case "businesses_categories":
-        return <CategoriesTab />;
+        // ── Reservas de mesa ──
+        case "reservations":
+          return <AdminReservationsTab />;
 
-      // ── Repartidores ──
-      case "drivers":
-      case "drivers_list":
-        return <DriversTab />;
-      case "drivers_map":
-        return <AdminMapPanel />;
+        // ── Pedidos ──
+        case "orders":
+        case "orders_active":
+          return <OrdersTab mode="active" />;
+        case "orders_history":
+          return <OrdersTab mode="history" />;
 
-      // ── Usuarios ──
-      case "users":
-        return <UsersTab />;
+        // ── Negocios ──
+        case "businesses":
+        case "businesses_list":
+          return <BusinessesTab />;
+        case "businesses_zones":
+          return <ZonesTab />;
+        case "businesses_categories":
+          return <CategoriesTab />;
 
-      // ── Finanzas ──
-      case "finance":
-      case "finance_earnings":
-        return <FinanceTab defaultTab="earnings" />;
-      case "finance_payouts":
-        return <FinanceTab defaultTab="payouts" />;
-      case "finance_refunds":
-        return <RefundsTab />;
-      case "finance_proofs":
-        return <PaymentProofsTab />;
-      case "finance_giftcards":
-        return <GiftCardsAdminTab />;
-      case "finance_accounts":
-        return <AdminPaymentAccountsPanel />;
+        // ── Repartidores ──
+        case "drivers":
+        case "drivers_list":
+          return <DriversTab />;
 
-      case "premiums":
-        return <PremiumSubsTab />;
+        // ── Usuarios ──
+        case "users":
+          return <UsersTab />;
 
-      // ── Marketing ──
-      case "marketing":
-      case "coupons":
-        return <CouponsTab />;
+        // ── Finanzas ──
+        case "finance":
+        case "finance_earnings":
+          return <FinanceTab defaultTab="earnings" />;
+        case "finance_payouts":
+          return <FinanceTab defaultTab="payouts" />;
+        case "finance_refunds":
+          return <RefundsTab />;
+        case "finance_proofs":
+          return <PaymentProofsTab />;
+        case "finance_giftcards":
+          return <GiftCardsAdminTab />;
+        case "finance_accounts":
+          return <AdminPaymentAccountsPanel />;
+        // Cobros de reservas (antes sin ruta: caía al dashboard en silencio)
+        case "finance_reservations":
+          return <FeeProofsTab />;
 
-      // ── Soporte ──
-      case "support_tickets":
-        return <SupportTab />;
-      case "support_issues":
-        return <IssuesTab />;
-      case "support_verifications":
-        return <VerificationsTab />;
+        case "premiums":
+          return <PremiumSubsTab />;
 
-      case "logs":
-      case "audit_logs":
-        return <AuditLogsTab />;
+        // ── Marketing ──
+        case "marketing":
+        case "coupons":
+          return <CouponsTab />;
+        case "communications":
+          return <CommunicationsTab theme={theme} showToast={showToast} />;
 
-      // ── Configuración ──
-      case "settings":
-        return <SettingsTab />;
+        // ── Soporte ──
+        case "support_tickets":
+          return <SupportTab />;
+        case "support_issues":
+          return <IssuesTab />;
+        case "support_verifications":
+          return <VerificationsTab />;
 
-      case "delivery_config":
-        return <DeliveryConfigPanel />;
+        case "logs":
+        case "audit_logs":
+          return <AuditLogsTab />;
 
-      default:
-        return <DashboardView onNavigate={setSection} />;
-    }
+        // ── Configuración ──
+        case "settings":
+          return <SettingsTab />;
+
+        case "delivery_config":
+          return <DeliveryConfigPanel />;
+
+        default:
+          return <AdminMapPanel />;
+      }
+    })();
+
+    // Una sección rota no debe tumbar el panel completo
+    return (
+      <TabErrorBoundary key={section} tabName={section}>
+        {content}
+      </TabErrorBoundary>
+    );
   };
 
   return (

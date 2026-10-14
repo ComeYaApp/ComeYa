@@ -188,25 +188,30 @@ router.post(
     // Notificar a los administradores: repartidor pendiente de aprobación, o
     // repartidor ya aprobado que actualizó sus datos (sigue activo).
     try {
-      const { sendPushToUser } = await import("./enhancedPushService");
-      const pendingAdmins = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(inArray(users.role, ["admin", "super_admin"]));
-      const pushPayload = wasVerified
-        ? {
-            title: "🛵 Repartidor verificado actualizó sus datos",
-            body: "Un repartidor ya aprobado reenvió su registro (sigue activo)",
-            data: { screen: "AdminVerifications" },
-          }
-        : {
-            title: "🛵 Repartidor pendiente de aprobación",
-            body: "Un nuevo repartidor se registró y requiere verificación",
-            data: { screen: "AdminVerifications" },
-          };
-      for (const admin of pendingAdmins) {
-        await sendPushToUser(admin.id, pushPayload);
-      }
+      const { recordAdminNotification } = await import(
+        "./adminNotificationService"
+      );
+      await recordAdminNotification(
+        wasVerified
+          ? {
+              type: "driver_data_updated",
+              severity: "medium",
+              title: "🛵 Repartidor verificado actualizó sus datos",
+              body: "Un repartidor ya aprobado reenvió su registro (sigue activo)",
+              section: "support_verifications",
+              data: { userId },
+              entityKey: `driver_data:${userId}:${Date.now()}`,
+            }
+          : {
+              type: "new_delivery_verification",
+              severity: "high",
+              title: "🛵 Repartidor pendiente de aprobación",
+              body: "Un nuevo repartidor se registró y requiere verificación",
+              section: "support_verifications",
+              data: { userId },
+              entityKey: `verif:${userId}`,
+            },
+      );
     } catch (err) {
       console.error("Error notifying admins of new driver:", err);
     }

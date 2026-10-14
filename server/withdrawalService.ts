@@ -118,28 +118,20 @@ export class WithdrawalService {
       })
       .where(eq(wallets.userId, request.userId));
 
-    // 4. Notificar a los administradores
+    // 4. Notificar a los administradores (historial + socket + push)
     try {
-      const { notifyAdmins } = await import("./websocket");
-      notifyAdmins({
-        type: "new_withdrawal",
-        payoutId,
-        userId: request.userId,
-        amount: request.amount,
-        message: "Nueva solicitud de retiro pendiente de aprobación",
+      const { recordAdminNotification } = await import(
+        "./adminNotificationService"
+      );
+      await recordAdminNotification({
+        type: "new_payout",
+        severity: "high",
+        title: "💰 Retiro pendiente de aprobación",
+        body: `${user.name || "Usuario"} solicitó retirar ${(request.amount / 100).toFixed(2)} €`,
+        section: "finance_payouts",
+        data: { payoutId, userId: request.userId, amount: request.amount },
+        entityKey: `payout:${payoutId}`,
       });
-      const { sendPushToUser } = await import("./enhancedPushService");
-      const pendingAdmins = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.role, "admin"));
-      for (const admin of pendingAdmins) {
-        await sendPushToUser(admin.id, {
-          title: "💰 Retiro pendiente",
-          body: `Un usuario solicitó retirar ${(request.amount / 100).toFixed(2)} €. Revisa Finanzas.`,
-          data: { screen: "AdminFinance" },
-        });
-      }
     } catch (notifyError) {
       console.error("Error notifying admins of withdrawal:", notifyError);
     }

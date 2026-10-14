@@ -1001,41 +1001,23 @@ router.post("/:id/report-issue", authenticateToken, async (req, res) => {
       priority: priority || "medium",
     });
 
-    // Notificar a los administradores (sin romper la respuesta si falla la red)
+    // Notificar a los administradores: aviso unificado (historial + socket + push)
     const { users, businesses } = await import("@shared/schema-mysql");
-    const admins = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(inArray(users.role, ["admin", "super_admin"]));
     try {
-      for (const admin of admins) {
-        await sendPushToUser(admin.id, {
-          title: "⚠️ Incidencia reportada",
-          body: `Pedido ${orderRef(order)}: ${ISSUE_LABELS[issueType] || issueType}`,
-          data: {
-            type: "order_issue",
-            issueId,
-            orderId: issueOrderId,
-            screen: "AdminDashboard",
-            section: "support_issues",
-          },
-        });
-      }
-    } catch (err) {
-      console.error("Error notifying admins of issue:", err);
-    }
-
-    // Aviso en tiempo real al panel admin abierto
-    try {
-      const { notifyAdminNewIssue } = await import("../websocket");
-      notifyAdminNewIssue({
-        issueId,
-        orderId: issueOrderId,
-        issueType,
-        priority: priority || "medium",
+      const { recordAdminNotification } = await import(
+        "../adminNotificationService"
+      );
+      await recordAdminNotification({
+        type: "new_issue",
+        severity: priority === "high" ? "critical" : "high",
+        title: "⚠️ Incidencia reportada",
+        body: `Pedido ${orderRef(order)}: ${ISSUE_LABELS[issueType] || issueType}`,
+        section: "support_issues",
+        data: { issueId, orderId: issueOrderId, issueType },
+        entityKey: `issue:${issueId}`,
       });
     } catch (err) {
-      console.error("Error emitting admin issue event:", err);
+      console.error("Error notifying admins of issue:", err);
     }
 
     // Notificar también al negocio del pedido

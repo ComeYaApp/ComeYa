@@ -596,24 +596,18 @@ async function notifyAdminsRefundFailed(
   reason: string,
 ) {
   try {
-    const { users } = await import("@shared/schema-mysql");
-    const admins = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(inArray(users.role, ["admin", "super_admin"]));
-
-    for (const admin of admins) {
-      await sendPushToUser(admin.id, {
-        title: "⚠️ Devolución fallida",
-        body: `Pedido ${await orderRefFromId(orderId)}: ${(amount / 100).toFixed(2)} € — ${reason}`,
-        data: {
-          orderId,
-          screen: "AdminDashboard",
-          section: "finance_refunds",
-          type: "refund_failed",
-        },
-      }).catch(() => {});
-    }
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    await recordAdminNotification({
+      type: "refund_failed",
+      severity: "critical",
+      title: "⚠️ Devolución fallida",
+      body: `Pedido ${await orderRefFromId(orderId)}: ${(amount / 100).toFixed(2)} € — ${reason}`,
+      section: "finance_refunds",
+      data: { orderId, amount, reason },
+      entityKey: `refund_failed:${orderId}`,
+    });
   } catch {}
 }
 

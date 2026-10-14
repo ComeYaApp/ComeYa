@@ -478,25 +478,18 @@ async function handleDisputeCreated(
   // Stripe dentro del plazo o se pierde por defecto
   if (order) {
     try {
-      const { users } = await import("@shared/schema-mysql");
-      const { inArray } = await import("drizzle-orm");
-      const { sendPushToUser } = await import("./enhancedPushService");
-      const admins = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(inArray(users.role, ["admin", "super_admin"]));
-      for (const admin of admins) {
-        await sendPushToUser(admin.id, {
-          title: "🚨 Chargeback abierto",
-          body: `Pedido ${orderRef(order)}: el cliente ha reclamado ${(dispute.amount / 100).toFixed(2)} € a su banco. Responde en Stripe antes del plazo.`,
-          data: {
-            orderId: order.id,
-            screen: "AdminDashboard",
-            section: "finance_refunds",
-            type: "chargeback",
-          },
-        }).catch(() => {});
-      }
+      const { recordAdminNotification } = await import(
+        "./adminNotificationService"
+      );
+      await recordAdminNotification({
+        type: "chargeback",
+        severity: "critical",
+        title: "🚨 Chargeback abierto",
+        body: `Pedido ${orderRef(order)}: el cliente ha reclamado ${(dispute.amount / 100).toFixed(2)} € a su banco. Responde en Stripe antes del plazo.`,
+        section: "finance_refunds",
+        data: { orderId: order.id, disputeId: dispute.id },
+        entityKey: `chargeback:${dispute.id}`,
+      });
     } catch {}
   }
 }

@@ -513,24 +513,28 @@ router.get(
         "arriving",
       ];
 
-      let query: any = db.select().from(orders).orderBy(desc(orders.createdAt));
-      if (status) {
-        const statuses =
-          status === "active"
-            ? ACTIVE_STATUSES
-            : status
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean);
-        if (statuses.length > 0) {
-          query = query.where(inArray(orders.status, statuses as any));
-        }
-      }
       const limitNum = Math.min(
         parseInt(limit || "500", 10) || 500,
         1000,
       );
-      const allOrders = await query.limit(limitNum);
+      const statusesList = status
+        ? status === "active"
+          ? ACTIVE_STATUSES
+          : status
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+        : [];
+      const baseSelect = db.select().from(orders);
+      const allOrders: Array<typeof orders.$inferSelect> =
+        statusesList.length > 0
+          ? await baseSelect
+              .where(inArray(orders.status, statusesList as any))
+              .orderBy(desc(orders.createdAt))
+              .limit(limitNum)
+          : await baseSelect
+              .orderBy(desc(orders.createdAt))
+              .limit(limitNum);
 
       // Enriquecido en lote: 1 query para negocios y 1 para clientes
       const businessIds = [
@@ -2057,6 +2061,132 @@ router.get(
       });
     } catch (error: any) {
       console.error("Error getting verification stats:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// ── Centro de avisos del admin ───────────────────────────────────────────────
+// Historial persistente de notificaciones del panel (la campana vivía en
+// memoria y se perdía al recargar). Alimenta la campana, la sección "Avisos"
+// y los avisos flotantes del panel.
+
+// GET /api/admin/notifications — historial (paginado y filtrable)
+router.get(
+  "/notifications",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const {
+        listAdminNotifications,
+        adminNotificationsUnreadCount,
+      } = await import("../adminNotificationService");
+      const limit = Math.min(
+        parseInt(String(req.query.limit || "60"), 10) || 60,
+        200,
+      );
+      const offset = parseInt(String(req.query.offset || "0"), 10) || 0;
+      const unreadOnly =
+        String(req.query.unread || "") === "1" ||
+        String(req.query.unread || "") === "true";
+      const severity =
+        typeof req.query.severity === "string" && req.query.severity
+          ? String(req.query.severity)
+          : undefined;
+
+      const [notifications, unreadCount] = await Promise.all([
+        listAdminNotifications({
+          limit,
+          offset,
+          unreadOnly,
+          severity,
+          includeResolved: true,
+        }),
+        adminNotificationsUnreadCount(),
+      ]);
+
+      res.json({ success: true, notifications, unreadCount });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// GET /api/admin/notifications/unread-count — contador para el badge
+router.get(
+  "/notifications/unread-count",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { adminNotificationsUnreadCount } = await import(
+        "../adminNotificationService"
+      );
+      res.json({ success: true, unreadCount: await adminNotificationsUnreadCount() });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// POST /api/admin/notifications/:id/read — marcar una como leída
+router.post(
+  "/notifications/:id/read",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { markAdminNotificationRead } = await import(
+        "../adminNotificationService"
+      );
+      await markAdminNotificationRead(String(req.params.id));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// POST /api/admin/notifications/read-all — marcar todas como leídas
+router.post(
+  "/notifications/read-all",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { markAllAdminNotificationsRead } = await import(
+        "../adminNotificationService"
+      );
+      await markAllAdminNotificationsRead();
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// POST /api/admin/ops/alerts/mute — silenciar una alerta de operación un rato
+router.post(
+  "/ops/alerts/mute",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { orderId, alertType, minutes } = req.body;
+      if (!orderId || !alertType) {
+        return res
+          .status(400)
+          .json({ error: "orderId y alertType requeridos" });
+      }
+      const { muteAdminAlert } = await import("../adminNotificationService");
+      await muteAdminAlert(
+        String(orderId),
+        String(alertType),
+        Number(minutes) || 30,
+      );
+      res.json({ success: true });
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   },

@@ -361,22 +361,18 @@ async function notifyCancellation(
     policy.refundAmount > 0
   ) {
     try {
-      const admins = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(inArray(users.role, ["admin", "super_admin"]));
-      for (const admin of admins) {
-        await sendPushToUser(admin.id, {
-          title: "💶 Cancelación con devolución",
-          body: `Pedido ${short} cancelado por ${who}: ${(policy.refundAmount / 100).toFixed(2)} € a devolver.`,
-          data: {
-            orderId: order.id,
-            screen: "AdminDashboard",
-            section: "finance_refunds",
-            type: "cancellation_refund",
-          },
-        }).catch(() => {});
-      }
+      const { recordAdminNotification } = await import(
+        "./adminNotificationService"
+      );
+      await recordAdminNotification({
+        type: "cancellation_refund",
+        severity: "high",
+        title: "💶 Cancelación con devolución",
+        body: `Pedido ${short} cancelado por ${who}: ${(policy.refundAmount / 100).toFixed(2)} € a devolver.`,
+        section: "finance_refunds",
+        data: { orderId: order.id, refundAmount: policy.refundAmount },
+        entityKey: `cancellation_refund:${order.id}`,
+      });
     } catch {}
   }
 }

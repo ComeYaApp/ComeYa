@@ -133,11 +133,23 @@ router.post(
         .limit(1);
       if (!driver)
         return res.status(404).json({ error: "Conductor no encontrado" });
+
+      // Reasignar NO debe resetear el progreso: si el pedido ya va en
+      // camino (recogido/en tránsito/llegando), solo se cambia el
+      // repartidor y se conserva el estado. En fases tempranas sí pasa a
+      // "assigned" (el nuevo repartidor debe aceptar/recoger).
+      const IN_TRANSIT = [
+        "picked_up",
+        "on_the_way",
+        "in_transit",
+        "arriving",
+      ];
+      const keepStatus = IN_TRANSIT.includes(String(order.status));
       await db
         .update(orders)
         .set({
           deliveryPersonId: driverId,
-          status: "assigned",
+          ...(keepStatus ? {} : { status: "assigned" }),
           assignedAt: new Date(),
           updatedAt: new Date(),
         })
@@ -146,7 +158,7 @@ router.post(
       const { notifyDriverAssigned } = await import("../websocket");
       notifyDriverAssigned(driverId, {
         orderId,
-        status: "assigned",
+        status: keepStatus ? order.status : "assigned",
         assignedAt: new Date().toISOString(),
       });
 

@@ -184,23 +184,58 @@ export default function App() {
       // navigationRef es un ref global: se navega con tipos relajados
       const nav = navigationRef as any;
 
-      // Destinos del panel admin. En web navega por sección del sidebar;
-      // en nativo abre el tab correspondiente de la app admin (AdminScreenNew)
-      if (data.screen === "AdminDashboard" && data.section) {
+      // Destinos del panel admin. TODAS las notificaciones nuevas llegan con
+      // {screen:"AdminPanel", section} y también se aceptan los screen
+      // antiguos (AdminDashboard/AdminVerifications/…). En web navega por
+      // sección del sidebar; en nativo abre el tab correspondiente.
+      const ADMIN_SCREENS = [
+        "AdminPanel",
+        "AdminDashboard",
+        "AdminVerifications",
+        "AdminVerification",
+        "AdminFinance",
+        "AdminPayouts",
+        "AdminBusinesses",
+      ];
+      if (
+        (data.screen && ADMIN_SCREENS.includes(data.screen)) ||
+        (data.screen === undefined && data.section && data.type)
+      ) {
+        const defaultSectionByScreen: Record<string, string> = {
+          AdminVerifications: "support_verifications",
+          AdminVerification: "support_verifications",
+          AdminFinance: "finance_proofs",
+          AdminPayouts: "finance_payouts",
+          AdminBusinesses: "businesses_list",
+        };
+        const section =
+          data.section ||
+          (data.screen ? defaultSectionByScreen[data.screen] : undefined) ||
+          "operations";
+
         if (Platform.OS === "web") {
-          nav.navigate("DashboardTab", { section: data.section });
+          nav.navigate("DashboardTab", { section });
         } else {
           const sectionToTab: Record<string, string> = {
+            operations: "map",
+            dashboard: "map",
+            notifications: "notifications",
             support_issues: "issues",
             finance_refunds: "refunds",
             support_tickets: "support",
             support_verifications: "verifications",
             orders_active: "orders",
+            orders_history: "orders",
             finance_earnings: "finance",
             finance_payouts: "finance",
             finance_reservations: "finance",
+            finance_proofs: "finance",
+            premiums: "finance",
+            users: "users",
+            businesses_list: "businesses",
+            drivers_list: "drivers",
           };
-          const tab = sectionToTab[data.section];
+          const tab = sectionToTab[section];
           nav.navigate("AdminTab", tab ? { initialTab: tab } : undefined);
         }
         return;

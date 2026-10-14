@@ -163,30 +163,30 @@ router.post("/submit", async (req, res) => {
       } as any);
     }
 
-    // Notificar al admin (websocket + push: el push llega aunque el admin
-    // tenga la app cerrada)
+    // Aviso al admin: historial + socket + push en un solo paso
     try {
-      const { notifyAdmins } = await import("../websocket");
-      notifyAdmins({
-        type: "new_delivery_verification",
-        userId,
-        userName: user.name,
-        message: wasVerified
-          ? `Repartidor verificado actualizó sus documentos: ${user.name}`
-          : `Nuevo repartidor pendiente de verificación: ${user.name}`,
-      });
-      const { notifyAdminsPush } = await import("../adminNotify");
-      await notifyAdminsPush(
+      const { recordAdminNotification } = await import(
+        "../adminNotificationService"
+      );
+      await recordAdminNotification(
         wasVerified
           ? {
-              title: "🛵 Repartidor verificado actualizó documentos",
+              type: "document_updated",
+              severity: "medium",
+              title: "📄 Repartidor verificado actualizó documentos",
               body: `${user.name} reenvió su verificación y sigue activo`,
-              data: { screen: "AdminVerifications" },
+              section: "support_verifications",
+              data: { userId },
+              entityKey: `doc:${userId}:${Date.now()}`,
             }
           : {
-              title: "🛵 Repartidor pendiente de aprobación",
+              type: "new_delivery_verification",
+              severity: "high",
+              title: "🛵 Repartidor pendiente de verificación",
               body: `${user.name} envió sus documentos y requiere verificación`,
-              data: { screen: "AdminVerifications" },
+              section: "support_verifications",
+              data: { userId },
+              entityKey: `verif:${userId}`,
             },
       );
     } catch {
@@ -439,28 +439,28 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
       }
     }
 
-    // Notificar al admin (websocket + push para que le llegue con la app cerrada)
+    // Aviso al admin: historial + socket + push (app cerrada) en un solo paso
     try {
-      const { notifyAdmins } = await import("../websocket");
-      notifyAdmins({
-        type: "document_updated",
-        userId,
-        userName: currentUser?.name || "Usuario",
-        documentType,
-        message: `Documento actualizado: ${documentType}`,
-      });
-      const { notifyAdminsPush } = await import("../adminNotify");
-      await notifyAdminsPush(
+      const { recordAdminNotification } = await import(
+        "../adminNotificationService"
+      );
+      await recordAdminNotification(
         wasVerified
           ? {
+              type: "document_updated",
+              severity: "medium",
               title: "📄 Repartidor verificado actualizó un documento",
               body: `${currentUser?.name || "Usuario"} cambió "${documentType}" y sigue activo`,
-              data: { screen: "AdminVerifications" },
+              section: "support_verifications",
+              entityKey: `doc:${userId}:${documentType}:${Date.now()}`,
             }
           : {
+              type: "document_updated",
+              severity: "high",
               title: "📄 Documento actualizado",
               body: `${currentUser?.name || "Usuario"} actualizó "${documentType}" (pendiente de verificación)`,
-              data: { screen: "AdminVerifications" },
+              section: "support_verifications",
+              entityKey: `doc:${userId}:${documentType}:${Date.now()}`,
             },
       );
     } catch {

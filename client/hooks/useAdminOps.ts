@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { Socket } from "socket.io-client";
-import { getAuthToken, getApiUrl, apiRequestRaw } from "@/lib/query-client";
+import { apiRequestRaw } from "@/lib/query-client";
+import {
+  onAdminRealtimeEvent,
+  onAdminRealtimeConnection,
+} from "@/services/adminRealtime";
 
 export interface OpsAlert {
   type: "no_driver" | "no_response" | "stale_gps" | "too_long";
@@ -143,7 +146,6 @@ export function useAdminOps(pollMs = 15000) {
     Record<string, LiveDriverPosition>
   >({});
 
-  const socketRef = useRef<Socket | null>(null);
   const refreshTimerRef = useRef<any>(null);
 
   const fetchOverview = useCallback(async () => {
@@ -183,70 +185,49 @@ export function useAdminOps(pollMs = 15000) {
     return () => clearInterval(t);
   }, [fetchOverview, pollMs]);
 
-  // WebSocket de la room admins
+  // Eventos en vivo de la sala admins (socket ÚNICO compartido con el resto
+  // del panel: antes esta pantalla abría su propia conexión, y con el mapa
+  // montado dos veces había varias conexiones a la vez)
   useEffect(() => {
-    let cancelled = false;
+    const unsubConn = onAdminRealtimeConnection(setSocketConnected);
 
-    (async () => {
-      const token = await getAuthToken();
-      if (cancelled || !token) return;
+    const unsubLocation = onAdminRealtimeEvent(
+      "driver_location",
+      (p: LiveDriverPosition) => {
+        if (!p?.driverId) return;
+        const lat = Number(p.latitude);
+        const lng = Number(p.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        setLivePositions((prev) => ({
+          ...prev,
+          [p.driverId]: { ...p, latitude: lat, longitude: lng },
+        }));
+      },
+    );
 
-      try {
-        const { io } = await import("socket.io-client");
-        const socket = io(getApiUrl(), {
-          auth: { token },
-          transports: ["websocket", "polling"],
-          reconnection: true,
-          reconnectionDelay: 2000,
-        });
-        socketRef.current = socket;
-
-        socket.on("connect", () => {
-          if (cancelled) return;
-          setSocketConnected(true);
-          // El servidor valida el rol con el token, no con este payload
-          socket.emit("join", { userId: "", role: "admin" });
-        });
-
-        socket.on("driver_location", (p: LiveDriverPosition) => {
-          if (cancelled || !p?.driverId) return;
-          const lat = Number(p.latitude);
-          const lng = Number(p.longitude);
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-          setLivePositions((prev) => ({
-            ...prev,
-            [p.driverId]: { ...p, latitude: lat, longitude: lng },
-          }));
-        });
-
-        // Un pedido nuevo o un cambio de estado altera los KPIs: refrescamos
-        // en cuanto pasa (con un pequeño debounce para no encadenar fetches)
-        const scheduleRefresh = () => {
-          if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-          refreshTimerRef.current = setTimeout(fetchOverview, 1500);
-        };
-        socket.on("new_order", scheduleRefresh);
-        socket.on("order_status_changed", scheduleRefresh);
-        socket.on("admin_order_stuck", scheduleRefresh);
-
-        socket.on("disconnect", () => {
-          if (!cancelled) setSocketConnected(false);
-        });
-        socket.on("connect_error", () => {
-          if (!cancelled) setSocketConnected(false);
-        });
-      } catch {
-        if (!cancelled) setSocketConnected(false);
-      }
-    })();
+    // Un pedido nuevo o un cambio de estado altera los KPIs: refrescamos
+    // en cuanto pasa (con un pequeño debounce para no encadenar fetches)
+    const scheduleRefresh = () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = setTimeout(fetchOverview, 1500);
+    };
+    const unsubNew = onAdminRealtimeEvent("new_order", scheduleRefresh);
+    const unsubStatus = onAdminRealtimeEvent(
+      "order_status_changed",
+      scheduleRefresh,
+    );
+    const unsubStuck = onAdminRealtimeEvent(
+      "admin_order_stuck",
+      scheduleRefresh,
+    );
 
     return () => {
-      cancelled = true;
+      unsubConn();
+      unsubLocation();
+      unsubNew();
+      unsubStatus();
+      unsubStuck();
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
     };
   }, [fetchOverview]);
 

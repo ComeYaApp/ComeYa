@@ -47,6 +47,7 @@ import {
   RankingTab,
   CommunicationsTab,
   AdminReservationsTab,
+  NotificationsTab,
 } from "@/components/admin/tabs";
 import type {
   DashboardMetrics,
@@ -108,6 +109,13 @@ const PAYMENT_LABELS: Record<string, string> = {
 };
 
 const menuItems: MenuItem[] = [
+  {
+    title: "Avisos",
+    subtitle: "Historial de todo lo que pasa",
+    icon: "bell",
+    tab: "notifications",
+    color: "#E60000",
+  },
   {
     title: "Incidencias",
     subtitle: "Reportes de pedidos y reembolsos",
@@ -1662,6 +1670,15 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         );
       case "support":
         return <SupportTab theme={theme} showToast={showToast} />;
+      case "notifications":
+      case "avisos":
+        return (
+          <NotificationsTab
+            theme={theme}
+            showToast={showToast}
+            onNavigate={(tab) => setActiveTab(tab)}
+          />
+        );
       case "issues":
       case "incidencias":
         return <IssuesTab theme={theme} showToast={showToast} />;

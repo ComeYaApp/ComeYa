@@ -14,3 +14,4 @@ export { RefundsTab } from "./RefundsTab";
 export { AdminReservationsTab } from "./AdminReservationsTab";
 export { RankingTab } from "./RankingTab";
 export { CommunicationsTab } from "./CommunicationsTab";
+export { NotificationsTab } from "./NotificationsTab";

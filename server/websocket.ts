@@ -176,17 +176,23 @@ export function notifyNewOrder(businessId: string, order: any) {
   io.to("admins").emit("new_order", order);
   logger.info(`📦 New order notification sent to business ${businessId}`);
 
-  // Push al admin para que se entere aunque tenga la app cerrada
+  // Aviso del admin: historial + socket + push (app cerrada) en un solo paso
   (async () => {
     try {
-      const { notifyAdminsPush } = await import("./adminNotify");
-      await notifyAdminsPush({
+      const { recordAdminNotification } = await import(
+        "./adminNotificationService"
+      );
+      await recordAdminNotification({
+        type: "new_order",
+        severity: "medium",
         title: "📦 Nuevo pedido",
         body: `${order?.businessName ?? "Negocio"} · ${((order?.total ?? 0) / 100).toFixed(2)} €`,
-        data: { screen: "AdminPanel", section: "orders_active" },
+        section: "orders_active",
+        data: { orderId: order?.id },
+        entityKey: order?.id ? `order:${order.id}` : undefined,
       });
     } catch (e) {
-      console.error("notifyNewOrder admin push error:", e);
+      console.error("notifyNewOrder admin notification error:", e);
     }
   })();
 }
@@ -224,6 +230,9 @@ export function notifyReservationStatusChange(
 }
 
 // ── Admin-specific events ─────────────────────────────────────────────────────
+// Todos pasan por recordAdminNotification (historial en BD + socket + push).
+// El socket emite el evento unificado "admin_notification": el panel web/nativo
+// escucha solo ese canal y el servidor es la única fuente de los avisos.
 
 export function notifyAdminFraud(data: {
   userId: string;
@@ -231,12 +240,21 @@ export function notifyAdminFraud(data: {
   proofId: string;
   reason: string;
 }) {
-  if (!io) return;
-  io.to("admins").emit("admin_fraud_detected", {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
-  logger.warn(`🚨 Fraud alert sent to admins: ${data.reason}`);
+  (async () => {
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    await recordAdminNotification({
+      type: "fraud",
+      severity: "critical",
+      title: "🚨 Fraude detectado",
+      body: `${data.userName ?? "Usuario"}: ${data.reason}`,
+      section: "finance_proofs",
+      data,
+      entityKey: `fraud:${data.proofId}`,
+    });
+    logger.warn(`🚨 Fraud alert sent to admins: ${data.reason}`);
+  })().catch(() => {});
 }
 
 export function notifyAdminNewProof(data: {
@@ -246,11 +264,20 @@ export function notifyAdminNewProof(data: {
   amount: number;
   method: string;
 }) {
-  if (!io) return;
-  io.to("admins").emit("admin_new_proof", {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
+  (async () => {
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    await recordAdminNotification({
+      type: "new_proof",
+      severity: "high",
+      title: "⚠️ Comprobante pendiente",
+      body: `${data.userName} envió ${(data.amount / 100).toFixed(2)} € vía ${data.method}`,
+      section: "finance_proofs",
+      data,
+      entityKey: `proof:${data.proofId}`,
+    });
+  })().catch(() => {});
 }
 
 // Comprobante de pago de tarifas de reservas pendiente de verificar
@@ -260,11 +287,20 @@ export function notifyAdminNewFeeProof(data: {
   amount: number;
   method: string;
 }) {
-  if (!io) return;
-  io.to("admins").emit("admin_new_fee_proof", {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
+  (async () => {
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    await recordAdminNotification({
+      type: "new_fee_proof",
+      severity: "high",
+      title: "💳 Tarifas de reservas pendientes",
+      body: `${data.ownerName} pagó ${(data.amount / 100).toFixed(2)} € vía ${data.method} · verificar comprobante`,
+      section: "finance_reservations",
+      data,
+      entityKey: `feeproof:${data.proofId}`,
+    });
+  })().catch(() => {});
 }
 
 export function notifyAdminNewPayout(data: {
@@ -273,11 +309,20 @@ export function notifyAdminNewPayout(data: {
   amount: number;
   recipientType: string;
 }) {
-  if (!io) return;
-  io.to("admins").emit("admin_new_payout", {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
+  (async () => {
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    await recordAdminNotification({
+      type: "new_payout",
+      severity: "high",
+      title: "💸 Payout pendiente",
+      body: `${data.recipientName} (${data.recipientType === "business" ? "Negocio" : "Repartidor"}) · ${(data.amount / 100).toFixed(2)} €`,
+      section: "finance_payouts",
+      data,
+      entityKey: `payout:${data.payoutId}`,
+    });
+  })().catch(() => {});
 }
 
 export function notifyAdminNewTicket(data: {
@@ -286,11 +331,20 @@ export function notifyAdminNewTicket(data: {
   subject: string;
   priority: string;
 }) {
-  if (!io) return;
-  io.to("admins").emit("admin_new_ticket", {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
+  (async () => {
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    await recordAdminNotification({
+      type: "new_ticket",
+      severity: "medium",
+      title: "🎫 Nuevo ticket de soporte",
+      body: `${data.userName}: ${data.subject}`,
+      section: "support_tickets",
+      data,
+      entityKey: `ticket:${data.ticketId}`,
+    });
+  })().catch(() => {});
 }
 
 export function notifyAdminNewIssue(data: {
@@ -299,13 +353,26 @@ export function notifyAdminNewIssue(data: {
   issueType: string;
   priority: string;
 }) {
-  if (!io) return;
-  io.to("admins").emit("admin_new_issue", {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
+  (async () => {
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    const severity = data.priority === "high" ? "critical" : "high";
+    await recordAdminNotification({
+      type: "new_issue",
+      severity: severity as any,
+      title: "⚠️ Incidencia en un pedido",
+      body: `Incidencia (${data.issueType}) en el pedido #${(data.orderId ?? "").slice(-6).toUpperCase()}`,
+      section: "support_issues",
+      data,
+      entityKey: `issue:${data.issueId}`,
+    });
+  })().catch(() => {});
 }
 
+// Aviso de pedido atascado: el socket "admin_order_stuck" refresca el centro
+// de operaciones; el aviso persistente lo crea el reconciliador de alertas
+// (backgroundJobs) con dedupe por pedido.
 export function notifyAdminOrderStuck(data: {
   orderId: string;
   businessName: string;
@@ -318,6 +385,7 @@ export function notifyAdminOrderStuck(data: {
   });
 }
 
+// Emisión directa a la sala admins (uso interno del servicio de avisos)
 export function notifyAdmins(data: { type: string; [key: string]: any }) {
   if (!io) return;
   io.to("admins").emit("admin_notification", {
@@ -332,5 +400,18 @@ export function notifyAdminNewSubscription(sub: {
   userId: string;
   plan: string;
 }) {
-  notifyAdmins({ type: "new_subscription", ...sub });
+  (async () => {
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
+    await recordAdminNotification({
+      type: "new_subscription",
+      severity: "medium",
+      title: "⭐ Nueva suscripción",
+      body: `Plan ${sub.plan ?? "Premium"} activado`,
+      section: "premiums",
+      data: sub,
+      entityKey: `sub:${sub.id}`,
+    });
+  })().catch(() => {});
 }

@@ -81,14 +81,20 @@ export async function createPayoutsForOrder(orderId: string): Promise<void> {
       count: inserts.length,
     });
 
-    // Notificar a los administradores (pagos manuales pendientes)
+    // Notificar a los administradores (pagos manuales pendientes de liberar)
     try {
-      const { notifyAdmins } = await import("./websocket");
-      notifyAdmins({
-        type: "new_payouts",
-        orderId,
-        count: inserts.length,
-        message: "Nuevos pagos pendientes de liberación manual",
+      const { recordAdminNotification } = await import(
+        "./adminNotificationService"
+      );
+      await recordAdminNotification({
+        type: "new_payout",
+        severity: "medium",
+        title: "💸 Payouts pendientes de liberación",
+        body: `${inserts.length} pago(s) manuales generados por el pedido`,
+        section: "finance_payouts",
+        data: { orderId, count: inserts.length },
+        entityKey: `payouts_batch:${orderId}`,
+        dedupeActive: true,
       });
     } catch (notifyError) {
       console.error("Error notifying admins of payouts:", notifyError);

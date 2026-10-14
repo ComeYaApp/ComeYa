@@ -175,23 +175,18 @@ router.post("/dispute", authenticateToken, async (req, res) => {
             priority: "high",
           });
 
-          const admins = await db
-            .select({ id: users.id })
-            .from(users)
-            .where(inArray(users.role, ["admin", "super_admin"]));
-          for (const admin of admins) {
-            await sendPushToUser(admin.id, {
-              title: "⚠️ Disputa de entrega",
-              body: `Pedido ${await orderRefFromId(orderId)}: ${reason.slice(0, 80)}`,
-              data: {
-                type: "order_issue",
-                issueId,
-                orderId,
-                screen: "AdminDashboard",
-                section: "support_issues",
-              },
-            }).catch(() => {});
-          }
+          const { recordAdminNotification } = await import(
+            "../adminNotificationService"
+          );
+          await recordAdminNotification({
+            type: "new_issue",
+            severity: "critical",
+            title: "⚠️ Disputa de entrega",
+            body: `Pedido ${await orderRefFromId(orderId)}: ${reason.slice(0, 80)}`,
+            section: "support_issues",
+            data: { issueId, orderId },
+            entityKey: `issue:${issueId}`,
+          });
         }
       }
     } catch (issueErr) {

@@ -196,17 +196,23 @@ router.post("/phone-login", async (req, res) => {
         // Avisar al admin de cada registro nuevo (cliente, negocio o
         // repartidor) para que tenga visibilidad en tiempo real
         try {
-          const { notifyAdminsPush } = await import("../adminNotify");
+          const { recordAdminNotification } = await import(
+            "../adminNotificationService"
+          );
           const roleLabel =
             newUser.role === "delivery_driver"
               ? "repartidor"
               : newUser.role === "business_owner"
                 ? "negocio"
                 : "cliente";
-          await notifyAdminsPush({
+          await recordAdminNotification({
+            type: "new_registration",
+            severity: "medium",
             title: `👤 Nuevo ${roleLabel} registrado`,
             body: `${newUser.name} se registró en la plataforma`,
-            data: { screen: "AdminPanel" },
+            section: "users",
+            data: { userId: newUser.id, role: newUser.role },
+            entityKey: `reg:${newUser.id}`,
           });
         } catch {
           /*silencioso*/

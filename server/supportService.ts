@@ -31,6 +31,33 @@ export class SupportService {
       message: data.initialMessage || data.subject || "(sin mensaje)",
     });
 
+    // Avisar al admin: nuevo ticket (historial + socket + push)
+    try {
+      const { recordAdminNotification } = await import(
+        "./adminNotificationService"
+      );
+      const { users } = await import("@shared/schema-mysql");
+      const [u] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, data.userId))
+        .limit(1);
+      await recordAdminNotification({
+        type: "new_ticket",
+        severity:
+          data.priority === "high" || data.priority === "urgent"
+            ? "high"
+            : "medium",
+        title: "🎫 Nuevo ticket de soporte",
+        body: `${u?.name || "Usuario"}: ${data.subject}`,
+        section: "support_tickets",
+        data: { ticketId, userId: data.userId, orderId: data.orderId },
+        entityKey: `ticket:${ticketId}`,
+      });
+    } catch {
+      /*silencioso: el ticket ya está creado */
+    }
+
     return { success: true, ticketId };
   }
 

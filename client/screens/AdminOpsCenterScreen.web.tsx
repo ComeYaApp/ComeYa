@@ -109,6 +109,9 @@ export default function AdminOpsCenterScreen() {
   const linesRef = useRef<any[]>([]);
   // Repartidores: marcadores persistentes (animados, no se recrean)
   const driverMarkersRef = useRef<Record<string, any>>({});
+  // Datos frescos por repartidor (los marcadores persisten: el listener
+  // necesita el objeto actualizado, no el capturado al crearse)
+  const driversByIdRef = useRef<Record<string, any>>({});
   // Fetches de ruta en vuelo (evita duplicar peticiones del mismo pedido)
   const routeFetchingRef = useRef<Set<string>>(new Set());
   const heatLayerRef = useRef<any>(null);
@@ -125,6 +128,8 @@ export default function AdminOpsCenterScreen() {
   const [mapsReady, setMapsReady] = useState(false);
   const [zoom, setZoom] = useState(13);
   const [selected, setSelected] = useState<OpsOrder | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<any | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<any | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
@@ -143,12 +148,16 @@ export default function AdminOpsCenterScreen() {
   const [nearbyDrivers, setNearbyDrivers] = useState<any[] | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [silencedMsg, setSilencedMsg] = useState<string | null>(null);
+  const [driverBusy, setDriverBusy] = useState(false);
+  const [bizBusy, setBizBusy] = useState(false);
 
   const {
     kpis,
     orders,
     drivers,
     businesses,
+    alerts,
     loading,
     error,
     socketConnected,
@@ -276,18 +285,13 @@ export default function AdminOpsCenterScreen() {
             ),
             zIndex: 100,
           });
-          m.addListener("click", () =>
-            openInfo(
-              m,
-              `<div style="padding:8px;max-width:240px;font-family:system-ui">
-                <strong>🏪 ${b.name}</strong><br/>
-                <span>${b.address || "Sin dirección"}</span><br/>
-                <span>${b.isPaused ? "⏸️ Pausado" : b.isOpen ? "✅ Abierto" : "🔴 Cerrado"} · ⭐ ${b.rating || "-"}</span><br/>
-                <span>📦 ${b.activeOrders} pedidos activos · ${b.totalOrders} totales</span>
-                ${b.phone ? `<br/><a href="tel:${b.phone}">📞 ${b.phone}</a>` : ""}
-              </div>`,
-            ),
-          );
+          m.addListener("click", () => {
+            // Pin accionable: abre la ficha del negocio en el panel
+            setSelectedBusiness(b);
+            setSelected(null);
+            setSelectedDriver(null);
+            setNearbyDrivers(null);
+          });
           markersRef.current.push(m);
         } else {
           const m = new google.maps.Marker({
@@ -338,19 +342,14 @@ export default function AdminOpsCenterScreen() {
             zIndex: 200,
           });
           const driver = d;
-          m.addListener("click", () =>
-            openInfo(
-              m,
-              `<div style="padding:8px;max-width:240px;font-family:system-ui">
-                <strong>🛵 ${driver.name}</strong><br/>
-                <span>${stateLabelOf(driver)}</span><br/>
-                <span>${vehicleMarkerMeta(driver.vehicleType).label}${driver.vehiclePlate ? ` · ${driver.vehiclePlate}` : ""}</span><br/>
-                <span>⭐ ${driver.rating || "-"} · ${driver.totalDeliveries} entregas</span>
-                ${driver.activeOrderId ? `<br/><span>📦 Pedido ${fmtNum(driver.activeOrderId)}</span>` : "<br/><span>Sin pedido activo</span>"}
-                ${driver.phone ? `<br/><a href="tel:${driver.phone}">📞 ${driver.phone}</a>` : ""}
-              </div>`,
-            ),
-          );
+          driversByIdRef.current[d.id] = d;
+          m.addListener("click", () => {
+            // Pin accionable: abre la ficha del repartidor en el panel
+            setSelectedDriver(driversByIdRef.current[d.id] || driver);
+            setSelected(null);
+            setSelectedBusiness(null);
+            setNearbyDrivers(null);
+          });
           driverMarkersRef.current[d.id] = m;
         }
       });
@@ -386,7 +385,11 @@ export default function AdminOpsCenterScreen() {
             zIndex: hasAlert ? 300 : 80,
           });
           m.addListener("click", () => {
+            // Pin accionable de pedido: ficha con acciones en el panel
             setSelected(o);
+            setSelectedDriver(null);
+            setSelectedBusiness(null);
+            setNearbyDrivers(null);
             openInfo(
               m,
               `<div style="padding:8px;max-width:250px;font-family:system-ui">
@@ -628,6 +631,102 @@ export default function AdminOpsCenterScreen() {
     }
   }, []);
 
+  // Silenciar una alerta de operación 30 minutos (persistido en servidor)
+  const muteAlert = useCallback(
+    async (orderId: string, alertType: string) => {
+      try {
+        await apiRequest("POST", "/api/admin/ops/alerts/mute", {
+          orderId,
+          alertType,
+          minutes: 30,
+        });
+        setSilencedMsg("🔇 Alerta silenciada 30 min");
+        setTimeout(() => setSilencedMsg(null), 4000);
+        refresh();
+      } catch {
+        setActionMsg("No se pudo silenciar la alerta");
+      }
+    },
+    [refresh],
+  );
+
+  // Bloquear / desbloquear repartidor desde su ficha
+  const toggleDriverBlock = useCallback(
+    async (driver: any) => {
+      setDriverBusy(true);
+      setActionMsg(null);
+      try {
+        const action = driver.isBlocked ? "unblock" : "block";
+        const res = await apiRequest(
+          "POST",
+          `/api/admin/drivers/${driver.id}/${action}`,
+          action === "block" ? { reason: "Bloqueado desde el centro de operaciones" } : {},
+        );
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          setActionMsg(
+            driver.isBlocked
+              ? "✅ Repartidor desbloqueado"
+              : "⛔ Repartidor bloqueado",
+          );
+          setSelectedDriver((prev: any) =>
+            prev ? { ...prev, isBlocked: !prev.isBlocked } : prev,
+          );
+          refresh();
+        } else {
+          setActionMsg(data?.error || "No se pudo cambiar el estado");
+        }
+      } catch {
+        setActionMsg("No se pudo cambiar el estado del repartidor");
+      } finally {
+        setDriverBusy(false);
+      }
+    },
+    [refresh],
+  );
+
+  // Abrir / cerrar negocio desde su ficha
+  const toggleBusinessActive = useCallback(
+    async (biz: any) => {
+      setBizBusy(true);
+      setActionMsg(null);
+      try {
+        const nowClosed = biz.isPaused || !biz.isOpen;
+        const res = await apiRequest("PUT", `/api/admin/businesses/${biz.id}`, {
+          isActive: nowClosed ? true : false,
+        });
+        if (res.ok) {
+          setActionMsg(nowClosed ? "✅ Negocio activado" : "⏸️ Negocio cerrado");
+          refresh();
+        } else {
+          setActionMsg("No se pudo cambiar el estado del negocio");
+        }
+      } catch {
+        setActionMsg("No se pudo cambiar el estado del negocio");
+      } finally {
+        setBizBusy(false);
+      }
+    },
+    [refresh],
+  );
+
+  // Ver el pedido activo del repartidor seleccionado
+  const focusDriverOrder = useCallback(
+    (driver: any) => {
+      if (!driver?.activeOrderId) {
+        setActionMsg("Este repartidor no tiene pedido activo");
+        return;
+      }
+      const order = orders.find((o) => o.id === driver.activeOrderId);
+      if (order) {
+        focusOrder(order);
+      } else {
+        setActionMsg("El pedido del repartidor ya no está activo");
+      }
+    },
+    [orders, focusOrder],
+  );
+
   // ── Estilos dependientes del tema ──
   const bg = isDark ? "#111" : "#f5f5f5";
   const card = isDark ? "#1e1e1e" : "#fff";
@@ -756,9 +855,84 @@ export default function AdminOpsCenterScreen() {
             />
           </View>
 
+          {/* 🚨 Requiere acción: alertas de operación con acciones directas */}
+          {alerts.length > 0 && (
+            <>
+              <View style={s.rowBetween}>
+                <Text
+                  style={[s.sectionLabel, { color: "#E60000", marginTop: 4 }]}
+                >
+                  🚨 Requiere acción ({alerts.length})
+                </Text>
+                {silencedMsg ? (
+                  <Text style={[s.caption, { color: sub }]}>{silencedMsg}</Text>
+                ) : null}
+              </View>
+              {alerts.map((a: any) => {
+                const order = orders.find((o) => o.id === a.orderId);
+                return (
+                  <View
+                    key={a.orderId}
+                    style={[
+                      s.alertCard,
+                      {
+                        borderColor: "#E6000050",
+                        backgroundColor: "#E600000a",
+                      },
+                    ]}
+                  >
+                    <Text style={[s.caption, { color: text, fontWeight: "700" }]}>
+                      {a.businessName || "Negocio"} · {a.minutesActive ?? "?"} min
+                    </Text>
+                    <Text style={[s.caption, { color: "#E60000" }]}>
+                      {a.alerts.map((x: any) => `⚠️ ${x.message}`).join(" · ")}
+                    </Text>
+                    <View style={s.actionRow}>
+                      <ActionBtn
+                        icon="zap"
+                        label="Asignar"
+                        color="#E60000"
+                        onPress={() => {
+                          if (order) {
+                            focusOrder(order);
+                            loadNearbyDrivers(order.id);
+                          } else {
+                            setActionMsg("El pedido ya no está activo");
+                          }
+                        }}
+                      />
+                      {order?.customer.phone && (
+                        <ActionBtn
+                          icon="phone"
+                          label="Llamar"
+                          color="#10B981"
+                          onPress={() =>
+                            window.open(
+                              `tel:${order.customer.phone}`,
+                              "_self",
+                            )
+                          }
+                        />
+                      )}
+                      <ActionBtn
+                        icon="bell-off"
+                        label="Silenciar 30m"
+                        color="#6B7280"
+                        onPress={() => {
+                          a.alerts.forEach((x: any) =>
+                            muteAlert(a.orderId, x.type),
+                          );
+                        }}
+                      />
+                    </View>
+                  </View>
+                );
+              })}
+            </>
+          )}
+
           {/* Capas */}
-          <Text style={[s.sectionLabel, { color: sub }]}>Capas</Text>
-          <View style={s.chipWrap}>
+          <Text style={[s.sectionLabel, { color: sub }]}>Capas</Text>          <View style={s.chipWrap}>
             {(
               [
                 ["orders", "Pedidos"],
@@ -932,6 +1106,171 @@ export default function AdminOpsCenterScreen() {
         {!mapsReady && (
           <View style={s.mapLoading}>
             <ActivityIndicator size="large" color={ComeYaColors.primary} />
+          </View>
+        )}
+
+        {/* Ficha del repartidor seleccionado (pin clickeable con acciones) */}
+        {!selected && selectedDriver && (
+          <View style={[s.detail, { backgroundColor: card, borderColor: bord }]}>
+            <ScrollView>
+              <View style={s.rowBetween}>
+                <Text style={[s.title, { color: text }]}>
+                  🛵 {selectedDriver.name}
+                </Text>
+                <Pressable
+                  onPress={() => setSelectedDriver(null)}
+                  style={s.iconBtn}
+                >
+                  <Feather name="x" size={18} color={sub} />
+                </Pressable>
+              </View>
+
+              <View
+                style={[
+                  s.statusPill,
+                  {
+                    backgroundColor: selectedDriver.isBlocked
+                      ? "#6B7280"
+                      : selectedDriver.isOnline
+                        ? "#10B981"
+                        : "#9CA3AF",
+                  },
+                ]}
+              >
+                <Text style={s.statusPillTxt}>{stateLabelOf(selectedDriver)}</Text>
+              </View>
+
+              <Text style={[s.caption, { color: sub }]}>
+                {vehicleMarkerMeta(selectedDriver.vehicleType).label}
+                {selectedDriver.vehiclePlate
+                  ? ` · ${selectedDriver.vehiclePlate}`
+                  : ""}
+              </Text>
+              <Text style={[s.caption, { color: sub }]}>
+                ⭐ {selectedDriver.rating || "-"} · {selectedDriver.totalDeliveries}{" "}
+                entregas
+              </Text>
+              <Text style={[s.caption, { color: sub }]}>
+                {selectedDriver.activeOrderId
+                  ? `📦 Pedido activo ${fmtNum(selectedDriver.activeOrderId)}`
+                  : "Sin pedido activo"}
+              </Text>
+
+              <View style={s.actionRow}>
+                {selectedDriver.phone && (
+                  <ActionBtn
+                    icon="phone"
+                    label="Llamar"
+                    color="#10B981"
+                    onPress={() =>
+                      window.open(`tel:${selectedDriver.phone}`, "_self")
+                    }
+                  />
+                )}
+                {selectedDriver.activeOrderId && (
+                  <ActionBtn
+                    icon="package"
+                    label="Ver pedido"
+                    color="#3B82F6"
+                    onPress={() => focusDriverOrder(selectedDriver)}
+                  />
+                )}
+                <ActionBtn
+                  icon={selectedDriver.isBlocked ? "unlock" : "slash"}
+                  label={selectedDriver.isBlocked ? "Desbloquear" : "Bloquear"}
+                  color={selectedDriver.isBlocked ? "#10B981" : "#E60000"}
+                  onPress={() => toggleDriverBlock(selectedDriver)}
+                />
+              </View>
+
+              {driverBusy && (
+                <Text style={[s.caption, { color: sub }]}>Aplicando…</Text>
+              )}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Ficha del negocio seleccionado (pin clickeable con acciones) */}
+        {!selected && !selectedDriver && selectedBusiness && (
+          <View style={[s.detail, { backgroundColor: card, borderColor: bord }]}>
+            <ScrollView>
+              <View style={s.rowBetween}>
+                <Text style={[s.title, { color: text }]}>
+                  🏪 {selectedBusiness.name}
+                </Text>
+                <Pressable
+                  onPress={() => setSelectedBusiness(null)}
+                  style={s.iconBtn}
+                >
+                  <Feather name="x" size={18} color={sub} />
+                </Pressable>
+              </View>
+
+              <View
+                style={[
+                  s.statusPill,
+                  {
+                    backgroundColor: selectedBusiness.isPaused
+                      ? "#6B7280"
+                      : selectedBusiness.isOpen
+                        ? "#10B981"
+                        : "#EF4444",
+                  },
+                ]}
+              >
+                <Text style={s.statusPillTxt}>
+                  {selectedBusiness.isPaused
+                    ? "Pausado"
+                    : selectedBusiness.isOpen
+                      ? "Abierto"
+                      : "Cerrado"}
+                </Text>
+              </View>
+
+              <Text style={[s.caption, { color: sub }]}>
+                {selectedBusiness.address || "Sin dirección"}
+              </Text>
+              <Text style={[s.caption, { color: sub }]}>
+                ⭐ {selectedBusiness.rating || "-"} ·{" "}
+                {selectedBusiness.activeOrders} activos ·{" "}
+                {selectedBusiness.totalOrders} totales
+              </Text>
+
+              <View style={s.actionRow}>
+                {selectedBusiness.phone && (
+                  <ActionBtn
+                    icon="phone"
+                    label="Llamar"
+                    color="#10B981"
+                    onPress={() =>
+                      window.open(`tel:${selectedBusiness.phone}`, "_self")
+                    }
+                  />
+                )}
+                <ActionBtn
+                  icon={
+                    selectedBusiness.isPaused || !selectedBusiness.isOpen
+                      ? "play"
+                      : "pause"
+                  }
+                  label={
+                    selectedBusiness.isPaused || !selectedBusiness.isOpen
+                      ? "Activar"
+                      : "Cerrar"
+                  }
+                  color={
+                    selectedBusiness.isPaused || !selectedBusiness.isOpen
+                      ? "#10B981"
+                      : "#E60000"
+                  }
+                  onPress={() => toggleBusinessActive(selectedBusiness)}
+                />
+              </View>
+
+              {bizBusy && (
+                <Text style={[s.caption, { color: sub }]}>Aplicando…</Text>
+              )}
+            </ScrollView>
           </View>
         )}
 
@@ -1315,6 +1654,13 @@ const s = StyleSheet.create({
     marginTop: Spacing.sm,
     padding: Spacing.sm,
     borderRadius: BorderRadius.sm,
+    gap: 2,
+  },
+  alertCard: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    marginTop: 6,
     gap: 2,
   },
   detailTxt: { fontSize: 13, fontWeight: "600" },

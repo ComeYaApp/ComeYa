@@ -1749,20 +1749,18 @@ router.post(
 
       // Notificar a los administradores que hay un negocio pendiente de aprobación
       try {
-        const { users } = await import("@shared/schema-mysql");
-        const { inArray } = await import("drizzle-orm");
-        const { sendPushToUser } = await import("../enhancedPushService");
-        const admins = await db
-          .select({ id: users.id })
-          .from(users)
-          .where(inArray(users.role, ["admin", "super_admin"]));
-        for (const admin of admins) {
-          await sendPushToUser(admin.id, {
-            title: "🏪 Negocio pendiente de aprobación",
-            body: `El negocio "${name}" se registró y requiere verificación`,
-            data: { screen: "AdminBusinesses" },
-          });
-        }
+        const { recordAdminNotification } = await import(
+          "../adminNotificationService"
+        );
+        await recordAdminNotification({
+          type: "new_registration",
+          severity: "high",
+          title: "🏪 Negocio pendiente de aprobación",
+          body: `El negocio "${name}" se registró y requiere verificación`,
+          section: "support_verifications",
+          data: { businessId: newBusiness?.id, ownerId: newBusiness?.ownerId },
+          entityKey: `biz:${newBusiness?.id}`,
+        });
       } catch (err) {
         console.error("Error notifying admins of new business:", err);
       }

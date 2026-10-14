@@ -398,11 +398,22 @@ router.put("/vehicle", authenticateToken, async (req, res) => {
           .where(eq(users.id, req.user!.id as string));
       }
       try {
-        const { notifyAdmins } = await import("../websocket");
-        notifyAdmins({
+        const { recordAdminNotification } = await import(
+          "../adminNotificationService"
+        );
+        const [u] = await db
+          .select({ name: users.name })
+          .from(users)
+          .where(eq(users.id, req.user!.id as string))
+          .limit(1);
+        await recordAdminNotification({
           type: "driver_document_updated",
-          userId: req.user!.id,
-          document: "vehicle",
+          severity: "medium",
+          title: "📄 Repartidor subió documento del vehículo",
+          body: `${u?.name || "Repartidor"} actualizó un documento del vehículo`,
+          section: "support_verifications",
+          data: { userId: req.user!.id, document: "vehicle" },
+          entityKey: `doc:${req.user!.id}:vehicle`,
         });
       } catch {
         /* notificación opcional */
@@ -1223,11 +1234,22 @@ router.post("/verification-document", authenticateToken, async (req, res) => {
 
     // Avisar al admin para revisar la documentación
     try {
-      const { notifyAdmins } = await import("../websocket");
-      notifyAdmins({
+      const { recordAdminNotification } = await import(
+        "../adminNotificationService"
+      );
+      const [u] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, req.user!.id as string))
+        .limit(1);
+      await recordAdminNotification({
         type: "driver_document_updated",
-        userId: req.user!.id,
-        document: key,
+        severity: "medium",
+        title: "📄 Documento de repartidor actualizado",
+        body: `${u?.name || "Repartidor"} actualizó "${key}"`,
+        section: "support_verifications",
+        data: { userId: req.user!.id, document: key },
+        entityKey: `doc:${req.user!.id}:${key}`,
       });
     } catch {
       /* notificación opcional */
@@ -1281,11 +1303,22 @@ router.put("/personal-docs", authenticateToken, async (req, res) => {
 
     // Avisar al admin para la re-verificación
     try {
-      const { notifyAdmins } = await import("../websocket");
-      notifyAdmins({
+      const { recordAdminNotification } = await import(
+        "../adminNotificationService"
+      );
+      const [u] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, req.user!.id as string))
+        .limit(1);
+      await recordAdminNotification({
         type: "driver_document_updated",
-        userId: req.user!.id,
-        document: "personal",
+        severity: "medium",
+        title: "📄 Documentos personales actualizados",
+        body: `${u?.name || "Repartidor"} actualizó sus documentos personales`,
+        section: "support_verifications",
+        data: { userId: req.user!.id, document: "personal" },
+        entityKey: `doc:${req.user!.id}:personal`,
       });
     } catch {
       /* notificación opcional */

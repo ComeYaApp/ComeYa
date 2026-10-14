@@ -760,6 +760,51 @@ export async function runStartupMigrations(): Promise<void> {
     } catch (err: any) {
       console.log("Migration note (push_tokens):", err.message);
     }
+
+    // ── Centro de avisos del admin ───────────────────────────────────────
+    // Historial persistente de notificaciones del panel (antes la campana
+    // vivía en memoria y se perdía al recargar). Cada aviso guarda su
+    // sección destino para el botón "Ver".
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS admin_notifications (
+          id VARCHAR(255) NOT NULL DEFAULT (UUID()) PRIMARY KEY,
+          type VARCHAR(60) NOT NULL,
+          severity VARCHAR(10) NOT NULL DEFAULT 'medium',
+          title VARCHAR(255) NOT NULL,
+          body TEXT,
+          section VARCHAR(50) DEFAULT NULL,
+          data TEXT,
+          entity_key VARCHAR(255) DEFAULT NULL,
+          read_at TIMESTAMP NULL,
+          resolved_at TIMESTAMP NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_admin_notif_created (created_at),
+          INDEX idx_admin_notif_unread (read_at),
+          INDEX idx_admin_notif_entity (type, entity_key)
+        )`,
+      );
+      console.log("✅ admin_notifications table ready");
+    } catch (err: any) {
+      console.log("Migration note (admin_notifications):", err.message);
+    }
+
+    // Alertas de operación silenciadas por el admin (pedido+alerta hasta X hora)
+    try {
+      await conn.query(
+        `CREATE TABLE IF NOT EXISTS admin_alert_mutes (
+          id VARCHAR(255) NOT NULL DEFAULT (UUID()) PRIMARY KEY,
+          order_id VARCHAR(255) NOT NULL,
+          alert_type VARCHAR(40) NOT NULL,
+          muted_until TIMESTAMP NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE KEY uq_alert_mute (order_id, alert_type)
+        )`,
+      );
+      console.log("✅ admin_alert_mutes table ready");
+    } catch (err: any) {
+      console.log("Migration note (admin_alert_mutes):", err.message);
+    }
   } finally {
     conn.release();
   }

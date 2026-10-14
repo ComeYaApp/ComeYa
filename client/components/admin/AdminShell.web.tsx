@@ -9,6 +9,8 @@ import { useAdminNotifications } from "@/hooks/useAdminNotifications";
 const PRIMARY = "#E60000";
 
 export type AdminSection =
+  | "operations"
+  | "notifications"
   | "dashboard"
   | "reservations"
   | "orders"
@@ -33,6 +35,7 @@ export type AdminSection =
   | "premiums"
   | "marketing"
   | "coupons"
+  | "communications"
   | "support"
   | "support_tickets"
   | "support_issues"
@@ -54,18 +57,27 @@ export const SECTION_ALIASES: Partial<Record<string, AdminSection>> = {
   issues: "support_issues",
   tickets: "support_tickets",
   verifications: "support_verifications",
+  subscriptions: "premiums",
+  finance_subscriptions: "premiums",
   AdminSupport: "support_issues",
   AdminOrders: "orders_active",
   AdminVerifications: "support_verifications",
+  AdminVerification: "support_verifications",
   AdminFinance: "finance_earnings",
+  AdminPayouts: "finance_payouts",
+  AdminBusinesses: "businesses_list",
+  AdminDashboard: "operations",
+  AdminPanel: "operations",
   finance: "finance_earnings",
   support: "support_tickets",
   orders: "orders_active",
   businesses: "businesses_list",
   drivers: "drivers_list",
+  drivers_map: "operations",
   users: "users",
   marketing: "coupons",
   audit_logs: "logs",
+  dashboard: "operations",
 };
 
 interface NavItem {
@@ -73,40 +85,36 @@ interface NavItem {
   label: string;
   icon: string;
   color: string;
+  group?: string;
   children?: { id: AdminSection; label: string; icon: string }[];
 }
 
+// Menú por GRUPOS de trabajo: Operación → Personas → Finanzas → Marketing →
+// Soporte → Ajustes. Sin duplicados y con las secciones rotas arregladas.
 const NAV: NavItem[] = [
   {
-    id: "dashboard",
-    label: "Dashboard",
-    icon: "bar-chart-2",
+    id: "operations",
+    label: "Centro de Operaciones",
+    icon: "monitor",
     color: PRIMARY,
+    group: "OPERACIÓN",
   },
   {
-    id: "reservations",
-    label: "Reservas",
-    icon: "calendar",
-    color: "#F97316",
+    id: "notifications",
+    label: "Avisos",
+    icon: "bell",
+    color: "#EF4444",
+    group: "OPERACIÓN",
   },
   {
     id: "orders",
     label: "Pedidos",
     icon: "shopping-bag",
     color: "#3B82F6",
+    group: "OPERACIÓN",
     children: [
       { id: "orders_active", label: "Activos", icon: "zap" },
       { id: "orders_history", label: "Historial", icon: "archive" },
-    ],
-  },
-  {
-    id: "businesses",
-    label: "Negocios",
-    icon: "briefcase",
-    color: "#10B981",
-    children: [
-      { id: "businesses_list", label: "Todos los negocios", icon: "list" },
-      { id: "businesses_categories", label: "Categorías", icon: "grid" },
     ],
   },
   {
@@ -114,10 +122,21 @@ const NAV: NavItem[] = [
     label: "Repartidores",
     icon: "truck",
     color: "#8B5CF6",
+    group: "PERSONAS",
     children: [
-      { id: "drivers_list", label: "Lista", icon: "users" },
-      { id: "drivers_map", label: "Mapa", icon: "map" },
-      { id: "delivery_config", label: "Tarifas delivery", icon: "navigation" },
+      { id: "drivers_list", label: "Lista y gestión", icon: "users" },
+    ],
+  },
+  {
+    id: "businesses",
+    label: "Negocios",
+    icon: "briefcase",
+    color: "#10B981",
+    group: "PERSONAS",
+    children: [
+      { id: "businesses_list", label: "Todos los negocios", icon: "list" },
+      { id: "businesses_categories", label: "Categorías", icon: "grid" },
+      { id: "businesses_zones", label: "Zonas de reparto", icon: "map-pin" },
     ],
   },
   {
@@ -125,51 +144,77 @@ const NAV: NavItem[] = [
     label: "Usuarios",
     icon: "users",
     color: "#F59E0B",
+    group: "PERSONAS",
+  },
+  {
+    id: "support_verifications",
+    label: "Validaciones",
+    icon: "user-check",
+    color: "#06B6D4",
+    group: "PERSONAS",
   },
   {
     id: "finance",
     label: "Finanzas",
     icon: "dollar-sign",
     color: "#06B6D4",
+    group: "FINANZAS",
     children: [
       { id: "finance_earnings", label: "Ganancias", icon: "trending-up" },
       { id: "finance_payouts", label: "Payouts", icon: "send" },
+      { id: "finance_proofs", label: "Comprobantes", icon: "file-text" },
       { id: "finance_reservations", label: "Cobros reservas", icon: "calendar" },
       { id: "finance_refunds", label: "Devoluciones", icon: "rotate-ccw" },
-      { id: "finance_proofs", label: "Comprobantes", icon: "file-text" },
       { id: "finance_giftcards", label: "Gift Cards", icon: "gift" },
       { id: "premiums", label: "Suscripciones", icon: "star" },
-      { id: "finance_accounts", label: "Cuentas", icon: "credit-card" },
+      { id: "finance_accounts", label: "Cuentas de pago", icon: "credit-card" },
     ],
+  },
+  {
+    id: "reservations",
+    label: "Reservas",
+    icon: "calendar",
+    color: "#F97316",
+    group: "MARKETING",
   },
   {
     id: "marketing",
     label: "Marketing",
     icon: "gift",
     color: "#EC4899",
-    children: [{ id: "coupons", label: "Cupones", icon: "tag" }],
+    group: "MARKETING",
+    children: [
+      { id: "coupons", label: "Cupones", icon: "tag" },
+      { id: "communications", label: "Comunicaciones", icon: "send" },
+    ],
   },
   {
     id: "support",
     label: "Soporte",
     icon: "message-circle",
     color: "#84CC16",
+    group: "SOPORTE",
     children: [
       { id: "support_issues", label: "Incidencias", icon: "alert-circle" },
       { id: "support_tickets", label: "Tickets", icon: "inbox" },
     ],
   },
   {
-    id: "support_verifications",
-    label: "Verificaciones",
-    icon: "user-check",
-    color: "#06B6D4",
-  },
-  {
     id: "settings",
     label: "Configuración",
     icon: "sliders",
     color: "#6B7280",
+    group: "AJUSTES",
+    children: [
+      { id: "delivery_config", label: "Tarifas delivery", icon: "navigation" },
+    ],
+  },
+  {
+    id: "logs",
+    label: "Logs de auditoría",
+    icon: "list",
+    color: "#6B7280",
+    group: "AJUSTES",
   },
 ];
 
@@ -180,19 +225,37 @@ interface Props {
   children: React.ReactNode;
 }
 
-// Campana de notificaciones en tiempo real (socket admins) con acciones
-// que navegan a la sección correspondiente del panel.
-function AdminBell({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
+// Campana de avisos en tiempo real: historial del servidor + no leídos +
+// enlace al Centro de Avisos completo.
+function AdminBell({
+  onNavigate,
+  hook,
+}: {
+  onNavigate: (s: AdminSection) => void;
+  hook: ReturnType<typeof useAdminNotifications>;
+}) {
   const { isDark } = useTheme();
-  const { notifs, unreadCount, markRead, markAllRead, clear } =
-    useAdminNotifications();
+  const {
+    notifs,
+    unreadCount,
+    markRead,
+    markAllRead,
+    clear,
+    silenced,
+    setSilenced,
+    connected,
+  } = hook;
   const [open, setOpen] = useState(false);
 
   const border = isDark ? "#222" : "#ebebeb";
   const text = isDark ? "#fff" : "#111";
   const sub = isDark ? "#666" : "#aaa";
 
-  if (notifs.length === 0 && !open) return null;
+  const LEVEL_COLOR: Record<string, string> = {
+    critical: "#EF4444",
+    high: "#F59E0B",
+    medium: "#3B82F6",
+  };
 
   return (
     <View style={[bell.wrap, { borderBottomColor: border }]}>
@@ -201,57 +264,158 @@ function AdminBell({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
         <Text style={[bell.label, { color: text }]}>Avisos</Text>
         {unreadCount > 0 && (
           <View style={bell.badge}>
-            <Text style={bell.badgeTxt}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
+            <Text style={bell.badgeTxt}>{unreadCount > 99 ? "99+" : unreadCount}</Text>
           </View>
         )}
+        <View
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 4,
+            backgroundColor: connected ? "#10B981" : "#F59E0B",
+          }}
+        />
         <Feather name={open ? "chevron-up" : "chevron-down"} size={13} color={sub} />
       </Pressable>
 
       {open && (
         <View style={bell.panel}>
+          <View style={{ flexDirection: "row", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
+            <TouchableOpacity onPress={markAllRead}>
+              <Text style={{ color: "#3B82F6", fontSize: 11, fontWeight: "600" }}>
+                Marcar leídos
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setSilenced(!silenced)}>
+              <Text style={{ color: sub, fontSize: 11 }}>
+                {silenced ? "🔇 Activar sonido" : "🔊 Silenciar"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={clear}>
+              <Text style={{ color: sub, fontSize: 11 }}>Limpiar vista</Text>
+            </TouchableOpacity>
+          </View>
           {notifs.length === 0 ? (
             <Text style={{ color: sub, fontSize: 11, paddingVertical: 6 }}>
               Sin avisos
             </Text>
           ) : (
-            <>
-              <View style={{ flexDirection: "row", gap: 10, marginBottom: 4 }}>
-                <TouchableOpacity onPress={markAllRead}>
-                  <Text style={{ color: "#3B82F6", fontSize: 11, fontWeight: "600" }}>
-                    Marcar leídos
+            notifs.slice(0, 10).map((n) => (
+              <Pressable
+                key={n.id}
+                onPress={() => {
+                  markRead(n.id);
+                  if (n.section) {
+                    onNavigate(n.section as AdminSection);
+                    setOpen(false);
+                  }
+                }}
+                style={[bell.item, !n.read && { backgroundColor: "#EF444408" }]}
+              >
+                <View style={bell.itemTop}>
+                  <Feather
+                    name={n.icon as any}
+                    size={12}
+                    color={LEVEL_COLOR[n.level] || "#EF4444"}
+                  />
+                  <Text
+                    style={{ color: text, fontSize: 11, fontWeight: n.read ? "500" : "700", flex: 1 }}
+                    numberOfLines={1}
+                  >
+                    {n.title}
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={clear}>
-                  <Text style={{ color: sub, fontSize: 11 }}>Limpiar</Text>
-                </TouchableOpacity>
-              </View>
-              {notifs.slice(0, 12).map((n) => (
-                <Pressable
-                  key={n.id}
-                  onPress={() => {
-                    markRead(n.id);
-                    if (n.action?.section) {
-                      onNavigate(n.action.section as AdminSection);
-                      setOpen(false);
-                    }
-                  }}
-                  style={[bell.item, !n.read && { backgroundColor: "#EF444408" }]}
-                >
-                  <View style={bell.itemTop}>
-                    <Feather name={n.icon as any} size={12} color="#EF4444" />
-                    <Text style={{ color: text, fontSize: 11, fontWeight: "700", flex: 1 }} numberOfLines={1}>
-                      {n.title}
-                    </Text>
-                  </View>
-                  <Text style={{ color: sub, fontSize: 10, lineHeight: 13 }} numberOfLines={2}>
-                    {n.body}
+                  <Text style={{ color: sub, fontSize: 9 }}>
+                    {new Date(n.timestamp).toLocaleTimeString("es-ES", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </Text>
-                </Pressable>
-              ))}
-            </>
+                </View>
+                <Text style={{ color: sub, fontSize: 10, lineHeight: 13 }} numberOfLines={2}>
+                  {n.body}
+                </Text>
+              </Pressable>
+            ))
           )}
+          <TouchableOpacity
+            onPress={() => {
+              setOpen(false);
+              onNavigate("notifications" as AdminSection);
+            }}
+            style={{ paddingVertical: 6 }}
+          >
+            <Text style={{ color: "#3B82F6", fontSize: 11, fontWeight: "700" }}>
+              Ver todos los avisos →
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
+    </View>
+  );
+}
+
+// Avisos flotantes globales: cualquier evento del admin aparece aquí con
+// botón "Ver" que lleva a la sección correspondiente, en cualquier pantalla.
+function AdminToasts({
+  hook,
+  onNavigate,
+}: {
+  hook: ReturnType<typeof useAdminNotifications>;
+  onNavigate: (s: AdminSection) => void;
+}) {
+  const { isDark } = useTheme();
+  const { toasts, dismissToast } = hook;
+  if (toasts.length === 0) return null;
+
+  const LEVEL_COLOR: Record<string, string> = {
+    critical: "#EF4444",
+    high: "#F59E0B",
+    medium: "#3B82F6",
+  };
+  const card = isDark ? "#1b1b1b" : "#fff";
+  const text = isDark ? "#fff" : "#111";
+  const sub = isDark ? "#888" : "#666";
+
+  return (
+    <View style={toastLayer.wrap} pointerEvents="box-none">
+      {toasts.map((t) => {
+        const color = LEVEL_COLOR[t.level] || "#3B82F6";
+        return (
+          <View
+            key={t.id}
+            style={[toastLayer.card, { backgroundColor: card, borderLeftColor: color }]}
+          >
+            <View style={toastLayer.top}>
+              <Feather name={t.icon as any} size={14} color={color} />
+              <Text
+                style={{ color: text, fontSize: 12, fontWeight: "800", flex: 1 }}
+                numberOfLines={1}
+              >
+                {t.title}
+              </Text>
+              <TouchableOpacity onPress={() => dismissToast(t.id)}>
+                <Feather name="x" size={13} color={sub} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: sub, fontSize: 11, lineHeight: 15 }} numberOfLines={2}>
+              {t.body}
+            </Text>
+            <View style={toastLayer.actions}>
+              {t.section ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    onNavigate(t.section as AdminSection);
+                    dismissToast(t.id);
+                  }}
+                  style={[toastLayer.viewBtn, { backgroundColor: color }]}
+                >
+                  <Text style={toastLayer.viewTxt}>Ver</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -259,6 +423,9 @@ function AdminBell({ onNavigate }: { onNavigate: (s: AdminSection) => void }) {
 export function AdminShell({ active, onChange, metrics, children }: Props) {
   const { isDark } = useTheme();
   const { user, logout } = useAuth();
+  // Una sola instancia del centro de avisos para toda la shell (campana +
+  // avisos flotantes); comparte el socket único con el resto del panel.
+  const notifHook = useAdminNotifications();
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
   const sideBg = isDark ? "#141414" : "#fff";
@@ -282,15 +449,12 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
   };
 
   const badges: Partial<Record<AdminSection, number>> = {
-    orders: metrics?.pendingOrders || 0,
     orders_active: metrics?.pendingOrders || 0,
     finance_proofs: metrics?.pendingPayments || 0,
-    finance: metrics?.pendingPayments || 0,
     support_tickets: metrics?.openTickets || 0,
-    support: metrics?.openIssues || metrics?.openTickets || 0,
     support_issues: metrics?.openIssues || 0,
-    drivers: metrics?.pendingVerifications || 0,
     support_verifications: metrics?.pendingVerifications || 0,
+    notifications: notifHook.unreadCount || 0,
   };
 
   const text = isDark ? "#fff" : "#111";
@@ -312,7 +476,7 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[sh.appName, { color: text }]}>ComeYa</Text>
-            <Text style={[sh.appRole, { color: sub }]}>Admin Panel</Text>
+            <Text style={[sh.appRole, { color: sub }]}>Panel Admin</Text>
           </View>
           <View style={sh.onlineDot} />
         </View>
@@ -331,28 +495,29 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
             <Text style={[sh.userRole, { color: sub }]} numberOfLines={1}>
               {user?.role === "super_admin" ? "Super Admin" : "Administrador"}
             </Text>
-            {user?.email ? (
-              <Text style={[sh.userEmail, { color: sub }]} numberOfLines={1}>
-                {user.email}
-              </Text>
-            ) : null}
           </View>
         </View>
 
         {/* Nav */}
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <AdminBell onNavigate={onChange} />
-          <Text style={[sh.groupLabel, { color: sub }]}>NAVEGACIÓN</Text>
+          <AdminBell onNavigate={onChange} hook={notifHook} />
 
-          {NAV.map((item) => {
+          {NAV.map((item, idx) => {
             const isParentActive =
               active === item.id || item.children?.some((c) => c.id === active);
             const isOpen = expanded.has(item.id);
             const badge = badges[item.id];
             const hasChildren = !!item.children?.length;
+            const showGroupHeader =
+              !!item.group && item.group !== NAV[idx - 1]?.group;
 
             return (
               <View key={item.id}>
+                {showGroupHeader && (
+                  <Text style={[sh.groupLabel, { color: sub }]}>
+                    {item.group}
+                  </Text>
+                )}
                 <Pressable
                   onPress={() => {
                     if (hasChildren) {
@@ -488,6 +653,9 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
 
       {/* ── Content ── */}
       <View style={sh.content}>{children}</View>
+
+      {/* Avisos flotantes globales (encima de cualquier sección) */}
+      <AdminToasts hook={notifHook} onNavigate={onChange} />
     </View>
   );
 }
@@ -614,4 +782,35 @@ const bell = StyleSheet.create({
   panel: { marginTop: 6, gap: 2 },
   item: { borderRadius: 8, padding: 6 },
   itemTop: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
+});
+
+// Avisos flotantes globales: capa fija en la esquina superior derecha del
+// contenido, por encima de cualquier sección
+const toastLayer = StyleSheet.create({
+  wrap: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    width: 330,
+    gap: 8,
+    zIndex: 9999,
+  },
+  card: {
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  top: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  actions: { flexDirection: "row", justifyContent: "flex-end", marginTop: 8 },
+  viewBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  viewTxt: { color: "#fff", fontSize: 11, fontWeight: "800" },
 });

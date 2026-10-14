@@ -114,23 +114,21 @@ async function notifyAdminManualPayout(
   type: "business" | "driver",
 ) {
   try {
-    const { users } = await import("@shared/schema-mysql");
-    const { sql } = await import("drizzle-orm");
-    const admins = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(sql`role IN ('admin', 'super_admin')`);
-
+    const { recordAdminNotification } = await import(
+      "./adminNotificationService"
+    );
     const amountEur = (amount / 100).toFixed(2);
     const label = type === "business" ? "negocio" : "repartidor";
 
-    for (const admin of admins) {
-      await sendPushToUser(admin.id, {
-        title: `💸 Payout pendiente — ${label}`,
-        body: `${recipientName} debe recibir €${amountEur} por pedido ${await orderRefFromId(orderId)}`,
-        data: { screen: "AdminPayouts", orderId },
-      }).catch(() => {});
-    }
+    await recordAdminNotification({
+      type: "new_payout",
+      severity: "high",
+      title: `💸 Payout pendiente — ${label}`,
+      body: `${recipientName} debe recibir €${amountEur} por pedido ${await orderRefFromId(orderId)}`,
+      section: "finance_payouts",
+      data: { orderId, recipientName, amount, type },
+      entityKey: `payout:manual:${orderId}:${type}`,
+    });
   } catch (err: any) {
     logger.error("Error notifying admin of manual payout:", err);
   }

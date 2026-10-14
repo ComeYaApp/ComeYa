@@ -869,22 +869,6 @@ router.post(
       });
     } catch {}
 
-    // Push a todos los admins (patrón de comprobantes de pedidos)
-    try {
-      const admins = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(inArray(users.role, ["admin", "super_admin"]))
-        .limit(20);
-      for (const a of admins) {
-        await sendPushToUser(a.id, {
-          title: "💳 Tarifas de reservas pendientes",
-          body: `Un negocio envió un comprobante de ${(outstandingCents / 100).toFixed(2).replace(".", ",")} € por tarifas de reservas. Verifícalo en Finanzas → Cobros reservas.`,
-          data: { section: "finance_reservations" },
-        });
-      }
-    } catch {}
-
     res.json({
       success: true,
       proofId: id,
