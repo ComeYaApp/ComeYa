@@ -33,6 +33,16 @@ const ROLE_HIERARCHY = {
   customer: 20,
 };
 
+// Roles legacy ("delivery", "business", "driver") usados antes de la
+// migración: se normalizan para que los checks de rol funcionen y esos
+// usuarios no queden invisibles ni bloqueados.
+export function normalizeRole(role: string | null | undefined): string {
+  if (!role) return "customer";
+  if (role === "delivery" || role === "driver") return "delivery_driver";
+  if (role === "business") return "business_owner";
+  return role;
+}
+
 // Verify JWT token
 export async function authenticateToken(
   req: Request,
@@ -70,7 +80,7 @@ export async function authenticateToken(
       email: user.email || undefined,
       name: user.name,
       phone: user.phone,
-      role: user.role,
+      role: normalizeRole(user.role),
       phoneVerified: user.phoneVerified,
       verificationStatus: user.verificationStatus ?? undefined,
       isActive: user.isActive,

@@ -10,8 +10,12 @@ interface SocketUser {
   role: string;
 }
 
-// Decodifica el JWT del handshake (auth.token) — el mismo secreto que el middleware HTTP
-function decodeSocketUser(socket: any): SocketUser | null {
+// Decodifica el JWT del handshake (auth.token) — el mismo secreto que el middleware HTTP.
+// El rol NO se confía del token (los access tokens antiguos no lo llevan):
+// se consulta en BD, igual que authenticateToken. Sin esto los admins llegaban
+// como "customer" y nunca entraban a la room "admins" (sin notificaciones ni
+// posiciones en vivo).
+async function decodeSocketUser(socket: any): Promise<SocketUser | null> {
   const token = socket.handshake?.auth?.token || socket.handshake?.query?.token;
   if (!token || typeof token !== "string") return null;
   try {
@@ -20,7 +24,29 @@ function decodeSocketUser(socket: any): SocketUser | null {
       process.env.JWT_SECRET || "comeya_local_secret_key",
     ) as any;
     if (!decoded?.id) return null;
-    return { id: decoded.id, role: decoded.role || "customer" };
+
+    let role: string | null = decoded.role || null;
+    try {
+      const { db } = await import("./db");
+      const { users } = await import("@shared/schema-mysql");
+      const { eq } = await import("drizzle-orm");
+      const [row] = (await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, decoded.id))
+        .limit(1)) as any[];
+      if (row?.role) role = row.role;
+    } catch {
+      // si la BD no responde, se cae al rol del token (o customer)
+    }
+
+    const normalized =
+      role === "delivery" || role === "driver"
+        ? "delivery_driver"
+        : role === "business"
+          ? "business_owner"
+          : role;
+    return { id: decoded.id, role: normalized || "customer" };
   } catch {
     return null;
   }
@@ -74,12 +100,19 @@ export function initializeWebSocket(httpServer: HTTPServer) {
   io.on("connection", (socket) => {
     logger.info(`🔌 WebSocket connected: ${socket.id}`);
 
-    // Autenticación por JWT en el handshake
-    socket.data.user = decodeSocketUser(socket);
+    // Autenticación por JWT en el handshake + rol fresco desde BD. Se guarda
+    // como promesa y los handlers la esperan: si se asignara tras un await,
+    // un "join" rápido del cliente llegaría antes de resolverse el rol.
+    const userReady = decodeSocketUser(socket);
+    userReady
+      .then((u) => {
+        socket.data.user = u;
+      })
+      .catch(() => {});
 
     // Unirse a una room de pedido para tracking en vivo (validado por rol)
     socket.on("join_order", async (data: { orderId: string }) => {
-      const user: SocketUser | null = socket.data.user;
+      const user: SocketUser | null = await userReady;
       if (!user || !data?.orderId) return;
       if (await canJoinOrderRoom(user, data.orderId)) {
         socket.join(`order:${data.orderId}`);
@@ -90,9 +123,9 @@ export function initializeWebSocket(httpServer: HTTPServer) {
     // Join room por rol (compatibilidad con clientes existentes)
     socket.on(
       "join",
-      (data: { userId: string; role: string; businessId?: string }) => {
+      async (data: { userId: string; role: string; businessId?: string }) => {
         // Si hay token válido, la identidad del token manda sobre el payload
-        const user: SocketUser | null = socket.data.user;
+        const user: SocketUser | null = await userReady;
         const userId = user?.id || data.userId;
         const role = user?.role || data.role;
 
@@ -142,6 +175,20 @@ export function notifyNewOrder(businessId: string, order: any) {
   io.to(`business:${businessId}`).emit("new_order", order);
   io.to("admins").emit("new_order", order);
   logger.info(`📦 New order notification sent to business ${businessId}`);
+
+  // Push al admin para que se entere aunque tenga la app cerrada
+  (async () => {
+    try {
+      const { notifyAdminsPush } = await import("./adminNotify");
+      await notifyAdminsPush({
+        title: "📦 Nuevo pedido",
+        body: `${order?.businessName ?? "Negocio"} · ${((order?.total ?? 0) / 100).toFixed(2)} €`,
+        data: { screen: "AdminPanel", section: "orders_active" },
+      });
+    } catch (e) {
+      console.error("notifyNewOrder admin push error:", e);
+    }
+  })();
 }
 
 export function notifyOrderStatusChange(

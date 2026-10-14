@@ -1,9 +1,14 @@
 import { db } from "./db";
 import { orders, deliveryDrivers, withdrawals } from "@shared/schema-mysql";
-import { eq, and, lt, lte } from "drizzle-orm";
+import { eq, and, lt, lte, isNull, inArray } from "drizzle-orm";
 import { releasePendingFunds } from "./commissionService";
 import { logger } from "./logger";
 import { geocodeMissingCoordinatesJob } from "./geocodeService";
+import { ALERT_NO_DRIVER_MIN } from "./utils/opsAlerts";
+
+// Pedidos ya avisados como "sin repartidor": no se repite el aviso para el
+// mismo pedido aunque el job corra cada minuto.
+const stuckNotified = new Set<string>();
 
 export async function releaseFundsJob() {
   try {
@@ -171,6 +176,64 @@ export async function unblockExpiredDriversJob() {
   }
 }
 
+// Avisar al admin de pedidos que llevan demasiado tiempo sin repartidor.
+// El evento existía en el websocket pero NUNCA se emitía: la campana del
+// panel y el refresh del centro de operaciones nunca se disparaban.
+export async function alertStuckOrdersJob() {
+  try {
+    const cutoff = new Date(Date.now() - ALERT_NO_DRIVER_MIN * 60 * 1000);
+    const stuck = await db
+      .select({
+        id: orders.id,
+        businessName: orders.businessName,
+        createdAt: orders.createdAt,
+      })
+      .from(orders)
+      .where(
+        and(
+          inArray(orders.status, ["pending", "preparing", "ready"] as any),
+          isNull(orders.deliveryPersonId),
+          lte(orders.createdAt, cutoff),
+        ),
+      );
+
+    for (const order of stuck) {
+      if (stuckNotified.has(order.id)) continue;
+      stuckNotified.add(order.id);
+      const minutes = Math.max(
+        ALERT_NO_DRIVER_MIN,
+        Math.round((Date.now() - new Date(order.createdAt).getTime()) / 60000),
+      );
+      try {
+        const { notifyAdminOrderStuck } = await import("./websocket");
+        notifyAdminOrderStuck({
+          orderId: order.id,
+          businessName: order.businessName || "Negocio",
+          minutesWaiting: minutes,
+        });
+        logger.warn(`⏰ Pedido sin repartidor: ${order.id} (${minutes} min)`);
+      } catch (e) {
+        console.error("alertStuckOrdersJob emit error:", e);
+      }
+    }
+
+    // Limpiar pedidos que ya consiguieron repartidor para que, si vuelven a
+    // quedarse atascados, se avise de nuevo
+    if (stuckNotified.size > 200) {
+      for (const id of [...stuckNotified]) {
+        const [row] = await db
+          .select({ deliveryPersonId: orders.deliveryPersonId })
+          .from(orders)
+          .where(eq(orders.id, id))
+          .limit(1);
+        if (row?.deliveryPersonId) stuckNotified.delete(id);
+      }
+    }
+  } catch (error) {
+    logger.error("Alert stuck orders job failed", error);
+  }
+}
+
 export function startBackgroundJobs() {
   // Antes se desactivaban fuera de NODE_ENV=production: en despliegues sin
   // esa variable los pedidos programados nunca se ejecutaban. Opt-out
@@ -190,6 +253,8 @@ export function startBackgroundJobs() {
   setInterval(updateBusinessStatsJob, 6 * 60 * 60 * 1000);
   setInterval(executeScheduledOrdersJob, 5 * 60 * 1000);
   setInterval(unblockExpiredDriversJob, 60 * 60 * 1000);
+  // Pedidos sin repartidor: aviso al admin cada minuto
+  setInterval(alertStuckOrdersJob, 60 * 1000);
   // Garantía de coordenadas: rellena lat/lng de negocios y direcciones
   // que aún no los tengan (creados sin geocodificación o con la API caída)
   setInterval(geocodeMissingCoordinatesJob, 30 * 60 * 1000);
@@ -199,6 +264,7 @@ export function startBackgroundJobs() {
   executeScheduledOrdersJob();
   unblockExpiredDriversJob();
   geocodeMissingCoordinatesJob();
+  alertStuckOrdersJob();
 
   logger.info("Background jobs started");
 }

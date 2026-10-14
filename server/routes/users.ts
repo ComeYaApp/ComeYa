@@ -939,7 +939,17 @@ router.post(
       const userId = req.params.id;
 
       const { idDocumentUrl, autonomoDocumentUrl } = req.body;
-      const updates: any = { verificationStatus: "pending" };
+      // Un repartidor ya verificado que re-sube documentos NO vuelve a
+      // "pending" (misma guarda que el resto de caminos de verificación)
+      const [current] = await db
+        .select({ verificationStatus: users.verificationStatus })
+        .from(users)
+        .where(eq(users.id, userId as string))
+        .limit(1);
+      const wasVerified = (current as any)?.verificationStatus === "verified";
+      const updates: any = wasVerified
+        ? {}
+        : { verificationStatus: "pending" };
       if (idDocumentUrl) updates.idDocumentUrl = idDocumentUrl;
       if (autonomoDocumentUrl)
         updates.autonomoDocumentUrl = autonomoDocumentUrl;

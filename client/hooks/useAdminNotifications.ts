@@ -200,6 +200,45 @@ export function useAdminNotifications() {
           });
         });
 
+        // 🔔 GENÉRICO — nueva verificación de repartidor, documento
+        // actualizado, suscripción, etc. Antes nadie escuchaba este evento
+        // y los avisos caían al vacío.
+        socket.on("admin_notification", (data: any) => {
+          const type = (data as any)?.type;
+          if (type === "new_delivery_verification") {
+            add({
+              level: "high",
+              icon: "user-check",
+              title: "🛵 Repartidor pendiente de verificación",
+              body: data.message ?? `${data.userName} envió sus documentos`,
+              action: { label: "Verificar", section: "verifications" },
+            });
+          } else if (type === "document_updated") {
+            add({
+              level: "medium",
+              icon: "file-text",
+              title: "📄 Documento actualizado",
+              body: data.message ?? `${data.userName}: ${data.documentType}`,
+              action: { label: "Revisar", section: "verifications" },
+            });
+          } else if (type === "new_subscription") {
+            add({
+              level: "medium",
+              icon: "star",
+              title: "⭐ Nueva suscripción",
+              body: `Plan ${data.plan ?? "Premium"} activado`,
+              action: { label: "Ver", section: "finance_subscriptions" },
+            });
+          } else {
+            add({
+              level: "medium",
+              icon: "bell",
+              title: data.title ?? "Aviso del sistema",
+              body: data.message ?? "",
+            });
+          }
+        });
+
         socket.on("disconnect", () => {});
       } catch {}
     };

@@ -23,6 +23,10 @@ router.get(
         bizRows,
         userRows,
         statesRows,
+        statsRows,
+        ratingRows,
+        fraudRows,
+        yesterdayRows,
       ] = (await Promise.all([
         db
           .execute(sql`
@@ -96,6 +100,50 @@ router.get(
             GROUP BY status
           `)
           .then((r: any) => r[0]),
+        // KPIs del dashboard móvil (antes faltaban y salían en cero):
+        // en camino, preparando, totales, ticket promedio y tasa de completados
+        db
+          .execute(sql`
+            SELECT
+              SUM(status IN ('picked_up','on_the_way','in_transit','arriving')) AS on_the_way,
+              SUM(status = 'preparing') AS preparing,
+              (SELECT COUNT(*) FROM orders) AS total,
+              (SELECT COUNT(*) FROM orders WHERE status = 'delivered') AS completed,
+              (SELECT AVG(total) FROM orders
+                WHERE status = 'delivered' AND delivered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+              ) AS avg_order_value,
+              (SELECT
+                CASE WHEN (SUM(status='delivered') + SUM(status='cancelled')) > 0
+                  THEN ROUND(SUM(status='delivered') * 100 / (SUM(status='delivered') + SUM(status='cancelled')), 1)
+                  ELSE 0 END
+               FROM orders) AS completion_rate
+            FROM orders
+            WHERE status IN ('picked_up','on_the_way','in_transit','arriving','preparing')
+          `)
+          .then((r: any) => r[0]),
+        // Rating medio de repartidores (BD en escala 0-100 → x10 para que la
+        // app, que divide entre 100, muestre 5.0 en vez de 0.5)
+        db
+          .execute(sql`
+            SELECT AVG(rating) * 10 AS avg_rating FROM delivery_drivers
+            WHERE rating > 0
+          `)
+          .then((r: any) => r[0]),
+        // Fraudes detectados (audit_logs) — contador total
+        db
+          .execute(sql`
+            SELECT COUNT(*) AS cnt FROM audit_logs WHERE action = 'fraud_attempt'
+          `)
+          .then((r: any) => r[0]),
+        // Ayer: pedidos e ingresos (para los trends del dashboard)
+        db
+          .execute(sql`
+            SELECT
+              SUM(created_at >= CURDATE() - INTERVAL 1 DAY AND created_at < CURDATE()) AS orders_yesterday,
+              COALESCE(SUM(CASE WHEN status='delivered' AND delivered_at >= CURDATE() - INTERVAL 1 DAY AND delivered_at < CURDATE() THEN total ELSE 0 END), 0) AS revenue_yesterday
+            FROM orders
+          `)
+          .then((r: any) => r[0]),
       ])) as any;
 
       // IMPORTANTE: cada fila se desenvuelve UNA sola vez (rows[0]). El
@@ -107,6 +155,10 @@ router.get(
       const drv = (driverRows as any[])[0] || {};
       const biz = (bizRows as any[])[0] || {};
       const usr = (userRows as any[])[0] || {};
+      const stats = (statsRows as any[])[0] || {};
+      const rating = (ratingRows as any[])[0] || {};
+      const fraud = (fraudRows as any[])[0] || {};
+      const yesterday = (yesterdayRows as any[])[0] || {};
       const orderStatesToday: Record<string, number> = {};
       for (const row of (statesRows as any[]) || []) {
         if (row?.status) orderStatesToday[row.status] = Number(row.cnt) || 0;
@@ -129,7 +181,19 @@ router.get(
           countSafe(sql`SELECT COUNT(*) AS cnt FROM order_issues WHERE status IN ('open', 'in_review')`),
           countSafe(sql`SELECT COUNT(*) AS cnt FROM support_tickets WHERE status = 'open'`),
           countSafe(sql`SELECT COUNT(*) AS cnt FROM payment_proofs WHERE status = 'pending'`),
-          countSafe(sql`SELECT COUNT(*) AS cnt FROM delivery_drivers WHERE verification_status = 'pending'`),
+          // Solo pendientes que de verdad requieren aprobación (repartidores
+          // y negocios); los clientes nacen con "pending" pero son activos
+          // automáticamente y llenarían el badge de ruido
+          countSafe(sql`
+            SELECT COUNT(*) AS cnt FROM users u
+            WHERE u.verification_status = 'pending'
+              AND u.is_active = 1
+              AND (
+                u.role IN ('delivery_driver','business_owner','delivery','business')
+                OR EXISTS (SELECT 1 FROM delivery_drivers dd WHERE dd.user_id = u.id)
+                OR EXISTS (SELECT 1 FROM businesses b WHERE b.owner_id = u.id)
+              )
+          `),
         ]);
 
       const ordersToday = Number(today.orders_today) || 0;
@@ -177,6 +241,17 @@ router.get(
         },
         // Estados de pedido de hoy, reales
         orderStatesToday,
+        // KPIs del dashboard móvil (antes faltaban y salían en cero)
+        onTheWayOrders: Number(stats.on_the_way) || 0,
+        preparingOrders: Number(stats.preparing) || 0,
+        totalOrders: Number(stats.total) || 0,
+        completedOrders: Number(stats.completed) || 0,
+        avgOrderValue: Math.round(Number(stats.avg_order_value) || 0),
+        completionRate: Number(stats.completion_rate) || 0,
+        avgRating: Math.round(Number(rating.avg_rating) || 0),
+        fraudCount: Number(fraud.cnt) || 0,
+        yesterdayOrders: Number(yesterday.orders_yesterday) || 0,
+        yesterdayRevenue: Number(yesterday.revenue_yesterday) || 0,
         // Badges del sidebar (antes siempre a 0: nadie los calculaba)
         pendingOrders: Number(active.active_orders) || 0,
         openIssues,
@@ -420,12 +495,42 @@ router.get(
       const { db } = await import("../db");
       const { eq, desc, inArray } = await import("drizzle-orm");
 
-      // Últimos 500 pedidos (antes traía TODOS y hacía 2 queries por pedido)
-      const allOrders = await db
-        .select()
-        .from(orders)
-        .orderBy(desc(orders.createdAt))
-        .limit(500);
+      // Filtros server-side: ?status=active (o lista separada por comas) y
+      // ?limit=. Antes se ignoraban: el feed en vivo mostraba entregados y
+      // cancelados como "activos".
+      const { status } = req.query as { status?: string };
+      const { limit } = req.query as { limit?: string };
+      const ACTIVE_STATUSES = [
+        "pending",
+        "accepted",
+        "confirmed",
+        "preparing",
+        "ready",
+        "assigned_driver",
+        "picked_up",
+        "on_the_way",
+        "in_transit",
+        "arriving",
+      ];
+
+      let query: any = db.select().from(orders).orderBy(desc(orders.createdAt));
+      if (status) {
+        const statuses =
+          status === "active"
+            ? ACTIVE_STATUSES
+            : status
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+        if (statuses.length > 0) {
+          query = query.where(inArray(orders.status, statuses as any));
+        }
+      }
+      const limitNum = Math.min(
+        parseInt(limit || "500", 10) || 500,
+        1000,
+      );
+      const allOrders = await query.limit(limitNum);
 
       // Enriquecido en lote: 1 query para negocios y 1 para clientes
       const businessIds = [
@@ -1215,7 +1320,12 @@ router.get(
         .select()
         .from(users)
         .where(
-          inArray(users.role, ["delivery_driver", "business_owner"] as any),
+          inArray(users.role, [
+            "delivery_driver",
+            "business_owner",
+            "delivery",
+            "business",
+          ] as any),
         );
 
       // También quienes aplicaron como repartidor pero su rol sigue siendo
@@ -1226,12 +1336,35 @@ router.get(
         .from(users)
         .innerJoin(deliveryDrivers, eq(users.id, deliveryDrivers.userId));
 
+      // Dueños de negocio con rol legacy/customer pero con negocio creado
+      const businessOwners = await db
+        .select({ user: users })
+        .from(users)
+        .innerJoin(businesses, eq(users.id, businesses.ownerId));
+
+      // TODOS los usuarios pendientes, sea cual sea su rol: antes un
+      // repartidor/negocio con rol "customer" o legacy quedaba invisible
+      // y el admin no veía NADA que aprobar.
+      const pendingAny = await db
+        .select()
+        .from(users)
+        .where(eq(users.verificationStatus, "pending"));
+
       const byId = new Map<string, any>();
       for (const u of rolePending) byId.set(u.id, u);
       for (const row of driverApplicants) {
         if (!byId.has(row.user.id)) byId.set(row.user.id, row.user);
       }
-      const pending = [...byId.values()];
+      for (const row of businessOwners) {
+        if (!byId.has(row.user.id)) byId.set(row.user.id, row.user);
+      }
+      for (const u of pendingAny) {
+        if (!byId.has(u.id)) byId.set(u.id, u);
+      }
+      const pending = [...byId.values()].sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
 
       const ddByUser = new Map<string, any>(
         driverApplicants.map((row: any) => [row.user.id, row.dd]),
@@ -1252,7 +1385,7 @@ router.get(
             deliveryDriver = dd || null;
           }
 
-          if (user.role === "business_owner") {
+          if (user.role === "business_owner" || user.role === "business") {
             const [biz] = await db
               .select()
               .from(businesses)

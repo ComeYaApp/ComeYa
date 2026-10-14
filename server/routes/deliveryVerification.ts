@@ -91,14 +91,21 @@ router.post("/submit", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
+    // Un repartidor YA verificado que reenvía documentos NO vuelve a
+    // "pending": sigue activo y solo se avisa al admin del cambio.
+    const wasVerified = user.verificationStatus === "verified";
+
     // Verificar que sea driver o quiera ser driver
     if (user.role !== "delivery_driver" && !req.body.applyAsDriver) {
       // Actualizar rol a delivery_driver si aplica
       await db
         .update(users)
-        .set({ role: "delivery_driver", verificationStatus: "pending" as any })
+        .set({
+          role: "delivery_driver",
+          ...(wasVerified ? {} : { verificationStatus: "pending" as any }),
+        })
         .where(eq(users.id, userId as string));
-    } else {
+    } else if (!wasVerified) {
       // Solo actualizar verificación
       await db
         .update(users)
@@ -107,7 +114,9 @@ router.post("/submit", async (req, res) => {
     }
 
     // Guardar URLs de documentos en users
-    const userUpdates: any = { verificationStatus: "pending" };
+    const userUpdates: any = wasVerified
+      ? {}
+      : { verificationStatus: "pending" };
     if (idDocumentUrl) userUpdates.idDocumentUrl = idDocumentUrl;
     if (idDocumentBackUrl) userUpdates.idDocumentBackUrl = idDocumentBackUrl;
     if (autonomoDocumentUrl)
@@ -154,23 +163,42 @@ router.post("/submit", async (req, res) => {
       } as any);
     }
 
-    // Notificar al admin (en background)
+    // Notificar al admin (websocket + push: el push llega aunque el admin
+    // tenga la app cerrada)
     try {
       const { notifyAdmins } = await import("../websocket");
       notifyAdmins({
         type: "new_delivery_verification",
         userId,
         userName: user.name,
-        message: `Nuevo repartidor pendiente de verificación: ${user.name}`,
+        message: wasVerified
+          ? `Repartidor verificado actualizó sus documentos: ${user.name}`
+          : `Nuevo repartidor pendiente de verificación: ${user.name}`,
       });
+      const { notifyAdminsPush } = await import("../adminNotify");
+      await notifyAdminsPush(
+        wasVerified
+          ? {
+              title: "🛵 Repartidor verificado actualizó documentos",
+              body: `${user.name} reenvió su verificación y sigue activo`,
+              data: { screen: "AdminVerifications" },
+            }
+          : {
+              title: "🛵 Repartidor pendiente de aprobación",
+              body: `${user.name} envió sus documentos y requiere verificación`,
+              data: { screen: "AdminVerifications" },
+            },
+      );
     } catch {
       /*silencioso*/
     }
 
     res.json({
       success: true,
-      message: "Documentos enviados. Tu verificación está en revisión.",
-      status: "pending",
+      message: wasVerified
+        ? "Documentos actualizados. Sigues verificado."
+        : "Documentos enviados. Tu verificación está en revisión.",
+      status: wasVerified ? "verified" : "pending",
     });
   } catch (error: any) {
     console.error("Error submitting verification:", error);
@@ -322,6 +350,18 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
         .json({ error: "La imagen es muy pesada. Máximo 5MB" });
     }
 
+    // Un repartidor YA verificado que re-sube un documento NO vuelve a
+    // "pending": sigue activo y solo se avisa al admin del cambio.
+    const [currentUser] = await db
+      .select({
+        name: users.name,
+        verificationStatus: users.verificationStatus,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const wasVerified = currentUser?.verificationStatus === "verified";
+
     // mapping de campos
     const userFieldMap: Record<string, string> = {
       idDocumentUrl: "idDocumentUrl",
@@ -356,7 +396,9 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
 
     // atualizar campo correspondente
     if (isUserField) {
-      const updates: any = { verificationStatus: "pending" };
+      const updates: any = wasVerified
+        ? {}
+        : { verificationStatus: "pending" };
       updates[userFieldMap[documentType]] = url;
 
       await db.update(users).set(updates).where(eq(users.id, userId));
@@ -387,29 +429,40 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
         } as any);
       }
 
-      // Los documentos del vehículo también requieren re-verificación
-      await db
-        .update(users)
-        .set({ verificationStatus: "pending" })
-        .where(eq(users.id, userId));
+      // Los documentos del vehículo también requieren re-verificación,
+      // salvo que el repartidor ya estuviera aprobado
+      if (!wasVerified) {
+        await db
+          .update(users)
+          .set({ verificationStatus: "pending" })
+          .where(eq(users.id, userId));
+      }
     }
 
-    // Notificar al admin
+    // Notificar al admin (websocket + push para que le llegue con la app cerrada)
     try {
       const { notifyAdmins } = await import("../websocket");
-      const [user] = await db
-        .select({ name: users.name })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
       notifyAdmins({
         type: "document_updated",
         userId,
-        userName: user?.name || "Usuario",
+        userName: currentUser?.name || "Usuario",
         documentType,
         message: `Documento actualizado: ${documentType}`,
       });
+      const { notifyAdminsPush } = await import("../adminNotify");
+      await notifyAdminsPush(
+        wasVerified
+          ? {
+              title: "📄 Repartidor verificado actualizó un documento",
+              body: `${currentUser?.name || "Usuario"} cambió "${documentType}" y sigue activo`,
+              data: { screen: "AdminVerifications" },
+            }
+          : {
+              title: "📄 Documento actualizado",
+              body: `${currentUser?.name || "Usuario"} actualizó "${documentType}" (pendiente de verificación)`,
+              data: { screen: "AdminVerifications" },
+            },
+      );
     } catch {
       /*silencioso*/
     }
@@ -417,7 +470,9 @@ router.post("/upload-document", authenticateToken, async (req, res) => {
     res.json({
       success: true,
       url,
-      message: "Documento subido correctamente",
+      message: wasVerified
+        ? "Documento subido. Sigues verificado."
+        : "Documento subido correctamente",
     });
   } catch (error: any) {
     console.error("Error uploading document:", error);

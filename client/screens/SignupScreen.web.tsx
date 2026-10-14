@@ -70,11 +70,18 @@ export default function SignupScreen({ navigation, route }: Props) {
     setLoading(true);
     try {
       const digits = phone.replace(/\D/g, "");
-      const formatted = digits.startsWith("58")
-        ? `+${digits}`
-        : digits.startsWith("04")
-          ? `+58${digits.slice(1)}`
-          : `+34${digits}`;
+      // Formatos aceptados: 34xxxxxxxxx (con código), 58xxxxxxxxxx (legacy),
+      // 04xxxxxxxxx (Venezuela legacy) y 9 dígitos móvil español.
+      let formatted: string;
+      if (digits.startsWith("34") && digits.length >= 11) {
+        formatted = `+${digits}`;
+      } else if (digits.startsWith("58") && digits.length >= 12) {
+        formatted = `+${digits}`;
+      } else if (digits.startsWith("04") && digits.length === 11) {
+        formatted = `+58${digits.slice(1)}`;
+      } else {
+        formatted = `+34${digits}`;
+      }
       const result = await signup(
         name.trim(),
         role as any,

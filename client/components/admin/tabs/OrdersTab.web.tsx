@@ -19,22 +19,32 @@ import { displayOrderNumber } from "@/utils/orderNumber";
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   pending: { label: "Pendiente", color: "#F59E0B" },
+  accepted: { label: "Aceptado", color: "#3B82F6" },
   confirmed: { label: "Confirmado", color: "#3B82F6" },
   preparing: { label: "Preparando", color: "#8B5CF6" },
   ready: { label: "Listo", color: "#06B6D4" },
-  on_the_way: { label: "En camino", color: "#10B981" },
+  assigned_driver: { label: "Repartidor asignado", color: "#0EA5E9" },
   picked_up: { label: "Recogido", color: "#10B981" },
+  on_the_way: { label: "En camino", color: "#10B981" },
+  in_transit: { label: "En tránsito", color: "#14B8A6" },
+  arriving: { label: "Llegando", color: "#F59E0B" },
   delivered: { label: "Entregado", color: "#22C55E" },
   cancelled: { label: "Cancelado", color: "#EF4444" },
 };
 
+// Estados activos COMPLETOS: antes faltaban accepted, assigned_driver,
+// in_transit y arriving — los pedidos en tránsito no aparecían en el panel.
 const ACTIVE_STATUSES = [
   "pending",
+  "accepted",
   "confirmed",
   "preparing",
   "ready",
-  "on_the_way",
+  "assigned_driver",
   "picked_up",
+  "on_the_way",
+  "in_transit",
+  "arriving",
 ];
 const HISTORY_STATUSES = ["delivered", "cancelled"];
 

@@ -122,11 +122,20 @@ router.post(
     // Activar el perfil de repartidor. Sin este paso el usuario seguía con
     // rol "customer": la app no le mostraba el modo repartidor, el servidor
     // le denegaba activarse y no aparecía en la lista de pendientes del admin.
+    // Un repartidor YA verificado que reenvía el formulario NO vuelve a
+    // "pending": antes quedaba bloqueado para trabajar por re-enviar sus datos.
+    const [currentUser] = await db
+      .select({ verificationStatus: users.verificationStatus })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const wasVerified = currentUser?.verificationStatus === "verified";
+
     await db
       .update(users)
       .set({
         role: "delivery_driver",
-        verificationStatus: "pending",
+        ...(wasVerified ? {} : { verificationStatus: "pending" }),
         isActive: true,
         ...(idDocumentUrl ? { idDocumentUrl } : {}),
         ...(idDocumentBackUrl ? { idDocumentBackUrl } : {}),
@@ -176,19 +185,27 @@ router.post(
       }
     }
 
-    // Notificar a los administradores que hay un repartidor pendiente de aprobación
+    // Notificar a los administradores: repartidor pendiente de aprobación, o
+    // repartidor ya aprobado que actualizó sus datos (sigue activo).
     try {
       const { sendPushToUser } = await import("./enhancedPushService");
       const pendingAdmins = await db
         .select({ id: users.id })
         .from(users)
         .where(inArray(users.role, ["admin", "super_admin"]));
+      const pushPayload = wasVerified
+        ? {
+            title: "🛵 Repartidor verificado actualizó sus datos",
+            body: "Un repartidor ya aprobado reenvió su registro (sigue activo)",
+            data: { screen: "AdminVerifications" },
+          }
+        : {
+            title: "🛵 Repartidor pendiente de aprobación",
+            body: "Un nuevo repartidor se registró y requiere verificación",
+            data: { screen: "AdminVerifications" },
+          };
       for (const admin of pendingAdmins) {
-        await sendPushToUser(admin.id, {
-          title: "🛵 Repartidor pendiente de aprobación",
-          body: "Un nuevo repartidor se registró y requiere verificación",
-          data: { screen: "AdminVerifications" },
-        });
+        await sendPushToUser(admin.id, pushPayload);
       }
     } catch (err) {
       console.error("Error notifying admins of new driver:", err);

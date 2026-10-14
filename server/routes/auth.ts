@@ -1,21 +1,70 @@
 import express from "express";
 import { authenticateToken } from "../authMiddleware";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
-const signToken = (userId: string) =>
+const signToken = (userId: string, role?: string) =>
   jwt.sign(
-    { id: userId },
+    { id: userId, ...(role ? { role } : {}) },
     process.env.JWT_SECRET || "comeya_local_secret_key",
     { expiresIn: "7d" },
   );
 
+// Normaliza el teléfono para login/registro: quita espacios y guiones,
+// "00" → "+" y antepone +34 a móviles españoles de 9 dígitos. Los números
+// con otros prefijos (p.ej. +58) se conservan tal cual, solo sin formato.
+export function normalizePhone(raw: string): string {
+  if (!raw) return "";
+  let p = raw.trim().replace(/[\s\-().]/g, "");
+  if (p.startsWith("00")) p = "+" + p.slice(2);
+  if (/^34[67]\d{8}$/.test(p)) p = "+" + p;
+  if (/^[6789]\d{8}$/.test(p)) p = "+34" + p;
+  return p;
+}
+
+// Rangos para elegir la fila correcta cuando hay candidatos con el mismo
+// teléfono: las cuentas de repartidor/negocio/admin pesan más que la de
+// cliente (una cuenta duplicada de cliente no debe "robar" el login).
+const ROLE_RANK: Record<string, number> = {
+  super_admin: 4,
+  admin: 3,
+  business_owner: 2,
+  delivery_driver: 2,
+  delivery: 2,
+  business: 2,
+  driver: 2,
+  customer: 0,
+};
+
+// Busca el usuario por teléfono normalizado aunque en BD esté guardado con
+// otro formato (espacios/guiones). Devuelve la mejor fila si hay duplicados.
+async function findUserByPhone(db: any, users: any, rawPhone: string) {
+  const phoneNorm = normalizePhone(rawPhone);
+  const candidates = await db
+    .select()
+    .from(users)
+    .where(
+      sql`REPLACE(REPLACE(REPLACE(phone,' ',''),'-',''),'.','') = ${phoneNorm.replace(/[^+\d]/g, "")}`,
+    );
+  if (candidates.length === 0) {
+    return null;
+  }
+  return candidates.sort((a: any, b: any) => {
+    const ra = ROLE_RANK[a.role] ?? 0;
+    const rb = ROLE_RANK[b.role] ?? 0;
+    if (ra !== rb) return rb - ra;
+    return (
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  })[0];
+}
+
 // Emitir par access + refresh: el access caduca (7 días) y el refresh queda
 // guardado en BD para renovarlo sin volver a verificar el teléfono.
 async function issueTokenPair(user: any) {
-  const token = signToken(user.id);
+  const token = signToken(user.id, user.role);
   try {
     const { generateRefreshToken, storeRefreshToken } = await import(
       "../refreshTokenService"
@@ -72,11 +121,7 @@ router.post("/send-code", async (req, res) => {
 
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.phone, phone))
-      .limit(1);
+    const user = await findUserByPhone(db, users, phone);
 
     if (!user) return res.json({ userNotFound: true });
 
@@ -107,12 +152,11 @@ router.post("/phone-login", async (req, res) => {
 
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
+    const { normalizeRole } = await import("../authMiddleware");
 
-    let [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.phone, phone))
-      .limit(1);
+    // Buscar por teléfono normalizado: si en BD está guardado con otro
+    // formato, se encuentra igual y NO se crea una cuenta duplicada.
+    let user = await findUserByPhone(db, users, phone);
 
     if (!user) {
       // Si viene signupData, crear usuario nuevo
@@ -125,7 +169,7 @@ router.post("/phone-login", async (req, res) => {
 
         const newUser: any = {
           id: crypto.randomUUID(),
-          phone,
+          phone: normalizePhone(phone),
           name: signupData.name,
           email: signupData.email || null,
           password: hashedPassword,
@@ -148,11 +192,30 @@ router.post("/phone-login", async (req, res) => {
         }
         await db.insert(users).values(newUser);
         user = newUser;
+
+        // Avisar al admin de cada registro nuevo (cliente, negocio o
+        // repartidor) para que tenga visibilidad en tiempo real
+        try {
+          const { notifyAdminsPush } = await import("../adminNotify");
+          const roleLabel =
+            newUser.role === "delivery_driver"
+              ? "repartidor"
+              : newUser.role === "business_owner"
+                ? "negocio"
+                : "cliente";
+          await notifyAdminsPush({
+            title: `👤 Nuevo ${roleLabel} registrado`,
+            body: `${newUser.name} se registró en la plataforma`,
+            data: { screen: "AdminPanel" },
+          });
+        } catch {
+          /*silencioso*/
+        }
       } else {
         // Login normal sin signup previo
         const newUser: any = {
           id: crypto.randomUUID(),
-          phone,
+          phone: normalizePhone(phone),
           name: `Usuario ${phone.slice(-4)}`,
           role: "customer",
           isActive: true,
@@ -163,13 +226,17 @@ router.post("/phone-login", async (req, res) => {
         user = newUser;
       }
     } else {
-      // Usuario existe, actualizar verificación
+      // Usuario existe: marcar teléfono verificado. No se reactiva la cuenta
+      // de un usuario rechazado (el admin la desactivó a propósito) ni se
+      // toca su estado de verificación.
+      const updates: any = { phoneVerified: true };
+      if (user.verificationStatus !== "rejected") updates.isActive = true;
       await db
         .update(users)
-        .set({ phoneVerified: true, isActive: true } as any)
+        .set(updates)
         .where(eq(users.id, user.id));
       user.phoneVerified = true;
-      user.isActive = true;
+      if (user.verificationStatus !== "rejected") user.isActive = true;
     }
 
     const { token, refreshToken } = await issueTokenPair(user);
@@ -181,7 +248,7 @@ router.post("/phone-login", async (req, res) => {
         id: user.id,
         name: user.name,
         phone: user.phone,
-        role: user.role,
+        role: normalizeRole(user.role),
         isActive: user.isActive,
         verificationStatus: (user as any).verificationStatus ?? "pending",
         phoneVerified: user.phoneVerified,
@@ -203,11 +270,7 @@ router.post("/phone-signup", async (req, res) => {
     const { users } = await import("@shared/schema-mysql");
     const { db } = await import("../db");
 
-    const [existing] = await db
-      .select()
-      .from(users)
-      .where(eq(users.phone, phone))
-      .limit(1);
+    const existing = await findUserByPhone(db, users, phone);
     if (existing) {
       // Si la cuenta existe pero NO está verificada ni activa, permitir re-registro
       if (!existing.phoneVerified && !existing.isActive) {
@@ -218,7 +281,7 @@ router.post("/phone-signup", async (req, res) => {
           .set({ 
             email: null as any, 
             password: null as any,
-            role: "customer" as any,
+            role: (role || "customer") as any,
             updatedAt: new Date(),
           } as any)
           .where(eq(users.id, existing.id));
@@ -238,7 +301,7 @@ router.post("/phone-signup", async (req, res) => {
       }
       const tempUser: any = {
         id: crypto.randomUUID(),
-        phone,
+        phone: normalizePhone(phone),
         name,
         email: email || null,
         password: hashedPassword,
