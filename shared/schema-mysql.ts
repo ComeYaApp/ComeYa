@@ -37,6 +37,11 @@ export const users = mysqlTable("users", {
     "pending",
   ), // pending, verified, rejected
   verificationNotes: text("verification_notes"),
+  // Petición de documentos desde el panel admin: el usuario ve un banner en
+  // su perfil con lo que falta y quién lo pidió.
+  documentRequestedAt: timestamp("document_requested_at"),
+  documentRequestNote: text("document_request_note"),
+  documentRequestedBy: varchar("document_requested_by", { length: 255 }),
   // Legacy Venezuela (mantener para no romper)
   // Legacy — mantener columnas para no romper BD existente
   pagoMovilPhone: text("pago_movil_phone"),

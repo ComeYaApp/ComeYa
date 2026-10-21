@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  Alert,
+  Switch,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Print from "expo-print";
@@ -19,67 +21,24 @@ import {
   BorderRadius,
   Shadows,
 } from "../../../constants/theme";
-import { apiRequest } from "@/lib/query-client";
+import {
+  apiRequest,
+  ApiError,
+  getApiErrorMessage,
+} from "@/lib/query-client";
+import {
+  getAllBusinesses,
+  getMissingSummary,
+  isBusinessUser,
+  isDriverUser,
+  roleLabel,
+  statusMeta,
+} from "@/utils/verification";
+import { normalizeVerificationStatus } from "@shared/verification";
 
 interface Props {
   theme: any;
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
-}
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; color: string; icon: string }
-> = {
-  pending: { label: "Pendiente", color: "#F59E0B", icon: "clock" },
-  verified: { label: "Verificado", color: "#10B981", icon: "check-circle" },
-  rejected: { label: "Rechazado", color: "#EF4444", icon: "x-circle" },
-};
-
-const ROLE_LABEL: Record<string, string> = {
-  delivery_driver: "Repartidor",
-  business_owner: "Negocio",
-};
-
-// Etiqueta de rol: si tiene fila de repartidor se muestra como tal aunque su
-// rol en users siga siendo "customer" (flujo de registro antiguo)
-function roleLabel(u: any): string {
-  if (u?.deliveryDriver) return "Repartidor";
-  return ROLE_LABEL[u?.role] || u?.role || "—";
-}
-
-// Documentos e información mínimos para completar la verificación
-function getMissingItems(u: any): string[] {
-  const missing: string[] = [];
-  if (!u.idDocumentUrl) missing.push("DNI anverso");
-  if (!u.idDocumentBackUrl) missing.push("DNI reverso");
-  if (!u.dni) missing.push("DNI (número)");
-  // La dirección personal solo aplica al repartidor; el negocio usa la
-  // dirección de su negocio (que se gestiona en Mis Negocios)
-  if (u.role !== "business_owner" && !u.address)
-    missing.push("Dirección personal");
-  if (u.role === "business_owner") {
-    if (!u.autonomoDocumentUrl) missing.push("Autónomo/empresa");
-    if (!u.business?.address) missing.push("Dirección del negocio");
-  }
-  // Repartidor: se detecta por el rol O por la fila de delivery_drivers
-  // (el flujo antiguo dejaba el rol en "customer")
-  const isDriver = u.role === "delivery_driver" || !!u.deliveryDriver;
-  if (isDriver) {
-    // El permiso de circulación solo existe en vehículos con placa
-    const requiresPlate = ["moped", "motorcycle", "car"].includes(
-      u.deliveryDriver?.vehicleType,
-    );
-    if (requiresPlate && !u.deliveryDriver?.vehicleLicensePhoto)
-      missing.push("Permiso de circulación");
-    if (!u.deliveryDriver?.vehiclePhoto) missing.push("Foto del vehículo");
-    if (!u.deliveryDriver?.vehicleType) missing.push("Tipo de vehículo");
-    if (
-      ["motorcycle", "car"].includes(u.deliveryDriver?.vehicleType) &&
-      !u.deliveryDriver?.vehiclePlate
-    )
-      missing.push("Matrícula");
-  }
-  return missing;
 }
 
 export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
@@ -93,6 +52,14 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
   const [saving, setSaving] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<"all" | "business" | "driver">(
+    "all",
+  );
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(
+    null,
+  );
+  const [override, setOverride] = useState(false);
+  const [requestingDocs, setRequestingDocs] = useState(false);
 
   useEffect(() => {
     load();
@@ -103,39 +70,125 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
     try {
       const res = await apiRequest("GET", "/api/admin/verifications/pending");
       const data = await res.json();
-      setUsers(data.users || []);
-    } catch {
-      showToast("Error al cargar verificaciones", "error");
+      setUsers(
+        (data.users || []).map((u: any) => ({
+          ...u,
+          verificationStatus: normalizeVerificationStatus(
+            u.verificationStatus,
+          ),
+        })),
+      );
+    } catch (error) {
+      showToast(
+        getApiErrorMessage(error, "Error al cargar verificaciones"),
+        "error",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAction = async (action: "approve" | "reject") => {
+  const handleAction = async (
+    action: "approve" | "reject" | "reset",
+  ) => {
     if (!selected) return;
+    const missing = getMissingSummary(
+      selected,
+      selectedBusinessId,
+    ).missing;
+
+    if (action === "approve" && missing.length > 0 && !override) {
+      Alert.alert(
+        "Faltan documentos",
+        `${missing.join("\n")}\n\nActiva "Aprobar con excepción" y escribe el motivo para continuar.`,
+      );
+      return;
+    }
+    if (
+      action === "approve" &&
+      override &&
+      notes.trim().length < 5
+    ) {
+      showToast(
+        "Escribe el motivo de la excepción (mínimo 5 caracteres)",
+        "error",
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await apiRequest(
         "PUT",
         `/api/admin/verifications/${selected.id}`,
-        { action, notes },
+        {
+          action,
+          notes,
+          businessId: selectedBusinessId || undefined,
+          overrideMissingDocs: override,
+          overrideReason: override ? notes : undefined,
+        },
       );
       const data = await res.json();
       if (data.success) {
         showToast(
-          action === "approve" ? "Usuario aprobado ✓" : "Usuario rechazado",
-          action === "approve" ? "success" : "error",
+          action === "approve"
+            ? "Usuario aprobado ✓"
+            : action === "reject"
+              ? "Usuario rechazado"
+              : "Verificación reenviada a revisión",
+          action === "reject" ? "error" : "success",
         );
         setSelected(null);
         setNotes("");
+        setOverride(false);
+        setSelectedBusinessId(null);
         load();
       } else {
         showToast(data.error || "Error", "error");
       }
-    } catch {
-      showToast("Error de conexión", "error");
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        Array.isArray(error.body?.missing) &&
+        error.body.missing.length > 0
+      ) {
+        showToast(`Faltan: ${error.body.missing.join(", ")}`, "error");
+      } else {
+        showToast(getApiErrorMessage(error, "Error"), "error");
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRequestDocuments = async () => {
+    if (!selected) return;
+    setRequestingDocs(true);
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/verifications/${selected.id}/request-documents`,
+        {
+          message: notes,
+          businessId: selectedBusinessId || undefined,
+        },
+      );
+      const data = await res.json();
+      if (data.success) {
+        showToast(
+          data.push?.noTokens
+            ? "Solicitud guardada. El usuario no tiene token push; la verá al abrir la app."
+            : "Solicitud enviada y push avisado.",
+          "success",
+        );
+      } else {
+        showToast(data.error || "Error", "error");
+      }
+    } catch (error) {
+      showToast(getApiErrorMessage(error, "Error"), "error");
+    } finally {
+      setRequestingDocs(false);
     }
   };
 
@@ -148,7 +201,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
           ? `<div><img src="${url}" style="width:100%;max-width:340px;margin:8px 0;border-radius:8px;border:1px solid #ddd;" /></div>`
           : `<div style="color:#999;margin:8px 0;">${alt}</div>`;
       const vehicle =
-        u.role === "delivery_driver"
+        isDriverUser(u)
           ? `<h2>Vehículo</h2>
              <p><b>Tipo:</b> ${u.deliveryDriver?.vehicleType || "—"}</p>
              <p><b>Matrícula:</b> ${u.deliveryDriver?.vehiclePlate || "—"}</p>
@@ -159,11 +212,12 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
              <p>Foto matrícula</p>${img(u.deliveryDriver?.vehiclePlatePhoto)}`
           : "";
       const business =
-        u.role === "business_owner"
+        isBusinessUser(u)
           ? `<h2>Negocio</h2>
              <p><b>Nombre:</b> ${u.business?.name || "—"}</p>
              <p><b>Dirección:</b> ${u.business?.address || "—"}</p>
-             <p><b>Teléfono:</b> ${u.business?.phone || "—"}</p>`
+             <p><b>Teléfono:</b> ${u.business?.phone || "—"}</p>
+             <p>Certificado de autónomo/empresa</p>${img(u.autonomoDocumentUrl)}`
           : "";
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Documentación</title></head>
         <body style="font-family:sans-serif;padding:24px;color:#111;">
@@ -176,8 +230,8 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
           ${vehicle}
           ${business}
           <h2>Documentos personales</h2>
-          <p>DNI anverso</p>${img(u.idDocumentUrl)}
-          <p>DNI reverso</p>${img(u.idDocumentBackUrl)}
+          <p>DNI/NIE (anverso)</p>${img(u.idDocumentUrl)}
+          <p>DNI/NIE (reverso)</p>${img(u.idDocumentBackUrl)}
           <p>Autónomo/empresa</p>${img(u.autonomoDocumentUrl)}
         </body></html>`;
       const { uri } = await Print.printToFileAsync({ html });
@@ -197,18 +251,45 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
   };
 
   const filtered = users.filter((u) => {
-    const status = u.verificationStatus || "pending";
-    return filter === "all" || status === filter;
+    const status = normalizeVerificationStatus(u.verificationStatus);
+    const statusOk = filter === "all" || status === filter;
+    const roleOk =
+      roleFilter === "all" ||
+      (roleFilter === "driver" ? isDriverUser(u) : isBusinessUser(u));
+    return statusOk && roleOk;
   });
 
   const counts = {
     all: users.length,
     pending: users.filter(
-      (u) => (u.verificationStatus || "pending") === "pending",
+      (u) => normalizeVerificationStatus(u.verificationStatus) === "pending",
     ).length,
-    verified: users.filter((u) => u.verificationStatus === "verified").length,
-    rejected: users.filter((u) => u.verificationStatus === "rejected").length,
+    verified: users.filter(
+      (u) => normalizeVerificationStatus(u.verificationStatus) === "verified",
+    ).length,
+    rejected: users.filter(
+      (u) => normalizeVerificationStatus(u.verificationStatus) === "rejected",
+    ).length,
   };
+
+  const roleCounts = {
+    all: users.length,
+    business: users.filter(isBusinessUser).length,
+    driver: users.filter(isDriverUser).length,
+  };
+
+  const selectedBusinesses = selected ? getAllBusinesses(selected) : [];
+  const activeBusiness =
+    selectedBusinesses.find(
+      (b: any) => String(b.id) === String(selectedBusinessId),
+    ) ||
+    selected?.business ||
+    selectedBusinesses[0] ||
+    null;
+  const selectedMissing = selected
+    ? getMissingSummary(selected, selectedBusinessId).missing
+    : [];
+  const selectedStatus = statusMeta(selected?.verificationStatus);
 
   if (loading) {
     return (
@@ -262,6 +343,47 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
         ))}
       </ScrollView>
 
+      {/* Filtro por tipo de perfil */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.filterRow}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+      >
+        {(["all", "business", "driver"] as const).map((rf) => (
+          <Pressable
+            key={rf}
+            onPress={() => setRoleFilter(rf)}
+            style={[
+              s.filterChip,
+              {
+                backgroundColor:
+                  roleFilter === rf
+                    ? "#6366F1"
+                    : theme.backgroundSecondary,
+                borderColor:
+                  roleFilter === rf ? "#6366F1" : theme.border,
+              },
+            ]}
+          >
+            <Text
+              style={{
+                color: roleFilter === rf ? "#FFF" : theme.text,
+                fontWeight: "600",
+                fontSize: 12,
+              }}
+            >
+              {rf === "all"
+                ? "Todos los perfiles"
+                : rf === "business"
+                  ? "Negocios"
+                  : "Repartidores"}{" "}
+              ({roleCounts[rf]})
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
@@ -277,14 +399,18 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
           </View>
         ) : (
           filtered.map((u) => {
-            const status = u.verificationStatus || "pending";
-            const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
+            const cfg = statusMeta(u.verificationStatus);
+            const missing = getMissingSummary(u).missing;
             return (
               <Pressable
                 key={u.id}
                 onPress={() => {
                   setSelected(u);
                   setNotes(u.verificationNotes || "");
+                  setSelectedBusinessId(
+                    getAllBusinesses(u)[0]?.id ?? null,
+                  );
+                  setOverride(false);
                 }}
                 style={[s.card, { backgroundColor: theme.card }, Shadows.sm]}
               >
@@ -362,63 +488,66 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                         s.badge,
                         {
                           backgroundColor:
-                            (getMissingItems(u).length === 0
-                              ? "#10B981"
-                              : "#F59E0B") + "20",
+                            (missing.length === 0 ? "#10B981" : "#F59E0B") +
+                            "20",
                         },
                       ]}
                     >
                       <Feather
                         name={
-                          getMissingItems(u).length === 0
+                          missing.length === 0
                             ? "check-circle"
                             : "alert-circle"
                         }
                         size={11}
-                        color={
-                          getMissingItems(u).length === 0
-                            ? "#10B981"
-                            : "#F59E0B"
-                        }
+                        color={missing.length === 0 ? "#10B981" : "#F59E0B"}
                       />
                       <Text
                         style={{
                           color:
-                            getMissingItems(u).length === 0
-                              ? "#10B981"
-                              : "#F59E0B",
+                            missing.length === 0 ? "#10B981" : "#F59E0B",
                           fontSize: 11,
                           fontWeight: "600",
                           marginLeft: 3,
                         }}
                       >
-                        {getMissingItems(u).length === 0
+                        {missing.length === 0
                           ? "Docs completos"
-                          : `Faltan ${getMissingItems(u).length}`}
+                          : `Faltan ${missing.length}`}
                       </Text>
                     </View>
                     <DocBadge
-                      label="DNI"
+                      label="DNI/NIE"
                       has={!!u.idDocumentUrl}
                       theme={theme}
                     />
                     <DocBadge
-                      label="DNI reverso"
+                      label="DNI/NIE reverso"
                       has={!!u.idDocumentBackUrl}
                       theme={theme}
                     />
-                    {u.role === "business_owner" && (
+                    {isBusinessUser(u) && (
                       <DocBadge
-                        label="Autónomo"
+                        label="Autónomo/empresa"
                         has={!!u.autonomoDocumentUrl}
                         theme={theme}
                       />
                     )}
-                    {u.role === "delivery_driver" && (
+                    {isDriverUser(u) && (
                       <>
                         <DocBadge
-                          label="Permiso"
+                          label="Permiso circulación"
                           has={!!u.deliveryDriver?.vehicleLicensePhoto}
+                          theme={theme}
+                        />
+                        <DocBadge
+                          label="Matrícula"
+                          has={!!u.deliveryDriver?.vehiclePlate}
+                          theme={theme}
+                        />
+                        <DocBadge
+                          label="Seguro"
+                          has={!!u.deliveryDriver?.vehicleInsurancePhoto}
                           theme={theme}
                         />
                         <DocBadge
@@ -431,33 +560,30 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   </View>
 
                   {/* Status de la revisión: qué falta por subir */}
-                  {(() => {
-                    const missing = getMissingItems(u);
-                    return missing.length > 0 ? (
-                      <Text
-                        numberOfLines={2}
-                        style={{
-                          color: "#F59E0B",
-                          fontSize: 11,
-                          marginTop: 6,
-                          fontWeight: "600",
-                        }}
-                      >
-                        Falta: {missing.join(", ")}
-                      </Text>
-                    ) : (
-                      <Text
-                        style={{
-                          color: "#10B981",
-                          fontSize: 11,
-                          marginTop: 6,
-                          fontWeight: "600",
-                        }}
-                      >
-                        Todo completo — listo para revisar ✓
-                      </Text>
-                    );
-                  })()}
+                  {missing.length > 0 ? (
+                    <Text
+                      numberOfLines={2}
+                      style={{
+                        color: "#F59E0B",
+                        fontSize: 11,
+                        marginTop: 6,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Falta: {missing.join(", ")}
+                    </Text>
+                  ) : (
+                    <Text
+                      style={{
+                        color: "#10B981",
+                        fontSize: 11,
+                        marginTop: 6,
+                        fontWeight: "600",
+                      }}
+                    >
+                      Todo completo — listo para revisar ✓
+                    </Text>
+                  )}
                 </View>
 
                 <Feather
@@ -549,8 +675,8 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                       label="Dirección"
                       value={
                         selected.address ||
-                        (selected.role === "business_owner"
-                          ? selected.business?.address
+                        (isBusinessUser(selected)
+                          ? activeBusiness?.address
                           : null) ||
                         "No proporcionada"
                       }
@@ -566,7 +692,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   </Section>
 
                   {/* Foto de perfil (REPARTIDORES) */}
-                  {selected.role === "delivery_driver" && (
+                  {isDriverUser(selected) && (
                     <Section title="Foto de perfil" theme={theme}>
                       {selected.profileImage ? (
                         <Pressable
@@ -605,7 +731,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   )}
 
                   {/* Información del vehículo (REPARTIDORES) */}
-                  {selected.role === "delivery_driver" && (
+                  {isDriverUser(selected) && (
                     <>
                       <Section title="Información del vehículo" theme={theme}>
                         <Row
@@ -616,45 +742,70 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                           }
                           theme={theme}
                         />
-                        {selected.deliveryDriver &&
-                          ["motorcycle", "car"].includes(
-                            selected.deliveryDriver.vehicleType,
-                          ) && (
-                            <>
-                              <Row
-                                label="Matrícula"
-                                value={
-                                  selected.deliveryDriver.vehiclePlate ||
-                                  "No proporcionada"
-                                }
-                                theme={theme}
-                              />
-                              <Row
-                                label="Marca"
-                                value={
-                                  selected.deliveryDriver.vehicleBrand ||
-                                  "No proporcionada"
-                                }
-                                theme={theme}
-                              />
-                              <Row
-                                label="Modelo"
-                                value={
-                                  selected.deliveryDriver.vehicleModel ||
-                                  "No proporcionado"
-                                }
-                                theme={theme}
-                              />
-                              <Row
-                                label="Color"
-                                value={
-                                  selected.deliveryDriver.vehicleColor ||
-                                  "No proporcionado"
-                                }
-                                theme={theme}
-                              />
-                            </>
-                          )}
+                        {selected.deliveryDriver && (
+                          <>
+                            <Row
+                              label="Matrícula"
+                              value={
+                                selected.deliveryDriver.vehiclePlate ||
+                                "No proporcionada"
+                              }
+                              theme={theme}
+                            />
+                            <Row
+                              label="Marca"
+                              value={
+                                selected.deliveryDriver.vehicleBrand ||
+                                "No proporcionada"
+                              }
+                              theme={theme}
+                            />
+                            <Row
+                              label="Modelo"
+                              value={
+                                selected.deliveryDriver.vehicleModel ||
+                                "No proporcionado"
+                              }
+                              theme={theme}
+                            />
+                            <Row
+                              label="Color"
+                              value={
+                                selected.deliveryDriver.vehicleColor ||
+                                "No proporcionado"
+                              }
+                              theme={theme}
+                            />
+                            <Row
+                              label="Año"
+                              value={
+                                selected.deliveryDriver.vehicleYear
+                                  ? String(
+                                      selected.deliveryDriver.vehicleYear,
+                                    )
+                                  : "No proporcionado"
+                              }
+                              theme={theme}
+                            />
+                            <Row
+                              label="Categoría de licencia"
+                              value={
+                                selected.deliveryDriver
+                                  .drivingLicenseCategory ||
+                                "No proporcionada"
+                              }
+                              theme={theme}
+                            />
+                            <Row
+                              label="Vence licencia"
+                              value={
+                                selected.deliveryDriver.drivingLicenseExpiry ||
+                                "No proporcionada"
+                              }
+                              theme={theme}
+                            />
+                          </>
+                        )}
                       </Section>
 
                       {/* Foto del vehículo */}
@@ -746,26 +897,83 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   )}
 
                   {/* Información del negocio (BUSINESS_OWNER) */}
-                  {selected.role === "business_owner" && selected.business && (
+                  {isBusinessUser(selected) && activeBusiness && (
                     <Section title="Información del negocio" theme={theme}>
+                      {selectedBusinesses.length > 1 && (
+                        <View style={{ marginBottom: 10 }}>
+                          <Text
+                            style={{
+                              color: theme.textSecondary,
+                              fontSize: 12,
+                              marginBottom: 6,
+                            }}
+                          >
+                            Negocio a revisar ({selectedBusinesses.length})
+                          </Text>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ gap: 8 }}
+                          >
+                            {selectedBusinesses.map((biz: any) => {
+                              const active =
+                                String(biz.id) ===
+                                String(selectedBusinessId);
+                              return (
+                                <Pressable
+                                  key={biz.id}
+                                  onPress={() => {
+                                    setSelectedBusinessId(String(biz.id));
+                                    setOverride(false);
+                                  }}
+                                  style={{
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 999,
+                                    borderWidth: 1,
+                                    borderColor: active
+                                      ? ComeYaColors.primary
+                                      : theme.border,
+                                    backgroundColor: active
+                                      ? ComeYaColors.primary + "15"
+                                      : theme.backgroundSecondary,
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      color: active
+                                        ? ComeYaColors.primary
+                                        : theme.text,
+                                      fontSize: 12,
+                                      fontWeight: "600",
+                                    }}
+                                  >
+                                    {biz.name}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </ScrollView>
+                        </View>
+                      )}
                       <Row
                         label="Nombre"
-                        value={selected.business.name || "No proporcionado"}
+                        value={activeBusiness.name || "No proporcionado"}
                         theme={theme}
                       />
                       <Row
                         label="Tipo"
-                        value={selected.business.type || "No especificado"}
+                        value={activeBusiness.type || "No especificado"}
                         theme={theme}
                       />
                       <Row
                         label="Dirección"
-                        value={selected.business.address || "No proporcionada"}
+                        value={activeBusiness.address || "No proporcionada"}
                         theme={theme}
                       />
                       <Row
                         label="Teléfono"
-                        value={selected.business.phone || "No proporcionado"}
+                        value={activeBusiness.phone || "No proporcionado"}
                         theme={theme}
                       />
                     </Section>
@@ -774,57 +982,179 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                   {/* Documentos */}
                   <Section title="Documentos personales" theme={theme}>
                     <DocRow
-                      label="Foto DNI/NIE (anverso)"
+                      label="Foto del DNI/NIE (anverso)"
                       url={selected.idDocumentUrl}
                       theme={theme}
                       onPreview={setPreviewImage}
                     />
                     <DocRow
-                      label="Foto DNI/NIE (reverso)"
+                      label="Foto del DNI/NIE (reverso)"
                       url={selected.idDocumentBackUrl}
                       theme={theme}
                       onPreview={setPreviewImage}
                     />
-                    <DocRow
-                      label="Cert. autónomo/empresa"
-                      url={selected.autonomoDocumentUrl}
-                      theme={theme}
-                      onPreview={setPreviewImage}
-                    />
+                    {isBusinessUser(selected) && (
+                      <DocRow
+                        label="Certificado de autónomo/empresa"
+                        url={selected.autonomoDocumentUrl}
+                        theme={theme}
+                        onPreview={setPreviewImage}
+                      />
+                    )}
                   </Section>
+
+                  {isBusinessUser(selected) && activeBusiness && (
+                    <Section title="Datos del negocio" theme={theme}>
+                      <Row
+                        label="Dirección"
+                        value={activeBusiness.address || "No proporcionada"}
+                        theme={theme}
+                      />
+                      <Row
+                        label="Teléfono"
+                        value={activeBusiness.phone || "No proporcionado"}
+                        theme={theme}
+                      />
+                    </Section>
+                  )}
+
+                  {/* Documentos que faltan */}
+                  <Section title="Documentos pendientes" theme={theme}>
+                    {selectedMissing.length === 0 ? (
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <Feather
+                          name="check-circle"
+                          size={16}
+                          color="#10B981"
+                        />
+                        <Text
+                          style={{
+                            color: "#10B981",
+                            fontWeight: "700",
+                            marginLeft: 8,
+                            flex: 1,
+                          }}
+                        >
+                          Documentación completa
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Text
+                          style={{
+                            color: "#F59E0B",
+                            fontWeight: "700",
+                            marginBottom: 6,
+                          }}
+                        >
+                          Faltan {selectedMissing.length} documento(s):
+                        </Text>
+                        {selectedMissing.map((doc) => (
+                          <View
+                            key={doc}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "flex-start",
+                              marginBottom: 4,
+                            }}
+                          >
+                            <Feather
+                              name="alert-circle"
+                              size={13}
+                              color="#F59E0B"
+                              style={{ marginTop: 2 }}
+                            />
+                            <Text
+                              style={{
+                                color: theme.textSecondary,
+                                fontSize: 13,
+                                marginLeft: 6,
+                                flex: 1,
+                              }}
+                            >
+                              {doc}
+                            </Text>
+                          </View>
+                        ))}
+                      </>
+                    )}
+                  </Section>
+
+                  {selectedMissing.length > 0 &&
+                    selectedStatus.label !== "Verificado" && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: 12,
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: "#F59E0B55",
+                          backgroundColor: "#F59E0B12",
+                          marginHorizontal: 16,
+                          marginBottom: 12,
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={{
+                              color: theme.text,
+                              fontWeight: "700",
+                              fontSize: 13,
+                            }}
+                          >
+                            Aprobar con excepción
+                          </Text>
+                          <Text
+                            style={{
+                              color: theme.textSecondary,
+                              fontSize: 11,
+                              marginTop: 2,
+                            }}
+                          >
+                            Requiere una nota con el motivo. Queda registrado en
+                            auditoría.
+                          </Text>
+                        </View>
+                        <Switch
+                          value={override}
+                          onValueChange={setOverride}
+                          trackColor={{
+                            false: theme.border,
+                            true: "#F59E0B",
+                          }}
+                          thumbColor={override ? "#FFF" : undefined}
+                        />
+                      </View>
+                    )}
 
                   {/* Estado actual */}
                   <Section title="Estado de verificación" theme={theme}>
-                    {(() => {
-                      const status = selected.verificationStatus || "pending";
-                      const cfg = STATUS_CONFIG[status];
-                      return (
-                        <View
-                          style={[
-                            s.statusBox,
-                            {
-                              backgroundColor: cfg.color + "15",
-                              borderColor: cfg.color + "40",
-                            },
-                          ]}
-                        >
-                          <Feather
-                            name={cfg.icon as any}
-                            size={18}
-                            color={cfg.color}
-                          />
-                          <Text
-                            style={{
-                              color: cfg.color,
-                              fontWeight: "700",
-                              marginLeft: 8,
-                            }}
-                          >
-                            {cfg.label}
-                          </Text>
-                        </View>
-                      );
-                    })()}
+                    <View
+                      style={[
+                        s.statusBox,
+                        {
+                          backgroundColor: selectedStatus.color + "15",
+                          borderColor: selectedStatus.color + "40",
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name={selectedStatus.icon as any}
+                        size={18}
+                        color={selectedStatus.color}
+                      />
+                      <Text
+                        style={{
+                          color: selectedStatus.color,
+                          fontWeight: "700",
+                          marginLeft: 8,
+                        }}
+                      >
+                        {selectedStatus.label}
+                      </Text>
+                    </View>
                     {selected.verificationNotes ? (
                       <Text
                         style={[
@@ -833,6 +1163,22 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                         ]}
                       >
                         Nota: {selected.verificationNotes}
+                      </Text>
+                    ) : null}
+                    {selected.documentRequestedAt ? (
+                      <Text
+                        style={[
+                          s.sub,
+                          { color: "#F59E0B", marginTop: 8 },
+                        ]}
+                      >
+                        Documentos solicitados el{" "}
+                        {new Date(
+                          selected.documentRequestedAt,
+                        ).toLocaleString("es-ES")}
+                        {selected.documentRequestNote
+                          ? ` · ${selected.documentRequestNote}`
+                          : ""}
                       </Text>
                     ) : null}
                   </Section>
@@ -894,32 +1240,94 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                     Descargar documentación (PDF)
                   </Text>
                 </Pressable>
-                {(() => {
-                  const missing = getMissingItems(selected);
-                  return missing.length > 0 ? (
+                {selectedMissing.length > 0 ? (
+                  <Text
+                    style={{
+                      color: "#F59E0B",
+                      fontSize: 12,
+                      fontWeight: "600",
+                      marginBottom: 8,
+                    }}
+                  >
+                    ⚠️ Faltan documentos: {selectedMissing.join(", ")}
+                  </Text>
+                ) : (
+                  <Text
+                    style={{
+                      color: "#10B981",
+                      fontSize: 12,
+                      fontWeight: "600",
+                      marginBottom: 8,
+                    }}
+                  >
+                    ✓ Documentos completos — puede aprobarse
+                  </Text>
+                )}
+
+                {selectedMissing.length > 0 && (
+                  <Pressable
+                    onPress={handleRequestDocuments}
+                    disabled={requestingDocs || saving}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: "#F59E0B",
+                      backgroundColor: "#F59E0B12",
+                      marginBottom: 10,
+                      opacity: requestingDocs || saving ? 0.6 : 1,
+                    }}
+                  >
+                    {requestingDocs ? (
+                      <ActivityIndicator size="small" color="#F59E0B" />
+                    ) : (
+                      <Feather name="file-plus" size={16} color="#F59E0B" />
+                    )}
                     <Text
                       style={{
                         color: "#F59E0B",
-                        fontSize: 12,
-                        fontWeight: "600",
-                        marginBottom: 8,
+                        fontWeight: "700",
+                        marginLeft: 8,
                       }}
                     >
-                      ⚠️ Faltan documentos: {missing.join(", ")}
+                      Solicitar documentos por push
                     </Text>
-                  ) : (
+                  </Pressable>
+                )}
+
+                {(selectedStatus.label === "Verificado" ||
+                  selectedStatus.label === "Rechazado") && (
+                  <Pressable
+                    onPress={() => handleAction("reset")}
+                    disabled={saving}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      paddingVertical: 9,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: theme.border,
+                      marginBottom: 10,
+                      opacity: saving ? 0.6 : 1,
+                    }}
+                  >
+                    <Feather name="rotate-ccw" size={15} color={theme.text} />
                     <Text
                       style={{
-                        color: "#10B981",
-                        fontSize: 12,
+                        color: theme.text,
                         fontWeight: "600",
-                        marginBottom: 8,
+                        marginLeft: 8,
                       }}
                     >
-                      ✓ Documentos completos — puede aprobarse
+                      Volver a revisión
                     </Text>
-                  );
-                })()}
+                  </Pressable>
+                )}
+
                 <View style={s.actions}>
                   <Pressable
                     onPress={() => handleAction("reject")}
@@ -947,7 +1355,7 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                     style={[
                       s.actionBtn,
                       {
-                        backgroundColor: "#10B981",
+                        backgroundColor: override ? "#F59E0B" : "#10B981",
                         opacity: saving ? 0.6 : 1,
                       },
                     ]}
@@ -957,7 +1365,9 @@ export const VerificationsTab: React.FC<Props> = ({ theme, showToast }) => {
                     ) : (
                       <>
                         <Feather name="check-circle" size={18} color="#FFF" />
-                        <Text style={s.actionBtnText}>Aprobar</Text>
+                        <Text style={s.actionBtnText}>
+                          {override ? "Aprobar con excepción" : "Aprobar"}
+                        </Text>
                       </>
                     )}
                   </Pressable>

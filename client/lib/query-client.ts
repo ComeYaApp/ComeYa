@@ -52,6 +52,33 @@ export function clearTokenCache() {
   tokenCacheTime = 0;
 }
 
+/**
+ * Error HTTP con el cuerpo estructurado del servidor (p. ej. { code:
+ * "MISSING_DOCS", missing: [...] }). Permite a la UI mostrar el motivo real en
+ * lugar de un genérico "Error de conexión".
+ */
+export class ApiError extends Error {
+  status: number;
+  body: any;
+
+  constructor(message: string, status: number, body: any = null) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message || fallback;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -59,13 +86,15 @@ async function throwIfResNotOk(res: Response) {
     // si no hay JSON, usar el texto crudo. (Antes el throw caía en su
     // propio catch y el mensaje amigable se perdía.)
     let message = text;
+    let body: any = null;
     try {
       const json = JSON.parse(text);
+      body = json;
       if (json && (json.error || json.message)) {
         message = json.error || json.message;
       }
     } catch {}
-    throw new Error(message);
+    throw new ApiError(message, res.status, body);
   }
 }
 

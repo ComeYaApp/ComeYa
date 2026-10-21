@@ -322,6 +322,15 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               )}
+              {(user as any)?.documentRequestedAt ? (
+                <View style={s.docRequestBanner}>
+                  <Text style={s.docRequestTitle}>Documentos pendientes</Text>
+                  <Text style={s.docRequestText}>
+                    {(user as any)?.documentRequestNote ||
+                      "El equipo de ComeYa te ha solicitado documentación."}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
           <View style={s.sideNav}>
@@ -451,6 +460,15 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               )}
+              {(user as any)?.documentRequestedAt ? (
+                <View style={s.docRequestBanner}>
+                  <Text style={s.docRequestTitle}>Documentos pendientes</Text>
+                  <Text style={s.docRequestText}>
+                    {(user as any)?.documentRequestNote ||
+                      "El equipo de ComeYa te ha solicitado documentación."}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
           <View style={s.sideNav}>
@@ -3059,6 +3077,16 @@ const modalStyles = StyleSheet.create({
 });
 
 const s = StyleSheet.create({
+  docRequestBanner: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+    backgroundColor: "#F59E0B15",
+  },
+  docRequestTitle: { color: "#B45309", fontWeight: "700", fontSize: 13 },
+  docRequestText: { color: "#B45309", fontSize: 12, marginTop: 2 },
   root: { flex: 1, flexDirection: "row" },
   sidebar: { width: 280, borderRightWidth: 1, flexDirection: "column" as any },
   sideHeader: { padding: 24, alignItems: "center", borderBottomWidth: 1 },

@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken, requireRole } from "../authMiddleware";
+import { authenticateToken, requireRole, normalizeRole } from "../authMiddleware";
 import { sql } from "drizzle-orm";
 
 const router = express.Router();
@@ -1449,7 +1449,7 @@ export default router;
 
 // ── Verificación de repartidores y negocios ─────────────────────────────────
 
-// GET /api/admin/verifications/pending — lista pendientes de aprobación
+// GET /api/admin/verifications/pending — dueños, repartidores y aspirantes
 router.get(
   "/verifications/pending",
   authenticateToken,
@@ -1461,8 +1461,14 @@ router.get(
       );
       const { db } = await import("../db");
       const { inArray, eq } = await import("drizzle-orm");
+      const { normalizeVerificationStatus } = await import(
+        "@shared/verification"
+      );
 
-      const rolePending = await db
+      // Solo perfiles que realmente se verifican en esta sección. Antes se
+      // colaban clientes con verification_status=pending y la lista mezclaba
+      // roles sin relación con negocios/repartidores.
+      const roleUsers = await db
         .select()
         .from(users)
         .where(
@@ -1474,79 +1480,100 @@ router.get(
           ] as any),
         );
 
-      // También quienes aplicaron como repartidor pero su rol sigue siendo
-      // "customer" (el flujo de registro antiguo nunca lo cambiaba): así el
-      // admin los ve aquí y puede aprobarlos sin tocar la base de datos.
+      // Aspirantes con fila de repartidor aunque su rol siga en "customer"
+      // (flujo de registro antiguo).
       const driverApplicants = await db
         .select({ user: users, dd: deliveryDrivers })
         .from(users)
         .innerJoin(deliveryDrivers, eq(users.id, deliveryDrivers.userId));
 
-      // Dueños de negocio con rol legacy/customer pero con negocio creado
+      // Dueños con negocio creado y rol legacy/customer.
       const businessOwners = await db
         .select({ user: users })
         .from(users)
         .innerJoin(businesses, eq(users.id, businesses.ownerId));
 
-      // TODOS los usuarios pendientes, sea cual sea su rol: antes un
-      // repartidor/negocio con rol "customer" o legacy quedaba invisible
-      // y el admin no veía NADA que aprobar.
-      const pendingAny = await db
-        .select()
-        .from(users)
-        .where(eq(users.verificationStatus, "pending"));
-
       const byId = new Map<string, any>();
-      for (const u of rolePending) byId.set(u.id, u);
+      for (const u of roleUsers) byId.set(u.id, u);
       for (const row of driverApplicants) {
         if (!byId.has(row.user.id)) byId.set(row.user.id, row.user);
       }
       for (const row of businessOwners) {
         if (!byId.has(row.user.id)) byId.set(row.user.id, row.user);
       }
-      for (const u of pendingAny) {
-        if (!byId.has(u.id)) byId.set(u.id, u);
-      }
-      const pending = [...byId.values()].sort(
-        (a: any, b: any) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+      const pending = [...byId.values()];
+      const ids = pending.map((u: any) => u.id as string);
+
+      // Consultas en lote: antes se hacía una consulta por usuario.
+      const allDriverRows = ids.length
+        ? await db
+            .select()
+            .from(deliveryDrivers)
+            .where(inArray(deliveryDrivers.userId, ids))
+        : [];
+      const ownerIds = pending
+        .filter((u: any) => normalizeRole(u.role) === "business_owner")
+        .map((u: any) => u.id as string);
+      const allBusinessRows = ownerIds.length
+        ? await db
+            .select()
+            .from(businesses)
+            .where(inArray(businesses.ownerId, ownerIds))
+        : [];
 
       const ddByUser = new Map<string, any>(
-        driverApplicants.map((row: any) => [row.user.id, row.dd]),
+        allDriverRows.map((d: any) => [String(d.userId), d]),
       );
+      const businessesByOwner = new Map<string, any[]>();
+      for (const biz of allBusinessRows) {
+        const list = businessesByOwner.get(String(biz.ownerId)) ?? [];
+        list.push(biz);
+        businessesByOwner.set(String(biz.ownerId), list);
+      }
 
-      // Enriquecer con datos de delivery_drivers y businesses
-      const enriched = await Promise.all(
-        pending.map(async (user: any) => {
-          let deliveryDriver = ddByUser.get(user.id) || null;
-          let business = null;
-
-          if (!deliveryDriver && user.role === "delivery_driver") {
-            const [dd] = await db
-              .select()
-              .from(deliveryDrivers)
-              .where(eq(deliveryDrivers.userId, user.id as string))
-              .limit(1);
-            deliveryDriver = dd || null;
-          }
-
-          if (user.role === "business_owner" || user.role === "business") {
-            const [biz] = await db
-              .select()
-              .from(businesses)
-              .where(eq(businesses.ownerId, user.id as string))
-              .limit(1);
-            business = biz || null;
-          }
-
+      const enriched = pending
+        .map((user: any) => {
+          // Nunca enviar password, códigos de verificación ni credenciales
+          // de Stripe/push al cliente del panel.
+          const {
+            password,
+            verificationCode,
+            verificationExpires,
+            pushToken,
+            stripeAccountId,
+            stripeCustomerId,
+            stripePaymentMethodId,
+            cardLast4,
+            cardBrand,
+            ...safeUser
+          } = user;
+          const ownerBusinesses = businessesByOwner.get(String(user.id)) ?? [];
           return {
-            ...user,
-            deliveryDriver,
-            business,
+            ...safeUser,
+            role: normalizeRole(user.role),
+            verificationStatus: normalizeVerificationStatus(
+              user.verificationStatus,
+            ),
+            deliveryDriver: ddByUser.get(String(user.id)) ?? null,
+            business: ownerBusinesses[0] ?? null,
+            businesses: ownerBusinesses,
           };
-        }),
-      );
+        })
+        .sort((a: any, b: any) => {
+          const rank: Record<string, number> = {
+            pending: 0,
+            verified: 1,
+            rejected: 2,
+          };
+          const diff =
+            (rank[a.verificationStatus] ?? 3) -
+            (rank[b.verificationStatus] ?? 3);
+          if (diff !== 0) return diff;
+          return (
+            new Date(b.createdAt ?? 0).getTime() -
+            new Date(a.createdAt ?? 0).getTime()
+          );
+        });
 
       res.json({ success: true, users: enriched });
     } catch (error: any) {
@@ -1555,103 +1582,198 @@ router.get(
   },
 );
 
-// PUT /api/admin/verifications/:userId — aprobar o rechazar
+// PUT /api/admin/verifications/:userId — aprobar, rechazar o resetear
 router.put(
   "/verifications/:userId",
   authenticateToken,
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { users, auditLogs } = await import("@shared/schema-mysql");
+      const { users, businesses, deliveryDrivers, auditLogs } = await import(
+        "@shared/schema-mysql"
+      );
       const { db } = await import("../db");
       const { eq } = await import("drizzle-orm");
 
-      const { action, notes } = req.body; // action: "approve" | "reject"
+      const {
+        action,
+        notes = "",
+        businessId = null,
+        overrideMissingDocs = false,
+        overrideReason = "",
+      } = req.body;
       const userId = req.params.userId as string;
 
-      if (!action || !["approve", "reject"].includes(action)) {
-        return res
-          .status(400)
-          .json({ error: "action debe ser 'approve' o 'reject'" });
+      if (!action || !["approve", "reject", "reset"].includes(action)) {
+        return res.status(400).json({
+          error: "action debe ser 'approve', 'reject' o 'reset'",
+        });
       }
 
-      const verificationStatus = action === "approve" ? "verified" : "rejected";
-      const isActive = action === "approve";
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      if (!targetUser) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
 
-      // Fila de repartidor: puede existir aunque el rol siga en "customer"
-      // (el flujo de registro antiguo no lo cambiaba)
-      const { deliveryDrivers } = await import("@shared/schema-mysql");
+      const targetRole = normalizeRole(targetUser.role);
+      if (targetRole === "admin" || targetRole === "super_admin") {
+        return res.status(403).json({
+          error:
+            "Las cuentas administrativas se gestionan desde Usuarios, no desde Verificaciones",
+          code: "admin_account",
+        });
+      }
+
       const [ddRow] = await db
         .select()
         .from(deliveryDrivers)
         .where(eq(deliveryDrivers.userId, userId))
         .limit(1);
+      const isDriver = !!ddRow || targetRole === "delivery_driver";
 
-      // Antes de aprobar, validar que tenga los documentos mínimos
-      // (DNI anverso + reverso + permiso/actividad según rol)
-      if (action === "approve") {
-        const [targetUser] = await db
+      let ownerBusinesses: any[] = [];
+      if (!isDriver) {
+        ownerBusinesses = await db
           .select()
-          .from(users)
-          .where(eq(users.id, userId))
-          .limit(1);
-        const missing: string[] = [];
-        if (!targetUser?.idDocumentUrl)
-          missing.push("DNI/NIE (anverso)");
-        if (!(targetUser as any)?.idDocumentBackUrl)
-          missing.push("DNI/NIE (reverso)");
-
-        const isDriver = targetUser?.role === "delivery_driver" || !!ddRow;
-        if (isDriver) {
-          // El permiso de circulación solo existe en vehículos con placa
-          // (moto/coche); bici, ebike y patinete no lo necesitan.
-          const requiresPlate = ["moped", "motorcycle", "car"].includes(
-            (ddRow as any)?.vehicleType ?? "",
-          );
-          if (requiresPlate && !(ddRow as any)?.vehicleLicensePhoto)
-            missing.push("Permiso de circulación");
-          if (!(ddRow as any)?.vehiclePhoto)
-            missing.push("Foto del vehículo");
-        }
-
-        if (targetUser?.role === "business_owner") {
-          if (!targetUser?.autonomoDocumentUrl)
-            missing.push("Documento de autónomo/empresa");
-        }
-
-        if (missing.length > 0) {
+          .from(businesses)
+          .where(eq(businesses.ownerId, userId));
+        if (
+          businessId &&
+          !ownerBusinesses.some(
+            (biz: any) => String(biz.id) === String(businessId),
+          )
+        ) {
           return res.status(400).json({
-            error:
-              "El usuario no ha subido todos los documentos requeridos: " +
-              missing.join(", "),
+            error: "El negocio indicado no pertenece a este usuario",
+            code: "BUSINESS_NOT_OWNED",
           });
         }
       }
 
-      await db
-        .update(users)
-        .set({
-          verificationStatus,
-          verificationNotes: notes || null,
-          isActive,
-          // Al aprobar a un aspirante a repartidor se activa su rol aunque
-          // el registro antiguo lo hubiera dejado en "customer"
-          ...(action === "approve" && ddRow
-            ? { role: "delivery_driver" }
-            : {}),
-        })
-        .where(eq(users.id, userId));
+      const verificationStatus =
+        action === "approve"
+          ? "verified"
+          : action === "reject"
+            ? "rejected"
+            : "pending";
+      const isActive = action === "approve";
 
-      // Audit log
+      let missing: string[] = [];
+      let missingInfo: any = null;
+      if (action === "approve") {
+        const { getMissingVerificationDocs } = await import(
+          "../utils/verificationRequirements"
+        );
+        missingInfo = getMissingVerificationDocs({
+          user: targetUser as any,
+          driver: isDriver ? ddRow : undefined,
+          businesses: isDriver ? [] : ownerBusinesses,
+          businessId,
+        });
+        missing = missingInfo.missing;
+
+        if (missing.length > 0) {
+          if (!overrideMissingDocs) {
+            return res.status(400).json({
+              error:
+                "El usuario no ha subido todos los documentos requeridos: " +
+                missing.join(", "),
+              code: "MISSING_DOCS",
+              missing,
+              businessMissing: missingInfo.businessMissing,
+            });
+          }
+          const reason = String(overrideReason || notes || "").trim();
+          if (reason.length < 5) {
+            return res.status(400).json({
+              error:
+                "Indica el motivo de la excepción (mínimo 5 caracteres).",
+              code: "OVERRIDE_REASON_REQUIRED",
+            });
+          }
+        }
+      }
+
+      const trimmedNotes = String(notes ?? "").trim();
+      const updates: any = {
+        verificationStatus,
+        verificationNotes:
+          action === "approve"
+            ? trimmedNotes || null
+            : trimmedNotes || targetUser.verificationNotes || null,
+        isActive,
+        documentRequestedAt: null,
+        documentRequestNote: null,
+        documentRequestedBy: null,
+      };
+      if (action === "approve" && isDriver) updates.role = "delivery_driver";
+      if (action === "approve" && !isDriver && ownerBusinesses.length > 0) {
+        updates.role = "business_owner";
+      }
+
+      await db.update(users).set(updates).where(eq(users.id, userId));
+
+      // Actualizar el negocio (o negocios) revisados. Con businessId se toca
+      // solo ese; sin businessId se actualizan todos los del dueño, pero al
+      // aprobar solo se verifican los que realmente están completos salvo
+      // que se haya usado una excepción.
+      if (!isDriver && ownerBusinesses.length > 0) {
+        const targets = businessId
+          ? ownerBusinesses.filter(
+              (biz: any) => String(biz.id) === String(businessId),
+            )
+          : ownerBusinesses;
+
+        let toUpdate = targets;
+        if (action === "approve" && !businessId && !overrideMissingDocs) {
+          const { getMissingBusinessDocs } = await import(
+            "../utils/verificationRequirements"
+          );
+          toUpdate = targets.filter(
+            (biz: any) => getMissingBusinessDocs(biz, targetUser).length === 0,
+          );
+        }
+
+        for (const biz of toUpdate) {
+          await db
+            .update(businesses)
+            .set({
+              verificationStatus,
+              verificationNotes: trimmedNotes || null,
+            })
+            .where(eq(businesses.id, biz.id));
+        }
+      }
+
+      const auditAction =
+        action === "approve"
+          ? "verify_user_approved"
+          : action === "reject"
+            ? "verify_user_rejected"
+            : "verify_user_reset";
+
       await db.insert(auditLogs).values({
         userId: req.user!.id,
-        action:
-          action === "approve"
-            ? "verify_user_approved"
-            : "verify_user_rejected",
+        action: auditAction,
         entityType: "user",
         entityId: userId,
-        changes: JSON.stringify({ verificationStatus, notes }),
+        changes: JSON.stringify({
+          verificationStatus,
+          notes: trimmedNotes || null,
+          businessId: businessId || null,
+          override: !!overrideMissingDocs,
+          overrideReason:
+            overrideMissingDocs
+              ? String(overrideReason || notes || "").trim()
+              : null,
+          missing,
+        }),
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
       });
 
       // Push notification al usuario
@@ -1661,16 +1783,174 @@ router.put(
           title:
             action === "approve"
               ? "✅ Cuenta verificada"
-              : "❌ Verificación rechazada",
+              : action === "reject"
+                ? "❌ Verificación rechazada"
+                : "🔄 Verificación en revisión",
           body:
             action === "approve"
               ? "Tu cuenta ha sido verificada. Ya puedes usar ComeYa."
-              : `Tu verificación fue rechazada. ${notes || "Contacta con soporte para más información."}`,
+              : action === "reject"
+                ? `Tu verificación fue rechazada. ${trimmedNotes || "Contacta con soporte para más información."}`
+                : "Tu verificación volvió a revisión. Revisa tus documentos.",
           data: { screen: "Profile" },
         });
       } catch {}
 
-      res.json({ success: true, verificationStatus });
+      res.json({
+        success: true,
+        verificationStatus,
+        businessId: businessId || null,
+        override: !!overrideMissingDocs,
+        missing,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// POST /api/admin/verifications/:userId/request-documents — pedir documentos
+// faltantes al negocio/repartidor y avisarle por push.
+router.post(
+  "/verifications/:userId/request-documents",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { users, businesses, deliveryDrivers, auditLogs } = await import(
+        "@shared/schema-mysql"
+      );
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+
+      const userId = req.params.userId as string;
+      const {
+        message = "",
+        documents = [],
+        businessId = null,
+      } = req.body ?? {};
+
+      const [targetUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      if (!targetUser) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      const targetRole = normalizeRole(targetUser.role);
+      if (targetRole === "admin" || targetRole === "super_admin") {
+        return res.status(403).json({
+          error: "Las cuentas administrativas no se gestionan aquí",
+          code: "admin_account",
+        });
+      }
+
+      const [ddRow] = await db
+        .select()
+        .from(deliveryDrivers)
+        .where(eq(deliveryDrivers.userId, userId))
+        .limit(1);
+      const isDriver = !!ddRow || targetRole === "delivery_driver";
+
+      let ownerBusinesses: any[] = [];
+      if (!isDriver) {
+        ownerBusinesses = await db
+          .select()
+          .from(businesses)
+          .where(eq(businesses.ownerId, userId));
+      }
+
+      const { getMissingVerificationDocs } = await import(
+        "../utils/verificationRequirements"
+      );
+      const info = getMissingVerificationDocs({
+        user: targetUser as any,
+        driver: isDriver ? ddRow : undefined,
+        businesses: isDriver ? [] : ownerBusinesses,
+        businessId,
+      });
+
+      const requested = Array.from(
+        new Set(
+          (Array.isArray(documents) && documents.length
+            ? documents
+            : info.missing
+          )
+            .map((d: any) => String(d ?? "").trim())
+            .filter(Boolean),
+        ),
+      );
+
+      if (requested.length === 0) {
+        return res.status(400).json({
+          error: "El usuario no tiene documentos pendientes",
+          code: "NO_MISSING_DOCS",
+        });
+      }
+
+      const note = String(message ?? "").trim().slice(0, 500);
+      const summary =
+        note || `Faltan: ${requested.join(", ")}`.slice(0, 500);
+
+      await db
+        .update(users)
+        .set({
+          documentRequestedAt: new Date(),
+          documentRequestNote: summary,
+          documentRequestedBy: req.user!.id,
+        })
+        .where(eq(users.id, userId));
+
+      await db.insert(auditLogs).values({
+        userId: req.user!.id,
+        action: "request_verification_documents",
+        entityType: "user",
+        entityId: userId,
+        changes: JSON.stringify({
+          documents: requested,
+          message: note || null,
+          businessId: businessId || null,
+        }),
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      let push: { sent: number; noTokens: boolean } = {
+        sent: 0,
+        noTokens: false,
+      };
+      try {
+        const { sendPushToUser, getUserPushTokens } = await import(
+          "../enhancedPushService"
+        );
+        // sendPushToUser no devuelve resumen: se consultan los tokens antes
+        // para que la UI pueda avisar cuando el usuario no tiene ninguno.
+        const tokens = await getUserPushTokens(userId).catch(() => []);
+        push = { sent: tokens.length, noTokens: tokens.length === 0 };
+        await sendPushToUser(userId, {
+          title: "Documentos pendientes",
+          body: `ComeYa necesita: ${requested.join(", ")}${note ? ` — ${note}` : ""}`.slice(
+            0,
+            300,
+          ),
+          data: {
+            screen: "Profile",
+            action: "documents_requested",
+          },
+          category: "orders",
+        });
+      } catch (pushError) {
+        console.warn("request-documents push error:", pushError);
+      }
+
+      res.json({
+        success: true,
+        requested,
+        message: note || null,
+        push,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

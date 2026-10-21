@@ -1183,6 +1183,23 @@ export default function ProfileScreen() {
             />
           ) : null}
 
+          {/* Documentos solicitados por el admin: banner persistente hasta
+              que se apruebe/rechace o se vuelva a subir la documentación */}
+          {(user as any)?.documentRequestedAt ? (
+            <View style={styles.docRequestBanner}>
+              <Feather name="alert-circle" size={16} color="#B45309" />
+              <View style={{ flex: 1 }}>
+                <ThemedText type="body" style={styles.docRequestTitle}>
+                  Documentos pendientes
+                </ThemedText>
+                <ThemedText type="small" style={styles.docRequestText}>
+                  {(user as any)?.documentRequestNote ||
+                    "El equipo de ComeYa te ha solicitado documentación."}
+                </ThemedText>
+              </View>
+            </View>
+          ) : null}
+
           {/* Checklist de verificación: qué falta para completar la cuenta */}
           {user &&
             (user.role === "delivery_driver" ||
@@ -3299,6 +3316,20 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  docRequestBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+    backgroundColor: "#F59E0B15",
+    width: "100%",
+  },
+  docRequestTitle: { color: "#B45309", fontWeight: "700" },
+  docRequestText: { color: "#B45309" },
   container: {
     flex: 1,
   },

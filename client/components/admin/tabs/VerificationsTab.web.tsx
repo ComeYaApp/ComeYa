@@ -11,25 +11,32 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
-import { apiRequest } from "@/lib/query-client";
+import {
+  apiRequest,
+  ApiError,
+  getApiErrorMessage,
+} from "@/lib/query-client";
+import {
+  getAllBusinesses,
+  getMissingSummary,
+  isBusinessUser,
+  isDriverUser,
+  roleLabel,
+  statusMeta,
+} from "@/utils/verification";
+import { normalizeVerificationStatus } from "@shared/verification";
 
 const PRIMARY = "#E60000";
-
-const STATUS_META: Record<
-  string,
-  { label: string; color: string; icon: string }
-> = {
-  pending: { label: "Pendiente", color: "#F59E0B", icon: "clock" },
-  verified: { label: "Aprobado", color: "#10B981", icon: "check-circle" },
-  rejected: { label: "Rechazado", color: "#EF4444", icon: "x-circle" },
-};
 
 const ROLE_META: Record<
   string,
   { label: string; color: string; icon: string }
 > = {
   delivery_driver: { label: "Repartidor", color: "#10B981", icon: "truck" },
+  delivery: { label: "Repartidor", color: "#10B981", icon: "truck" },
+  driver: { label: "Repartidor", color: "#10B981", icon: "truck" },
   business_owner: { label: "Negocio", color: "#3B82F6", icon: "briefcase" },
+  business: { label: "Negocio", color: "#3B82F6", icon: "briefcase" },
 };
 
 interface Props {
@@ -46,10 +53,18 @@ export const VerificationsTab: React.FC<Props> = () => {
   const [filter, setFilter] = useState<
     "pending" | "verified" | "rejected" | "all"
   >("pending");
+  const [roleFilter, setRoleFilter] = useState<
+    "all" | "business" | "driver"
+  >("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<any | null>(null);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(
+    null,
+  );
   const [notes, setNotes] = useState("");
+  const [override, setOverride] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [requestingDocs, setRequestingDocs] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
@@ -63,8 +78,20 @@ export const VerificationsTab: React.FC<Props> = () => {
     try {
       const res = await apiRequest("GET", "/api/admin/verifications/pending");
       const data = await res.json();
-      setUsers(data.users ?? []);
-    } catch {
+      setUsers(
+        (data.users ?? []).map((u: any) => ({
+          ...u,
+          verificationStatus: normalizeVerificationStatus(
+            u.verificationStatus,
+          ),
+        })),
+      );
+    } catch (error) {
+      setMsg({
+        ok: false,
+        text: getApiErrorMessage(error, "Error al cargar verificaciones"),
+      });
+      setTimeout(() => setMsg(null), 3500);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -77,36 +104,83 @@ export const VerificationsTab: React.FC<Props> = () => {
 
   useEffect(() => {
     let list = users;
-    if (filter !== "all")
-      list = list.filter((u) => (u.verificationStatus ?? "pending") === filter);
+    if (filter !== "all") {
+      list = list.filter(
+        (u) =>
+          normalizeVerificationStatus(u.verificationStatus) === filter,
+      );
+    }
+    if (roleFilter !== "all") {
+      list = list.filter((u) =>
+        roleFilter === "driver" ? isDriverUser(u) : isBusinessUser(u),
+      );
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
         (u) =>
           u.name?.toLowerCase().includes(q) ||
-          u.phone?.toLowerCase().includes(q),
+          u.phone?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q),
       );
     }
     setFiltered(list);
-  }, [filter, search, users]);
+  }, [filter, roleFilter, search, users]);
 
   const flash = (ok: boolean, t: string) => {
     setMsg({ ok, text: t });
     setTimeout(() => setMsg(null), 3000);
   };
 
-  const handleAction = async (action: "approve" | "reject") => {
+  const handleAction = async (
+    action: "approve" | "reject" | "reset",
+  ) => {
     if (!selected) return;
+    const missing = getMissingSummary(
+      selected,
+      selectedBusinessId,
+    ).missing;
+
+    if (action === "approve" && missing.length > 0 && !override) {
+      flash(
+        false,
+        `Faltan documentos: ${missing.join(", ")}. Activa "Aprobar con excepción" y escribe el motivo.`,
+      );
+      return;
+    }
+    if (
+      action === "approve" &&
+      override &&
+      notes.trim().length < 5
+    ) {
+      flash(
+        false,
+        "Escribe el motivo de la excepción (mínimo 5 caracteres)",
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await apiRequest(
         "PUT",
         `/api/admin/verifications/${selected.id}`,
-        { action, notes },
+        {
+          action,
+          notes,
+          businessId: selectedBusinessId || undefined,
+          overrideMissingDocs: override,
+          overrideReason: override ? notes : undefined,
+        },
       );
       const data = await res.json();
       if (data.success) {
-        const newStatus = action === "approve" ? "verified" : "rejected";
+        const newStatus =
+          action === "approve"
+            ? "verified"
+            : action === "reject"
+              ? "rejected"
+              : "pending";
         setUsers((prev) =>
           prev.map((u) =>
             u.id === selected.id ? { ...u, verificationStatus: newStatus } : u,
@@ -117,27 +191,93 @@ export const VerificationsTab: React.FC<Props> = () => {
         );
         flash(
           true,
-          action === "approve" ? "✅ Usuario aprobado" : "❌ Usuario rechazado",
+          action === "approve"
+            ? "✅ Usuario aprobado"
+            : action === "reject"
+              ? "❌ Usuario rechazado"
+              : "🔄 Verificación reenviada a revisión",
         );
         setNotes("");
+        setOverride(false);
       } else {
         flash(false, data.error ?? "Error");
       }
-    } catch {
-      flash(false, "Error de conexión");
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        Array.isArray(error.body?.missing) &&
+        error.body.missing.length > 0
+      ) {
+        flash(false, `Faltan: ${error.body.missing.join(", ")}`);
+      } else {
+        flash(false, getApiErrorMessage(error, "Error"));
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRequestDocuments = async () => {
+    if (!selected) return;
+    setRequestingDocs(true);
+    try {
+      const res = await apiRequest(
+        "POST",
+        `/api/admin/verifications/${selected.id}/request-documents`,
+        {
+          message: notes,
+          businessId: selectedBusinessId || undefined,
+        },
+      );
+      const data = await res.json();
+      if (data.success) {
+        flash(
+          true,
+          data.push?.noTokens
+            ? "Solicitud guardada. Sin token push: el usuario la verá al abrir la app."
+            : "Solicitud enviada y push avisado.",
+        );
+      } else {
+        flash(false, data.error ?? "Error");
+      }
+    } catch (error) {
+      flash(false, getApiErrorMessage(error, "Error"));
+    } finally {
+      setRequestingDocs(false);
     }
   };
 
   const counts = {
     all: users.length,
     pending: users.filter(
-      (u) => (u.verificationStatus ?? "pending") === "pending",
+      (u) => normalizeVerificationStatus(u.verificationStatus) === "pending",
     ).length,
-    verified: users.filter((u) => u.verificationStatus === "verified").length,
-    rejected: users.filter((u) => u.verificationStatus === "rejected").length,
+    verified: users.filter(
+      (u) => normalizeVerificationStatus(u.verificationStatus) === "verified",
+    ).length,
+    rejected: users.filter(
+      (u) => normalizeVerificationStatus(u.verificationStatus) === "rejected",
+    ).length,
   };
+
+  const roleCounts = {
+    all: users.length,
+    business: users.filter(isBusinessUser).length,
+    driver: users.filter(isDriverUser).length,
+  };
+
+  const selectedBusinesses = selected ? getAllBusinesses(selected) : [];
+  const activeBusiness =
+    selectedBusinesses.find(
+      (b: any) => String(b.id) === String(selectedBusinessId),
+    ) ||
+    selected?.business ||
+    selectedBusinesses[0] ||
+    null;
+  const selectedMissing = selected
+    ? getMissingSummary(selected, selectedBusinessId).missing
+    : [];
+  const selectedStatus = statusMeta(selected?.verificationStatus);
 
   if (loading)
     return (
@@ -243,6 +383,43 @@ export const VerificationsTab: React.FC<Props> = () => {
           ))}
         </ScrollView>
 
+        {/* Filtro por tipo de perfil */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[tb.filterRow, { borderBottomColor: border }]}
+          contentContainerStyle={tb.filterContent}
+        >
+          {(
+            [
+              { id: "all", label: "Todos los perfiles", color: "#6366F1" },
+              { id: "business", label: "Negocios", color: "#3B82F6" },
+              { id: "driver", label: "Repartidores", color: "#10B981" },
+            ] as const
+          ).map((r) => (
+            <TouchableOpacity
+              key={r.id}
+              onPress={() => setRoleFilter(r.id)}
+              style={[
+                tb.chip,
+                {
+                  backgroundColor: roleFilter === r.id ? r.color : inputBg,
+                  borderColor: roleFilter === r.id ? r.color : border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  tb.chipTxt,
+                  { color: roleFilter === r.id ? "#fff" : text },
+                ]}
+              >
+                {r.label} ({roleCounts[r.id]})
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         {/* Feedback */}
         {msg && (
           <View
@@ -297,10 +474,9 @@ export const VerificationsTab: React.FC<Props> = () => {
             }
           >
             {filtered.map((u) => {
-              const status = u.verificationStatus ?? "pending";
-              const sMeta = STATUS_META[status] ?? STATUS_META.pending;
+              const sMeta = statusMeta(u.verificationStatus);
               const rMeta = ROLE_META[u.role] ?? {
-                label: u.role,
+                label: roleLabel(u),
                 color: "#888",
                 icon: "user",
               };
@@ -312,6 +488,10 @@ export const VerificationsTab: React.FC<Props> = () => {
                   onPress={() => {
                     setSelected(u);
                     setNotes(u.verificationNotes ?? "");
+                    setSelectedBusinessId(
+                      getAllBusinesses(u)[0]?.id ?? null,
+                    );
+                    setOverride(false);
                   }}
                   style={[
                     li.card,
@@ -381,7 +561,7 @@ export const VerificationsTab: React.FC<Props> = () => {
                           isDark={isDark}
                         />
                         <DocBadge
-                          label="Autónomo"
+                          label="Autónomo/empresa"
                           has={!!u.autonomoDocumentUrl}
                           isDark={isDark}
                         />
@@ -399,15 +579,20 @@ export const VerificationsTab: React.FC<Props> = () => {
       {/* ── Panel detalle ── */}
       {selected &&
         (() => {
-          const status = selected.verificationStatus ?? "pending";
-          const sMeta = STATUS_META[status] ?? STATUS_META.pending;
+          const sMeta = statusMeta(selected.verificationStatus);
           const rMeta = ROLE_META[selected.role] ?? {
-            label: selected.role,
+            label: roleLabel(selected),
             color: "#888",
             icon: "user",
           };
           const dd = selected.deliveryDriver;
-          const biz = selected.business;
+          const biz =
+            selectedBusinesses.find(
+              (b: any) => String(b.id) === String(selectedBusinessId),
+            ) ||
+            selected.business ||
+            selectedBusinesses[0] ||
+            null;
 
           return (
             <View
@@ -562,12 +747,86 @@ export const VerificationsTab: React.FC<Props> = () => {
                       text={text}
                       sub={sub}
                     />
+                    <InfoRow
+                      icon="calendar"
+                      label="Año"
+                      value={dd.vehicleYear ? String(dd.vehicleYear) : "—"}
+                      text={text}
+                      sub={sub}
+                    />
+                    <InfoRow
+                      icon="credit-card"
+                      label="Categoría de licencia"
+                      value={dd.drivingLicenseCategory ?? "—"}
+                      text={text}
+                      sub={sub}
+                    />
+                    <InfoRow
+                      icon="calendar"
+                      label="Vence licencia"
+                      value={dd.drivingLicenseExpiry ?? "—"}
+                      text={text}
+                      sub={sub}
+                    />
                   </Section>
                 )}
 
                 {/* Negocio */}
                 {biz && (
                   <Section title="NEGOCIO" isDark={isDark}>
+                    {selectedBusinesses.length > 1 && (
+                      <View style={{ marginBottom: 8 }}>
+                        <Text
+                          style={{
+                            color: sub,
+                            fontSize: 11,
+                            fontWeight: "700",
+                            marginBottom: 6,
+                          }}
+                        >
+                          NEGOCIO A REVISAR ({selectedBusinesses.length})
+                        </Text>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={{ gap: 6 }}
+                        >
+                          {selectedBusinesses.map((b: any) => {
+                            const active =
+                              String(b.id) === String(selectedBusinessId);
+                            return (
+                              <TouchableOpacity
+                                key={b.id}
+                                onPress={() => {
+                                  setSelectedBusinessId(String(b.id));
+                                  setOverride(false);
+                                }}
+                                style={{
+                                  paddingHorizontal: 9,
+                                  paddingVertical: 5,
+                                  borderRadius: 999,
+                                  borderWidth: 1,
+                                  borderColor: active ? PRIMARY : border,
+                                  backgroundColor: active
+                                    ? PRIMARY + "15"
+                                    : inputBg,
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    color: active ? PRIMARY : text,
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  {b.name}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    )}
                     <InfoRow
                       icon="briefcase"
                       label="Nombre"
@@ -602,13 +861,19 @@ export const VerificationsTab: React.FC<Props> = () => {
                 {/* Documentos */}
                 <Section title="DOCUMENTOS" isDark={isDark}>
                   <DocDetailRow
-                    label="DNI/NIE"
+                    label="DNI/NIE (anverso)"
                     url={selected.idDocumentUrl}
                     text={text}
                     sub={sub}
                   />
                   <DocDetailRow
-                    label="Cert. autónomo/empresa"
+                    label="DNI/NIE (reverso)"
+                    url={selected.idDocumentBackUrl}
+                    text={text}
+                    sub={sub}
+                  />
+                  <DocDetailRow
+                    label="Certificado de autónomo/empresa"
                     url={selected.autonomoDocumentUrl}
                     text={text}
                     sub={sub}
@@ -647,7 +912,7 @@ export const VerificationsTab: React.FC<Props> = () => {
                   )}
                   {dd?.vehicleLicensePhoto && (
                     <DocDetailRow
-                      label="Carnet de conducir"
+                      label="Permiso de circulación"
                       url={dd.vehicleLicensePhoto}
                       text={text}
                       sub={sub}
@@ -655,10 +920,127 @@ export const VerificationsTab: React.FC<Props> = () => {
                   )}
                 </Section>
 
+                {/* Documentos pendientes */}
+                <View>
+                  <Text style={[det.sectionTitle, { color: sub }]}>
+                    DOCUMENTOS PENDIENTES
+                  </Text>
+                  {selectedMissing.length === 0 ? (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Feather
+                        name="check-circle"
+                        size={14}
+                        color="#10B981"
+                      />
+                      <Text
+                        style={{ color: "#10B981", fontWeight: "700" }}
+                      >
+                        Documentación completa
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Text
+                        style={{
+                          color: "#F59E0B",
+                          fontWeight: "700",
+                          fontSize: 12,
+                          marginBottom: 4,
+                        }}
+                      >
+                        Faltan {selectedMissing.length} documento(s):
+                      </Text>
+                      {selectedMissing.map((doc) => (
+                        <View
+                          key={doc}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            gap: 6,
+                            marginBottom: 3,
+                          }}
+                        >
+                          <Feather
+                            name="alert-circle"
+                            size={12}
+                            color="#F59E0B"
+                            style={{ marginTop: 2 }}
+                          />
+                          <Text style={{ color: sub, fontSize: 12, flex: 1 }}>
+                            {doc}
+                          </Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
+                </View>
+
+                {selectedMissing.length > 0 &&
+                  selectedStatus.label !== "Verificado" && (
+                    <TouchableOpacity
+                      onPress={() => setOverride(!override)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: 12,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: "#F59E0B55",
+                        backgroundColor: "#F59E0B12",
+                      }}
+                    >
+                      <Feather
+                        name={override ? "check-square" : "square"}
+                        size={18}
+                        color="#F59E0B"
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            color: text,
+                            fontWeight: "700",
+                            fontSize: 13,
+                          }}
+                        >
+                          Aprobar con excepción
+                        </Text>
+                        <Text
+                          style={{
+                            color: sub,
+                            fontSize: 11,
+                            marginTop: 2,
+                          }}
+                        >
+                          Requiere una nota con el motivo. Queda registrado en
+                          auditoría.
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
+                {selected?.documentRequestedAt && (
+                  <Text style={{ color: "#F59E0B", fontSize: 12 }}>
+                    Documentos solicitados el{" "}
+                    {new Date(
+                      selected.documentRequestedAt,
+                    ).toLocaleString("es-ES")}
+                    {selected.documentRequestNote
+                      ? ` · ${selected.documentRequestNote}`
+                      : ""}
+                  </Text>
+                )}
+
                 {/* Nota admin */}
                 <View>
                   <Text style={[det.sectionTitle, { color: sub }]}>
-                    NOTA (motivo de rechazo o comentario)
+                    NOTA (motivo de rechazo, excepción o comentario)
                   </Text>
                   <TextInput
                     style={[
@@ -678,61 +1060,96 @@ export const VerificationsTab: React.FC<Props> = () => {
                 </View>
 
                 {/* Acciones */}
-                {status === "pending" && (
-                  <View style={det.actions}>
-                    <TouchableOpacity
-                      onPress={() => handleAction("reject")}
-                      disabled={saving}
-                      style={[det.btnReject, { opacity: saving ? 0.6 : 1 }]}
-                    >
-                      {saving ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <>
-                          <Feather name="x-circle" size={14} color="#fff" />
-                          <Text style={det.btnTxt}>Rechazar</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleAction("approve")}
-                      disabled={saving}
-                      style={[det.btnApprove, { opacity: saving ? 0.6 : 1 }]}
-                    >
-                      {saving ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <>
-                          <Feather name="check-circle" size={14} color="#fff" />
-                          <Text style={det.btnTxt}>Aprobar</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
+                {selectedMissing.length > 0 && (
+                  <TouchableOpacity
+                    onPress={handleRequestDocuments}
+                    disabled={requestingDocs || saving}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      paddingVertical: 10,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: "#F59E0B",
+                      backgroundColor: "#F59E0B12",
+                      opacity: requestingDocs || saving ? 0.6 : 1,
+                    }}
+                  >
+                    {requestingDocs ? (
+                      <ActivityIndicator size="small" color="#F59E0B" />
+                    ) : (
+                      <Feather name="file-plus" size={14} color="#F59E0B" />
+                    )}
+                    <Text style={{ color: "#F59E0B", fontWeight: "700" }}>
+                      Solicitar documentos por push
+                    </Text>
+                  </TouchableOpacity>
                 )}
 
-                {status !== "pending" && (
+                {(selectedStatus.label === "Verificado" ||
+                  selectedStatus.label === "Rechazado") && (
                   <TouchableOpacity
-                    onPress={() =>
-                      handleAction(status === "verified" ? "reject" : "approve")
-                    }
+                    onPress={() => handleAction("reset")}
+                    disabled={saving}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      paddingVertical: 9,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: border,
+                      opacity: saving ? 0.6 : 1,
+                    }}
+                  >
+                    <Feather name="rotate-ccw" size={14} color={text} />
+                    <Text style={{ color: text, fontWeight: "600" }}>
+                      Volver a revisión
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <View style={det.actions}>
+                  <TouchableOpacity
+                    onPress={() => handleAction("reject")}
+                    disabled={saving}
+                    style={[det.btnReject, { opacity: saving ? 0.6 : 1 }]}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Feather name="x-circle" size={14} color="#fff" />
+                        <Text style={det.btnTxt}>Rechazar</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleAction("approve")}
                     disabled={saving}
                     style={[
-                      status === "verified" ? det.btnReject : det.btnApprove,
-                      { opacity: saving ? 0.6 : 1 },
+                      det.btnApprove,
+                      {
+                        opacity: saving ? 0.6 : 1,
+                        backgroundColor: override ? "#F59E0B" : undefined,
+                      },
                     ]}
                   >
                     {saving ? (
                       <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                      <Text style={det.btnTxt}>
-                        {status === "verified"
-                          ? "Revocar aprobación"
-                          : "Aprobar igualmente"}
-                      </Text>
+                      <>
+                        <Feather name="check-circle" size={14} color="#fff" />
+                        <Text style={det.btnTxt}>
+                          {override ? "Aprobar con excepción" : "Aprobar"}
+                        </Text>
+                      </>
                     )}
                   </TouchableOpacity>
-                )}
+                </View>
               </ScrollView>
             </View>
           );

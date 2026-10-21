@@ -16,7 +16,7 @@ const MAX_TOKENS_PER_USER = 10;
  * push_tokens; si la tabla aún está vacía (primer arranque tras el deploy,
  * migración no ejecutada) cae al token histórico de users.push_token.
  */
-async function getUserPushTokens(userId: string): Promise<string[]> {
+export async function getUserPushTokens(userId: string): Promise<string[]> {
   const rows = await db
     .select({ token: pushTokens.token })
     .from(pushTokens)

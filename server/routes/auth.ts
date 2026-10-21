@@ -765,6 +765,9 @@ router.get("/me", authenticateToken, async (req, res) => {
         role: user.role,
         isActive: user.isActive,
         verificationStatus: (user as any).verificationStatus ?? "pending",
+        verificationNotes: (user as any).verificationNotes ?? null,
+        documentRequestedAt: (user as any).documentRequestedAt ?? null,
+        documentRequestNote: (user as any).documentRequestNote ?? null,
         profileImage: user.profileImage,
       },
     });

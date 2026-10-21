@@ -506,7 +506,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         storedUser.isActive !== updated.isActive ||
         storedUser.role !== updated.role ||
         storedUser.name !== updated.name ||
-        storedUser.profileImage !== updated.profileImage;
+        storedUser.profileImage !== updated.profileImage ||
+        storedUser.documentRequestedAt !== updated.documentRequestedAt ||
+        storedUser.documentRequestNote !== updated.documentRequestNote;
 
       if (changed) {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
