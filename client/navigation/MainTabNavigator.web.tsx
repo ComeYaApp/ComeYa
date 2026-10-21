@@ -26,9 +26,12 @@ import { ComeYaColors, Spacing } from "@/constants/theme";
 import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
 import DriverTabNavigator from "@/navigation/DriverTabNavigator";
 
-// Pantallas móviles admin
-import AdminDashboardScreenMobile from "@/screens/AdminDashboardScreen";
-import AdminFinanceScreen from "@/screens/AdminFinanceScreen";
+// Pantallas móviles admin. Los imports con .tsx explícito evitan que Metro
+// resuelva AdminDashboardScreen.web / AdminFinanceScreen.web (paneles de
+// escritorio con sidebar) dentro del navegador móvil.
+import AdminDashboardScreenMobile from "@/screens/AdminDashboardScreen.tsx";
+import AdminFinanceScreen from "@/screens/AdminFinanceScreen.tsx";
+import AdminScreenNewMobile from "@/screens/AdminScreenNew.tsx";
 import AdminMapScreenMobile from "@/screens/AdminMapScreen";
 
 // Pantallas web del business
@@ -116,7 +119,7 @@ export type MainTabParamList = {
   DashboardTab: undefined;
   FinanceTab: undefined;
   MapTab: undefined;
-  AdminTab: undefined;
+  AdminTab: { initialTab?: string } | undefined;
   ProfileTab: undefined;
   BusinessTab: undefined;
   DeliveryTab: undefined;
@@ -200,6 +203,16 @@ function MobileTabNavigator() {
               title: "Dashboard",
               tabBarIcon: ({ color, size }) => (
                 <Feather name="bar-chart-2" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="AdminTab"
+            component={AdminScreenNewMobile}
+            options={{
+              title: "Admin",
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="settings" size={size} color={color} />
               ),
             }}
           />

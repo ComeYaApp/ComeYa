@@ -15,3 +15,5 @@ export { AdminReservationsTab } from "./AdminReservationsTab";
 export { RankingTab } from "./RankingTab";
 export { CommunicationsTab } from "./CommunicationsTab";
 export { NotificationsTab } from "./NotificationsTab";
+export { PaymentProofsTab } from "./PaymentProofsTab";
+export { SystemHealthTab } from "./SystemHealthTab";

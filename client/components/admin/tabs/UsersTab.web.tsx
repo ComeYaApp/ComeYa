@@ -46,9 +46,11 @@ export interface AdminUser {
 interface Props {
   users?: any[];
   onUserPress?: (u: any) => void;
+  focusId?: string;
+  focusToken?: number;
 }
 
-export const UsersTab: React.FC<Props> = () => {
+export const UsersTab: React.FC<Props> = ({ focusId, focusToken }) => {
   const { isDark } = useTheme();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [filtered, setFiltered] = useState<AdminUser[]>([]);
@@ -58,6 +60,13 @@ export const UsersTab: React.FC<Props> = () => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatus] = useState("all");
   const [selected, setSelected] = useState<AdminUser | null>(null);
+
+  // Foco desde el buscador global: abre el detalle cuando la lista carga.
+  useEffect(() => {
+    if (!focusId) return;
+    const found = users.find((u) => u.id === focusId);
+    if (found) setSelected(found);
+  }, [focusId, focusToken, users]);
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
   const card = isDark ? "#1a1a1a" : "#fff";

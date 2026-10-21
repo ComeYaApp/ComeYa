@@ -46,9 +46,11 @@ export interface Driver {
 interface Props {
   theme?: any;
   showToast?: (msg: string, type?: string) => void;
+  focusId?: string;
+  focusToken?: number;
 }
 
-export const DriversTab: React.FC<Props> = () => {
+export const DriversTab: React.FC<Props> = ({ focusId, focusToken }) => {
   const { isDark } = useTheme();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [filtered, setFiltered] = useState<Driver[]>([]);
@@ -59,6 +61,13 @@ export const DriversTab: React.FC<Props> = () => {
     "all" | "online" | "offline" | "blocked"
   >("all");
   const [selected, setSelected] = useState<Driver | null>(null);
+
+  // Foco desde el buscador global.
+  useEffect(() => {
+    if (!focusId) return;
+    const found = drivers.find((d) => d.id === focusId);
+    if (found) setSelected(found);
+  }, [focusId, focusToken, drivers]);
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
   const card = isDark ? "#1a1a1a" : "#fff";

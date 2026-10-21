@@ -4,6 +4,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useToast } from "@/contexts/ToastContext";
 import { apiRequest } from "@/lib/query-client";
 import { AdminShell, AdminSection, SECTION_ALIASES } from "@/components/admin/AdminShell.web";
+import type { AdminSearchResult } from "@/components/admin/AdminGlobalSearch";
 
 // Dashboard components
 import { HeroBanner } from "@/components/admin/dashboard/HeroBanner";
@@ -32,6 +33,7 @@ import { ZonesTab } from "@/components/admin/tabs/ZonesTab.web";
 import { CategoriesTab } from "@/components/admin/tabs/CategoriesTab.web";
 import { VerificationsTab } from "@/components/admin/tabs/VerificationsTab.web";
 import { AuditLogsTab } from "@/components/admin/tabs/AuditLogsTab.web";
+import { SystemHealthTab } from "@/components/admin/tabs/SystemHealthTab";
 import { NotificationsTab } from "@/components/admin/tabs/NotificationsTab.web";
 import { FeeProofsTab } from "@/components/admin/tabs/FeeProofsTab";
 import { CommunicationsTab } from "@/components/admin/tabs/CommunicationsTab";
@@ -172,8 +174,34 @@ export default function AdminDashboardScreen({ route }: any) {
   const initialSection = resolveSection(route?.params?.section);
   const [section, setSectionState] = useState<AdminSection>(initialSection);
   const [metrics, setMetrics] = useState<any>(null);
+  const [searchFocus, setSearchFocus] = useState<{
+    type: AdminSearchResult["type"];
+    id: string;
+    token: number;
+  } | null>(null);
 
   const setSection = (s: AdminSection) => setSectionState(resolveSection(s));
+
+  // Resultado elegido en el buscador global: cambia de sección y deja el
+  // registro enfocado en la pestaña correspondiente.
+  const handleSearchSelect = (result: AdminSearchResult) => {
+    if (result.type === "user") {
+      setSection("users");
+    } else if (result.type === "business") {
+      setSection("businesses_list");
+    } else if (result.type === "driver") {
+      setSection("drivers_list");
+    } else {
+      const history =
+        result.badge === "delivered" || result.badge === "cancelled";
+      setSection(history ? "orders_history" : "orders_active");
+    }
+    setSearchFocus({
+      type: result.type,
+      id: result.id,
+      token: Date.now(),
+    });
+  };
 
   // Reaccionar a cambios de params (navegación desde perfil o push)
   useEffect(() => {
@@ -214,14 +242,37 @@ export default function AdminDashboardScreen({ route }: any) {
         // ── Pedidos ──
         case "orders":
         case "orders_active":
-          return <OrdersTab mode="active" />;
+          return (
+            <OrdersTab
+              mode="active"
+              focusId={
+                searchFocus?.type === "order" ? searchFocus.id : undefined
+              }
+              focusToken={searchFocus?.token}
+            />
+          );
         case "orders_history":
-          return <OrdersTab mode="history" />;
+          return (
+            <OrdersTab
+              mode="history"
+              focusId={
+                searchFocus?.type === "order" ? searchFocus.id : undefined
+              }
+              focusToken={searchFocus?.token}
+            />
+          );
 
         // ── Negocios ──
         case "businesses":
         case "businesses_list":
-          return <BusinessesTab />;
+          return (
+            <BusinessesTab
+              focusId={
+                searchFocus?.type === "business" ? searchFocus.id : undefined
+              }
+              focusToken={searchFocus?.token}
+            />
+          );
         case "businesses_zones":
           return <ZonesTab />;
         case "businesses_categories":
@@ -230,11 +281,25 @@ export default function AdminDashboardScreen({ route }: any) {
         // ── Repartidores ──
         case "drivers":
         case "drivers_list":
-          return <DriversTab />;
+          return (
+            <DriversTab
+              focusId={
+                searchFocus?.type === "driver" ? searchFocus.id : undefined
+              }
+              focusToken={searchFocus?.token}
+            />
+          );
 
         // ── Usuarios ──
         case "users":
-          return <UsersTab />;
+          return (
+            <UsersTab
+              focusId={
+                searchFocus?.type === "user" ? searchFocus.id : undefined
+              }
+              focusToken={searchFocus?.token}
+            />
+          );
 
         // ── Finanzas ──
         case "finance":
@@ -276,6 +341,9 @@ export default function AdminDashboardScreen({ route }: any) {
         case "audit_logs":
           return <AuditLogsTab />;
 
+        case "system":
+          return <SystemHealthTab />;
+
         // ── Configuración ──
         case "settings":
           return <SettingsTab />;
@@ -297,7 +365,12 @@ export default function AdminDashboardScreen({ route }: any) {
   };
 
   return (
-    <AdminShell active={section} onChange={setSection} metrics={metrics}>
+    <AdminShell
+      active={section}
+      onChange={setSection}
+      metrics={metrics}
+      onSearchSelect={handleSearchSelect}
+    >
       {renderContent()}
     </AdminShell>
   );

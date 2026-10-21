@@ -52,9 +52,15 @@ interface Props {
   orders?: any[];
   onOrderPress?: (order: any) => void;
   mode?: "active" | "history";
+  focusId?: string;
+  focusToken?: number;
 }
 
-export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
+export const OrdersTab: React.FC<Props> = ({
+  mode = "active",
+  focusId,
+  focusToken,
+}) => {
   const { isDark } = useTheme();
   const [orders, setOrders] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
@@ -63,6 +69,30 @@ export const OrdersTab: React.FC<Props> = ({ mode = "active" }) => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatus] = useState("all");
   const [selected, setSelected] = useState<any>(null);
+
+  // Foco desde el buscador global: si el pedido no está en la lista cargada,
+  // se pide el detalle enriquecido al servidor.
+  useEffect(() => {
+    if (!focusId) return;
+    const found = orders.find((o) => o.id === focusId);
+    if (found) {
+      setSelected(found);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const res = await apiRequest("GET", `/api/admin/orders/${focusId}`);
+        const data = await res.json();
+        if (alive && data.success && data.order) setSelected(data.order);
+      } catch {
+        /* el pedido no existe o no se pudo cargar */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [focusId, focusToken, orders]);
   const [actionMsg, setActionMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [acting, setActing] = useState(false);
 

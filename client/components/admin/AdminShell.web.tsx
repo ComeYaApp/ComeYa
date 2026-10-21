@@ -1,10 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, Pressable, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { confirm } from "@/hooks/useWebDialog";
 import { useAdminNotifications } from "@/hooks/useAdminNotifications";
+import {
+  AdminGlobalSearch,
+  type AdminSearchResult,
+} from "@/components/admin/AdminGlobalSearch";
 
 const PRIMARY = "#E60000";
 
@@ -41,6 +45,7 @@ export type AdminSection =
   | "support_issues"
   | "support_verifications"
   | "settings"
+  | "system"
   | "delivery_config"
   | "logs"
   | "audit_logs";
@@ -210,6 +215,13 @@ const NAV: NavItem[] = [
     ],
   },
   {
+    id: "system",
+    label: "Estado del sistema",
+    icon: "activity",
+    color: "#10B981",
+    group: "AJUSTES",
+  },
+  {
     id: "logs",
     label: "Logs de auditoría",
     icon: "list",
@@ -222,6 +234,7 @@ interface Props {
   active: AdminSection;
   onChange: (s: AdminSection) => void;
   metrics?: any;
+  onSearchSelect?: (result: AdminSearchResult) => void;
   children: React.ReactNode;
 }
 
@@ -420,12 +433,39 @@ function AdminToasts({
   );
 }
 
-export function AdminShell({ active, onChange, metrics, children }: Props) {
+export function AdminShell({ active, onChange, metrics, onSearchSelect, children }: Props) {
   const { isDark } = useTheme();
   const { user, logout } = useAuth();
+  const [searchOpen, setSearchOpen] = useState(false);
   // Una sola instancia del centro de avisos para toda la shell (campana +
   // avisos flotantes); comparte el socket único con el resto del panel.
   const notifHook = useAdminNotifications();
+
+  // Atajo web: Ctrl/Cmd+K abre el buscador global; Escape lo cierra.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen((prev) => !prev);
+      } else if (event.key === "Escape") {
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const handleSearchSelect = (result: AdminSearchResult) => {
+    if (onSearchSelect) {
+      onSearchSelect(result);
+      return;
+    }
+    if (result.type === "user") onChange("users");
+    else if (result.type === "business") onChange("businesses_list");
+    else if (result.type === "driver") onChange("drivers_list");
+    else onChange("orders_active");
+  };
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
   const sideBg = isDark ? "#141414" : "#fff";
@@ -500,6 +540,20 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
 
         {/* Nav */}
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          <Pressable
+            onPress={() => setSearchOpen(true)}
+            style={[
+              sh.searchBtn,
+              {
+                backgroundColor: isDark ? "#1e1e1e" : "#f5f5f5",
+                borderColor: border,
+              },
+            ]}
+          >
+            <Feather name="search" size={14} color={sub} />
+            <Text style={[sh.searchTxt, { color: sub }]}>Buscar...</Text>
+            <Text style={[sh.searchKbd, { color: sub }]}>Ctrl K</Text>
+          </Pressable>
           <AdminBell onNavigate={onChange} hook={notifHook} />
 
           {NAV.map((item, idx) => {
@@ -656,6 +710,12 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
 
       {/* Avisos flotantes globales (encima de cualquier sección) */}
       <AdminToasts hook={notifHook} onNavigate={onChange} />
+
+      <AdminGlobalSearch
+        visible={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelect={handleSearchSelect}
+      />
     </View>
   );
 }
@@ -663,6 +723,19 @@ export function AdminShell({ active, onChange, metrics, children }: Props) {
 const sh = StyleSheet.create({
   root: { flex: 1, flexDirection: "row" },
   sidebar: { width: 236, borderRightWidth: 1, flexDirection: "column" },
+  searchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 12,
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  searchTxt: { flex: 1, fontSize: 12 },
+  searchKbd: { fontSize: 9, fontWeight: "700" },
   content: { flex: 1 },
   footer: { padding: 14, borderTopWidth: 1 },
   logoRow: {

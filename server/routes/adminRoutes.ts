@@ -718,6 +718,8 @@ router.get(
         deliveryFee: order.deliveryFee,
         total: order.total,
         paymentMethod: order.paymentMethod,
+        paymentReference: order.paymentReference,
+        paymentProofUrl: order.paymentProofUrl,
         deliveryAddress: order.deliveryAddress,
         items: order.items,
         notes: order.notes,
@@ -727,6 +729,54 @@ router.get(
       }));
 
       res.json({ success: true, orders: enrichedOrders });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// GET /api/admin/orders/:id — detalle enriquecido (foco del buscador global)
+router.get(
+  "/orders/:id",
+  authenticateToken,
+  requireRole("admin", "super_admin"),
+  async (req, res) => {
+    try {
+      const { orders, businesses, users } = await import(
+        "@shared/schema-mysql"
+      );
+      const { db } = await import("../db");
+      const { eq } = await import("drizzle-orm");
+
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, String(req.params.id)))
+        .limit(1);
+      if (!order) {
+        return res.status(404).json({ error: "Pedido no encontrado" });
+      }
+
+      const [biz] = await db
+        .select({ id: businesses.id, name: businesses.name })
+        .from(businesses)
+        .where(eq(businesses.id, order.businessId))
+        .limit(1);
+      const [customer] = await db
+        .select({ id: users.id, name: users.name, phone: users.phone })
+        .from(users)
+        .where(eq(users.id, order.userId))
+        .limit(1);
+
+      res.json({
+        success: true,
+        order: {
+          ...order,
+          businessName: biz?.name || order.businessName || "Negocio",
+          customerName: customer?.name || "Cliente",
+          customerPhone: customer?.phone || "",
+        },
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

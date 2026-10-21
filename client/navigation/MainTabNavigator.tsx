@@ -16,11 +16,13 @@ import AdminScreenNew from "@/screens/AdminScreenNew";
 import AdminDashboardScreen from "@/screens/AdminDashboardScreen";
 import AdminFinanceScreen from "@/screens/AdminFinanceScreen";
 import AdminMapScreen from "@/screens/AdminMapScreen";
+import AdminPaymentProofsScreen from "@/screens/AdminPaymentProofsScreen";
 import BusinessDashboardScreen from "@/screens/BusinessDashboardScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminMetrics } from "@/hooks/useAdminMetrics";
 import { ComeYaColors, Spacing } from "@/constants/theme";
 
 // Stack wrapper para el tab Mapa (necesita poder navegar a BusinessDetail)
@@ -37,6 +39,7 @@ export type MainTabParamList = {
   HomeTab: undefined;
   OrdersTab: undefined;
   DashboardTab: undefined;
+  AdminProofsTab: undefined;
   FinanceTab: undefined;
   MapTab: undefined;
   AdminTab: { initialTab?: string } | undefined;
@@ -57,6 +60,8 @@ export default function MainTabNavigator() {
   const isAuthenticated = !!user;
   const isCustomer = !isAdmin && !isBusiness && !isDelivery;
   const isGuest = !isAuthenticated;
+  const adminMetrics = useAdminMetrics(isAdmin);
+  const pendingPayments = Number(adminMetrics.metrics?.pendingPayments ?? 0);
 
   const tabBarHeight = Platform.select({
     ios: 56 + insets.bottom,
@@ -149,6 +154,20 @@ export default function MainTabNavigator() {
               title: "Dashboard",
               tabBarIcon: ({ color, size }) => (
                 <Feather name="bar-chart-2" size={size} color={color} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="AdminProofsTab"
+            component={AdminPaymentProofsScreen}
+            options={{
+              title: "Comprobantes",
+              tabBarLabel: "Comprobantes",
+              tabBarLabelStyle: { fontSize: 9, fontWeight: "600" },
+              tabBarBadge:
+                pendingPayments > 0 ? pendingPayments : undefined,
+              tabBarIcon: ({ color, size }) => (
+                <Feather name="file-text" size={size} color={color} />
               ),
             }}
           />

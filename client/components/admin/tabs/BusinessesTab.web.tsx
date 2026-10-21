@@ -33,9 +33,11 @@ interface Props {
   businesses?: any[];
   onBusinessPress?: (b: any) => void;
   showCategories?: boolean;
+  focusId?: string;
+  focusToken?: number;
 }
 
-export const BusinessesTab: React.FC<Props> = () => {
+export const BusinessesTab: React.FC<Props> = ({ focusId, focusToken }) => {
   const { isDark } = useTheme();
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
@@ -50,6 +52,21 @@ export const BusinessesTab: React.FC<Props> = () => {
   const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(
     null,
   );
+
+  // Foco desde el buscador global.
+  useEffect(() => {
+    if (!focusId) return;
+    const found = businesses.find((b) => b.id === focusId);
+    if (found) {
+      setSelected(found);
+      setCommission(
+        found.customCommission != null
+          ? String(found.customCommission)
+          : "",
+      );
+      setSaveMsg(null);
+    }
+  }, [focusId, focusToken, businesses]);
 
   const bg = isDark ? "#0d0d0d" : "#f2f3f5";
   const card = isDark ? "#1a1a1a" : "#fff";

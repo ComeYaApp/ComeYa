@@ -213,28 +213,54 @@ export default function App() {
           (data.screen ? defaultSectionByScreen[data.screen] : undefined) ||
           "operations";
 
-        if (Platform.OS === "web") {
+        const sectionToTab: Record<string, string> = {
+          operations: "map",
+          dashboard: "map",
+          notifications: "notifications",
+          issues: "issues",
+          support_issues: "issues",
+          refunds: "refunds",
+          finance_refunds: "refunds",
+          support: "support",
+          support_tickets: "support",
+          verifications: "verifications",
+          support_verifications: "verifications",
+          orders_active: "orders",
+          orders_history: "orders",
+          finance: "finance",
+          finance_earnings: "finance",
+          finance_payouts: "finance",
+          finance_reservations: "finance",
+          finance_proofs: "finance",
+          premiums: "finance",
+          subscriptions: "finance",
+          users: "users",
+          businesses: "businesses",
+          businesses_list: "businesses",
+          drivers: "drivers",
+          drivers_list: "drivers",
+          reservations: "reservations",
+          coupons: "coupons",
+          marketing: "coupons",
+          communications: "communications",
+          products: "products",
+          settings: "settings",
+          logs: "logs",
+          audit_logs: "logs",
+          delivery_config: "delivery-config",
+          zones: "zones",
+          ranking: "ranking",
+        };
+        // En web móvil (<768px) el panel de escritorio no existe: se navega
+        // a la pestaña nativa del admin con la sección correcta.
+        const isMobileWeb =
+          Platform.OS === "web" &&
+          typeof window !== "undefined" &&
+          window.innerWidth < 768;
+
+        if (Platform.OS === "web" && !isMobileWeb) {
           nav.navigate("DashboardTab", { section });
         } else {
-          const sectionToTab: Record<string, string> = {
-            operations: "map",
-            dashboard: "map",
-            notifications: "notifications",
-            support_issues: "issues",
-            finance_refunds: "refunds",
-            support_tickets: "support",
-            support_verifications: "verifications",
-            orders_active: "orders",
-            orders_history: "orders",
-            finance_earnings: "finance",
-            finance_payouts: "finance",
-            finance_reservations: "finance",
-            finance_proofs: "finance",
-            premiums: "finance",
-            users: "users",
-            businesses_list: "businesses",
-            drivers_list: "drivers",
-          };
           const tab = sectionToTab[section];
           nav.navigate("AdminTab", tab ? { initialTab: tab } : undefined);
         }

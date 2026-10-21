@@ -10,6 +10,8 @@ import deliveryRoutes from "./routes/delivery";
 import paymentRoutes from "./routes/payments";
 import walletRoutes from "./routes/wallet";
 import adminRoutes from "./routes/adminRoutes";
+import adminSearchRoutes from "./routes/adminSearch";
+import adminSystemRoutes from "./routes/adminSystem";
 import adminFinanceRoutes from "./routes/adminFinanceRoutes";
 import adminIssuesRoutes from "./routes/adminIssues";
 import adminRefundsRoutes from "./routes/adminRefunds";
@@ -339,6 +341,10 @@ router.use("/admin/issues", adminIssuesRoutes);
 router.use("/admin/refunds", adminRefundsRoutes);
 router.use("/admin/orders", adminOrderActionsRoutes);
 router.use("/admin/notifications", adminNotificationsRoutes);
+// Buscador global y salud del sistema: se montan ANTES de "/admin" para que
+// el router general del panel no capture estas rutas.
+router.use("/admin/search", adminSearchRoutes);
+router.use("/admin/system", adminSystemRoutes);
 router.use("/admin", adminRoutes);
 router.use("/admin/finance", adminFinanceRoutes);
 router.use("/admin", adminExchangeRateRoutes);

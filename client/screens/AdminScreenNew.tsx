@@ -30,6 +30,8 @@ import {
   Shadows,
 } from "@/constants/theme";
 import { apiRequest } from "@/lib/query-client";
+import { useAdminMetrics } from "@/hooks/useAdminMetrics";
+import { AdminGlobalSearch, type AdminSearchResult } from "@/components/admin/AdminGlobalSearch";
 import {
   DashboardTab,
   DriversTab,
@@ -48,6 +50,8 @@ import {
   CommunicationsTab,
   AdminReservationsTab,
   NotificationsTab,
+  PaymentProofsTab,
+  SystemHealthTab,
 } from "@/components/admin/tabs";
 import type {
   DashboardMetrics,
@@ -64,7 +68,22 @@ interface MenuItem {
   icon: string;
   tab: string;
   color: string;
+  group: "operation" | "people" | "finance" | "growth" | "attention" | "system";
+  badgeKey?: string;
 }
+
+const MENU_GROUPS: Array<{
+  key: MenuItem["group"];
+  label: string;
+  color: string;
+}> = [
+  { key: "operation", label: "OPERACIÓN", color: "#2196F3" },
+  { key: "people", label: "PERSONAS", color: "#9C27B0" },
+  { key: "finance", label: "FINANZAS", color: "#00BCD4" },
+  { key: "growth", label: "CRECIMIENTO", color: "#EC4899" },
+  { key: "attention", label: "ATENCIÓN", color: "#F59E0B" },
+  { key: "system", label: "SISTEMA", color: "#607D8B" },
+];
 
 // Roles reales en la BD (evita guardar roles legacy como "driver"/"business")
 const ROLE_LABELS: Record<string, string> = {
@@ -115,6 +134,7 @@ const menuItems: MenuItem[] = [
     icon: "bell",
     tab: "notifications",
     color: "#E60000",
+    group: "attention",
   },
   {
     title: "Incidencias",
@@ -122,6 +142,8 @@ const menuItems: MenuItem[] = [
     icon: "alert-circle",
     tab: "issues",
     color: "#EF4444",
+    group: "attention",
+    badgeKey: "openIssues",
   },
   {
     title: "Verificaciones",
@@ -129,6 +151,8 @@ const menuItems: MenuItem[] = [
     icon: "user-check",
     tab: "verifications",
     color: "#10B981",
+    group: "people",
+    badgeKey: "pendingVerifications",
   },
   {
     title: "Pedidos",
@@ -136,6 +160,8 @@ const menuItems: MenuItem[] = [
     icon: "package",
     tab: "orders",
     color: "#2196F3",
+    group: "operation",
+    badgeKey: "pendingOrders",
   },
   {
     title: "Reservas",
@@ -143,6 +169,7 @@ const menuItems: MenuItem[] = [
     icon: "calendar",
     tab: "reservations",
     color: "#F97316",
+    group: "operation",
   },
   {
     title: "Repartidores",
@@ -150,6 +177,7 @@ const menuItems: MenuItem[] = [
     icon: "truck",
     tab: "drivers",
     color: "#9C27B0",
+    group: "people",
   },
   {
     title: "Usuarios",
@@ -157,6 +185,7 @@ const menuItems: MenuItem[] = [
     icon: "users",
     tab: "users",
     color: "#FF9800",
+    group: "people",
   },
   {
     title: "Ranking clientes",
@@ -164,6 +193,7 @@ const menuItems: MenuItem[] = [
     icon: "award",
     tab: "ranking",
     color: "#E91E63",
+    group: "people",
   },
   {
     title: "Comunicaciones",
@@ -171,6 +201,7 @@ const menuItems: MenuItem[] = [
     icon: "bell",
     tab: "communications",
     color: "#3B82F6",
+    group: "growth",
   },
   {
     title: "Negocios",
@@ -178,6 +209,7 @@ const menuItems: MenuItem[] = [
     icon: "briefcase",
     tab: "businesses",
     color: "#4CAF50",
+    group: "people",
   },
   {
     title: "Finanzas",
@@ -185,6 +217,16 @@ const menuItems: MenuItem[] = [
     icon: "trending-up",
     tab: "finance",
     color: "#00BCD4",
+    group: "finance",
+  },
+  {
+    title: "Comprobantes",
+    subtitle: "Pagos manuales pendientes de revisar",
+    icon: "file-text",
+    tab: "finance_proofs",
+    color: "#F97316",
+    group: "finance",
+    badgeKey: "pendingPayments",
   },
   {
     title: "Devoluciones",
@@ -192,6 +234,7 @@ const menuItems: MenuItem[] = [
     icon: "rotate-ccw",
     tab: "refunds",
     color: "#F59E0B",
+    group: "finance",
   },
   {
     title: "Cupones",
@@ -199,6 +242,7 @@ const menuItems: MenuItem[] = [
     icon: "tag",
     tab: "coupons",
     color: "#FF5722",
+    group: "growth",
   },
   {
     title: "Productos",
@@ -206,6 +250,7 @@ const menuItems: MenuItem[] = [
     icon: "box",
     tab: "products",
     color: "#8BC34A",
+    group: "operation",
   },
   {
     title: "Logs",
@@ -213,6 +258,15 @@ const menuItems: MenuItem[] = [
     icon: "file-text",
     tab: "logs",
     color: "#9E9E9E",
+    group: "system",
+  },
+  {
+    title: "Estado del sistema",
+    subtitle: "Base de datos, servicios y memoria",
+    icon: "activity",
+    tab: "system",
+    color: "#10B981",
+    group: "system",
   },
   {
     title: "Configuración",
@@ -220,6 +274,7 @@ const menuItems: MenuItem[] = [
     icon: "sliders",
     tab: "settings",
     color: "#607D8B",
+    group: "system",
   },
   {
     title: "Tarifas Delivery",
@@ -227,6 +282,7 @@ const menuItems: MenuItem[] = [
     icon: "navigation",
     tab: "delivery-config",
     color: "#00BCD4",
+    group: "operation",
   },
   {
     title: "Soporte",
@@ -234,6 +290,7 @@ const menuItems: MenuItem[] = [
     icon: "message-circle",
     tab: "support",
     color: "#795548",
+    group: "attention",
   },
 ];
 
@@ -245,6 +302,31 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
   const [activeTab, setActiveTab] = useState<string | null>(
     route?.params?.initialTab ?? null,
   );
+  const adminMetricsHook = useAdminMetrics(true);
+  const adminMetrics = adminMetricsHook.metrics;
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Atajo web: Ctrl/Cmd+K abre el buscador global; Escape lo cierra.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen((prev) => !prev);
+      } else if (event.key === "Escape") {
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const handleSearchSelect = (result: AdminSearchResult) => {
+    if (result.type === "user") setActiveTab("users");
+    else if (result.type === "business") setActiveTab("businesses");
+    else if (result.type === "driver") setActiveTab("drivers");
+    else setActiveTab("orders");
+  };
   const [dashboardMetrics, setDashboardMetrics] =
     useState<DashboardMetrics | null>(null);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
@@ -492,6 +574,9 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
       customerPhone: "",
       status: order.status,
       subtotal: order.total,
+      productosBase: null,
+      nemyCommission: null,
+      serviceFee: null,
       deliveryFee: 0,
       total: order.total,
       paymentMethod: "card",
@@ -557,6 +642,10 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         return <DriversTab theme={theme} showToast={showToast} />;
       case "finance":
         return <FinanceTab theme={theme} showToast={showToast} />;
+      case "finance_proofs":
+        return <PaymentProofsTab />;
+      case "system":
+        return <SystemHealthTab />;
       case "reservations":
         return <AdminReservationsTab />;
       case "businesses":
@@ -2564,34 +2653,137 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.grid}>
-          {menuItems.map((item) => (
-            <Pressable
-              key={item.tab}
-              onPress={() => handleMenuPress(item.tab)}
-              style={[styles.card, { backgroundColor: theme.card }, Shadows.sm]}
+        <Pressable
+          onPress={() => setSearchOpen(true)}
+          style={[
+            styles.searchBar,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+        >
+          <Feather name="search" size={16} color={theme.textSecondary} />
+          <ThemedText
+            type="small"
+            style={{ color: theme.textSecondary, flex: 1 }}
+          >
+            Buscar usuario, negocio, pedido o repartidor...
+          </ThemedText>
+          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+            Ctrl K
+          </ThemedText>
+        </Pressable>
+
+        {/* Tareas pendientes del día */}
+        <View style={styles.heroRow}>
+          {[
+            { key: "pendingOrders", label: "Pedidos activos", color: "#2196F3" },
+            {
+              key: "pendingVerifications",
+              label: "Por verificar",
+              color: "#10B981",
+            },
+            {
+              key: "pendingPayments",
+              label: "Comprobantes",
+              color: "#F97316",
+            },
+          ].map((chip) => (
+            <View
+              key={chip.key}
+              style={[styles.heroChip, { backgroundColor: chip.color + "15" }]}
             >
-              <View
-                style={[
-                  styles.cardIcon,
-                  { backgroundColor: item.color + "20" },
-                ]}
-              >
-                <Feather name={item.icon as any} size={28} color={item.color} />
-              </View>
-              <ThemedText type="body" style={styles.cardTitle}>
-                {item.title}
+              <ThemedText style={[styles.heroValue, { color: chip.color }]}>
+                {Number((adminMetrics as any)?.[chip.key] ?? 0)}
               </ThemedText>
               <ThemedText
                 type="caption"
-                style={[styles.cardSubtitle, { color: theme.textSecondary }]}
+                style={{ color: theme.textSecondary }}
               >
-                {item.subtitle}
+                {chip.label}
               </ThemedText>
-            </Pressable>
+            </View>
           ))}
         </View>
+
+        {MENU_GROUPS.map((group) => {
+          const items = menuItems.filter((item) => item.group === group.key);
+          if (items.length === 0) return null;
+          return (
+            <View key={group.key} style={styles.groupBlock}>
+              <View style={styles.groupHeader}>
+                <View
+                  style={[styles.groupDot, { backgroundColor: group.color }]}
+                />
+                <ThemedText
+                  style={[styles.groupLabel, { color: group.color }]}
+                >
+                  {group.label}
+                </ThemedText>
+              </View>
+              <View style={styles.grid}>
+                {items.map((item) => {
+                  const badge = item.badgeKey
+                    ? Number((adminMetrics as any)?.[item.badgeKey] ?? 0)
+                    : 0;
+                  return (
+                    <Pressable
+                      key={item.tab}
+                      onPress={() => handleMenuPress(item.tab)}
+                      style={[
+                        styles.card,
+                        { backgroundColor: theme.card },
+                        Shadows.sm,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.cardIcon,
+                          { backgroundColor: item.color + "20" },
+                        ]}
+                      >
+                        <Feather
+                          name={item.icon as any}
+                          size={28}
+                          color={item.color}
+                        />
+                      </View>
+                      {badge > 0 && (
+                        <View
+                          style={[
+                            styles.cardBadge,
+                            { backgroundColor: item.color },
+                          ]}
+                        >
+                          <ThemedText style={styles.cardBadgeTxt}>
+                            {badge > 99 ? "99+" : badge}
+                          </ThemedText>
+                        </View>
+                      )}
+                      <ThemedText type="body" style={styles.cardTitle}>
+                        {item.title}
+                      </ThemedText>
+                      <ThemedText
+                        type="caption"
+                        style={[
+                          styles.cardSubtitle,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        {item.subtitle}
+                      </ThemedText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
+
+      <AdminGlobalSearch
+        visible={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelect={handleSearchSelect}
+      />
 
       {/* Order Overlay */}
       {orderModalVisible && (
@@ -2707,6 +2899,57 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: Spacing.md,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.md,
+  },
+  heroRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  heroChip: {
+    flex: 1,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.sm,
+    alignItems: "center",
+  },
+  heroValue: { fontSize: 20, fontWeight: "800" },
+  groupBlock: { marginBottom: Spacing.lg },
+  groupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: Spacing.sm,
+  },
+  groupDot: { width: 8, height: 8, borderRadius: 4 },
+  groupLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  cardBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  cardBadgeTxt: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
   },
   card: {
     width: "47%",
