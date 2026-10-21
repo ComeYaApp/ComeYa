@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { apiRequest } from "@/lib/query-client";
+import { useAuth } from "@/contexts/AuthContext";
 import { AdminUser, ROLE_META } from "./UsersTab.web";
 
 const PRIMARY = "#E60000";
@@ -46,6 +47,27 @@ export function UserDetail({ user, isDark, onClose, onUpdate }: Props) {
   const [editName, setEditName] = useState(false);
   const [nameVal, setNameVal] = useState(user.name);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === "super_admin";
+  const isSelf = currentUser?.id === user.id;
+  const targetIsAdmin = user.role === "admin" || user.role === "super_admin";
+  const canManageTarget = isSuperAdmin || !targetIsAdmin;
+  const canEditRole = canManageTarget && !isSelf;
+  const canToggleActive = canManageTarget && !isSelf;
+  const roleOptions = isSuperAdmin
+    ? ROLES
+    : ROLES.filter((r) => r.id !== "admin" && r.id !== "super_admin");
+  const permissionsLabel =
+    user.role === "super_admin"
+      ? "Acceso total. Puede gestionar administradores, finanzas, verificaciones y configuración."
+      : user.role === "admin"
+        ? "Operación diaria, finanzas y verificaciones. No puede crear, promover ni desactivar administradores."
+        : user.role === "delivery_driver"
+          ? "Acceso al panel de repartidor: entregas, ganancias y verificaciones de su vehículo."
+          : user.role === "business_owner"
+            ? "Acceso al panel de negocio: productos, pedidos, finanzas y documentos del negocio."
+            : "Acceso de cliente: pedidos, direcciones, pagos y soporte.";
 
   const card = isDark ? "#1a1a1a" : "#fff";
   const border = isDark ? "#2a2a2a" : "#ebebeb";
@@ -270,6 +292,34 @@ export function UserDetail({ user, isDark, onClose, onUpdate }: Props) {
           ))}
         </View>
 
+        {/* Permisos del rol */}
+        <View
+          style={[
+            det.section,
+            {
+              backgroundColor: isDark ? "#1a1a1a" : "#f1f5ff",
+              borderColor: border,
+            },
+          ]}
+        >
+          <Text style={[det.sectionTitle, { color: sub }]}>
+            PERMISOS DEL ROL
+          </Text>
+          <Text style={{ color: text, fontSize: 12, lineHeight: 17 }}>
+            {permissionsLabel}
+          </Text>
+          {!canManageTarget && (
+            <Text style={{ color: "#F59E0B", fontSize: 11, marginTop: 4 }}>
+              Solo un Super Admin puede modificar otra cuenta administrativa.
+            </Text>
+          )}
+          {isSelf && (
+            <Text style={{ color: "#F59E0B", fontSize: 11, marginTop: 4 }}>
+              No puedes cambiar tu propio rol ni desactivar tu cuenta.
+            </Text>
+          )}
+        </View>
+
         {/* Editar nombre */}
         <View
           style={[
@@ -345,7 +395,7 @@ export function UserDetail({ user, isDark, onClose, onUpdate }: Props) {
         >
           <View style={det.sectionHeaderRow}>
             <Text style={[det.sectionTitle, { color: sub }]}>ROL</Text>
-            {!editRole && (
+            {!editRole && canEditRole && (
               <TouchableOpacity
                 onPress={() => {
                   setEditRole(true);
@@ -358,7 +408,7 @@ export function UserDetail({ user, isDark, onClose, onUpdate }: Props) {
           </View>
           {editRole ? (
             <View style={{ gap: 8 }}>
-              {ROLES.map((r) => (
+              {roleOptions.map((r) => (
                 <TouchableOpacity
                   key={r.id}
                   onPress={() => setNewRole(r.id)}
@@ -432,26 +482,44 @@ export function UserDetail({ user, isDark, onClose, onUpdate }: Props) {
         </View>
 
         {/* Activar / Desactivar */}
-        <TouchableOpacity
-          onPress={toggleActive}
-          disabled={processing}
-          style={[user.isActive ? det.btnDanger : det.btnSuccess]}
-        >
-          {processing ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <Feather
-                name={user.isActive ? "user-x" : "user-check"}
-                size={14}
-                color="#fff"
-              />
-              <Text style={det.btnTxt}>
-                {user.isActive ? "Desactivar cuenta" : "Activar cuenta"}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {canToggleActive ? (
+          <TouchableOpacity
+            onPress={toggleActive}
+            disabled={processing}
+            style={[user.isActive ? det.btnDanger : det.btnSuccess]}
+          >
+            {processing ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Feather
+                  name={user.isActive ? "user-x" : "user-check"}
+                  size={14}
+                  color="#fff"
+                />
+                <Text style={det.btnTxt}>
+                  {user.isActive ? "Desactivar cuenta" : "Activar cuenta"}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View
+            style={[
+              det.section,
+              {
+                backgroundColor: isDark ? "#222" : "#f8f8f8",
+                borderColor: border,
+              },
+            ]}
+          >
+            <Text style={{ color: sub, fontSize: 12, textAlign: "center" }}>
+              {isSelf
+                ? "No puedes desactivar tu propia cuenta."
+                : "Solo un Super Admin puede activar o desactivar esta cuenta."}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

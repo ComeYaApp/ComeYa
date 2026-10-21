@@ -441,10 +441,44 @@ router.get(
     try {
       const { users } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
+      const { desc } = await import("drizzle-orm");
+      const { normalizeVerificationStatus } = await import(
+        "@shared/verification"
+      );
 
-      const allUsers = await db.select().from(users);
+      // Proyección segura: nunca devolver password, tokens de push ni
+      // credenciales de Stripe (antes se devolvía la fila completa).
+      const allUsers = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          phone: users.phone,
+          role: users.role,
+          isActive: users.isActive,
+          isOnline: users.isOnline,
+          verificationStatus: users.verificationStatus,
+          verificationNotes: users.verificationNotes,
+          phoneVerified: users.phoneVerified,
+          emailVerified: users.emailVerified,
+          dni: users.dni,
+          address: users.address,
+          profileImage: users.profileImage,
+          createdAt: users.createdAt,
+          lastActiveAt: users.lastActiveAt,
+        })
+        .from(users)
+        .orderBy(desc(users.createdAt));
 
-      res.json({ success: true, users: allUsers });
+      res.json({
+        success: true,
+        users: allUsers.map((u: any) => ({
+          ...u,
+          verificationStatus: normalizeVerificationStatus(
+            u.verificationStatus,
+          ),
+        })),
+      });
     } catch (error: any) {
       console.error("Users endpoint error:", error);
       res.status(500).json({ error: error.message });
@@ -459,21 +493,129 @@ router.put(
   requireRole("admin", "super_admin"),
   async (req, res) => {
     try {
-      const { users } = await import("@shared/schema-mysql");
+      const { users, auditLogs } = await import("@shared/schema-mysql");
       const { db } = await import("../db");
-      const { eq } = await import("drizzle-orm");
+      const { eq, and, sql } = await import("drizzle-orm");
+      const { normalizeRole } = await import("../authMiddleware");
 
       const { name, email, phone, role, isActive } = req.body;
       const userId = req.params.id as string;
+      const actorRole = req.user!.role;
+      const isSelf = req.user!.id === userId;
+
+      const [target] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!target) {
+        return res.status(404).json({ error: "Usuario no encontrado" });
+      }
+
+      const targetRole = normalizeRole(target.role);
+      const targetIsAdmin =
+        targetRole === "admin" || targetRole === "super_admin";
+
+      const ALLOWED_ROLES = new Set([
+        "customer",
+        "business_owner",
+        "delivery_driver",
+        "admin",
+        "super_admin",
+      ]);
+
+      if (role !== undefined && !ALLOWED_ROLES.has(String(role))) {
+        return res.status(400).json({ error: "Rol no válido" });
+      }
+
+      const nextRole =
+        role !== undefined ? normalizeRole(String(role)) : targetRole;
+
+      // Solo un Super Admin puede administrar cuentas administrativas o
+      // asignar roles privilegiados. Un admin normal sigue gestionando
+      // clientes, negocios y repartidores.
+      const touchesAdmin =
+        targetIsAdmin || nextRole === "admin" || nextRole === "super_admin";
+      if (touchesAdmin && actorRole !== "super_admin") {
+        return res.status(403).json({
+          error: "Solo un Super Admin puede modificar administradores",
+          code: "super_admin_required",
+        });
+      }
+
+      if (isSelf && (role !== undefined || isActive !== undefined)) {
+        return res.status(403).json({
+          error: "No puedes cambiar tu propio rol ni desactivar tu cuenta",
+          code: "self_modification_blocked",
+        });
+      }
+
+      // No dejar la plataforma sin al menos un Super Admin activo.
+      const removingSuperAdmin =
+        targetRole === "super_admin" &&
+        (nextRole !== "super_admin" || isActive === false);
+      if (removingSuperAdmin) {
+        const [row] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(users)
+          .where(
+            and(eq(users.role, "super_admin"), eq(users.isActive, true)),
+          );
+        const activeSuperAdmins = Number(row?.count ?? 0);
+        if (activeSuperAdmins <= 1) {
+          return res.status(400).json({
+            error:
+              "No se puede degradar o desactivar al último Super Admin activo",
+            code: "last_super_admin",
+          });
+        }
+      }
 
       const updates: any = {};
       if (name !== undefined) updates.name = name;
       if (email !== undefined) updates.email = email;
       if (phone !== undefined) updates.phone = phone;
-      if (role !== undefined) updates.role = role;
+      if (role !== undefined) updates.role = nextRole;
       if (isActive !== undefined) updates.isActive = isActive;
 
+      // Promover a administrador implica una cuenta operativa y verificada.
+      if (
+        role !== undefined &&
+        (nextRole === "admin" || nextRole === "super_admin") &&
+        isActive === undefined
+      ) {
+        updates.isActive = true;
+        updates.verificationStatus = "verified";
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "No hay cambios para guardar" });
+      }
+
       await db.update(users).set(updates).where(eq(users.id, userId));
+
+      await db.insert(auditLogs).values({
+        userId: req.user!.id,
+        action:
+          updates.role !== undefined
+            ? "admin_role_changed"
+            : "admin_user_updated",
+        entityType: "user",
+        entityId: userId,
+        changes: JSON.stringify({
+          before: {
+            role: targetRole,
+            isActive: target.isActive,
+            name: target.name,
+            email: target.email,
+            phone: target.phone,
+          },
+          after: updates,
+        }),
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
 
       res.json({ success: true, message: "Usuario actualizado correctamente" });
     } catch (error: any) {

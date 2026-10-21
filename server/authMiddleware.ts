@@ -4,6 +4,10 @@ import jwt from "jsonwebtoken";
 import { db } from "./db";
 import { users, auditLogs } from "@shared/schema-mysql";
 import { eq } from "drizzle-orm";
+import {
+  isVerifiedStatus,
+  normalizeVerificationStatus,
+} from "@shared/verification";
 
 // Extend Express Request type
 declare global {
@@ -73,6 +77,20 @@ export async function authenticateToken(
       return res.status(401).json({ error: "Usuario no encontrado" });
     }
 
+    // Un administrador desactivado no puede seguir operando con un token ya
+    // emitido (antes la desactivación solo era cosmética hasta que el token
+    // caducaba).
+    const normalizedRole = normalizeRole(user.role);
+    if (
+      (normalizedRole === "admin" || normalizedRole === "super_admin") &&
+      user.isActive === false
+    ) {
+      return res.status(403).json({
+        error: "Cuenta de administrador desactivada",
+        code: "admin_inactive",
+      });
+    }
+
     // Attach user to request
     req.user = {
       userId: user.id, // Add userId field for compatibility
@@ -80,9 +98,11 @@ export async function authenticateToken(
       email: user.email || undefined,
       name: user.name,
       phone: user.phone,
-      role: normalizeRole(user.role),
+      role: normalizedRole,
       phoneVerified: user.phoneVerified,
-      verificationStatus: user.verificationStatus ?? undefined,
+      verificationStatus: normalizeVerificationStatus(
+        user.verificationStatus,
+      ),
       isActive: user.isActive,
     };
 
@@ -124,9 +144,11 @@ export async function authenticateOptional(
           email: user.email || undefined,
           name: user.name,
           phone: user.phone,
-          role: user.role,
+          role: normalizeRole(user.role),
           phoneVerified: user.phoneVerified,
-          verificationStatus: user.verificationStatus ?? undefined,
+          verificationStatus: normalizeVerificationStatus(
+            user.verificationStatus,
+          ),
           isActive: user.isActive,
         };
       }
@@ -174,12 +196,14 @@ export function requireApprovedDriver(
     });
   }
 
-  if (req.user.verificationStatus !== "verified") {
+  if (!isVerifiedStatus(req.user.verificationStatus)) {
     return res.status(403).json({
       error:
         "Tu perfil de repartidor está pendiente de aprobación por el administrador",
       code: "driver_not_verified",
-      verificationStatus: req.user.verificationStatus || "pending",
+      verificationStatus: normalizeVerificationStatus(
+        req.user.verificationStatus,
+      ),
     });
   }
 
@@ -202,6 +226,28 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.user.role !== "admin" && req.user.role !== "super_admin") {
     return res.status(403).json({
       error: "Solo administradores pueden acceder",
+      yourRole: req.user.role,
+    });
+  }
+
+  next();
+}
+
+// Acciones reservadas al nivel más alto: gestionar otros administradores,
+// cambiar roles privilegiados y operaciones destructivas del sistema.
+export function requireSuperAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  if (!req.user) {
+    return res.status(401).json({ error: "No autenticado" });
+  }
+
+  if (req.user.role !== "super_admin") {
+    return res.status(403).json({
+      error: "Solo un Super Admin puede realizar esta acción",
+      code: "super_admin_required",
       yourRole: req.user.role,
     });
   }

@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken } from "../authMiddleware";
+import { authenticateToken, normalizeRole } from "../authMiddleware";
 import { eq, sql } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 
@@ -11,6 +11,17 @@ const signToken = (userId: string, role?: string) =>
     process.env.JWT_SECRET || "comeya_local_secret_key",
     { expiresIn: "7d" },
   );
+
+/**
+ * El registro público solo puede crear clientes, negocios o repartidores.
+ * Cualquier otro valor (incluido admin/super_admin) cae a "customer" para
+ * cerrar la escalada de privilegios por el body del registro.
+ */
+function sanitizeSignupRole(raw: unknown): string {
+  const role = normalizeRole(String(raw ?? "customer"));
+  if (role === "business_owner" || role === "delivery_driver") return role;
+  return "customer";
+}
 
 // Normaliza el teléfono para login/registro: quita espacios y guiones,
 // "00" → "+" y antepone +34 a móviles españoles de 9 dígitos. Los números
@@ -158,6 +169,20 @@ router.post("/phone-login", async (req, res) => {
     // formato, se encuentra igual y NO se crea una cuenta duplicada.
     let user = await findUserByPhone(db, users, phone);
 
+    // Un administrador desactivado no puede iniciar sesión ni reactivarse
+    // por el flujo de teléfono.
+    if (
+      user &&
+      (normalizeRole(user.role) === "admin" ||
+        normalizeRole(user.role) === "super_admin") &&
+      user.isActive === false
+    ) {
+      return res.status(403).json({
+        error: "Cuenta de administrador desactivada",
+        code: "admin_inactive",
+      });
+    }
+
     if (!user) {
       // Si viene signupData, crear usuario nuevo
       if (signupData) {
@@ -167,14 +192,15 @@ router.post("/phone-login", async (req, res) => {
           hashedPassword = await bcrypt.hash(signupData.password, 10);
         }
 
+        const signupRole = sanitizeSignupRole(signupData.role);
         const newUser: any = {
           id: crypto.randomUUID(),
           phone: normalizePhone(phone),
           name: signupData.name,
           email: signupData.email || null,
           password: hashedPassword,
-          role: signupData.role || "customer",
-          isActive: signupData.role === "customer" ? true : false, // Solo clientes activos inmediatamente
+          role: signupRole,
+          isActive: signupRole === "customer", // Solo clientes activos inmediatamente
           phoneVerified: true,
           createdAt: new Date(),
         };
@@ -278,6 +304,16 @@ router.post("/phone-signup", async (req, res) => {
 
     const existing = await findUserByPhone(db, users, phone);
     if (existing) {
+      // Las cuentas administrativas no se pueden re-registrar ni sobrescribir
+      // por el flujo público de teléfono.
+      if (
+        normalizeRole(existing.role) === "admin" ||
+        normalizeRole(existing.role) === "super_admin"
+      ) {
+        return res
+          .status(400)
+          .json({ error: "El teléfono ya está registrado" });
+      }
       // Si la cuenta existe pero NO está verificada ni activa, permitir re-registro
       if (!existing.phoneVerified && !existing.isActive) {
         console.log(`🔄 Re-registro permitido para teléfono no verificado: ${phone} (userId: ${existing.id})`);
@@ -287,7 +323,7 @@ router.post("/phone-signup", async (req, res) => {
           .set({ 
             email: null as any, 
             password: null as any,
-            role: (role || "customer") as any,
+            role: sanitizeSignupRole(role) as any,
             updatedAt: new Date(),
           } as any)
           .where(eq(users.id, existing.id));
@@ -311,7 +347,7 @@ router.post("/phone-signup", async (req, res) => {
         name,
         email: email || null,
         password: hashedPassword,
-        role: role || "customer",
+        role: sanitizeSignupRole(role),
         isActive: false,
         phoneVerified: false,
         createdAt: new Date(),
@@ -331,7 +367,7 @@ router.post("/phone-signup", async (req, res) => {
           name,
           email: email || null,
           password: hashedPassword,
-          role: role || "customer",
+          role: sanitizeSignupRole(role),
           isActive: false,
           phoneVerified: false,
           updatedAt: new Date(),
@@ -395,6 +431,9 @@ router.post("/dev-login", async (req, res) => {
 });
 
 // POST /api/auth/dev-email-login  (login con email y contraseña)
+// Pese al nombre "dev", es la ÚNICA vía de login por email+contraseña que
+// usan LoginScreen (nativo y web) en producción, así que NO se puede ocultar
+// por entorno; sí se endurece con el bloqueo de administradores inactivos.
 router.post("/dev-email-login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -410,6 +449,18 @@ router.post("/dev-email-login", async (req, res) => {
       .where(eq(users.email, email))
       .limit(1);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    // Un administrador desactivado no puede entrar por este helper tampoco.
+    if (
+      (normalizeRole(user.role) === "admin" ||
+        normalizeRole(user.role) === "super_admin") &&
+      user.isActive === false
+    ) {
+      return res.status(403).json({
+        error: "Cuenta de administrador desactivada",
+        code: "admin_inactive",
+      });
+    }
 
     // Verificar contraseña
     if (user.password) {
@@ -452,6 +503,10 @@ router.post("/dev-email-login", async (req, res) => {
 });
 
 // POST /api/auth/biometric-login
+// RIESGO PENDIENTE: emite tokens solo con el teléfono, sin desafío biométrico
+// verificado en el servidor (cualquiera que conozca el teléfono entra). La
+// mitigación real es de la Fase de seguridad de dispositivo; hoy el bloqueo
+// de admin inactivo del middleware cubre a los administradores.
 router.post("/biometric-login", async (req, res) => {
   try {
     const { phone } = req.body;
