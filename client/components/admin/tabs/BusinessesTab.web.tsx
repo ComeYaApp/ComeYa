@@ -361,7 +361,7 @@ export const BusinessesTab: React.FC<Props> = ({ focusId, focusToken }) => {
                 icon: "star",
                 label: "Rating",
                 value: selected.rating
-                  ? `${(selected.rating / 100).toFixed(1)} ★`
+                  ? `${(selected.rating / 10).toFixed(1)} ★`
                   : "—",
               },
             ].map((r) => (

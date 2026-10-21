@@ -746,8 +746,15 @@ const postAddress = async (req: any, res: any) => {
       });
     }
 
-    // Si isDefault, quitar default de las demás
-    if (isDefault) {
+    // La primera dirección es la predeterminada aunque el cliente no lo pida.
+    const existingAddresses = await db
+      .select({ id: addresses.id })
+      .from(addresses)
+      .where(eq(addresses.userId, userId as string));
+    const forceDefault = existingAddresses.length === 0;
+
+    // Si isDefault (o es la primera), quitar default de las demás
+    if (isDefault || forceDefault) {
       await db
         .update(addresses)
         .set({ isDefault: false })
@@ -765,8 +772,20 @@ const postAddress = async (req: any, res: any) => {
       zipCode: zipCode || null,
       latitude: finalLat,
       longitude: finalLng,
-      isDefault: isDefault || false,
+      isDefault: Boolean(isDefault) || forceDefault,
     });
+
+    // Sincronizar el perfil (users.address) con la dirección predeterminada.
+    if (isDefault || forceDefault) {
+      const { users } = await import("@shared/schema-mysql");
+      const formatted = [street, city || "Soria", zipCode]
+        .filter(Boolean)
+        .join(", ");
+      await db
+        .update(users)
+        .set({ address: formatted, updatedAt: new Date() })
+        .where(eq(users.id, userId as string));
+    }
 
     const [saved] = await db
       .select()

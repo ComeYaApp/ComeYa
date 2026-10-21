@@ -128,7 +128,7 @@ async function updateDriverRating(driverId: string) {
       );
 
     const avgRating = result.avgRating
-      ? Math.round(result.avgRating * 10) / 10
+      ? Math.round(result.avgRating * 10) // 0-50 (4,7 → 47), igual que negocios
       : 0;
     const totalReviews = result.totalReviews || 0;
 

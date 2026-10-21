@@ -249,13 +249,20 @@ export default function SupportChatScreen() {
       }
     } catch (error: any) {
       console.error("Support chat error:", error?.message || error);
+      const raw = String(error?.message || "");
+      const content = raw.includes("401") || raw.includes("session")
+        ? "No pudimos autenticarte. Cierra sesión y vuelve a entrar, luego intenta de nuevo."
+        : raw.includes("AI_CONFIGURED") || raw.includes("IA no configurada")
+          ? "El asistente todavía no está configurado. Escríbenos por WhatsApp mientras tanto."
+          : raw.includes("AI_TIMEOUT") || raw.includes("tardó demasiado")
+            ? "El asistente tardó demasiado. Inténtalo de nuevo en unos segundos."
+            : raw.includes("AI_UNAVAILABLE") || raw.includes("no está disponible")
+              ? "El asistente no está disponible ahora mismo. Intenta de nuevo o contáctanos por WhatsApp."
+              : "Lo siento, hubo un problema al procesar tu mensaje. Intenta de nuevo o contáctanos por WhatsApp.";
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content:
-          error?.message?.includes("401") || error?.message?.includes("session")
-            ? "No pudimos autenticarte. Cierra sesión y vuelve a entrar, luego intenta de nuevo."
-            : "Lo siento, hubo un problema al procesar tu mensaje. Intenta de nuevo o contáctanos por WhatsApp.",
+        content,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);

@@ -47,6 +47,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { WebDialogProvider } from "@/hooks/useWebDialog";
+import { WebAIChatWidget } from "@/components/support/WebAIChatWidget";
 import { StripeProvider } from "@/providers/StripeProvider";
 import {
   OnboardingOverlay,
@@ -424,6 +425,7 @@ export default function App() {
                             <AppThemedShell>
                               <RootStackNavigator />
                             </AppThemedShell>
+                            <WebAIChatWidget />
                             {showOnboarding && (
                               <OnboardingOverlay
                                 onComplete={() => setShowOnboarding(false)}

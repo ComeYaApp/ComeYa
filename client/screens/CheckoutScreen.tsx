@@ -96,6 +96,9 @@ export default function CheckoutScreen({ route }: any) {
     new Date(Date.now() + 60 * 60 * 1000),
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
+  // En Android mode="datetime" solo abre el calendario y la hora queda fija:
+  // se usan dos pickers separados (fecha y hora) para poder elegir ambas.
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Cargar método de pago guardado como default
   useEffect(() => {
@@ -1782,18 +1785,49 @@ navigation.navigate("DigitalPaymentMethod", {
           {whenMode === "scheduled" && showDatePicker && (
             <DateTimePicker
               value={scheduledDate}
-              mode="datetime"
+              mode={Platform.OS === "ios" ? "datetime" : "date"}
               minimumDate={new Date(Date.now() + 30 * 60 * 1000)}
               display={Platform.OS === "ios" ? "spinner" : "default"}
               onChange={(event: any, date?: Date) => {
                 setShowDatePicker(Platform.OS === "ios");
-                if (date) setScheduledDate(date);
-                if (Platform.OS === "android" && event.type !== "dismissed") {
+                if (date) {
+                  if (Platform.OS === "ios") {
+                    setScheduledDate(date);
+                  } else {
+                    const next = new Date(scheduledDate);
+                    next.setFullYear(
+                      date.getFullYear(),
+                      date.getMonth(),
+                      date.getDate(),
+                    );
+                    setScheduledDate(next);
+                  }
+                }
+                if (Platform.OS === "android") {
                   setShowDatePicker(false);
+                  // Tras elegir la fecha se pide la hora (si no se canceló).
+                  if (event.type !== "dismissed") setShowTimePicker(true);
                 }
               }}
             />
           )}
+          {whenMode === "scheduled" &&
+            Platform.OS === "android" &&
+            showTimePicker && (
+              <DateTimePicker
+                value={scheduledDate}
+                mode="time"
+                display="default"
+                onChange={(event: any, time?: Date) => {
+                  setShowTimePicker(false);
+                  if (time) {
+                    const next = new Date(scheduledDate);
+                    next.setHours(time.getHours(), time.getMinutes(), 0, 0);
+                    setScheduledDate(next);
+                  }
+                }}
+              />
+            )}
           {whenMode === "scheduled" && Platform.OS === "ios" && showDatePicker && (
             <Pressable
               onPress={() => setShowDatePicker(false)}

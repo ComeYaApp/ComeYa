@@ -76,10 +76,9 @@ export default function SavedAddressesScreen() {
 
   const handleSetDefault = async (addressId: string) => {
     try {
-      await apiRequest(
-        "PUT",
-        `/api/users/${user?.id}/addresses/${addressId}/default`,
-      );
+      // Ruta real del servidor (PATCH /api/addresses/:id/default). Antes se
+      // llamaba a PUT /api/users/:id/addresses/:id/default, que no existe.
+      await apiRequest("PATCH", `/api/addresses/${addressId}/default`);
       await loadAddresses();
       showToast("Dirección predeterminada actualizada", "success");
     } catch (error) {

@@ -99,7 +99,7 @@ export class AutoVerificationService {
         amountMatch: await this.checkAmountMatch(proof.amount, order.total),
         userTrustworthy: await this.checkUserTrustworthiness(proof.userId),
         timeValid: await this.checkTimeValidity(proof.submittedAt),
-        imageValid: await this.checkImageValidity(proof.proofImageUrl),
+        imageValid: await this.checkImageValidity(proof),
         duplicateCheck: await this.checkDuplicateReference(
           proof.referenceNumber,
           proof.id,
@@ -239,22 +239,94 @@ export class AutoVerificationService {
   }
 
   /**
-   * 5. Verificar validez de la imagen
-   * Debe existir y tener URL válida
+   * 5. Verificar validez de la imagen.
+   * - La URL debe ser válida.
+   * - Si Gemini está configurado y la imagen está en NUESTRO Cloudinary, se
+   *   hace OCR y se comprueba que la referencia/importe aparezcan en el
+   *   comprobante (anti-SSRF: nunca se descargan URLs de terceros).
+   * - El OCR no es bloqueante: si falla, el comprobante sigue el flujo manual.
    */
-  private async checkImageValidity(imageUrl: string | null): Promise<boolean> {
+  private async checkImageValidity(proof: any): Promise<boolean> {
+    const imageUrl =
+      typeof proof === "string" ? proof : proof?.proofImageUrl || null;
     if (!imageUrl) return false;
 
-    // Verificar que sea una URL válida
     try {
       new URL(imageUrl);
-      return true;
     } catch {
       return false;
     }
 
-    // TODO: Implementar OCR para verificar que la referencia aparezca en la imagen
-    // TODO: Verificar que la imagen no sea duplicada (hash)
+    const apiKey = process.env.GEMINI_API_KEY;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    if (!apiKey || !cloudName) return true;
+    try {
+      const parsed = new URL(imageUrl);
+      if (parsed.hostname !== "res.cloudinary.com") return true;
+      if (!parsed.pathname.startsWith(`/${cloudName}/`)) return true;
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15_000);
+      let buffer: Buffer;
+      try {
+        const response = await fetch(imageUrl, { signal: controller.signal });
+        if (!response.ok) return true;
+        const arrayBuffer = await response.arrayBuffer();
+        if (arrayBuffer.byteLength > 8 * 1024 * 1024) return true;
+        buffer = Buffer.from(arrayBuffer);
+      } finally {
+        clearTimeout(timer);
+      }
+
+      const { GoogleGenerativeAI } = await import("@google/generative-ai");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: buffer.toString("base64"),
+          },
+        },
+        'Extrae de este comprobante bancario: referenceNumber, amount (en euros), senderName, bankName, isValid. Responde SOLO con JSON válido.',
+      ]);
+      const text = result.response
+        .text()
+        .replace(/```json|```/g, "")
+        .trim();
+      const extracted = JSON.parse(text);
+
+      const normalized = (value: unknown) =>
+        String(value ?? "")
+          .replace(/\s/g, "")
+          .toLowerCase();
+      const reference = normalized(
+        typeof proof === "string" ? "" : proof?.referenceNumber,
+      );
+      const ocrText = normalized(JSON.stringify(extracted));
+      if (reference && !ocrText.includes(reference)) return false;
+
+      const expectedCents = Number(
+        typeof proof === "string" ? 0 : proof?.amount ?? 0,
+      );
+      const ocrAmount = Number(extracted?.amount ?? 0);
+      if (
+        expectedCents > 0 &&
+        ocrAmount > 0 &&
+        Math.abs(expectedCents / 100 - ocrAmount) > 0.02
+      ) {
+        return false;
+      }
+
+      return true;
+    } catch (error: any) {
+      // OCR no bloqueante: se conserva la verificación manual.
+      console.warn(
+        "⚠️ OCR de comprobante no disponible:",
+        error?.message || error,
+      );
+      return true;
+    }
   }
 
   /**

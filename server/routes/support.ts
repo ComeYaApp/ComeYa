@@ -14,6 +14,29 @@ Política de cancelación: gratis en los primeros 60 segundos, luego pueden apli
 Tiempos de entrega estimados: 30-45 minutos según distancia y disponibilidad.
 Si el usuario tiene un problema urgente con un pedido activo, sugíere crear un ticket de soporte.`;
 
+// Límite duro para no dejar peticiones colgadas si Gemini no responde.
+const AI_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const err: any = new Error("AI_TIMEOUT");
+      err.code = "AI_TIMEOUT";
+      reject(err);
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 // Chat público con IA (Gemini) — sin autenticación, para página de soporte
 router.post("/chat-public", async (req, res) => {
   try {
@@ -25,7 +48,10 @@ router.post("/chat-public", async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "IA no configurada" });
+      return res.status(503).json({
+        error: "IA no configurada",
+        code: "AI_NOT_CONFIGURED",
+      });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -45,19 +71,25 @@ router.post("/chat-public", async (req, res) => {
       ],
     });
 
-    const result = await chat.sendMessage(message);
+    const result = await withTimeout(
+      chat.sendMessage(message),
+      AI_TIMEOUT_MS,
+    );
     const response = result.response.text();
 
     res.json({ success: true, response });
   } catch (error: any) {
     console.error("Support public chat error:", error);
-    const errorMsg = error?.message || error?.toString() || "Error desconocido";
-    res.json({
-      success: true,
-      response:
-        "Lo siento, el asistente no está disponible en este momento. Puedes contactarnos en support@comeya.es. (Error: " +
-        errorMsg +
-        ")",
+    if (error?.code === "AI_TIMEOUT" || error?.message === "AI_TIMEOUT") {
+      return res.status(504).json({
+        error: "El asistente tardó demasiado en responder. Inténtalo de nuevo.",
+        code: "AI_TIMEOUT",
+      });
+    }
+    res.status(502).json({
+      error:
+        "El asistente no está disponible en este momento. Puedes contactarnos en support@comeya.es.",
+      code: "AI_UNAVAILABLE",
     });
   }
 });
@@ -73,7 +105,10 @@ router.post("/chat", authenticateToken, async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ error: "IA no configurada" });
+      return res.status(503).json({
+        error: "IA no configurada",
+        code: "AI_NOT_CONFIGURED",
+      });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -100,17 +135,25 @@ router.post("/chat", authenticateToken, async (req, res) => {
       ],
     });
 
-    const result = await chat.sendMessage(message);
+    const result = await withTimeout(
+      chat.sendMessage(message),
+      AI_TIMEOUT_MS,
+    );
     const response = result.response.text();
 
     res.json({ success: true, response });
   } catch (error: any) {
     console.error("Support chat error:", error);
-    // Fallback si falla Gemini
-    res.json({
-      success: true,
-      response:
+    if (error?.code === "AI_TIMEOUT" || error?.message === "AI_TIMEOUT") {
+      return res.status(504).json({
+        error: "El asistente tardó demasiado en responder. Inténtalo de nuevo.",
+        code: "AI_TIMEOUT",
+      });
+    }
+    res.status(502).json({
+      error:
         "Lo siento, el asistente no está disponible en este momento. Por favor crea un ticket de soporte y te responderemos pronto.",
+      code: "AI_UNAVAILABLE",
     });
   }
 });

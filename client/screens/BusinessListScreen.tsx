@@ -79,7 +79,7 @@ export default function BusinessListScreen() {
           b.cover_image ||
           b.image ||
           "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
-        rating: (b.rating || 0) / 100,
+        rating: (b.rating || 0) / 10, // escala BD 0-50
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || "30-45 min",
         deliveryFee: (b.delivery_fee || 300) / 100,

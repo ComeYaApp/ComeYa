@@ -63,7 +63,23 @@ router.post("/upload-proof-image", authenticateToken, async (req: any, res) => {
       api_secret: process.env.CLOUDINARY_API_SECRET,
     });
 
-    const upload = multer({ storage: multer.memoryStorage() }).single("file");
+    // Límite de tamaño y tipos permitidos: sin esto se podían subir archivos
+    // arbitrarios de cualquier tamaño a Cloudinary.
+    const upload = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+      fileFilter: (_req2: any, file: any, cb: any) => {
+        const ok = /^image\/(jpeg|jpg|png|webp|heic|heif)$/i.test(
+          String(file?.mimetype || ""),
+        );
+        if (!ok) {
+          return cb(
+            new Error("Formato no permitido. Sube una imagen JPG, PNG o WebP."),
+          );
+        }
+        cb(null, true);
+      },
+    }).single("file");
 
     upload(req, res, async (err: any) => {
       if (err)
@@ -298,6 +314,19 @@ router.post("/analyze-proof", authenticateToken, async (req, res) => {
     const { imageBase64, expectedAmount, paymentMethod } = req.body;
     if (!imageBase64)
       return res.status(400).json({ error: "imageBase64 requerido" });
+    // ~8 MB decodificados (base64 ocupa ~4/3): evita enviar imágenes enormes
+    // a Gemini y bloquear la petición.
+    if (String(imageBase64).length > 11 * 1024 * 1024) {
+      return res
+        .status(413)
+        .json({ error: "La imagen es demasiado grande (máx. 8 MB)" });
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({
+        error: "OCR no configurado",
+        code: "AI_NOT_CONFIGURED",
+      });
+    }
 
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);

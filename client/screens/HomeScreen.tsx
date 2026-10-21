@@ -187,7 +187,7 @@ export default function HomeScreen() {
           b.cover_image ||
           b.image ||
           "https://res.cloudinary.com/dkuj3vq57/image/upload/v1/comeya/placeholder-food.jpg",
-        rating: (b.rating || 0) / 100, // Convertir de centavos a decimal
+        rating: (b.rating || 0) / 10, // BD en escala 0-50 (4,7 → 47): dividir entre 10
         reviewCount: b.total_ratings || 0,
         deliveryTime: b.delivery_time || "30-45 min",
         deliveryFee: (b.delivery_fee || 300) / 100,

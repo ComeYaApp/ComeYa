@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import { isValidLatLng } from "../utils/coordinates";
-import { addresses } from "@shared/schema-mysql";
+import { addresses, users } from "@shared/schema-mysql";
 import { eq, and } from "drizzle-orm";
 import { authenticateToken } from "../authMiddleware";
 import crypto from "crypto";
@@ -139,6 +139,19 @@ router.patch(
         .update(addresses)
         .set({ isDefault: true })
         .where(eq(addresses.id, req.params.id));
+
+      // El perfil muestra users.address: se sincroniza con la dirección
+      // predeterminada para que no aparezca vacío.
+      const formatted = [existing.street, existing.city, existing.zipCode]
+        .filter(Boolean)
+        .join(", ");
+      if (formatted) {
+        await db
+          .update(users)
+          .set({ address: formatted, updatedAt: new Date() })
+          .where(eq(users.id, userId));
+      }
+
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
