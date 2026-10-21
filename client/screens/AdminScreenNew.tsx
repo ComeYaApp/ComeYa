@@ -325,8 +325,14 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   // Atajo web: Ctrl/Cmd+K abre el buscador global; Escape lo cierra.
+  // (En Android/iOS no hay teclado físico: se ignora.)
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (
+      typeof window === "undefined" ||
+      typeof window.addEventListener !== "function"
+    ) {
+      return;
+    }
     const handler = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
