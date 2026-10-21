@@ -1,7 +1,7 @@
 # ComeYa 1.0.17 — corrección del modelo de comisiones y mejoras de panel
 
 **Versión**: 1.0.17
-**Base**: backport de las correcciones validadas en la app de Venezuela, adaptadas a España (sin tocar marca, pagos ni flujos de ComeYa)
+**Base**: correcciones de la plataforma aplicadas a ComeYa, sin tocar marca, pagos ni flujos de España
 
 ---
 

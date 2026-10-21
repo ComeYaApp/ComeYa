@@ -1,4 +1,4 @@
-# Checklist de regresión España — backport PideFast
+# Checklist de regresión España — correcciones de plataforma
 
 Usar en staging antes de cada paso a producción. Marcar cada punto con la evidencia (captura, log o salida de test) y la fecha.
 

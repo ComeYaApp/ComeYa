@@ -2,6 +2,26 @@
 
 Backport de correcciones PideFast → ComeYa (España). Plan validado contra el código real de `C:\CY` (ComeYa, 1.0.16, rama `main`) y `C:\PideFast` (app Venezuela, rama `main` @ `264ac52`; la rama `fix/comprobante-camara-importes-mapas` ya está fusionada en main).
 
+## Estado de ejecución
+
+Rama `backport/pidefast-fixes` (local, sin push). Un commit por fase:
+
+| Fase | Commit | Contenido |
+|---|---|---|
+| 0 | `0ab0e110` | Documento del plan |
+| 1 | `655ebe1e` | Seguridad: whitelist de roles, admins inactivos, /users sin secretos, reglas de super admin y auditoría |
+| 2 | `f0c34eca` | Comisiones: fórmula compuesta, earnings al crear, liquidación unificada, auditorías, customerPrice/basePrice, CSV |
+| 3 | `7deb8f16` | Verificaciones España: DNI/NIE, autónomo, dirección, vehículo, matrícula, excepción, request-documents, banner |
+| 4 | `dc137130` | Panel admin: grupos y badges, buscador Ctrl+K con foco, salud, comprobantes nativos, AdminTab web móvil |
+| 5 | `448eaf00` | App: calendario Android, direcciones, rating, chat IA + widget, OCR post-subida, límites de archivo |
+| 6 | `e3605137` | Suscripciones por negocio, gift cards en céntimos y pestañas nativas |
+| 7 | `ef5cc4f2` | Auditoría histórica read-only, checklist de regresión, notas 1.0.17 |
+| — | `818e8b62` | Bundle `server_dist` reconstruido con los cambios |
+
+Comprobaciones: aritmética 10 € al 15 % → 15,07 € (negocio 10,00 €, repartidor 2,50 €, ComeYa 2,57 €) y plan 10 % → producto 11,55 € / comisión 1,05 €; `npm run server:build` correcto; typecheck sin errores nuevos en los archivos tocados (el repo mantiene errores preexistentes). No se ha copiado marca, catálogo documental ni flujos de la app de referencia; los pagos de España quedan intactos.
+
+Pendiente antes de producción: aplicar las migraciones en staging, ejecutar `node scripts/audit-historical-orders.js` (solo lectura), completar `docs/CHECKLIST-REGRESION-ESPANA.md`, push de la rama y PR.
+
 ## Estado verificado
 
 - **C:\CY** = ComeYa España (1.0.16 build 23, 1022 commits, remoto ComeYaApp/ComeYa + backup gitsafe).
