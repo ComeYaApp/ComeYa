@@ -147,7 +147,13 @@ export class GiftCardService {
 
     return {
       success: true,
-      giftCards: pending.map((gc) => ({ ...gc, amount: gc.amount / 100 })),
+      // Importes en CÉNTIMOS: las pestañas admin los formatean dividiendo
+      // entre 100 (antes se devolvían en euros y se dividían otra vez).
+      giftCards: pending.map((gc) => ({
+        ...gc,
+        amountCents: gc.amount,
+        amount: gc.amount,
+      })),
     };
   }
 

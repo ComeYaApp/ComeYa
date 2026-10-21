@@ -58,16 +58,18 @@ router.get("/benefits-preview", authenticateToken, async (req, res) => {
 // Iniciar suscripción — crea registro pending_payment y devuelve subscriptionId para pagar
 router.post("/subscribe", authenticateToken, async (req, res) => {
   try {
-    const { plan, billingCycle } = req.body;
-    // Cualquier plan definido en BD (7 planes ComeYa Soria)
+    const { plan, billingCycle, businessId } = req.body;
+    // Cualquier plan definido en BD (7 planes ComeYa Soria). Si se indica
+    // businessId, el plan se contrata para ese negocio (validando propiedad).
     const result = await SubscriptionService.initSubscription(
       req.user!.id,
       plan,
       billingCycle || "monthly",
+      businessId || null,
     );
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 });
 

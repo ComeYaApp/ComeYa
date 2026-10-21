@@ -52,6 +52,8 @@ import {
   NotificationsTab,
   PaymentProofsTab,
   SystemHealthTab,
+  PremiumSubsTab,
+  GiftCardsAdminTab,
 } from "@/components/admin/tabs";
 import type {
   DashboardMetrics,
@@ -227,6 +229,22 @@ const menuItems: MenuItem[] = [
     color: "#F97316",
     group: "finance",
     badgeKey: "pendingPayments",
+  },
+  {
+    title: "Suscripciones",
+    subtitle: "Planes activos y vencimientos",
+    icon: "star",
+    tab: "premiums",
+    color: "#F59E0B",
+    group: "finance",
+  },
+  {
+    title: "Gift Cards",
+    subtitle: "Tarjetas por activar",
+    icon: "gift",
+    tab: "finance_giftcards",
+    color: "#EC4899",
+    group: "finance",
   },
   {
     title: "Devoluciones",
@@ -644,6 +662,10 @@ export default function AdminMenuScreen({ route }: { route?: any }) {
         return <FinanceTab theme={theme} showToast={showToast} />;
       case "finance_proofs":
         return <PaymentProofsTab />;
+      case "premiums":
+        return <PremiumSubsTab />;
+      case "finance_giftcards":
+        return <GiftCardsAdminTab />;
       case "system":
         return <SystemHealthTab />;
       case "reservations":

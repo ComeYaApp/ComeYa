@@ -6,6 +6,7 @@ import {
   subscriptionPlans,
   subscriptionBenefits,
   users,
+  businesses,
 } from "@shared/schema-mysql";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -141,6 +142,7 @@ router.get(
         .select({
           id: subscriptions.id,
           userId: subscriptions.userId,
+          businessId: subscriptions.businessId,
           plan: subscriptions.plan,
           status: subscriptions.status,
           price: subscriptions.price,
@@ -152,9 +154,11 @@ router.get(
           createdAt: subscriptions.createdAt,
           userName: users.name,
           userEmail: users.email,
+          businessName: businesses.name,
         })
         .from(subscriptions)
         .leftJoin(users, eq(subscriptions.userId, users.id))
+        .leftJoin(businesses, eq(subscriptions.businessId, businesses.id))
         .where(and(sql`${subscriptions.plan} != 'free'`))
         .orderBy(desc(subscriptions.createdAt));
 

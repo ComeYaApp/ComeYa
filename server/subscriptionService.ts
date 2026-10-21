@@ -239,8 +239,14 @@ export class SubscriptionService {
 
       if (business.ownerId) {
         const sub = await this.getActiveSubscription(business.ownerId);
-        if (sub?.plan === "impulso_local") return 0.1;
-        if (sub?.plan === "escaparate_soria") return 0.08;
+        // La suscripción de negocio se contrata para un negocio concreto; las
+        // legacy sin businessId se respetan para todos los negocios del dueño.
+        const appliesToBusiness =
+          sub &&
+          (!(sub as any).businessId ||
+            (sub as any).businessId === businessId);
+        if (appliesToBusiness && sub?.plan === "impulso_local") return 0.1;
+        if (appliesToBusiness && sub?.plan === "escaparate_soria") return 0.08;
       }
 
       if (
@@ -347,10 +353,26 @@ export class SubscriptionService {
     userId: string,
     plan: "premium" | "business",
     billingCycle: "monthly" | "yearly" = "monthly",
+    businessId?: string | null,
   ) {
     const plans = await this.getPlansFromDB();
     const planData = (plans as any)[plan];
     if (!planData) throw new Error("Plan inválido");
+
+    // Suscripción por negocio: el negocio debe pertenecer al usuario.
+    let targetBusinessId: string | null = null;
+    if (businessId) {
+      const { businesses } = await import("@shared/schema-mysql");
+      const [biz] = await db
+        .select({ id: businesses.id, ownerId: businesses.ownerId })
+        .from(businesses)
+        .where(eq(businesses.id, String(businessId)))
+        .limit(1);
+      if (!biz || biz.ownerId !== userId) {
+        throw new Error("El negocio indicado no pertenece a este usuario");
+      }
+      targetBusinessId = biz.id;
+    }
 
     const [existing] = await db
       .select()
@@ -391,7 +413,10 @@ export class SubscriptionService {
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,
           cancelledAt: null as any,
-        })
+          ...(targetBusinessId !== null
+            ? { businessId: targetBusinessId }
+            : {}),
+        } as any)
         .where(eq(subscriptions.id, existing.id));
       return {
         success: true,
@@ -405,6 +430,7 @@ export class SubscriptionService {
       await db.insert(subscriptions).values({
         id,
         userId,
+        businessId: targetBusinessId,
         plan,
         status: "pending_payment" as any,
         price: planData.price,
@@ -412,7 +438,7 @@ export class SubscriptionService {
         autoRenew: true,
         currentPeriodStart: now,
         currentPeriodEnd: periodEnd,
-      });
+      } as any);
       return {
         success: true,
         subscriptionId: id,

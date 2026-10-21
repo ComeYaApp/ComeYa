@@ -1353,6 +1353,9 @@ export const subscriptions = mysqlTable("subscriptions", {
     .primaryKey()
     .default(sql`(UUID())`),
   userId: varchar("user_id", { length: 255 }).notNull().unique(),
+  // Plan de negocio contratado para un negocio concreto. Null en planes de
+  // cliente o en suscripciones legacy (se aplican a todos los negocios).
+  businessId: varchar("business_id", { length: 255 }),
   plan: varchar("plan", { length: 50 }).notNull().default("free"),
   status: varchar("status", { length: 50 }).notNull().default("active"),
   price: int("price").notNull().default(0),
