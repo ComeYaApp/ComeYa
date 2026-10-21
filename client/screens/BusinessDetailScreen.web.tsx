@@ -158,7 +158,12 @@ export default function BusinessDetailScreen() {
           id: p.id,
           name: p.name,
           description: p.description || "",
-          price: ((p.price || 0) / 100) * 1.15,
+          // Precio que paga el cliente (base + markup + comisión): el servidor
+          // lo manda calculado; fallback base + 5 % de markup por compatibilidad.
+          price:
+            p.customerPrice != null
+              ? (p.customerPrice || 0) / 100
+              : ((p.price || 0) / 100) * 1.05,
           image: p.image || null,
           category: p.category || "General",
           isAvailable:

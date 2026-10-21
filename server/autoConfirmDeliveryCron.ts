@@ -103,6 +103,8 @@ export function startAutoConfirmCron() {
               order.businessId,
               order.total,
               order.deliveryFee,
+              order.productosBase || undefined,
+              order.nemyCommission || undefined,
             );
           } else {
             // Update business wallet

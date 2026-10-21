@@ -77,6 +77,8 @@ export class FinanceService {
           await financialService.calculateCommissions(
             order.total || 0,
             order.deliveryFee || 0,
+            order.productosBase || undefined,
+            order.nemyCommission || undefined,
           );
         platformCommission += platform;
         businessPayouts += business;
@@ -167,6 +169,8 @@ export class FinanceService {
         const { business } = await financialService.calculateCommissions(
           order.total || 0,
           order.deliveryFee || 0,
+          order.productosBase || undefined,
+          order.nemyCommission || undefined,
         );
         businessEarnings += business;
       }
@@ -218,6 +222,8 @@ export class FinanceService {
         const { driver } = await financialService.calculateCommissions(
           order.total || 0,
           order.deliveryFee || 0,
+          order.productosBase || undefined,
+          order.nemyCommission || undefined,
         );
         driverEarnings += driver;
       }
@@ -233,6 +239,8 @@ export class FinanceService {
         const { driver } = await financialService.calculateCommissions(
           order.total || 0,
           order.deliveryFee || 0,
+          order.productosBase || undefined,
+          order.nemyCommission || undefined,
         );
         todayEarnings += driver;
       }

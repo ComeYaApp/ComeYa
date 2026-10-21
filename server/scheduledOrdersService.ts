@@ -114,6 +114,7 @@ export class ScheduledOrdersService {
         const productosBase = Math.round(
           subtotal / (1 + pricing.markupPct / 100),
         );
+        const markupAmount = subtotal - productosBase;
         let nemyCommission = commissionOn(subtotal, pricing.commissionPct);
         let serviceFee = pricing.serviceFeeCents;
 
@@ -139,7 +140,15 @@ export class ScheduledOrdersService {
         } catch {}
 
         const deliveryFee = Number(business?.deliveryFee) || 0;
-        const total = subtotal + deliveryFee + serviceFee;
+        // Total = subtotal (base + markup) + comisión + envío + servicio.
+        // Antes la comisión se calculaba pero no se cobraba ni liquidaba.
+        const total =
+          subtotal + nemyCommission + deliveryFee + serviceFee;
+
+        // Ganancias desde el inicio: negocio = base, repartidor = envío,
+        // ComeYa = residuo (markup + comisión + servicio).
+        const { computeEarnings } = await import("./utils/orderSettlement");
+        const earnings = computeEarnings(total, productosBase, deliveryFee);
 
         // Número secuencial público #CY000001 (reserva atómica)
         const { nextOrderNumber } = await import("./orderNumberService");
@@ -156,8 +165,12 @@ export class ScheduledOrdersService {
           status: "pending",
           subtotal,
           productosBase,
+          markupAmount,
           nemyCommission,
           serviceFee,
+          platformFee: earnings.platformFee,
+          businessEarnings: earnings.businessEarnings,
+          deliveryEarnings: earnings.deliveryEarnings,
           deliveryFee,
           total,
           paymentMethod: scheduled.paymentMethod,

@@ -460,10 +460,14 @@ export class DigitalPaymentService {
           })
           .where(eq(orders.id, orderId));
 
-        // Calculate commissions
+        // Calculate commissions (modelo unificado: negocio = base, driver =
+        // envío, ComeYa = residuo). `order.totalAmount` no existe en la tabla
+        // (la columna es `total`): producía comisiones a cero.
         const commissions = await financialService.calculateCommissions(
-          order.totalAmount,
+          order.total,
           order.deliveryFee || 0,
+          order.productosBase || undefined,
+          order.nemyCommission || undefined,
         );
 
         // Get PayPal commission (5%)
@@ -475,7 +479,7 @@ export class DigitalPaymentService {
 
         const paypalFee = paypalMethod
           ? Math.round(
-              order.totalAmount * (paypalMethod.commissionPercentage / 100),
+              order.total * (paypalMethod.commissionPercentage / 100),
             )
           : 0;
 
@@ -501,9 +505,9 @@ export class DigitalPaymentService {
           `Pago de pedido ${orderRef(order)} - PayPal (${paypalMethod?.commissionPercentage}% fee)`,
         );
 
-        if (order.driverId) {
+        if (order.deliveryPersonId) {
           await financialService.updateWalletBalance(
-            order.driverId,
+            order.deliveryPersonId,
             commissions.driver,
             "delivery_payment",
             order.id,

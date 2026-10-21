@@ -2099,6 +2099,23 @@ router.get("/:id", async (req, res) => {
       console.error(`❌ Error calculating hours for ${business.name}:`, hoursErr.message);
     }
 
+    // Precio que paga el cliente: base + markup 5% + comisión del plan del
+    // negocio. `price` se mantiene tal cual (la app antigua aplica su propio
+    // markup); la app nueva usa `customerPrice` y `basePrice`.
+    let commissionRatePct = 15;
+    try {
+      const { getBusinessRatePct } = await import("../utils/productPricing");
+      commissionRatePct = await getBusinessRatePct(String(business.id));
+    } catch (rateErr: any) {
+      console.error(
+        `Error obteniendo comisión del negocio ${business.id}:`,
+        rateErr.message,
+      );
+    }
+    const { getPricingConfig } = await import("../pricingService");
+    const { addCustomerPrice } = await import("../utils/productPricing");
+    const pricing = await getPricingConfig();
+
     res.json({
       success: true,
       business: {
@@ -2112,7 +2129,10 @@ router.get("/:id", async (req, res) => {
         deliveryEnabled:
           business.delivery_enabled === 1 ||
           business.delivery_enabled === true,
-        products: productRows,
+        commissionRatePct,
+        products: productRows.map((p: any) =>
+          addCustomerPrice(p, pricing.markupPct, commissionRatePct),
+        ),
         isOpen: calculatedIsOpen,
         openingHours: parsedOpeningHours,
       },

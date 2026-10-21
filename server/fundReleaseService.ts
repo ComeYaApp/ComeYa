@@ -177,8 +177,13 @@ async function releaseFunds(order: any): Promise<void> {
     typeof order.paymentMethod === "string" &&
     order.paymentMethod.startsWith("stripe_");
 
-  const businessEarnings = order.businessEarnings ?? order.subtotal ?? 0;
-  const deliveryEarnings = order.deliveryEarnings ?? order.deliveryFee ?? 0;
+  // Ganancias con el modelo unificado. NUNCA se cae al subtotal completo:
+  // el markup y la comisión que pagó el cliente por encima de la base no le
+  // pertenecen al negocio (antes este fallback regalaba la comisión).
+  const { settleOrderFields } = await import("./utils/orderSettlement");
+  const settled = settleOrderFields(order);
+  const businessEarnings = settled.businessEarnings;
+  const deliveryEarnings = settled.deliveryEarnings;
 
   const inserts: any[] = [];
   const orderUpdates: any = {

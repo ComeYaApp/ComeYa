@@ -1415,6 +1415,9 @@ export default function CheckoutScreen({ route }: any) {
                   </ThemedText>
                   <ThemedText type="body">{subtotal.toFixed(2)} €</ThemedText>
                 </View>
+                <ThemedText type="small" style={{ color: "#6B7280", marginTop: -4 }}>
+                  Incluye la comisión de ComeYa
+                </ThemedText>
                 {orderTypeLocal === "delivery" && (
                   <View style={styles.summaryRow}>
                     <ThemedText type="body" style={{ color: "#6B7280" }}>

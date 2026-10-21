@@ -31,6 +31,8 @@ export async function calculateAndDistributeCommissions(
   const commissions = await financialService.calculateCommissions(
     order.total,
     order.deliveryFee || 0,
+    order.productosBase || undefined,
+    order.nemyCommission || undefined,
   );
 
   // VALIDACIÓN: Verificar que la suma de comisiones = total del pedido

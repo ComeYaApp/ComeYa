@@ -301,13 +301,18 @@ export async function confirmBatchDeltaPayment(
       if (res.success) {
         appliedCount++;
         const delta = Number(sub.priceDelta) || 0;
+        const { settleOrderFields } = await import("./utils/orderSettlement");
+        const settled = settleOrderFields({
+          ...current,
+          total: Math.max(0, (current.total || 0) + delta),
+          deliveryFee: current.deliveryFee,
+        });
         current = {
           ...current,
           subtotal: Math.max(0, (current.subtotal || 0) + delta),
           total: Math.max(0, (current.total || 0) + delta),
           productosBase: Math.max(0, (current.productosBase || 0) + delta),
-          businessEarnings:
-            (current.businessEarnings ?? current.subtotal ?? 0) + delta,
+          businessEarnings: settled.businessEarnings,
         };
       }
     }
@@ -370,14 +375,27 @@ async function applySubstitution(
   sub: any,
 ): Promise<SubstitutionResult> {
   const delta = Number(sub.priceDelta) || 0;
+  const nextSubtotal = Math.max(0, (order.subtotal || 0) + delta);
+  const nextTotal = Math.max(0, (order.total || 0) + delta);
+
+  // El negocio cobra su base, nunca el subtotal completo: se re-liquidan los
+  // tres importes con el modelo unificado (base + envío + residuo).
+  const { settleOrderFields } = await import("./utils/orderSettlement");
+  const settled = settleOrderFields({
+    ...order,
+    total: nextTotal,
+    deliveryFee: order.deliveryFee,
+  });
 
   await db
     .update(orders)
     .set({
-      subtotal: Math.max(0, (order.subtotal || 0) + delta),
-      total: Math.max(0, (order.total || 0) + delta),
+      subtotal: nextSubtotal,
+      total: nextTotal,
       productosBase: Math.max(0, (order.productosBase || 0) + delta),
-      businessEarnings: (order.businessEarnings ?? order.subtotal ?? 0) + delta,
+      businessEarnings: settled.businessEarnings,
+      platformFee: settled.platformFee,
+      deliveryEarnings: settled.deliveryEarnings,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, order.id));

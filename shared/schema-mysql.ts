@@ -97,7 +97,8 @@ export const orders = mysqlTable("orders", {
   status: text("status").notNull().default("pending"), // pending, accepted, preparing, on_the_way, delivered, cancelled
   subtotal: int("subtotal").notNull(),
   productosBase: int("productos_base").default(0), // Precio base sin markup ComeYa
-  nemyCommission: int("nemy_commission").default(0), // 15% markup ComeYa
+  markupAmount: int("markup_amount").default(0), // Markup 5% (subtotal − base), para auditoría
+  nemyCommission: int("nemy_commission").default(0), // Comisión ComeYa sobre el subtotal
   serviceFee: int("service_fee").default(0), // Coste de servicio ComeYa por pedido
   deliveryFee: int("delivery_fee").notNull(),
   total: int("total").notNull(),

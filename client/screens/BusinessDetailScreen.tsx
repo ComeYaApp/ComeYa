@@ -443,10 +443,13 @@ export default function BusinessDetailScreen() {
                 p.is_available === true ||
                 p.is_available === 1;
 
-              // Precio con markup incluida, redondeado a céntimos
-              // (p.price en céntimos → 1000 * 1.05 = 1050 = 10,50 €)
+              // Precio que paga el cliente (base + markup + comisión): el
+              // servidor lo manda calculado en customerPrice; fallback al
+              // markup configurable desde el panel admin (5% por defecto).
               const priceWithCommission =
-                Math.round((p.price || 0) * markupMultiplier) / 100;
+                p.customerPrice != null
+                  ? (p.customerPrice || 0) / 100
+                  : Math.round((p.price || 0) * markupMultiplier) / 100;
 
               return {
                 id: p.id,

@@ -269,6 +269,7 @@ router.post(
       }
 
       const subtotal = applyMarkup(productosBase, pricing); // lo que paga el cliente
+      const markupAmount = subtotal - productosBase;
 
       // Comisión: tasa del negocio (suscripción / comisión personalizada) o
       // la general del config, aplicada sobre el subtotal (base + markup)
@@ -357,14 +358,27 @@ router.post(
           ? 0
           : subDeliveryFee;
 
-      // Total = subtotal (base + markup) + envío + servicio - descuentos
+      // Total = subtotal (base + markup) + comisión + envío + servicio − descuentos.
+      // Antes la comisión se calculaba pero NUNCA se cobraba al cliente ni se
+      // liquidaba: la plataforma regalaba su margen en cada pedido.
       const calculatedTotal = Math.max(
         0,
         subtotal +
+          nemyCommission +
           finalDeliveryFee +
           serviceFee -
           couponDiscount -
           subDiscount,
+      );
+
+      // Ganancias calculadas desde el inicio: negocio = base, repartidor =
+      // envío, ComeYa = residuo. Así la liquidación nunca cae en fallbacks
+      // que pagaban el subtotal completo al negocio.
+      const { computeEarnings } = await import("../utils/orderSettlement");
+      const earnings = computeEarnings(
+        calculatedTotal,
+        productosBase,
+        finalDeliveryFee,
       );
 
       const orderData = {
@@ -376,8 +390,12 @@ router.post(
         status: req.body.status || "pending",
         subtotal: subtotal,
         productosBase,
+        markupAmount,
         nemyCommission,
         serviceFee,
+        platformFee: earnings.platformFee,
+        businessEarnings: earnings.businessEarnings,
+        deliveryEarnings: earnings.deliveryEarnings,
         deliveryFee: finalDeliveryFee,
         total: calculatedTotal,
         paymentMethod: giftCardCode ? "comeyacard" : req.body.paymentMethod,
@@ -1365,15 +1383,23 @@ router.post(
         console.error("Error awarding loyalty points:", e);
       }
 
-      // Calcular ganancias en Bs. directos
-      const productosBase =
-        order.productosBase && order.productosBase > 0
-          ? order.productosBase
-          : Math.round((order.subtotal || order.total) / 1.15);
-      const businessAmount = productosBase;
-      const driverAmount = order.deliveryFee || 0;
-      const platformAmount =
-        order.nemyCommission || Math.round(productosBase * 0.15);
+      // Ganancias con el modelo unificado: negocio = su base, repartidor =
+      // 100 % del envío, ComeYa = residuo (comisión + servicio − descuentos).
+      // Si el pedido ya trae los campos calculados al crearlo, se respetan.
+      const { settleOrderFields } = await import("../utils/orderSettlement");
+      const storedEarnings =
+        order.businessEarnings != null &&
+        order.deliveryEarnings != null &&
+        order.platformFee != null
+          ? {
+              platformFee: order.platformFee,
+              businessEarnings: order.businessEarnings,
+              deliveryEarnings: order.deliveryEarnings,
+            }
+          : settleOrderFields(order);
+      const businessAmount = storedEarnings.businessEarnings;
+      const driverAmount = storedEarnings.deliveryEarnings;
+      const platformAmount = storedEarnings.platformFee;
 
       // Marcar pedido como confirmado
       await db

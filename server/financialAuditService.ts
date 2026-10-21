@@ -52,20 +52,24 @@ export class FinancialAuditService {
     }
   }
 
-  // REGLA 2: Total pedido = subtotal + deliveryFee + tax
+  // REGLA 2: Total pedido = subtotal + comisión + deliveryFee + serviceFee − descuentos
   async auditOrderTotals(): Promise<AuditResult> {
     try {
       const allOrders = await db.select().from(orders);
       const invalidOrders: string[] = [];
 
       for (const order of allOrders) {
-        // Nueva lógica: total = costo producto + 15% comisión ComeYa + costo delivery
-        const nemyCommission = Math.round(order.subtotal * 0.15);
-        const expectedTotal =
-          order.subtotal + nemyCommission + order.deliveryFee;
-        if (order.total !== expectedTotal) {
+        // Modelo unificado: la comisión se guarda en el pedido (nemyCommission)
+        // y los cupones no se guardan como columna, así que se admite cualquier
+        // descuento entre 0 y el subtotal completo.
+        const nemyCommission = Number(order.nemyCommission ?? 0);
+        const serviceFee = Number(order.serviceFee ?? 0);
+        const upper =
+          order.subtotal + nemyCommission + order.deliveryFee + serviceFee;
+        const lower = Math.max(0, upper - order.subtotal);
+        if (order.total < lower || order.total > upper) {
           invalidOrders.push(
-            `${order.id.slice(-6)}: expected ${expectedTotal}, got ${order.total}`,
+            `${order.id.slice(-6)}: rango ${lower}-${upper}, got ${order.total}`,
           );
         }
       }
@@ -320,7 +324,7 @@ export class FinancialAuditService {
     }
   }
 
-  // REGLA 8: Ganancias del repartidor = deliveryEarnings (no deliveryFee)
+  // REGLA 8: Ganancias del repartidor = deliveryEarnings = 100 % del envío
   async auditDriverEarningsCalculation(): Promise<AuditResult> {
     try {
       const deliveredOrders = await db
@@ -329,26 +333,28 @@ export class FinancialAuditService {
         .where(eq(orders.status, "delivered"));
 
       const invalidEarnings: string[] = [];
-      const rates = await financialService.getCommissionRates();
 
       for (const order of deliveredOrders) {
         if (!order.deliveryPersonId) continue;
 
-        const expectedEarnings = Math.round(order.deliveryFee * rates.driver);
+        // Modelo unificado: el repartidor cobra el 100 % del envío.
+        // (Antes la regla decía "15%" y comparaba contra rates.driver = 1.0,
+        // una contradicción que hacía fallar la auditoría a ciegas.)
+        const expectedEarnings = Number(order.deliveryFee ?? 0);
 
         if (order.deliveryEarnings !== expectedEarnings) {
           invalidEarnings.push(
-            `Order ${order.id.slice(-6)}: deliveryEarnings ${order.deliveryEarnings} != expected ${expectedEarnings} (${(rates.driver * 100).toFixed(0)}% of ${order.deliveryFee})`,
+            `Order ${order.id.slice(-6)}: deliveryEarnings ${order.deliveryEarnings} != expected ${expectedEarnings} (100% of ${order.deliveryFee})`,
           );
         }
       }
 
       return {
         passed: invalidEarnings.length === 0,
-        rule: "Driver Earnings = 15% of Delivery Fee",
+        rule: "Driver Earnings = 100% of Delivery Fee",
         details:
           invalidEarnings.length === 0
-            ? `✓ All ${deliveredOrders.length} orders have correct driver earnings (15% of deliveryFee)`
+            ? `✓ All ${deliveredOrders.length} orders have correct driver earnings (100% of deliveryFee)`
             : `✗ ${invalidEarnings.length}/${deliveredOrders.length} orders with incorrect driver earnings`,
         severity: invalidEarnings.length === 0 ? "info" : "critical",
         affectedEntities: invalidEarnings.slice(0, 10),
@@ -356,7 +362,7 @@ export class FinancialAuditService {
     } catch (error: any) {
       return {
         passed: false,
-        rule: "Driver Earnings = 15% of Delivery Fee",
+        rule: "Driver Earnings = 100% of Delivery Fee",
         details: `✗ Error: ${error.message}`,
         severity: "critical",
       };

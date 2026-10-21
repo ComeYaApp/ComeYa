@@ -135,6 +135,25 @@ export class AIRecommendationsService {
       }
 
       if (itemData) {
+        // Precio cliente para productos recomendados: base + markup + comisión
+        // del negocio. `price` se mantiene para la app antigua.
+        if (rec.itemType === "product" && (itemData as any)?.businessId) {
+          try {
+            const { getBusinessRatePct, addCustomerPrice } = await import(
+              "./utils/productPricing"
+            );
+            const { getPricingConfig } = await import("./pricingService");
+            const pricing = await getPricingConfig();
+            const ratePct = await getBusinessRatePct(
+              String((itemData as any).businessId),
+            );
+            itemData = addCustomerPrice(
+              itemData as any,
+              pricing.markupPct,
+              ratePct,
+            );
+          } catch {}
+        }
         enriched.push({
           ...rec,
           itemData,

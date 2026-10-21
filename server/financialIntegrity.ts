@@ -44,36 +44,60 @@ export class FinancialIntegrity {
     deliveryEarnings?: number;
     productosBase?: number | null;
     nemyCommission?: number | null;
+    markupAmount?: number | null;
+    serviceFee?: number | null;
+    subscriptionDiscount?: number | null;
   }): Promise<ValidationResult> {
-    // 1. Validar total del pedido
-    const subtotalTotal = order.subtotal + order.deliveryFee;
-    const hasMarkup =
-      order.productosBase !== undefined &&
-      order.productosBase !== null &&
-      order.nemyCommission !== undefined &&
-      order.nemyCommission !== null;
-    const markupTotal = hasMarkup
-      ? (order.productosBase || 0) +
-        (order.nemyCommission || 0) +
-        order.deliveryFee
-      : subtotalTotal;
+    // 1. Invariante del subtotal: subtotal = base + markup (cuando ambos se
+    // conocen; los pedidos legacy sin base no se comprueban aquí).
+    const hasBase =
+      order.productosBase != null && order.markupAmount != null;
+    if (hasBase) {
+      const basePlusMarkup =
+        (order.productosBase || 0) + (order.markupAmount || 0);
+      if (order.subtotal !== basePlusMarkup) {
+        return {
+          valid: false,
+          error: "Subtotal no cuadra con base + markup",
+          details: {
+            subtotal: order.subtotal,
+            productosBase: order.productosBase,
+            markupAmount: order.markupAmount,
+          },
+        };
+      }
+    }
 
-    if (order.total !== subtotalTotal && order.total !== markupTotal) {
+    // 2. Invariante del total: total = subtotal + comisión + envío + servicio
+    // − descuentos. Los cupones no se guardan como columna, así que se admite
+    // cualquier descuento entre 0 y el subtotal completo (el máximo que admite
+    // la validación de cupones al crear el pedido).
+    const nemyCommission = Number(order.nemyCommission ?? 0);
+    const serviceFee = Number(order.serviceFee ?? 0);
+    const subscriptionDiscount = Number(order.subscriptionDiscount ?? 0);
+    const upper =
+      order.subtotal + nemyCommission + order.deliveryFee + serviceFee;
+    const lower = Math.max(0, upper - subscriptionDiscount - order.subtotal);
+    if (order.total < lower || order.total > upper) {
       return {
         valid: false,
         error: "Total del pedido inválido",
         details: {
-          expected: hasMarkup ? markupTotal : subtotalTotal,
+          expectedRange: [lower, upper],
           received: order.total,
           subtotal: order.subtotal,
           productosBase: order.productosBase,
           nemyCommission: order.nemyCommission,
           deliveryFee: order.deliveryFee,
+          serviceFee,
+          subscriptionDiscount,
         },
       };
     }
 
-    // 2. Validar comisiones si existen
+    // 3. Validar earnings si existen: negocio = base, repartidor = 100 % del
+    // envío, ComeYa = residuo. Determinista y sin depender de la tasa del
+    // negocio (que varía por plan/suscripción).
     if (
       order.platformFee !== undefined &&
       order.businessEarnings !== undefined &&
@@ -97,24 +121,26 @@ export class FinancialIntegrity {
         };
       }
 
-      // Validar que las comisiones sean correctas según rates
-      const expectedCommissions = await financialService.calculateCommissions(
+      const { computeEarnings, businessBaseOfOrder } = await import(
+        "./utils/orderSettlement"
+      );
+      const expected = computeEarnings(
         order.total,
+        businessBaseOfOrder(order),
         order.deliveryFee || 0,
-        order.productosBase || undefined,
-        order.nemyCommission || undefined,
       );
 
       if (
-        order.platformFee !== expectedCommissions.platform ||
-        order.businessEarnings !== expectedCommissions.business ||
-        order.deliveryEarnings !== expectedCommissions.driver
+        order.platformFee !== expected.platformFee ||
+        order.businessEarnings !== expected.businessEarnings ||
+        order.deliveryEarnings !== expected.deliveryEarnings
       ) {
         return {
           valid: false,
-          error: "Comisiones no coinciden con rates del sistema",
+          error:
+            "Ganancias no coinciden con el modelo (base / 100% envío / residuo)",
           details: {
-            expected: expectedCommissions,
+            expected,
             received: {
               platform: order.platformFee,
               business: order.businessEarnings,

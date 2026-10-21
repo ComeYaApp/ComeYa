@@ -343,7 +343,34 @@ router.post("/create-session", authenticateToken, async (req, res) => {
         .json({ error: "orderId, amount y provider son requeridos" });
     }
 
-    const amountEur = amount / 100; // amount viene en céntimos
+    // Importe AUTORITATIVO del servidor: para pedidos se cobra el total
+    // calculado y guardado en BD (el cliente ya no decide cuánto se cobra).
+    // Para suscripciones el importe lo fija el plan y sí se usa el enviado.
+    let finalAmount = Math.max(0, Math.round(Number(amount) || 0));
+    if (!isSubscription) {
+      try {
+        const { orders } = await import("@shared/schema-mysql");
+        const { db } = await import("../db");
+        const { eq } = await import("drizzle-orm");
+        const [order] = await db
+          .select({ total: orders.total })
+          .from(orders)
+          .where(eq(orders.id, String(orderId)))
+          .limit(1);
+        if (order && order.total != null && Number(order.total) > 0) {
+          if (finalAmount !== Number(order.total)) {
+            console.warn(
+              `💳 create-session: cliente envió ${finalAmount} pero el pedido ${orderId} totaliza ${order.total}; se cobra el del servidor`,
+            );
+          }
+          finalAmount = Number(order.total);
+        }
+      } catch (err) {
+        console.error("create-session: no se pudo leer el total del pedido:", err);
+      }
+    }
+
+    const amountEur = finalAmount / 100; // amount viene en céntimos
 
     switch (provider) {
       case "stripe_card":
@@ -367,7 +394,7 @@ router.post("/create-session", authenticateToken, async (req, res) => {
               price_data: {
                 currency: "eur",
                 product_data: { name: productName },
-                unit_amount: amount,
+                unit_amount: finalAmount,
               },
               quantity: 1,
             },

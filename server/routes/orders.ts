@@ -228,8 +228,21 @@ router.post("/", authenticateToken, async (req, res) => {
 
     // SIEMPRE usar el total del cliente - NO recalcular
     const total = clientTotal;
-    // Calcular ganancias del negocio = subtotal base (sin comisión ComeYa ni delivery)
-    const businessEarnings = productosBase ?? finalSubtotal;
+    // Ganancias con el modelo unificado: el negocio cobra su BASE (nunca el
+    // subtotal completo con markup), el repartidor el envío y ComeYa el residuo.
+    const { computeEarnings, businessBaseOfOrder } = await import(
+      "../utils/orderSettlement"
+    );
+    const baseForEarnings = businessBaseOfOrder({
+      productosBase,
+      subtotal: finalSubtotal,
+      nemyCommission: nemyCommissionCalc,
+      markupAmount:
+        productosBase != null
+          ? Math.max(0, finalSubtotal - productosBase)
+          : 0,
+    });
+    const earnings = computeEarnings(total, baseForEarnings, deliveryFee);
 
     // Extraer lat/lng del JSON de deliveryAddress si no vienen como campos separados
     let finalDeliveryLat = deliveryLatitude || null;
@@ -282,7 +295,11 @@ router.post("/", authenticateToken, async (req, res) => {
       items: JSON.stringify(validItems),
       status: "pending" as const,
       subtotal: finalSubtotal,
-      productosBase: productosBase ?? finalSubtotal,
+      productosBase: productosBase ?? baseForEarnings,
+      markupAmount:
+        productosBase != null
+          ? Math.max(0, finalSubtotal - productosBase)
+          : 0,
       nemyCommission: nemyCommissionCalc,
       deliveryFee,
       total,
@@ -297,7 +314,9 @@ router.post("/", authenticateToken, async (req, res) => {
       substituteProductIds: substituteProductIds || null,
       cashPaymentAmount: cashPaymentAmount || null,
       cashChangeAmount: cashChangeAmount || null,
-      businessEarnings: businessEarnings,
+      platformFee: earnings.platformFee,
+      businessEarnings: earnings.businessEarnings,
+      deliveryEarnings: earnings.deliveryEarnings,
     };
 
     await db.insert(orders).values(newOrder);

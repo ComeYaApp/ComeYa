@@ -18,10 +18,14 @@ export class CashSettlementService {
     businessId: string,
     total: number,
     deliveryFee: number,
+    productosBase?: number,
+    nemyCommission?: number,
   ): Promise<void> {
     const commissions = await financialService.calculateCommissions(
       total,
       deliveryFee,
+      productosBase,
+      nemyCommission,
     );
 
     const [business] = await db
@@ -211,6 +215,8 @@ export class CashSettlementService {
       const commissions = await financialService.calculateCommissions(
         order.total,
         order.deliveryFee,
+        order.productosBase || undefined,
+        order.nemyCommission || undefined,
       );
 
       const orderDebt = commissions.business + commissions.platform;
@@ -306,6 +312,8 @@ export class CashSettlementService {
         const commissions = await financialService.calculateCommissions(
           order.total,
           order.deliveryFee,
+          order.productosBase || undefined,
+          order.nemyCommission || undefined,
         );
         return {
           orderId: order.id,

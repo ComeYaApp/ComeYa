@@ -79,12 +79,34 @@ export function invalidatePricingCache() {
   cache = null;
 }
 
-// Precio con markup a partir del precio base (ambos en céntimos)
+// Precio con markup a partir del precio base (ambos en céntimos).
+// Aritmética entera en puntos básicos para evitar errores de coma flotante
+// (650 × 1,05 debe dar 683, no 682 por representación binaria).
+export function applyMarkupPct(baseCents: number, markupPct: number): number {
+  const markupBp = Math.round(Number(markupPct) * 100); // 5 % → 500 bp
+  return Math.round(
+    (Math.max(0, Math.round(baseCents)) * (10000 + markupBp)) / 10000,
+  );
+}
+
 export function applyMarkup(baseCents: number, cfg: PricingConfig): number {
-  return Math.round(baseCents * (1 + cfg.markupPct / 100));
+  return applyMarkupPct(baseCents, cfg.markupPct);
 }
 
 // Comisión de plataforma sobre un subtotal (base + markup), ratePct en %
 export function commissionOn(subtotalCents: number, ratePct: number): number {
-  return Math.round((subtotalCents * ratePct) / 100);
+  const rateBp = Math.round(Number(ratePct) * 100); // 15 % → 1500 bp
+  return Math.round((Math.max(0, Math.round(subtotalCents)) * rateBp) / 10000);
+}
+
+// Inverso: base a partir del precio cliente (útil para pedidos legacy o
+// cuando un producto ya no existe en BD). Aritmética entera, sin float.
+export function removeBusinessCommission(
+  customerCents: number,
+  ratePct: number,
+): number {
+  const rateBp = Math.round(Number(ratePct) * 100);
+  return Math.round(
+    (Math.max(0, Math.round(customerCents)) * 10000) / (10000 + rateBp),
+  );
 }

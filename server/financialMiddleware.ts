@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import { FinancialIntegrity } from "./financialIntegrity";
-import { financialService } from "./unifiedFinancialService";
 
 // Validar financials de pedido antes de crear.
 // NOTA: el total autoritativo lo calcula el servidor en POST /api/orders
@@ -165,13 +164,22 @@ export async function validateOrderCompletion(
 }
 
 // Calcular y agregar comisiones al request
+// (No está montado en ninguna ruta: el cálculo autoritativo se hace inline en
+// POST /api/orders. Se mantiene corregido al modelo unificado por si algún
+// flujo futuro lo monta.)
 export async function calculateCommissions(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
   try {
-    const { total, deliveryFee = 0, productosBase, nemyCommission } = req.body;
+    const {
+      total,
+      deliveryFee = 0,
+      productosBase,
+      nemyCommission,
+      subtotal,
+    } = req.body;
 
     if (!total) {
       return res.status(400).json({
@@ -179,17 +187,20 @@ export async function calculateCommissions(
       });
     }
 
-    const commissions = await financialService.calculateCommissions(
+    // Modelo unificado: negocio = base, repartidor = envío, ComeYa = residuo.
+    const { computeEarnings, businessBaseOfOrder } = await import(
+      "./utils/orderSettlement"
+    );
+    const commissions = computeEarnings(
       total,
+      businessBaseOfOrder({ productosBase, subtotal, nemyCommission }),
       deliveryFee || 0,
-      productosBase || undefined,
-      nemyCommission || undefined,
     );
 
     // Agregar comisiones al body para uso posterior
-    req.body.platformFee = commissions.platform;
-    req.body.businessEarnings = commissions.business;
-    req.body.deliveryEarnings = commissions.driver;
+    req.body.platformFee = commissions.platformFee;
+    req.body.businessEarnings = commissions.businessEarnings;
+    req.body.deliveryEarnings = commissions.deliveryEarnings;
 
     next();
   } catch (error: any) {

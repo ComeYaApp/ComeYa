@@ -1941,6 +1941,16 @@ navigation.navigate("DigitalPaymentMethod", {
           </ThemedText>
           <ThemedText type="body">{formatEuros(subtotal)}</ThemedText>
         </View>
+        <ThemedText
+          type="small"
+          style={{
+            color: theme.textSecondary,
+            marginTop: -Spacing.xs,
+            marginBottom: Spacing.xs,
+          }}
+        >
+          Incluye la comisión de ComeYa
+        </ThemedText>
         {confirmedOrderType === "delivery" && (
           <View style={styles.totalRow}>
             <ThemedText type="body" style={{ color: theme.textSecondary }}>

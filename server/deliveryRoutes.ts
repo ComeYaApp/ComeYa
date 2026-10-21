@@ -1228,6 +1228,8 @@ router.post(
         order.businessId,
         order.total,
         order.deliveryFee,
+        order.productosBase || undefined,
+        order.nemyCommission || undefined,
       );
 
       logger.delivery("Cash order completed - debt registered", {

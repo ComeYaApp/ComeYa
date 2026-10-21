@@ -69,9 +69,29 @@ export class FavoritesService {
         ? await db.select().from(products).where(eq(products.id, productIds[0]))
         : [];
 
+    // Precio cliente en favoritos: base + markup + comisión del negocio.
+    // `price` se mantiene para la app antigua.
+    let pricedProducts = favoriteProducts;
+    try {
+      const { createRateResolver, addCustomerPrice } = await import(
+        "./utils/productPricing"
+      );
+      const { getPricingConfig } = await import("./pricingService");
+      const pricing = await getPricingConfig();
+      const resolveRate = createRateResolver();
+      pricedProducts = await Promise.all(
+        favoriteProducts.map(async (p: any) => {
+          const ratePct = p?.businessId
+            ? await resolveRate(String(p.businessId))
+            : pricing.commissionPct;
+          return addCustomerPrice(p, pricing.markupPct, ratePct);
+        }),
+      );
+    } catch {}
+
     return {
       businesses: favoriteBusinesses,
-      products: favoriteProducts,
+      products: pricedProducts,
       total: favorites.length,
     };
   }

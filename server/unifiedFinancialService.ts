@@ -84,13 +84,17 @@ export class UnifiedFinancialService {
     }
   }
 
-  // Calculate commissions - Modelo: 100% producto al negocio, 15% del producto a ComeYa, 100% delivery fee al driver
+  // Calculate commissions - Modelo unificado de ComeYa:
+  //   negocio = 100 % de su precio base · repartidor = 100 % del envío
+  //   ComeYa  = residuo (markup + comisión + servicio − descuentos)
+  // El residuo NUNCA se ajusta al negocio: hacerlo le regalaba el markup y la
+  // comisión (con el total nuevo le habría pagado 10,99 € en vez de 10,00 €).
   async calculateCommissions(
     totalAmount: number,
     deliveryFee: number = 0,
     productosBase?: number,
-    nemyCommission?: number,
-    businessOwnerId?: string,
+    _nemyCommission?: number,
+    _businessOwnerId?: string,
   ): Promise<{
     platform: number;
     business: number;
@@ -100,51 +104,28 @@ export class UnifiedFinancialService {
     const safeTotal = Math.max(0, totalAmount || 0);
     const safeDeliveryFee = Math.max(0, deliveryFee || 0);
 
-    // Markup del config para aislar el producto del subtotal marcado-up
+    // Markup del config para aislar la base cuando el pedido es legacy y no
+    // trae productosBase.
     const { getPricingConfig } = await import("./pricingService");
     const markupRate = 1 + (await getPricingConfig()).markupPct / 100;
 
-    // Si nos dan productosBase o nemyCommission, respetarlos para backwards compatibility
-    let productBase =
+    const productBase =
       productosBase && productosBase > 0
-        ? productosBase
-        : safeTotal - safeDeliveryFee;
-
-    // Si el total ya incluye el markup ComeYa, removerlo para aislar el producto
-    if (!productosBase || productosBase <= 0) {
-      const baseWithoutDelivery = safeTotal - safeDeliveryFee;
-      productBase =
-        baseWithoutDelivery > 0
-          ? Math.round(baseWithoutDelivery / markupRate)
-          : 0;
-    }
-
-    // Comisión sobre el subtotal con markup (base + markup), no sobre la base
-    const platformAmount =
-      nemyCommission && nemyCommission > 0
-        ? nemyCommission
-        : Math.round(
-            Math.round(productBase * markupRate) *
-              (await this.getBusinessCommissionRate(businessOwnerId)),
-          );
+        ? Math.round(productosBase)
+        : Math.max(0, Math.round((safeTotal - safeDeliveryFee) / markupRate));
 
     const businessAmount = productBase;
     const driverAmount = safeDeliveryFee;
-
-    // Ajustar pequeños desfaces de redondeo para que la suma sea el total original
-    let distributedTotal = platformAmount + businessAmount + driverAmount;
-    if (distributedTotal !== safeTotal) {
-      const delta = safeTotal - distributedTotal;
-      // Ajustar al negocio para mantener driver y plataforma intactos
-      distributedTotal += delta;
-      productBase += delta;
-    }
+    const platformAmount = Math.max(
+      0,
+      safeTotal - businessAmount - driverAmount,
+    );
 
     return {
       platform: platformAmount,
-      business: productBase,
+      business: businessAmount,
       driver: driverAmount,
-      total: platformAmount + productBase + driverAmount,
+      total: platformAmount + businessAmount + driverAmount,
     };
   }
 

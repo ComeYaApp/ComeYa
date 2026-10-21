@@ -355,18 +355,20 @@ router.post(
 
       // Generar CSV. Se desglosa cada concepto por separado porque el
       // cliente necesita poder sacar facturas y cuadrar la contabilidad
-      // trimestral pedido a pedido.
+      // trimestral pedido a pedido. Base y markup NO se mezclan con la
+      // comisión: el negocio cobra su base y ComeYa su markup + comisión.
       const csvHeader =
-        "Fecha,Pedido ID,Negocio,Base productos (EUR),Markup ComeYa (EUR),Coste servicio (EUR),Envio (EUR),Total cobrado (EUR),Estado\n";
+        "Fecha,Pedido ID,Negocio,Base productos (EUR),Markup ComeYa (EUR),Comision ComeYa (EUR),Coste servicio (EUR),Envio (EUR),Total cobrado (EUR),Estado\n";
       const csvRows = filteredOrders
         .map((order: any) => {
-          const date = new Date(order.createdAt).toLocaleDateString("es-VE");
+          const date = new Date(order.createdAt).toLocaleDateString("es-ES");
           const base = ((order.productosBase || 0) / 100).toFixed(2);
-          const markup = ((order.nemyCommission || 0) / 100).toFixed(2);
+          const markup = ((order.markupAmount || 0) / 100).toFixed(2);
+          const commission = ((order.nemyCommission || 0) / 100).toFixed(2);
           const service = ((order.serviceFee || 0) / 100).toFixed(2);
           const shipping = ((order.deliveryFee || 0) / 100).toFixed(2);
           const total = ((order.total || 0) / 100).toFixed(2);
-          return `${date},${order.id},${order.businessName},${base},${markup},${service},${shipping},${total},${order.status}`;
+          return `${date},${order.id},"${order.businessName}",${base},${markup},${commission},${service},${shipping},${total},${order.status}`;
         })
         .join("\n");
 
@@ -556,7 +558,11 @@ router.post(
           .limit(1);
         const businessOwnerId = biz?.ownerId || order.businessId;
 
-        const businessAmount = order.businessEarnings || order.subtotal || 0;
+        // Ganancias unificadas: el negocio cobra su base (nunca el subtotal
+        // completo con markup/comisión) y el repartidor el envío.
+        const { settleOrderFields } = await import("../utils/orderSettlement");
+        const settled = settleOrderFields(order);
+        const businessAmount = settled.businessEarnings;
         if (businessAmount > 0) {
           inserts.push({
             orderId: order.id,
@@ -567,7 +573,7 @@ router.post(
           });
         }
 
-        const driverAmount = order.deliveryEarnings || order.deliveryFee || 0;
+        const driverAmount = settled.deliveryEarnings;
         if (order.deliveryPersonId && driverAmount > 0) {
           inserts.push({
             orderId: order.id,

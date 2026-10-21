@@ -328,16 +328,22 @@ export class FinancialSecurityAudit {
       let invalidCount = 0;
 
       for (const order of allOrders) {
-        const expectedTotal =
-          order.subtotal + order.deliveryFee + (order.tax || 0);
-        if (Math.abs(order.total - expectedTotal) > 1) {
+        // Modelo unificado: total = subtotal + comisión + envío + servicio −
+        // descuentos. Los cupones no se guardan como columna: se admite
+        // cualquier descuento entre 0 y el subtotal completo.
+        const nemyCommission = Number(order.nemyCommission ?? 0);
+        const serviceFee = Number(order.serviceFee ?? 0);
+        const upper =
+          order.subtotal + nemyCommission + order.deliveryFee + serviceFee;
+        const lower = Math.max(0, upper - order.subtotal);
+        if (order.total < lower || order.total > upper) {
           invalidCount++;
           if (invalidCount <= 5) {
             // Only report first 5
             vulnerabilities.push({
               severity: "HIGH",
               category: "Data Integrity",
-              description: `Order total mismatch: ${order.id} (expected: ${expectedTotal}, actual: ${order.total})`,
+              description: `Order total mismatch: ${order.id} (rango: ${lower}-${upper}, actual: ${order.total})`,
               impact: "Order financial calculations are incorrect",
             });
           }
