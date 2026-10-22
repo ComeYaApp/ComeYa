@@ -22,7 +22,7 @@ export default {
       // Connect ("Lista para enviar"), así que este envío es el build 23
       // de la MISMA versión.
       // Cada build nuevo sube SOLO este número; el version no se toca.
-      buildNumber: "23",
+      buildNumber: "24",
       config: {
         // ComeYa iOS Key (Maps SDK for iOS, restringida al bundle
         // com.comeya.app). Sin esta clave el SDK de Google pinta un mapa
@@ -61,7 +61,7 @@ export default {
             package: "com.comeya.app",
       // versionCode nativo (el APK local lo toma de android/app/build.gradle,
       // se mantienen los dos en el mismo número).
-      versionCode: 25,
+      versionCode: 26,
       config: {
         googleMaps: {
           // ComeYa Android Key (paquete + SHA-1). Coincide con la clave ya
