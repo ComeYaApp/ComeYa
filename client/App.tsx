@@ -34,6 +34,8 @@ const linking = {
   config: {
     screens: {
       PublicTracking: "track/:token",
+      // Registro directo desde la web principal: https://app.comeya.es/Signup
+      Signup: "Signup",
     },
   },
 };
@@ -158,7 +160,12 @@ export default function App() {
   useEffect(() => {
     const checkOnboarding = async () => {
       const completed = await checkOnboardingCompleted();
-      setShowOnboarding(!completed);
+      // Quien llega directo a /Signup desde la web no debe ver el onboarding.
+      const isSignupPath =
+        Platform.OS === "web" &&
+        typeof window !== "undefined" &&
+        /^\/signup\/?$/i.test(window.location.pathname || "");
+      setShowOnboarding(!completed && !isSignupPath);
       setOnboardingChecked(true);
     };
     checkOnboarding();

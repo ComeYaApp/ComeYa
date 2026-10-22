@@ -92,7 +92,7 @@ async function handleSMS() {
     if (data.userNotFound) {
       showError("Cuenta no encontrada. Regístrate primero.");
       setTimeout(() => {
-        window.location.href = `${APP_URL}/?signup=1&phone=${encodeURIComponent(phone)}`;
+        window.location.href = `${APP_URL}/Signup?phone=${encodeURIComponent(phone)}`;
       }, 1500);
       return;
     }
