@@ -623,5 +623,163 @@ function toggleMenu(){
 })();
 </script>
 <script src="/js/auth.js"></script>
+
+<!-- ── Asistente ComeYa (mismo diseño que la web-app) ─────────────────── -->
+<style>
+#cy-ai{position:fixed;right:20px;bottom:20px;z-index:10000;display:flex;flex-direction:column;align-items:flex-end;gap:12px;font-family:'Inter',system-ui,sans-serif}
+#cy-ai *{box-sizing:border-box}
+#cy-ai .cy-panel{width:min(370px,calc(100vw - 28px));max-height:560px;background:#fff;border:1px solid #e8e8e8;border-radius:20px;box-shadow:0 18px 50px rgba(0,0,0,.28);overflow:hidden;display:none;flex-direction:column}
+#cy-ai.cy-open .cy-panel{display:flex}
+#cy-ai .cy-head{display:flex;align-items:center;gap:10px;background:#111827;padding:12px 14px}
+#cy-ai .cy-logo{width:42px;height:42px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+#cy-ai .cy-logo img{width:34px;height:34px;object-fit:contain}
+#cy-ai .cy-head-txt{flex:1;line-height:1.15}
+#cy-ai .cy-title{color:#fff;font-size:15px;font-weight:800;display:block}
+#cy-ai .cy-status{display:flex;align-items:center;gap:5px;margin-top:2px}
+#cy-ai .cy-status i{width:7px;height:7px;border-radius:50%;background:#22C55E;display:inline-block}
+#cy-ai .cy-status span{color:#D1D5DB;font-size:11px;font-weight:600}
+#cy-ai .cy-x{width:30px;height:30px;border-radius:15px;border:0;background:rgba(255,255,255,.10);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+#cy-ai .cy-x:hover{background:rgba(255,255,255,.2)}
+#cy-ai .cy-msgs{padding:14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:390px;background:#fff}
+#cy-ai .cy-msg{max-width:86%;border-radius:16px;padding:9px 12px;font-size:13.5px;line-height:19px;white-space:pre-wrap;word-break:break-word}
+#cy-ai .cy-msg.bot{background:#f5f5f5;color:#1a1a1a;align-self:flex-start;border-bottom-left-radius:5px}
+#cy-ai .cy-msg.user{background:#E60000;color:#fff;align-self:flex-end;border-bottom-right-radius:5px}
+#cy-ai .cy-typing{display:flex;align-items:center;gap:6px;background:#f5f5f5;border-radius:16px;border-bottom-left-radius:5px;padding:10px 12px;align-self:flex-start;color:#6b7280;font-size:12.5px}
+#cy-ai .cy-typing b{width:6px;height:6px;border-radius:50%;background:#9CA3AF;display:inline-block;animation:cyBlink 1.2s infinite}
+#cy-ai .cy-typing b:nth-child(2){animation-delay:.2s}
+#cy-ai .cy-typing b:nth-child(3){animation-delay:.4s}
+@keyframes cyBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+#cy-ai .cy-sugs{display:flex;flex-direction:column;gap:7px;margin-top:4px;padding:0 14px 12px;background:#fff}
+#cy-ai .cy-sug{border:1px solid rgba(230,0,0,.35);border-radius:12px;padding:8px 11px;align-self:flex-start;background:rgba(230,0,0,.06);color:#E60000;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit}
+#cy-ai .cy-sug:hover{background:rgba(230,0,0,.12)}
+#cy-ai .cy-form{display:flex;align-items:flex-end;gap:8px;padding:10px;border-top:1px solid #e8e8e8;background:#fff}
+#cy-ai .cy-input{flex:1;min-height:40px;max-height:96px;border:1px solid #e8e8e8;border-radius:14px;padding:9px 12px;font-size:13.5px;line-height:19px;font-family:inherit;color:#1a1a1a;background:#f7f7f7;outline:none;resize:none}
+#cy-ai .cy-input:focus{border-color:#E60000;background:#fff}
+#cy-ai .cy-send{width:40px;height:40px;border-radius:20px;border:0;background:#E60000;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+#cy-ai .cy-send:disabled{opacity:.45;cursor:default}
+#cy-ai .cy-fab{position:relative;width:62px;height:62px;border-radius:31px;background:#fff;border:2px solid #E60000;box-shadow:0 8px 24px rgba(230,0,0,.35);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+#cy-ai .cy-fab img{width:38px;height:38px;object-fit:contain}
+#cy-ai .cy-badge{position:absolute;right:-1px;bottom:-1px;width:20px;height:20px;border-radius:10px;background:#E60000;border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff}
+@media(max-width:480px){#cy-ai{right:14px;bottom:14px}#cy-ai .cy-panel{max-height:calc(100vh - 110px)}#cy-ai .cy-msgs{max-height:calc(100vh - 300px)}}
+</style>
+<div id="cy-ai">
+  <div class="cy-panel" role="dialog" aria-label="Asistente ComeYa" aria-hidden="true">
+    <div class="cy-head">
+      <div class="cy-logo"><img src="/logo.png" alt="ComeYa"/></div>
+      <div class="cy-head-txt">
+        <span class="cy-title">Asistente ComeYa</span>
+        <div class="cy-status"><i></i><span>En línea</span></div>
+      </div>
+      <button class="cy-x" type="button" id="cy-ai-close" aria-label="Cerrar chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="cy-msgs" id="cy-ai-msgs">
+      <div class="cy-msg bot">¡Hola! Soy el asistente de ComeYa. ¿Puedo ayudarte en algo?</div>
+      <div class="cy-sugs" id="cy-ai-sugs">
+        <button class="cy-sug" type="button">¿Dónde está mi pedido?</button>
+        <button class="cy-sug" type="button">¿Cómo puedo pagar?</button>
+        <button class="cy-sug" type="button">¿Qué incluye ComeYaPass?</button>
+      </div>
+    </div>
+    <form class="cy-form" id="cy-ai-form">
+      <textarea class="cy-input" id="cy-ai-input" rows="1" placeholder="Escribe tu pregunta…" maxlength="500" aria-label="Escribe tu pregunta"></textarea>
+      <button class="cy-send" id="cy-ai-send" type="submit" aria-label="Enviar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
+  </div>
+  <button class="cy-fab" type="button" id="cy-ai-fab" aria-label="Abrir chat de ayuda">
+    <img src="/logo.png" alt="ComeYa"/>
+    <span class="cy-badge">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+    </span>
+  </button>
+</div>
+<script>
+(function(){
+  var root=document.getElementById('cy-ai');
+  if(!root) return;
+  var panel=root.querySelector('.cy-panel');
+  var fab=document.getElementById('cy-ai-fab');
+  var closeBtn=document.getElementById('cy-ai-close');
+  var msgs=document.getElementById('cy-ai-msgs');
+  var sugs=document.getElementById('cy-ai-sugs');
+  var form=document.getElementById('cy-ai-form');
+  var input=document.getElementById('cy-ai-input');
+  var sendBtn=document.getElementById('cy-ai-send');
+  var history=[];
+  var loading=false;
+  var API='https://comeya-backend.onrender.com/api/support/chat-public';
+  var SEEN_KEY='comeya_ai_widget_seen';
+
+  function openChat(){root.classList.add('cy-open');panel.setAttribute('aria-hidden','false');setTimeout(function(){input.focus();},150);}
+  function closeChat(){root.classList.remove('cy-open');panel.setAttribute('aria-hidden','true');try{sessionStorage.setItem(SEEN_KEY,'1');}catch(e){}}
+  function scrollDown(){msgs.scrollTop=msgs.scrollHeight;}
+  function addMsg(text,role){
+    var el=document.createElement('div');
+    el.className='cy-msg '+role;
+    el.textContent=text;
+    msgs.appendChild(el);scrollDown();
+  }
+  function showTyping(show){
+    var t=document.getElementById('cy-ai-typing');
+    if(show&&!t){
+      t=document.createElement('div');t.id='cy-ai-typing';t.className='cy-typing';
+      t.innerHTML='<b></b><b></b><b></b> Escribiendo…';
+      msgs.appendChild(t);scrollDown();
+    }else if(!show&&t){t.remove();}
+  }
+  function busy(state){loading=state;sendBtn.disabled=state;input.disabled=state;}
+  function send(text){
+    var clean=(text||'').trim();
+    if(!clean||loading) return;
+    if(sugs&&sugs.parentNode) sugs.parentNode.removeChild(sugs);
+    addMsg(clean,'user');
+    history.push({role:'user',content:clean});
+    busy(true);showTyping(true);
+    fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:clean,history:history.slice(-8)})})
+      .then(function(res){return res.json().catch(function(){return null;}).then(function(data){return {ok:res.ok,data:data};});})
+      .then(function(r){
+        var data=r.data||{};
+        if(!r.ok||!data.response){
+          var code=data.code||'';
+          var msg=code==='AI_TIMEOUT'
+            ?'El asistente tardó demasiado. Intenta de nuevo en unos segundos.'
+            :code==='AI_NOT_CONFIGURED'
+              ?'El asistente de IA todavía no está activado. Escríbenos por WhatsApp mientras tanto.'
+              :'No pude responder en este momento. Intenta de nuevo o escríbenos por WhatsApp.';
+          throw new Error(msg);
+        }
+        addMsg(data.response,'bot');
+        history.push({role:'assistant',content:data.response});
+      })
+      .catch(function(err){addMsg(err&&err.message?err.message:'No pude responder en este momento. Inténtalo de nuevo.','bot');})
+      .then(function(){showTyping(false);busy(false);input.focus();});
+  }
+
+  fab.addEventListener('click',function(){root.classList.contains('cy-open')?closeChat():openChat();});
+  closeBtn.addEventListener('click',closeChat);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeChat();});
+  form.addEventListener('submit',function(e){e.preventDefault();var v=input.value;input.value='';send(v);});
+  input.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();var v=input.value;input.value='';send(v);}
+  });
+  sugs.addEventListener('click',function(e){
+    var b=e.target.closest('.cy-sug');if(!b)return;send(b.textContent);
+  });
+
+  // Igual que en la web-app: se abre solo una vez por sesión, salvo que el
+  // usuario ya lo haya cerrado.
+  try{
+    if(sessionStorage.getItem(SEEN_KEY)!=='1'){
+      setTimeout(function(){
+        try{sessionStorage.setItem(SEEN_KEY,'1');}catch(e){}
+        openChat();
+      },900);
+    }
+  }catch(e){}
+})();
+</script>
 </body>
 </html>
