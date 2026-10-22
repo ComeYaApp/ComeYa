@@ -196,7 +196,7 @@ export function WebAIChatWidget() {
         >
           <View style={styles.header}>
             <View style={styles.headerLogo}>
-              <ComeYaLogo size={34} />
+              <ComeYaLogo size={42} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Asistente ComeYa</Text>
@@ -322,10 +322,10 @@ export function WebAIChatWidget() {
 
       <Pressable
         onPress={() => (open ? close() : setOpen(true))}
-        style={[styles.fab, { backgroundColor: isDark ? "#fff" : "#fff" }]}
+        style={[styles.fab, { backgroundColor: "#EB0000" }]}
         accessibilityLabel="Abrir chat de ayuda"
       >
-        <ComeYaLogo size={38} />
+        <ComeYaLogo size={56} style={{ borderRadius: 28 }} />
         <View style={styles.fabBadge}>
           <Feather name="message-circle" size={10} color="#fff" />
         </View>
@@ -368,10 +368,11 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 42,
     height: 42,
-    borderRadius: 12,
-    backgroundColor: "#fff",
+    borderRadius: 21,
+    backgroundColor: "#EB0000",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
   headerTitle: {
     color: "#fff",
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: PRIMARY,
+    borderColor: "#EB0000",
     ...(Platform.OS === "web"
       ? ({ boxShadow: "0 8px 24px rgba(255,106,0,0.35)" } as any)
       : { elevation: 10 }),
