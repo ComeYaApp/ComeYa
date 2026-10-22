@@ -1,235 +1,338 @@
-const BACKEND = "https://comeya-backend.onrender.com";
-const APP_URL = "https://app.comeya.es";
+/* ==========================================================================
+   ComeYa — acceso desde la landing (SMS + correo/contraseña)
+   Mantiene el flujo existente; solo se limpia la interacción y se hace
+   accesible. El backend no cambia.
+   ========================================================================== */
 
-let authMode = "sms";
-let loading = false;
-let otpPhone = null; // teléfono guardado para el paso OTP
+(function () {
+  "use strict";
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
-function setMode(m) {
-  authMode = m;
-  document.getElementById("mode-sms").classList.toggle("active", m === "sms");
-  document
-    .getElementById("mode-pass")
-    .classList.toggle("active", m === "password");
-  document.getElementById("field-sms").style.display =
-    m === "sms" ? "block" : "none";
-  document.getElementById("field-otp").style.display = "none";
-  document.getElementById("field-password").style.display =
-    m === "password" ? "block" : "none";
-  document.getElementById("submit-btn").textContent =
-    m === "sms" ? "Enviar código" : "Iniciar sesión";
-  document.getElementById("submit-btn").onclick = handleSubmit;
-  showError("");
-  showSuccess("");
-}
+  var BACKEND = "https://comeya-backend.onrender.com";
+  var APP_URL = "https://app.comeya.es";
 
-function setLoading(v) {
-  loading = v;
-  const btn = document.getElementById("submit-btn");
-  btn.disabled = v;
-  if (!v)
-    btn.textContent =
+  var authMode = "sms";
+  var loading = false;
+  var otpPhone = null;
+
+  function qs(id) {
+    return document.getElementById(id);
+  }
+
+  function setMode(mode) {
+    authMode = mode;
+    otpPhone = null;
+
+    var modeSms = qs("mode-sms");
+    var modePass = qs("mode-pass");
+    var fieldSms = qs("field-sms");
+    var fieldOtp = qs("field-otp");
+    var fieldPassword = qs("field-password");
+    var submitBtn = qs("submit-btn");
+
+    if (modeSms) {
+      modeSms.classList.toggle("is-active", mode === "sms");
+      modeSms.setAttribute("aria-selected", mode === "sms" ? "true" : "false");
+    }
+    if (modePass) {
+      modePass.classList.toggle("is-active", mode === "password");
+      modePass.setAttribute(
+        "aria-selected",
+        mode === "password" ? "true" : "false"
+      );
+    }
+    if (fieldSms) fieldSms.hidden = mode !== "sms";
+    if (fieldOtp) fieldOtp.hidden = true;
+    if (fieldPassword) fieldPassword.hidden = mode !== "password";
+    if (submitBtn) {
+      submitBtn.textContent =
+        mode === "sms" ? "Enviar código" : "Iniciar sesión";
+    }
+
+    showError("");
+    showSuccess("");
+  }
+
+  function setLoading(state) {
+    loading = state;
+    var submitBtn = qs("submit-btn");
+    if (!submitBtn) return;
+
+    submitBtn.disabled = state;
+    submitBtn.setAttribute("aria-busy", state ? "true" : "false");
+
+    if (state) {
+      submitBtn.textContent =
+        authMode === "sms" && !otpPhone
+          ? "Enviando…"
+          : authMode === "sms"
+            ? "Verificando…"
+            : "Entrando…";
+      return;
+    }
+
+    submitBtn.textContent =
       authMode === "sms"
         ? otpPhone
           ? "Verificar código"
           : "Enviar código"
         : "Iniciar sesión";
-  else btn.textContent = "...";
-}
-
-function showError(msg) {
-  const el = document.getElementById("auth-error");
-  el.textContent = msg;
-  el.style.display = msg ? "block" : "none";
-}
-
-function showSuccess(msg) {
-  const el = document.getElementById("auth-success");
-  el.textContent = msg;
-  el.style.display = msg ? "block" : "none";
-}
-
-// ── Mismo formato de teléfono que LoginScreen.web.tsx ─────────────────────────
-function formatPhone(raw) {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("34")) return `+${digits}`;
-  if (digits.length === 9) return `+34${digits}`;
-  return `+${digits}`;
-}
-
-// ── Redirect a la app con token (igual que AuthContext guarda) ────────────────
-function redirectToApp(token, refreshToken, role, name) {
-  const params = new URLSearchParams({
-    token,
-    refresh: refreshToken || "",
-    role,
-    name: name || "",
-  });
-  window.location.href = `${APP_URL}/?${params.toString()}`;
-}
-
-// ── PASO 1: Enviar SMS — igual que requestPhoneLogin en AuthContext ────────────
-async function handleSMS() {
-  const raw = document.getElementById("input-phone").value.trim();
-  if (!raw || raw.replace(/\D/g, "").length < 7) {
-    showError("Ingresa un número válido");
-    return;
   }
 
-  const phone = formatPhone(raw);
-  setLoading(true);
-  showError("");
+  function showError(message) {
+    var element = qs("auth-error");
+    if (!element) return;
+    element.textContent = message || "";
+    element.hidden = !message;
+  }
 
-  try {
-    const res = await fetch(`${BACKEND}/api/auth/send-code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone }),
+  function showSuccess(message) {
+    var element = qs("auth-success");
+    if (!element) return;
+    element.textContent = message || "";
+    element.hidden = !message;
+  }
+
+  function formatPhone(raw) {
+    var digits = String(raw || "").replace(/\D/g, "");
+    if (!digits) return "";
+    if (digits.startsWith("34")) return "+" + digits;
+    if (digits.length === 9) return "+34" + digits;
+    return "+" + digits;
+  }
+
+  function redirectToApp(token, refreshToken, role, name) {
+    var params = new URLSearchParams({
+      token: token,
+      refresh: refreshToken || "",
+      role: role || "",
+      name: name || "",
     });
-    const data = await res.json();
+    window.location.href = APP_URL + "/?" + params.toString();
+  }
 
-    if (data.userNotFound) {
-      showError("Cuenta no encontrada. Regístrate primero.");
-      setTimeout(() => {
-        window.location.href = `${APP_URL}/Signup?phone=${encodeURIComponent(phone)}`;
-      }, 1500);
+  function readJson(response) {
+    return response
+      .json()
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function handleSMS() {
+    var phoneInput = qs("input-phone");
+    if (!phoneInput) return;
+
+    var raw = phoneInput.value.trim();
+    if (!raw || raw.replace(/\D/g, "").length < 7) {
+      showError("Introduce un número de teléfono válido.");
+      phoneInput.focus();
       return;
     }
 
-    // Mostrar campo OTP — igual que navigation.navigate('VerifyPhone')
-    otpPhone = phone;
-    document.getElementById("field-sms").style.display = "none";
-    document.getElementById("field-otp").style.display = "block";
-    document.getElementById("submit-btn").textContent = "Verificar código";
-    document.getElementById("submit-btn").onclick = handleOTP;
-    showSuccess(`Código enviado a ${phone}`);
-  } catch (e) {
-    showError("Error de conexión. Inténtalo de nuevo.");
-  } finally {
-    setLoading(false);
-  }
-}
+    var phone = formatPhone(raw);
+    setLoading(true);
+    showError("");
+    showSuccess("");
 
-// ── PASO 2: Verificar OTP — igual que verifyPhone en AuthContext ──────────────
-async function handleOTP() {
-  const code = document.getElementById("input-otp").value.trim();
-  if (!code || code.length < 4) {
-    showError("Ingresa el código recibido");
-    return;
-  }
-
-  setLoading(true);
-  showError("");
-  showSuccess("");
-
-  try {
-    const res = await fetch(`${BACKEND}/api/auth/phone-login`, {
+    fetch(BACKEND + "/api/auth/send-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone: otpPhone, code }),
-    });
-    const data = await res.json();
+      body: JSON.stringify({ phone: phone }),
+    })
+      .then(function (response) {
+        return readJson(response).then(function (data) {
+          return { ok: response.ok, data: data || {} };
+        });
+      })
+      .then(function (result) {
+        var data = result.data;
 
-    if (!data.token) {
-      showError(data.error || "Código incorrecto");
+        if (data.userNotFound) {
+          showError("No encontramos esa cuenta. Te llevamos al registro.");
+          window.setTimeout(function () {
+            window.location.href =
+              APP_URL + "/Signup?phone=" + encodeURIComponent(phone);
+          }, 1400);
+          return;
+        }
+
+        if (!result.ok || data.success === false || data.error) {
+          showError(
+            data.error ||
+              "No pudimos enviar el código. Revisa el número e inténtalo de nuevo."
+          );
+          return;
+        }
+
+        otpPhone = phone;
+        var fieldSms = qs("field-sms");
+        var fieldOtp = qs("field-otp");
+        if (fieldSms) fieldSms.hidden = true;
+        if (fieldOtp) fieldOtp.hidden = false;
+        var submitBtn = qs("submit-btn");
+        if (submitBtn) submitBtn.textContent = "Verificar código";
+
+        showSuccess("Código enviado a " + phone + ".");
+        var otpInput = qs("input-otp");
+        if (otpInput) otpInput.focus();
+      })
+      .catch(function () {
+        showError("Error de conexión. Inténtalo de nuevo.");
+      })
+      .then(function () {
+        setLoading(false);
+      });
+  }
+
+  function handleOTP() {
+    var otpInput = qs("input-otp");
+    if (!otpInput) return;
+
+    var code = otpInput.value.trim();
+    if (!code || code.length < 4) {
+      showError("Introduce el código que has recibido.");
+      otpInput.focus();
       return;
     }
-    redirectToApp(
-      data.token,
-      data.refreshToken,
-      data.user.role,
-      data.user.name,
+
+    setLoading(true);
+    showError("");
+    showSuccess("");
+
+    fetch(BACKEND + "/api/auth/phone-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: otpPhone, code: code }),
+    })
+      .then(function (response) {
+        return readJson(response).then(function (data) {
+          return { ok: response.ok, data: data || {} };
+        });
+      })
+      .then(function (result) {
+        var data = result.data;
+        if (!data.token) {
+          showError(data.error || "Código incorrecto o caducado.");
+          return;
+        }
+        redirectToApp(
+          data.token,
+          data.refreshToken,
+          data.user && data.user.role,
+          data.user && data.user.name
+        );
+      })
+      .catch(function () {
+        showError("Error de conexión. Inténtalo de nuevo.");
+      })
+      .then(function () {
+        setLoading(false);
+      });
+  }
+
+  function handlePassword() {
+    var identifierInput = qs("input-identifier");
+    var passwordInput = qs("input-password");
+    if (!identifierInput || !passwordInput) return;
+
+    var identifier = identifierInput.value.trim();
+    var password = passwordInput.value;
+
+    if (!identifier || !password) {
+      showError("Completa el correo y la contraseña.");
+      (identifier ? passwordInput : identifierInput).focus();
+      return;
+    }
+
+    setLoading(true);
+    showError("");
+
+    fetch(BACKEND + "/api/auth/dev-email-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: identifier, password: password }),
+    })
+      .then(function (response) {
+        return readJson(response).then(function (data) {
+          return { ok: response.ok, data: data || {} };
+        });
+      })
+      .then(function (result) {
+        var data = result.data;
+        if (!result.ok || !data.success || !data.token) {
+          showError(data.error || "Correo o contraseña incorrectos.");
+          return;
+        }
+        redirectToApp(
+          data.token,
+          data.refreshToken,
+          data.user && data.user.role,
+          data.user && data.user.name
+        );
+      })
+      .catch(function () {
+        showError("Error de conexión. Inténtalo de nuevo.");
+      })
+      .then(function () {
+        setLoading(false);
+      });
+  }
+
+  function handleSubmit(event) {
+    if (event) event.preventDefault();
+    if (loading) return;
+
+    var fieldOtp = qs("field-otp");
+    var otpVisible = fieldOtp && !fieldOtp.hidden;
+
+    if (otpVisible) handleOTP();
+    else if (authMode === "sms") handleSMS();
+    else handlePassword();
+  }
+
+  function togglePassword() {
+    var passwordInput = qs("input-password");
+    var button = qs("toggle-pass");
+    if (!passwordInput || !button) return;
+
+    var visible = passwordInput.type === "text";
+    passwordInput.type = visible ? "password" : "text";
+    button.textContent = visible ? "Ver" : "Ocultar";
+    button.setAttribute(
+      "aria-label",
+      visible ? "Mostrar contraseña" : "Ocultar contraseña"
     );
-  } catch (e) {
-    showError("Error de conexión. Inténtalo de nuevo.");
-  } finally {
-    setLoading(false);
-  }
-}
-
-// ── Login por contraseña — igual que loginWithPassword en AuthContext ─────────
-async function handlePassword() {
-  const identifier = document.getElementById("input-identifier").value.trim();
-  const password = document.getElementById("input-password").value;
-  if (!identifier || !password) {
-    showError("Completa todos los campos");
-    return;
   }
 
-  setLoading(true);
-  showError("");
+  function init() {
+    var form = qs("login-form");
+    if (!form) return;
 
-  try {
-    const res = await fetch(`${BACKEND}/api/auth/dev-email-login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: identifier, password }),
-    });
-    const data = await res.json();
+    var modeSms = qs("mode-sms");
+    var modePass = qs("mode-pass");
+    var toggleButton = qs("toggle-pass");
 
-    if (!data.success || !data.token) {
-      showError(data.error || "Credenciales incorrectas");
-      return;
+    if (modeSms) {
+      modeSms.addEventListener("click", function () {
+        setMode("sms");
+      });
     }
-    redirectToApp(
-      data.token,
-      data.refreshToken,
-      data.user.role,
-      data.user.name,
-    );
-  } catch (e) {
-    showError("Error de conexión. Inténtalo de nuevo.");
-  } finally {
-    setLoading(false);
+    if (modePass) {
+      modePass.addEventListener("click", function () {
+        setMode("password");
+      });
+    }
+    if (toggleButton) {
+      toggleButton.addEventListener("click", togglePassword);
+    }
+
+    form.addEventListener("submit", handleSubmit);
+    setMode("sms");
   }
-}
 
-// ── Submit handler ────────────────────────────────────────────────────────────
-function handleSubmit() {
-  if (loading) return;
-  if (authMode === "sms") handleSMS();
-  else handlePassword();
-}
-
-function togglePass() {
-  const inp = document.getElementById("input-password");
-  inp.type = inp.type === "password" ? "text" : "password";
-}
-
-// ── Enter key ─────────────────────────────────────────────────────────────────
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    if (otpPhone) handleOTP();
-    else handleSubmit();
-  }
-});
-
-// ── Navbar scroll ─────────────────────────────────────────────────────────────
-window.addEventListener("scroll", () => {
-  document
-    .getElementById("nav")
-    .classList.toggle("scrolled", window.scrollY > 20);
-});
-
-function toggleMenu() {
-  const links = document.getElementById("nav-links");
-  const open = links.getAttribute("data-open") === "1";
-  if (open) {
-    links.removeAttribute("style");
-    links.setAttribute("data-open", "0");
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
   } else {
-    links.style.cssText =
-      "display:flex;flex-direction:column;position:fixed;top:68px;left:0;right:0;background:#fff;padding:24px;gap:20px;border-bottom:1px solid #E0E0E0;z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.1)";
-    links.setAttribute("data-open", "1");
+    init();
   }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  setMode("sms");
-  const ua = navigator.userAgent || "";
-  const btns = document.querySelectorAll(".store-btn");
-  if (/iPad|iPhone|iPod/.test(ua) && btns[0])
-    btns[0].style.background = "#DC2626";
-  if (/Android/.test(ua) && btns[1]) btns[1].style.background = "#DC2626";
-});
+})();

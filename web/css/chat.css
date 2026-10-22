@@ -1,0 +1,461 @@
+/* ==========================================================================
+   ComeYa — chat flotante compartido (landing y centro de soporte)
+   ========================================================================== */
+
+#cy-ai {
+  --cy-brand: #eb0000;
+  --cy-brand-dark: #b00000;
+  --cy-ink: #1a1a1a;
+  --cy-muted: #555555;
+  --cy-border: #e0e0e0;
+  --cy-surface: #ffffff;
+  --cy-bg: #f7f7f7;
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease;
+}
+
+#cy-ai.cy-ai--hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+#cy-ai.cy-ai--menu-open {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+#cy-ai * {
+  box-sizing: border-box;
+}
+
+#cy-ai .cy-panel {
+  display: none;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(560px, calc(100vh - 120px));
+  max-height: min(560px, calc(100dvh - 120px));
+  overflow: hidden;
+  border: 1px solid #e8e8e8;
+  border-radius: 20px;
+  background: var(--cy-surface);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
+}
+
+#cy-ai.cy-ai--open .cy-panel {
+  display: flex;
+}
+
+#cy-ai .cy-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--cy-ink);
+}
+
+#cy-ai .cy-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--cy-brand);
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+#cy-ai .cy-logo img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+#cy-ai .cy-head-txt {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+#cy-ai .cy-title {
+  display: block;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+#cy-ai .cy-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+#cy-ai .cy-status i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+#cy-ai .cy-status span {
+  color: #d1d5db;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+#cy-ai .cy-x {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+}
+
+#cy-ai .cy-x:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+#cy-ai .cy-msgs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: min(390px, calc(100dvh - 300px));
+  padding: 14px;
+  overflow-y: auto;
+  background: var(--cy-surface);
+  -webkit-overflow-scrolling: touch;
+}
+
+#cy-ai .cy-msg {
+  max-width: 86%;
+  padding: 9px 12px;
+  border-radius: 16px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#cy-ai .cy-msg.bot {
+  align-self: flex-start;
+  border-bottom-left-radius: 5px;
+  background: var(--cy-bg);
+  color: var(--cy-ink);
+}
+
+#cy-ai .cy-msg.user {
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
+  background: var(--cy-brand);
+  color: #fff;
+}
+
+#cy-ai .cy-typing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border-bottom-left-radius: 5px;
+  background: var(--cy-bg);
+  color: #6b7280;
+  font-size: 12.5px;
+}
+
+#cy-ai .cy-typing b {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #9ca3af;
+  animation: cyBlink 1.2s infinite;
+}
+
+#cy-ai .cy-typing b:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+#cy-ai .cy-typing b:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes cyBlink {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+
+#cy-ai .cy-sugs {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+#cy-ai .cy-sug {
+  align-self: flex-start;
+  padding: 8px 11px;
+  border: 1px solid rgba(235, 0, 0, 0.3);
+  border-radius: 12px;
+  background: rgba(235, 0, 0, 0.06);
+  color: var(--cy-brand);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+#cy-ai .cy-sug:hover {
+  background: rgba(235, 0, 0, 0.12);
+}
+
+#cy-ai .cy-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #e8e8e8;
+  background: var(--cy-surface);
+}
+
+#cy-ai .cy-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  max-height: 96px;
+  padding: 9px 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: 14px;
+  background: var(--cy-bg);
+  color: var(--cy-ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 19px;
+  outline: none;
+  resize: none;
+}
+
+#cy-ai .cy-input:focus {
+  border-color: var(--cy-brand);
+  background: #fff;
+}
+
+#cy-ai .cy-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cy-brand);
+  color: #fff;
+  cursor: pointer;
+}
+
+#cy-ai .cy-send:hover {
+  background: var(--cy-brand-dark);
+}
+
+#cy-ai .cy-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+#cy-ai .cy-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 62px;
+  height: 62px;
+  padding: 0;
+  border: 2px solid var(--cy-brand);
+  border-radius: 50%;
+  background: var(--cy-brand);
+  box-shadow: 0 10px 30px rgba(235, 0, 0, 0.38);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#cy-ai .cy-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 38px rgba(235, 0, 0, 0.46);
+}
+
+#cy-ai .cy-fab img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+#cy-ai .cy-badge {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--cy-brand);
+  color: #fff;
+}
+
+/* Aviso discreto: no abre el chat ni tapa la pantalla */
+#cy-ai .cy-teaser {
+  display: none;
+  position: relative;
+  align-items: center;
+  gap: 8px;
+  max-width: 252px;
+  padding: 10px 12px;
+  border: 1px solid var(--cy-border);
+  border-radius: 15px;
+  background: var(--cy-surface);
+  box-shadow: 0 14px 38px rgba(26, 26, 26, 0.2);
+}
+
+#cy-ai.cy-ai--teaser .cy-teaser {
+  display: flex;
+  animation: cyTeaserIn 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes cyTeaserIn {
+  from { opacity: 0; transform: translateY(7px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#cy-ai .cy-teaser__open {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--cy-ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#cy-ai .cy-teaser__label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--cy-brand);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#cy-ai .cy-teaser__text {
+  display: block;
+  color: var(--cy-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+#cy-ai .cy-teaser__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 23px;
+  height: 23px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--cy-ink);
+  color: #fff;
+  cursor: pointer;
+}
+
+#cy-ai .cy-teaser__close:hover {
+  background: var(--cy-brand);
+}
+
+@media (max-width: 480px) {
+  #cy-ai {
+    right: 12px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #cy-ai .cy-panel {
+    width: calc(100vw - 24px);
+    max-height: min(520px, calc(100vh - 100px));
+    max-height: min(520px, calc(100dvh - 100px));
+  }
+
+  #cy-ai .cy-msgs {
+    max-height: min(330px, calc(100dvh - 270px));
+  }
+
+  #cy-ai .cy-fab {
+    width: 56px;
+    height: 56px;
+  }
+
+  #cy-ai .cy-teaser {
+    max-width: 224px;
+    padding: 9px 11px;
+  }
+
+  #cy-ai .cy-teaser__text {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* En la primera pantalla del móvil dejamos respirar el hero. */
+  #cy-ai.cy-ai--top {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #cy-ai .cy-teaser {
+    animation: none;
+  }
+
+  #cy-ai .cy-fab {
+    transition: none;
+  }
+
+  #cy-ai .cy-typing b {
+    animation: none;
+    opacity: 0.6;
+  }
+}
