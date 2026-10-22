@@ -8,7 +8,7 @@ const genAI = new GoogleGenAI({
     process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
 });
 
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 const COMEYA_CONTEXT = `
 Eres un asistente de soporte para ComeYa, una plataforma de delivery en Soria, Espana.

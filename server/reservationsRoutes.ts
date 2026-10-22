@@ -2028,7 +2028,7 @@ router.post(
           .join("\n");
         const prompt = `Eres el asistente gastronómico de ComeYa en Soria (España). El usuario pregunta: "${query}". Restaurantes disponibles hoy con mesa (id | nombre | categorías | tipo | rating | dirección | hora libre):\n${context}\n\nDevuelve SOLO JSON válido {"options":[{"businessId":"...","reason":"una frase en español, cálida y concreta"}]} con máximo 3 opciones que encajen con la petición (tipo de comida, ocasión, presupuesto...). Si ninguna encaja bien, devuelve las mejores disponibles y explícalo en la razón.`;
         const resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

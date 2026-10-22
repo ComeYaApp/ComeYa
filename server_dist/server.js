@@ -11800,7 +11800,7 @@ var init_autoVerificationService = __esm({
           }
           const { GoogleGenerativeAI: GoogleGenerativeAI2 } = await import("@google/generative-ai");
           const genAI = new GoogleGenerativeAI2(apiKey);
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
           const result = await model.generateContent([
             {
               inlineData: {
@@ -22410,7 +22410,7 @@ router6.post("/analyze-proof", authenticateToken, async (req, res) => {
     }
     const { GoogleGenerativeAI: GoogleGenerativeAI2 } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI2(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `Analiza este comprobante de pago bancario/transferencia y extrae:
 1. referenceNumber: n\xFAmero de referencia, localizador o ID de transacci\xF3n
 2. amount: importe en euros (solo n\xFAmero)
@@ -31411,7 +31411,7 @@ router40.post("/chat-public", async (req, res) => {
       });
     }
     const genAI = new import_generative_ai.GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const chat = model.startChat({
       history: [
         { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
@@ -31459,7 +31459,7 @@ router40.post("/chat", authenticateToken, async (req, res) => {
       });
     }
     const genAI = new import_generative_ai.GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const chatHistory = (history || []).slice(-8).map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }]
@@ -38697,7 +38697,7 @@ ${context}
 
 Devuelve SOLO JSON v\xE1lido {"options":[{"businessId":"...","reason":"una frase en espa\xF1ol, c\xE1lida y concreta"}]} con m\xE1ximo 3 opciones que encajen con la petici\xF3n (tipo de comida, ocasi\xF3n, presupuesto...). Si ninguna encaja bien, devuelve las mejores disponibles y expl\xEDcalo en la raz\xF3n.`;
         const resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

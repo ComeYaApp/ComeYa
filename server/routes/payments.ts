@@ -330,7 +330,7 @@ router.post("/analyze-proof", authenticateToken, async (req, res) => {
 
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `Analiza este comprobante de pago bancario/transferencia y extrae:
 1. referenceNumber: número de referencia, localizador o ID de transacción
