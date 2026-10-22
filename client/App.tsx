@@ -433,7 +433,7 @@ export default function App() {
                             <AppThemedShell>
                               <RootStackNavigator />
                             </AppThemedShell>
-                            <WebAIChatWidget />
+                            <WebAIChatWidget hidden={showOnboarding} />
                             {showOnboarding && (
                               <OnboardingOverlay
                                 onComplete={() => setShowOnboarding(false)}

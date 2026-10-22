@@ -21,6 +21,7 @@ import { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComeYaColors, Spacing } from "@/constants/theme";
+import { getWebTabBarHeight } from "@/constants/layout";
 
 // Navigators móviles nativos (sin circular dependency — NO importar MainTabNavigator aquí)
 import BusinessTabNavigator from "@/navigation/BusinessTabNavigator";
@@ -142,7 +143,7 @@ function MobileTabNavigator() {
     backgroundColor: theme.background,
     borderTopWidth: 1,
     borderTopColor: theme.border,
-    height: 56 + Math.max(insets.bottom, 8),
+    height: getWebTabBarHeight(true, insets.bottom),
     paddingBottom: Math.max(insets.bottom, 8),
     paddingTop: 4,
   };
@@ -318,7 +319,7 @@ export default function MainTabNavigator() {
   }
 
   // ── Desktop web (>= 768px): sidebars completos ──
-  const tabBarHeight = 64 + Math.max(insets.bottom, 8);
+  const tabBarHeight = getWebTabBarHeight(false, insets.bottom);
   const tabBarStyle = {
     backgroundColor: theme.background,
     borderTopWidth: 1,

@@ -1,17 +1,30 @@
 import React from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Platform, Pressable, StyleSheet } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useTheme } from "@/hooks/useTheme";
-import { ComeYaColors, Spacing } from "@/constants/theme";
+import { ComeYaColors } from "@/constants/theme";
 
-export function ThemeToggleButton() {
+interface ThemeToggleButtonProps {
+  size?: number;
+  variant?: "plain" | "navbar";
+  style?: StyleProp<ViewStyle>;
+}
+
+export function ThemeToggleButton({
+  size = 40,
+  variant = "plain",
+  style,
+}: ThemeToggleButtonProps) {
   const { isDark, setThemeMode } = useTheme();
 
   const handleToggle = async () => {
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       await setThemeMode(isDark ? "light" : "dark");
     } catch (error) {
       console.error("Theme toggle error:", error);
@@ -21,12 +34,26 @@ export function ThemeToggleButton() {
   return (
     <Pressable
       onPress={handleToggle}
-      style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={
+        isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro"
+      }
       testID="button-theme-toggle"
+      style={({ pressed }) => [
+        styles.button,
+        { width: size, height: size, borderRadius: size / 2 },
+        variant === "navbar" && {
+          backgroundColor: isDark
+            ? "rgba(255,255,255,0.08)"
+            : "rgba(0,0,0,0.04)",
+        },
+        style,
+        pressed && styles.buttonPressed,
+      ]}
     >
       <Feather
         name={isDark ? "sun" : "moon"}
-        size={22}
+        size={Math.round(size * 0.55)}
         color={isDark ? ComeYaColors.warning : ComeYaColors.primary}
       />
     </Pressable>
@@ -35,11 +62,8 @@ export function ThemeToggleButton() {
 
 const styles = StyleSheet.create({
   button: {
-    width: 40,
-    height: 40,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 20,
   },
   buttonPressed: {
     opacity: 0.7,

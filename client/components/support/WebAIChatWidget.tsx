@@ -11,14 +11,16 @@ import {
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ComeYaLogo } from "@/components/ComeYaLogo";
 import { useTheme } from "@/hooks/useTheme";
 import { getApiUrl } from "@/lib/query-client";
+import { getWebTabBarHeight } from "@/constants/layout";
 
 const PRIMARY = "#E60000";
-const GRAPHITE = "#111827";
-const SEEN_KEY = "comeya_ai_widget_seen";
+const GRAPHITE = "#1A1A1A";
+const TEASER_KEY = "comeya_ai_teaser_seen";
 
 interface Message {
   id: string;
@@ -42,15 +44,20 @@ const SUGGESTIONS = [
 /**
  * Chat de IA flotante para la versión web. Vive fuera del árbol de pantallas
  * para estar disponible en toda la app (inicio, negocios, perfil, etc.).
- * En la primera carga del navegador se abre solo y saluda; después queda como
- * botón inferior derecho para no interrumpir la navegación.
+ * No abre el panel automáticamente: muestra un aviso discreto y espera clic.
  */
-export function WebAIChatWidget() {
+export function WebAIChatWidget({
+  hidden = false,
+}: {
+  hidden?: boolean;
+}) {
   const { isDark } = useTheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
   const [open, setOpen] = useState(false);
+  const [teaser, setTeaser] = useState(false);
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,26 +68,39 @@ export function WebAIChatWidget() {
   const sub = isDark ? "#9ca3af" : "#6b7280";
   const botBubble = isDark ? "#262626" : "#f5f5f5";
   const panelWidth = Math.min(370, Math.max(300, width - 28));
+  const isMobile = width < 768;
+
+  const pathname =
+    typeof window !== "undefined" ? window.location.pathname : "";
+  const isAuthRoute = /^\/(login|signup|verifyphone)/i.test(pathname);
+  const isSupportRoute = /support/i.test(pathname);
+  const withoutTabBar =
+    /^\/(login|signup|cart|businessdetail|publictracking|support|supportchat|verifyphone)/i.test(
+      pathname,
+    );
+  const bottomOffset = withoutTabBar
+    ? 20 + Math.max(insets.bottom, 0)
+    : getWebTabBarHeight(isMobile, insets.bottom) + 16;
+
+  const panelMaxHeight = Math.min(560, Math.max(320, height - 150));
+  const messagesMaxHeight = Math.max(140, panelMaxHeight - 170);
 
   useEffect(() => {
+    if (hidden || isAuthRoute || isSupportRoute) {
+      setTeaser(false);
+      return;
+    }
     if (Platform.OS !== "web" || typeof window === "undefined") return;
-    // En la pantalla de soporte ya existe el chat a pantalla completa.
-    if (/support/i.test(window.location.pathname)) return;
 
-    let seen = false;
+    let dismissed = false;
     try {
-      seen = window.sessionStorage.getItem(SEEN_KEY) === "1";
+      dismissed = window.sessionStorage.getItem(TEASER_KEY) === "1";
     } catch {}
-    if (seen) return;
+    if (dismissed) return;
 
-    const timer = setTimeout(() => {
-      try {
-        window.sessionStorage.setItem(SEEN_KEY, "1");
-      } catch {}
-      setOpen(true);
-    }, 900);
+    const timer = setTimeout(() => setTeaser(true), 5000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [hidden, isAuthRoute, isSupportRoute]);
 
   useEffect(() => {
     if (!open) return;
@@ -91,10 +111,25 @@ export function WebAIChatWidget() {
     return () => clearTimeout(timer);
   }, [messages, open, loading]);
 
+  const openChat = () => {
+    setTeaser(false);
+    setOpen(true);
+    try {
+      window.sessionStorage.setItem(TEASER_KEY, "1");
+    } catch {}
+  };
+
   const close = () => {
     setOpen(false);
     try {
-      window.sessionStorage.setItem(SEEN_KEY, "1");
+      window.sessionStorage.setItem(TEASER_KEY, "1");
+    } catch {}
+  };
+
+  const dismissTeaser = () => {
+    setTeaser(false);
+    try {
+      window.sessionStorage.setItem(TEASER_KEY, "1");
     } catch {}
   };
 
@@ -179,16 +214,57 @@ export function WebAIChatWidget() {
     }
   };
 
-  if (Platform.OS !== "web") return null;
+  if (Platform.OS !== "web" || hidden || isAuthRoute || isSupportRoute) {
+    return null;
+  }
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
+    <View
+      style={[
+        styles.root,
+        { right: isMobile ? 12 : 20, bottom: bottomOffset },
+      ]}
+      pointerEvents="box-none"
+    >
+      {teaser && !open && (
+        <View style={styles.teaserWrap}>
+          <Pressable
+            onPress={openChat}
+            style={[
+              styles.teaser,
+              { backgroundColor: card, borderColor: border },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir chat: ¿Puedo ayudarte en algo?"
+          >
+            <View style={styles.teaserTextWrap}>
+              <Text style={[styles.teaserLabel, { color: PRIMARY }]}>
+                Asistente ComeYa
+              </Text>
+              <Text style={[styles.teaserText, { color: text }]}>
+                ¿Puedo ayudarte en algo?
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={sub} />
+          </Pressable>
+          <Pressable
+            onPress={dismissTeaser}
+            style={styles.teaserClose}
+            accessibilityLabel="Cerrar aviso del asistente"
+            hitSlop={8}
+          >
+            <Feather name="x" size={12} color="#fff" />
+          </Pressable>
+        </View>
+      )}
+
       {open && (
         <View
           style={[
             styles.panel,
             {
               width: panelWidth,
+              maxHeight: panelMaxHeight,
               backgroundColor: card,
               borderColor: border,
             },
@@ -216,7 +292,7 @@ export function WebAIChatWidget() {
 
           <ScrollView
             ref={scrollRef}
-            style={styles.messages}
+            style={[styles.messages, { maxHeight: messagesMaxHeight }]}
             contentContainerStyle={styles.messagesContent}
             showsVerticalScrollIndicator={false}
           >
@@ -321,9 +397,10 @@ export function WebAIChatWidget() {
       )}
 
       <Pressable
-        onPress={() => (open ? close() : setOpen(true))}
+        onPress={() => (open ? close() : openChat())}
         style={[styles.fab, { backgroundColor: "#EB0000" }]}
         accessibilityLabel="Abrir chat de ayuda"
+        accessibilityState={{ expanded: open }}
       >
         <ComeYaLogo size={56} style={{ borderRadius: 28 }} />
         <View style={styles.fabBadge}>
@@ -337,20 +414,66 @@ export function WebAIChatWidget() {
 const styles = StyleSheet.create({
   root: {
     position: "absolute",
-    right: 20,
-    bottom: 20,
     zIndex: 10000,
     alignItems: "flex-end",
-    gap: 12,
+    gap: 10,
     ...(Platform.OS === "web"
       ? ({ pointerEvents: "box-none" } as any)
       : {}),
+  },
+  teaserWrap: {
+    position: "relative",
+    maxWidth: 250,
+    alignItems: "flex-end",
+  },
+  teaser: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 15,
+    ...(Platform.OS === "web"
+      ? ({
+          boxShadow: "0 14px 38px rgba(26,26,26,0.2)",
+        } as any)
+      : { elevation: 8 }),
+  },
+  teaserTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  teaserLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  teaserText: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    lineHeight: 17,
+  },
+  teaserClose: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 2,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
   },
   panel: {
     borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
-    maxHeight: 560,
     ...(Platform.OS === "web"
       ? ({
           boxShadow: "0 18px 50px rgba(0,0,0,0.28)",
@@ -395,7 +518,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  messages: { maxHeight: 390 },
+  messages: {},
   messagesContent: { padding: 14, gap: 10 },
   bubble: {
     maxWidth: "86%",
@@ -452,7 +575,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#EB0000",
     ...(Platform.OS === "web"
-      ? ({ boxShadow: "0 8px 24px rgba(255,106,0,0.35)" } as any)
+      ? ({ boxShadow: "0 8px 24px rgba(235,0,0,0.35)" } as any)
       : { elevation: 10 }),
   },
   fabBadge: {

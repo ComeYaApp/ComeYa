@@ -1,6 +1,6 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 
 import HomeScreen from "@/screens/HomeScreen";
@@ -28,7 +28,14 @@ export default function HomeStackNavigator() {
   const screenOptions = useScreenOptions();
 
   return (
-    <Stack.Navigator screenOptions={screenOptions}>
+    <Stack.Navigator
+      screenOptions={{
+        ...screenOptions,
+        // En web la cabecera propia de HomeScreen.web ya incluye logo, buscador,
+        // carrito y toggle de tema. Evitamos una segunda barra superior.
+        ...(Platform.OS === "web" ? { headerShown: false } : {}),
+      }}
+    >
       <Stack.Screen
         name="Home"
         component={HomeScreen}

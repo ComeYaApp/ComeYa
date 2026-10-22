@@ -16,6 +16,7 @@ import { ComeyaIcon, ComeyaIconName } from "@/components/icons/comeya/ComeyaIcon
 import { HomeReserveMode } from "@/components/HomeReserveMode";
 import { Image } from "expo-image";
 import { ComeYaLogo } from "@/components/ComeYaLogo";
+import { ThemeToggleButton } from "@/components/ThemeToggleButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useTheme } from "@/hooks/useTheme";
@@ -510,6 +511,7 @@ export default function HomeScreen() {
               <Text style={[s.navBtnText, { color: text }]}>Pedidos</Text>
             </Pressable>
           )}
+          <ThemeToggleButton size={isMobile ? 34 : 38} variant="navbar" />
           <Pressable
             style={[s.navCartBtn, { backgroundColor: PRIMARY }]}
             onPress={() => navigation.navigate("Cart")}
@@ -517,14 +519,16 @@ export default function HomeScreen() {
             <Feather name="shopping-cart" size={16} color="#fff" />
             {!isMobile && <Text style={s.navCartText}>Carrito</Text>}
           </Pressable>
-          <Pressable
-            style={[s.navAvatar, { backgroundColor: PRIMARY + "20" }]}
-            onPress={() => navigation.navigate("Main" as any)}
-          >
-            <Text style={[s.navAvatarText, { color: PRIMARY }]}>
-              {user?.name?.charAt(0)?.toUpperCase() || "U"}
-            </Text>
-          </Pressable>
+          {!isMobile && (
+            <Pressable
+              style={[s.navAvatar, { backgroundColor: PRIMARY + "20" }]}
+              onPress={() => navigation.navigate("Main" as any)}
+            >
+              <Text style={[s.navAvatarText, { color: PRIMARY }]}>
+                {user?.name?.charAt(0)?.toUpperCase() || "U"}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
